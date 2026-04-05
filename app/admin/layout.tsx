@@ -22,6 +22,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!admin) redirect('/members')
 
   return (
+    <>
+    <style dangerouslySetInnerHTML={{ __html: `html, body { background: #052E20 !important; }` }} />
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <nav style={{
         position: 'fixed', top: 0, left: 0, bottom: 0, width: 220,
@@ -64,5 +66,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         {children}
       </main>
     </div>
+    </>
   )
 }
