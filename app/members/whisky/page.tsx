@@ -21,7 +21,7 @@ export default function WhiskyPage() {
   const pastWhiskies = whiskies.filter(w => !w.in_stock)
 
   // Build dynamic regions from actual data
-  const regionSet = new Set(inStock.map(w => w.region).filter(Boolean))
+  const regionSet = new Set(inStock.map(w => w.region).filter((r): r is string => Boolean(r)))
   const regions = ['All', ...Array.from(regionSet).sort(), ...(pastWhiskies.length > 0 ? ['Past Drams'] : [])]
 
   const filtered = filter === 'Past Drams' ? pastWhiskies : filter === 'All' ? inStock : inStock.filter(w => w.region === filter)
