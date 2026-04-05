@@ -234,28 +234,89 @@ export async function POST(req: NextRequest) {
           content: pdfBuffer,
         }
 
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://therampantclub.com'
+        const logoUrl = `${siteUrl}/images/logo-mark.svg`
+        const signatureUrl = `${siteUrl}/images/signature%20(1)%20(1).png`
+
+        const memberEmailHtml = `
+          <div style="max-width: 600px; margin: 0 auto; font-family: Georgia, 'Times New Roman', serif;">
+            <!-- Header -->
+            <div style="background-color: #052E20; padding: 40px 40px 32px; text-align: center;">
+              <img src="${logoUrl}" alt="The Rampant Club" width="60" style="display: block; margin: 0 auto 20px;" />
+              <h1 style="color: #E5D4C2; font-size: 20px; font-weight: 400; letter-spacing: 0.08em; margin: 0;">THE RAMPANT CLUB</h1>
+              <p style="color: #B2AA98; font-size: 10px; letter-spacing: 0.12em; margin: 8px 0 0; text-transform: uppercase;">Membership Agreement Received</p>
+            </div>
+
+            <!-- Body -->
+            <div style="background-color: #052E20; padding: 0 40px 40px;">
+              <!-- Diamond -->
+              <div style="text-align: center; margin-bottom: 28px;">
+                <span style="display: inline-block; width: 8px; height: 8px; background: #B2AA98; transform: rotate(45deg); opacity: 0.3;"></span>
+              </div>
+
+              <p style="color: #E5D4C2; font-size: 15px; line-height: 1.8; margin: 0 0 20px;">
+                Dear ${pdfSafe(fullName)},
+              </p>
+
+              <p style="color: #B2AA98; font-size: 13px; line-height: 1.8; margin: 0 0 16px;">
+                Thank you for submitting your signed Membership Agreement to The Rampant Club. Your application has been received and a copy of the signed document is attached for your records.
+              </p>
+
+              <p style="color: #B2AA98; font-size: 13px; line-height: 1.8; margin: 0 0 16px;">
+                The Membership Committee will now review your application. We do not confirm timelines, but you can expect to hear from us in due course. In the meantime, should you have any questions, please do not hesitate to reach out via our concierge service.
+              </p>
+
+              <p style="color: #B2AA98; font-size: 13px; line-height: 1.8; margin: 0 0 24px;">
+                We look forward to welcoming you.
+              </p>
+
+              <!-- Chairman signature -->
+              <div style="margin-top: 32px;">
+                <p style="color: #E5D4C2; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 12px;">Chairman</p>
+                <img src="${signatureUrl}" alt="Chairman" width="120" style="display: block; filter: brightness(0) invert(1); opacity: 0.7;" />
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="background-color: #052E20; border-top: 1px solid rgba(229,212,194,0.08); padding: 20px 40px;">
+              <p style="color: #B2AA98; font-size: 10px; line-height: 1.7; margin: 0; opacity: 0.5;">
+                74A2 Hai Ba Trung, District 1, Ho Chi Minh City<br>
+                Membership@TheRampantClub.com<br>
+                (+84) 817 888 768
+              </p>
+            </div>
+          </div>
+        `
+
+        const clubEmailHtml = `
+          <div style="max-width: 600px; margin: 0 auto; font-family: Georgia, 'Times New Roman', serif;">
+            <div style="background-color: #052E20; padding: 32px 40px;">
+              <h2 style="color: #E5D4C2; font-size: 16px; font-weight: 400; letter-spacing: 0.06em; margin: 0 0 20px;">New Membership Agreement Signed</h2>
+
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="color: #B2AA98; font-size: 10px; padding: 6px 0; letter-spacing: 0.06em; text-transform: uppercase; width: 120px;">Name</td><td style="color: #E5D4C2; font-size: 13px; padding: 6px 0;">${pdfSafe(fullName)}</td></tr>
+                <tr><td style="color: #B2AA98; font-size: 10px; padding: 6px 0; letter-spacing: 0.06em; text-transform: uppercase;">Category</td><td style="color: #E5D4C2; font-size: 13px; padding: 6px 0;">${category}</td></tr>
+                <tr><td style="color: #B2AA98; font-size: 10px; padding: 6px 0; letter-spacing: 0.06em; text-transform: uppercase;">Email</td><td style="color: #E5D4C2; font-size: 13px; padding: 6px 0;">${email}</td></tr>
+                <tr><td style="color: #B2AA98; font-size: 10px; padding: 6px 0; letter-spacing: 0.06em; text-transform: uppercase;">Mobile</td><td style="color: #E5D4C2; font-size: 13px; padding: 6px 0;">${mobile}</td></tr>
+                ${dateOfBirth ? `<tr><td style="color: #B2AA98; font-size: 10px; padding: 6px 0; letter-spacing: 0.06em; text-transform: uppercase;">DOB</td><td style="color: #E5D4C2; font-size: 13px; padding: 6px 0;">${dateOfBirth}</td></tr>` : ''}
+                ${nationality ? `<tr><td style="color: #B2AA98; font-size: 10px; padding: 6px 0; letter-spacing: 0.06em; text-transform: uppercase;">Nationality</td><td style="color: #E5D4C2; font-size: 13px; padding: 6px 0;">${pdfSafe(nationality)}</td></tr>` : ''}
+                ${homeAddress ? `<tr><td style="color: #B2AA98; font-size: 10px; padding: 6px 0; letter-spacing: 0.06em; text-transform: uppercase;">Address</td><td style="color: #E5D4C2; font-size: 13px; padding: 6px 0;">${pdfSafe(homeAddress)}</td></tr>` : ''}
+                ${companyName ? `<tr><td style="color: #B2AA98; font-size: 10px; padding: 6px 0; letter-spacing: 0.06em; text-transform: uppercase;">Company</td><td style="color: #E5D4C2; font-size: 13px; padding: 6px 0;">${pdfSafe(companyName)}</td></tr>` : ''}
+                ${profession ? `<tr><td style="color: #B2AA98; font-size: 10px; padding: 6px 0; letter-spacing: 0.06em; text-transform: uppercase;">Profession</td><td style="color: #E5D4C2; font-size: 13px; padding: 6px 0;">${pdfSafe(profession)}</td></tr>` : ''}
+                ${referredBy ? `<tr><td style="color: #B2AA98; font-size: 10px; padding: 6px 0; letter-spacing: 0.06em; text-transform: uppercase;">Referred By</td><td style="color: #E5D4C2; font-size: 13px; padding: 6px 0;">${pdfSafe(referredBy)}</td></tr>` : ''}
+              </table>
+
+              <p style="color: #B2AA98; font-size: 11px; margin: 20px 0 0; opacity: 0.5;">Signed PDF attached. Full details in the admin panel.</p>
+            </div>
+          </div>
+        `
+
         // Email to the signee
         await resend.emails.send({
           from: 'The Rampant Club <membership@therampantclub.com>',
           to: email,
-          subject: 'Your Signed Membership Agreement - The Rampant Club',
-          html: `
-            <div style="font-family: Helvetica, Arial, sans-serif; color: #052E20; max-width: 500px;">
-              <h2 style="font-size: 18px; font-weight: 500; letter-spacing: 0.04em;">THE RAMPANT CLUB</h2>
-              <p style="font-size: 13px; color: #5E6650; line-height: 1.7;">
-                Dear ${pdfSafe(fullName)},<br><br>
-                Thank you for signing your Membership Agreement. Please find a copy attached for your records.<br><br>
-                The Committee will review your application and be in touch shortly.<br><br>
-                Warm regards,<br>
-                <em>The Rampant Club</em>
-              </p>
-              <hr style="border: none; border-top: 1px solid #E5D4C2; margin: 24px 0;" />
-              <p style="font-size: 10px; color: #B2AA98;">
-                74A2 Hai Ba Trung, District 1, Ho Chi Minh City<br>
-                Membership@TheRampantClub.com
-              </p>
-            </div>
-          `,
+          subject: 'Your Membership Agreement - The Rampant Club',
+          html: memberEmailHtml,
           attachments: [attachment],
         })
 
@@ -264,21 +325,7 @@ export async function POST(req: NextRequest) {
           from: 'The Rampant Club <membership@therampantclub.com>',
           to: 'membership@therampantclub.com',
           subject: `New Signed Agreement: ${pdfSafe(fullName)} (${category})`,
-          html: `
-            <div style="font-family: Helvetica, Arial, sans-serif; color: #052E20; max-width: 500px;">
-              <h2 style="font-size: 18px; font-weight: 500;">New Membership Agreement Signed</h2>
-              <p style="font-size: 13px; color: #5E6650; line-height: 1.7;">
-                <strong>${pdfSafe(fullName)}</strong> has signed their membership agreement.<br><br>
-                <strong>Category:</strong> ${category}<br>
-                <strong>Email:</strong> ${email}<br>
-                <strong>Mobile:</strong> ${mobile}<br>
-                ${dateOfBirth ? `<strong>DOB:</strong> ${dateOfBirth}<br>` : ''}
-                ${profession ? `<strong>Profession:</strong> ${pdfSafe(profession)}<br>` : ''}
-                ${referredBy ? `<strong>Referred By:</strong> ${pdfSafe(referredBy)}<br>` : ''}
-              </p>
-              <p style="font-size: 11px; color: #B2AA98;">Signed PDF attached. Full details available in the admin panel.</p>
-            </div>
-          `,
+          html: clubEmailHtml,
           attachments: [attachment],
         })
       } catch (emailErr) {
