@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
     // 3. Upload PDF to Supabase Storage
     const fileName = `${token}_${Date.now()}.pdf`
     const { error: uploadError } = await supabaseAdmin.storage
-      .from('signed-agreements')
+      .from('signed_agreements')
       .upload(fileName, pdfBytes, { contentType: 'application/pdf' })
 
     if (uploadError) {

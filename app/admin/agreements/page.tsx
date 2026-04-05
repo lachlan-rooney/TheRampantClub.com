@@ -95,7 +95,7 @@ export default function AgreementsPage() {
 
   const getPdfUrl = (filename: string | null) => {
     if (!filename) return null
-    const { data } = supabase.storage.from('signed-agreements').getPublicUrl(filename)
+    const { data } = supabase.storage.from('signed_agreements').getPublicUrl(filename)
     return data?.publicUrl
   }
 
