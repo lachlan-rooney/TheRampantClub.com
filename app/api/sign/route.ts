@@ -251,7 +251,7 @@ export async function POST(req: NextRequest) {
             <!-- Body -->
             <div style="background-color: #E5D4C2; padding: 24px 48px 40px;">
               <p style="color: #052E20; font-size: 15px; line-height: 1.8; margin: 0 0 20px;">
-                Dear ${pdfSafe(fullName)},
+                Dear ${fullName},
               </p>
 
               <p style="color: #5E6650; font-size: 13px; line-height: 1.85; margin: 0 0 16px;">
@@ -291,16 +291,16 @@ export async function POST(req: NextRequest) {
               <h2 style="color: #052E20; font-size: 18px; font-weight: 400; letter-spacing: 0.06em; margin: 0 0 24px;">New Agreement Signed</h2>
 
               <table style="width: 100%; border-collapse: collapse;">
-                <tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; width: 120px; border-bottom: 1px solid rgba(5,46,32,0.08);">Name</td><td style="color: #052E20; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(5,46,32,0.08);">${pdfSafe(fullName)}</td></tr>
+                <tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; width: 120px; border-bottom: 1px solid rgba(5,46,32,0.08);">Name</td><td style="color: #052E20; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(5,46,32,0.08);">${fullName}</td></tr>
                 <tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(5,46,32,0.08);">Category</td><td style="color: #052E20; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(5,46,32,0.08);">${category}</td></tr>
                 <tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(5,46,32,0.08);">Email</td><td style="color: #052E20; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(5,46,32,0.08);">${email}</td></tr>
                 <tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(5,46,32,0.08);">Mobile</td><td style="color: #052E20; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(5,46,32,0.08);">${mobile}</td></tr>
                 ${dateOfBirth ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(5,46,32,0.08);">DOB</td><td style="color: #052E20; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(5,46,32,0.08);">${dateOfBirth}</td></tr>` : ''}
-                ${nationality ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(5,46,32,0.08);">Nationality</td><td style="color: #052E20; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(5,46,32,0.08);">${pdfSafe(nationality)}</td></tr>` : ''}
-                ${homeAddress ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(5,46,32,0.08);">Address</td><td style="color: #052E20; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(5,46,32,0.08);">${pdfSafe(homeAddress)}</td></tr>` : ''}
-                ${companyName ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(5,46,32,0.08);">Company</td><td style="color: #052E20; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(5,46,32,0.08);">${pdfSafe(companyName)}</td></tr>` : ''}
-                ${profession ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(5,46,32,0.08);">Profession</td><td style="color: #052E20; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(5,46,32,0.08);">${pdfSafe(profession)}</td></tr>` : ''}
-                ${referredBy ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase;">Referred By</td><td style="color: #052E20; font-size: 13px; padding: 8px 0;">${pdfSafe(referredBy)}</td></tr>` : ''}
+                ${nationality ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(5,46,32,0.08);">Nationality</td><td style="color: #052E20; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(5,46,32,0.08);">${nationality}</td></tr>` : ''}
+                ${homeAddress ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(5,46,32,0.08);">Address</td><td style="color: #052E20; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(5,46,32,0.08);">${homeAddress}</td></tr>` : ''}
+                ${companyName ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(5,46,32,0.08);">Company</td><td style="color: #052E20; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(5,46,32,0.08);">${companyName}</td></tr>` : ''}
+                ${profession ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(5,46,32,0.08);">Profession</td><td style="color: #052E20; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(5,46,32,0.08);">${profession}</td></tr>` : ''}
+                ${referredBy ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase;">Referred By</td><td style="color: #052E20; font-size: 13px; padding: 8px 0;">${referredBy}</td></tr>` : ''}
               </table>
 
               <p style="color: #5E6650; font-size: 11px; margin: 20px 0 0; opacity: 0.5;">Signed PDF attached. Full details in the admin panel.</p>
@@ -321,7 +321,7 @@ export async function POST(req: NextRequest) {
         await resend.emails.send({
           from: 'The Rampant Club <membership@therampantclub.com>',
           to: 'membership@therampantclub.com',
-          subject: `New Signed Agreement: ${pdfSafe(fullName)} (${category})`,
+          subject: `New Signed Agreement: ${fullName} (${category})`,
           html: clubEmailHtml,
           attachments: [attachment],
         })
