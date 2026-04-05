@@ -243,8 +243,8 @@ export async function POST(req: NextRequest) {
           <div style="max-width: 600px; margin: 0 auto; font-family: Georgia, 'Times New Roman', serif; background-color: #E5D4C2;">
             <!-- Header -->
             <div style="background-color: #E5D4C2; padding: 48px 40px 24px; text-align: center;">
-              <img src="${lionUrl}" alt="" width="80" style="display: block; margin: 0 auto 24px;" />
-              <h1 style="color: #052E20; font-size: 22px; font-weight: 400; letter-spacing: 0.08em; margin: 0;">THE RAMPANT CLUB</h1>
+              <img src="${lionUrl}" alt="" width="80" style="display: block; margin: 0 auto 16px;" />
+              <img src="${siteUrl}/images/logo-script.svg" alt="The Rampant Club" width="160" style="display: block; margin: 0 auto 8px;" />
               <p style="color: #5E6650; font-size: 10px; letter-spacing: 0.12em; margin: 10px 0 0; text-transform: uppercase;">Membership Agreement Received</p>
             </div>
 
@@ -265,6 +265,23 @@ export async function POST(req: NextRequest) {
               <p style="color: #5E6650; font-size: 13px; line-height: 1.85; margin: 0 0 28px;">
                 We look forward to welcoming you.
               </p>
+
+              <!-- Submitted details -->
+              <div style="background-color: rgba(5,46,32,0.06); border-radius: 6px; padding: 20px 24px; margin-bottom: 32px;">
+                <p style="color: #052E20; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 14px;">Your Submitted Details</p>
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr><td style="color: #5E6650; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase; width: 110px;">Name</td><td style="color: #052E20; font-size: 12px; padding: 5px 0;">${fullName}</td></tr>
+                  <tr><td style="color: #5E6650; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Email</td><td style="color: #052E20; font-size: 12px; padding: 5px 0;">${email}</td></tr>
+                  <tr><td style="color: #5E6650; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Mobile</td><td style="color: #052E20; font-size: 12px; padding: 5px 0;">${mobile}</td></tr>
+                  ${dateOfBirth ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Date of Birth</td><td style="color: #052E20; font-size: 12px; padding: 5px 0;">${dateOfBirth}</td></tr>` : ''}
+                  ${nationality ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Nationality</td><td style="color: #052E20; font-size: 12px; padding: 5px 0;">${nationality}</td></tr>` : ''}
+                  ${homeAddress ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Address</td><td style="color: #052E20; font-size: 12px; padding: 5px 0;">${homeAddress}</td></tr>` : ''}
+                  ${companyName ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Company</td><td style="color: #052E20; font-size: 12px; padding: 5px 0;">${companyName}</td></tr>` : ''}
+                  ${profession ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Profession</td><td style="color: #052E20; font-size: 12px; padding: 5px 0;">${profession}</td></tr>` : ''}
+                  <tr><td style="color: #5E6650; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Category</td><td style="color: #052E20; font-size: 12px; padding: 5px 0;">${category ? category.charAt(0).toUpperCase() + category.slice(1) : ''} Membership</td></tr>
+                  ${referredBy ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Referred By</td><td style="color: #052E20; font-size: 12px; padding: 5px 0;">${referredBy}</td></tr>` : ''}
+                </table>
+              </div>
 
               <!-- Chairman signature -->
               <div style="margin-top: 36px; text-align: right;">
