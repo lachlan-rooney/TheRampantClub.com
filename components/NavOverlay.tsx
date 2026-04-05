@@ -40,6 +40,12 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
 
   // Detect background behind logo and toggle colour
   useEffect(() => {
+    // If dark prop is set, always use cream logo — skip detection
+    if (dark) {
+      setLogoInverted(true)
+      return
+    }
+
     const isDarkAt = (x: number, y: number, logo: HTMLElement) => {
       const els = document.elementsFromPoint(x, y)
       for (const el of els) {
@@ -57,22 +63,25 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
       return false
     }
 
+    let ticking = false
     const checkBackground = () => {
-      const logo = logoRef.current
-      if (!logo) return
-      const rect = logo.getBoundingClientRect()
-      const cx = rect.left + rect.width / 2
-      // Check top, center, and bottom of the logo
-      const darkTop = isDarkAt(cx, rect.top + rect.height * 0.2, logo)
-      const darkCenter = isDarkAt(cx, rect.top + rect.height * 0.5, logo)
-      const darkBottom = isDarkAt(cx, rect.top + rect.height * 0.8, logo)
-      // Invert if any part overlaps a dark background
-      setLogoInverted(darkTop || darkCenter || darkBottom)
+      if (ticking) return
+      ticking = true
+      requestAnimationFrame(() => {
+        const logo = logoRef.current
+        if (logo) {
+          const rect = logo.getBoundingClientRect()
+          const cx = rect.left + rect.width / 2
+          const darkCenter = isDarkAt(cx, rect.top + rect.height * 0.5, logo)
+          setLogoInverted(darkCenter)
+        }
+        ticking = false
+      })
     }
     checkBackground()
     window.addEventListener('scroll', checkBackground, { passive: true })
     return () => window.removeEventListener('scroll', checkBackground)
-  }, [])
+  }, [dark])
 
   useEffect(() => {
     if (!open) return
