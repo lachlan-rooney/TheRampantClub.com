@@ -1,12 +1,20 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import NavOverlay from '@/components/NavOverlay'
 import LoginTicker from '@/components/LoginTicker'
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
+  )
+}
+
+function LoginContent() {
   const [fontsReady, setFontsReady] = useState(false)
   useEffect(() => {
     document.fonts.ready.then(() => setFontsReady(true))
