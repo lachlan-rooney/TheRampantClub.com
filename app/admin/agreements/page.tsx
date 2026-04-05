@@ -93,10 +93,14 @@ export default function AgreementsPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const getPdfUrl = (filename: string | null) => {
-    if (!filename) return null
-    const { data } = supabase.storage.from('signed_agreements').getPublicUrl(filename)
-    return data?.publicUrl
+  const downloadPdf = async (filename: string | null) => {
+    if (!filename) return
+    const { data, error } = await supabase.storage.from('signed_agreements').createSignedUrl(filename, 60)
+    if (error || !data?.signedUrl) {
+      alert('Could not generate download link')
+      return
+    }
+    window.open(data.signedUrl, '_blank')
   }
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString('en-GB', {
@@ -275,16 +279,14 @@ export default function AgreementsPage() {
                   ))}
                   {agr.signed_pdf_url && (
                     <div style={{ gridColumn: '1 / -1', marginTop: 8 }}>
-                      <a
-                        href={getPdfUrl(agr.signed_pdf_url) || '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        onClick={() => downloadPdf(agr.signed_pdf_url)}
                         style={{
-                          ...btnStyle, display: 'inline-block', textDecoration: 'none', fontSize: 10, padding: '8px 16px',
+                          ...btnStyle, fontSize: 10, padding: '8px 16px',
                         }}
                       >
                         Download Signed PDF
-                      </a>
+                      </button>
                     </div>
                   )}
                 </div>
