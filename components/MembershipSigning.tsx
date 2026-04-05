@@ -195,7 +195,7 @@ export default function MembershipSigning({ token, prefill }: Props) {
   if (submitted) {
     return (
       <>
-        <link href="https://fonts.googleapis.com/css2?family=Dancing+Script&family=Great+Vibes&family=Caveat&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Dancing+Script&family=Great+Vibes&family=Caveat&display=block" rel="stylesheet" />
         <div style={{
           minHeight: '100vh', background: GREEN, display: 'flex', alignItems: 'center',
           justifyContent: 'center', padding: 40,
@@ -242,7 +242,7 @@ export default function MembershipSigning({ token, prefill }: Props) {
 
   return (
     <>
-      <link href="https://fonts.googleapis.com/css2?family=Dancing+Script&family=Great+Vibes&family=Caveat&display=swap" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/css2?family=Dancing+Script&family=Great+Vibes&family=Caveat&display=block" rel="stylesheet" />
       <style dangerouslySetInnerHTML={{ __html: `
         input[type="checkbox"]:checked {
           background: #C9A84C !important;

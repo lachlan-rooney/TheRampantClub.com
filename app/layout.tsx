@@ -19,6 +19,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
         <link rel="preload" href="/fonts/MNRampantSans-Regular.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         <link rel="preload" href="/fonts/GoogleSansCode-VariableFont_wght.ttf" as="font" type="font/ttf" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/GoogleSansCode-Italic-VariableFont_wght.ttf" as="font" type="font/ttf" crossOrigin="anonymous" />
         <style dangerouslySetInnerHTML={{ __html: `
           @font-face {
             font-family: 'Rampant Sans';
@@ -26,21 +27,21 @@ export default function RootLayout({
                  url('/fonts/MNRampantSans-Regular.ttf') format('truetype');
             font-weight: 400;
             font-style: normal;
-            font-display: swap;
+            font-display: block;
           }
           @font-face {
             font-family: 'Google Sans Code';
             src: url('/fonts/GoogleSansCode-VariableFont_wght.ttf') format('truetype');
             font-weight: 100 900;
             font-style: normal;
-            font-display: swap;
+            font-display: block;
           }
           @font-face {
             font-family: 'Google Sans Code';
             src: url('/fonts/GoogleSansCode-Italic-VariableFont_wght.ttf') format('truetype');
             font-weight: 100 900;
             font-style: italic;
-            font-display: swap;
+            font-display: block;
           }
         ` }} />
       </head>

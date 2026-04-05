@@ -97,7 +97,7 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
                url('/fonts/MNRampantSans-Regular.ttf') format('truetype');
           font-weight: 400;
           font-style: normal;
-          font-display: swap;
+          font-display: block;
         }
 
         @font-face {
@@ -105,7 +105,7 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
           src: url('/fonts/GoogleSansCode-VariableFont_wght.ttf') format('truetype');
           font-weight: 100 900;
           font-style: normal;
-          font-display: swap;
+          font-display: block;
         }
 
         .nav-trigger {
