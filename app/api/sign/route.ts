@@ -236,15 +236,14 @@ export async function POST(req: NextRequest) {
 
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://therampantclub.com'
         const lionUrl = `${siteUrl}/images/Lion-Signature.svg`
-        const logoUrl = `${siteUrl}/images/logo-mark.svg`
         const signatureUrl = `${siteUrl}/images/signature%20(1)%20(1).png`
 
         const memberEmailHtml = `
           <div style="max-width: 600px; margin: 0 auto; font-family: Georgia, 'Times New Roman', serif; background-color: #E5D4C2;">
             <!-- Header -->
             <div style="background-color: #E5D4C2; padding: 48px 40px 24px; text-align: center;">
-              <img src="${lionUrl}" alt="" width="80" style="display: block; margin: 0 auto 16px;" />
-              <img src="${siteUrl}/images/logo-script.svg" alt="The Rampant Club" width="160" style="display: block; margin: 0 auto 8px;" />
+              <img src="${lionUrl}" alt="" width="80" style="display: block; margin: 0 auto 24px;" />
+              <h1 style="color: #052E20; font-size: 22px; font-weight: 400; letter-spacing: 0.08em; margin: 0;">THE RAMPANT CLUB</h1>
               <p style="color: #5E6650; font-size: 10px; letter-spacing: 0.12em; margin: 10px 0 0; text-transform: uppercase;">Membership Agreement Received</p>
             </div>
 
@@ -291,8 +290,8 @@ export async function POST(req: NextRequest) {
             </div>
 
             <!-- Footer -->
-            <div style="background-color: #052E20; padding: 24px 40px; text-align: center;">
-              <img src="${logoUrl}" alt="The Rampant Club" width="40" style="display: block; margin: 0 auto 12px;" />
+            <div style="background-color: #052E20; padding: 28px 40px; text-align: center;">
+              <img src="${siteUrl}/images/logo-script.svg" alt="The Rampant Club" width="140" style="display: block; margin: 0 auto 16px; opacity: 0.4;" />
               <p style="color: #B2AA98; font-size: 10px; line-height: 1.7; margin: 0;">
                 74A2 Hai Ba Trung, District 1, Ho Chi Minh City<br>
                 Membership@TheRampantClub.com &nbsp;|&nbsp; (+84) 817 888 768
