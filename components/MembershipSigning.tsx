@@ -256,9 +256,6 @@ export default function MembershipSigning({ token, prefill }: Props) {
           top: 50%; left: 50%;
           transform: translate(-50%, -50%);
         }
-        input[type="date"] {
-          color-scheme: dark;
-        }
         @media (max-width: 600px) {
           .sign-grid-2col {
             grid-template-columns: 1fr !important;
@@ -436,7 +433,7 @@ export default function MembershipSigning({ token, prefill }: Props) {
             <div className="sign-grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
               <div>
                 <label style={labelStyle}>{t('Date of Birth *', 'Ngày Sinh *')}</label>
-                <input style={{ ...inputStyle, height: 44, WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none' } as React.CSSProperties} type="date" value={form.dateOfBirth} onChange={e => setForm(f => ({ ...f, dateOfBirth: e.target.value }))} />
+                <input style={inputStyle} type="text" placeholder="DD/MM/YYYY" value={form.dateOfBirth} onChange={e => setForm(f => ({ ...f, dateOfBirth: e.target.value }))} />
               </div>
               <div>
                 <label style={labelStyle}>{t('Nationality', 'Quốc Tịch')}</label>
