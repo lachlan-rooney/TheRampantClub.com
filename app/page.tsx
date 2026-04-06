@@ -545,8 +545,15 @@ export default function HomePage() {
             order: -1;
             margin-bottom: 24px;
           }
-          .trc-benefits-left, .trc-benefits-right {
+          .trc-benefits-left > div:nth-child(odd),
+          .trc-benefits-right > div:nth-child(odd) {
             text-align: left !important;
+            padding-right: 20% !important;
+          }
+          .trc-benefits-left > div:nth-child(even),
+          .trc-benefits-right > div:nth-child(even) {
+            text-align: right !important;
+            padding-left: 20% !important;
           }
           .trc-tier-card {
             min-width: unset !important;
