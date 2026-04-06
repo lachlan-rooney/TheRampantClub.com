@@ -70,6 +70,19 @@ export default function AgreementsPage() {
 
   useEffect(() => { load() }, [])
 
+  const deleteInvitation = async (id: string) => {
+    if (!window.confirm('Delete this invitation?')) return
+    await supabase.from('signing_invitations').delete().eq('id', id)
+    load()
+  }
+
+  const deleteAgreement = async (id: string, invitationId: string) => {
+    if (!window.confirm('Delete this signed agreement? This cannot be undone.')) return
+    await supabase.from('signed_agreements').delete().eq('id', id)
+    await supabase.from('signing_invitations').delete().eq('id', invitationId)
+    load()
+  }
+
   const generateLink = async () => {
     if (!name || !email) return
     const token = crypto.randomUUID()
@@ -212,6 +225,12 @@ export default function AgreementsPage() {
                 >
                   Copy Link
                 </button>
+                <button
+                  onClick={() => deleteInvitation(inv.id)}
+                  style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.3, cursor: 'pointer' }}
+                >
+                  Delete
+                </button>
               </div>
             </div>
           ))}
@@ -289,6 +308,14 @@ export default function AgreementsPage() {
                       </button>
                     </div>
                   )}
+                  <div style={{ gridColumn: '1 / -1', marginTop: 8 }}>
+                    <button
+                      onClick={() => deleteAgreement(agr.id, agr.invitation_id)}
+                      style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.3, cursor: 'pointer' }}
+                    >
+                      Delete Agreement
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
