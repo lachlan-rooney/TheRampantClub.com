@@ -30,9 +30,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         background: '#052E20', padding: '32px 0', display: 'flex', flexDirection: 'column',
         zIndex: 100,
       }}>
-        <div style={{
-          width: 8, height: 8, background: '#E5D4C2', transform: 'rotate(45deg)',
-          opacity: 0.3, margin: '0 auto 16px',
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/logo-mark-cream.svg" alt="" style={{
+          display: 'block', width: 40, height: 'auto', margin: '0 auto 16px', opacity: 0.5,
         }} />
         <div style={{
           fontFamily: "'Rampant Sans', serif", fontSize: 18, fontWeight: 500,
