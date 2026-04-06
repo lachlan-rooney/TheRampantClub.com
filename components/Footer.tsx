@@ -54,8 +54,8 @@ export default function Footer() {
           color: #B2AA98;
           text-decoration: none;
           letter-spacing: 0.03em;
-          line-height: 1.4;
-          margin-bottom: 10px;
+          line-height: 1.7;
+          margin-bottom: 0;
           transition: color 0.2s ease;
         }
         .trc-footer-link:hover { color: #E5D4C2; }
@@ -131,8 +131,9 @@ export default function Footer() {
           {/* Contact */}
           <div>
             <div className="trc-footer-heading">Contact</div>
-            <a href="mailto:Membership@TheRampantClub.com" className="trc-footer-link">Membership@TheRampantClub.com</a>
-            <div className="trc-footer-address">Fax: Decommissioned. Carrier Pigeon: On Standby.</div>
+            <a href="mailto:Membership@TheRampantClub.com" className="trc-footer-link">Email: Membership@TheRampantClub.com</a>
+            <div className="trc-footer-address">Fax: Decommissioned</div>
+            <div className="trc-footer-address">Carrier Pigeon: On Standby</div>
           </div>
 
           {/* Opening Times */}
