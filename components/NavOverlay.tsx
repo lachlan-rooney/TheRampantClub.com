@@ -100,23 +100,6 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
   return (
     <>
       <style suppressHydrationWarning dangerouslySetInnerHTML={{ __html: `
-        @font-face {
-          font-family: 'Rampant Sans';
-          src: url('/fonts/MNRampantSans-Regular.woff2') format('woff2'),
-               url('/fonts/MNRampantSans-Regular.ttf') format('truetype');
-          font-weight: 400;
-          font-style: normal;
-          font-display: block;
-        }
-
-        @font-face {
-          font-family: 'Google Sans Code';
-          src: url('/fonts/GoogleSansCode-VariableFont_wght.ttf') format('truetype');
-          font-weight: 100 900;
-          font-style: normal;
-          font-display: block;
-        }
-
         .nav-trigger {
           position: fixed;
           top: 24px;
