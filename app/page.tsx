@@ -804,7 +804,7 @@ export default function HomePage() {
         {/* ══════ 4. THE FIVE FLOORS ══════ */}
         <div ref={floorsSec.ref} className="trc-section">
           <div className="trc-section-diamond" />
-          <div className="trc-section-title">The Five Floors</div>
+          <div className="trc-section-title">The Clubhouse</div>
           <div className="trc-section-subtitle">Năm Tầng</div>
 
           <div style={{
