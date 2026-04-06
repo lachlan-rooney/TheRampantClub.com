@@ -256,6 +256,14 @@ export default function MembershipSigning({ token, prefill }: Props) {
           top: 50%; left: 50%;
           transform: translate(-50%, -50%);
         }
+        input[type="date"] {
+          color-scheme: dark;
+        }
+        @media (max-width: 600px) {
+          .sign-grid-2col {
+            grid-template-columns: 1fr !important;
+          }
+        }
       `}} />
       <div style={{ minHeight: '100vh', background: GREEN, padding: '40px 24px 80px' }}>
         <div style={{ maxWidth: 680, margin: '0 auto' }}>
@@ -405,7 +413,7 @@ export default function MembershipSigning({ token, prefill }: Props) {
             }}>
               {t('Your Details', 'Thông Tin Của Bạn')}
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div className="sign-grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
               <div>
                 <label style={labelStyle}>{t('Full Name *', 'Họ và Tên *')}</label>
                 <input style={inputStyle} value={form.fullName} onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))} />
@@ -415,7 +423,7 @@ export default function MembershipSigning({ token, prefill }: Props) {
                 <input style={inputStyle} type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div className="sign-grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
               <div>
                 <label style={labelStyle}>{t('Mobile *', 'Điện Thoại *')}</label>
                 <input style={inputStyle} value={form.mobile} onChange={e => setForm(f => ({ ...f, mobile: e.target.value }))} />
@@ -425,10 +433,10 @@ export default function MembershipSigning({ token, prefill }: Props) {
                 <input style={inputStyle} value={form.profession} onChange={e => setForm(f => ({ ...f, profession: e.target.value }))} />
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div className="sign-grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
               <div>
                 <label style={labelStyle}>{t('Date of Birth *', 'Ngày Sinh *')}</label>
-                <input style={inputStyle} type="date" value={form.dateOfBirth} onChange={e => setForm(f => ({ ...f, dateOfBirth: e.target.value }))} />
+                <input style={{ ...inputStyle, height: 44, WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none' } as React.CSSProperties} type="date" value={form.dateOfBirth} onChange={e => setForm(f => ({ ...f, dateOfBirth: e.target.value }))} />
               </div>
               <div>
                 <label style={labelStyle}>{t('Nationality', 'Quốc Tịch')}</label>
@@ -439,7 +447,7 @@ export default function MembershipSigning({ token, prefill }: Props) {
               <label style={labelStyle}>{t('Home Address *', 'Địa Chỉ Nhà *')}</label>
               <input style={inputStyle} value={form.homeAddress} onChange={e => setForm(f => ({ ...f, homeAddress: e.target.value }))} />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div className="sign-grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
               <div>
                 <label style={labelStyle}>{t('Company Name', 'Tên Công Ty')}</label>
                 <input style={inputStyle} value={form.companyName} onChange={e => setForm(f => ({ ...f, companyName: e.target.value }))} />
