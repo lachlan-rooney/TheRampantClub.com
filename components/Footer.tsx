@@ -132,7 +132,7 @@ export default function Footer() {
           <div>
             <div className="trc-footer-heading">Contact</div>
             <a href="mailto:Membership@TheRampantClub.com" className="trc-footer-link">Membership@TheRampantClub.com</a>
-            <div className="trc-footer-address">Carrier Pigeon: On Retainer</div>
+            <div className="trc-footer-address">Fax: Decommissioned. Carrier Pigeon: On Standby.</div>
           </div>
 
           {/* Opening Times */}
