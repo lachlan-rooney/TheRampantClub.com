@@ -533,9 +533,10 @@ export default function HomePage() {
 
         @media (max-width: 768px) {
           .trc-flow { padding: 4em 1em 5em; gap: 0.4em; }
-          .trc-blurb { padding: 60px 20px 0; }
-          .trc-section { padding: 60px 20px; }
-          .trc-section-title { font-size: 24px; }
+          .trc-blurb { padding: 40px 20px 0; }
+          .trc-section { padding: 40px 16px; }
+          .trc-section-title { font-size: 22px; }
+          .trc-section-subtitle { font-size: 9px; }
           .trc-benefits-grid {
             grid-template-columns: 1fr !important;
             gap: 0 !important;
@@ -546,6 +547,16 @@ export default function HomePage() {
           }
           .trc-benefits-left, .trc-benefits-right {
             text-align: left !important;
+          }
+          .trc-tier-card {
+            min-width: unset !important;
+          }
+          .trc-hero-title {
+            font-size: 32px !important;
+          }
+          .trc-hero-illustration {
+            margin-left: -100px !important;
+            width: 120px !important;
           }
         }
       ` }} />
@@ -625,6 +636,7 @@ export default function HomePage() {
             <img
               src="/images/251008_[RAMPANT]_Merch_WhiskyGlass.ai.svg"
               alt="The Rampant Club girl illustration"
+              className="trc-hero-illustration"
               style={{
                 width: 180,
                 height: 'auto',
@@ -634,7 +646,7 @@ export default function HomePage() {
               }}
             />
           </div>
-          <h1 style={{
+          <h1 className="trc-hero-title" style={{
             fontFamily: "'Rampant Sans', 'Playfair Display', serif",
             fontSize: 48,
             fontWeight: 400,
