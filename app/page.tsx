@@ -533,9 +533,20 @@ export default function HomePage() {
 
         @media (max-width: 768px) {
           .trc-flow { padding: 4em 1em 5em; gap: 0.4em; }
-          .trc-blurb { padding: 60px 20px 100px; }
+          .trc-blurb { padding: 60px 20px 0; }
           .trc-section { padding: 60px 20px; }
           .trc-section-title { font-size: 24px; }
+          .trc-benefits-grid {
+            grid-template-columns: 1fr !important;
+            gap: 0 !important;
+          }
+          .trc-benefits-glass {
+            order: -1;
+            margin-bottom: 24px;
+          }
+          .trc-benefits-left, .trc-benefits-right {
+            text-align: left !important;
+          }
         }
       ` }} />
 
@@ -682,9 +693,9 @@ export default function HomePage() {
           <div className="trc-section-title">Member Benefits</div>
           <div className="trc-section-subtitle">Quyền Lợi Thành Viên</div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '0 48px', alignItems: 'center' }}>
+          <div className="trc-benefits-grid" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '0 48px', alignItems: 'center' }}>
             {/* Left column — first 4 benefits */}
-            <div>
+            <div className="trc-benefits-left">
               {BENEFITS.slice(0, 4).map((b, i) => (
                 <div
                   key={b.title}
@@ -711,13 +722,13 @@ export default function HomePage() {
             </div>
 
             {/* Centre image */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="trc-benefits-glass" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/images/whisky%20glass%20swim.svg" alt="" style={{ width: 160, height: 'auto' }} />
             </div>
 
             {/* Right column — last 4 benefits */}
-            <div>
+            <div className="trc-benefits-right">
               {BENEFITS.slice(4).map((b, i) => (
                 <div
                   key={b.title}
