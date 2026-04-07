@@ -231,8 +231,20 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
 
         @media (max-width: 768px) {
           .nav-trigger { top: 18px; left: 18px; }
-          .nav-menu { top: 60px; left: 22px; }
-          .nav-logo { right: 18px; height: 60px; }
+          .nav-menu {
+            top: 60px;
+            left: 16px;
+            padding: 16px 20px;
+            background: rgba(94, 102, 80, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 8px;
+            border: 1px solid rgba(229, 212, 194, 0.15);
+          }
+          .nav-dark .nav-menu {
+            background: rgba(94, 102, 80, 0.85);
+          }
+          .nav-logo { display: none !important; }
         }
       ` }} />
 

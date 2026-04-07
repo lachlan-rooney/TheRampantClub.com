@@ -562,8 +562,12 @@ export default function HomePage() {
             font-size: 32px !important;
           }
           .trc-hero-illustration {
-            margin-left: -100px !important;
+            margin-left: -235px !important;
             width: 120px !important;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            transform: translateZ(0);
+            -webkit-backface-visibility: hidden;
           }
         }
       ` }} />
@@ -815,7 +819,7 @@ export default function HomePage() {
           }}>
             {/* Building visual */}
             <div style={{
-              flex: '0 0 240px',
+              flex: '0 0 340px',
               display: 'flex',
               flexDirection: 'column',
             }}>
@@ -869,7 +873,7 @@ export default function HomePage() {
                 <div
                   key={floor.num}
                   style={{
-                    padding: '20px 0',
+                    padding: '14px 0',
                     borderBottom: i < FLOORS.length - 1 ? '1px solid rgba(5, 46, 32, 0.08)' : 'none',
                     opacity: floorsSec.visible ? 1 : 0,
                     transform: floorsSec.visible ? 'translateY(0)' : 'translateY(10px)',
@@ -879,20 +883,20 @@ export default function HomePage() {
                 >
                   <div style={{
                     fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-                    fontSize: 20,
+                    fontSize: 16,
                     fontWeight: 600,
                     color: 'var(--trc-green-deep)',
                     opacity: 0.3,
-                    marginBottom: 4,
+                    marginBottom: 2,
                   }}>
                     Floor {floor.num}
                   </div>
                   <div style={{
                     fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-                    fontSize: 17,
+                    fontSize: 15,
                     fontWeight: 500,
                     color: 'var(--trc-green-deep)',
-                    marginBottom: 3,
+                    marginBottom: 2,
                   }}>
                     {floor.name}
                   </div>
@@ -1039,6 +1043,7 @@ export default function HomePage() {
       </div>
 
       {/* ══════ CLUB ETHOS MODAL ══════ */}
+      {ethosOpen && <style dangerouslySetInnerHTML={{ __html: 'body { overflow: hidden !important; }' }} />}
       {ethosOpen && (
         <div
           onClick={() => setEthosOpen(false)}
@@ -1065,11 +1070,11 @@ export default function HomePage() {
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              maxWidth: 760, width: '100%', padding: '40px 56px 36px',
+              maxWidth: 760, width: 'calc(100% - 48px)', padding: '32px 28px 28px',
               background: '#052E20',
               borderRadius: 8,
               position: 'relative',
-              maxHeight: '90vh', overflowY: 'auto',
+              maxHeight: '85vh', overflowY: 'auto',
             }}
           >
 

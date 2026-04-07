@@ -171,13 +171,12 @@ function SportSection({
 // ── Main page ────────────────────────────────────────────────────
 
 const MISC_FIXTURES = [
-  'The Rooftop Putting Championship (annual, best of three)',
+  'The Rooftop Putting Championship (Annual)',
   "The Chairman's Backgammon Invitational",
-  'Chess Night (first and third Wednesdays)',
-  'Darts (when the board is found)',
+  'Chess Night (every second month)',
+  'Darts',
   'The Hai Bà Trưng 5-a-side (pending enough members who own boots)',
   'Table Tennis (the Studio, lunch hours)',
-  'Pool (the Library Bar, after 9pm — house rules apply)',
 ]
 
 export default function SportsPage() {
@@ -279,7 +278,7 @@ export default function SportsPage() {
               { label: 'Entry', value: 'By invitation of the Captain' },
               { label: 'Format', value: 'Ryder Cup (match play, two days)' },
               { label: 'Handicap limit', value: '28 (the Committee is generous)' },
-              { label: 'Prize', value: 'The Rampant Cup (silver, engraved, not to leave the premises)' },
+              { label: 'Prize', value: 'The Rampant Cup (silver, engraved, not to leave the dining room)' },
             ]}
           />
 
@@ -326,12 +325,12 @@ export default function SportsPage() {
             vn="Câu Lạc Bộ Padel Rampant"
             delay={0.1}
             copy={[
-              "The newest addition to the Club's sporting calendar. Weekly sessions for members who have discovered padel and now won't stop talking about it.",
+              "The newest addition to the Club's sporting calendar. Monthly sessions for members who have discovered padel and now won't stop talking about it.",
               "The Committee acknowledges that padel is, in fact, a real sport and not simply \u201Ctennis with walls\u201D. Court bookings are managed by the Sports Secretary, who is learning the rules as we go. Coaching is available from a member who spent three weeks in Barcelona and returned with strong opinions.",
               "Beginners are welcome. Overconfidence is not.",
             ]}
             details={[
-              { label: 'Sessions', value: 'Thursdays, 6pm (subject to rain, heat, and enthusiasm)' },
+              { label: 'Sessions', value: 'First Thursday, 6pm (subject to rain, heat, and enthusiasm)' },
               { label: 'Location', value: 'TBC (the Committee is in negotiations)' },
               { label: 'Equipment', value: 'Racquets available to borrow. Returns expected.' },
               { label: 'Level', value: 'All levels. Ego-free zone (in theory).' },
@@ -354,7 +353,7 @@ export default function SportsPage() {
               { label: 'Distance', value: 'Approximately 5km (approximately)' },
               { label: 'Pace', value: 'Social. No one is timing you. (Someone is timing you.)' },
               { label: 'Start', value: 'Sala Running Hub' },
-              { label: 'Finish', value: 'The Club (coffee on arrival)' },
+              { label: 'Finish', value: 'The Clubhouse (coffee on arrival)' },
             ]}
           />
 

@@ -29,7 +29,7 @@ const OTHER_QUIPS = [
   'The Wi-Fi password remains unchanged at 88888888.',
   'Car park: one noble steed, two xe máy, one suspiciously nice bicycle',
   'The Committee reminds members that "just one more" IS a binding agreement',
-  'Dress code update: socks with sandals now a disciplinary matter',
+  'Dress code update: yellow socks with cream sandals now a disciplinary matter',
   'A member has requested we stock Sloe Gin in the winter time. The request is under review.',
   'Book club postponed. No one finished their books. Again.',
   'The espresso machine is not "broken". You are using it wrong.',
