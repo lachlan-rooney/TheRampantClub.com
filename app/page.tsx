@@ -564,10 +564,6 @@ export default function HomePage() {
           .trc-hero-illustration {
             margin-left: -235px !important;
             width: 120px !important;
-            image-rendering: -webkit-optimize-contrast;
-            image-rendering: crisp-edges;
-            transform: translateZ(0);
-            -webkit-backface-visibility: hidden;
           }
         }
       ` }} />
@@ -645,7 +641,7 @@ export default function HomePage() {
             zIndex: 1,
           }}>
             <img
-              src="/images/251008_[RAMPANT]_Merch_WhiskyGlass.ai.svg"
+              src="/images/whisky-girl.png"
               alt="The Rampant Club girl illustration"
               className="trc-hero-illustration"
               style={{
