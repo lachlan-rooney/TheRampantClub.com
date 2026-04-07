@@ -57,7 +57,7 @@ const BENEFITS = [
   { title: 'The Rampant Room', desc: 'Hundreds of open bottles in a world-class bottle-share room. Pour for yourself, stay as long as you like.' },
   { title: 'Club Picks', desc: 'Taste, discuss, and select bespoke casks to be bottled exclusively under The Rampant Club label.' },
   { title: 'Blending Workshops', desc: 'Private blending sessions where members learn to blend whisky and make their own small bottlings.' },
-  { title: 'Our Scottish Castle', desc: 'Members enjoy exclusive discounts on accommodation, activities, and dining at our sister castle in the Scottish Highlands, slated to open in 2027, will be home to an exclusive Rampant Club whisky collection.' },
+  { title: 'Our Scottish Castle', desc: 'Members enjoy exclusive discounts on accommodation, fishing, shooting, golf, and dining at our sister castle in the Scottish Highlands, slated to open in 2027, will be home to an exclusive Rampant Club satellite outpost.' },
   { title: 'The Rampant Club Apartment', desc: 'Complimentary stays in Huntly, Scotland, furnished with cask samples for members to enjoy. Perfect for those visiting Speyside.' },
   { title: 'Reciprocal Club Access', desc: 'Bespoke access to a vetted global network of premier private clubs in London, New York, Tokyo, and Singapore.' },
   { title: 'Luxury Transport', desc: 'Complimentary GF VIP chauffeur service, plus airport fast-track and private car transfer for out-of-town members.' },
@@ -149,7 +149,8 @@ function DraggableImage({
     el.style.zIndex = String(newZ)
     el.style.cursor = 'grabbing'
     el.style.filter = 'drop-shadow(0 28px 40px rgba(5,46,32,0.2)) drop-shadow(0 8px 12px rgba(5,46,32,0.1))'
-    el.style.transition = 'filter 0.15s ease'
+    el.style.transition = 'none'
+    el.style.willChange = 'transform'
   }, [maxZRef])
 
   const onPointerMove = useCallback((e: React.PointerEvent) => {
@@ -163,7 +164,6 @@ function DraggableImage({
     el.style.left = `${s.x}px`
     el.style.top = `${s.y}px`
     el.style.transform = `rotate(${s.initialAngle + dragAngle}deg)`
-    el.style.transition = 'filter 0.15s ease'
   }, [multiplier, img.noRotate])
 
   const onPointerUp = useCallback((e: React.PointerEvent) => {
@@ -641,7 +641,7 @@ export default function HomePage() {
             zIndex: 1,
           }}>
             <img
-              src="/images/whisky-girl.png"
+              src="/images/251008_[RAMPANT]_Merch_WhiskyGlass.ai.svg"
               alt="The Rampant Club girl illustration"
               className="trc-hero-illustration"
               style={{
