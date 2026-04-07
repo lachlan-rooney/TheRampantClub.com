@@ -35,9 +35,6 @@ export default function Footer() {
           grid-template-columns: 1fr 1fr 1fr;
           gap: 48px;
         }
-        .trc-footer-contact { grid-area: contact; }
-        .trc-footer-hours { grid-area: hours; }
-        .trc-footer-address-col { grid-area: address; }
 
         /* ── Column titles ── */
         .trc-footer-heading {
@@ -122,7 +119,9 @@ export default function Footer() {
             gap: 28px 24px;
             align-items: start;
           }
-          .trc-footer-address-col { align-self: center; }
+          .trc-footer-contact { grid-area: contact; }
+          .trc-footer-hours { grid-area: hours; }
+          .trc-footer-address-col { grid-area: address; align-self: center; }
           .trc-footer-bottom { flex-direction: column; gap: 12px; text-align: center; align-items: center; }
           .trc-footer-bottom > div { text-align: center !important; }
           .trc-footer-bottom > div > div { justify-content: center !important; }
