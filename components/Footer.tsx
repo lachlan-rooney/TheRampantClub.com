@@ -35,6 +35,9 @@ export default function Footer() {
           grid-template-columns: 1fr 1fr 1fr;
           gap: 48px;
         }
+        .trc-footer-contact { grid-area: contact; }
+        .trc-footer-hours { grid-area: hours; }
+        .trc-footer-address-col { grid-area: address; }
 
         /* ── Column titles ── */
         .trc-footer-heading {
@@ -113,23 +116,23 @@ export default function Footer() {
           .trc-footer { padding: 48px 20px 32px; }
           .trc-footer-inner {
             grid-template-columns: 1fr 1fr;
-            gap: 36px;
+            grid-template-areas:
+              "contact address"
+              "hours address";
+            gap: 28px 24px;
+            align-items: start;
           }
-          .trc-footer-bottom { flex-direction: column; gap: 12px; text-align: center; }
-        }
-
-        @media (max-width: 480px) {
-          .trc-footer-inner {
-            grid-template-columns: 1fr;
-            gap: 32px;
-          }
+          .trc-footer-address-col { align-self: center; }
+          .trc-footer-bottom { flex-direction: column; gap: 12px; text-align: center; align-items: center; }
+          .trc-footer-bottom > div { text-align: center !important; }
+          .trc-footer-bottom > div > div { justify-content: center !important; }
         }
       ` }} />
 
       <footer className="trc-footer">
         <div className="trc-footer-inner">
           {/* Contact */}
-          <div>
+          <div className="trc-footer-contact">
             <div className="trc-footer-heading">Contact</div>
             <a href="mailto:Membership@TheRampantClub.com" className="trc-footer-link">Email: Membership@TheRampantClub.com</a>
             <div className="trc-footer-address">Fax: Decommissioned</div>
@@ -137,13 +140,13 @@ export default function Footer() {
           </div>
 
           {/* Opening Times */}
-          <div>
+          <div className="trc-footer-hours">
             <div className="trc-footer-heading">Opening Times</div>
             <div className="trc-footer-address">Four &rsquo;til Last Pour</div>
           </div>
 
           {/* Address logo */}
-          <div style={{ textAlign: 'right' }}>
+          <div className="trc-footer-address-col" style={{ textAlign: 'right' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/images/PNG/[RAMPANT]_Logo_Rampants/Layer_1.svg"

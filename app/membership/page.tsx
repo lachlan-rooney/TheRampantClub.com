@@ -38,7 +38,7 @@ const BENEFITS = [
 const FLOORS = [
   { num: 5, name: 'Source & Origin Lab', vn: 'Phòng Thí Nghiệm', desc: 'Our in-house culinary innovation lab, bringing cutting-edge beverage experiences exclusively to members.' },
   { num: 4, name: 'The Rampant Room', vn: 'Phòng Rampant', desc: 'A world-class bottle-share room of global whiskies, enjoyed at your leisure with guests and fellow members. Private lockers available.' },
-  { num: 3, name: 'The Private Dining Room', vn: 'Phòng Ăn Riêng', desc: 'The ultimate discreet city-centre room for meetings, birthday soir\u00e9es, private dinners, and intimate gatherings.' },
+  { num: 3, name: 'The Dining Room', vn: 'Phòng Ăn Riêng', desc: 'The ultimate discreet city-centre room for meetings, birthday soir\u00e9es, private dinners, and intimate gatherings.' },
   { num: 2, name: 'The Studio', vn: 'Phòng Nghệ Thuật', desc: 'A quarterly rotating, curated sensory art space \u2014 interact with, touch, hear, taste, and smell immersive installations.' },
   { num: 1, name: 'The Library Bar', vn: 'Quầy Bar Thư Viện', desc: 'Your private cocktail bar. Seasonal cocktails, vintage spirits, curated books and games, with resident musicians and DJs.' },
 ]

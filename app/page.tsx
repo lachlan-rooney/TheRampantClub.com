@@ -67,7 +67,7 @@ const BENEFITS = [
 const FLOORS = [
   { num: 5, name: 'Source & Origin Lab', vn: 'Phòng Thí Nghiệm', desc: 'Our in-house culinary innovation lab, bringing cutting-edge beverage experiences exclusively to members.' },
   { num: 4, name: 'The Rampant Room', vn: 'Phòng Rampant', desc: 'A world-class bottle-share room of global whiskies, enjoyed at your leisure with guests and fellow members. Private lockers available.' },
-  { num: 3, name: 'The Private Dining Room', vn: 'Phòng Ăn Riêng', desc: 'The ultimate discreet city-centre room for meetings, birthday soir\u00e9es, private dinners, and intimate gatherings.' },
+  { num: 3, name: 'The Dining Room', vn: 'Phòng Ăn Riêng', desc: 'The ultimate discreet city-centre room for meetings, birthday soir\u00e9es, private dinners, and intimate gatherings.' },
   { num: 2, name: 'The Studio', vn: 'Phòng Nghệ Thuật', desc: 'A quarterly rotating, curated sensory art space \u2014 interact with, touch, hear, taste, and smell immersive installations.' },
   { num: 1, name: 'The Library Bar', vn: 'Quầy Bar Thư Viện', desc: 'Your private cocktail bar. Seasonal cocktails, vintage spirits, curated books and games, with resident musicians and DJs.' },
 ]
@@ -254,6 +254,14 @@ export default function HomePage() {
   const [blurbVisible, setBlurbVisible] = useState(false)
   const [ethosOpen, setEthosOpen] = useState(false)
   const [ethosLang, setEthosLang] = useState<'en' | 'vn'>('en')
+  const [enquireCopied, setEnquireCopied] = useState(false)
+
+  const copyMembershipEmail = (e: React.MouseEvent) => {
+    e.preventDefault()
+    navigator.clipboard.writeText('membership@therampantclub.com')
+    setEnquireCopied(true)
+    setTimeout(() => setEnquireCopied(false), 2000)
+  }
   const blurbRef = useRef<HTMLDivElement>(null)
   const maxZRef = useRef(50)
 
@@ -815,61 +823,38 @@ export default function HomePage() {
           }}>
             {/* Building visual */}
             <div style={{
-              flex: '0 0 340px',
+              flex: '0 0 440px',
               display: 'flex',
               flexDirection: 'column',
+              alignItems: 'center',
             }}>
-              <div style={{
-                height: 1,
-                background: 'var(--trc-green-accent)',
-                opacity: 0.3,
-                marginBottom: 2,
-                width: '70%',
-                alignSelf: 'center',
-              }} />
-              {FLOORS.map((floor, i) => (
-                <div
-                  key={floor.num}
+              <a
+                href="/clubhouse"
+                aria-label="Explore the Clubhouse layout"
+                style={{ display: 'block', width: '100%', cursor: 'pointer' }}
+              >
+                <img
+                  src="/images/Club Map.svg"
+                  alt="The Clubhouse — five floors"
                   style={{
-                    background: i % 2 === 0 ? 'var(--trc-green-deep)' : 'var(--trc-green-mid)',
-                    height: 80,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderBottom: i < FLOORS.length - 1 ? '1px solid var(--trc-cream)' : 'none',
+                    width: '100%',
+                    height: 'auto',
+                    display: 'block',
                     opacity: floorsSec.visible ? 1 : 0,
                     transform: floorsSec.visible ? 'translateY(0)' : 'translateY(10px)',
-                    transition: 'opacity 0.6s ease, transform 0.6s ease',
-                    transitionDelay: `${i * 0.08}s`,
+                    transition: 'opacity 0.8s ease, transform 0.8s ease',
                   }}
-                >
-                  <span style={{
-                    fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-                    fontSize: 32,
-                    fontWeight: 600,
-                    color: 'var(--trc-cream)',
-                    opacity: 0.2,
-                    userSelect: 'none',
-                  }}>
-                    {floor.num}
-                  </span>
-                </div>
-              ))}
-              <div style={{
-                height: 2,
-                background: 'var(--trc-green-deep)',
-                opacity: 0.15,
-                marginTop: 4,
-              }} />
+                />
+              </a>
             </div>
 
             {/* Floor legend */}
-            <div style={{ flex: 1, minWidth: 280 }}>
+            <div style={{ flex: 1, minWidth: 280, paddingTop: 151, display: isMobile ? 'none' : 'block' }}>
               {FLOORS.map((floor, i) => (
                 <div
                   key={floor.num}
                   style={{
-                    padding: '14px 0',
+                    padding: '8px 0',
                     borderBottom: i < FLOORS.length - 1 ? '1px solid rgba(5, 46, 32, 0.08)' : 'none',
                     opacity: floorsSec.visible ? 1 : 0,
                     transform: floorsSec.visible ? 'translateY(0)' : 'translateY(10px)',
@@ -879,38 +864,38 @@ export default function HomePage() {
                 >
                   <div style={{
                     fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-                    fontSize: 16,
+                    fontSize: 14.5,
                     fontWeight: 600,
                     color: 'var(--trc-green-deep)',
                     opacity: 0.3,
-                    marginBottom: 2,
+                    marginBottom: 1,
                   }}>
                     Floor {floor.num}
                   </div>
                   <div style={{
                     fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-                    fontSize: 15,
+                    fontSize: 13.5,
                     fontWeight: 500,
                     color: 'var(--trc-green-deep)',
-                    marginBottom: 2,
+                    marginBottom: 1,
                   }}>
                     {floor.name}
                   </div>
                   <div style={{
                     fontFamily: "'Google Sans Code', monospace",
-                    fontSize: 10,
+                    fontSize: 9.5,
                     color: 'var(--trc-cream-dim)',
                     letterSpacing: '0.04em',
-                    marginBottom: 6,
+                    marginBottom: 4,
                   }}>
                     {floor.vn}
                   </div>
                   <div style={{
                     fontFamily: "'Google Sans Code', monospace",
-                    fontSize: 12,
+                    fontSize: 11.5,
                     color: 'var(--trc-green-accent)',
                     opacity: 0.7,
-                    lineHeight: 1.5,
+                    lineHeight: 1.4,
                   }}>
                     {floor.desc}
                   </div>
@@ -968,16 +953,6 @@ export default function HomePage() {
             }}>
               Our membership includes bespoke reciprocal access to a carefully vetted global network of premier private clubs. From golf courses to spa hotels, enjoy the privileges of fellow establishments worldwide.
             </p>
-            <p style={{
-              fontFamily: "'Google Sans Code', monospace",
-              fontSize: 13,
-              color: 'var(--trc-cream)',
-              opacity: 0.6,
-              lineHeight: 1.8,
-              marginBottom: 32,
-            }}>
-              Our Member Experience Manager will seamlessly facilitate all arrangements for your visits. Details of our reciprocal partners are shared with members upon joining.
-            </p>
             <div style={{
               fontFamily: "'Rampant Sans', 'Playfair Display', serif",
               fontSize: 14,
@@ -1031,7 +1006,13 @@ export default function HomePage() {
               >
                 <div className="trc-tier-name">{tier.name}</div>
                 <p className="trc-tier-desc">{tier.desc}</p>
-                <a href="#" className="trc-tier-btn">Enquire</a>
+                <a
+                  href="mailto:membership@therampantclub.com"
+                  className="trc-tier-btn"
+                  onClick={copyMembershipEmail}
+                >
+                  {enquireCopied ? 'Email address copied' : 'Enquire'}
+                </a>
               </div>
             ))}
           </div>
