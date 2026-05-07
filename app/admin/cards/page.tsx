@@ -2,26 +2,37 @@
 
 // Admin → Member Cards
 //
-// HID-mode card reader workflow. The Tagtix CK06 (and most cheap USB NFC
-// readers) emulate a keyboard: when a card is tapped, the reader "types" the
-// card's UID into the focused element followed by Enter.
-//
+// HID-mode card reader. The Tagtix CK06 (and most cheap USB NFC readers) emulate
+// a keyboard: when a card is tapped, the reader "types" the UID followed by Enter.
 // We listen globally for keypresses, accumulate the buffer, and treat any
 // alphanumeric run terminated by Enter (or 250ms of silence) as a UID.
-// All member data lives in Supabase, keyed by `profiles.card_uid`.
 
 import { useEffect, useRef, useState } from 'react'
 
-interface Member {
-  id: string
-  email: string
-  display_name: string | null
-  member_number: number | null
-  admitted_at: string | null
-  locker_number: string | null
-  card_uid: string | null
-  card_issued_at: string | null
+interface CardLink {
+  member_number: string
+  card_uid: string
+  credit_vnd: number
+  linked_at: string
 }
+interface SheetMember {
+  member_number: string
+  full_name: string
+  tier: string
+  card_uid: string | null
+  credit_vnd: number
+}
+interface Transaction {
+  id: string
+  amount_vnd: number
+  kind: 'topup' | 'charge' | 'adjust' | 'refund'
+  note: string | null
+  staff_email: string | null
+  balance_after_vnd: number
+  created_at: string
+}
+
+const fmt = (vnd: number) => new Intl.NumberFormat('en-US').format(vnd) + ' ₫'
 
 const inputStyle: React.CSSProperties = {
   background: 'rgba(229,212,194,0.06)', color: '#E5D4C2',
@@ -38,19 +49,19 @@ const btnStyle: React.CSSProperties = {
   borderRadius: 6, padding: '8px 18px', cursor: 'pointer',
   fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11,
 }
-const btnPrimary: React.CSSProperties = {
-  ...btnStyle, background: '#5E6650',
-}
-const btnDanger: React.CSSProperties = {
-  ...btnStyle, background: 'rgba(180, 70, 70, 0.2)',
-}
+const btnPrimary: React.CSSProperties = { ...btnStyle, background: '#5E6650' }
+const btnDanger: React.CSSProperties = { ...btnStyle, background: 'rgba(180, 70, 70, 0.2)' }
 
 export default function AdminCards() {
   const [uid, setUid] = useState<string | null>(null)
-  const [member, setMember] = useState<Member | null>(null)
-  const [members, setMembers] = useState<Member[]>([])
-  const [pickerId, setPickerId] = useState('')
-  const [edit, setEdit] = useState<Partial<Member>>({})
+  const [link, setLink] = useState<CardLink | null>(null)
+  const [member, setMember] = useState<Record<string, string> | null>(null)
+  const [txs, setTxs] = useState<Transaction[]>([])
+  const [members, setMembers] = useState<SheetMember[]>([])
+  const [pickerNumber, setPickerNumber] = useState('')
+  const [topupAmount, setTopupAmount] = useState('')
+  const [chargeAmount, setChargeAmount] = useState('')
+  const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [listening, setListening] = useState(true)
@@ -70,25 +81,20 @@ export default function AdminCards() {
   }
   useEffect(() => { loadMembers() }, [])
 
-  // ── Card-reader keystroke listener ─────────────────────────────
+  // Card-reader keystroke listener
   useEffect(() => {
     const ALNUM = /^[0-9A-Za-z]$/
-
     const flush = () => {
       const buf = bufferRef.current
       bufferRef.current = ''
       flushTimerRef.current = null
-      if (!buf || buf.length < 4) return         // ignore stray short bursts
+      if (!buf || buf.length < 4) return
       handleScan(buf.toUpperCase())
     }
-
     const onKey = (e: KeyboardEvent) => {
       if (!listening) return
-      // Don't hijack typing in inputs/textareas/contenteditable
       const t = e.target as HTMLElement
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || (t as HTMLElement).isContentEditable)) {
-        return
-      }
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
       if (e.key === 'Enter') {
         if (flushTimerRef.current) clearTimeout(flushTimerRef.current)
         flush()
@@ -100,12 +106,12 @@ export default function AdminCards() {
         flushTimerRef.current = setTimeout(flush, 250)
       }
     }
-
     window.addEventListener('keydown', onKey)
     return () => {
       window.removeEventListener('keydown', onKey)
       if (flushTimerRef.current) clearTimeout(flushTimerRef.current)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listening])
 
   const handleScan = async (scannedUid: string) => {
@@ -114,14 +120,10 @@ export default function AdminCards() {
     try {
       const r = await fetch(`/api/admin/cards/lookup?uid=${encodeURIComponent(scannedUid)}`)
       const d = await r.json()
-      const m = d.member as Member | null
-      setMember(m)
-      setPickerId(m?.id || '')
-      setEdit(m ? {
-        member_number: m.member_number,
-        display_name: m.display_name,
-        locker_number: m.locker_number,
-      } : {})
+      setLink(d.link || null)
+      setMember(d.member || null)
+      setTxs(d.transactions || [])
+      setPickerNumber('')
     } catch {
       showToast('Lookup failed')
     } finally {
@@ -129,19 +131,18 @@ export default function AdminCards() {
     }
   }
 
-  const linkMember = async () => {
-    if (!uid || !pickerId) return
+  const linkCard = async () => {
+    if (!uid || !pickerNumber) return
     setBusy(true)
     const r = await fetch('/api/admin/cards/link', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ uid, member_id: pickerId }),
+      body: JSON.stringify({ uid, member_number: pickerNumber }),
     })
     setBusy(false)
     if (r.ok) {
       showToast('Card linked')
-      const m = members.find(x => x.id === pickerId) || null
-      setMember(m ? { ...m, card_uid: uid, card_issued_at: new Date().toISOString() } : null)
+      handleScan(uid)
       loadMembers()
     } else {
       const d = await r.json().catch(() => ({}))
@@ -149,9 +150,9 @@ export default function AdminCards() {
     }
   }
 
-  const unlinkMember = async () => {
+  const unlinkCard = async () => {
     if (!uid) return
-    if (!confirm('Unlink this card from its member?')) return
+    if (!confirm('Unlink this card from its member? Credit balance will be preserved if relinked to the same member.')) return
     setBusy(true)
     const r = await fetch('/api/admin/cards/link', {
       method: 'DELETE',
@@ -161,38 +162,47 @@ export default function AdminCards() {
     setBusy(false)
     if (r.ok) {
       showToast('Card unlinked')
-      setMember(null)
-      setPickerId('')
+      handleScan(uid)
       loadMembers()
     }
   }
 
-  const saveProfile = async () => {
-    if (!member) return
+  const transact = async (kind: 'topup' | 'charge', amountStr: string) => {
+    if (!link) return
+    const amt = parseInt(amountStr.replace(/[^0-9]/g, ''))
+    if (!amt || amt <= 0) { showToast('Enter an amount'); return }
     setBusy(true)
-    const r = await fetch('/api/admin/cards/profile', {
+    const r = await fetch('/api/admin/cards/transaction', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        member_id: member.id,
-        display_name: edit.display_name ?? null,
-        member_number: edit.member_number ?? null,
-        locker_number: edit.locker_number ?? null,
+        member_number: link.member_number,
+        kind,
+        amount_vnd: amt,
+        note: note || null,
       }),
     })
     setBusy(false)
     if (r.ok) {
-      showToast('Saved')
-      setMember(m => m ? { ...m, ...edit } : m)
-      loadMembers()
+      const d = await r.json()
+      showToast(kind === 'topup' ? `Topped up ${fmt(amt)}` : `Charged ${fmt(amt)}`)
+      setLink(l => l ? { ...l, credit_vnd: d.balance_vnd } : l)
+      setTopupAmount(''); setChargeAmount(''); setNote('')
+      // Refresh history
+      if (uid) {
+        const lr = await fetch(`/api/admin/cards/lookup?uid=${encodeURIComponent(uid)}`)
+        const ld = await lr.json()
+        setTxs(ld.transactions || [])
+      }
     } else {
       const d = await r.json().catch(() => ({}))
-      showToast(`Save failed: ${d.error || r.statusText}`)
+      showToast(`Failed: ${d.error || r.statusText}`)
     }
   }
 
   const reset = () => {
-    setUid(null); setMember(null); setEdit({}); setPickerId('')
+    setUid(null); setLink(null); setMember(null); setTxs([]); setPickerNumber('')
+    setTopupAmount(''); setChargeAmount(''); setNote('')
   }
 
   return (
@@ -201,8 +211,7 @@ export default function AdminCards() {
         Member Cards
       </h1>
       <p style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#B2AA98', marginBottom: 24, lineHeight: 1.6, maxWidth: 640 }}>
-        Tap any member card on the USB reader. The reader emulates a keyboard, so the page just listens — no setup needed.
-        Each card&rsquo;s factory UID is linked to a single member; all editable data lives in the database.
+        Tap a member card on the USB reader to view balance, top up, or charge. Cards link to members from the Google Sheet roster by Member No.
       </p>
 
       {/* Listening pill */}
@@ -211,8 +220,7 @@ export default function AdminCards() {
         padding: '12px 16px', marginBottom: 24,
         background: 'rgba(229,212,194,0.04)',
         border: '1px solid rgba(229,212,194,0.08)',
-        borderRadius: 8,
-        justifyContent: 'space-between',
+        borderRadius: 8, justifyContent: 'space-between',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{
@@ -260,79 +268,139 @@ export default function AdminCards() {
             <button onClick={reset} style={btnStyle}>Clear</button>
           </div>
 
-          {member ? (
+          {link && member ? (
             <>
-              <div style={{ marginBottom: 16 }}>
-                <label style={labelStyle}>Linked member</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                  <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2' }}>
-                    {member.member_number ? `#${String(member.member_number).padStart(3, '0')} ` : ''}
-                    {member.display_name || member.email}
-                  </span>
-                  <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>
-                    {member.email}
-                  </span>
-                  <button onClick={unlinkMember} disabled={busy} style={btnDanger}>Unlink card</button>
+              {/* Member + balance */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 24, flexWrap: 'wrap', marginBottom: 24 }}>
+                <div>
+                  <label style={labelStyle}>Linked member</label>
+                  <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2', marginBottom: 4 }}>
+                    {member['Full Name']}
+                  </div>
+                  <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#B2AA98' }}>
+                    {member['Member No.']} · {member['Tier']}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <label style={{ ...labelStyle, textAlign: 'right' }}>Credit balance</label>
+                  <div style={{
+                    fontFamily: "'Rampant Sans', serif", fontSize: 32,
+                    color: link.credit_vnd > 0 ? '#7AB07A' : link.credit_vnd < 0 ? '#B45656' : '#E5D4C2',
+                  }}>
+                    {fmt(link.credit_vnd)}
+                  </div>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 16 }}>
+              {/* Top up + charge */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 16 }}>
                 <div>
-                  <label style={labelStyle}>Member number</label>
-                  <input
-                    type="number"
-                    style={inputStyle}
-                    value={edit.member_number ?? ''}
-                    onChange={e => setEdit(v => ({ ...v, member_number: e.target.value ? parseInt(e.target.value) : null }))}
-                  />
+                  <label style={labelStyle}>Top up (VND)</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type="text" inputMode="numeric"
+                      style={inputStyle}
+                      placeholder="e.g. 500000"
+                      value={topupAmount}
+                      onChange={e => setTopupAmount(e.target.value)}
+                    />
+                    <button
+                      onClick={() => transact('topup', topupAmount)}
+                      disabled={busy || !topupAmount}
+                      style={btnPrimary}
+                    >Top up</button>
+                  </div>
                 </div>
                 <div>
-                  <label style={labelStyle}>Display name</label>
-                  <input
-                    style={inputStyle}
-                    value={edit.display_name ?? ''}
-                    onChange={e => setEdit(v => ({ ...v, display_name: e.target.value || null }))}
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle}>Locker</label>
-                  <input
-                    style={inputStyle}
-                    value={edit.locker_number ?? ''}
-                    onChange={e => setEdit(v => ({ ...v, locker_number: e.target.value || null }))}
-                  />
+                  <label style={labelStyle}>Charge (VND)</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type="text" inputMode="numeric"
+                      style={inputStyle}
+                      placeholder="e.g. 120000"
+                      value={chargeAmount}
+                      onChange={e => setChargeAmount(e.target.value)}
+                    />
+                    <button
+                      onClick={() => transact('charge', chargeAmount)}
+                      disabled={busy || !chargeAmount}
+                      style={btnDanger}
+                    >Charge</button>
+                  </div>
                 </div>
               </div>
 
-              {member.card_issued_at && (
-                <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98', opacity: 0.6, marginBottom: 16 }}>
-                  Card issued {new Date(member.card_issued_at).toLocaleDateString()}
+              <div style={{ marginBottom: 20 }}>
+                <label style={labelStyle}>Note (optional, attached to next transaction)</label>
+                <input
+                  style={inputStyle}
+                  placeholder="e.g. Kitchen — 2 drams Lagavulin"
+                  value={note}
+                  onChange={e => setNote(e.target.value)}
+                />
+              </div>
+
+              {/* Quick presets */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
+                {[100000, 200000, 500000, 1000000].map(amt => (
+                  <button
+                    key={amt}
+                    onClick={() => setTopupAmount(String(amt))}
+                    style={{ ...btnStyle, fontSize: 10, padding: '6px 12px' }}
+                  >+ {fmt(amt)}</button>
+                ))}
+              </div>
+
+              {/* Transaction history */}
+              {txs.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <label style={labelStyle}>Recent transactions</label>
+                  <div style={{ background: 'rgba(0,0,0,0.15)', borderRadius: 6, padding: '4px 0' }}>
+                    {txs.map(t => (
+                      <div key={t.id} style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '8px 12px', borderTop: '1px solid rgba(229,212,194,0.04)',
+                        fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11,
+                      }}>
+                        <div style={{ color: '#B2AA98', minWidth: 100 }}>
+                          {new Date(t.created_at).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}
+                        </div>
+                        <div style={{
+                          color: t.amount_vnd > 0 ? '#7AB07A' : '#E5D4C2',
+                          fontWeight: 600, minWidth: 110, textAlign: 'right',
+                        }}>
+                          {t.amount_vnd > 0 ? '+' : ''}{fmt(t.amount_vnd)}
+                        </div>
+                        <div style={{ flex: 1, color: '#B2AA98', textAlign: 'right', paddingLeft: 12, fontSize: 10 }}>
+                          {t.note || t.kind}
+                          {t.staff_email && <span style={{ opacity: 0.5 }}> · {t.staff_email}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
-              <button onClick={saveProfile} disabled={busy} style={btnPrimary}>
-                {busy ? 'Saving…' : 'Save'}
-              </button>
+              <button onClick={unlinkCard} disabled={busy} style={btnDanger}>Unlink card</button>
             </>
           ) : (
             <div>
               <label style={labelStyle}>This card isn&rsquo;t linked yet</label>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
                 <select
-                  value={pickerId}
-                  onChange={e => setPickerId(e.target.value)}
+                  value={pickerNumber}
+                  onChange={e => setPickerNumber(e.target.value)}
                   style={{ ...inputStyle, flex: 1, minWidth: 280 }}
                 >
                   <option value="">— select member to link —</option>
                   {members.map(m => (
-                    <option key={m.id} value={m.id}>
-                      {m.member_number ? `#${String(m.member_number).padStart(3, '0')} ` : ''}
-                      {m.display_name || m.email}
+                    <option key={m.member_number} value={m.member_number}>
+                      {m.member_number} · {m.full_name} ({m.tier})
                       {m.card_uid ? ' · already has card' : ''}
                     </option>
                   ))}
                 </select>
-                <button onClick={linkMember} disabled={!pickerId || busy} style={btnPrimary}>
+                <button onClick={linkCard} disabled={!pickerNumber || busy} style={btnPrimary}>
                   {busy ? 'Linking…' : 'Link'}
                 </button>
               </div>
