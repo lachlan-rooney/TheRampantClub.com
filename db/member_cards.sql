@@ -37,6 +37,26 @@ create table if not exists card_transactions (
 create index if not exists card_transactions_member_idx
   on card_transactions (member_number, created_at desc);
 
+-- ── Row-level security ────────────────────────────────────────────────
+-- Admin-only access. Both tables are gated by profiles.is_admin.
+
+alter table member_cards enable row level security;
+alter table card_transactions enable row level security;
+
+drop policy if exists "admin all on member_cards" on member_cards;
+create policy "admin all on member_cards"
+  on member_cards
+  for all
+  using  (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.is_admin = true))
+  with check (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.is_admin = true));
+
+drop policy if exists "admin all on card_transactions" on card_transactions;
+create policy "admin all on card_transactions"
+  on card_transactions
+  for all
+  using  (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.is_admin = true))
+  with check (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.is_admin = true));
+
 -- Old per-profile columns from the first iteration. Drop if you want:
 -- alter table profiles drop column if exists card_uid;
 -- alter table profiles drop column if exists card_issued_at;
