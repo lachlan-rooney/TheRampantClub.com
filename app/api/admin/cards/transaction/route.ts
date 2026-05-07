@@ -19,54 +19,26 @@ export async function POST(req: NextRequest) {
   if (!KINDS.includes(kind)) return NextResponse.json({ error: 'invalid kind' }, { status: 400 })
   if (!Number.isFinite(amount) || amount === 0) return NextResponse.json({ error: 'amount_vnd must be a non-zero number' }, { status: 400 })
 
-  // Sign convention: topup/refund add, charge subtracts. adjust uses sign as given.
-  let signed = Math.round(amount)
-  if (kind === 'topup' || kind === 'refund') signed = Math.abs(signed)
-  else if (kind === 'charge') signed = -Math.abs(signed)
-  // 'adjust' keeps the sign caller passed.
-
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Read current card row.
-  const { data: card, error: fetchErr } = await supabase
-    .from('member_cards')
-    .select('credit_vnd, expires_at')
-    .eq('member_number', member_number)
-    .maybeSingle()
-  if (fetchErr) return NextResponse.json({ error: fetchErr.message }, { status: 500 })
-  if (!card) return NextResponse.json({ error: 'No card linked to this member' }, { status: 404 })
+  const { data, error } = await supabase.rpc('apply_card_transaction', {
+    p_member_number: member_number,
+    p_kind: kind,
+    p_amount_vnd: Math.round(amount),
+    p_note: note,
+    p_staff_id: user?.id || null,
+    p_staff_email: user?.email || null,
+  })
 
-  // Block charges on expired credit; top-ups and adjustments are still allowed.
-  if (kind === 'charge' && card.expires_at && new Date(card.expires_at) < new Date()) {
-    return NextResponse.json({ error: 'Credit has expired' }, { status: 400 })
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 400 })
   }
-
-  const newBalance = (card.credit_vnd ?? 0) + signed
-  if (newBalance < 0) {
-    return NextResponse.json({ error: `Insufficient credit (balance ${card.credit_vnd} VND)` }, { status: 400 })
-  }
-
-  // Update balance.
-  const { error: updErr } = await supabase
-    .from('member_cards')
-    .update({ credit_vnd: newBalance, updated_at: new Date().toISOString() })
-    .eq('member_number', member_number)
-  if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 })
-
-  // Insert audit row.
-  const { error: txErr } = await supabase
-    .from('card_transactions')
-    .insert({
-      member_number,
-      amount_vnd: signed,
-      kind,
-      note,
-      staff_id: user?.id || null,
-      staff_email: user?.email || null,
-      balance_after_vnd: newBalance,
-    })
-  if (txErr) return NextResponse.json({ error: txErr.message }, { status: 500 })
-
-  return NextResponse.json({ ok: true, balance_vnd: newBalance })
+  // rpc returns an array; take the first row
+  const row = Array.isArray(data) ? data[0] : data
+  return NextResponse.json({
+    ok: true,
+    balance_vnd: row?.balance_after_vnd ?? 0,
+    transaction_id: row?.transaction_id || null,
+  })
 }

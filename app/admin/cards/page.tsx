@@ -65,6 +65,8 @@ export default function AdminCards() {
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [listening, setListening] = useState(true)
+  const [orphans, setOrphans] = useState<{ member_number: string; card_uid: string | null; credit_vnd: number; expires_at: string | null; updated_at: string }[]>([])
+  const [showOrphans, setShowOrphans] = useState(false)
 
   const bufferRef = useRef('')
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -79,7 +81,30 @@ export default function AdminCards() {
     const d = await r.json()
     setMembers(d.members || [])
   }
-  useEffect(() => { loadMembers() }, [])
+  const loadOrphans = async () => {
+    const r = await fetch('/api/admin/cards/orphans')
+    const d = await r.json()
+    setOrphans(d.orphans || [])
+  }
+  useEffect(() => { loadMembers(); loadOrphans() }, [])
+
+  const purgeAccount = async (memberNumber: string) => {
+    if (!confirm(`Permanently delete the credit account for member ${memberNumber}? This wipes the row and all transaction history. Cannot be undone.`)) return
+    setBusy(true)
+    const r = await fetch('/api/admin/cards/purge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ member_number: memberNumber }),
+    })
+    setBusy(false)
+    if (r.ok) {
+      showToast('Account purged')
+      loadOrphans(); loadMembers()
+    } else {
+      const d = await r.json().catch(() => ({}))
+      showToast(`Purge failed: ${d.error || r.statusText}`)
+    }
+  }
 
   // Card-reader keystroke listener
   useEffect(() => {
@@ -133,6 +158,16 @@ export default function AdminCards() {
 
   const linkCard = async () => {
     if (!uid || !pickerNumber) return
+    // Confirm before stealing a card from another member.
+    const currentOwner = members.find(m => m.card_uid === uid && m.member_number !== pickerNumber)
+    if (currentOwner) {
+      const ok = confirm(
+        `Card ${uid} is currently linked to ${currentOwner.full_name} (${currentOwner.member_number}).\n\n` +
+        `Reassign it to ${members.find(m => m.member_number === pickerNumber)?.full_name || pickerNumber}?\n\n` +
+        `Their credit balance (${fmt(currentOwner.credit_vnd)}) will be preserved on their account.`
+      )
+      if (!ok) return
+    }
     setBusy(true)
     const r = await fetch('/api/admin/cards/link', {
       method: 'POST',
@@ -417,6 +452,54 @@ export default function AdminCards() {
                   {busy ? 'Linking…' : 'Link'}
                 </button>
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Orphan accounts — credit on members no longer in the sheet */}
+      {orphans.length > 0 && (
+        <div style={{ marginTop: 32 }}>
+          <button
+            onClick={() => setShowOrphans(s => !s)}
+            style={{
+              background: 'rgba(212,184,90,0.12)', color: '#D4B85A',
+              border: '1px solid rgba(212,184,90,0.3)', borderRadius: 6,
+              padding: '8px 14px', cursor: 'pointer',
+              fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11,
+            }}
+          >
+            {showOrphans ? '▾' : '▸'} {orphans.length} orphan account{orphans.length === 1 ? '' : 's'} (member no longer in sheet)
+          </button>
+          {showOrphans && (
+            <div style={{
+              marginTop: 12, padding: 16,
+              background: 'rgba(212,184,90,0.04)',
+              border: '1px solid rgba(212,184,90,0.15)', borderRadius: 8,
+            }}>
+              {orphans.map(o => (
+                <div key={o.member_number} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '10px 0', borderTop: '1px solid rgba(212,184,90,0.1)',
+                  fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, gap: 16, flexWrap: 'wrap',
+                }}>
+                  <div>
+                    <div style={{ color: '#E5D4C2' }}>Member {o.member_number}</div>
+                    <div style={{ color: '#B2AA98', opacity: 0.7, fontSize: 10 }}>
+                      {o.card_uid ? `card ${o.card_uid}` : 'no card'}
+                      {' · '}updated {new Date(o.updated_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div style={{ color: o.credit_vnd > 0 ? '#7AB07A' : '#B2AA98', minWidth: 120, textAlign: 'right' }}>
+                    {fmt(o.credit_vnd)}
+                  </div>
+                  <button
+                    onClick={() => purgeAccount(o.member_number)}
+                    disabled={busy}
+                    style={{ background: 'rgba(180, 70, 70, 0.2)', color: '#E5D4C2', border: 'none', borderRadius: 4, padding: '5px 12px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10 }}
+                  >Purge</button>
+                </div>
+              ))}
             </div>
           )}
         </div>

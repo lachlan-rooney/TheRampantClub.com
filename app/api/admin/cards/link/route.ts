@@ -12,20 +12,42 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
   const normalisedUid = String(uid).toUpperCase()
   const memberKey = String(member_number).trim()
 
-  // Detach this UID from any other member it might be on (soft unlink — keeps
-  // their credit balance and history intact).
-  await supabase
+  // Was this UID already on someone? If so we need to detach + audit it.
+  const { data: prev } = await supabase
     .from('member_cards')
-    .update({ card_uid: null, linked_at: null, updated_at: new Date().toISOString() })
+    .select('member_number, credit_vnd')
     .eq('card_uid', normalisedUid)
     .neq('member_number', memberKey)
+    .maybeSingle()
 
-  // Upsert the link for this target member. If they already have a row (e.g.
-  // from a previous card with credit) we just attach the new UID; credit and
-  // expiry are preserved because we only set the columns we provide.
+  if (prev) {
+    await supabase
+      .from('member_cards')
+      .update({ card_uid: null, linked_at: null, updated_at: new Date().toISOString() })
+      .eq('member_number', prev.member_number)
+
+    await supabase.from('card_transactions').insert({
+      member_number: prev.member_number,
+      amount_vnd: 0,
+      kind: 'unlink',
+      note: `Card ${normalisedUid} reassigned to member ${memberKey}`,
+      staff_id: user?.id || null,
+      staff_email: user?.email || null,
+      balance_after_vnd: prev.credit_vnd ?? 0,
+    })
+  }
+
+  // Upsert the link for this target member.
+  const { data: existing } = await supabase
+    .from('member_cards')
+    .select('credit_vnd, card_uid')
+    .eq('member_number', memberKey)
+    .maybeSingle()
+
   const { error } = await supabase
     .from('member_cards')
     .upsert(
@@ -37,8 +59,24 @@ export async function POST(req: NextRequest) {
       },
       { onConflict: 'member_number' }
     )
-
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Audit the link. If the same UID was already on this member there's
+  // nothing meaningful to record.
+  if (existing?.card_uid !== normalisedUid) {
+    await supabase.from('card_transactions').insert({
+      member_number: memberKey,
+      amount_vnd: 0,
+      kind: 'link',
+      note: existing?.card_uid
+        ? `Card swapped: ${existing.card_uid} → ${normalisedUid}`
+        : `Card linked: ${normalisedUid}`,
+      staff_id: user?.id || null,
+      staff_email: user?.email || null,
+      balance_after_vnd: existing?.credit_vnd ?? 0,
+    })
+  }
+
   return NextResponse.json({ ok: true })
 }
 
@@ -51,16 +89,45 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'uid or member_number required' }, { status: 400 })
   }
 
-  // Soft unlink: null out the card UID but keep credit + history. Re-linking
-  // a new card to the same member preserves the balance.
   const supabase = await createServerSupabaseClient()
-  const update = supabase
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // Find the row first so we can decide between hard-delete (zero balance,
+  // nothing to preserve) and soft-unlink (credit retained for re-issue).
+  const sel = supabase
+    .from('member_cards')
+    .select('member_number, card_uid, credit_vnd')
+  const { data: card } = uid
+    ? await sel.eq('card_uid', String(uid).toUpperCase()).maybeSingle()
+    : await sel.eq('member_number', String(member_number).trim()).maybeSingle()
+
+  if (!card) return NextResponse.json({ ok: true, action: 'noop' })
+
+  // Audit the unlink.
+  await supabase.from('card_transactions').insert({
+    member_number: card.member_number,
+    amount_vnd: 0,
+    kind: 'unlink',
+    note: card.card_uid ? `Card unlinked: ${card.card_uid}` : 'Account unlinked',
+    staff_id: user?.id || null,
+    staff_email: user?.email || null,
+    balance_after_vnd: card.credit_vnd ?? 0,
+  })
+
+  if ((card.credit_vnd ?? 0) === 0) {
+    // No credit to preserve — drop the row entirely.
+    const { error } = await supabase
+      .from('member_cards')
+      .delete()
+      .eq('member_number', card.member_number)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ ok: true, action: 'deleted' })
+  }
+
+  const { error } = await supabase
     .from('member_cards')
     .update({ card_uid: null, linked_at: null, updated_at: new Date().toISOString() })
-  const { error } = uid
-    ? await update.eq('card_uid', String(uid).toUpperCase())
-    : await update.eq('member_number', String(member_number).trim())
-
+    .eq('member_number', card.member_number)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, action: 'soft-unlinked' })
 }
