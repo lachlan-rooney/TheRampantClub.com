@@ -202,7 +202,7 @@ export default function MembershipSigning({ token, prefill }: Props) {
         }}>
           <div style={{ textAlign: 'center', maxWidth: 480 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/Lion.%20Drink.svg" alt="" style={{
+            <img src="/images/lion-drink-opt.png" alt="" style={{
               display: 'block', width: 200, height: 'auto', margin: '0 auto 32px',
             }} />
             <h1 style={{
@@ -268,7 +268,7 @@ export default function MembershipSigning({ token, prefill }: Props) {
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: 48 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/Lion-Signature.svg" alt="" style={{
+            <img src="/images/lion-signature-opt.png" alt="" style={{
               display: 'block', width: 100, height: 'auto', margin: '0 auto 24px',
             }} />
             <h1 style={{

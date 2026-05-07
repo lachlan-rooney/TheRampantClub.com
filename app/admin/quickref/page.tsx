@@ -231,8 +231,8 @@ export default function QuickRefPage() {
               }}
             >
               <option value="" style={{ background: '#052E20' }}>Select a member...</option>
-              {members.map(m => (
-                <option key={m['Member No.']} value={m['Full Name']} style={{ background: '#052E20' }}>
+              {members.map((m, i) => (
+                <option key={`${m['Member No.']}-${i}`} value={m['Full Name']} style={{ background: '#052E20' }}>
                   {m['Full Name']} — {m['Member No.']} ({m['Tier']})
                 </option>
               ))}

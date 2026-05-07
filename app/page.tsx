@@ -206,6 +206,8 @@ function DraggableImage({
       <img
         src={img.thumb || img.src}
         alt={img.filename}
+        loading="lazy"
+        decoding="async"
         draggable={false}
         style={{
           width: itemSize,
@@ -279,8 +281,8 @@ export default function HomePage() {
       },
       {
         id: 'library-bar',
-        src: '/images/library%20bar.svg',
-        filename: 'library bar.svg',
+        src: '/images/library-bar-opt.png',
+        filename: 'library-bar-opt.png',
         noRotate: true,
         hoverSrc: '/images/PNG/%5BRAMPANT%5D_Logo_Rampants/8.svg',
       },
@@ -640,7 +642,7 @@ export default function HomePage() {
             zIndex: 1,
           }}>
             <img
-              src="/images/251008_[RAMPANT]_Merch_WhiskyGlass.ai.svg"
+              src="/images/whisky-girl-opt.png"
               alt="The Rampant Club girl illustration"
               className="trc-hero-illustration"
               style={{
@@ -743,7 +745,7 @@ export default function HomePage() {
             {/* Centre image */}
             <div className="trc-benefits-glass" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/whisky%20glass%20swim.svg" alt="" style={{ width: 160, height: 'auto' }} />
+              <img src="/images/whisky-swim-opt.png" alt="" style={{ width: 160, height: 'auto' }} />
             </div>
 
             {/* Right column — last 4 benefits */}
@@ -905,7 +907,7 @@ export default function HomePage() {
           <div style={{ maxWidth: 700, margin: '0 auto', textAlign: 'center' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/images/PNG/Key1.svg"
+              src="/images/key-opt.png"
               alt=""
               style={{ display: 'block', width: 80, height: 'auto', margin: '0 auto 24px', opacity: 0.7 }}
             />
@@ -960,7 +962,7 @@ export default function HomePage() {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/images/image%201472.svg"
+            src="/images/castle-opt.png"
             alt="The Rampant Club"
             style={{
               display: 'block', maxWidth: 500, width: '100%', height: 'auto',

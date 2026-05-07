@@ -32,6 +32,7 @@ export async function GET() {
     if (rows.length < 2) return NextResponse.json([])
 
     const headers = rows[0]
+    const isSheetError = (v: string) => /^#(REF|NAME|VALUE|N\/A|DIV\/0|NUM|ERROR)/.test(v || '')
     const members = rows.slice(1)
       .filter(r => r[1] && r[1].length > 0)
       .map(r => {
@@ -39,6 +40,7 @@ export async function GET() {
         headers.forEach((h, i) => { obj[h] = r[i] || '' })
         return obj
       })
+      .filter(m => m['Member No.'] && !isSheetError(m['Member No.']) && !isSheetError(m['Full Name']))
 
     return NextResponse.json(members)
   } catch {

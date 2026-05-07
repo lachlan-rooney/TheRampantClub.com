@@ -32,7 +32,7 @@ export default function WhiskyPage() {
       <MemberPage
         title="The Whisky Library"
         subtitle="Thư Viện Whisky"
-        icon="/images/Whisky Glass.svg"
+        icon="/images/whisky-glass-icon-opt.png"
         description={`${whiskies.length} bottle${whiskies.length === 1 ? '' : 's'} and counting`}
       >
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 32, justifyContent: 'center' }}>

@@ -235,7 +235,7 @@ export async function POST(req: NextRequest) {
         }
 
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://therampantclub.com'
-        const lionUrl = `${siteUrl}/images/Lion-Signature.svg`
+        const lionUrl = `${siteUrl}/images/lion-signature-opt.png`
         const signatureUrl = `${siteUrl}/images/signature%20(1)%20(1).png`
 
         const memberEmailHtml = `

@@ -313,7 +313,7 @@ export default function SportsPage() {
           <div style={{ margin: '48px auto', display: 'flex', justifyContent: 'center' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/images/Tennis.svg"
+              src="/images/tennis-opt.png"
               alt="Tennis"
               style={{ width: 120, height: 'auto', filter: 'brightness(0) opacity(0.15)' }}
             />

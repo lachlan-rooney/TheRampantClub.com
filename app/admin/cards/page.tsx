@@ -441,8 +441,8 @@ export default function AdminCards() {
                   style={{ ...inputStyle, flex: 1, minWidth: 280 }}
                 >
                   <option value="">— select member to link —</option>
-                  {members.map(m => (
-                    <option key={m.member_number} value={m.member_number}>
+                  {members.map((m, i) => (
+                    <option key={`${m.member_number}-${i}`} value={m.member_number}>
                       {m.member_number} · {m.full_name} ({m.tier})
                       {m.card_uid ? ' · already has card' : m.credit_vnd > 0 ? ` · ${fmt(m.credit_vnd)} credit preserved` : ''}
                     </option>
