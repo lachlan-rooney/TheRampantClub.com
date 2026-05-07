@@ -206,7 +206,6 @@ function DraggableImage({
       <img
         src={img.thumb || img.src}
         alt={img.filename}
-        loading="lazy"
         draggable={false}
         style={{
           width: itemSize,
@@ -254,14 +253,6 @@ export default function HomePage() {
   const [blurbVisible, setBlurbVisible] = useState(false)
   const [ethosOpen, setEthosOpen] = useState(false)
   const [ethosLang, setEthosLang] = useState<'en' | 'vn'>('en')
-  const [enquireCopied, setEnquireCopied] = useState(false)
-
-  const copyMembershipEmail = (e: React.MouseEvent) => {
-    e.preventDefault()
-    navigator.clipboard.writeText('membership@therampantclub.com')
-    setEnquireCopied(true)
-    setTimeout(() => setEnquireCopied(false), 2000)
-  }
   const blurbRef = useRef<HTMLDivElement>(null)
   const maxZRef = useRef(50)
 
@@ -686,7 +677,8 @@ export default function HomePage() {
           <p style={{
             fontFamily: "'Google Sans Code', monospace",
             fontSize: 12,
-            color: 'var(--trc-cream-dim)',
+            color: 'var(--trc-green-accent)',
+            opacity: 0.7,
             letterSpacing: '0.04em',
             lineHeight: 1.7,
             marginBottom: 40,
@@ -828,24 +820,18 @@ export default function HomePage() {
               flexDirection: 'column',
               alignItems: 'center',
             }}>
-              <a
-                href="/clubhouse"
-                aria-label="Explore the Clubhouse layout"
-                style={{ display: 'block', width: '100%', cursor: 'pointer' }}
-              >
-                <img
-                  src="/images/Club Map.svg"
-                  alt="The Clubhouse — five floors"
-                  style={{
-                    width: '100%',
-                    height: 'auto',
-                    display: 'block',
-                    opacity: floorsSec.visible ? 1 : 0,
-                    transform: floorsSec.visible ? 'translateY(0)' : 'translateY(10px)',
-                    transition: 'opacity 0.8s ease, transform 0.8s ease',
-                  }}
-                />
-              </a>
+              <img
+                src="/images/Club Map.svg"
+                alt="The Clubhouse — five floors"
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  display: 'block',
+                  opacity: floorsSec.visible ? 1 : 0,
+                  transform: floorsSec.visible ? 'translateY(0)' : 'translateY(10px)',
+                  transition: 'opacity 0.8s ease, transform 0.8s ease',
+                }}
+              />
             </div>
 
             {/* Floor legend */}
@@ -989,6 +975,18 @@ export default function HomePage() {
           <div className="trc-section-title">Membership</div>
           <div className="trc-section-subtitle">Thành Viên</div>
 
+          <p style={{
+            fontFamily: "'Rampant Sans', 'Playfair Display', serif",
+            fontSize: 16,
+            color: 'var(--trc-green-deep)',
+            opacity: 0.7,
+            textAlign: 'center',
+            marginBottom: 40,
+            lineHeight: 1.6,
+          }}>
+            Membership is by invitation or referral only. We do not accept applications.
+          </p>
+
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
@@ -1006,16 +1004,10 @@ export default function HomePage() {
               >
                 <div className="trc-tier-name">{tier.name}</div>
                 <p className="trc-tier-desc">{tier.desc}</p>
-                <a
-                  href="mailto:membership@therampantclub.com"
-                  className="trc-tier-btn"
-                  onClick={copyMembershipEmail}
-                >
-                  {enquireCopied ? 'Email address copied' : 'Enquire'}
-                </a>
               </div>
             ))}
           </div>
+
         </div>
       </div>
 

@@ -39,7 +39,6 @@ const OTHER_QUIPS = [
   'The bees on the rooftop are doing well. Not that you give a buzz.',
   'The Chairman\'s dram is not available to non-Chairmen... Unless you ask nicely.',
   'The cà phê sữa đá is not a substitute for the Dram of the Day. We have discussed this...',
-  'Rainy Season countdown... 2 damn soon.',
   'A gecko has been found in The Elevator. He has been granted temporary membership.',
   'Thunder over District 1. The vinyl has been turned up accordingly.',
 ]

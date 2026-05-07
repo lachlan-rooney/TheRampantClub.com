@@ -5,6 +5,25 @@ import { useEffect, useState } from 'react'
 export default function LiveTicker() {
   const [time, setTime] = useState('')
   const [temp, setTemp] = useState<number | null>(null)
+  const [hidden, setHidden] = useState(false)
+
+  // On mobile, hide once the user scrolls away from the top
+  useEffect(() => {
+    const onScroll = () => {
+      if (window.innerWidth >= 768) {
+        setHidden(false)
+        return
+      }
+      setHidden(window.scrollY > 20)
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+    }
+  }, [])
 
   // Live clock — ticks every second, locked to Saigon timezone
   useEffect(() => {
@@ -43,7 +62,7 @@ export default function LiveTicker() {
         fontSize: 15,
         letterSpacing: '0.06em',
         color: 'var(--trc-green-deep, #052E20)',
-        opacity: 0.7,
+        opacity: hidden ? 0 : 0.7,
         display: 'flex',
         alignItems: 'center',
         gap: 6,
