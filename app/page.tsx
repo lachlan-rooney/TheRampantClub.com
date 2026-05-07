@@ -251,6 +251,7 @@ export default function HomePage() {
   const [showGrid, setShowGrid] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
   const [isMobile, setIsMobile] = useState(false)
+  const [isPhone, setIsPhone] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [blurbVisible, setBlurbVisible] = useState(false)
   const [ethosOpen, setEthosOpen] = useState(false)
@@ -268,7 +269,10 @@ export default function HomePage() {
   const tiersSec = useScrollReveal(0.1)
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 1024)
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024)
+      setIsPhone(window.innerWidth < 768)
+    }
     checkMobile()
     window.addEventListener('resize', checkMobile)
 
@@ -837,7 +841,7 @@ export default function HomePage() {
             </div>
 
             {/* Floor legend */}
-            <div style={{ flex: 1, minWidth: 280, paddingTop: 151, display: isMobile ? 'none' : 'block' }}>
+            <div style={{ flex: 1, minWidth: 280, paddingTop: 151, display: isPhone ? 'none' : 'block' }}>
               {FLOORS.map((floor, i) => (
                 <div
                   key={floor.num}
