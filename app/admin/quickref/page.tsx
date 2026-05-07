@@ -148,15 +148,16 @@ export default function QuickRefPage() {
     }
   }
 
-  const saveExpiry = async () => {
+  const saveExpiry = async (override?: string | null) => {
     if (!selected) return
+    const value = override !== undefined ? override : (expiryDraft || null)
     setBusy(true)
     const r = await fetch('/api/admin/cards/expiry', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         member_number: selected['Member No.'],
-        expires_at: expiryDraft || null,
+        expires_at: value,
       }),
     })
     setBusy(false)
@@ -164,6 +165,7 @@ export default function QuickRefPage() {
       const d = await r.json()
       setCard(c => c ? { ...c, expires_at: d.expires_at } : c)
       setEditingExpiry(false)
+      setExpiryDraft('')
       showToast(d.expires_at ? `Expiry set to ${new Date(d.expires_at).toLocaleDateString()}` : 'Expiry cleared')
     } else {
       showToast('Failed to save expiry')
@@ -369,7 +371,7 @@ export default function QuickRefPage() {
                         <button onClick={() => { setEditingExpiry(false); setExpiryDraft('') }} style={{ background: 'transparent', color: '#B2AA98', border: '1px solid rgba(229,212,194,0.15)', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10 }}>Cancel</button>
                         {card.expires_at && (
                           <button
-                            onClick={() => { setExpiryDraft(''); saveExpiry() }}
+                            onClick={() => saveExpiry(null)}
                             style={{ background: 'transparent', color: '#B45656', border: '1px solid rgba(180,86,86,0.4)', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10 }}
                           >Clear (no expiry)</button>
                         )}
