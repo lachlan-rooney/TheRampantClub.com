@@ -297,6 +297,10 @@ export default function QuickRefPage() {
                       <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 14, color: '#E5D4C2', letterSpacing: '0.04em' }}>
                         {card.card_uid}
                       </div>
+                    ) : card ? (
+                      <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: '#D4B85A', opacity: 0.85 }}>
+                        Unlinked &mdash; credit preserved
+                      </div>
                     ) : (
                       <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: '#B2AA98', opacity: 0.7 }}>
                         No card linked
@@ -334,8 +338,8 @@ export default function QuickRefPage() {
                   </div>
                 </div>
 
-                {/* Expiry row */}
-                {card?.card_uid && (
+                {/* Expiry row — visible whenever we have a credit account */}
+                {card && (
                   <div style={{
                     display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
                     paddingTop: 12, marginTop: 4,
@@ -380,11 +384,12 @@ export default function QuickRefPage() {
                   </div>
                 )}
 
-                {/* Link / unlink controls */}
-                {!card?.card_uid ? (
+                {/* Link prompt when no UID is currently attached */}
+                {!card?.card_uid && (
                   linkMode ? (
                     <div style={{
-                      padding: '14px 16px', background: 'rgba(122,176,122,0.08)',
+                      padding: '14px 16px', marginBottom: card ? 16 : 0,
+                      background: 'rgba(122,176,122,0.08)',
                       border: '1px dashed rgba(122,176,122,0.4)', borderRadius: 6,
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
                     }}>
@@ -400,10 +405,14 @@ export default function QuickRefPage() {
                     <button
                       onClick={() => setLinkMode(true)}
                       disabled={busy}
-                      style={{ background: '#5E6650', color: '#E5D4C2', border: 'none', borderRadius: 6, padding: '8px 18px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11 }}
-                    >Tap card to link</button>
+                      style={{ background: '#5E6650', color: '#E5D4C2', border: 'none', borderRadius: 6, padding: '8px 18px', marginBottom: card ? 16 : 0, cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11 }}
+                    >{card ? 'Tap card to relink' : 'Tap card to link'}</button>
                   )
-                ) : (
+                )}
+
+                {/* Balance controls — shown whenever a credit account exists,
+                    whether or not a physical card is currently attached. */}
+                {card && (
                   <>
                     {/* Top up + charge */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 12 }}>
@@ -462,10 +471,12 @@ export default function QuickRefPage() {
                       </div>
                     )}
 
-                    <button
-                      onClick={unlinkCard} disabled={busy}
-                      style={{ background: 'rgba(180, 70, 70, 0.2)', color: '#E5D4C2', border: 'none', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10 }}
-                    >Unlink card</button>
+                    {card.card_uid && (
+                      <button
+                        onClick={unlinkCard} disabled={busy}
+                        style={{ background: 'rgba(180, 70, 70, 0.2)', color: '#E5D4C2', border: 'none', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10 }}
+                      >Unlink card</button>
+                    )}
                   </>
                 )}
               </div>

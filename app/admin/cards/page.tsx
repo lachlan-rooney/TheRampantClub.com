@@ -409,7 +409,7 @@ export default function AdminCards() {
                   {members.map(m => (
                     <option key={m.member_number} value={m.member_number}>
                       {m.member_number} · {m.full_name} ({m.tier})
-                      {m.card_uid ? ' · already has card' : ''}
+                      {m.card_uid ? ' · already has card' : m.credit_vnd > 0 ? ` · ${fmt(m.credit_vnd)} credit preserved` : ''}
                     </option>
                   ))}
                 </select>

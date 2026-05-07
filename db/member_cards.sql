@@ -9,16 +9,16 @@
 
 create table if not exists member_cards (
   member_number text primary key,
-  card_uid text unique not null,
+  card_uid text unique,                      -- null when card is unlinked but credit retained
   credit_vnd bigint not null default 0,
   expires_at timestamptz,                    -- null = no expiry
   linked_at timestamptz default now(),
   updated_at timestamptz default now()
 );
 
--- If you already created member_cards from an earlier copy of this file,
--- run the next line to add the column without recreating the table:
+-- If you already created member_cards from an earlier copy of this file:
 -- alter table member_cards add column if not exists expires_at timestamptz;
+-- alter table member_cards alter column card_uid drop not null;
 
 create index if not exists member_cards_uid_idx on member_cards (card_uid);
 

@@ -15,14 +15,26 @@ export async function POST(req: NextRequest) {
   const normalisedUid = String(uid).toUpperCase()
   const memberKey = String(member_number).trim()
 
-  // Detach this UID from any other member it might be on.
-  await supabase.from('member_cards').delete().eq('card_uid', normalisedUid)
+  // Detach this UID from any other member it might be on (soft unlink — keeps
+  // their credit balance and history intact).
+  await supabase
+    .from('member_cards')
+    .update({ card_uid: null, linked_at: null, updated_at: new Date().toISOString() })
+    .eq('card_uid', normalisedUid)
+    .neq('member_number', memberKey)
 
-  // Upsert the link for this member (replacing any existing card on them).
+  // Upsert the link for this target member. If they already have a row (e.g.
+  // from a previous card with credit) we just attach the new UID; credit and
+  // expiry are preserved because we only set the columns we provide.
   const { error } = await supabase
     .from('member_cards')
     .upsert(
-      { member_number: memberKey, card_uid: normalisedUid, linked_at: new Date().toISOString() },
+      {
+        member_number: memberKey,
+        card_uid: normalisedUid,
+        linked_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
       { onConflict: 'member_number' }
     )
 
@@ -39,11 +51,15 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'uid or member_number required' }, { status: 400 })
   }
 
+  // Soft unlink: null out the card UID but keep credit + history. Re-linking
+  // a new card to the same member preserves the balance.
   const supabase = await createServerSupabaseClient()
-  const q = supabase.from('member_cards').delete()
+  const update = supabase
+    .from('member_cards')
+    .update({ card_uid: null, linked_at: null, updated_at: new Date().toISOString() })
   const { error } = uid
-    ? await q.eq('card_uid', String(uid).toUpperCase())
-    : await q.eq('member_number', String(member_number).trim())
+    ? await update.eq('card_uid', String(uid).toUpperCase())
+    : await update.eq('member_number', String(member_number).trim())
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
