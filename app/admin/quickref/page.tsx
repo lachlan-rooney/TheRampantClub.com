@@ -367,7 +367,7 @@ export default function QuickRefPage() {
                           onChange={e => setExpiryDraft(e.target.value)}
                           style={{ background: 'rgba(229,212,194,0.06)', color: '#E5D4C2', border: '1px solid rgba(229,212,194,0.1)', borderRadius: 4, padding: '4px 8px', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11 }}
                         />
-                        <button onClick={saveExpiry} disabled={busy} style={{ background: '#5E6650', color: '#E5D4C2', border: 'none', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10 }}>Save</button>
+                        <button onClick={() => saveExpiry()} disabled={busy} style={{ background: '#5E6650', color: '#E5D4C2', border: 'none', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10 }}>Save</button>
                         <button onClick={() => { setEditingExpiry(false); setExpiryDraft('') }} style={{ background: 'transparent', color: '#B2AA98', border: '1px solid rgba(229,212,194,0.15)', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10 }}>Cancel</button>
                         {card.expires_at && (
                           <button
