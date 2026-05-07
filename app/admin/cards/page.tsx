@@ -268,18 +268,31 @@ export default function AdminCards() {
             <button onClick={reset} style={btnStyle}>Clear</button>
           </div>
 
-          {link && member ? (
+          {link ? (
             <>
               {/* Member + balance */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 24, flexWrap: 'wrap', marginBottom: 24 }}>
                 <div>
                   <label style={labelStyle}>Linked member</label>
-                  <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2', marginBottom: 4 }}>
-                    {member['Full Name']}
-                  </div>
-                  <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#B2AA98' }}>
-                    {member['Member No.']} · {member['Tier']}
-                  </div>
+                  {member ? (
+                    <>
+                      <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2', marginBottom: 4 }}>
+                        {member['Full Name']}
+                      </div>
+                      <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#B2AA98' }}>
+                        {member['Member No.']} · {member['Tier']}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2', marginBottom: 4 }}>
+                        Member {link.member_number}
+                      </div>
+                      <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#D4B85A' }}>
+                        Sheet lookup failed — name unavailable
+                      </div>
+                    </>
+                  )}
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <label style={{ ...labelStyle, textAlign: 'right' }}>Credit balance</label>
