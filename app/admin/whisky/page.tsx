@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import type { Whisky } from '@/lib/types'
 
-const REGIONS = ['Highland', 'Speyside', 'Islay', 'Lowland', 'Campbeltown', 'Islands', 'Japan', 'Ireland', 'Australia', 'China', 'England', 'New Zealand', 'Poland', 'USA', 'Vietnam', 'Other'] as const
+const REGIONS = ['Highland', 'Speyside', 'Islay', 'Lowland', 'Campbeltown', 'Islands', 'Japan', 'Ireland', 'Australia', 'China', 'England', 'France', 'India', 'New Zealand', 'Poland', 'Sweden', 'Taiwan', 'USA', 'Vietnam', 'Wales', 'Other'] as const
 
 const inputStyle: React.CSSProperties = {
   background: 'rgba(229,212,194,0.06)', color: '#E5D4C2',

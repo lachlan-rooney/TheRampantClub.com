@@ -6,8 +6,6 @@ import { ATLAS_REGIONS, SAIGON, type AtlasRegion } from '@/lib/whisky-atlas-data
 
 interface Props {
   counts: Record<string, number>
-  onSelect: (r: AtlasRegion) => void
-  focused?: AtlasRegion | null
   height?: number
 }
 
@@ -18,7 +16,7 @@ interface Marker extends AtlasRegion {
 
 const HOME = { lat: SAIGON.lat, lng: SAIGON.lng }
 
-export default function AtlasGlobe({ counts, onSelect, focused, height = 560 }: Props) {
+export default function AtlasGlobe({ counts, height = 560 }: Props) {
   const ref = useRef<GlobeMethods | undefined>(undefined)
   const containerRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
@@ -80,20 +78,6 @@ export default function AtlasGlobe({ counts, onSelect, focused, height = 560 }: 
     return () => { cancelled = true; cancelAnimationFrame(raf) }
   }, [width])
 
-  // Ease the camera when a region is focused / unfocused
-  useEffect(() => {
-    const g = ref.current
-    if (!g) return
-    try {
-      if (focused) {
-        g.pointOfView({ lat: focused.lat, lng: focused.lng, altitude: 1.4 }, 1200)
-        const controls = g.controls() as { autoRotate: boolean }
-        controls.autoRotate = false
-      } else {
-        g.pointOfView({ lat: 28, lng: 80, altitude: 2.4 }, 1200)
-      }
-    } catch { /* swallow */ }
-  }, [focused])
 
   // Always render — let the globe size to 0×height initially, expand as soon as
   // we have a real width. Avoids the "never mounts because width was 0" trap.
@@ -120,17 +104,38 @@ export default function AtlasGlobe({ counts, onSelect, focused, height = 560 }: 
         pointColor={(d: object) => (d as Marker).count > 0 ? '#FF7A1F' : 'rgba(255, 122, 31, 0.7)'}
         pointLabel={(d: object) => {
           const m = d as Marker
+          const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          const chips = m.character.slice(0, 3).map(c => `
+            <span style="font-family: 'Google Sans Code', monospace; font-size: 8px;
+                         letter-spacing: 0.05em; padding: 2px 7px; border-radius: 9px;
+                         background: rgba(40,72,60,0.12); color: #28483C; margin-right: 4px;">
+              ${esc(c)}
+            </span>`).join('')
+          const distilleries = m.distilleries.slice(0, 3).map(esc).join(' · ')
           return `
-            <div style="font-family: 'Rampant Sans', serif; font-size: 14px; color: #052E20;
-                        background: #E5D4C2; padding: 8px 12px; border-radius: 6px;
-                        box-shadow: 0 8px 24px rgba(0,0,0,0.3);">
-              ${m.flag} ${m.name}
+            <div style="font-family: 'Rampant Sans', serif; color: #052E20;
+                        background: #E5D4C2; padding: 12px 14px; border-radius: 8px;
+                        box-shadow: 0 12px 32px rgba(5,46,32,0.32);
+                        max-width: 260px; line-height: 1.4;">
+              <div style="font-size: 14px; font-weight: 500;">
+                ${m.flag} ${esc(m.name)}
+                ${m.native && m.native !== m.name
+                  ? `<span style="font-family: 'Google Sans Code', monospace; font-size: 9px; color: #5E6650; margin-left: 6px; letter-spacing: 0.06em;">${esc(m.native)}</span>`
+                  : ''}
+              </div>
               ${m.count > 0
-                ? `<div style="font-family: 'Google Sans Code', monospace; font-size: 10px; color: #5E6650; margin-top: 2px;">${m.count} ${m.count === 1 ? 'bottle' : 'bottles'} in the Rampant Room</div>`
+                ? `<div style="font-family: 'Google Sans Code', monospace; font-size: 10px; color: #FF7A1F; margin-top: 4px; font-weight: 600;">${m.count} ${m.count === 1 ? 'bottle' : 'bottles'} in the Rampant Room</div>`
                 : ''}
+              <div style="font-family: 'Google Sans Code', monospace; font-size: 10px; color: #5E6650; margin-top: 8px; line-height: 1.55;">
+                ${esc(m.blurb)}
+              </div>
+              ${chips ? `<div style="margin-top: 8px;">${chips}</div>` : ''}
+              ${distilleries ? `
+                <div style="font-family: 'Google Sans Code', monospace; font-size: 9px; color: #5E6650; margin-top: 8px; opacity: 0.7; letter-spacing: 0.04em;">
+                  ${distilleries}
+                </div>` : ''}
             </div>`
         }}
-        onPointClick={(d: object) => onSelect(d as Marker)}
 
         arcsData={arcs}
         arcStartLat="startLat"

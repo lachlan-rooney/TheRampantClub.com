@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import NavOverlay from '@/components/NavOverlay'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
-import { ATLAS_REGIONS, type AtlasRegion } from '@/lib/whisky-atlas-data'
+import { ATLAS_REGIONS } from '@/lib/whisky-atlas-data'
 
 const AtlasGlobe = dynamic(() => import('./AtlasGlobe'), {
   ssr: false,
@@ -21,7 +21,6 @@ const AtlasGlobe = dynamic(() => import('./AtlasGlobe'), {
 
 export default function AtlasPage() {
   const [counts, setCounts] = useState<Record<string, number>>({})
-  const [active, setActive] = useState<AtlasRegion | null>(null)
 
   useEffect(() => {
     const supabase = createBrowserSupabaseClient()
@@ -37,14 +36,6 @@ export default function AtlasPage() {
         setCounts(c)
       })
   }, [])
-
-  // Lock scroll while modal open
-  useEffect(() => {
-    if (!active) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prev }
-  }, [active])
 
   return (
     <>
@@ -186,48 +177,11 @@ export default function AtlasPage() {
           letter-spacing: 0.04em;
         }
 
-        /* ── Side drawer ───────────────────────────────────────── */
-        .atl-drawer-backdrop {
-          position: fixed; inset: 0;
-          background: rgba(5, 46, 32, 0.25);
-          z-index: 9990;
-          opacity: 0;
-          pointer-events: none;
-          transition: opacity 0.4s ease;
-        }
-        .atl-drawer-backdrop.is-open {
-          opacity: 1;
-          pointer-events: auto;
-        }
-        .atl-drawer {
-          position: fixed;
-          top: 0; right: 0; bottom: 0;
-          width: min(440px, 92vw);
-          background: var(--atl-cream);
-          z-index: 9991;
-          padding: 56px 36px 40px;
-          overflow-y: auto;
-          transform: translateX(100%);
-          transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
-          box-shadow: -16px 0 40px rgba(5, 46, 32, 0.18);
-        }
-        .atl-drawer.is-open { transform: translateX(0); }
-        .atl-drawer-close {
-          position: absolute; top: 14px; right: 14px;
-          background: transparent; border: none;
-          font-family: 'Google Sans Code', monospace;
-          font-size: 16px; color: var(--atl-green-accent);
-          cursor: pointer;
-          width: 36px; height: 36px;
-          border-radius: 50%;
-          transition: background 0.2s;
-        }
-        .atl-drawer-close:hover { background: rgba(5, 46, 32, 0.06); }
+        .atl-card { cursor: default; }
 
         @media (max-width: 720px) {
           .atl-hero { padding: 100px 20px 40px; }
           .atl-grid { padding: 40px 20px 80px; gap: 12px; }
-          .atl-drawer { padding: 48px 24px 32px; }
         }
       `}} />
 
@@ -244,7 +198,7 @@ export default function AtlasPage() {
         </section>
 
         <section className="atl-globe-wrap">
-          <AtlasGlobe counts={counts} onSelect={setActive} focused={active} height={420} />
+          <AtlasGlobe counts={counts} height={420} />
           <div className="atl-globe-hint">
             Drag to spin · scroll to zoom · tap a marker
           </div>
@@ -252,7 +206,7 @@ export default function AtlasPage() {
 
         <section className="atl-grid">
           {ATLAS_REGIONS.map(r => (
-            <div key={r.key} className="atl-card" onClick={() => setActive(r)}>
+            <div key={r.key} className="atl-card">
               <div className="atl-card-header">
                 <span className="atl-flag" aria-hidden>{r.flag}</span>
                 <div>
@@ -281,90 +235,7 @@ export default function AtlasPage() {
         </section>
       </main>
 
-      {/* Region detail drawer (always mounted so the slide animation runs both ways) */}
-      <div
-        className={`atl-drawer-backdrop${active ? ' is-open' : ''}`}
-        onClick={() => setActive(null)}
-      />
-      <aside className={`atl-drawer${active ? ' is-open' : ''}`} aria-hidden={!active}>
-        <button className="atl-drawer-close" onClick={() => setActive(null)}>×</button>
-        {active && (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
-              <span className="atl-flag" style={{ fontSize: 36 }} aria-hidden>{active.flag}</span>
-              <div>
-                <h2 style={{
-                  fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-                  fontSize: 28, fontWeight: 500, color: 'var(--atl-green-deep)',
-                  letterSpacing: '0.02em', margin: 0,
-                }}>{active.name}</h2>
-                {active.native && active.native !== active.name && (
-                  <div style={{
-                    fontFamily: "'Google Sans Code', monospace", fontSize: 11,
-                    color: 'var(--atl-cream-dim)', letterSpacing: '0.06em', marginTop: 4,
-                  }}>{active.native}</div>
-                )}
-              </div>
-            </div>
-
-            <p style={{
-              fontFamily: "'Google Sans Code', monospace", fontSize: 13, lineHeight: 1.85,
-              color: 'var(--atl-green-accent)', opacity: 0.9, marginBottom: 24,
-            }}>
-              {active.blurb}
-            </p>
-
-            <Section title="Character">
-              <div className="atl-chips" style={{ marginBottom: 0 }}>
-                {active.character.map(c => (
-                  <span key={c} className="atl-chip">{c}</span>
-                ))}
-              </div>
-            </Section>
-
-            <Section title="Notable distilleries">
-              <ul style={{
-                margin: 0, paddingLeft: 18,
-                fontFamily: "'Google Sans Code', monospace", fontSize: 12,
-                lineHeight: 1.9, color: 'var(--atl-green-accent)', opacity: 0.85,
-              }}>
-                {active.distilleries.map(d => <li key={d}>{d}</li>)}
-              </ul>
-            </Section>
-
-            {counts[active.key] > 0 && (
-              <Section title="In the Rampant Room">
-                <div style={{
-                  fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-                  fontSize: 22, fontWeight: 500, color: 'var(--atl-gold)',
-                  letterSpacing: '0.02em',
-                }}>
-                  {counts[active.key]} {counts[active.key] === 1 ? 'bottle' : 'bottles'}
-                </div>
-                <div style={{
-                  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
-                  color: 'var(--atl-cream-dim)', letterSpacing: '0.04em', marginTop: 4,
-                }}>
-                  Members can browse the full list in the Whisky Library.
-                </div>
-              </Section>
-            )}
-          </>
-        )}
-      </aside>
     </>
   )
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: 24 }}>
-      <div style={{
-        fontFamily: "'Google Sans Code', monospace", fontSize: 9,
-        color: 'var(--atl-cream-dim)', letterSpacing: '0.14em',
-        textTransform: 'uppercase', marginBottom: 10,
-      }}>{title}</div>
-      {children}
-    </div>
-  )
-}
