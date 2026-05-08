@@ -1,9 +1,23 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import NavOverlay from '@/components/NavOverlay'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { ATLAS_REGIONS, type AtlasRegion } from '@/lib/whisky-atlas-data'
+
+const AtlasGlobe = dynamic(() => import('./AtlasGlobe'), {
+  ssr: false,
+  loading: () => (
+    <div style={{
+      height: 560, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+      color: 'rgba(5,46,32,0.4)', letterSpacing: '0.06em',
+    }}>
+      Loading the globe…
+    </div>
+  ),
+})
 
 export default function AtlasPage() {
   const [counts, setCounts] = useState<Record<string, number>>({})
@@ -71,6 +85,22 @@ export default function AtlasPage() {
           color: var(--atl-cream-dim);
           letter-spacing: 0.04em;
           max-width: 540px; margin: 0 auto;
+        }
+
+        .atl-globe-wrap {
+          position: relative;
+          background: radial-gradient(ellipse at center, #0a3a28 0%, #052E20 70%, #021810 100%);
+          padding: 24px 0 32px;
+          margin-top: 24px;
+        }
+        .atl-globe-hint {
+          text-align: center;
+          font-family: 'Google Sans Code', monospace;
+          font-size: 10px;
+          color: rgba(229,212,194,0.45);
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          margin-top: 12px;
         }
 
         .atl-grid {
@@ -209,6 +239,13 @@ export default function AtlasPage() {
             Every region the cabinet draws from — its character, its distilleries, and how many bottles
             we currently keep on the shelf.
           </p>
+        </section>
+
+        <section className="atl-globe-wrap">
+          <AtlasGlobe counts={counts} onSelect={setActive} />
+          <div className="atl-globe-hint">
+            Drag to spin · scroll to zoom · tap a marker
+          </div>
         </section>
 
         <section className="atl-grid">
