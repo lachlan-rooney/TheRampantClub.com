@@ -350,7 +350,7 @@ export default function HomePage() {
                url('/fonts/MNRampantSans-Regular.ttf') format('truetype');
           font-weight: 400;
           font-style: normal;
-          font-display: swap;
+          font-display: block;
         }
 
         @font-face {
@@ -358,7 +358,7 @@ export default function HomePage() {
           src: url('/fonts/GoogleSansCode-VariableFont_wght.ttf') format('truetype');
           font-weight: 100 900;
           font-style: normal;
-          font-display: swap;
+          font-display: block;
         }
 
         @font-face {
@@ -366,7 +366,7 @@ export default function HomePage() {
           src: url('/fonts/GoogleSansCode-Italic-VariableFont_wght.ttf') format('truetype');
           font-weight: 100 900;
           font-style: italic;
-          font-display: swap;
+          font-display: block;
         }
 
         :root {

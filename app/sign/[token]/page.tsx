@@ -27,17 +27,17 @@ export default async function SignPage({
     notFound()
   }
 
-  // Track that the prospect opened the link. Don't block render on it.
-  supabase
+  // Track that the prospect opened the link. Awaited so it actually
+  // completes — fire-and-forget in a server component can be killed when
+  // the serverless function returns.
+  const { error: viewErr } = await supabase
     .from('signing_invitations')
     .update({
       viewed_at: invitation.viewed_at ?? new Date().toISOString(),
       view_count: (invitation.view_count ?? 0) + 1,
     })
     .eq('id', invitation.id)
-    .then(({ error: updErr }) => {
-      if (updErr) console.warn('Failed to track invitation view:', updErr)
-    })
+  if (viewErr) console.warn('Failed to track invitation view:', viewErr)
 
   return (
     <MembershipSigning

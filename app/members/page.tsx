@@ -13,12 +13,24 @@ interface Notice {
   pinned: boolean
 }
 
+interface NextFixture {
+  id: string
+  sport: string
+  title: string
+  date: string
+  location: string | null
+}
+
 export default function MembersPage() {
   const [greeting, setGreeting] = useState('')
   const [email, setEmail] = useState('')
   const [summary, setSummary] = useState('')
+  const [memberNumber, setMemberNumber] = useState<number | null>(null)
+  const [lockerNumber, setLockerNumber] = useState<string | null>(null)
+  const [preferredDram, setPreferredDram] = useState<string | null>(null)
   const [notices, setNotices] = useState<Notice[]>([])
   const [activeNotice, setActiveNotice] = useState(0)
+  const [nextFixture, setNextFixture] = useState<NextFixture | null>(null)
 
   useEffect(() => {
     const hour = new Date().getHours()
@@ -35,6 +47,14 @@ export default function MembersPage() {
       .limit(5)
       .then(({ data }) => { if (data) setNotices(data) })
 
+    // Fetch next upcoming fixture
+    supabase.from('fixtures')
+      .select('id, sport, title, date, location')
+      .gte('date', new Date().toISOString())
+      .order('date', { ascending: true })
+      .limit(1)
+      .then(({ data }) => { if (data && data.length) setNextFixture(data[0] as NextFixture) })
+
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) return
       setEmail(data.user.email || '')
@@ -46,6 +66,9 @@ export default function MembersPage() {
           } else {
             setGreeting(timeGreeting)
           }
+          if (profile?.member_number) setMemberNumber(profile.member_number)
+          if (profile?.locker_number) setLockerNumber(profile.locker_number)
+          if (profile?.preferred_dram) setPreferredDram(profile.preferred_dram)
           const parts: string[] = []
           if (profile?.member_number) parts.push(`Member No. ${String(profile.member_number).padStart(3, '0')}`)
           if (profile?.locker_number) parts.push(`Locker ${profile.locker_number}`)
@@ -65,42 +88,66 @@ export default function MembersPage() {
   }, [notices.length])
 
 
-  const sections = [
+  const fmtDate = (d: string) => {
+    const dt = new Date(d)
+    return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+      + ' \u00b7 '
+      + dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  }
+
+  interface Bucket {
+    href: string
+    en: string
+    vn: string
+    glyph: string
+    primary?: string
+    secondary?: string
+  }
+
+  const buckets: Bucket[] = [
     {
       href: '/members/events',
       en: 'Events',
-      vn: 'Sự kiện',
-      desc: 'What\u2019s on & sign-ups',
-    },
-    {
-      href: '/members/spaces',
-      en: 'Spaces & Menus',
-      vn: 'Không gian & Thực đơn',
-      desc: 'The Library Bar, Studio & more',
+      vn: 'S\u1ef1 ki\u1ec7n',
+      glyph: '\u25c6',
+      secondary: "What's on & sign-ups",
     },
     {
       href: '/members/profile',
       en: 'My Membership',
-      vn: 'Tư Cách Thành Viên',
-      desc: 'Your details & member number',
+      vn: 'T\u01b0 C\u00e1ch Th\u00e0nh Vi\u00ean',
+      glyph: '\u2726',
+      primary: memberNumber ? '#' + String(memberNumber).padStart(3, '0') : '\u2014',
+      secondary: lockerNumber ? 'Locker ' + lockerNumber : (preferredDram ? 'Dram: ' + preferredDram : 'Your details'),
     },
     {
       href: '/members/fixtures',
-      en: 'T.R.C Sports Fixtures',
-      vn: 'Lịch Thi Đấu',
-      desc: 'Upcoming sports & sign-ups',
+      en: 'Sports Fixtures',
+      vn: 'L\u1ecbch Thi \u0110\u1ea5u',
+      glyph: '\u29eb',
+      primary: nextFixture ? nextFixture.sport.charAt(0).toUpperCase() + nextFixture.sport.slice(1) : 'No upcoming',
+      secondary: nextFixture ? fmtDate(nextFixture.date) : 'Check the schedule',
+    },
+    {
+      href: '/members/spaces',
+      en: 'Spaces & Menus',
+      vn: 'Kh\u00f4ng gian & Th\u1ef1c \u0111\u01a1n',
+      glyph: '\u2b22',
+      secondary: 'Library Bar \u00b7 Studio \u00b7 Rampant Room',
     },
     {
       href: '/members/rules',
       en: 'House Rules',
-      vn: 'Nội Quy Câu Lạc Bộ',
-      desc: "The club's operating principles",
+      vn: 'N\u1ed9i Quy',
+      glyph: '\u00a7',
+      secondary: "The club's operating principles",
     },
     {
       href: '/members/contact',
       en: 'Contact',
-      vn: 'Liên hệ',
-      desc: 'Address & member hotline',
+      vn: 'Li\u00ean h\u1ec7',
+      glyph: '\u2709',
+      secondary: 'Address & member hotline',
     },
   ]
 
@@ -130,7 +177,7 @@ export default function MembersPage() {
         .members-container {
           position: relative;
           z-index: 2;
-          max-width: 680px;
+          max-width: 1080px;
           margin: 0 auto;
           padding: 100px 24px 80px;
         }
@@ -151,66 +198,111 @@ export default function MembersPage() {
           margin-bottom: 56px;
         }
 
-        .members-section-list {
+        /* ── Bucket grid (desktop) / linear stack (mobile) ── */
+        .members-bucket-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 14px;
+        }
+
+        .members-bucket {
+          position: relative;
+          padding: 24px 22px 28px;
+          background: rgba(229, 212, 194, 0.04);
+          border: 1px solid rgba(229, 212, 194, 0.08);
+          border-radius: 14px;
+          text-decoration: none;
+          color: #E5D4C2;
+          min-height: 168px;
           display: flex;
           flex-direction: column;
+          overflow: hidden;
+          transition:
+            transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+            background 0.3s ease,
+            border-color 0.3s ease,
+            box-shadow 0.4s ease;
         }
+        .members-bucket::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(circle at 30% 0%, rgba(212,184,90,0.08), transparent 60%);
+          opacity: 0;
+          transition: opacity 0.4s ease;
+          pointer-events: none;
+        }
+        .members-bucket:hover {
+          transform: translateY(-4px);
+          background: rgba(229, 212, 194, 0.07);
+          border-color: rgba(212, 184, 90, 0.4);
+          box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
+        }
+        .members-bucket:hover::before { opacity: 1; }
 
-        .members-section-item {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 28px 0;
-          border-bottom: 1px solid rgba(229, 212, 194, 0.08);
-          text-decoration: none;
-          transition: padding-left 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        .members-bucket-glyph {
+          font-family: 'Rampant Sans', serif;
+          font-size: 22px;
+          color: #D4B85A;
+          opacity: 0.7;
+          margin-bottom: 14px;
+          line-height: 1;
         }
-        .members-section-item:first-child {
-          border-top: 1px solid rgba(229, 212, 194, 0.08);
-        }
-        .members-section-item:hover {
-          padding-left: 12px;
-        }
-
-        .members-section-en {
+        .members-bucket-en {
           font-family: 'Rampant Sans', serif;
           font-size: 20px;
           font-weight: 600;
-          color: #E5D4C2;
           letter-spacing: 0.02em;
-          display: block;
+          line-height: 1.15;
         }
-        .members-section-vn {
+        .members-bucket-vn {
+          font-family: 'Google Sans Code', 'DM Mono', monospace;
           font-size: 10px;
           color: #B2AA98;
-          opacity: 0.4;
+          opacity: 0.55;
           letter-spacing: 0.06em;
-          display: block;
-          margin-top: 2px;
+          margin-top: 4px;
         }
-
-        .members-section-right {
-          display: flex;
-          align-items: center;
-          gap: 16px;
+        .members-bucket-primary {
+          font-family: 'Rampant Sans', serif;
+          font-size: 18px;
+          font-weight: 500;
+          color: #D4B85A;
+          letter-spacing: 0.04em;
+          margin-top: auto;
+          padding-top: 14px;
         }
-
-        .members-section-desc {
+        .members-bucket-secondary {
+          font-family: 'Google Sans Code', 'DM Mono', monospace;
           font-size: 11px;
           color: #B2AA98;
-          letter-spacing: 0.03em;
-          text-align: right;
+          opacity: 0.7;
+          letter-spacing: 0.04em;
+          line-height: 1.5;
+          margin-top: 6px;
         }
-
-        .members-section-arrow {
-          font-size: 16px;
+        .members-bucket-secondary:not(:last-child) { margin-top: 6px; }
+        .members-bucket-primary + .members-bucket-secondary {
+          margin-top: 4px;
+          opacity: 0.55;
+        }
+        /* If there's no primary, push the secondary down to fill the card */
+        .members-bucket > .members-bucket-vn + .members-bucket-secondary {
+          margin-top: auto;
+          padding-top: 18px;
+        }
+        .members-bucket-arrow {
+          position: absolute;
+          top: 22px;
+          right: 22px;
+          font-size: 14px;
           color: #E5D4C2;
           opacity: 0.25;
-          transition: opacity 0.2s, transform 0.2s;
+          transition: opacity 0.3s, transform 0.3s;
         }
-        .members-section-item:hover .members-section-arrow {
-          opacity: 0.5;
-          transform: translateX(4px);
+        .members-bucket:hover .members-bucket-arrow {
+          opacity: 0.7;
+          transform: translateX(3px);
         }
 
         .members-diamond {
@@ -226,10 +318,14 @@ export default function MembersPage() {
         ::-webkit-scrollbar-track { background: #052E20; }
         ::-webkit-scrollbar-thumb { background: rgba(94, 102, 80, 0.2); border-radius: 3px; }
 
-        @media (max-width: 768px) {
+        @media (max-width: 1024px) {
+          .members-bucket-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 600px) {
           .members-container { padding: 80px 20px 60px; }
           .members-greeting { font-size: 26px; }
-          .members-section-desc { display: none; }
+          .members-bucket-grid { grid-template-columns: 1fr; gap: 10px; }
+          .members-bucket { min-height: auto; padding: 18px 18px 20px; }
         }
       ` }} />
 
@@ -331,17 +427,15 @@ export default function MembersPage() {
             </Link>
           )}
 
-          <div className="members-section-list">
-            {sections.map((s) => (
-              <Link key={s.href} href={s.href} className="members-section-item">
-                <div>
-                  <span className="members-section-en">{s.en}</span>
-                  <span className="members-section-vn">{s.vn}</span>
-                </div>
-                <div className="members-section-right">
-                  <span className="members-section-desc">{s.desc}</span>
-                  <span className="members-section-arrow">&rarr;</span>
-                </div>
+          <div className="members-bucket-grid">
+            {buckets.map(b => (
+              <Link key={b.href} href={b.href} className="members-bucket">
+                <div className="members-bucket-glyph" aria-hidden>{b.glyph}</div>
+                <div className="members-bucket-en">{b.en}</div>
+                <div className="members-bucket-vn">{b.vn}</div>
+                {b.primary && <div className="members-bucket-primary">{b.primary}</div>}
+                {b.secondary && <div className="members-bucket-secondary">{b.secondary}</div>}
+                <div className="members-bucket-arrow">&rarr;</div>
               </Link>
             ))}
           </div>

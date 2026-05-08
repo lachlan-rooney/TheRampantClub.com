@@ -153,7 +153,12 @@ export default function AgreementsPage() {
   }
 
   const revokeInvitation = async (id: string) => {
-    if (!window.confirm('Revoke this signing link? The existing URL will stop working immediately.')) return
+    if (!window.confirm(
+      'Revoke this signing link?\n\n' +
+      'The existing URL will stop working immediately and CANNOT be un-revoked. ' +
+      'You\'ll need to generate a new link if the prospect still wants to sign.\n\n' +
+      'Continue?'
+    )) return
     setBusyId(id)
     const r = await fetch('/api/admin/agreements/revoke', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
