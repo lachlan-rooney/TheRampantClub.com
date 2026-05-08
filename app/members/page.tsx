@@ -241,7 +241,7 @@ export default function MembersPage() {
           {!summary && <p className="members-email">{email}</p>}
 
           <div style={{ margin: '32px 0 40px' }}>
-            <TonightPanel showClubhouseCount />
+            <TonightPanel showClubhouseCount bg="green" />
           </div>
 
           {notices.length > 0 && (

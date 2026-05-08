@@ -27,10 +27,10 @@ function greetingFor(hour: number): string {
 
 export default function TonightPanel({
   showClubhouseCount = false,
-  variant = 'public',
+  bg = 'cream',
 }: {
   showClubhouseCount?: boolean
-  variant?: 'public' | 'members'
+  bg?: 'cream' | 'green'  // cream = light page bg (homepage), green = dark (members)
 }) {
   const [data, setData] = useState<TonightData | null>(null)
   const [hour, setHour] = useState(0)
@@ -58,20 +58,22 @@ export default function TonightPanel({
   }, [showClubhouseCount])
 
   const greeting = greetingFor(hour)
-  const isLight = variant === 'members'
-  const cream = isLight ? '#052E20' : '#E5D4C2'
-  const dim   = isLight ? '#5E6650' : '#B2AA98'
-  const accent = isLight ? '#28483C' : '#D4B85A'
+  const onCream = bg === 'cream'
+  const text  = onCream ? '#052E20' : '#E5D4C2'
+  const dim   = onCream ? '#5E6650' : '#B2AA98'
+  const accent = onCream ? '#28483C' : '#D4B85A'
 
   return (
     <div style={{
       padding: '36px 32px',
       borderRadius: 16,
-      background: isLight
-        ? 'linear-gradient(180deg, rgba(40,72,60,0.04), rgba(40,72,60,0.08))'
+      background: onCream
+        ? 'linear-gradient(180deg, rgba(5,46,32,0.04), rgba(5,46,32,0.10))'
         : 'linear-gradient(180deg, rgba(229,212,194,0.04), rgba(40,72,60,0.18))',
-      border: isLight ? '1px solid rgba(40,72,60,0.15)' : '1px solid rgba(229,212,194,0.12)',
-      boxShadow: '0 24px 48px rgba(5,46,32,0.18)',
+      border: onCream ? '1px solid rgba(5,46,32,0.18)' : '1px solid rgba(229,212,194,0.12)',
+      boxShadow: onCream
+        ? '0 14px 36px rgba(5,46,32,0.10)'
+        : '0 24px 48px rgba(5,46,32,0.18)',
       maxWidth: 720,
       margin: '0 auto',
     }}>
@@ -93,7 +95,7 @@ export default function TonightPanel({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 16, marginBottom: 26 }}>
         <h3 style={{
           fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-          fontSize: 26, fontWeight: 500, color: cream,
+          fontSize: 26, fontWeight: 500, color: text,
           letterSpacing: '0.02em', margin: 0,
         }}>
           {greeting}
@@ -114,11 +116,11 @@ export default function TonightPanel({
       </div>
 
       {/* Dram of the day */}
-      <Pick label="Dram of the day" cream={cream} dim={dim} accent={accent}
+      <Pick label="Dram of the day" text={text} dim={dim} accent={accent}
         title={data?.dram.label || '…'} note={data?.dram.note || ''} />
 
       {/* Vinyl */}
-      <Pick label="On the turntable" cream={cream} dim={dim} accent={accent}
+      <Pick label="On the turntable" text={text} dim={dim} accent={accent}
         title={data?.vinyl.label || '…'} note={data?.vinyl.note || ''} />
 
       {/* Quote */}
@@ -129,7 +131,7 @@ export default function TonightPanel({
           borderLeft: `2px solid ${accent}`,
           fontFamily: "'Rampant Sans', 'Playfair Display', serif",
           fontSize: 16, fontStyle: 'italic', lineHeight: 1.6,
-          color: cream, opacity: 0.92,
+          color: text, opacity: 0.92,
         }}>
           “{data.quote}”
         </blockquote>
@@ -138,14 +140,14 @@ export default function TonightPanel({
   )
 }
 
-function Pick({ label, title, note, cream, dim, accent }: {
+function Pick({ label, title, note, text, dim, accent }: {
   label: string; title: string; note: string
-  cream: string; dim: string; accent: string
+  text: string; dim: string; accent: string
 }) {
   return (
     <div style={{
       paddingTop: 14, paddingBottom: 14,
-      borderTop: `1px solid ${cream === '#E5D4C2' ? 'rgba(229,212,194,0.08)' : 'rgba(40,72,60,0.1)'}`,
+      borderTop: `1px solid ${text === '#052E20' ? 'rgba(5,46,32,0.1)' : 'rgba(229,212,194,0.08)'}`,
     }}>
       <div style={{
         fontFamily: "'Google Sans Code', monospace", fontSize: 9,
@@ -156,7 +158,7 @@ function Pick({ label, title, note, cream, dim, accent }: {
       </div>
       <div style={{
         fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-        fontSize: 18, fontWeight: 500, color: cream, marginBottom: 4,
+        fontSize: 18, fontWeight: 500, color: text, marginBottom: 4,
       }}>
         {title}
       </div>
