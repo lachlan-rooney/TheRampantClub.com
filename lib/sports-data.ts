@@ -37,11 +37,13 @@ export const MARQUEE: string[] = [
 ]
 
 // ── Sport-selector hero ────────────────────────────────────────
+// Glyphs are typographic (unicode symbols), not emoji — render in the brand
+// monospace and respect text colour.
 export const SPORTS: SportTab[] = [
-  { id: 'golf',    label: 'Golf',    vn: 'Golf',     glyph: '⛳', upcoming: 1 },
-  { id: 'tennis',  label: 'Tennis',  vn: 'Quần Vợt', glyph: '🎾', upcoming: 1 },
-  { id: 'padel',   label: 'Padel',   vn: 'Padel',    glyph: '🟦', upcoming: 1 },
-  { id: 'hash',    label: 'Hash',    vn: 'Chạy Bộ',  glyph: '🏃', upcoming: 1 },
+  { id: 'golf',    label: 'Golf',    vn: 'Golf',     glyph: '⊙', upcoming: 1 },
+  { id: 'tennis',  label: 'Tennis',  vn: 'Quần Vợt', glyph: '⊕', upcoming: 1 },
+  { id: 'padel',   label: 'Padel',   vn: 'Padel',    glyph: '▦', upcoming: 1 },
+  { id: 'hash',    label: 'Hash',    vn: 'Chạy Bộ',  glyph: '⟳', upcoming: 1 },
   { id: 'misc',    label: 'Other',   vn: 'Khác',     glyph: '◆',  upcoming: 6 },
 ]
 
@@ -92,26 +94,54 @@ export const WINNERS: Winner[] = [
   { trophy: 'rooftop-putting', year: 2026, winner: 'Legacy 014',    result: '−4 (54 putts)', notes: 'Wind: gusting. Spirits: high.' },
 ]
 
-// ── Bookmaker's odds ───────────────────────────────────────────
+// ── Bookmaker's odds (per sport) ───────────────────────────────
 export interface OddsRow { label: string; odds: string; commentary?: string }
-export const ODDS: { tournament: string; rows: OddsRow[] }[] = [
-  {
+export interface OddsBoard { tournament: string; rows: OddsRow[] }
+export const SPORT_ODDS: Record<string, OddsBoard> = {
+  golf: {
     tournament: 'The Rampant Cup 2027',
     rows: [
-      { label: 'Asia XI',          odds: '11/8',  commentary: 'Defending champions. Have not lost on home soil.' },
-      { label: 'Expat XV',         odds: '6/4',   commentary: 'Two new ringers from Singapore.' },
-      { label: 'The Captain\'s Pick', odds: '25/1', commentary: 'A wildcard. Bring sandwiches.' },
+      { label: 'Asia XI',             odds: '11/8',  commentary: 'Defending champions. Have not lost on home soil.' },
+      { label: 'Expat XV',            odds: '6/4',   commentary: 'Two new ringers from Singapore.' },
+      { label: "The Captain's Pick",  odds: '25/1',  commentary: 'A wildcard. Bring sandwiches.' },
     ],
   },
-  {
+  tennis: {
     tournament: 'The Sài Gòn Open 2027',
     rows: [
-      { label: 'Defending champions', odds: '5/2' },
+      { label: 'Defending champions', odds: '5/2',   commentary: 'White-clothing veterans.' },
       { label: 'The field',           odds: '3/1' },
-      { label: 'Anyone in white',     odds: '8/1' },
+      { label: 'Anyone in white',     odds: '8/1',   commentary: 'A statement of decorum, not skill.' },
     ],
   },
-]
+  padel: {
+    tournament: 'The Padel Cup 2026',
+    rows: [
+      { label: 'Pioneer 027',         odds: '7/4',   commentary: 'Just back from Barcelona. Insufferable.' },
+      { label: 'The Sports Secretary', odds: '12/1', commentary: 'Still learning the rules.' },
+      { label: 'Anyone with no ego',  odds: '500/1', commentary: 'No takers known.' },
+    ],
+  },
+  hash: {
+    tournament: 'The Saturday Hash',
+    rows: [
+      { label: 'Distance under 5km',  odds: '4/6',   commentary: 'Heavy favourite.' },
+      { label: 'Stop for cà phê',     odds: '3/1',   commentary: 'Frowned upon. Has precedent.' },
+      { label: 'Someone gets lost',   odds: 'Evens', commentary: 'Always.' },
+    ],
+  },
+  misc: {
+    tournament: "The Chairman's Backgammon Invitational",
+    rows: [
+      { label: 'The Chairman',         odds: '4/5',   commentary: 'It is, after all, his invitational.' },
+      { label: 'A new challenger',     odds: '7/2' },
+      { label: 'Disputed double',      odds: 'On',    commentary: 'Settled, as ever, by the Captain.' },
+    ],
+  },
+}
+
+// Legacy export (keep for any old imports — same data flattened).
+export const ODDS: OddsBoard[] = Object.values(SPORT_ODDS)
 
 // ── Captain's Column rotating aphorisms ────────────────────────
 export const CAPTAINS_COLUMN: string[] = [

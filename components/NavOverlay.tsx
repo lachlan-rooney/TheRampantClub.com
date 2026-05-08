@@ -235,14 +235,19 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
             top: 60px;
             left: 16px;
             padding: 16px 20px;
-            background: rgba(94, 102, 80, 0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            /* Public (cream page) — light cream box with dark ink */
+            background: rgba(242, 229, 210, 0.94);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
             border-radius: 8px;
-            border: 1px solid rgba(229, 212, 194, 0.15);
+            border: 1px solid rgba(5, 46, 32, 0.10);
+            box-shadow: 0 18px 36px rgba(5, 46, 32, 0.15);
           }
           .nav-dark .nav-menu {
-            background: rgba(94, 102, 80, 0.85);
+            /* Members (deep green page) — inverted: deep-green box, cream ink */
+            background: rgba(5, 46, 32, 0.94);
+            border: 1px solid rgba(229, 212, 194, 0.18);
+            box-shadow: 0 18px 36px rgba(0, 0, 0, 0.45);
           }
           .nav-logo { display: none !important; }
         }

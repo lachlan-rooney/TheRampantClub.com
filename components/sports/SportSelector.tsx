@@ -1,6 +1,7 @@
 'use client'
 
 import { SPORTS } from '@/lib/sports-data'
+import SportIcon from './SportIcons'
 
 // Tile strip below the page title. Click a tile → smooth-scroll to that
 // section's anchor on the page. Highlights its sport name and upcoming count.
@@ -42,10 +43,16 @@ export default function SportSelector() {
           box-shadow: 0 12px 24px rgba(5,46,32,0.10);
         }
         .sport-tile-glyph {
-          font-size: 22px;
-          line-height: 1;
-          margin-bottom: 6px;
-          filter: grayscale(0.2);
+          color: #5E6650;
+          line-height: 0;
+          margin: 0 auto 10px;
+          opacity: 0.85;
+          transition: color 0.3s, transform 0.3s, opacity 0.3s;
+        }
+        .sport-tile:hover .sport-tile-glyph {
+          color: #052E20;
+          opacity: 1;
+          transform: translateY(-1px);
         }
         .sport-tile-label {
           font-family: 'Rampant Sans', serif;
@@ -63,12 +70,15 @@ export default function SportSelector() {
           letter-spacing: 0.08em;
         }
         .sport-tile-count {
-          margin-top: 8px;
+          margin: 10px auto 0;
+          display: inline-block;
           font-family: 'Google Sans Code', monospace;
           font-size: 9px;
-          color: #D4B85A;
+          color: #052E20;
           letter-spacing: 0.06em;
-          font-weight: 600;
+          background: rgba(5, 46, 32, 0.08);
+          padding: 3px 9px;
+          border-radius: 10px;
         }
         @media (max-width: 600px) {
           .sport-selector {
@@ -81,7 +91,7 @@ export default function SportSelector() {
       <div className="sport-selector" role="navigation" aria-label="Sport selector">
         {SPORTS.map(s => (
           <a key={s.id} href={`#${s.id}`} onClick={onClick(s.id)} className="sport-tile">
-            <div className="sport-tile-glyph" aria-hidden>{s.glyph}</div>
+            <div className="sport-tile-glyph" aria-hidden><SportIcon id={s.id} size={28} /></div>
             <div className="sport-tile-label">{s.label}</div>
             <div className="sport-tile-vn">{s.vn}</div>
             {s.upcoming > 0 && (

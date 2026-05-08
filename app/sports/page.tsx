@@ -6,9 +6,9 @@ import CaptainsMarquee from '@/components/sports/CaptainsMarquee'
 import SportSelector from '@/components/sports/SportSelector'
 import CaptainsColumn from '@/components/sports/CaptainsColumn'
 import TrophyCabinet from '@/components/sports/TrophyCabinet'
-import BookmakersOdds from '@/components/sports/BookmakersOdds'
 import OnNowRibbon from '@/components/sports/OnNowRibbon'
 import ExpressInterest from '@/components/sports/ExpressInterest'
+import SportOdds from '@/components/sports/SportOdds'
 
 // ── Scroll-reveal wrapper ────────────────────────────────────────
 function Reveal({ children, delay = 0 }: { children: ReactNode; delay?: number }) {
@@ -87,6 +87,7 @@ function Detail({ label, value }: { label: string; value: string }) {
 // ── Sport section ────────────────────────────────────────────────
 function SportSection({
   id,
+  sportId,
   title,
   vn,
   copy,
@@ -95,6 +96,7 @@ function SportSection({
   image,
 }: {
   id?: string
+  sportId?: string
   title: string
   vn: string
   copy: string[]
@@ -172,6 +174,7 @@ function SportSection({
             ))}
           </div>
         )}
+        {sportId && <SportOdds sport={sportId} />}
       </div>
     </Reveal>
   )
@@ -280,11 +283,12 @@ export default function SportsPage() {
           {/* ── Golf ── */}
           <SportSection
             id="golf"
+            sportId="golf"
             title="The Rampant Cup"
             vn="Giải Golf Rampant"
             delay={0.1}
             copy={[
-              "The Club's annual invitational golf tournament, held each November at a course the Committee declines to name in advance. Thirty-six holes. Match play. One trophy. Incredible prizes. No mulligans.",
+              "The Club's annual invitational golf tournament, held each June at a course the Committee declines to name in advance. Thirty-six holes. Match play. One trophy. Incredible prizes. No mulligans.",
               "The Rampant Cup is contested Ryder Cup–style between two teams — Asia and Expat — selected by the Captain, not by handicap, and certainly not by request. Team composition has, on occasion, been described as \u201Cpolitical\u201D. The Captain considers this a compliment.",
               "Format: Four-ball, foursomes, and singles across two days. Black tie dinner on the eve. Dress code on-course: smart. Dress code at dinner: smarter.",
               "Past venues have included The Bluffs, courses in Đà Lạt and Phan Thiết, and one memorable occasion in Hội An during which the second-day tee time was delayed by forty-five minutes due to an internal dispute over whether the team ball should be the Pro V1 or the Pro V1x. The matter remains unresolved.",
@@ -311,6 +315,7 @@ export default function SportsPage() {
           {/* ── Tennis ── */}
           <SportSection
             id="tennis"
+            sportId="tennis"
             title="The Sài Gòn Open"
             vn="Giải Quần Vợt Sài Gòn"
             delay={0.1}
@@ -340,6 +345,7 @@ export default function SportsPage() {
           {/* ── Padel ── */}
           <SportSection
             id="padel"
+            sportId="padel"
             title="The Rampant Padel Club"
             vn="Câu Lạc Bộ Padel Rampant"
             delay={0.1}
@@ -361,6 +367,7 @@ export default function SportsPage() {
           {/* ── Hash ── */}
           <SportSection
             id="hash"
+            sportId="hash"
             title="The Rampant Hash"
             vn="Nhóm Chạy Rampant"
             delay={0.1}
@@ -420,6 +427,7 @@ export default function SportsPage() {
                 </div>
               ))}
             </div>
+            <SportOdds sport="misc" />
           </Reveal>
 
           {/* ── Closing ── */}
@@ -480,9 +488,6 @@ export default function SportsPage() {
       <div style={{ background: '#052E20', borderTop: '1px solid rgba(229,212,194,0.08)' }}>
         <TrophyCabinet />
       </div>
-
-      {/* ── Bookmaker's odds (has its own cream bg) ── */}
-      <BookmakersOdds />
 
       {/* ── Express Interest (has its own deep green bg) ── */}
       <ExpressInterest />
