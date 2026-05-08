@@ -118,7 +118,7 @@ export default function AtlasGlobe({ counts, onSelect, height = 560 }: Props) {
         arcDashAnimateTime={2200}
         arcStroke={0.4}
 
-        onGlobeReady={() => setReady(true)}
+        onGlobeReady={() => queueMicrotask(() => setReady(true))}
       />
     </div>
   )

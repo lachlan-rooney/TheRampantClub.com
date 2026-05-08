@@ -105,9 +105,9 @@ export default function AtlasPage() {
 
         .atl-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-          gap: 20px;
-          padding: 60px 32px 120px;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 12px;
+          padding: 40px 24px 80px;
           max-width: 1200px;
           margin: 0 auto;
         }
@@ -115,8 +115,8 @@ export default function AtlasPage() {
         .atl-card {
           background: rgba(5, 46, 32, 0.04);
           border: 1px solid rgba(5, 46, 32, 0.08);
-          border-radius: 12px;
-          padding: 24px;
+          border-radius: 10px;
+          padding: 14px 16px;
           cursor: pointer;
           transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
                       background 0.35s ease,
@@ -124,62 +124,65 @@ export default function AtlasPage() {
                       box-shadow 0.35s ease;
         }
         .atl-card:hover {
-          transform: translateY(-4px);
+          transform: translateY(-3px);
           background: rgba(5, 46, 32, 0.07);
           border-color: rgba(212, 184, 90, 0.4);
-          box-shadow: 0 18px 36px rgba(5, 46, 32, 0.12);
+          box-shadow: 0 12px 24px rgba(5, 46, 32, 0.1);
         }
         .atl-card-header {
-          display: flex; align-items: center; gap: 12px;
-          margin-bottom: 14px;
+          display: flex; align-items: center; gap: 10px;
+          margin-bottom: 8px;
         }
-        .atl-flag { font-size: 28px; line-height: 1; }
+        .atl-flag { font-size: 20px; line-height: 1; }
         .atl-card-name {
           font-family: 'Rampant Sans', 'Playfair Display', serif;
-          font-size: 22px;
+          font-size: 16px;
           font-weight: 500;
           color: var(--atl-green-deep);
           letter-spacing: 0.02em;
         }
         .atl-card-native {
           font-family: 'Google Sans Code', monospace;
-          font-size: 10px;
+          font-size: 9px;
           color: var(--atl-cream-dim);
           letter-spacing: 0.06em;
-          margin-top: 2px;
+          margin-top: 1px;
         }
         .atl-card-blurb {
           font-family: 'Google Sans Code', monospace;
-          font-size: 12px;
-          line-height: 1.7;
+          font-size: 11px;
+          line-height: 1.55;
           color: var(--atl-green-accent);
           opacity: 0.85;
-          margin-bottom: 14px;
-          min-height: 60px;
+          margin-bottom: 8px;
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
         }
-        .atl-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+        .atl-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
         .atl-chip {
           font-family: 'Google Sans Code', monospace;
-          font-size: 9px;
-          letter-spacing: 0.06em;
-          padding: 4px 10px;
-          border-radius: 12px;
+          font-size: 8px;
+          letter-spacing: 0.05em;
+          padding: 3px 7px;
+          border-radius: 10px;
           background: rgba(212, 184, 90, 0.12);
           color: var(--atl-green-mid);
         }
         .atl-card-footer {
           font-family: 'Google Sans Code', monospace;
-          font-size: 10px;
+          font-size: 9px;
           color: var(--atl-green-accent);
           opacity: 0.7;
-          padding-top: 12px;
+          padding-top: 8px;
           border-top: 1px solid rgba(5, 46, 32, 0.08);
           display: flex; justify-content: space-between; align-items: center;
         }
         .atl-card-count {
           color: var(--atl-gold);
           font-weight: 600;
-          font-size: 11px;
+          font-size: 10px;
           letter-spacing: 0.04em;
         }
 
@@ -236,8 +239,8 @@ export default function AtlasPage() {
           <div className="atl-eyebrow">Bản Đồ Whisky · The Atlas</div>
           <h1 className="atl-title">What&rsquo;s currently stocked in the club?</h1>
           <p className="atl-sub">
-            Every region the Rampant Room draws from — its character, its distilleries, and how many bottles
-            we currently keep on the shelf.
+            Members constantly bring new whiskies into the club. Tap a region to see its character,
+            signature distilleries, and how many bottles are on the shelf right now.
           </p>
         </section>
 
@@ -262,7 +265,7 @@ export default function AtlasPage() {
               </div>
               <div className="atl-card-blurb">{r.blurb}</div>
               <div className="atl-chips">
-                {r.character.slice(0, 4).map(c => (
+                {r.character.slice(0, 3).map(c => (
                   <span key={c} className="atl-chip">{c}</span>
                 ))}
               </div>
