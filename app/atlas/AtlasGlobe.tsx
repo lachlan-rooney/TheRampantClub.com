@@ -21,7 +21,6 @@ export default function AtlasGlobe({ counts, onSelect, height = 560 }: Props) {
   const ref = useRef<GlobeMethods | undefined>(undefined)
   const containerRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
-  const [ready, setReady] = useState(false)
 
   // Track container width
   useEffect(() => {
@@ -52,23 +51,33 @@ export default function AtlasGlobe({ counts, onSelect, height = 560 }: Props) {
       endLat: HOME.lat, endLng: HOME.lng,
     })), [markers])
 
-  // Initial camera + auto-rotate, once Globe is ready and width is known
+  // Initial camera + auto-rotate. Poll until the Globe ref is wired up by
+  // react-globe.gl, since onGlobeReady can fire synchronously during render
+  // (which would warn about state updates on an unmounted component).
   useEffect(() => {
-    const g = ref.current
-    if (!g || !ready || width === 0) return
-    try {
-      g.pointOfView({ lat: 28, lng: 80, altitude: 2.4 }, 0)
-      const controls = g.controls() as { autoRotate: boolean; autoRotateSpeed: number; enableZoom: boolean }
-      controls.autoRotate = true
-      controls.autoRotateSpeed = 0.35
-      controls.enableZoom = true
-      const renderer = g.renderer()
-      const stop = () => { controls.autoRotate = false }
-      renderer.domElement.addEventListener('pointerdown', stop, { once: true })
-    } catch (err) {
-      console.warn('[AtlasGlobe] init', err)
+    if (!width) return
+    let cancelled = false
+    let raf = 0
+    const init = () => {
+      if (cancelled) return
+      const g = ref.current
+      if (!g) { raf = requestAnimationFrame(init); return }
+      try {
+        g.pointOfView({ lat: 28, lng: 80, altitude: 2.4 }, 0)
+        const controls = g.controls() as { autoRotate: boolean; autoRotateSpeed: number; enableZoom: boolean }
+        controls.autoRotate = true
+        controls.autoRotateSpeed = 0.35
+        controls.enableZoom = true
+        const renderer = g.renderer()
+        const stop = () => { controls.autoRotate = false }
+        renderer.domElement.addEventListener('pointerdown', stop, { once: true })
+      } catch (err) {
+        console.warn('[AtlasGlobe] init', err)
+      }
     }
-  }, [ready, width])
+    init()
+    return () => { cancelled = true; cancelAnimationFrame(raf) }
+  }, [width])
 
   // Always render — let the globe size to 0×height initially, expand as soon as
   // we have a real width. Avoids the "never mounts because width was 0" trap.
@@ -117,8 +126,6 @@ export default function AtlasGlobe({ counts, onSelect, height = 560 }: Props) {
         arcDashGap={0.6}
         arcDashAnimateTime={2200}
         arcStroke={0.4}
-
-        onGlobeReady={() => queueMicrotask(() => setReady(true))}
       />
     </div>
   )

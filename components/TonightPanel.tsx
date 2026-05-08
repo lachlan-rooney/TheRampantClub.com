@@ -122,20 +122,6 @@ export default function TonightPanel({
       {/* Vinyl */}
       <Pick label="On the turntable" text={text} dim={dim} accent={accent}
         title={data?.vinyl.label || '…'} note={data?.vinyl.note || ''} />
-
-      {/* Quote */}
-      {data?.quote && (
-        <blockquote style={{
-          margin: '24px 0 0',
-          padding: '18px 22px',
-          borderLeft: `2px solid ${accent}`,
-          fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-          fontSize: 16, fontStyle: 'italic', lineHeight: 1.6,
-          color: text, opacity: 0.92,
-        }}>
-          “{data.quote}”
-        </blockquote>
-      )}
     </div>
   )
 }
