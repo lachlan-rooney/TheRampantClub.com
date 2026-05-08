@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import NavOverlay from '@/components/NavOverlay'
-import Footer from '@/components/Footer'
 
 // /origin — long-form story page. The copy below is intentionally editable;
 // treat it as scaffolding to be tuned by the founders.
@@ -19,7 +18,6 @@ const CHAPTERS = [
       `Our lion is both. Scottish in posture, Vietnamese in purpose. The crest watches from above the door,
        and the room behind it answers to its standard.`,
     ],
-    pullquote: 'Scottish in posture. Vietnamese in purpose.',
   },
   {
     eyebrow: 'II.  The Building',
@@ -33,7 +31,6 @@ const CHAPTERS = [
        It asked to be a clubhouse.`,
       `The restoration was patient. Nothing erased; much restored. Where we built new, we built quietly.`,
     ],
-    pullquote: 'Nothing erased; much restored.',
   },
   {
     eyebrow: 'III.  The Founders',
@@ -47,20 +44,18 @@ const CHAPTERS = [
        liked, to share generously, to not be sold to.`,
       `So we built one.`,
     ],
-    pullquote: 'The best evenings had no menu.',
   },
   {
     eyebrow: 'IV.  The Idea',
     title: 'Sustained by its members, not for profit',
     body: [
       `The Rampant Club is a members' club in the strict sense. It exists for the people who belong to it,
-       and is paid for by them. Profit is not a goal of the institution; the cabinet is.`,
+       and is paid for by them. Profit is not a goal of the institution; the community is.`,
       `Members may pour any bottle. They may bring guests within reason. They may use the spaces as they
-       would their own — quietly, attentively, without fuss. There are house rules, but few; the room
+       would their own — quietly, attentively, without fuss. There are house rules, but few; the club
        largely keeps itself.`,
       `We are private by design and discreet by habit. What happens in the Library Bar stays in the Library Bar.`,
     ],
-    pullquote: 'The cabinet is the goal.',
   },
 ]
 
@@ -134,27 +129,26 @@ export default function OriginPage() {
         }
         .org-eyebrow {
           font-family: 'Google Sans Code', monospace;
-          font-size: 10px;
-          color: var(--org-green-accent);
-          letter-spacing: 0.32em;
-          text-transform: uppercase;
-          margin-bottom: 24px;
+          font-size: 11px;
+          color: var(--org-cream-dim);
+          letter-spacing: 0.06em;
+          margin-bottom: 16px;
         }
         .org-hero-title {
           font-family: 'Rampant Sans', 'Playfair Display', serif;
-          font-size: clamp(48px, 8vw, 96px);
-          font-weight: 400;
+          font-size: clamp(32px, 5vw, 48px);
+          font-weight: 500;
           color: var(--org-green-deep);
-          line-height: 1;
-          letter-spacing: -0.01em;
-          margin: 0 0 36px;
+          line-height: 1.1;
+          letter-spacing: 0.02em;
+          margin: 0 0 24px;
         }
         .org-hero-sub {
           font-family: 'Google Sans Code', monospace;
-          font-size: 13px; line-height: 1.8;
-          color: var(--org-green-accent);
-          opacity: 0.75;
-          max-width: 480px; margin: 0 auto;
+          font-size: 12px; line-height: 1.8;
+          color: var(--org-cream-dim);
+          letter-spacing: 0.04em;
+          max-width: 460px; margin: 0 auto;
         }
         .org-hero-divider {
           width: 1px; height: 60px;
@@ -180,40 +174,28 @@ export default function OriginPage() {
         }
         .org-chapter-eyebrow {
           font-family: 'Google Sans Code', monospace;
-          font-size: 10px;
-          color: var(--org-gold);
-          letter-spacing: 0.24em;
-          text-transform: uppercase;
-          margin-bottom: 18px;
+          font-size: 11px;
+          color: var(--org-cream-dim);
+          letter-spacing: 0.06em;
+          margin-bottom: 8px;
         }
         .org-chapter-title {
           font-family: 'Rampant Sans', 'Playfair Display', serif;
-          font-size: clamp(28px, 4vw, 44px);
-          font-weight: 400;
+          font-size: 28px;
+          font-weight: 500;
           color: var(--org-green-deep);
-          line-height: 1.15;
-          margin: 0 0 32px;
-          letter-spacing: -0.005em;
+          line-height: 1.2;
+          margin: 0 0 28px;
+          letter-spacing: 0.02em;
         }
         .org-chapter-body p {
           font-family: 'Google Sans Code', monospace;
-          font-size: 14px;
-          line-height: 2;
+          font-size: 13px;
+          line-height: 1.9;
           color: var(--org-green-accent);
           opacity: 0.85;
-          margin: 0 0 22px;
+          margin: 0 0 20px;
         }
-        .org-pullquote {
-          font-family: 'Rampant Sans', 'Playfair Display', serif;
-          font-size: clamp(20px, 2.4vw, 28px);
-          font-style: italic;
-          color: var(--org-green-mid);
-          line-height: 1.45;
-          margin: 32px 0 0;
-          padding-left: 24px;
-          border-left: 2px solid var(--org-gold);
-        }
-
         .org-closing {
           padding: 120px 32px;
           background: var(--org-green-deep);
@@ -222,16 +204,17 @@ export default function OriginPage() {
         }
         .org-closing-title {
           font-family: 'Rampant Sans', 'Playfair Display', serif;
-          font-size: clamp(32px, 5vw, 56px);
-          font-weight: 400;
-          margin: 0 0 24px;
-          letter-spacing: -0.005em;
+          font-size: 28px;
+          font-weight: 500;
+          margin: 0 0 20px;
+          letter-spacing: 0.02em;
         }
         .org-closing-text {
           font-family: 'Google Sans Code', monospace;
-          font-size: 13px; line-height: 1.9;
+          font-size: 12px; line-height: 1.8;
           color: var(--org-cream-dim);
           max-width: 540px; margin: 0 auto;
+          letter-spacing: 0.04em;
         }
         .org-closing-link {
           display: inline-block;
@@ -253,9 +236,10 @@ export default function OriginPage() {
 
         .org-lion-mark {
           display: block;
-          width: 88px; height: auto;
-          margin: 0 auto 32px;
-          opacity: 0.85;
+          width: clamp(220px, 38vw, 360px);
+          height: auto;
+          margin: 0 auto 40px;
+          filter: drop-shadow(0 18px 40px rgba(5, 46, 32, 0.18));
         }
 
         @media (max-width: 720px) {
@@ -271,9 +255,9 @@ export default function OriginPage() {
         <section className="org-hero">
           <div className="org-hero-inner">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/lion-signature-opt.png" alt="" className="org-lion-mark" />
+            <img src="/images/Lion-opt.png" alt="The Rampant Lion" className="org-lion-mark" />
             <div className="org-eyebrow">Nguồn Gốc · The Origin</div>
-            <h1 className="org-hero-title">A house, a lion, an idea.</h1>
+            <h1 className="org-hero-title">A townhouse, a lion, an idea.</h1>
             <p className="org-hero-sub">
               How a Scottish-Vietnamese clubhouse came to occupy a five-storey townhouse in District 1,
               and what it intends to do there.
@@ -296,7 +280,6 @@ export default function OriginPage() {
               <div className="org-chapter-body">
                 {c.body.map((p, j) => <p key={j}>{p}</p>)}
               </div>
-              <div className="org-pullquote">{c.pullquote}</div>
             </div>
           </section>
         ))}
@@ -305,13 +288,11 @@ export default function OriginPage() {
           <div className="org-closing-title">Membership is by invitation or referral only.</div>
           <p className="org-closing-text">
             We do not advertise. We do not accept applications. If The Rampant Club is for you, we will
-            most likely meet through a Rampant you already know.
+            most likely meet through one of our Lions.
           </p>
           <a href="/" className="org-closing-link">Return to the front door</a>
         </section>
       </main>
-
-      <Footer />
     </>
   )
 }
