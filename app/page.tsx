@@ -4,6 +4,8 @@ import { useRef, useCallback, useEffect, useState } from 'react'
 import NavOverlay from '@/components/NavOverlay'
 import LiveTicker from '@/components/LiveTicker'
 import TonightPanel from '@/components/TonightPanel'
+import Spotlight from '@/components/Spotlight'
+import TimeOfDayTint from '@/components/TimeOfDayTint'
 import useEasterEggs from '@/hooks/useEasterEggs'
 
 // ═══════════════════════════════════════════════════════════════════
@@ -246,7 +248,7 @@ function DraggableImage({
 
 // ─── Main Page ───────────────────────────────────────────────────
 export default function HomePage() {
-  useEasterEggs()
+  const easterEggs = useEasterEggs()
   useEffect(() => { window.scrollTo(0, 0) }, [])
   const [images, setImages] = useState<MoodboardImage[]>([])
   const [showGrid, setShowGrid] = useState(false)
@@ -396,6 +398,7 @@ export default function HomePage() {
           gap: 0.6em;
           opacity: 0;
           transition: opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+          position: relative;
         }
         .trc-flow.loaded { opacity: 1; }
 
@@ -585,6 +588,8 @@ export default function HomePage() {
 
       <NavOverlay variant="public" />
       <LiveTicker />
+      <TimeOfDayTint />
+      {easterEggs}
 
       <div className="trc-page" onMouseMove={onMouseMove}>
         <div className="trc-vignette" />
@@ -788,6 +793,7 @@ export default function HomePage() {
 
         {/* ══════ 3. MOODBOARD ══════ */}
         <div className={`trc-flow ${loaded ? 'loaded' : ''}`}>
+          <Spotlight size={420} />
           {images.length === 0 && loaded && (
             <div className="trc-empty">
               <p>Nothing here yet</p>
