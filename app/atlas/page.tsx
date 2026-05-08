@@ -89,15 +89,15 @@ export default function AtlasPage() {
 
         .atl-globe-wrap {
           position: relative;
-          background: radial-gradient(ellipse at center, #0a3a28 0%, #052E20 70%, #021810 100%);
-          padding: 24px 0 32px;
-          margin-top: 24px;
+          background: radial-gradient(ellipse at center, #F2E5D2 0%, var(--atl-cream) 70%, #DBC9B4 100%);
+          padding: 12px 0 20px;
+          margin-top: 16px;
         }
         .atl-globe-hint {
           text-align: center;
           font-family: 'Google Sans Code', monospace;
           font-size: 10px;
-          color: rgba(229,212,194,0.45);
+          color: rgba(5,46,32,0.5);
           letter-spacing: 0.18em;
           text-transform: uppercase;
           margin-top: 12px;
@@ -234,15 +234,15 @@ export default function AtlasPage() {
       <main>
         <section className="atl-hero">
           <div className="atl-eyebrow">Bản Đồ Whisky · The Atlas</div>
-          <h1 className="atl-title">A whisky map of the world.</h1>
+          <h1 className="atl-title">What&rsquo;s currently stocked in the club?</h1>
           <p className="atl-sub">
-            Every region the cabinet draws from — its character, its distilleries, and how many bottles
+            Every region the Rampant Room draws from — its character, its distilleries, and how many bottles
             we currently keep on the shelf.
           </p>
         </section>
 
         <section className="atl-globe-wrap">
-          <AtlasGlobe counts={counts} onSelect={setActive} />
+          <AtlasGlobe counts={counts} onSelect={setActive} height={420} />
           <div className="atl-globe-hint">
             Drag to spin · scroll to zoom · tap a marker
           </div>
@@ -270,7 +270,7 @@ export default function AtlasPage() {
                 <span>{r.country}</span>
                 {counts[r.key] > 0 && (
                   <span className="atl-card-count">
-                    {counts[r.key]} {counts[r.key] === 1 ? 'bottle' : 'bottles'} in cabinet
+                    {counts[r.key]} {counts[r.key] === 1 ? 'bottle' : 'bottles'} in the Rampant Room
                   </span>
                 )}
               </div>
@@ -327,7 +327,7 @@ export default function AtlasPage() {
             </Section>
 
             {counts[active.key] > 0 && (
-              <Section title="In the cabinet">
+              <Section title="In the Rampant Room">
                 <div style={{
                   fontFamily: "'Rampant Sans', 'Playfair Display', serif",
                   fontSize: 22, fontWeight: 500, color: 'var(--atl-gold)',

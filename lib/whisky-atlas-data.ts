@@ -1,4 +1,4 @@
-// Curated descriptions for each whisky region we tag in the cabinet.
+// Curated descriptions for each whisky region we tag in the Rampant Room.
 // Region keys must match the strings used in admin/whisky's REGIONS array.
 
 export interface AtlasRegion {
@@ -183,7 +183,7 @@ export const ATLAS_REGIONS: AtlasRegion[] = [
     name: 'Elsewhere',
     country: 'World',
     flag: '🌍',
-    blurb: 'Taiwan, India, Sweden, France, the rest of the whisky-making world. Often the most exciting bottles in the cabinet.',
+    blurb: 'Taiwan, India, Sweden, France, the rest of the whisky-making world. Often the most exciting bottles in the Rampant Room.',
     character: ['tropical', 'experimental', 'rare'],
     distilleries: ['Kavalan (Taiwan)', 'Amrut (India)', 'Mackmyra (Sweden)', 'Penderyn (Wales)'],
     lat: 23.69, lng: 120.96,    // Taiwan as representative
