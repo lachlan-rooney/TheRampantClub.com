@@ -116,6 +116,27 @@ export const ATLAS_REGIONS: AtlasRegion[] = [
     lat: 38.04, lng: -84.50,    // Lexington, KY
   },
   {
+    key: 'Canada',
+    name: 'Canada',
+    country: 'Canada',
+    flag: '🇨🇦',
+    blurb: 'Rye is the soul of Canadian whisky — long-aged, lean, often the best-kept secret in North America.',
+    character: ['rye', 'lean', 'long-aged', 'spice'],
+    distilleries: ['Crown Royal', 'Lot 40', 'Pike Creek', 'Forty Creek', 'Alberta Premium'],
+    lat: 45.42, lng: -75.70,    // Ottawa
+  },
+  {
+    key: 'Mexico',
+    name: 'Mexico',
+    native: 'México',
+    country: 'Mexico',
+    flag: '🇲🇽',
+    blurb: 'A young scene leaning into Mexican corn varietals — Abasolo distils ancestral Cacahuazintle maize for whisky unlike any other.',
+    character: ['corn', 'nixtamal', 'distinctive', 'emerging'],
+    distilleries: ['Abasolo', 'Sierra Norte', 'Mestizo'],
+    lat: 19.43, lng: -99.13,    // Mexico City
+  },
+  {
     key: 'Australia',
     name: 'Australia',
     country: 'Australia',
@@ -234,13 +255,57 @@ export const ATLAS_REGIONS: AtlasRegion[] = [
     lat: 52.13, lng: -3.78,
   },
   {
+    key: 'Germany',
+    name: 'Germany',
+    native: 'Deutschland',
+    country: 'Germany',
+    flag: '🇩🇪',
+    blurb: 'Bavarian distillers like Slyrs took Scotch traditions and ran them through Alpine spring water and beech-smoked malt.',
+    character: ['malt', 'beech-smoke', 'Alpine', 'precise'],
+    distilleries: ['Slyrs', 'St. Kilian', 'Finch'],
+    lat: 47.68, lng: 11.85,    // Bavaria
+  },
+  {
+    key: 'Netherlands',
+    name: 'Netherlands',
+    native: 'Nederland',
+    country: 'Netherlands',
+    flag: '🇳🇱',
+    blurb: 'Dutch distillers turned grain-spirit roots (genever, korenwijn) into a flourishing single-malt scene led by Millstone.',
+    character: ['rye', 'grain', 'soft', 'oak-driven'],
+    distilleries: ['Millstone', 'Sculte', 'Westland Holland'],
+    lat: 52.13, lng: 5.29,
+  },
+  {
+    key: 'Switzerland',
+    name: 'Switzerland',
+    native: 'Schweiz',
+    country: 'Switzerland',
+    flag: '🇨🇭',
+    blurb: 'Beer-cask aged Säntis Malt and Alpine micro-distilleries — small output, distinctive character, glacial water.',
+    character: ['Alpine', 'beer-cask', 'mountain', 'rare'],
+    distilleries: ['Säntis Malt', 'Langatun', 'Macardo'],
+    lat: 46.80, lng: 8.23,
+  },
+  {
+    key: 'Czechia',
+    name: 'Czech Republic',
+    native: 'Česko',
+    country: 'Czechia',
+    flag: '🇨🇿',
+    blurb: 'A young scene with old roots. Hammer Head was the first Czech single malt; Gold Cock and others followed.',
+    character: ['light', 'malt', 'crisp', 'central-european'],
+    distilleries: ['Hammer Head', 'Gold Cock', 'Trebitsch'],
+    lat: 49.82, lng: 15.47,
+  },
+  {
     key: 'Other',
     name: 'Elsewhere',
     country: 'World',
     flag: '🌍',
-    blurb: 'The rest of the whisky-making world — German, Dutch, Swiss, Czech and beyond. Where the most surprising bottles in the Rampant Room come from.',
+    blurb: 'Everywhere else the still has reached — and the most surprising bottles in the Rampant Room often come from there.',
     character: ['rare', 'experimental', 'one-off'],
-    distilleries: ['Slyrs (Germany)', 'Millstone (Netherlands)', 'Säntis Malt (Switzerland)'],
-    lat: 50.00, lng: 10.00,    // Central Europe
+    distilleries: ['—'],
+    lat: -15, lng: -55,    // over South America
   },
 ]

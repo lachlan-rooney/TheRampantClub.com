@@ -27,6 +27,18 @@ export default async function SignPage({
     notFound()
   }
 
+  // Track that the prospect opened the link. Don't block render on it.
+  supabase
+    .from('signing_invitations')
+    .update({
+      viewed_at: invitation.viewed_at ?? new Date().toISOString(),
+      view_count: (invitation.view_count ?? 0) + 1,
+    })
+    .eq('id', invitation.id)
+    .then(({ error: updErr }) => {
+      if (updErr) console.warn('Failed to track invitation view:', updErr)
+    })
+
   return (
     <MembershipSigning
       token={token}

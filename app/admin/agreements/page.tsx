@@ -12,6 +12,11 @@ interface Invitation {
   status: string
   created_at: string
   expires_at: string
+  viewed_at: string | null
+  view_count: number | null
+  last_reminded_at: string | null
+  reminder_count: number | null
+  revoked_at: string | null
 }
 
 interface SignedAgreement {
@@ -56,6 +61,10 @@ export default function AgreementsPage() {
   const [generatedLink, setGeneratedLink] = useState('')
   const [copied, setCopied] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'pending' | 'signed' | 'revoked' | 'all'>('all')
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'legacy' | 'pioneer' | 'corporate'>('all')
+  const [busyId, setBusyId] = useState<string | null>(null)
 
   const supabase = createBrowserSupabaseClient()
 
@@ -119,6 +128,62 @@ export default function AgreementsPage() {
   const formatDate = (d: string) => new Date(d).toLocaleDateString('en-GB', {
     day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   })
+  const relative = (d: string | null) => {
+    if (!d) return null
+    const ms = Date.now() - new Date(d).getTime()
+    const mins = Math.round(ms / 60_000)
+    if (mins < 60) return `${mins}m ago`
+    const hrs = Math.round(mins / 60)
+    if (hrs < 24) return `${hrs}h ago`
+    const days = Math.round(hrs / 24)
+    return `${days}d ago`
+  }
+
+  const sendReminder = async (id: string) => {
+    setBusyId(id)
+    const r = await fetch('/api/admin/agreements/remind', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invitation_id: id }),
+    })
+    setBusyId(null)
+    if (r.ok) { load() } else {
+      const d = await r.json().catch(() => ({}))
+      alert(`Reminder failed: ${d.error || r.statusText}`)
+    }
+  }
+
+  const revokeInvitation = async (id: string) => {
+    if (!window.confirm('Revoke this signing link? The existing URL will stop working immediately.')) return
+    setBusyId(id)
+    const r = await fetch('/api/admin/agreements/revoke', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invitation_id: id }),
+    })
+    setBusyId(null)
+    if (r.ok) load()
+    else {
+      const d = await r.json().catch(() => ({}))
+      alert(`Revoke failed: ${d.error || r.statusText}`)
+    }
+  }
+
+  const matchesSearch = (...fields: (string | null | undefined)[]) => {
+    if (!search.trim()) return true
+    const q = search.trim().toLowerCase()
+    return fields.some(f => (f || '').toLowerCase().includes(q))
+  }
+  const matchesCategory = (cat: string | null | undefined) =>
+    categoryFilter === 'all' || cat === categoryFilter
+
+  const visibleInvitations = invitations.filter(i =>
+    (statusFilter === 'all' ? i.status !== 'signed' : i.status === statusFilter) &&
+    matchesSearch(i.full_name, i.email, i.category) &&
+    matchesCategory(i.category)
+  )
+  const visibleAgreements = agreements.filter(a =>
+    matchesSearch(a.full_name, a.email, a.category) &&
+    matchesCategory(a.category)
+  )
 
   const statusColor = (s: string) => {
     if (s === 'signed') return 'rgba(94,102,80,0.4)'
@@ -184,15 +249,49 @@ export default function AgreementsPage() {
         </div>
       )}
 
-      {/* Pending invitations */}
+      {/* Search + filters */}
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 24 }}>
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search name, email, or category…"
+          style={{ ...inputStyle, flex: 1, minWidth: 240, maxWidth: 380 }}
+        />
+        <div style={{ display: 'flex', gap: 6 }}>
+          {(['all', 'pending', 'signed', 'revoked'] as const).map(s => (
+            <button key={s} onClick={() => setStatusFilter(s)} style={{
+              fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+              padding: '6px 12px', borderRadius: 16, cursor: 'pointer',
+              background: statusFilter === s ? 'rgba(229,212,194,0.14)' : 'transparent',
+              border: statusFilter === s ? '1px solid rgba(229,212,194,0.4)' : '1px solid rgba(229,212,194,0.15)',
+              color: statusFilter === s ? '#E5D4C2' : '#B2AA98',
+              letterSpacing: '0.06em', textTransform: 'uppercase',
+            }}>{s}</button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {(['all', 'legacy', 'pioneer', 'corporate'] as const).map(c => (
+            <button key={c} onClick={() => setCategoryFilter(c)} style={{
+              fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+              padding: '6px 12px', borderRadius: 16, cursor: 'pointer',
+              background: categoryFilter === c ? 'rgba(212,184,90,0.18)' : 'transparent',
+              border: categoryFilter === c ? '1px solid rgba(212,184,90,0.5)' : '1px solid rgba(229,212,194,0.15)',
+              color: categoryFilter === c ? '#D4B85A' : '#B2AA98',
+              letterSpacing: '0.06em', textTransform: 'capitalize',
+            }}>{c}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Pending / revoked invitations */}
       <h2 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, fontWeight: 500, color: '#E5D4C2', marginBottom: 16 }}>
-        Pending Invitations
+        Invitations
       </h2>
-      {invitations.filter(i => i.status === 'pending').length === 0 ? (
-        <p style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#B2AA98', marginBottom: 32 }}>No pending invitations</p>
+      {visibleInvitations.length === 0 ? (
+        <p style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#B2AA98', marginBottom: 32 }}>No matching invitations</p>
       ) : (
         <div style={{ marginBottom: 32 }}>
-          {invitations.filter(i => i.status === 'pending').map(inv => (
+          {visibleInvitations.map(inv => (
             <div key={inv.id} style={{
               padding: '14px 0', borderBottom: '1px solid rgba(229,212,194,0.08)',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -212,25 +311,45 @@ export default function AgreementsPage() {
                   {inv.category}
                 </span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                {inv.viewed_at && (
+                  <span title={`First viewed ${formatDate(inv.viewed_at)}`} style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#7AB07A' }}>
+                    viewed{(inv.view_count ?? 0) > 1 ? ` ×${inv.view_count}` : ''}
+                  </span>
+                )}
+                {inv.last_reminded_at && (
+                  <span title={`Last reminded ${formatDate(inv.last_reminded_at)}`} style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#D4B85A', opacity: 0.8 }}>
+                    reminded {relative(inv.last_reminded_at)}
+                  </span>
+                )}
                 <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', opacity: 0.5 }}>
                   {formatDate(inv.created_at)}
                 </span>
-                <button
-                  onClick={() => {
-                    const link = `${window.location.origin}/sign/${inv.token}`
-                    navigator.clipboard.writeText(link)
-                  }}
-                  style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.5, cursor: 'pointer' }}
-                >
-                  Copy Link
-                </button>
+                {inv.status === 'pending' && (
+                  <>
+                    <button
+                      onClick={() => {
+                        const link = `${window.location.origin}/sign/${inv.token}`
+                        navigator.clipboard.writeText(link)
+                      }}
+                      style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.6, cursor: 'pointer' }}
+                    >Copy Link</button>
+                    <button
+                      onClick={() => sendReminder(inv.id)}
+                      disabled={busyId === inv.id}
+                      style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#D4B85A', cursor: 'pointer' }}
+                    >{busyId === inv.id ? 'Sending…' : 'Send Reminder'}</button>
+                    <button
+                      onClick={() => revokeInvitation(inv.id)}
+                      disabled={busyId === inv.id}
+                      style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B45656', opacity: 0.7, cursor: 'pointer' }}
+                    >Revoke</button>
+                  </>
+                )}
                 <button
                   onClick={() => deleteInvitation(inv.id)}
-                  style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.3, cursor: 'pointer' }}
-                >
-                  Delete
-                </button>
+                  style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.25, cursor: 'pointer' }}
+                >Delete</button>
               </div>
             </div>
           ))}
@@ -241,11 +360,11 @@ export default function AgreementsPage() {
       <h2 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, fontWeight: 500, color: '#E5D4C2', marginBottom: 16 }}>
         Signed Agreements
       </h2>
-      {agreements.length === 0 ? (
-        <p style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#B2AA98' }}>No signed agreements yet</p>
+      {visibleAgreements.length === 0 ? (
+        <p style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#B2AA98' }}>No matching agreements</p>
       ) : (
         <div>
-          {agreements.map(agr => (
+          {visibleAgreements.map(agr => (
             <div key={agr.id} style={{ borderBottom: '1px solid rgba(229,212,194,0.08)' }}>
               <div
                 onClick={() => setExpandedId(expandedId === agr.id ? null : agr.id)}

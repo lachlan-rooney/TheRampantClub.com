@@ -179,6 +179,14 @@ export default function AtlasPage() {
 
         .atl-card { cursor: default; }
 
+        /* Strip the default dark frame react-globe.gl wraps tooltips in */
+        .float-tooltip-kap {
+          background: transparent !important;
+          padding: 0 !important;
+          border-radius: 0 !important;
+          color: inherit !important;
+        }
+
         @media (max-width: 720px) {
           .atl-hero { padding: 100px 20px 40px; }
           .atl-grid { padding: 40px 20px 80px; gap: 12px; }
