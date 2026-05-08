@@ -186,35 +186,34 @@ export default function AtlasPage() {
           letter-spacing: 0.04em;
         }
 
-        /* ── Modal ─────────────────────────────────────────────── */
-        .atl-modal-backdrop {
+        /* ── Side drawer ───────────────────────────────────────── */
+        .atl-drawer-backdrop {
           position: fixed; inset: 0;
-          background: rgba(5, 46, 32, 0.55);
-          backdrop-filter: blur(6px);
+          background: rgba(5, 46, 32, 0.25);
           z-index: 9990;
-          display: flex; align-items: center; justify-content: center;
-          padding: 24px;
-          animation: atl-fade 0.25s ease;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.4s ease;
         }
-        @keyframes atl-fade { from { opacity: 0 } to { opacity: 1 } }
-        .atl-modal {
+        .atl-drawer-backdrop.is-open {
+          opacity: 1;
+          pointer-events: auto;
+        }
+        .atl-drawer {
+          position: fixed;
+          top: 0; right: 0; bottom: 0;
+          width: min(440px, 92vw);
           background: var(--atl-cream);
-          border-radius: 16px;
-          max-width: 680px;
-          width: 100%;
-          max-height: 90vh;
+          z-index: 9991;
+          padding: 56px 36px 40px;
           overflow-y: auto;
-          padding: 40px;
-          position: relative;
-          box-shadow: 0 30px 80px rgba(5, 46, 32, 0.45);
-          animation: atl-rise 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+          transform: translateX(100%);
+          transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+          box-shadow: -16px 0 40px rgba(5, 46, 32, 0.18);
         }
-        @keyframes atl-rise {
-          from { opacity: 0; transform: translateY(16px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .atl-modal-close {
-          position: absolute; top: 16px; right: 16px;
+        .atl-drawer.is-open { transform: translateX(0); }
+        .atl-drawer-close {
+          position: absolute; top: 14px; right: 14px;
           background: transparent; border: none;
           font-family: 'Google Sans Code', monospace;
           font-size: 16px; color: var(--atl-green-accent);
@@ -223,12 +222,12 @@ export default function AtlasPage() {
           border-radius: 50%;
           transition: background 0.2s;
         }
-        .atl-modal-close:hover { background: rgba(5, 46, 32, 0.06); }
+        .atl-drawer-close:hover { background: rgba(5, 46, 32, 0.06); }
 
         @media (max-width: 720px) {
           .atl-hero { padding: 100px 20px 40px; }
-          .atl-grid { padding: 40px 20px 80px; gap: 16px; }
-          .atl-modal { padding: 32px 24px; }
+          .atl-grid { padding: 40px 20px 80px; gap: 12px; }
+          .atl-drawer { padding: 48px 24px 32px; }
         }
       `}} />
 
@@ -245,7 +244,7 @@ export default function AtlasPage() {
         </section>
 
         <section className="atl-globe-wrap">
-          <AtlasGlobe counts={counts} onSelect={setActive} height={420} />
+          <AtlasGlobe counts={counts} onSelect={setActive} focused={active} height={420} />
           <div className="atl-globe-hint">
             Drag to spin · scroll to zoom · tap a marker
           </div>
@@ -282,11 +281,15 @@ export default function AtlasPage() {
         </section>
       </main>
 
-      {/* Region detail modal */}
-      {active && (
-        <div className="atl-modal-backdrop" onClick={() => setActive(null)}>
-          <div className="atl-modal" onClick={e => e.stopPropagation()}>
-            <button className="atl-modal-close" onClick={() => setActive(null)}>×</button>
+      {/* Region detail drawer (always mounted so the slide animation runs both ways) */}
+      <div
+        className={`atl-drawer-backdrop${active ? ' is-open' : ''}`}
+        onClick={() => setActive(null)}
+      />
+      <aside className={`atl-drawer${active ? ' is-open' : ''}`} aria-hidden={!active}>
+        <button className="atl-drawer-close" onClick={() => setActive(null)}>×</button>
+        {active && (
+          <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
               <span className="atl-flag" style={{ fontSize: 36 }} aria-hidden>{active.flag}</span>
               <div>
@@ -346,9 +349,9 @@ export default function AtlasPage() {
                 </div>
               </Section>
             )}
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </aside>
     </>
   )
 }

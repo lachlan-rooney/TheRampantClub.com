@@ -7,6 +7,7 @@ import { ATLAS_REGIONS, SAIGON, type AtlasRegion } from '@/lib/whisky-atlas-data
 interface Props {
   counts: Record<string, number>
   onSelect: (r: AtlasRegion) => void
+  focused?: AtlasRegion | null
   height?: number
 }
 
@@ -17,7 +18,7 @@ interface Marker extends AtlasRegion {
 
 const HOME = { lat: SAIGON.lat, lng: SAIGON.lng }
 
-export default function AtlasGlobe({ counts, onSelect, height = 560 }: Props) {
+export default function AtlasGlobe({ counts, onSelect, focused, height = 560 }: Props) {
   const ref = useRef<GlobeMethods | undefined>(undefined)
   const containerRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
@@ -78,6 +79,21 @@ export default function AtlasGlobe({ counts, onSelect, height = 560 }: Props) {
     init()
     return () => { cancelled = true; cancelAnimationFrame(raf) }
   }, [width])
+
+  // Ease the camera when a region is focused / unfocused
+  useEffect(() => {
+    const g = ref.current
+    if (!g) return
+    try {
+      if (focused) {
+        g.pointOfView({ lat: focused.lat, lng: focused.lng, altitude: 1.4 }, 1200)
+        const controls = g.controls() as { autoRotate: boolean }
+        controls.autoRotate = false
+      } else {
+        g.pointOfView({ lat: 28, lng: 80, altitude: 2.4 }, 1200)
+      }
+    } catch { /* swallow */ }
+  }, [focused])
 
   // Always render — let the globe size to 0×height initially, expand as soon as
   // we have a real width. Avoids the "never mounts because width was 0" trap.
