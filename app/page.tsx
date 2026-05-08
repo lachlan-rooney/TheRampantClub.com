@@ -3,6 +3,7 @@
 import { useRef, useCallback, useEffect, useState } from 'react'
 import NavOverlay from '@/components/NavOverlay'
 import LiveTicker from '@/components/LiveTicker'
+import TonightPanel from '@/components/TonightPanel'
 import useEasterEggs from '@/hooks/useEasterEggs'
 
 // ═══════════════════════════════════════════════════════════════════
@@ -780,6 +781,11 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* ══════ 2.5 TONIGHT PANEL ══════ */}
+        <div className="trc-section" style={{ paddingTop: 0, paddingBottom: 0 }}>
+          <TonightPanel />
+        </div>
+
         {/* ══════ 3. MOODBOARD ══════ */}
         <div className={`trc-flow ${loaded ? 'loaded' : ''}`}>
           {images.length === 0 && loaded && (
@@ -815,7 +821,7 @@ export default function HomePage() {
 
           <div style={{
             display: 'flex',
-            gap: 64,
+            gap: 8,
             alignItems: 'stretch',
             flexWrap: 'wrap',
           }}>

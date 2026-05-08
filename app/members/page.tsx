@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
+import TonightPanel from '@/components/TonightPanel'
 
 interface Notice {
   id: string
@@ -238,6 +239,10 @@ export default function MembersPage() {
           <h1 className="members-greeting">{greeting}</h1>
           {summary && <p className="members-email">{summary}</p>}
           {!summary && <p className="members-email">{email}</p>}
+
+          <div style={{ margin: '32px 0 40px' }}>
+            <TonightPanel showClubhouseCount />
+          </div>
 
           {notices.length > 0 && (
             <Link

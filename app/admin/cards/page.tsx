@@ -149,6 +149,15 @@ export default function AdminCards() {
       setMember(d.member || null)
       setTxs(d.transactions || [])
       setPickerNumber('')
+
+      // Log presence so the members portal "X in clubhouse" is live.
+      if (d.link?.member_number) {
+        fetch('/api/admin/cards/presence', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ member_number: d.link.member_number }),
+        }).catch(() => {})
+      }
     } catch {
       showToast('Lookup failed')
     } finally {
