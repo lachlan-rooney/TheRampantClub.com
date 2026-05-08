@@ -198,6 +198,91 @@ export default function MembersPage() {
           margin-bottom: 56px;
         }
 
+        /* ── Top row: Tonight + Notice Board side by side ── */
+        .members-top-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+          margin: 32px 0 40px;
+          align-items: stretch;
+        }
+        .members-top-cell { min-width: 0; }
+
+        /* ── Notice Board — corkboard with pinned paper ── */
+        .notice-cork {
+          position: relative;
+          padding: 16px 20px 16px;
+          height: 100%;
+          border-radius: 8px;
+          background:
+            radial-gradient(circle at 22% 18%, rgba(255,235,200,0.10), transparent 35%),
+            radial-gradient(circle at 78% 72%, rgba(0,0,0,0.18), transparent 50%),
+            #8B6F47;
+          box-shadow:
+            inset 0 0 22px rgba(0,0,0,0.32),
+            inset 0 0 0 6px #4F3A24,
+            0 4px 14px rgba(0,0,0,0.25);
+          overflow: hidden;
+          isolation: isolate;
+        }
+        .notice-cork::after {
+          /* Faint speckled cork texture */
+          content: '';
+          position: absolute; inset: 8px;
+          background-image:
+            radial-gradient(rgba(0,0,0,0.18) 0.7px, transparent 0.8px),
+            radial-gradient(rgba(255,255,255,0.08) 0.6px, transparent 0.7px);
+          background-size: 7px 7px, 11px 11px;
+          background-position: 0 0, 3px 5px;
+          opacity: 0.6;
+          pointer-events: none;
+          z-index: -1;
+        }
+        .notice-pin {
+          position: absolute;
+          top: 14px; right: 14px;
+          width: 12px; height: 12px;
+          border-radius: 50%;
+          background: radial-gradient(circle at 32% 28%, #F8C16A, #B8862B 65%, #6E4F12);
+          box-shadow:
+            0 1px 2px rgba(0,0,0,0.5),
+            0 0 0 1px rgba(0,0,0,0.25);
+          z-index: 2;
+        }
+        .notice-paper {
+          position: relative;
+          background: linear-gradient(180deg, #F8EFDD 0%, #ECDFC4 100%);
+          border-radius: 4px;
+          padding: 14px 16px 16px;
+          margin-top: 4px;
+          box-shadow:
+            0 2px 4px rgba(0,0,0,0.18),
+            0 6px 14px rgba(0,0,0,0.22);
+          transform: rotate(-0.6deg);
+          transition: transform 0.4s ease;
+          min-height: 64px;
+        }
+        a:hover .notice-paper { transform: rotate(0deg) translateY(-1px); }
+        .notice-chev {
+          background: rgba(248,239,221,0.9);
+          color: #4A3B2E;
+          border: 1px solid rgba(0,0,0,0.15);
+          border-radius: 4px;
+          padding: 2px 8px;
+          font-family: 'Rampant Sans', serif;
+          font-size: 14px;
+          line-height: 1;
+          cursor: pointer;
+          opacity: 0.85;
+          transition: opacity 0.2s, background 0.2s;
+        }
+        .notice-chev:hover { opacity: 1; background: #F8EFDD; }
+        .notice-dot {
+          width: 4px; height: 4px; border-radius: 50%;
+          background: #2A1F18;
+          transition: opacity 0.3s;
+        }
+
         /* ── Bucket grid (desktop) / linear stack (mobile) ── */
         .members-bucket-grid {
           display: grid;
@@ -321,6 +406,9 @@ export default function MembersPage() {
         @media (max-width: 1024px) {
           .members-bucket-grid { grid-template-columns: repeat(2, 1fr); }
         }
+        @media (max-width: 760px) {
+          .members-top-row { grid-template-columns: 1fr; gap: 12px; }
+        }
         @media (max-width: 600px) {
           .members-container { padding: 80px 20px 60px; }
           .members-greeting { font-size: 26px; }
@@ -336,96 +424,73 @@ export default function MembersPage() {
           {summary && <p className="members-email">{summary}</p>}
           {!summary && <p className="members-email">{email}</p>}
 
-          <div style={{ margin: '32px 0 40px' }}>
-            <TonightPanel showClubhouseCount bg="green" />
-          </div>
+          <div className="members-top-row">
+            <div className="members-top-cell">
+              <TonightPanel showClubhouseCount bg="green" />
+            </div>
 
-          {notices.length > 0 && (
-            <Link
-              href="/members/notices"
-              style={{ textDecoration: 'none', display: 'block', margin: '0 0 48px' }}
-            >
-              <div style={{
-                padding: '20px 24px',
-                background: 'rgba(229,212,194,0.04)',
-                borderRadius: 8,
-                border: '1px solid rgba(229,212,194,0.06)',
-                position: 'relative',
-                overflow: 'hidden',
-                minHeight: 72,
-                userSelect: 'none',
-              }}>
-                <div style={{
-                  fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 9,
-                  color: '#B2AA98', letterSpacing: '0.06em', textTransform: 'uppercase',
-                  marginBottom: 8, opacity: 0.5,
-                }}>
-                  ◆ Notice Board
-                </div>
-                {notices.map((n, i) => (
-                  <div key={n.id} style={{
-                    opacity: i === activeNotice ? 1 : 0,
-                    position: i === activeNotice ? 'relative' : 'absolute',
-                    top: i === activeNotice ? undefined : 28,
-                    left: i === activeNotice ? undefined : 24,
-                    right: i === activeNotice ? undefined : 24,
-                    transition: 'opacity 0.6s ease',
+            {notices.length > 0 && (
+              <Link
+                href="/members/notices"
+                style={{ textDecoration: 'none', display: 'block' }}
+                className="members-top-cell"
+              >
+                <div className="notice-cork">
+                  {/* Brass push-pin */}
+                  <span className="notice-pin" aria-hidden />
+                  <div style={{
+                    fontFamily: "'Rampant Sans', serif", fontSize: 16,
+                    color: '#3E2D1F', letterSpacing: '0.06em',
+                    marginBottom: 12, fontWeight: 600,
                   }}>
-                    <div style={{
-                      fontFamily: "'Rampant Sans', serif", fontSize: 15, fontWeight: 500,
-                      color: '#E5D4C2', marginBottom: 4,
-                    }}>
-                      {n.title}
-                    </div>
-                    <div style={{
-                      fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11,
-                      color: '#B2AA98', opacity: 0.6, lineHeight: 1.5,
-                      overflow: 'hidden', textOverflow: 'ellipsis',
-                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                    }}>
-                      {n.body}
-                    </div>
+                    Notice Board
                   </div>
-                ))}
+                <div className="notice-paper">
+                  {notices.map((n, i) => (
+                    <div key={n.id} style={{
+                      opacity: i === activeNotice ? 1 : 0,
+                      position: i === activeNotice ? 'relative' : 'absolute',
+                      top: i === activeNotice ? undefined : 14,
+                      left: i === activeNotice ? undefined : 14,
+                      right: i === activeNotice ? undefined : 14,
+                      transition: 'opacity 0.6s ease',
+                    }}>
+                      <div style={{
+                        fontFamily: "'Rampant Sans', serif", fontSize: 15, fontWeight: 600,
+                        color: '#2A1F18', marginBottom: 4,
+                      }}>
+                        {n.title}
+                      </div>
+                      <div style={{
+                        fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11,
+                        color: '#4A3B2E', opacity: 0.85, lineHeight: 1.55,
+                        overflow: 'hidden', textOverflow: 'ellipsis',
+                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                      }}>
+                        {n.body}
+                      </div>
+                    </div>
+                  ))}
+                </div>
                 {notices.length > 1 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, justifyContent: 'flex-end' }}>
                     <button
                       onClick={(e) => { e.preventDefault(); setActiveNotice(prev => (prev - 1 + notices.length) % notices.length) }}
-                      style={{
-                        background: 'rgba(229,212,194,0.08)', border: '1px solid rgba(229,212,194,0.12)',
-                        color: '#E5D4C2', opacity: 0.6, cursor: 'pointer', fontSize: 16,
-                        padding: '4px 10px', borderRadius: 4,
-                        fontFamily: "'Rampant Sans', serif",
-                        lineHeight: 1,
-                      }}
-                    >
-                      ‹
-                    </button>
+                      className="notice-chev"
+                    >‹</button>
                     {notices.map((_, i) => (
-                      <div key={i} style={{
-                        width: 5, height: 5, borderRadius: '50%',
-                        background: '#E5D4C2',
-                        opacity: i === activeNotice ? 0.6 : 0.15,
-                        transition: 'opacity 0.3s',
-                      }} />
+                      <div key={i} className="notice-dot" style={{ opacity: i === activeNotice ? 0.7 : 0.2 }} />
                     ))}
                     <button
                       onClick={(e) => { e.preventDefault(); setActiveNotice(prev => (prev + 1) % notices.length) }}
-                      style={{
-                        background: 'rgba(229,212,194,0.08)', border: '1px solid rgba(229,212,194,0.12)',
-                        color: '#E5D4C2', opacity: 0.6, cursor: 'pointer', fontSize: 16,
-                        padding: '4px 10px', borderRadius: 4,
-                        fontFamily: "'Rampant Sans', serif",
-                        lineHeight: 1,
-                      }}
-                    >
-                      ›
-                    </button>
+                      className="notice-chev"
+                    >›</button>
                   </div>
                 )}
               </div>
             </Link>
-          )}
+            )}
+          </div>
 
           <div className="members-bucket-grid">
             {buckets.map(b => (

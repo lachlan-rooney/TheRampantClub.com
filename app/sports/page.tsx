@@ -2,6 +2,13 @@
 
 import { useEffect, useState, useRef, ReactNode } from 'react'
 import NavOverlay from '@/components/NavOverlay'
+import CaptainsMarquee from '@/components/sports/CaptainsMarquee'
+import SportSelector from '@/components/sports/SportSelector'
+import CaptainsColumn from '@/components/sports/CaptainsColumn'
+import TrophyCabinet from '@/components/sports/TrophyCabinet'
+import BookmakersOdds from '@/components/sports/BookmakersOdds'
+import OnNowRibbon from '@/components/sports/OnNowRibbon'
+import ExpressInterest from '@/components/sports/ExpressInterest'
 
 // ── Scroll-reveal wrapper ────────────────────────────────────────
 function Reveal({ children, delay = 0 }: { children: ReactNode; delay?: number }) {
@@ -79,6 +86,7 @@ function Detail({ label, value }: { label: string; value: string }) {
 
 // ── Sport section ────────────────────────────────────────────────
 function SportSection({
+  id,
   title,
   vn,
   copy,
@@ -86,6 +94,7 @@ function SportSection({
   delay = 0,
   image,
 }: {
+  id?: string
   title: string
   vn: string
   copy: string[]
@@ -95,7 +104,7 @@ function SportSection({
 }) {
   return (
     <Reveal delay={delay}>
-      <div style={{ marginBottom: 20 }}>
+      <div id={id} style={{ marginBottom: 20, scrollMarginTop: 100 }}>
         {image && (
           <div style={{
             width: 140,
@@ -190,6 +199,9 @@ export default function SportsPage() {
         html, body { background: #E5D4C2 !important; margin: 0; padding: 0; }
       ` }} />
 
+      <OnNowRibbon />
+      <CaptainsMarquee />
+
       {/* Grain overlay */}
       <div style={{
         position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9998,
@@ -263,8 +275,11 @@ export default function SportsPage() {
             The Rampant Club believes in the cultivation of both mind and body. Mostly mind. But occasionally body.
           </p>
 
+          <SportSelector />
+
           {/* ── Golf ── */}
           <SportSection
+            id="golf"
             title="The Rampant Cup"
             vn="Giải Golf Rampant"
             delay={0.1}
@@ -291,8 +306,11 @@ export default function SportsPage() {
             />
           </div>
 
+          <CaptainsColumn />
+
           {/* ── Tennis ── */}
           <SportSection
+            id="tennis"
             title="The Sài Gòn Open"
             vn="Giải Quần Vợt Sài Gòn"
             delay={0.1}
@@ -321,6 +339,7 @@ export default function SportsPage() {
 
           {/* ── Padel ── */}
           <SportSection
+            id="padel"
             title="The Rampant Padel Club"
             vn="Câu Lạc Bộ Padel Rampant"
             delay={0.1}
@@ -341,6 +360,7 @@ export default function SportsPage() {
 
           {/* ── Hash ── */}
           <SportSection
+            id="hash"
             title="The Rampant Hash"
             vn="Nhóm Chạy Rampant"
             delay={0.1}
@@ -361,7 +381,7 @@ export default function SportsPage() {
 
           {/* ── Miscellaneous Fixtures ── */}
           <Reveal delay={0.1}>
-            <h2 style={{
+            <h2 id="misc" style={{ scrollMarginTop: 100,
               fontFamily: "'Rampant Sans', 'Playfair Display', serif",
               fontSize: 17,
               fontWeight: 600,
@@ -455,6 +475,17 @@ export default function SportsPage() {
           </p>
         </div>
       </div>
+
+      {/* ── Trophy Cabinet on deep green ── */}
+      <div style={{ background: '#052E20', borderTop: '1px solid rgba(229,212,194,0.08)' }}>
+        <TrophyCabinet />
+      </div>
+
+      {/* ── Bookmaker's odds (has its own cream bg) ── */}
+      <BookmakersOdds />
+
+      {/* ── Express Interest (has its own deep green bg) ── */}
+      <ExpressInterest />
     </>
   )
 }

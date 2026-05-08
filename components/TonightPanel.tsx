@@ -65,7 +65,7 @@ export default function TonightPanel({
 
   return (
     <div style={{
-      padding: '36px 32px',
+      padding: '20px 22px 22px',
       borderRadius: 16,
       background: onCream
         ? 'linear-gradient(180deg, rgba(5,46,32,0.04), rgba(5,46,32,0.10))'
@@ -74,15 +74,15 @@ export default function TonightPanel({
       boxShadow: onCream
         ? '0 14px 36px rgba(5,46,32,0.10)'
         : '0 24px 48px rgba(5,46,32,0.18)',
-      maxWidth: 720,
-      margin: '0 auto',
+      width: '100%',
+      boxSizing: 'border-box',
     }}>
       {/* Header strip */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
-        fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+        fontFamily: "'Google Sans Code', monospace", fontSize: 9,
         color: dim, letterSpacing: '0.14em', textTransform: 'uppercase',
-        marginBottom: 18,
+        marginBottom: 12,
       }}>
         <span style={{
           width: 6, height: 6, background: accent,
@@ -92,10 +92,10 @@ export default function TonightPanel({
       </div>
 
       {/* Greeting + clubhouse count */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 16, marginBottom: 26 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
         <h3 style={{
           fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-          fontSize: 26, fontWeight: 500, color: text,
+          fontSize: 20, fontWeight: 500, color: text,
           letterSpacing: '0.02em', margin: 0,
         }}>
           {greeting}
@@ -132,26 +132,26 @@ function Pick({ label, title, note, text, dim, accent }: {
 }) {
   return (
     <div style={{
-      paddingTop: 14, paddingBottom: 14,
+      paddingTop: 10, paddingBottom: 10,
       borderTop: `1px solid ${text === '#052E20' ? 'rgba(5,46,32,0.1)' : 'rgba(229,212,194,0.08)'}`,
     }}>
       <div style={{
-        fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+        fontFamily: "'Google Sans Code', monospace", fontSize: 8,
         color: dim, letterSpacing: '0.14em', textTransform: 'uppercase',
-        marginBottom: 4,
+        marginBottom: 3,
       }}>
         {label}
       </div>
       <div style={{
         fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-        fontSize: 18, fontWeight: 500, color: text, marginBottom: 4,
+        fontSize: 15, fontWeight: 500, color: text, marginBottom: 2,
       }}>
         {title}
       </div>
       {note && (
         <div style={{
-          fontFamily: "'Google Sans Code', monospace", fontSize: 11,
-          color: accent, opacity: 0.75, lineHeight: 1.55,
+          fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+          color: accent, opacity: 0.75, lineHeight: 1.5,
         }}>
           {note}
         </div>

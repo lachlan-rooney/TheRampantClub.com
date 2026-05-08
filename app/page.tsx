@@ -788,7 +788,9 @@ export default function HomePage() {
 
         {/* ══════ 2.5 TONIGHT PANEL ══════ */}
         <div className="trc-section" style={{ paddingTop: 0, paddingBottom: 0 }}>
-          <TonightPanel />
+          <div style={{ maxWidth: 720, margin: '0 auto' }}>
+            <TonightPanel />
+          </div>
         </div>
 
         {/* ══════ 3. MOODBOARD ══════ */}
