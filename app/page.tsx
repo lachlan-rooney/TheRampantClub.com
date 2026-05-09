@@ -395,7 +395,7 @@ function ReciprocalSection({ refProp, visible }: {
           )})}
         </div>
 
-        <p style={{
+        <p className="recip-foot" style={{
           fontFamily: "'Google Sans Code', monospace",
           fontSize: 10,
           color: 'var(--trc-cream-dim)',
@@ -405,8 +405,15 @@ function ReciprocalSection({ refProp, visible }: {
           marginTop: 36,
           fontStyle: 'italic',
         }}>
-          Featured partner cities shown · the full reciprocal list is shared with members upon joining.
+          Featured partner cities shown.
+          <span className="recip-foot-break"> </span>
+          The full reciprocal list is shared with members upon joining.
         </p>
+        <style dangerouslySetInnerHTML={{ __html: `
+          @media (max-width: 768px) {
+            .recip-foot-break { display: block; height: 0; }
+          }
+        ` }} />
       </div>
     </div>
   )
