@@ -226,7 +226,7 @@ export default function QuickRefPage() {
                 background: 'rgba(229,212,194,0.06)', color: '#E5D4C2',
                 border: '1px solid rgba(229,212,194,0.1)', borderRadius: 8,
                 padding: '12px 16px', fontFamily: "'Google Sans Code', 'DM Mono', monospace",
-                fontSize: 13, width: '100%', maxWidth: 400, boxSizing: 'border-box',
+                fontSize: 12, width: '100%', maxWidth: 400, boxSizing: 'border-box',
                 outline: 'none', cursor: 'pointer',
               }}
             >
@@ -287,7 +287,7 @@ export default function QuickRefPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 24, marginBottom: 16 }}>
                   <div>
                     <div style={{
-                      fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 9,
+                      fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10,
                       color: '#B2AA98', letterSpacing: '0.06em', textTransform: 'uppercase',
                       opacity: 0.6, marginBottom: 6,
                     }}>
@@ -309,7 +309,7 @@ export default function QuickRefPage() {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{
-                      fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 9,
+                      fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10,
                       color: '#B2AA98', letterSpacing: '0.06em', textTransform: 'uppercase',
                       opacity: 0.6, marginBottom: 6,
                     }}>
@@ -417,7 +417,7 @@ export default function QuickRefPage() {
                     {/* Top up + charge */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 12 }}>
                       <div>
-                        <label style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 9, color: '#B2AA98', letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.6, display: 'block', marginBottom: 4 }}>Top up (VND)</label>
+                        <label style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98', letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.6, display: 'block', marginBottom: 4 }}>Top up (VND)</label>
                         <div style={{ display: 'flex', gap: 8 }}>
                           <input
                             type="text" inputMode="numeric" placeholder="500000"
@@ -432,7 +432,7 @@ export default function QuickRefPage() {
                         </div>
                       </div>
                       <div>
-                        <label style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 9, color: '#B2AA98', letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.6, display: 'block', marginBottom: 4 }}>Charge (VND)</label>
+                        <label style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98', letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.6, display: 'block', marginBottom: 4 }}>Charge (VND)</label>
                         <div style={{ display: 'flex', gap: 8 }}>
                           <input
                             type="text" inputMode="numeric" placeholder="120000"
@@ -490,7 +490,7 @@ export default function QuickRefPage() {
                     border: '1px solid rgba(229,212,194,0.04)',
                   }}>
                     <div style={{
-                      fontFamily: "'Rampant Sans', serif", fontSize: 15, fontWeight: 500,
+                      fontFamily: "'Rampant Sans', serif", fontSize: 14, fontWeight: 500,
                       color: '#E5D4C2', marginBottom: 16, letterSpacing: '0.04em',
                     }}>
                       {section.title}
@@ -501,7 +501,7 @@ export default function QuickRefPage() {
                       return (
                         <div key={field} style={{ marginBottom: 14 }}>
                           <div style={{
-                            fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 9,
+                            fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10,
                             color: '#B2AA98', letterSpacing: '0.06em', textTransform: 'uppercase',
                             marginBottom: 3, opacity: 0.6,
                           }}>

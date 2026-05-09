@@ -230,7 +230,7 @@ export default function AdminPress() {
             }}>
               <div style={{ flex: 1, minWidth: 220 }}>
                 <span style={{
-                  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+                  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
                   background: i.is_published ? 'rgba(94,102,80,0.4)' : 'rgba(178,170,152,0.18)',
                   color: '#E5D4C2', borderRadius: 4, padding: '2px 8px', marginRight: 10,
                   letterSpacing: '0.06em', textTransform: 'uppercase',

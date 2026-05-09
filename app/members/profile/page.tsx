@@ -145,7 +145,7 @@ export default function ProfilePage() {
             }} />
 
             <h3 style={{
-              fontFamily: "'Rampant Sans', serif", fontSize: 18, fontWeight: 500,
+              fontFamily: "'Rampant Sans', serif", fontSize: 20, fontWeight: 500,
               color: '#E5D4C2', textAlign: 'center', letterSpacing: '0.04em', marginBottom: 24,
             }}>
               Preferences

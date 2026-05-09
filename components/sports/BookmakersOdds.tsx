@@ -25,7 +25,7 @@ export default function BookmakersOdds() {
         }
         .odds-eyebrow {
           font-family: 'Google Sans Code', monospace;
-          font-size: 9px;
+          font-size: 10px;
           color: #D4B85A;
           letter-spacing: 0.24em;
           text-transform: uppercase;
@@ -33,7 +33,7 @@ export default function BookmakersOdds() {
         }
         .odds-title {
           font-family: 'Rampant Sans', serif;
-          font-size: 22px;
+          font-size: 24px;
           margin: 0 0 16px;
         }
         .odds-tabs {
@@ -98,7 +98,7 @@ export default function BookmakersOdds() {
         .odds-disclaimer {
           margin-top: 18px;
           font-family: 'Google Sans Code', monospace;
-          font-size: 9px;
+          font-size: 10px;
           color: #B2AA98;
           opacity: 0.5;
           letter-spacing: 0.06em;

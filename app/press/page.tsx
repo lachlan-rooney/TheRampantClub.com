@@ -79,7 +79,7 @@ export default function PressPage() {
         .pr-section { margin-top: 56px; }
         .pr-h2 {
           font-family: 'Rampant Sans', serif;
-          font-size: 22px; font-weight: 500;
+          font-size: 24px; font-weight: 500;
           color: #052E20; letter-spacing: 0.02em;
           margin-bottom: 8px;
         }
@@ -108,7 +108,7 @@ export default function PressPage() {
         .pr-row-body { flex: 1; min-width: 240px; }
         .pr-row-title {
           font-family: 'Rampant Sans', serif;
-          font-size: 17px; font-weight: 600;
+          font-size: 16px; font-weight: 600;
           color: #052E20; margin: 0 0 6px;
           letter-spacing: 0.02em;
         }
@@ -140,13 +140,13 @@ export default function PressPage() {
         .pr-clip:hover { background: rgba(5,46,32,0.07); transform: translateY(-2px); }
         .pr-clip-outlet {
           font-family: 'Google Sans Code', monospace;
-          font-size: 9px; color: #5E6650;
+          font-size: 10px; color: #5E6650;
           letter-spacing: 0.18em; text-transform: uppercase;
           margin-bottom: 6px;
         }
         .pr-clip-quote {
           font-family: 'Rampant Sans', serif;
-          font-size: 18px; font-weight: 500; line-height: 1.45;
+          font-size: 20px; font-weight: 500; line-height: 1.45;
           font-style: italic; color: #052E20;
           margin: 0 0 12px; letter-spacing: 0.01em;
         }

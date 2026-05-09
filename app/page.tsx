@@ -362,7 +362,7 @@ function ReciprocalSection({ refProp, visible }: {
             >
               <div style={{
                 fontFamily: "'Rampant Sans', serif",
-                fontSize: 15,
+                fontSize: 14,
                 fontWeight: 500,
                 color: 'var(--trc-cream)',
                 letterSpacing: '0.04em',
@@ -372,7 +372,7 @@ function ReciprocalSection({ refProp, visible }: {
               </div>
               <div style={{
                 fontFamily: "'Google Sans Code', monospace",
-                fontSize: 8,
+                fontSize: 10,
                 color: '#D4B85A',
                 opacity: 0.7,
                 letterSpacing: '0.18em',
@@ -383,7 +383,7 @@ function ReciprocalSection({ refProp, visible }: {
               </div>
               <div style={{
                 fontFamily: "'Google Sans Code', monospace",
-                fontSize: 17,
+                fontSize: 16,
                 fontVariantNumeric: 'tabular-nums',
                 fontWeight: 500,
                 color: 'var(--trc-cream)',
@@ -649,7 +649,7 @@ export default function HomePage() {
         }
 
         .trc-blurb-en {
-          font-size: 13px; line-height: 1.8;
+          font-size: 12px; line-height: 1.8;
           color: var(--trc-green-deep);
           letter-spacing: 0.02em;
           margin-bottom: 20px;
@@ -714,8 +714,8 @@ export default function HomePage() {
           .trc-flow { padding: 4em 1em 5em; gap: 0.4em; }
           .trc-blurb { padding: 40px 20px 0; }
           .trc-section { padding: 40px 16px; }
-          .trc-section-title { font-size: 22px; }
-          .trc-section-subtitle { font-size: 9px; }
+          .trc-section-title { font-size: 24px; }
+          .trc-section-subtitle { font-size: 10px; }
           .trc-benefits-grid {
             grid-template-columns: 1fr !important;
             gap: 0 !important;
@@ -781,13 +781,13 @@ export default function HomePage() {
               {Array.from({ length: 40 }, (_, i) => (
                 <div key={`y${i}`} style={{
                   position: 'absolute', top: i * 200, left: 4,
-                  fontSize: 9, color: 'rgba(255,0,0,0.5)', fontFamily: 'monospace',
+                  fontSize: 10, color: 'rgba(255,0,0,0.5)', fontFamily: 'monospace',
                 }}>{i * 200}</div>
               ))}
               {Array.from({ length: 20 }, (_, i) => (
                 <div key={`x${i}`} style={{
                   position: 'absolute', top: 4, left: i * 200 + 4,
-                  fontSize: 9, color: 'rgba(255,0,0,0.5)', fontFamily: 'monospace',
+                  fontSize: 10, color: 'rgba(255,0,0,0.5)', fontFamily: 'monospace',
                 }}>{i * 200}</div>
               ))}
             </div>
@@ -1040,7 +1040,7 @@ export default function HomePage() {
                 >
                   <div style={{
                     fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-                    fontSize: 14.5,
+                    fontSize: 14,
                     fontWeight: 600,
                     color: 'var(--trc-green-deep)',
                     opacity: 0.3,
@@ -1050,7 +1050,7 @@ export default function HomePage() {
                   </div>
                   <div style={{
                     fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-                    fontSize: 13.5,
+                    fontSize: 12,
                     fontWeight: 500,
                     color: 'var(--trc-green-deep)',
                     marginBottom: 1,
@@ -1059,7 +1059,7 @@ export default function HomePage() {
                   </div>
                   <div style={{
                     fontFamily: "'Google Sans Code', monospace",
-                    fontSize: 9.5,
+                    fontSize: 10,
                     color: 'var(--trc-cream-dim)',
                     letterSpacing: '0.04em',
                     marginBottom: 4,
@@ -1068,7 +1068,7 @@ export default function HomePage() {
                   </div>
                   <div style={{
                     fontFamily: "'Google Sans Code', monospace",
-                    fontSize: 11.5,
+                    fontSize: 12,
                     color: 'var(--trc-green-accent)',
                     opacity: 0.7,
                     lineHeight: 1.4,
@@ -1249,7 +1249,7 @@ export default function HomePage() {
 
             <div style={{ textAlign: 'right', marginTop: 32 }}>
               <div style={{
-                fontFamily: "'Rampant Sans', serif", fontSize: 13, fontWeight: 500,
+                fontFamily: "'Rampant Sans', serif", fontSize: 12, fontWeight: 500,
                 color: '#E5D4C2', letterSpacing: '0.14em', textTransform: 'uppercase',
                 marginBottom: 12, marginRight: 24,
               }}>

@@ -122,7 +122,7 @@ export default function AtlasPage() {
         }
         .atl-stat-label {
           font-family: 'Google Sans Code', monospace;
-          font-size: 9px;
+          font-size: 10px;
           color: var(--atl-cream-dim);
           letter-spacing: 0.14em;
           text-transform: uppercase;
@@ -202,7 +202,7 @@ export default function AtlasPage() {
         }
         .atl-card-native {
           font-family: 'Google Sans Code', monospace;
-          font-size: 9px;
+          font-size: 10px;
           color: var(--atl-cream-dim);
           letter-spacing: 0.06em;
           margin-top: 1px;
@@ -222,7 +222,7 @@ export default function AtlasPage() {
         .atl-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
         .atl-chip {
           font-family: 'Google Sans Code', monospace;
-          font-size: 8px;
+          font-size: 10px;
           letter-spacing: 0.05em;
           padding: 3px 7px;
           border-radius: 10px;
@@ -231,7 +231,7 @@ export default function AtlasPage() {
         }
         .atl-card-footer {
           font-family: 'Google Sans Code', monospace;
-          font-size: 9px;
+          font-size: 10px;
           color: var(--atl-green-accent);
           opacity: 0.7;
           padding-top: 8px;
@@ -241,7 +241,7 @@ export default function AtlasPage() {
         .atl-card-pill {
           display: inline-block;
           font-family: 'Google Sans Code', monospace;
-          font-size: 9px;
+          font-size: 10px;
           color: var(--atl-green-deep);
           letter-spacing: 0.06em;
           background: rgba(5, 46, 32, 0.08);

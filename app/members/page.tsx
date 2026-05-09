@@ -336,7 +336,7 @@ export default function MembersPage() {
 
         .members-bucket-glyph {
           font-family: 'Rampant Sans', serif;
-          font-size: 22px;
+          font-size: 24px;
           color: #D4B85A;
           opacity: 0.7;
           margin-bottom: 14px;
@@ -359,7 +359,7 @@ export default function MembersPage() {
         }
         .members-bucket-primary {
           font-family: 'Rampant Sans', serif;
-          font-size: 18px;
+          font-size: 20px;
           font-weight: 500;
           color: #D4B85A;
           letter-spacing: 0.04em;
@@ -420,7 +420,7 @@ export default function MembersPage() {
         }
         @media (max-width: 600px) {
           .members-container { padding: 80px 20px 60px; }
-          .members-greeting { font-size: 26px; }
+          .members-greeting { font-size: 28px; }
           .members-bucket-grid { grid-template-columns: 1fr; gap: 10px; }
           .members-bucket { min-height: auto; padding: 18px 18px 20px; }
         }
@@ -467,7 +467,7 @@ export default function MembersPage() {
                       transition: 'opacity 0.6s ease',
                     }}>
                       <div style={{
-                        fontFamily: "'Rampant Sans', serif", fontSize: 15, fontWeight: 600,
+                        fontFamily: "'Rampant Sans', serif", fontSize: 14, fontWeight: 600,
                         color: '#2A1F18', marginBottom: 4,
                       }}>
                         {n.title}

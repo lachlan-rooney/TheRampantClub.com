@@ -20,7 +20,7 @@ export default function SportOdds({ sport }: { sport: string }) {
         }
         .sodds-head {
           font-family: 'Google Sans Code', monospace;
-          font-size: 9px;
+          font-size: 10px;
           color: #5E6650;
           letter-spacing: 0.18em;
           text-transform: uppercase;

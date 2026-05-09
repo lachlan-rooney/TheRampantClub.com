@@ -32,7 +32,7 @@ export default function RulesPage() {
             <div key={r.id}>
               <div>
                 <h3 style={{
-                  fontFamily: "'Rampant Sans', serif", fontSize: 17, fontWeight: 600,
+                  fontFamily: "'Rampant Sans', serif", fontSize: 16, fontWeight: 600,
                   color: '#E5D4C2', marginBottom: 4, margin: 0,
                 }}>
                   {r.section_title}

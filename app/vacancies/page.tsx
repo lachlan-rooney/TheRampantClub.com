@@ -58,7 +58,7 @@ export default function VacanciesPage() {
           />
           <div style={{
             fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-            fontSize: 36,
+            fontSize: 32,
             fontWeight: 400,
             color: '#052E20',
             textAlign: 'center',
@@ -69,7 +69,7 @@ export default function VacanciesPage() {
           </div>
           <p style={{
             fontFamily: "'Google Sans Code', 'DM Mono', monospace",
-            fontSize: 13,
+            fontSize: 12,
             color: '#7A7462',
             textAlign: 'center',
             letterSpacing: '0.04em',

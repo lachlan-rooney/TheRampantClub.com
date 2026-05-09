@@ -47,6 +47,30 @@ export default function RootLayout({
       </head>
       <body>
         <style dangerouslySetInnerHTML={{ __html: `
+          /* ─── Typography scale ─────────────────────────────────────
+             10 stops. Snap any new font-size to one of these tokens.
+             Mono labels: --fs-eyebrow / --fs-body
+             Body / cards: --fs-meta / --fs-card
+             Headings: --fs-h3 / --fs-h2 / --fs-h1 / --fs-hero       */
+          :root {
+            --fs-micro:   10px;
+            --fs-eyebrow: 11px;
+            --fs-body:    12px;
+            --fs-meta:    14px;
+            --fs-card:    16px;
+            --fs-h3:      20px;
+            --fs-h2-sm:   24px;
+            --fs-h2:      28px;
+            --fs-h1:      32px;
+            --fs-hero:    48px;
+          }
+          @media (max-width: 768px) {
+            :root {
+              --fs-h2:    22px;
+              --fs-h1:    26px;
+              --fs-hero:  36px;
+            }
+          }
           * { font-feature-settings: 'ss01' on; box-sizing: border-box; }
           html, body { margin: 0; padding: 0; }
           html { overflow-y: scroll; scrollbar-gutter: auto; }

@@ -131,7 +131,7 @@ export default function WelcomeTour({ name }: { name?: string }) {
           background: transparent; border: none;
           color: #B2AA98; cursor: pointer;
           font-family: 'Google Sans Code', monospace;
-          font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase;
+          font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
           padding: 4px 10px;
           transition: background 0.2s, color 0.2s;
         }

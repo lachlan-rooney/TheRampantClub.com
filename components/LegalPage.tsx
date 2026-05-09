@@ -46,7 +46,7 @@ export default function LegalPage({ title, subtitle, lastUpdated, children }: Le
           {/* Title */}
           <div style={{
             fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-            fontSize: 36,
+            fontSize: 32,
             fontWeight: 400,
             color: '#052E20',
             textAlign: 'center',
@@ -57,7 +57,7 @@ export default function LegalPage({ title, subtitle, lastUpdated, children }: Le
           </div>
           <p style={{
             fontFamily: "'Google Sans Code', 'DM Mono', monospace",
-            fontSize: 13,
+            fontSize: 12,
             color: '#7A7462',
             textAlign: 'center',
             letterSpacing: '0.04em',
@@ -101,7 +101,7 @@ export default function LegalPage({ title, subtitle, lastUpdated, children }: Le
           }} />
           <p style={{
             fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: 400,
             color: '#052E20',
             letterSpacing: '0.06em',
@@ -123,7 +123,7 @@ export function Section({ title, children }: { title: string; children: ReactNod
     <div style={{ marginBottom: 40 }}>
       <h2 style={{
         fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-        fontSize: 17,
+        fontSize: 16,
         fontWeight: 400,
         color: '#052E20',
         marginBottom: 16,

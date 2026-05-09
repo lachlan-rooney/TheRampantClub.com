@@ -113,7 +113,7 @@ export default function ContactPage() {
         ::-webkit-scrollbar-thumb { background: rgba(229, 212, 194, 0.2); border-radius: 3px; }
 
         @media (max-width: 768px) {
-          .contact-address { font-size: 18px; }
+          .contact-address { font-size: 20px; }
           .contact-back { top: 80px; left: 20px; }
         }
       ` }} />

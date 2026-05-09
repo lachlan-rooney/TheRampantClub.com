@@ -56,14 +56,14 @@ export default function SportSelector() {
         }
         .sport-tile-label {
           font-family: 'Rampant Sans', serif;
-          font-size: 13px;
+          font-size: 12px;
           font-weight: 600;
           color: #052E20;
           letter-spacing: 0.04em;
         }
         .sport-tile-vn {
           font-family: 'Google Sans Code', monospace;
-          font-size: 9px;
+          font-size: 10px;
           color: #5E6650;
           opacity: 0.7;
           margin-top: 2px;
@@ -73,7 +73,7 @@ export default function SportSelector() {
           margin: 10px auto 0;
           display: inline-block;
           font-family: 'Google Sans Code', monospace;
-          font-size: 9px;
+          font-size: 10px;
           color: #052E20;
           letter-spacing: 0.06em;
           background: rgba(5, 46, 32, 0.08);

@@ -39,7 +39,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           display: 'block', width: 40, height: 'auto', margin: '0 auto 16px', opacity: 0.5,
         }} />
         <div style={{
-          fontFamily: "'Rampant Sans', serif", fontSize: 18, fontWeight: 500,
+          fontFamily: "'Rampant Sans', serif", fontSize: 20, fontWeight: 500,
           color: '#E5D4C2', textAlign: 'center', marginBottom: 32, letterSpacing: '0.04em',
         }}>
           Admin

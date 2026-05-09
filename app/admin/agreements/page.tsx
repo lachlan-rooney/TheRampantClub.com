@@ -289,7 +289,7 @@ export default function AgreementsPage() {
       </div>
 
       {/* Pending / revoked invitations */}
-      <h2 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, fontWeight: 500, color: '#E5D4C2', marginBottom: 16 }}>
+      <h2 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 20, fontWeight: 500, color: '#E5D4C2', marginBottom: 16 }}>
         Invitations
       </h2>
       {visibleInvitations.length === 0 ? (
@@ -303,7 +303,7 @@ export default function AgreementsPage() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <span style={{
-                  fontFamily: "'Google Sans Code', monospace", fontSize: 9, color: '#E5D4C2',
+                  fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#E5D4C2',
                   background: statusColor(inv.status), borderRadius: 4, padding: '2px 8px',
                 }}>{inv.status}</span>
                 <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 14, color: '#E5D4C2' }}>
@@ -312,7 +312,7 @@ export default function AgreementsPage() {
                 <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98' }}>
                   {inv.email}
                 </span>
-                <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 9, color: '#B2AA98', opacity: 0.5 }}>
+                <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', opacity: 0.5 }}>
                   {inv.category}
                 </span>
               </div>
@@ -362,7 +362,7 @@ export default function AgreementsPage() {
       )}
 
       {/* Signed agreements */}
-      <h2 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, fontWeight: 500, color: '#E5D4C2', marginBottom: 16 }}>
+      <h2 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 20, fontWeight: 500, color: '#E5D4C2', marginBottom: 16 }}>
         Signed Agreements
       </h2>
       {visibleAgreements.length === 0 ? (
@@ -380,7 +380,7 @@ export default function AgreementsPage() {
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span style={{
-                    fontFamily: "'Google Sans Code', monospace", fontSize: 9, color: '#E5D4C2',
+                    fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#E5D4C2',
                     background: 'rgba(94,102,80,0.4)', borderRadius: 4, padding: '2px 8px',
                   }}>signed</span>
                   <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 14, color: '#E5D4C2' }}>
@@ -389,7 +389,7 @@ export default function AgreementsPage() {
                   <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98' }}>
                     {agr.email}
                   </span>
-                  <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 9, color: '#B2AA98', opacity: 0.5 }}>
+                  <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', opacity: 0.5 }}>
                     {agr.category}
                   </span>
                 </div>
@@ -412,7 +412,7 @@ export default function AgreementsPage() {
                     ['Profession', agr.profession],
                   ].map(([label, value]) => (
                     <div key={label as string}>
-                      <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 9, color: '#B2AA98', opacity: 0.5, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                      <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', opacity: 0.5, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                         {label}
                       </div>
                       <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#E5D4C2' }}>

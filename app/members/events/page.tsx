@@ -122,7 +122,7 @@ export default function EventsPage() {
 
         .event-title-en {
           font-family: 'Rampant Sans', serif;
-          font-size: 22px; font-weight: 600;
+          font-size: 24px; font-weight: 600;
           color: #E5D4C2; letter-spacing: 0.02em;
           margin-bottom: 4px;
         }

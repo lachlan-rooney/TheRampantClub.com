@@ -85,7 +85,7 @@ export default function AdminMembers() {
                   <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>{m.email}</span>
                 )}
                 {m.is_admin && (
-                  <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 9, color: '#E5D4C2', background: 'rgba(229,212,194,0.1)', borderRadius: 4, padding: '2px 8px' }}>Admin</span>
+                  <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', background: 'rgba(229,212,194,0.1)', borderRadius: 4, padding: '2px 8px' }}>Admin</span>
                 )}
               </div>
               <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>

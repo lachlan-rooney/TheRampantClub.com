@@ -203,7 +203,7 @@ export default function MembershipPage() {
         >
           <div style={{
             fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-            fontSize: 13,
+            fontSize: 12,
             letterSpacing: '0.16em',
             textTransform: 'uppercase',
             color: 'var(--trc-green-accent)',
@@ -398,7 +398,7 @@ export default function MembershipPage() {
                   </div>
                   <div style={{
                     fontFamily: "'Playfair Display', serif",
-                    fontSize: 17,
+                    fontSize: 16,
                     fontWeight: 500,
                     color: 'var(--trc-green-deep)',
                     marginBottom: 3,
@@ -470,7 +470,7 @@ export default function MembershipPage() {
             </div>
             <p style={{
               fontFamily: "'Google Sans Code', monospace",
-              fontSize: 13,
+              fontSize: 12,
               color: 'var(--trc-cream)',
               opacity: 0.6,
               lineHeight: 1.8,
@@ -480,7 +480,7 @@ export default function MembershipPage() {
             </p>
             <p style={{
               fontFamily: "'Google Sans Code', monospace",
-              fontSize: 13,
+              fontSize: 12,
               color: 'var(--trc-cream)',
               opacity: 0.6,
               lineHeight: 1.8,

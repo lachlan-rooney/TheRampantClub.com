@@ -230,7 +230,7 @@ export default function MembershipSigning({ token, prefill }: Props) {
     width: '100%', boxSizing: 'border-box', padding: '12px 16px',
     background: 'rgba(229,212,194,0.06)', color: CREAM,
     border: `1px solid rgba(229,212,194,0.12)`, borderRadius: 6,
-    fontFamily: "'Rampant Sans', serif", fontSize: 15,
+    fontFamily: "'Rampant Sans', serif", fontSize: 14,
     outline: 'none',
   }
 
@@ -250,7 +250,7 @@ export default function MembershipSigning({ token, prefill }: Props) {
         input[type="checkbox"]:checked::after {
           content: '✓';
           color: #052E20;
-          font-size: 13px;
+          font-size: 12px;
           font-weight: bold;
           position: absolute;
           top: 50%; left: 50%;
@@ -278,7 +278,7 @@ export default function MembershipSigning({ token, prefill }: Props) {
               {t(agreementData.meta.title.en, agreementData.meta.title.vi)}
             </h1>
             <p style={{
-              fontFamily: "'Rampant Sans', serif", fontSize: 13, color: MUTED,
+              fontFamily: "'Rampant Sans', serif", fontSize: 12, color: MUTED,
               letterSpacing: '0.06em',
             }}>
               {t(agreementData.meta.subtitle.en, agreementData.meta.subtitle.vi)}
@@ -289,7 +289,7 @@ export default function MembershipSigning({ token, prefill }: Props) {
           <div style={{ display: 'flex', justifyContent: 'center', gap: 0, marginBottom: 36 }}>
             {(['en', 'vi'] as const).map(l => (
               <button key={l} onClick={() => setLang(l)} style={{
-                fontFamily: "'Rampant Sans', serif", fontSize: 13,
+                fontFamily: "'Rampant Sans', serif", fontSize: 12,
                 letterSpacing: '0.08em', padding: '8px 20px', cursor: 'pointer',
                 background: lang === l ? 'rgba(229,212,194,0.1)' : 'transparent',
                 color: lang === l ? CREAM : MUTED,
@@ -317,7 +317,7 @@ export default function MembershipSigning({ token, prefill }: Props) {
               <div key={section.id} style={{ marginBottom: 28 }}>
                 {(lang === 'en' ? section.titleEn : section.titleVi) && (
                   <h3 style={{
-                    fontFamily: "'Rampant Sans', serif", fontSize: 18, fontWeight: 500,
+                    fontFamily: "'Rampant Sans', serif", fontSize: 20, fontWeight: 500,
                     color: CREAM, letterSpacing: '0.04em', marginBottom: 12,
                   }}>
                     {lang === 'en' ? section.titleEn : section.titleVi}
@@ -355,7 +355,7 @@ export default function MembershipSigning({ token, prefill }: Props) {
                 style={{ marginTop: 4, accentColor: GOLD, width: 18, height: 18, flexShrink: 0, appearance: 'none', WebkitAppearance: 'none', background: 'rgba(45,106,79,0.25)', border: '1px solid rgba(229,212,194,0.15)', borderRadius: 3, cursor: 'pointer', position: 'relative' } as React.CSSProperties}
               />
               <span style={{
-                fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 13, color: MUTED, lineHeight: 1.6,
+                fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: MUTED, lineHeight: 1.6,
               }}>
                 {t(
                   'I have read and accept the ',
@@ -493,7 +493,7 @@ export default function MembershipSigning({ token, prefill }: Props) {
             <div style={{ display: 'flex', gap: 0, marginBottom: 20 }}>
               {(['type', 'draw'] as const).map(m => (
                 <button key={m} onClick={() => setSigMode(m)} style={{
-                  fontFamily: "'Rampant Sans', serif", fontSize: 13,
+                  fontFamily: "'Rampant Sans', serif", fontSize: 12,
                   padding: '8px 20px', cursor: 'pointer', textTransform: 'uppercase',
                   letterSpacing: '0.06em',
                   background: sigMode === m ? 'rgba(229,212,194,0.1)' : 'transparent',
@@ -538,7 +538,7 @@ export default function MembershipSigning({ token, prefill }: Props) {
                     textAlign: 'center',
                   }}>
                     <span style={{
-                      fontFamily: FONTS[selectedFont].family, fontSize: 36, color: CREAM,
+                      fontFamily: FONTS[selectedFont].family, fontSize: 32, color: CREAM,
                     }}>
                       {typedName}
                     </span>

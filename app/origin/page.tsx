@@ -180,7 +180,7 @@ export default function OriginPage() {
         }
         .org-chapter-body p {
           font-family: 'Google Sans Code', monospace;
-          font-size: 13px;
+          font-size: 12px;
           line-height: 1.9;
           color: var(--org-green-accent);
           opacity: 0.85;

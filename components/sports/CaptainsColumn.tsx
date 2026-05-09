@@ -28,7 +28,7 @@ export default function CaptainsColumn() {
         }
         .capt-column-eyebrow {
           font-family: 'Google Sans Code', monospace;
-          font-size: 9px;
+          font-size: 10px;
           color: #5E6650;
           letter-spacing: 0.18em;
           text-transform: uppercase;
@@ -37,7 +37,7 @@ export default function CaptainsColumn() {
         }
         .capt-column-quote {
           font-family: 'Rampant Sans', serif;
-          font-size: 19px;
+          font-size: 20px;
           font-style: italic;
           color: #052E20;
           line-height: 1.5;

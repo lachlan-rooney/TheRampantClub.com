@@ -163,7 +163,7 @@ export default function AdminFixtures() {
           <div key={f.id} style={{ padding: '16px 0', borderBottom: '1px solid rgba(229,212,194,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{
-                fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 9,
+                fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10,
                 color: '#E5D4C2', background: SPORT_COLORS[f.sport] || '#5E6650',
                 borderRadius: 4, padding: '2px 10px',
               }}>{f.sport}</span>

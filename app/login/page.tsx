@@ -135,7 +135,7 @@ function LoginContent() {
           border-radius: 8px;
           color: #E5D4C2;
           font-family: 'Google Sans Code', monospace;
-          font-size: 13px;
+          font-size: 12px;
           letter-spacing: 0.02em;
           outline: none;
           transition: border-color 0.2s ease;
@@ -160,7 +160,7 @@ function LoginContent() {
           border-radius: 8px;
           color: #E5D4C2;
           font-family: 'Pinyon Script', 'Rampant Sans', serif;
-          font-size: 22px;
+          font-size: 24px;
           font-weight: 400;
           letter-spacing: 0.06em;
           text-transform: none;

@@ -21,7 +21,7 @@ export default function TrophyCabinet() {
         }
         .trophy-cabinet-title {
           font-family: 'Rampant Sans', serif;
-          font-size: 26px;
+          font-size: 28px;
           color: #E5D4C2;
           text-align: center;
           letter-spacing: 0.04em;
@@ -101,7 +101,7 @@ export default function TrophyCabinet() {
         }
         .trophy-name {
           font-family: 'Rampant Sans', serif;
-          font-size: 17px;
+          font-size: 16px;
           font-weight: 600;
           color: #E5D4C2;
           margin-bottom: 4px;
@@ -109,7 +109,7 @@ export default function TrophyCabinet() {
         }
         .trophy-sport {
           font-family: 'Google Sans Code', monospace;
-          font-size: 9px;
+          font-size: 10px;
           color: #D4B85A;
           letter-spacing: 0.18em;
           text-transform: uppercase;
@@ -125,7 +125,7 @@ export default function TrophyCabinet() {
         }
         .trophy-est {
           font-family: 'Google Sans Code', monospace;
-          font-size: 9px;
+          font-size: 10px;
           color: #B2AA98;
           opacity: 0.5;
           letter-spacing: 0.08em;
@@ -161,7 +161,7 @@ export default function TrophyCabinet() {
         }
         .hall-eyebrow {
           font-family: 'Google Sans Code', monospace;
-          font-size: 9px;
+          font-size: 10px;
           letter-spacing: 0.18em;
           text-transform: uppercase;
           color: #D4B85A;
@@ -169,7 +169,7 @@ export default function TrophyCabinet() {
         }
         .hall-title {
           font-family: 'Rampant Sans', serif;
-          font-size: 26px;
+          font-size: 28px;
           margin: 0 0 24px;
         }
         .hall-row {
@@ -181,7 +181,7 @@ export default function TrophyCabinet() {
         .hall-row:first-of-type { border-top: 1px solid rgba(212,184,90,0.4); }
         .hall-year {
           font-family: 'Rampant Sans', serif;
-          font-size: 22px;
+          font-size: 24px;
           font-weight: 600;
           color: #D4B85A;
           min-width: 60px;

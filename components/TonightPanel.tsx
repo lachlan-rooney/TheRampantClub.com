@@ -80,7 +80,7 @@ export default function TonightPanel({
       {/* Header strip */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
-        fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+        fontFamily: "'Google Sans Code', monospace", fontSize: 10,
         color: dim, letterSpacing: '0.14em', textTransform: 'uppercase',
         marginBottom: 12,
       }}>
@@ -105,7 +105,7 @@ export default function TonightPanel({
             fontFamily: "'Google Sans Code', monospace", fontSize: 11,
             color: dim, letterSpacing: '0.06em', textAlign: 'right',
           }}>
-            <div style={{ color: accent, fontSize: 13 }}>
+            <div style={{ color: accent, fontSize: 12 }}>
               {count === 0 ? 'Clubhouse quiet' : `${count} ${count === 1 ? 'member' : 'members'} in the clubhouse`}
             </div>
             <div style={{ opacity: 0.7, marginTop: 2 }}>
@@ -136,7 +136,7 @@ function Pick({ label, title, note, text, dim, accent }: {
       borderTop: `1px solid ${text === '#052E20' ? 'rgba(5,46,32,0.1)' : 'rgba(229,212,194,0.08)'}`,
     }}>
       <div style={{
-        fontFamily: "'Google Sans Code', monospace", fontSize: 8,
+        fontFamily: "'Google Sans Code', monospace", fontSize: 10,
         color: dim, letterSpacing: '0.14em', textTransform: 'uppercase',
         marginBottom: 3,
       }}>
@@ -144,7 +144,7 @@ function Pick({ label, title, note, text, dim, accent }: {
       </div>
       <div style={{
         fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-        fontSize: 15, fontWeight: 500, color: text, marginBottom: 2,
+        fontSize: 14, fontWeight: 500, color: text, marginBottom: 2,
       }}>
         {title}
       </div>

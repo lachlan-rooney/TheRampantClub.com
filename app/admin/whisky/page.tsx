@@ -158,7 +158,7 @@ export default function AdminWhisky() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 14, color: '#E5D4C2' }}>{w.name}</span>
                 {w.distillery && <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>· {w.distillery}</span>}
-                {w.region && <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 9, color: '#E5D4C2', background: 'rgba(229,212,194,0.1)', borderRadius: 4, padding: '2px 8px' }}>{w.region}</span>}
+                {w.region && <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', background: 'rgba(229,212,194,0.1)', borderRadius: 4, padding: '2px 8px' }}>{w.region}</span>}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -170,7 +170,7 @@ export default function AdminWhisky() {
               </button>
               <button
                 onClick={() => toggleField(w.id, 'in_stock', w.in_stock)}
-                style={{ background: w.in_stock ? 'rgba(94,102,80,0.3)' : 'rgba(229,212,194,0.06)', border: 'none', borderRadius: 4, padding: '2px 10px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 9, color: '#E5D4C2' }}
+                style={{ background: w.in_stock ? 'rgba(94,102,80,0.3)' : 'rgba(229,212,194,0.06)', border: 'none', borderRadius: 4, padding: '2px 10px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2' }}
               >
                 {w.in_stock ? 'In Stock' : 'Out'}
               </button>

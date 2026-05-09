@@ -164,7 +164,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <div style={{ marginBottom: 24 }}>
       <div style={{
-        fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+        fontFamily: "'Google Sans Code', monospace", fontSize: 10,
         color: '#B2AA98', letterSpacing: '0.14em', textTransform: 'uppercase',
         marginBottom: 12, opacity: 0.7,
       }}>{title}</div>

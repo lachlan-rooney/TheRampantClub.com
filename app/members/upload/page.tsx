@@ -142,7 +142,7 @@ export default function MoodboardUploadPage() {
         }
         .upload-title {
           font-family: 'Rampant Sans', serif;
-          font-size: 26px; font-weight: 700;
+          font-size: 28px; font-weight: 700;
           color: var(--trc-green-deep);
           letter-spacing: 0.02em;
         }
@@ -217,7 +217,7 @@ export default function MoodboardUploadPage() {
           letter-spacing: 0.04em;
         }
         .upload-zone-uploading {
-          font-size: 13px;
+          font-size: 12px;
           color: var(--trc-green-accent);
           font-weight: 500;
           letter-spacing: 0.06em;
@@ -264,7 +264,7 @@ export default function MoodboardUploadPage() {
         }
         .upload-empty p {
           color: var(--trc-green-accent);
-          font-size: 13px; opacity: 0.35;
+          font-size: 12px; opacity: 0.35;
           letter-spacing: 0.04em;
         }
 

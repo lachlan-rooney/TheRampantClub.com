@@ -208,7 +208,7 @@ export default function ClubMap() {
                 {/* Floor name */}
                 <div style={{
                   fontFamily: "'Playfair Display', serif",
-                  fontSize: 17,
+                  fontSize: 16,
                   fontWeight: 500,
                   color: 'var(--trc-green-deep, #052E20)',
                   marginBottom: 3,

@@ -111,7 +111,7 @@ export default function AtlasGlobe({ counts, height = 560 }: Props) {
           const m = d as Marker
           const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
           const chips = m.character.slice(0, 3).map(c => `
-            <span style="font-family: 'Google Sans Code', monospace; font-size: 8px;
+            <span style="font-family: 'Google Sans Code', monospace; font-size: 10px;
                          letter-spacing: 0.05em; padding: 2px 7px; border-radius: 9px;
                          background: rgba(40,72,60,0.12); color: #28483C; margin-right: 4px;">
               ${esc(c)}
@@ -125,7 +125,7 @@ export default function AtlasGlobe({ counts, height = 560 }: Props) {
               <div style="font-size: 14px; font-weight: 500;">
                 ${m.flag} ${esc(m.name)}
                 ${m.native && m.native !== m.name
-                  ? `<span style="font-family: 'Google Sans Code', monospace; font-size: 9px; color: #5E6650; margin-left: 6px; letter-spacing: 0.06em;">${esc(m.native)}</span>`
+                  ? `<span style="font-family: 'Google Sans Code', monospace; font-size: 10px; color: #5E6650; margin-left: 6px; letter-spacing: 0.06em;">${esc(m.native)}</span>`
                   : ''}
               </div>
               ${m.count > 0
@@ -136,7 +136,7 @@ export default function AtlasGlobe({ counts, height = 560 }: Props) {
               </div>
               ${chips ? `<div style="margin-top: 8px;">${chips}</div>` : ''}
               ${distilleries ? `
-                <div style="font-family: 'Google Sans Code', monospace; font-size: 9px; color: #5E6650; margin-top: 8px; opacity: 0.7; letter-spacing: 0.04em;">
+                <div style="font-family: 'Google Sans Code', monospace; font-size: 10px; color: #5E6650; margin-top: 8px; opacity: 0.7; letter-spacing: 0.04em;">
                   ${distilleries}
                 </div>` : ''}
             </div>`

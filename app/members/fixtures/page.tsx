@@ -177,12 +177,12 @@ export default function FixturesPage() {
         }
         .fx-stat-num {
           font-family: 'Rampant Sans', serif;
-          font-size: 26px; font-weight: 600;
+          font-size: 28px; font-weight: 600;
           color: #D4B85A; line-height: 1;
         }
         .fx-stat-label {
           font-family: 'Google Sans Code', monospace;
-          font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+          font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
           color: #B2AA98; opacity: 0.75; margin-top: 6px;
         }
 
@@ -223,7 +223,7 @@ export default function FixturesPage() {
         .fx-sport {
           display: inline-block;
           font-family: 'Google Sans Code', monospace;
-          font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+          font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
           padding: 3px 9px; border-radius: 12px;
         }
         .fx-rel {
@@ -233,14 +233,14 @@ export default function FixturesPage() {
         }
         .fx-pill-on {
           font-family: 'Google Sans Code', monospace;
-          font-size: 9px; letter-spacing: 0.10em; text-transform: uppercase;
+          font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase;
           padding: 3px 9px; border-radius: 10px;
           background: rgba(122,176,122,0.18); color: #B5DCB5;
           border: 1px solid rgba(122,176,122,0.35);
         }
         .fx-title {
           font-family: 'Rampant Sans', serif;
-          font-size: 17px; font-weight: 600; color: #E5D4C2;
+          font-size: 16px; font-weight: 600; color: #E5D4C2;
           margin-bottom: 4px; letter-spacing: 0.02em;
         }
         .fx-meta {
@@ -295,7 +295,7 @@ export default function FixturesPage() {
 
         .fx-section-title {
           font-family: 'Rampant Sans', serif;
-          font-size: 18px; font-weight: 500;
+          font-size: 20px; font-weight: 500;
           color: #E5D4C2; margin: 32px 0 14px;
           letter-spacing: 0.02em;
         }

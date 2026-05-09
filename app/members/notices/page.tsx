@@ -65,12 +65,12 @@ export default function NoticesPage() {
           filtered.map(n => (
             <div key={n.id} style={{ padding: '24px 0', borderBottom: '1px solid rgba(229,212,194,0.1)' }}>
               {n.pinned && (
-                <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 9, color: '#B2AA98', marginBottom: 6 }}>
+                <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98', marginBottom: 6 }}>
                   ◆ Pinned
                 </div>
               )}
               <h3 style={{
-                fontFamily: "'Rampant Sans', serif", fontSize: 17, fontWeight: 600,
+                fontFamily: "'Rampant Sans', serif", fontSize: 16, fontWeight: 600,
                 color: '#E5D4C2', marginBottom: 8, margin: 0,
               }}>
                 {n.title}
@@ -86,7 +86,7 @@ export default function NoticesPage() {
                   {n.author && `${n.author} · `}{timeAgo(n.created_at)}
                 </span>
                 <span style={{
-                  fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 9,
+                  fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10,
                   background: 'rgba(229,212,194,0.1)', color: '#B2AA98', borderRadius: 20, padding: '2px 10px',
                 }}>
                   {n.category}

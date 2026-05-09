@@ -131,7 +131,7 @@ function SportSection({
         )}
         <h2 style={{
           fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-          fontSize: 17,
+          fontSize: 16,
           fontWeight: 600,
           fontStyle: 'italic',
           color: '#052E20',
@@ -390,7 +390,7 @@ export default function SportsPage() {
           <Reveal delay={0.1}>
             <h2 id="misc" style={{ scrollMarginTop: 100,
               fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-              fontSize: 17,
+              fontSize: 16,
               fontWeight: 600,
               fontStyle: 'italic',
               color: '#052E20',
@@ -414,7 +414,7 @@ export default function SportsPage() {
                   key={i}
                   style={{
                     fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: 500,
                     color: '#052E20',
                     padding: '12px 0',
@@ -458,7 +458,7 @@ export default function SportsPage() {
           }} />
           <p style={{
             fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: 500,
             color: '#052E20',
             letterSpacing: '0.06em',

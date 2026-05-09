@@ -152,7 +152,7 @@ export default function SpacesPage() {
           border: none; cursor: pointer;
           background: transparent; color: #B2AA98;
           font-family: 'Rampant Sans', serif;
-          font-size: 13px; font-weight: 500;
+          font-size: 12px; font-weight: 500;
           border-radius: 50%;
           transition: background 0.25s, color 0.25s, transform 0.25s;
         }
@@ -229,7 +229,7 @@ export default function SpacesPage() {
         }
         .floor-desc {
           font-family: 'Google Sans Code', 'DM Mono', monospace;
-          font-size: 13px; line-height: 1.85;
+          font-size: 12px; line-height: 1.85;
           color: #E5D4C2; opacity: 0.85;
           letter-spacing: 0.01em;
           margin: 0 0 14px;
@@ -268,7 +268,7 @@ export default function SpacesPage() {
         }
         .floor-studio-title {
           font-family: 'Rampant Sans', serif;
-          font-size: 17px; font-weight: 500;
+          font-size: 16px; font-weight: 500;
           color: #E5D4C2; font-style: italic;
           margin: 0 0 4px;
         }
@@ -298,9 +298,9 @@ export default function SpacesPage() {
           .floor-inner { grid-template-columns: 1fr; gap: 28px; }
           .floor-image { aspect-ratio: 16 / 10; }
           .floor-image-num { font-size: 80px; }
-          .floor-name { font-size: 26px; }
+          .floor-name { font-size: 28px; }
           .spaces-head { padding: 80px 20px 0; }
-          .spaces-title { font-size: 26px; }
+          .spaces-title { font-size: 28px; }
         }
       `}} />
 

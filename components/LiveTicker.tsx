@@ -59,7 +59,7 @@ export default function LiveTicker() {
         right: 20,
         zIndex: 9999,
         fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-        fontSize: 15,
+        fontSize: 14,
         letterSpacing: '0.06em',
         color: 'var(--trc-green-deep, #052E20)',
         opacity: hidden ? 0 : 0.7,

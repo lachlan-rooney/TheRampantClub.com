@@ -180,7 +180,7 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
         }
         .nav-link-vn {
           font-family: 'Google Sans Code', monospace;
-          font-size: 9px;
+          font-size: 10px;
           color: #052E20;
           letter-spacing: 0.04em;
           margin-top: 1px;
@@ -188,7 +188,7 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
 
         .nav-signout {
           font-family: 'Google Sans Code', monospace;
-          font-size: 9px;
+          font-size: 10px;
           letter-spacing: 0.06em;
           color: #5E6650;
           opacity: 0.5;
@@ -204,7 +204,7 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
 
         .nav-admin-link {
           font-family: 'Google Sans Code', monospace;
-          font-size: 9px;
+          font-size: 10px;
           letter-spacing: 0.06em;
           color: #5E6650;
           opacity: 0.35;

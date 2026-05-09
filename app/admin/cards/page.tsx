@@ -288,7 +288,7 @@ export default function AdminCards() {
           border: '1px dashed rgba(229,212,194,0.15)',
           borderRadius: 12,
         }}>
-          <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2', opacity: 0.8, marginBottom: 8 }}>
+          <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 20, color: '#E5D4C2', opacity: 0.8, marginBottom: 8 }}>
             Place a card on the reader
           </div>
           <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#B2AA98', opacity: 0.7 }}>
@@ -305,7 +305,7 @@ export default function AdminCards() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 24, flexWrap: 'wrap', marginBottom: 24 }}>
             <div>
               <label style={labelStyle}>Card UID</label>
-              <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 18, color: '#E5D4C2', letterSpacing: '0.05em' }}>
+              <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 20, color: '#E5D4C2', letterSpacing: '0.05em' }}>
                 {uid}
               </div>
             </div>
@@ -320,7 +320,7 @@ export default function AdminCards() {
                   <label style={labelStyle}>Linked member</label>
                   {member ? (
                     <>
-                      <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2', marginBottom: 4 }}>
+                      <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 20, color: '#E5D4C2', marginBottom: 4 }}>
                         {member['Full Name']}
                       </div>
                       <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#B2AA98' }}>

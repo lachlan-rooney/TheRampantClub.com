@@ -69,7 +69,7 @@ export default function MembersJournal() {
         }
         .jrnl-title {
           font-family: 'Rampant Sans', serif;
-          font-size: 22px; font-weight: 500; color: #E5D4C2;
+          font-size: 24px; font-weight: 500; color: #E5D4C2;
           margin: 0 0 8px; letter-spacing: 0.02em; line-height: 1.2;
         }
         .jrnl-excerpt {
@@ -131,7 +131,7 @@ export default function MembersJournal() {
         }
         .jrnl-r-body p {
           font-family: 'Google Sans Code', monospace;
-          font-size: 13px; line-height: 1.85;
+          font-size: 12px; line-height: 1.85;
           color: #E5D4C2; opacity: 0.9; margin: 0 0 18px;
           letter-spacing: 0.01em;
         }
