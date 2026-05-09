@@ -326,9 +326,9 @@ function ReciprocalSection({ refProp, visible }: {
         </p>
 
         {/* Live city tiles */}
-        <div style={{
+        <div className="recip-grid" style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gridTemplateColumns: 'repeat(4, 1fr)',
           gap: 14,
           maxWidth: 880,
           margin: '0 auto',
@@ -412,6 +412,7 @@ function ReciprocalSection({ refProp, visible }: {
         <style dangerouslySetInnerHTML={{ __html: `
           @media (max-width: 768px) {
             .recip-foot-break { display: block; height: 0; }
+            .recip-grid { grid-template-columns: repeat(2, 1fr) !important; }
           }
         ` }} />
       </div>
