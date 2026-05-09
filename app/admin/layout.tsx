@@ -13,6 +13,7 @@ const NAV = [
   { href: '/admin/members', label: 'Members' },
   { href: '/admin/cards', label: 'Member Cards' },
   { href: '/admin/journal', label: 'Journal' },
+  { href: '/admin/press', label: 'Press' },
   { href: '/admin/quickref', label: 'Quick Reference' },
   { href: '/admin/agreements', label: 'Agreements' },
 ]
