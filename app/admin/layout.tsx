@@ -12,6 +12,7 @@ const NAV = [
   { href: '/admin/rules', label: 'House Rules' },
   { href: '/admin/members', label: 'Members' },
   { href: '/admin/cards', label: 'Member Cards' },
+  { href: '/admin/journal', label: 'Journal' },
   { href: '/admin/quickref', label: 'Quick Reference' },
   { href: '/admin/agreements', label: 'Agreements' },
 ]

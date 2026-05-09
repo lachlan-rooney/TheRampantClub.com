@@ -132,6 +132,13 @@ export default function MembersPage() {
       secondary: nextFixture ? fmtDate(nextFixture.date) : 'Check the schedule',
     },
     {
+      href: '/members/journal',
+      en: "Cellarmaster's Journal",
+      vn: 'Nhật Ký Cellarmaster',
+      glyph: '✍',
+      secondary: 'Tasting notes & long-form whisky writing',
+    },
+    {
       href: '/members/spaces',
       en: 'Spaces & Menus',
       vn: 'Kh\u00f4ng gian & Th\u1ef1c \u0111\u01a1n',
