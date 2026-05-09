@@ -283,7 +283,7 @@ export default function MoodboardUploadPage() {
       <div className="upload-page">
         <div className="upload-grain" />
         <div className="upload-container">
-          <Link href="/members" className="upload-back">&larr; Back</Link>
+          <Link href="/members" className="upload-back">&larr; Back to dashboard</Link>
 
           <div className="upload-header">
             <div>

@@ -143,6 +143,18 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
           transform: translateY(-6px);
           pointer-events: none;
           transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+          padding: 18px 22px;
+          background: rgba(242, 229, 210, 0.94);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          border-radius: 8px;
+          border: 1px solid rgba(5, 46, 32, 0.10);
+          box-shadow: 0 18px 36px rgba(5, 46, 32, 0.15);
+        }
+        .nav-dark .nav-menu {
+          background: rgba(5, 46, 32, 0.94);
+          border: 1px solid rgba(229, 212, 194, 0.18);
+          box-shadow: 0 18px 36px rgba(0, 0, 0, 0.45);
         }
         .nav-menu.is-open {
           opacity: 1;
@@ -235,19 +247,6 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
             top: 60px;
             left: 16px;
             padding: 16px 20px;
-            /* Public (cream page) — light cream box with dark ink */
-            background: rgba(242, 229, 210, 0.94);
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
-            border-radius: 8px;
-            border: 1px solid rgba(5, 46, 32, 0.10);
-            box-shadow: 0 18px 36px rgba(5, 46, 32, 0.15);
-          }
-          .nav-dark .nav-menu {
-            /* Members (deep green page) — inverted: deep-green box, cream ink */
-            background: rgba(5, 46, 32, 0.94);
-            border: 1px solid rgba(229, 212, 194, 0.18);
-            box-shadow: 0 18px 36px rgba(0, 0, 0, 0.45);
           }
           .nav-logo { display: none !important; }
         }
@@ -280,17 +279,17 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
               <div className="nav-link-en">Home</div>
               <div className="nav-link-vn">Trang chủ</div>
             </Link>
-            <Link href="/origin" className="nav-link" onClick={() => setOpen(false)}>
-              <div className="nav-link-en">The Origin</div>
-              <div className="nav-link-vn">Nguồn Gốc</div>
-            </Link>
             <Link href="/atlas" className="nav-link" onClick={() => setOpen(false)}>
               <div className="nav-link-en">The Atlas</div>
               <div className="nav-link-vn">Bản Đồ Whisky</div>
             </Link>
+            <Link href="/origin" className="nav-link" onClick={() => setOpen(false)}>
+              <div className="nav-link-en">The Origin</div>
+              <div className="nav-link-vn">Nguồn Gốc</div>
+            </Link>
             <Link href="/login" className="nav-link" onClick={() => setOpen(false)}>
-              <div className="nav-link-en">Members</div>
-              <div className="nav-link-vn">Thành viên</div>
+              <div className="nav-link-en">Member Log in</div>
+              <div className="nav-link-vn">Đăng Nhập</div>
             </Link>
             <Link href="/sports" className="nav-link" onClick={() => setOpen(false)}>
               <div className="nav-link-en">The Sports Club</div>

@@ -103,15 +103,15 @@ export const SPORT_ODDS: Record<string, OddsBoard> = {
     rows: [
       { label: 'Asia XI',             odds: '11/8',  commentary: 'Defending champions. Have not lost on home soil.' },
       { label: 'Expat XV',            odds: '6/4',   commentary: 'Two new ringers from Singapore.' },
-      { label: "The Captain's Pick",  odds: '25/1',  commentary: 'A wildcard. Bring sandwiches.' },
+      { label: 'Tie',                 odds: '25/1',  commentary: 'A wildcard. Bring sandwiches.' },
     ],
   },
   tennis: {
     tournament: 'The Sài Gòn Open 2027',
     rows: [
       { label: 'Defending champions', odds: '5/2',   commentary: 'White-clothing veterans.' },
-      { label: 'The field',           odds: '3/1' },
-      { label: 'Anyone in white',     odds: '8/1',   commentary: 'A statement of decorum, not skill.' },
+      { label: 'Colour co-ordinators', odds: '1/12', commentary: 'A statement of decorum, not skill.' },
+      { label: 'Anyone drunk',        odds: '10/1' },
     ],
   },
   padel: {
@@ -126,7 +126,7 @@ export const SPORT_ODDS: Record<string, OddsBoard> = {
     tournament: 'The Saturday Hash',
     rows: [
       { label: 'Distance under 5km',  odds: '4/6',   commentary: 'Heavy favourite.' },
-      { label: 'Stop for cà phê',     odds: '3/1',   commentary: 'Frowned upon. Has precedent.' },
+      { label: 'Stop for cà phê',     odds: '1/3',   commentary: 'Frowned upon. Has precedent.' },
       { label: 'Someone gets lost',   odds: 'Evens', commentary: 'Always.' },
     ],
   },

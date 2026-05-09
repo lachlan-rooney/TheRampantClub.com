@@ -1,6 +1,7 @@
 'use client'
 
 import { ReactNode, useState, useEffect } from 'react'
+import Link from 'next/link'
 
 export default function MemberPage({
   title, subtitle, description, icon, children,
@@ -27,7 +28,7 @@ export default function MemberPage({
         backgroundRepeat: 'repeat', backgroundSize: '300px',
       }} />
       <div style={{
-        minHeight: '100vh', background: '#052E20', padding: '60px 40px 100px',
+        minHeight: '100vh', background: '#052E20', padding: '100px 40px 100px',
       }}>
         <div style={{
           maxWidth: 720, width: '100%', margin: '0 auto',
@@ -35,6 +36,14 @@ export default function MemberPage({
           transform: visible ? 'translateY(0)' : 'translateY(16px)',
           transition: animated ? 'none' : 'opacity 0.8s cubic-bezier(0.22,1,0.36,1), transform 0.8s cubic-bezier(0.22,1,0.36,1)',
         }}>
+          <Link href="/members" style={{
+            display: 'inline-block', marginBottom: 32,
+            fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11,
+            color: '#B2AA98', opacity: 0.7, letterSpacing: '0.06em',
+            textDecoration: 'none',
+          }}>
+            ← Back to dashboard
+          </Link>
           {icon ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={icon} alt="" style={{

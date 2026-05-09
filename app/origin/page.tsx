@@ -109,19 +109,9 @@ export default function OriginPage() {
           min-height: 92vh;
           display: flex; align-items: center; justify-content: center;
           padding: 120px 24px 80px;
-          background: linear-gradient(180deg,
-            #F2E5D2 0%,
-            var(--org-cream) 60%,
-            #DBC9B4 100%);
+          background: var(--org-cream);
           position: relative;
           overflow: hidden;
-        }
-        .org-hero::before {
-          content: '';
-          position: absolute; inset: 0;
-          background: radial-gradient(circle at 50% 40%,
-            rgba(212,184,90,0.18), transparent 60%);
-          pointer-events: none;
         }
         .org-hero-inner {
           position: relative; z-index: 2;

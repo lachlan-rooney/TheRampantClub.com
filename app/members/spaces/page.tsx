@@ -142,7 +142,7 @@ export default function SpacesPage() {
       <div className="spaces-page">
         <div className="spaces-grain" />
         <div className="spaces-container">
-          <Link href="/members" className="spaces-back">&larr; Back</Link>
+          <Link href="/members" className="spaces-back">&larr; Back to dashboard</Link>
 
           <h1 className="spaces-title">Our Spaces</h1>
           <p className="spaces-subtitle">Không gian của câu lạc bộ</p>

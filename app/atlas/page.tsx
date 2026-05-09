@@ -21,21 +21,45 @@ const AtlasGlobe = dynamic(() => import('./AtlasGlobe'), {
 
 export default function AtlasPage() {
   const [counts, setCounts] = useState<Record<string, number>>({})
+  const [categories, setCategories] = useState<{ singleMalt: number; bourbon: number; blended: number }>({ singleMalt: 0, bourbon: 0, blended: 0 })
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null)
 
   useEffect(() => {
     const supabase = createBrowserSupabaseClient()
     supabase.from('whiskies')
-      .select('region, in_stock')
+      .select('region, in_stock, name, added_at')
       .then(({ data }) => {
         if (!data) return
         const c: Record<string, number> = {}
-        for (const w of data as { region: string | null; in_stock: boolean }[]) {
-          if (!w.in_stock || !w.region) continue
-          c[w.region] = (c[w.region] || 0) + 1
+        const cats = { singleMalt: 0, bourbon: 0, blended: 0 }
+        let maxAdded: string | null = null
+        for (const w of data as { region: string | null; in_stock: boolean; name: string | null; added_at: string | null }[]) {
+          if (!w.in_stock) continue
+          if (w.region) c[w.region] = (c[w.region] || 0) + 1
+          // Categorise: bourbon (USA region or "bourbon" in name) → blend → else single malt
+          const n = (w.name || '').toLowerCase()
+          if (n.includes('bourbon') || w.region === 'USA') cats.bourbon++
+          else if (n.includes('blend')) cats.blended++
+          else cats.singleMalt++
+          if (w.added_at && (!maxAdded || w.added_at > maxAdded)) maxAdded = w.added_at
         }
         setCounts(c)
+        setCategories(cats)
+        setLastUpdated(maxAdded)
       })
   }, [])
+
+  const fmtRelative = (iso: string | null) => {
+    if (!iso) return null
+    const ms = Date.now() - new Date(iso).getTime()
+    const days = Math.round(ms / 86400000)
+    if (days < 1) return 'today'
+    if (days === 1) return 'yesterday'
+    if (days < 30) return `${days} days ago`
+    const months = Math.round(days / 30)
+    if (months < 12) return `${months} ${months === 1 ? 'month' : 'months'} ago`
+    return new Date(iso).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
+  }
 
   return (
     <>
@@ -51,9 +75,9 @@ export default function AtlasPage() {
         body { background: var(--atl-cream); }
 
         .atl-hero {
-          padding: 140px 24px 60px;
+          padding: 80px 24px 40px;
           text-align: center;
-          background: linear-gradient(180deg, #F2E5D2 0%, var(--atl-cream) 100%);
+          background: var(--atl-cream);
         }
         .atl-eyebrow {
           font-family: 'Google Sans Code', monospace;
@@ -78,11 +102,54 @@ export default function AtlasPage() {
           max-width: 540px; margin: 0 auto;
         }
 
+        .atl-stats {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 28px;
+          margin: 28px auto 0;
+          max-width: 540px;
+        }
+        .atl-stat { text-align: center; }
+        .atl-stat-num {
+          font-family: 'Rampant Sans', serif;
+          font-size: 28px;
+          font-weight: 600;
+          color: var(--atl-green-deep);
+          letter-spacing: 0.02em;
+          line-height: 1;
+        }
+        .atl-stat-label {
+          font-family: 'Google Sans Code', monospace;
+          font-size: 9px;
+          color: var(--atl-cream-dim);
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          margin-top: 6px;
+        }
+        .atl-stat-sep {
+          width: 1px;
+          height: 28px;
+          background: rgba(5,46,32,0.18);
+        }
+        .atl-updated {
+          margin-top: 18px;
+          font-family: 'Google Sans Code', monospace;
+          font-size: 10px;
+          color: var(--atl-green-accent);
+          opacity: 0.7;
+          letter-spacing: 0.06em;
+          font-style: italic;
+        }
+
         .atl-globe-wrap {
           position: relative;
-          background: radial-gradient(ellipse at center, #F2E5D2 0%, var(--atl-cream) 70%, #DBC9B4 100%);
-          padding: 12px 0 20px;
-          margin-top: 16px;
+          background: var(--atl-cream);
+          padding: 12px 0 12px;
+        }
+        .atl-stats-section {
+          padding: 12px 24px 24px;
+          text-align: center;
         }
         .atl-globe-hint {
           text-align: center;
@@ -168,13 +235,18 @@ export default function AtlasPage() {
           opacity: 0.7;
           padding-top: 8px;
           border-top: 1px solid rgba(5, 46, 32, 0.08);
-          display: flex; justify-content: space-between; align-items: center;
+          display: flex; justify-content: flex-start; align-items: center;
         }
-        .atl-card-count {
-          color: var(--atl-gold);
-          font-weight: 600;
-          font-size: 10px;
-          letter-spacing: 0.04em;
+        .atl-card-pill {
+          display: inline-block;
+          font-family: 'Google Sans Code', monospace;
+          font-size: 9px;
+          color: var(--atl-green-deep);
+          letter-spacing: 0.06em;
+          background: rgba(5, 46, 32, 0.08);
+          padding: 3px 9px;
+          border-radius: 10px;
+          opacity: 1;
         }
 
         .atl-card { cursor: default; }
@@ -212,6 +284,32 @@ export default function AtlasPage() {
           </div>
         </section>
 
+        {(categories.singleMalt + categories.bourbon + categories.blended) > 0 && (
+          <section className="atl-stats-section">
+            <div className="atl-stats">
+              <div className="atl-stat">
+                <div className="atl-stat-num">{categories.singleMalt}</div>
+                <div className="atl-stat-label">Single Malts</div>
+              </div>
+              <div className="atl-stat-sep" />
+              <div className="atl-stat">
+                <div className="atl-stat-num">{categories.bourbon}</div>
+                <div className="atl-stat-label">Bourbons</div>
+              </div>
+              <div className="atl-stat-sep" />
+              <div className="atl-stat">
+                <div className="atl-stat-num">{categories.blended}</div>
+                <div className="atl-stat-label">Blends</div>
+              </div>
+            </div>
+            {lastUpdated && (
+              <div className="atl-updated">
+                Last bottle added {fmtRelative(lastUpdated)}
+              </div>
+            )}
+          </section>
+        )}
+
         <section className="atl-grid">
           {ATLAS_REGIONS.map(r => (
             <div key={r.key} className="atl-card">
@@ -231,11 +329,12 @@ export default function AtlasPage() {
                 ))}
               </div>
               <div className="atl-card-footer">
-                <span>{r.country}</span>
-                {counts[r.key] > 0 && (
-                  <span className="atl-card-count">
-                    {counts[r.key]} {counts[r.key] === 1 ? 'bottle' : 'bottles'} in the Rampant Room
+                {counts[r.key] > 0 ? (
+                  <span className="atl-card-pill">
+                    {counts[r.key] > 99 ? '99+' : counts[r.key]} {counts[r.key] === 1 ? 'bottle' : 'bottles'} in the Rampant Room
                   </span>
+                ) : (
+                  <span>{r.country}</span>
                 )}
               </div>
             </div>

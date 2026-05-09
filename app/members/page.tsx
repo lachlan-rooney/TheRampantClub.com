@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import TonightPanel from '@/components/TonightPanel'
+import WelcomeTour from '@/components/WelcomeTour'
 
 interface Notice {
   id: string
@@ -23,6 +24,7 @@ interface NextFixture {
 
 export default function MembersPage() {
   const [greeting, setGreeting] = useState('')
+  const [firstName, setFirstName] = useState<string | undefined>(undefined)
   const [email, setEmail] = useState('')
   const [summary, setSummary] = useState('')
   const [memberNumber, setMemberNumber] = useState<number | null>(null)
@@ -63,6 +65,7 @@ export default function MembersPage() {
           const name = profile?.display_name
           if (name) {
             setGreeting(`${timeGreeting}, ${name}`)
+            setFirstName(name.split(' ')[0])
           } else {
             setGreeting(timeGreeting)
           }
@@ -176,7 +179,6 @@ export default function MembersPage() {
 
         .members-container {
           position: relative;
-          z-index: 2;
           max-width: 1080px;
           margin: 0 auto;
           padding: 100px 24px 80px;
@@ -417,6 +419,8 @@ export default function MembersPage() {
         }
       ` }} />
 
+      <WelcomeTour name={firstName} />
+
       <div className="members-page">
         <div className="members-grain" />
         <div className="members-container">
@@ -432,7 +436,7 @@ export default function MembersPage() {
             {notices.length > 0 && (
               <Link
                 href="/members/notices"
-                style={{ textDecoration: 'none', display: 'block' }}
+                style={{ textDecoration: 'none', display: 'block', position: 'relative', zIndex: 9001 }}
                 className="members-top-cell"
               >
                 <div className="notice-cork">

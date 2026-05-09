@@ -203,7 +203,7 @@ export default function EventsPage() {
       <div className="events-page">
         <div className="events-grain" />
         <div className="events-container">
-          <Link href="/members" className="events-back">&larr; Back</Link>
+          <Link href="/members" className="events-back">&larr; Back to dashboard</Link>
 
           <h1 className="events-title">Events</h1>
           <p className="events-subtitle">Sự kiện</p>

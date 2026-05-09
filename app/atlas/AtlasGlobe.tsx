@@ -62,7 +62,7 @@ export default function AtlasGlobe({ counts, height = 560 }: Props) {
       const g = ref.current
       if (!g) { raf = requestAnimationFrame(init); return }
       try {
-        g.pointOfView({ lat: 28, lng: 80, altitude: 2.4 }, 0)
+        g.pointOfView({ lat: SAIGON.lat, lng: SAIGON.lng, altitude: 2.0 }, 0)
         const controls = g.controls() as { autoRotate: boolean; autoRotateSpeed: number; enableZoom: boolean }
         controls.autoRotate = true
         controls.autoRotateSpeed = 0.35
@@ -100,7 +100,12 @@ export default function AtlasGlobe({ counts, height = 560 }: Props) {
         pointLat="lat"
         pointLng="lng"
         pointRadius="size"
-        pointAltitude={(d: object) => 0.01 + ((d as Marker).count) * 0.012}
+        pointAltitude={(d: object) => {
+          const c = (d as Marker).count
+          // Square-root curve, gentler than linear, taller than the previous
+          // pass. 1 bottle ≈ 0.06, 4 ≈ 0.10, 9 ≈ 0.14, 25 ≈ 0.22, capped beyond.
+          return 0.015 + Math.sqrt(Math.min(c, 36)) * 0.045
+        }}
         pointColor={(d: object) => (d as Marker).count > 0 ? '#FF7A1F' : 'rgba(255, 122, 31, 0.7)'}
         pointLabel={(d: object) => {
           const m = d as Marker
@@ -124,7 +129,7 @@ export default function AtlasGlobe({ counts, height = 560 }: Props) {
                   : ''}
               </div>
               ${m.count > 0
-                ? `<div style="font-family: 'Google Sans Code', monospace; font-size: 10px; color: #FF7A1F; margin-top: 4px; font-weight: 600;">${m.count} ${m.count === 1 ? 'bottle' : 'bottles'} in the Rampant Room</div>`
+                ? `<div style="font-family: 'Google Sans Code', monospace; font-size: 10px; color: #FF7A1F; margin-top: 4px; font-weight: 600;">${m.count > 99 ? '99+' : m.count} ${m.count === 1 ? 'bottle' : 'bottles'} in the Rampant Room</div>`
                 : ''}
               <div style="font-family: 'Google Sans Code', monospace; font-size: 10px; color: #5E6650; margin-top: 8px; line-height: 1.55;">
                 ${esc(m.blurb)}

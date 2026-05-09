@@ -33,17 +33,18 @@ export default function ContactPage() {
         }
 
         .contact-back {
-          position: fixed;
-          top: 24px;
-          right: 24px;
+          position: absolute;
+          top: 100px;
+          left: 40px;
+          z-index: 10;
+          font-family: 'Google Sans Code', 'DM Mono', monospace;
           font-size: 11px;
-          color: #B2AA98; opacity: 0.35;
+          color: #B2AA98; opacity: 0.7;
           text-decoration: none;
           letter-spacing: 0.06em;
           transition: opacity 0.2s;
-          z-index: 10;
         }
-        .contact-back:hover { opacity: 0.6; }
+        .contact-back:hover { opacity: 1; }
 
         .contact-container {
           position: relative; z-index: 2;
@@ -113,13 +114,13 @@ export default function ContactPage() {
 
         @media (max-width: 768px) {
           .contact-address { font-size: 18px; }
-          .contact-back { top: 18px; right: 18px; }
+          .contact-back { top: 80px; left: 20px; }
         }
       ` }} />
 
       <div className="contact-page">
         <div className="contact-grain" />
-        <Link href="/members" className="contact-back">&larr; Back</Link>
+        <Link href="/members" className="contact-back">&larr; Back to dashboard</Link>
 
         <div className="contact-container">
           <h1 className="contact-title">Contact</h1>
