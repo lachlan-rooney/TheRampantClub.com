@@ -28,7 +28,8 @@ export default function AtlasPage() {
     const supabase = createBrowserSupabaseClient()
     supabase.from('whiskies')
       .select('region, in_stock, name, added_at')
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) console.warn('[atlas] whiskies fetch error:', error)
         if (!data) return
         const c: Record<string, number> = {}
         const cats = { singleMalt: 0, bourbon: 0, blended: 0 }

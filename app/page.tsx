@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useCallback, useEffect, useState } from 'react'
+import { useRef, useCallback, useEffect, useMemo, useState } from 'react'
 import NavOverlay from '@/components/NavOverlay'
 import LiveTicker from '@/components/LiveTicker'
 import TonightPanel from '@/components/TonightPanel'
@@ -242,6 +242,172 @@ function DraggableImage({
           }}
         />
       )}
+    </div>
+  )
+}
+
+// ─── Reciprocal Section ──────────────────────────────────────────
+// Four reciprocal-club hubs, each showing the live local time and a
+// signature partner club. Decorative dashed flight paths animate in.
+const RECIP_CITIES = [
+  { name: 'London',    tz: 'Europe/London',    code: 'GMT',  partner: 'Mark’s Club',          country: 'United Kingdom' },
+  { name: 'New York',  tz: 'America/New_York', code: 'EST',  partner: 'Soho House',           country: 'United States' },
+  { name: 'Tokyo',     tz: 'Asia/Tokyo',       code: 'JST',  partner: 'The Aman Club',        country: 'Japan' },
+  { name: 'Singapore', tz: 'Asia/Singapore',   code: 'SGT',  partner: '1880',                 country: 'Singapore' },
+]
+
+function ReciprocalSection({ refProp, visible }: {
+  refProp: React.Ref<HTMLDivElement>
+  visible: boolean
+}) {
+  const computeTimes = () => RECIP_CITIES.map(c => new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit', minute: '2-digit', hour12: false, timeZone: c.tz,
+  }).format(new Date()))
+  // Server render uses placeholders to avoid SSR/CSR drift; first client paint hydrates real times.
+  const [times, setTimes] = useState<string[]>(() => Array(RECIP_CITIES.length).fill('—'))
+
+  useEffect(() => {
+    setTimes(computeTimes())
+    const id = setInterval(() => setTimes(computeTimes()), 30_000)
+    return () => clearInterval(id)
+  }, [])
+
+  // Sort cities left → right, earliest local time first.
+  const order = useMemo(() => {
+    const minutes = (t: string) => {
+      const [h, m] = t.split(':').map(n => parseInt(n, 10))
+      if (Number.isNaN(h) || Number.isNaN(m)) return -1
+      return h * 60 + m
+    }
+    return RECIP_CITIES.map((_, i) => i).sort((a, b) => minutes(times[a]) - minutes(times[b]))
+  }, [times])
+
+  return (
+    <div
+      ref={refProp}
+      style={{
+        padding: '60px 32px 64px',
+        background: 'var(--trc-green-deep)',
+        position: 'relative',
+        overflow: 'hidden',
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(20px)',
+        transition: 'opacity 0.8s ease, transform 0.8s cubic-bezier(0.22, 1, 0.36, 1)',
+      }}
+    >
+      <div style={{ maxWidth: 980, margin: '0 auto', position: 'relative' }}>
+        <div
+          className="trc-section-diamond"
+          style={{ background: 'var(--trc-cream)', opacity: 0.4 }}
+        />
+        <h2
+          className="trc-section-title"
+          style={{ color: 'var(--trc-cream)', marginBottom: 8 }}
+        >
+          A World Beyond Sài Gòn
+        </h2>
+        <div
+          className="trc-section-subtitle"
+          style={{ color: 'var(--trc-cream-dim)', opacity: 0.7, marginBottom: 16 }}
+        >
+          Câu Lạc Bộ Đối Ứng
+        </div>
+        <p style={{
+          fontFamily: "'Google Sans Code', monospace",
+          fontSize: 12,
+          color: 'var(--trc-cream)',
+          opacity: 0.65,
+          lineHeight: 1.7,
+          textAlign: 'center',
+          maxWidth: 560,
+          margin: '0 auto 36px',
+        }}>
+          Bespoke reciprocal access to a vetted network of premier private clubs.
+        </p>
+
+        {/* Live city tiles */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: 14,
+          maxWidth: 880,
+          margin: '0 auto',
+        }}>
+          {order.map((i, displayIdx) => {
+            const c = RECIP_CITIES[i]
+            return (
+            <div
+              key={c.name}
+              style={{
+                padding: '14px 14px 14px',
+                background: 'rgba(229,212,194,0.04)',
+                border: '1px solid rgba(229,212,194,0.10)',
+                borderRadius: 10,
+                textAlign: 'center',
+                opacity: visible ? 1 : 0,
+                transform: visible ? 'translateY(0)' : 'translateY(12px)',
+                transition: `opacity 0.6s ease ${0.2 + displayIdx * 0.1}s, transform 0.6s cubic-bezier(0.22,1,0.36,1) ${0.2 + displayIdx * 0.1}s, background 0.3s, border-color 0.3s, box-shadow 0.4s`,
+                cursor: 'default',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background  = 'rgba(229,212,194,0.07)'
+                e.currentTarget.style.borderColor = 'rgba(212,184,90,0.4)'
+                e.currentTarget.style.boxShadow   = '0 18px 32px rgba(0,0,0,0.32)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background  = 'rgba(229,212,194,0.04)'
+                e.currentTarget.style.borderColor = 'rgba(229,212,194,0.10)'
+                e.currentTarget.style.boxShadow   = 'none'
+              }}
+            >
+              <div style={{
+                fontFamily: "'Rampant Sans', serif",
+                fontSize: 15,
+                fontWeight: 500,
+                color: 'var(--trc-cream)',
+                letterSpacing: '0.04em',
+                marginBottom: 2,
+              }}>
+                {c.name}
+              </div>
+              <div style={{
+                fontFamily: "'Google Sans Code', monospace",
+                fontSize: 8,
+                color: '#D4B85A',
+                opacity: 0.7,
+                letterSpacing: '0.18em',
+                textTransform: 'uppercase',
+                marginBottom: 8,
+              }}>
+                {c.code}
+              </div>
+              <div style={{
+                fontFamily: "'Google Sans Code', monospace",
+                fontSize: 17,
+                fontVariantNumeric: 'tabular-nums',
+                fontWeight: 500,
+                color: 'var(--trc-cream)',
+                letterSpacing: '0.04em',
+              }}>
+                {times[i]}
+              </div>
+            </div>
+          )})}
+        </div>
+
+        <p style={{
+          fontFamily: "'Google Sans Code', monospace",
+          fontSize: 10,
+          color: 'var(--trc-cream-dim)',
+          opacity: 0.45,
+          letterSpacing: '0.06em',
+          textAlign: 'center',
+          marginTop: 36,
+          fontStyle: 'italic',
+        }}>
+          Featured partner cities shown · the full reciprocal list is shared with members upon joining.
+        </p>
+      </div>
     </div>
   )
 }
@@ -503,14 +669,18 @@ export default function HomePage() {
         }
 
         .trc-tier-card {
-          background: rgba(5, 46, 32, 0.03);
-          padding: 40px 32px;
-          border: 1px solid rgba(5, 46, 32, 0.08);
-          cursor: pointer;
+          background: linear-gradient(180deg, rgba(5,46,32,0.04), rgba(5,46,32,0.10));
+          padding: 32px 28px;
+          border: 1px solid rgba(5, 46, 32, 0.18);
+          border-radius: 16px;
+          box-shadow: 0 14px 36px rgba(5, 46, 32, 0.10);
+          cursor: default;
+          transition: transform 0.35s cubic-bezier(0.22,1,0.36,1), box-shadow 0.35s ease, border-color 0.35s ease;
         }
         .trc-tier-card:hover {
-          background: rgba(5, 46, 32, 0.25);
-          border-color: rgba(5, 46, 32, 0.4);
+          transform: translateY(-3px);
+          box-shadow: 0 20px 44px rgba(5, 46, 32, 0.16);
+          border-color: rgba(5, 46, 32, 0.28);
         }
         .trc-tier-card .trc-tier-name {
           font-family: 'Rampant Sans', 'Playfair Display', serif;
@@ -912,65 +1082,7 @@ export default function HomePage() {
         </div>
 
         {/* ══════ 5. RECIPROCAL ACCESS ══════ */}
-        <div
-          ref={reciprocalSec.ref}
-          style={{
-            padding: '80px 40px',
-            background: 'var(--trc-green-deep)',
-            opacity: reciprocalSec.visible ? 1 : 0,
-            transform: reciprocalSec.visible ? 'translateY(0)' : 'translateY(20px)',
-            transition: 'opacity 0.8s ease, transform 0.8s cubic-bezier(0.22, 1, 0.36, 1)',
-          }}
-        >
-          <div style={{ maxWidth: 700, margin: '0 auto', textAlign: 'center' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/images/key-opt.png"
-              alt=""
-              style={{ display: 'block', width: 80, height: 'auto', margin: '0 auto 24px', opacity: 0.7 }}
-            />
-            <div style={{
-              fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-              fontSize: 28,
-              fontWeight: 500,
-              color: 'var(--trc-cream)',
-              letterSpacing: '0.04em',
-              marginBottom: 8,
-            }}>
-              A World Beyond Sài Gòn
-            </div>
-            <div style={{
-              fontFamily: "'Google Sans Code', monospace",
-              fontSize: 11,
-              color: 'var(--trc-cream-dim)',
-              letterSpacing: '0.06em',
-              opacity: 0.5,
-              marginBottom: 40,
-            }}>
-              Câu Lạc Bộ Đối Ứng
-            </div>
-            <p style={{
-              fontFamily: "'Google Sans Code', monospace",
-              fontSize: 13,
-              color: 'var(--trc-cream)',
-              opacity: 0.6,
-              lineHeight: 1.8,
-              marginBottom: 24,
-            }}>
-              Our membership includes bespoke reciprocal access to a carefully vetted global network of premier private clubs. From golf courses to spa hotels, enjoy the privileges of fellow establishments worldwide.
-            </p>
-            <div style={{
-              fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-              fontSize: 14,
-              fontStyle: 'italic',
-              color: 'var(--trc-cream)',
-              opacity: 0.5,
-              letterSpacing: '0.04em',
-            }}>
-              London &middot; New York &middot; Tokyo &middot; Singapore
-            </div>
-          </div>
-        </div>
+        <ReciprocalSection refProp={reciprocalSec.ref} visible={reciprocalSec.visible} />
 
         {/* ══════ 6. LION PAINTING ══════ */}
         <div

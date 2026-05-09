@@ -38,30 +38,41 @@ export default function FixturesPage() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | Fixture['sport']>('all')
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [nowTs, setNowTs] = useState(() => Date.now())
 
-  const supabase = createBrowserSupabaseClient()
+  const supabase = useMemo(() => createBrowserSupabaseClient(), [])
 
-  const load = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) setUserId(user.id)
-    const [{ data: f }, { data: s }] = await Promise.all([
-      supabase.from('fixtures').select('*').order('date', { ascending: false }),
-      supabase.from('fixture_signups').select('*'),
-    ])
-    if (f) setFixtures(f)
-    if (s) setSignups(s)
-    setLoading(false)
-  }
+  useEffect(() => {
+    const id = setInterval(() => setNowTs(Date.now()), 60_000)
+    return () => clearInterval(id)
+  }, [])
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (cancelled) return
+      if (user) setUserId(user.id)
+      const [{ data: f }, { data: s }] = await Promise.all([
+        supabase.from('fixtures').select('*').order('date', { ascending: false }),
+        supabase.from('fixture_signups').select('*'),
+      ])
+      if (cancelled) return
+      if (f) setFixtures(f)
+      if (s) setSignups(s)
+      setLoading(false)
+    }
+    load()
+    return () => { cancelled = true }
+  }, [supabase])
 
-  const now = new Date()
-  const upcoming = useMemo(() => fixtures.filter(f => new Date(f.date) >= now), [fixtures])
-  const past = useMemo(() => fixtures.filter(f => new Date(f.date) < now), [fixtures])
+  const upcoming = useMemo(() => fixtures.filter(f => new Date(f.date).getTime() >= nowTs), [fixtures, nowTs])
+  const past = useMemo(() => fixtures.filter(f => new Date(f.date).getTime() < nowTs), [fixtures, nowTs])
 
   const countSignups = (fixtureId: string) => signups.filter(s => s.fixture_id === fixtureId).length
   const isSignedUp = (fixtureId: string) => signups.some(s => s.fixture_id === fixtureId && s.user_id === userId)
-  const deadlinePassed = (f: Fixture) => f.signup_deadline && new Date(f.signup_deadline) < now
+  const deadlinePassed = (f: Fixture) => f.signup_deadline ? new Date(f.signup_deadline).getTime() < nowTs : false
 
   const myUpcoming = upcoming.filter(f => isSignedUp(f.id)).length
   const sportCounts = useMemo(() => {
@@ -79,13 +90,22 @@ export default function FixturesPage() {
   const toggleSignup = async (fixtureId: string) => {
     if (!userId) return
     setBusyId(fixtureId)
-    if (isSignedUp(fixtureId)) {
-      await supabase.from('fixture_signups').delete().eq('fixture_id', fixtureId).eq('user_id', userId)
-    } else {
-      await supabase.from('fixture_signups').insert({ fixture_id: fixtureId, user_id: userId })
+    setErrorMsg(null)
+    const op = isSignedUp(fixtureId)
+      ? supabase.from('fixture_signups').delete().eq('fixture_id', fixtureId).eq('user_id', userId)
+      : supabase.from('fixture_signups').insert({ fixture_id: fixtureId, user_id: userId })
+    const { error: opError } = await op
+    if (opError) {
+      setErrorMsg(opError.message || 'Could not update signup. Please try again.')
+      setBusyId(null)
+      return
     }
-    const { data } = await supabase.from('fixture_signups').select('*')
-    if (data) setSignups(data)
+    const { data, error: refreshError } = await supabase.from('fixture_signups').select('*')
+    if (refreshError) {
+      setErrorMsg(refreshError.message || 'Signup saved, but the list failed to refresh.')
+    } else if (data) {
+      setSignups(data)
+    }
     setBusyId(null)
   }
 
@@ -291,6 +311,24 @@ export default function FixturesPage() {
           <p style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#B2AA98', textAlign: 'center' }}>Loading…</p>
         ) : (
           <>
+            {errorMsg && (
+              <div
+                role="alert"
+                style={{
+                  fontFamily: "'Google Sans Code', monospace",
+                  fontSize: 12,
+                  color: '#E5D4C2',
+                  background: 'rgba(176, 60, 60, 0.18)',
+                  border: '1px solid rgba(220, 100, 100, 0.45)',
+                  borderRadius: 8,
+                  padding: '10px 14px',
+                  marginBottom: 18,
+                  textAlign: 'center',
+                }}
+              >
+                {errorMsg}
+              </div>
+            )}
             {/* Stats row */}
             <div className="fx-stats">
               <div className="fx-stat">

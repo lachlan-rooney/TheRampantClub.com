@@ -24,15 +24,20 @@ const fmtDate = (d: string | null) => {
 export default function PressPage() {
   const [visible, setVisible] = useState(false)
   const [items, setItems] = useState<PressItem[]>([])
+  const [loading, setLoading] = useState(true)
   useEffect(() => {
-    setTimeout(() => setVisible(true), 150)
+    const t = setTimeout(() => setVisible(true), 150)
     const supabase = createBrowserSupabaseClient()
     supabase.from('press_items')
       .select('id, type, title, outlet, body, link, image_url, published_at')
       .eq('is_published', true)
       .order('published_at', { ascending: false, nullsFirst: false })
       .order('sort_order', { ascending: true })
-      .then(({ data }) => { if (data) setItems(data as PressItem[]) })
+      .then(({ data }) => {
+        if (data) setItems(data as PressItem[])
+        setLoading(false)
+      })
+    return () => clearTimeout(t)
   }, [])
 
   const kits     = items.filter(i => i.type === 'kit')
@@ -196,7 +201,9 @@ export default function PressPage() {
             <div className="pr-h2">In the Press</div>
             <div className="pr-h2-sub">Selected coverage</div>
             <div className="pr-rule" />
-            {mentions.length === 0 ? (
+            {loading ? (
+              <div className="pr-empty">Loading…</div>
+            ) : mentions.length === 0 ? (
               <div className="pr-empty">No coverage on file yet.</div>
             ) : mentions.map(m => (
               <div key={m.id} className="pr-clip">
@@ -215,7 +222,9 @@ export default function PressPage() {
             <div className="pr-h2">Press Releases</div>
             <div className="pr-h2-sub">Latest first</div>
             <div className="pr-rule" />
-            {releases.length === 0 ? (
+            {loading ? (
+              <div className="pr-empty">Loading…</div>
+            ) : releases.length === 0 ? (
               <div className="pr-empty">No releases yet.</div>
             ) : releases.map(r => (
               <div key={r.id} className="pr-row">
@@ -234,7 +243,9 @@ export default function PressPage() {
             <div className="pr-h2">Press Kits</div>
             <div className="pr-h2-sub">Downloadable assets</div>
             <div className="pr-rule" />
-            {kits.length === 0 ? (
+            {loading ? (
+              <div className="pr-empty">Loading…</div>
+            ) : kits.length === 0 ? (
               <div className="pr-empty">No kits available yet.</div>
             ) : kits.map(k => (
               <div key={k.id} className="pr-row">

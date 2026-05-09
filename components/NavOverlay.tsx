@@ -250,6 +250,10 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
           }
           .nav-logo { display: none !important; }
         }
+        /* Hide the lion on iPad-sized viewports too, but only inside the members portal */
+        @media (max-width: 1024px) {
+          .nav-dark .nav-logo { display: none !important; }
+        }
       ` }} />
 
       <div className={dark ? 'nav-dark' : ''}>

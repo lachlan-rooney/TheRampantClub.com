@@ -37,10 +37,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Redirect logged-in users away from /login
+  // Redirect logged-in users away from /login.
+  // Honour ?redirect= if it's an internal path; otherwise drop them on /members.
+  // Either way, strip the redirect param so it doesn't linger in the URL bar.
   if (request.nextUrl.pathname === '/login' && user) {
+    const target = request.nextUrl.searchParams.get('redirect')
     const url = request.nextUrl.clone()
-    url.pathname = '/members'
+    url.pathname = target && target.startsWith('/') && !target.startsWith('//') ? target : '/members'
+    url.searchParams.delete('redirect')
     return NextResponse.redirect(url)
   }
 
