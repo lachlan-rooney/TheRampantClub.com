@@ -289,7 +289,7 @@ export default function SportsPage() {
             delay={0.1}
             copy={[
               "The Club's annual invitational golf tournament, held each June at a course the Committee declines to name in advance. Thirty-six holes. Match play. One trophy. Incredible prizes. No mulligans.",
-              "The Rampant Cup is contested Ryder Cup–style between two teams — Asia and Expat — selected by the Captain, not by handicap, and certainly not by request. Team composition has, on occasion, been described as \u201Cpolitical\u201D. The Captain considers this a compliment.",
+              "The Rampant Cup is contested Ryder Cup–style between two teams — Team Vu and Team Lân — selected by the respective Captains, not by handicap, and certainly not by request. Team composition has, on occasion, been described as \u201Cpolitical\u201D. The Captain considers this a compliment.",
               "Format: Four-ball, foursomes, and singles across two days. Black tie dinner on the eve. Dress code on-course: smart. Dress code at dinner: smarter.",
               "Past venues have included The Bluffs, courses in Đà Lạt and Phan Thiết, and one memorable occasion in Hội An during which the second-day tee time was delayed by forty-five minutes due to an internal dispute over whether the team ball should be the Pro V1 or the Pro V1x. The matter remains unresolved.",
             ]}
@@ -445,18 +445,6 @@ export default function SportsPage() {
               letterSpacing: '0.02em',
             }}>
               The Sports Club is open to all members of The Rampant Club. Fixtures are announced via the members&rsquo; area and by word of mouth at the bar. The Committee welcomes suggestions for new activities, provided they can be conducted with dignity, or at least plausible dignity.
-            </p>
-            <p style={{
-              fontFamily: "'Google Sans Code', 'DM Mono', monospace",
-              fontSize: 10,
-              fontStyle: 'italic',
-              color: '#B2AA98',
-              textAlign: 'center',
-              lineHeight: 1.8,
-              marginTop: 20,
-              opacity: 0.6,
-            }}>
-              For fixtures, bookings, and complaints about the handicap system, please speak with the Sports Secretary or leave a note at reception.
             </p>
           </Reveal>
 

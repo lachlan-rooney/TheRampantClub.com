@@ -58,6 +58,15 @@ export default function LoginTicker() {
   const [quipIndex, setQuipIndex] = useState(0)
   const [quipVisible, setQuipVisible] = useState(true)
   const [mounted, setMounted] = useState(false)
+  const [hidden, setHidden] = useState(false)
+
+  // Hide while scrolled past the top, reveal again at the top
+  useEffect(() => {
+    const onScroll = () => setHidden(window.scrollY > 40)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   useEffect(() => {
     setQuipIndex(Math.floor(Math.random() * QUIPS.length))
@@ -129,7 +138,10 @@ export default function LoginTicker() {
         fontSize: 11,
         letterSpacing: '0.06em',
         color: '#E5D4C2',
-        opacity: 0.4,
+        opacity: hidden ? 0 : 0.4,
+        transform: hidden ? 'translateY(-8px)' : 'translateY(0)',
+        pointerEvents: hidden ? 'none' : 'auto',
+        transition: 'opacity 0.3s ease, transform 0.3s ease',
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',

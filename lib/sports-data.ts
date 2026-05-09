@@ -55,7 +55,7 @@ export const TROPHIES: Trophy[] = [
     sport: 'Golf',
     established: 2024,
     metal: 'silver',
-    description: 'Annual Ryder-Cup-style invitational. Asia XI vs Expat XV. Two days. One trophy.',
+    description: 'Annual Ryder-Cup-style invitational. Team Vu vs Team Lân. Two days. One trophy.',
   },
   {
     id: 'saigon-open',
@@ -85,9 +85,9 @@ export const TROPHIES: Trophy[] = [
 
 // ── Hall of Champions ──────────────────────────────────────────
 export const WINNERS: Winner[] = [
-  { trophy: 'rampant-cup',     year: 2026, winner: 'Asia XI',       result: '14½ – 13½', notes: 'Decided on the eighteenth at Đà Lạt.' },
-  { trophy: 'rampant-cup',     year: 2025, winner: 'Expat XV',      result: '15 – 13',   notes: 'A controversial line on the seventh.' },
-  { trophy: 'rampant-cup',     year: 2024, winner: 'Expat XV',      result: '14 – 14 (T)', notes: 'Tie. The Cup remained at the Captain\'s for a year.' },
+  { trophy: 'rampant-cup',     year: 2026, winner: 'Team Vu',       result: '14½ – 13½', notes: 'Decided on the eighteenth at Đà Lạt.' },
+  { trophy: 'rampant-cup',     year: 2025, winner: 'Team Lân',      result: '15 – 13',   notes: 'A controversial line on the seventh.' },
+  { trophy: 'rampant-cup',     year: 2024, winner: 'Team Lân',      result: '14 – 14 (T)', notes: 'Tie. The Cup remained at the Captain\'s for a year.' },
   { trophy: 'saigon-open',     year: 2026, winner: 'Pioneer 042 / Pioneer 011', result: '6-4, 7-5', notes: 'Mixed doubles. Tightly contested.' },
   { trophy: 'saigon-open',     year: 2025, winner: 'Legacy 003 / Legacy 008',   result: '7-6, 6-3' },
   { trophy: 'padel-cup',       year: 2026, winner: 'Pioneer 027',   result: '—',         notes: 'Returned from Barcelona insufferable.' },
@@ -101,8 +101,8 @@ export const SPORT_ODDS: Record<string, OddsBoard> = {
   golf: {
     tournament: 'The Rampant Cup 2027',
     rows: [
-      { label: 'Asia XI',             odds: '11/8',  commentary: 'Defending champions. Have not lost on home soil.' },
-      { label: 'Expat XV',            odds: '6/4',   commentary: 'Two new ringers from Singapore.' },
+      { label: 'Team Vu',             odds: '11/8',  commentary: 'Defending champions. Have not lost on home soil.' },
+      { label: 'Team Lân',            odds: '6/4',   commentary: 'Two new ringers from Singapore.' },
       { label: 'Tie',                 odds: '25/1',  commentary: 'A wildcard. Bring sandwiches.' },
     ],
   },
