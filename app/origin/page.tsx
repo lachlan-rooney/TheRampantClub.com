@@ -15,8 +15,8 @@ const CHAPTERS = [
        It is a creature in motion — neither at rest nor at war, but ready, watchful, alive.`,
       `In Vietnamese tradition, lions guard the gate. They are stationed at temples and households to mark the
        threshold between the everyday and the sacred. They keep faith with what is inside.`,
-      `Our lion is both. Scottish in posture, Vietnamese in purpose. The crest watches from above the door,
-       and the room behind it answers to its standard.`,
+      `Our lion is both. Scottish in posture, Vietnamese in purpose. Our crest watches from above the door,
+       and the rooms behind it answer to its standard.`,
     ],
   },
   {
@@ -54,7 +54,6 @@ const CHAPTERS = [
       `Members may pour any bottle. They may bring guests within reason. They may use the spaces as they
        would their own — quietly, attentively, without fuss. There are house rules, but few; the club
        largely keeps itself.`,
-      `We are private by design and discreet by habit. What happens in the Library Bar stays in the Library Bar.`,
     ],
   },
 ]
