@@ -33,20 +33,7 @@ const CHAPTERS = [
     ],
   },
   {
-    eyebrow: 'III.  The Founders',
-    title: 'Two cities, one cabinet',
-    body: [
-      `The Rampant Club was founded by people who grew up between Scotland and Việt Nam, who came of age
-       sharing whisky with friends in living rooms rather than ordering it in bars, and who understood
-       that the best evenings had no menu.`,
-      `What we missed wasn't a place to drink — Sài Gòn has those. It was a place where serious whisky
-       lovers were granted the freedoms they had at home: to pour for themselves, to stay as long as they
-       liked, to share generously, to not be sold to.`,
-      `So we built one.`,
-    ],
-  },
-  {
-    eyebrow: 'IV.  The Idea',
+    eyebrow: 'III.  The Idea',
     title: 'Sustained by its members, not for profit',
     body: [
       `The Rampant Club is a members' club in the strict sense. It exists for the people who belong to it,

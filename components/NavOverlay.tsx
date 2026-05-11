@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 
 interface NavOverlayProps {
@@ -17,14 +16,14 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
   const navRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const logoRef = useRef<HTMLImageElement>(null)
-  const router = useRouter()
-
   const handleSignOut = useCallback(async () => {
     const supabase = createBrowserSupabaseClient()
     await supabase.auth.signOut()
     setOpen(false)
-    router.push('/')
-  }, [router])
+    // Full reload so the middleware re-reads cleared auth cookies on the next request.
+    // router.push() keeps Next's server cache and can leave the user appearing signed in.
+    window.location.href = '/'
+  }, [])
 
   useEffect(() => {
     if (variant !== 'members') return

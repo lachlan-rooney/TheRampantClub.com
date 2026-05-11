@@ -44,19 +44,23 @@ function LoginContent() {
     }
   }, [email, password, redirect, router])
 
+  const [forgotLoading, setForgotLoading] = useState(false)
   const handleForgotPassword = useCallback(async () => {
+    if (forgotLoading || forgotSent) return
     if (!email) {
       setError('Pop your email in — we\'ll take it from there.')
       return
     }
     setError(null)
+    setForgotLoading(true)
     const supabase = createBrowserSupabaseClient()
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://therampantclub.com'
     await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${siteUrl}/reset-password`,
     })
+    setForgotLoading(false)
     setForgotSent(true)
-  }, [email])
+  }, [email, forgotLoading, forgotSent])
 
   return (
     <>
@@ -259,8 +263,13 @@ function LoginContent() {
           <button
             className="login-toggle"
             onClick={handleForgotPassword}
+            disabled={forgotLoading || forgotSent}
           >
-            {forgotSent ? 'Check your email. We\'ve sent a lifeline.' : 'Forgotten password? It happens to the best of us.'}
+            {forgotLoading
+              ? 'Sending…'
+              : forgotSent
+                ? 'Check your email. We\'ve sent a lifeline.'
+                : 'Forgotten password? It happens to the best of us.'}
           </button>
 
           {error && <div className="login-message error">{error}</div>}
