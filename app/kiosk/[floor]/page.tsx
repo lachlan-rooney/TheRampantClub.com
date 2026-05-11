@@ -10,14 +10,82 @@ interface FloorConfig {
   vn: string
   accent: string
   menuPdf?: string
+  /** Feature widget shown on this floor's kiosk */
+  feature?: {
+    type: 'whisky' | 'static'
+    eyebrow: string
+    title?: string
+    body?: string
+  }
 }
 
 const FLOORS: Record<string, FloorConfig> = {
-  'library-bar':       { slug: 'library-bar',       floor: 1, name: 'The Library Bar',     vn: 'Quầy Bar Thư Viện',    accent: '#D4B85A', menuPdf: '/documents/menus/library-bar.pdf' },
-  'studio':            { slug: 'studio',            floor: 2, name: 'The Studio',          vn: 'Phòng Nghệ Thuật',     accent: '#B2AA98' },
-  'dining-room':       { slug: 'dining-room',       floor: 3, name: 'The Dining Room',     vn: 'Phòng Ăn Riêng',       accent: '#C27070' },
-  'rampant-room':      { slug: 'rampant-room',      floor: 4, name: 'The Rampant Room',    vn: 'Phòng Rampant',        accent: '#D4B85A' },
-  'source-origin-lab': { slug: 'source-origin-lab', floor: 5, name: 'Source & Origin Lab', vn: 'Phòng Thí Nghiệm',     accent: '#5E6650' },
+  'library-bar': {
+    slug: 'library-bar', floor: 1, name: 'The Library Bar', vn: 'Quầy Bar Thư Viện',
+    accent: '#D4B85A', menuPdf: '/documents/menus/library-bar.pdf',
+    feature: {
+      type: 'static',
+      eyebrow: '◆ Bartender’s Pick',
+      title: 'Ask the bar',
+      body: 'Tell our team what you feel like and they’ll mix to it. No menu can match a good conversation.',
+    },
+  },
+  'studio': {
+    slug: 'studio', floor: 2, name: 'The Studio', vn: 'Phòng Nghệ Thuật',
+    accent: '#B2AA98',
+    feature: {
+      type: 'static',
+      eyebrow: '◆ Current installation',
+      title: 'Terroir of Memories',
+      body: 'A quarterly rotating sensory artwork — touch, taste, hear, and smell the installation around you.',
+    },
+  },
+  'dining-room': {
+    slug: 'dining-room', floor: 3, name: 'The Dining Room', vn: 'Phòng Ăn Riêng',
+    accent: '#C27070',
+    feature: {
+      type: 'static',
+      eyebrow: '◆ Tonight’s pick',
+      title: 'Ask the kitchen',
+      body: 'Tonight’s special is curated by our chef — speak with the maître d’ to hear what’s on.',
+    },
+  },
+  'rampant-room': {
+    slug: 'rampant-room', floor: 4, name: 'The Rampant Room', vn: 'Phòng Rampant',
+    accent: '#D4B85A',
+    feature: {
+      type: 'whisky',
+      eyebrow: '◆ Featured pour',
+    },
+  },
+  'source-origin-lab': {
+    slug: 'source-origin-lab', floor: 5, name: 'Source & Origin Lab', vn: 'Phòng Thí Nghiệm',
+    accent: '#5E6650',
+    feature: {
+      type: 'static',
+      eyebrow: '◆ This week’s experiment',
+      title: 'Saigon Cellar Drops',
+      body: 'A rotating set of experimental serves — short-batch, sometimes daft, occasionally brilliant. Ask to taste.',
+    },
+  },
+}
+
+interface FeaturedWhisky {
+  id: string
+  name: string
+  region: string | null
+  distillery: string | null
+  abv: string | null
+  age: string | null
+  tasting_notes: string | null
+}
+
+interface MemberLookup {
+  found: boolean
+  member_number?: string
+  display_name?: string | null
+  credit_vnd?: number
+  expires_at?: string | null
 }
 
 interface TonightData {
@@ -36,6 +104,8 @@ export default function KioskPage({ params }: { params: Promise<{ floor: string 
   const [temp, setTemp] = useState<number | null>(null)
   const [nfcStatus, setNfcStatus] = useState<'idle' | 'scanning' | 'unsupported' | 'denied' | 'error'>('idle')
   const [tappedUid, setTappedUid] = useState<string | null>(null)
+  const [member, setMember] = useState<MemberLookup | null>(null)
+  const [featuredWhisky, setFeaturedWhisky] = useState<FeaturedWhisky | null>(null)
 
   // Live clock — Saigon local time, ticks every 30s
   useEffect(() => {
@@ -60,6 +130,29 @@ export default function KioskPage({ params }: { params: Promise<{ floor: string 
     }, 15 * 60_000)
     return () => clearInterval(id)
   }, [])
+
+  // Featured whisky for the Rampant Room kiosk
+  useEffect(() => {
+    if (floor.feature?.type !== 'whisky') return
+    fetch('/api/kiosk/featured-whisky')
+      .then(r => r.json())
+      .then(d => setFeaturedWhisky(d?.whisky ?? null))
+      .catch(() => {})
+  }, [floor.feature?.type])
+
+  // Look up the member when a card is tapped
+  useEffect(() => {
+    if (!tappedUid) {
+      setMember(null)
+      return
+    }
+    let cancelled = false
+    fetch(`/api/kiosk/lookup?uid=${encodeURIComponent(tappedUid)}`)
+      .then(r => r.json())
+      .then(d => { if (!cancelled) setMember(d) })
+      .catch(() => { if (!cancelled) setMember({ found: false }) })
+    return () => { cancelled = true }
+  }, [tappedUid])
 
   // NFC card tap — Web NFC API (Android/Chrome only)
   const startNfc = useCallback(async () => {
@@ -304,16 +397,60 @@ export default function KioskPage({ params }: { params: Promise<{ floor: string 
             )}
           </div>
 
+          {/* Per-floor feature widget */}
+          {floor.feature && (
+            <div className="k-card">
+              <div className="k-eyebrow">{floor.feature.eyebrow}</div>
+              {floor.feature.type === 'whisky' ? (
+                featuredWhisky ? (
+                  <>
+                    <h2 className="k-card-title">{featuredWhisky.name}</h2>
+                    <div style={{ fontSize: 11, color: '#B2AA98', letterSpacing: '0.06em', marginBottom: 12 }}>
+                      {[featuredWhisky.distillery, featuredWhisky.region, featuredWhisky.age, featuredWhisky.abv].filter(Boolean).join(' · ')}
+                    </div>
+                    {featuredWhisky.tasting_notes && <p className="k-card-note">{featuredWhisky.tasting_notes}</p>}
+                  </>
+                ) : (
+                  <p className="k-card-note" style={{ fontStyle: 'italic' }}>Selecting tonight&rsquo;s pour…</p>
+                )
+              ) : (
+                <>
+                  {floor.feature.title && <h2 className="k-card-title">{floor.feature.title}</h2>}
+                  {floor.feature.body && <p className="k-card-note">{floor.feature.body}</p>}
+                </>
+              )}
+            </div>
+          )}
+
           {/* NFC tap zone */}
           <div
             className={`k-tap ${nfcStatus === 'scanning' ? 'is-scanning' : ''} ${tappedUid ? 'is-tapped' : ''}`}
           >
             <div className="k-tap-icon">▮</div>
-            {tappedUid ? (
+            {member?.found ? (
+              <>
+                <h2 className="k-tap-title">
+                  {member.display_name ? `Welcome, ${member.display_name.split(' ')[0]}.` : 'Welcome back.'}
+                </h2>
+                <p className="k-tap-sub" style={{ marginBottom: 4 }}>
+                  {member.display_name || `Member ${member.member_number}`}
+                </p>
+                {member.credit_vnd != null && (
+                  <p className="k-tap-sub">
+                    Balance: <span style={{ color: floor.accent }}>{member.credit_vnd.toLocaleString('en-GB')} đ</span>
+                  </p>
+                )}
+              </>
+            ) : tappedUid && member && !member.found ? (
+              <>
+                <h2 className="k-tap-title">Card not recognised</h2>
+                <p className="k-tap-sub">Speak to a member of staff to have it linked.</p>
+                <div className="k-tap-uid">{tappedUid}</div>
+              </>
+            ) : tappedUid ? (
               <>
                 <h2 className="k-tap-title">Card detected</h2>
                 <p className="k-tap-sub">Looking you up…</p>
-                <div className="k-tap-uid">{tappedUid}</div>
               </>
             ) : nfcStatus === 'scanning' ? (
               <>
