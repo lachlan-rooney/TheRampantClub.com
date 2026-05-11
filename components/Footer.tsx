@@ -1,7 +1,12 @@
 'use client'
 
+import { usePathname } from 'next/navigation'
 
 export default function Footer() {
+  const pathname = usePathname()
+  // Kiosk pages run in full-screen mode and should not show the footer.
+  if (pathname?.startsWith('/kiosk')) return null
+
   return (
     <>
       <style suppressHydrationWarning dangerouslySetInnerHTML={{ __html: `
