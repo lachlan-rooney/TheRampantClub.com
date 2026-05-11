@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import NavOverlay from '@/components/NavOverlay'
 import LoginTicker from '@/components/LoginTicker'
@@ -24,7 +24,6 @@ function LoginContent() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [forgotSent, setForgotSent] = useState(false)
-  const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') || '/members'
 
@@ -40,9 +39,11 @@ function LoginContent() {
       setError('Wrong credentials. Double check with your PA.')
       setLoading(false)
     } else {
-      router.push(redirect)
+      // Hard navigation so the browser sees a real page transition and offers to save the password.
+      // router.push() is a client-side route change that some browsers don't recognise as a login success.
+      window.location.href = redirect
     }
-  }, [email, password, redirect, router])
+  }, [email, password, redirect])
 
   const [forgotLoading, setForgotLoading] = useState(false)
   const handleForgotPassword = useCallback(async () => {
@@ -238,6 +239,8 @@ function LoginContent() {
           <form onSubmit={handleLogin}>
             <input
               type="email"
+              id="login-email"
+              name="email"
               className="login-input"
               placeholder="Email address"
               value={email}
@@ -247,6 +250,8 @@ function LoginContent() {
             />
             <input
               type="password"
+              id="login-password"
+              name="password"
               className="login-input"
               placeholder="Password (not your whisky locker code)"
               value={password}
