@@ -51,8 +51,9 @@ function LoginContent() {
     }
     setError(null)
     const supabase = createBrowserSupabaseClient()
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://therampantclub.com'
     await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/members`,
+      redirectTo: `${siteUrl}/members`,
     })
     setForgotSent(true)
   }, [email])
