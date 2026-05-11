@@ -17,7 +17,7 @@ const nextConfig = {
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https://*.supabase.co https://*.stripe.com",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.upstash.io",
-      "frame-src https://js.stripe.com https://hooks.stripe.com https://www.youtube.com",
+      "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://www.youtube.com",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
