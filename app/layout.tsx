@@ -1,9 +1,30 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import Footer from '@/components/Footer'
+import PWARegistrar from '@/components/PWARegistrar'
 
 export const metadata: Metadata = {
   title: 'The Rampant Club',
   description: 'A private members\' club in the heart of Sài Gòn',
+  manifest: '/manifest.json',
+  icons: {
+    icon: [
+      { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: '/apple-touch-icon.png',
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Rampant',
+  },
+}
+
+export const viewport: Viewport = {
+  themeColor: '#052E20',
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({
@@ -81,6 +102,7 @@ export default function RootLayout({
           html { scrollbar-width: thin; scrollbar-color: transparent transparent; }
           html:hover { scrollbar-color: rgba(94, 102, 80, 0.2) transparent; }
         ` }} />
+        <PWARegistrar />
         {children}
         <Footer />
       </body>

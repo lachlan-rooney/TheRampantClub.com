@@ -362,11 +362,9 @@ export default function SpacesPage() {
                 <p className="floor-desc-vn">{s.descVn}</p>
 
                 {s.id === 'library-bar' && (
-                  <a href="/documents/Library%20Bar%20Menu.pdf"
-                    target="_blank" rel="noopener noreferrer"
-                    className="floor-cta">
-                    Library Bar Menu ↗
-                  </a>
+                  <Link href="/menus/library-bar" className="floor-cta">
+                    Library Bar Menu →
+                  </Link>
                 )}
 
                 {s.id === 'rampant-room' && (
