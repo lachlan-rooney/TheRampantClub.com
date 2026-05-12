@@ -3,6 +3,8 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
 import { DEMO_MEMBERS } from '@/lib/demo-members'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(req: NextRequest) {
   if (!(await isAdmin())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

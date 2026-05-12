@@ -77,7 +77,7 @@ export default function AdminCards() {
   }
 
   const loadMembers = async () => {
-    const r = await fetch('/api/admin/cards/members')
+    const r = await fetch('/api/admin/cards/members', { cache: 'no-store' })
     const d = await r.json()
     setMembers(d.members || [])
   }
