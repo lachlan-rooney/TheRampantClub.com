@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
+import { DEMO_MEMBERS } from '@/lib/demo-members'
 
 export async function GET(req: NextRequest) {
   if (!(await isAdmin())) {
@@ -35,6 +36,20 @@ export async function GET(req: NextRequest) {
       card_uid: linkByNumber.get(m['Member No.'])?.card_uid || null,
       credit_vnd: linkByNumber.get(m['Member No.'])?.credit_vnd ?? 0,
     }))
+
+  // 3. Demo members — hardcoded, not in the Sheet. Appended so admins can
+  //    link a card to them without touching the real roster.
+  const sheetNumbers = new Set(members.map(m => m.member_number))
+  for (const dm of DEMO_MEMBERS) {
+    if (sheetNumbers.has(dm.member_number)) continue
+    members.push({
+      member_number: dm.member_number,
+      full_name: dm.full_name,
+      tier: dm.tier,
+      card_uid: linkByNumber.get(dm.member_number)?.card_uid || null,
+      credit_vnd: linkByNumber.get(dm.member_number)?.credit_vnd ?? 0,
+    })
+  }
 
   return NextResponse.json({ members })
 }

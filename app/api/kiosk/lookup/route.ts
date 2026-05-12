@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { DEMO_MEMBERS_BY_NUMBER } from '@/lib/demo-members'
 
 // Public-ish kiosk endpoint. Anyone with the physical card UID can fetch the
 // associated member's display name + balance. No admin auth — by the time a UID
@@ -41,6 +42,12 @@ export async function GET(req: NextRequest) {
       }
     }
   } catch { /* fallback to member number */ }
+
+  // Demo override — when the member isn't in the Google Sheet but lives in the
+  // hardcoded demo list, surface that name. Keeps the real fetcher untouched.
+  if (!displayName && DEMO_MEMBERS_BY_NUMBER[link.member_number]) {
+    displayName = DEMO_MEMBERS_BY_NUMBER[link.member_number].full_name
+  }
 
   // Log the presence (best-effort; failure shouldn't block the response).
   supabase.from('card_presence').insert({ member_number: link.member_number }).then(() => {}, () => {})
