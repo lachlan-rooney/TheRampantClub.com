@@ -14,3 +14,18 @@ export const DEMO_MEMBERS: DemoMember[] = [
 
 export const DEMO_MEMBERS_BY_NUMBER: Record<string, DemoMember> =
   Object.fromEntries(DEMO_MEMBERS.map(m => [m.member_number, m]))
+
+// Shape the demo member to match a Google Sheet row so it slots into anything
+// that already consumes that format (admin card lookup, etc.).
+export function demoAsSheetMember(memberNumber: string): Record<string, string> | null {
+  const dm = DEMO_MEMBERS_BY_NUMBER[memberNumber]
+  if (!dm) return null
+  const [first, ...rest] = dm.full_name.split(' ')
+  return {
+    'Member No.': dm.member_number,
+    'Full Name': dm.full_name,
+    'First Name': first || '',
+    'Last Name': rest.join(' '),
+    'Tier': dm.tier,
+  }
+}

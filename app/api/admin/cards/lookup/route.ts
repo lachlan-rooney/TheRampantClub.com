@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
+import { demoAsSheetMember } from '@/lib/demo-members'
 
 export async function GET(req: NextRequest) {
   if (!(await isAdmin())) {
@@ -29,6 +30,9 @@ export async function GET(req: NextRequest) {
       member = all.find(m => m['Member No.'] === link.member_number) || null
     }
   } catch { /* leave member null */ }
+
+  // Demo override — surface hardcoded demo members so admin sees the right name.
+  if (!member) member = demoAsSheetMember(link.member_number)
 
   // Recent transactions (last 10)
   const { data: transactions } = await supabase
