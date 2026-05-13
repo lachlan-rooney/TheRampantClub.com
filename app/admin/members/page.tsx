@@ -33,8 +33,9 @@ export default function AdminMembers() {
   const supabase = createBrowserSupabaseClient()
 
   const load = async () => {
-    const { data } = await supabase.from('member_list').select('*').order('member_number', { ascending: true, nullsFirst: false })
-    if (data) setMembers(data as Member[])
+    const r = await fetch('/api/admin/members', { cache: 'no-store' })
+    const d = await r.json()
+    if (d.members) setMembers(d.members as Member[])
   }
 
   useEffect(() => { load() }, [])
