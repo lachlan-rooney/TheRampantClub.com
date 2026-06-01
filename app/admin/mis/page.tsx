@@ -53,8 +53,13 @@ export default function MisMembersList() {
     <>
       <div style={headerRow}>
         <h1 style={pageTitle}>Member Intelligence</h1>
-        <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#B2AA98', opacity: 0.7 }}>
-          {filtered.length} of {members.length}
+        <div style={{ display: 'flex', gap: 16, alignItems: 'baseline' }}>
+          <Link href="/admin/mis/visits" style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#D4B85A', textDecoration: 'none', letterSpacing: '0.06em', borderBottom: '1px solid rgba(212,184,90,0.35)' }}>
+            Visits log →
+          </Link>
+          <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#B2AA98', opacity: 0.7 }}>
+            {filtered.length} of {members.length}
+          </div>
         </div>
       </div>
 

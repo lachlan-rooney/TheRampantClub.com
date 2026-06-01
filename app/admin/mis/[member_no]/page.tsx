@@ -1,8 +1,9 @@
 'use client'
 
-import { use, useEffect, useState, useMemo } from 'react'
+import { use, useEffect, useState, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import FormulaExplainer from '../FormulaExplainer'
+import VisitsPanel from '../VisitsPanel'
 
 interface Member {
   member_no: string
@@ -176,7 +177,7 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
     }
   }
 
-  useEffect(() => {
+  const loadPreferences = useCallback(() => {
     fetch(`/api/admin/mis/preferences?member_no=${encodeURIComponent(member_no)}`, { cache: 'no-store' })
       .then(r => r.json())
       .then(d => {
@@ -186,6 +187,8 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
       })
       .catch(() => setLoading(false))
   }, [member_no])
+
+  useEffect(() => { loadPreferences() }, [loadPreferences])
 
   const score5s = useMemo(() => preferences.filter(p => p.s0 === 5), [preferences])
 
@@ -233,6 +236,8 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
           </div>
         </div>
       )}
+
+      <VisitsPanel memberNo={member.member_no} onAfterChange={loadPreferences} />
 
       <FormulaExplainer variant="full" />
 
