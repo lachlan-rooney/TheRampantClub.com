@@ -103,7 +103,7 @@ export default function MisVisitsLog() {
         ) : visits.map(v => {
           const isArchived = !!v.archived_at
           return (
-            <Link key={v.visit_id} href={`/admin/mis/${v.member_no}`} style={rowLink}>
+            <Link key={v.visit_id} href={`/admin/mis/visits/${v.visit_id}`} style={rowLink}>
               <div style={{ ...listRow, ...(isArchived ? { opacity: 0.5 } : {}) }}>
                 <span style={colDate}>{fmtDate(v.visit_date)}</span>
                 <span style={colMember}>

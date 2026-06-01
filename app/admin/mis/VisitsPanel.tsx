@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import Link from 'next/link'
 
 // Per-member visit log + inline "Log a visit" form. Drops onto the member
 // profile page. Every successful POST is what slowly turns M from 1.0 into
@@ -17,6 +18,7 @@ interface Visit {
   notes: string | null
   created_at: string
   archived_at: string | null
+  phase?: 'overture' | 'accord' | 'continuum' | 'closed' | null
 }
 
 const SPACES = [
@@ -183,13 +185,18 @@ export default function VisitsPanel({ memberNo, onAfterChange }: { memberNo: str
           visits.map(v => {
             const isArchived = !!v.archived_at
             return (
-              <div key={v.visit_id} style={{ ...visitRow, ...(isArchived ? archivedRow : {}) }}>
+              <Link
+                key={v.visit_id}
+                href={`/admin/mis/visits/${v.visit_id}`}
+                style={{ ...visitRow, ...(isArchived ? archivedRow : {}), textDecoration: 'none', color: 'inherit' }}
+              >
                 <div style={visitDateCol}>{fmtDate(v.visit_date)}</div>
                 <div style={visitBody}>
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'baseline' }}>
                     {v.space && <span style={visitSpace}>{v.space}</span>}
                     {v.duration_min != null && <span style={visitMeta}>{v.duration_min} min</span>}
                     {v.emotional_state && <span style={visitEmotion}>· {v.emotional_state}</span>}
+                    {v.phase && <span style={phasePill(v.phase)}>{v.phase}</span>}
                     {isArchived && <span style={archivedTag}>archived</span>}
                   </div>
                   {v.notes && <div style={visitNotes}>{v.notes}</div>}
@@ -201,11 +208,17 @@ export default function VisitsPanel({ memberNo, onAfterChange }: { memberNo: str
                   </div>
                 </div>
                 {isArchived ? (
-                  <button onClick={() => restore(v.visit_id)} title="Restore visit" style={restoreBtn}>↩</button>
+                  <button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); restore(v.visit_id) }}
+                    title="Restore visit" style={restoreBtn}
+                  >↩</button>
                 ) : (
-                  <button onClick={() => archive(v.visit_id)} title="Archive visit" style={archiveBtn}>×</button>
+                  <button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); archive(v.visit_id) }}
+                    title="Archive visit" style={archiveBtn}
+                  >×</button>
                 )}
-              </div>
+              </Link>
             )
           })
         )}
@@ -218,6 +231,21 @@ function fmtDate(s: string): string {
   const d = new Date(s)
   if (isNaN(d.getTime())) return s
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function phasePill(p: 'overture' | 'accord' | 'continuum' | 'closed'): React.CSSProperties {
+  const palette = {
+    overture:  { fg: '#D4B85A', bg: 'rgba(212,184,90,0.16)', bd: 'rgba(212,184,90,0.40)' },
+    accord:    { fg: '#D4B85A', bg: 'rgba(212,184,90,0.10)', bd: 'rgba(212,184,90,0.30)' },
+    continuum: { fg: '#7AB07A', bg: 'rgba(122,176,122,0.10)', bd: 'rgba(122,176,122,0.30)' },
+    closed:    { fg: '#7AB07A', bg: 'rgba(122,176,122,0.16)', bd: 'rgba(122,176,122,0.40)' },
+  }[p]
+  return {
+    background: palette.bg, color: palette.fg, border: `1px solid ${palette.bd}`,
+    borderRadius: 3, padding: '1px 7px',
+    fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+    letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600,
+  }
 }
 
 // ── styles ──────────────────────────────────────────────────────────
