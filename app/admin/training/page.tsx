@@ -98,7 +98,7 @@ const SECTIONS: SectionDef[] = [
         </p>
         <ul style={ulStyle}>
           <li><strong>Floor</strong> — what you need when you&apos;re at the club: tonight&apos;s brief, the MX Daily checklist, notices, quick reference.</li>
-          <li><strong>Intelligence</strong> — the CRM itself: the Pipeline (prospects), the Member roster, Member Cards (NFC), Agreements (signed PDFs).</li>
+          <li><strong>Intelligence</strong> — the CRM itself: the Pipeline (prospects), the User roster, Member Cards (NFC), Agreements (signed PDFs).</li>
           <li><strong>Whisky Library</strong> — Inventory, Lockers, Fixtures.</li>
           <li><strong>House</strong> — House Rules, Journal, Press, this Training doc.</li>
         </ul>
