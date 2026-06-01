@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState, useMemo, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import FormulaExplainer from '../FormulaExplainer'
 import VisitsPanel from '../VisitsPanel'
 
@@ -116,6 +117,7 @@ function InfoDot({ tip }: { tip: string }) {
 
 export default function MisMemberProfile({ params }: { params: Promise<{ member_no: string }> }) {
   const { member_no } = use(params)
+  const router = useRouter()
   const [member, setMember] = useState<Member | null>(null)
   const [preferences, setPreferences] = useState<Preference[]>([])
   const [loading, setLoading] = useState(true)
@@ -125,6 +127,24 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
   const [drafts, setDrafts] = useState<Record<string, EditDraft>>({})
   const [saving, setSaving] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [startingVisit, setStartingVisit] = useState(false)
+
+  const startVisit = useCallback(async () => {
+    if (startingVisit) return
+    setStartingVisit(true)
+    try {
+      const r = await fetch('/api/admin/mis/visits/start', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ member_no }),
+      })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error || 'Could not start visit')
+      router.push(`/admin/mis/visits/${j.visit.visit_id}`)
+    } catch (e) {
+      alert((e as Error).message)
+      setStartingVisit(false)
+    }
+  }, [member_no, router, startingVisit])
 
   const draftFor = (p: Preference): EditDraft => drafts[p.preference_id] || {
     s0: p.s0, confidence: p.confidence, lambda: p.lambda, frequency: p.frequency,
@@ -207,9 +227,24 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
         <Link href="/admin/mis" style={{ ...backLink, marginBottom: 0 }}>← Back to members</Link>
-        <Link href={`/admin/mis/${member.member_no}/intake`} style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#D4B85A', textDecoration: 'none', letterSpacing: '0.06em', borderBottom: '1px solid rgba(212,184,90,0.35)' }}>
-          ◆ Process interview transcript →
-        </Link>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            onClick={startVisit}
+            disabled={startingVisit}
+            style={{
+              background: 'rgba(122,176,122,0.18)', color: '#7AB07A',
+              border: '1px solid rgba(122,176,122,0.40)', borderRadius: 6,
+              padding: '8px 14px', fontFamily: "'Google Sans Code', monospace",
+              fontSize: 11, letterSpacing: '0.08em', cursor: startingVisit ? 'wait' : 'pointer',
+              opacity: startingVisit ? 0.6 : 1,
+            }}
+          >
+            {startingVisit ? 'Starting…' : "◉ Start tonight's visit →"}
+          </button>
+          <Link href={`/admin/mis/${member.member_no}/intake`} style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#D4B85A', textDecoration: 'none', letterSpacing: '0.06em', borderBottom: '1px solid rgba(212,184,90,0.35)' }}>
+            ◆ Process interview transcript →
+          </Link>
+        </div>
       </div>
 
       <div style={profileHeader}>
