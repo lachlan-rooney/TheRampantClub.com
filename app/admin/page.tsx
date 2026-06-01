@@ -359,6 +359,23 @@ export default function AdminDashboard() {
           <span style={footerStat}>{k.activeMembers} active · {k.pipelineCount} in pipeline · {k.openComplaints} complaints</span>
           <span style={footerStat}>·</span>
           <Link href="/admin/training" style={{ ...footerStat, color: '#7AB07A', textDecoration: 'none' }}>Training →</Link>
+          <span style={footerStat}>·</span>
+          <button
+            onClick={async () => {
+              if (!confirm('Send the weekly digest to everyone on DIGEST_RECIPIENTS right now?')) return
+              try {
+                const r = await fetch('/api/cron/weekly-digest', { method: 'POST' })
+                const j = await r.json()
+                if (!r.ok || !j.ok) throw new Error(j.error || 'Send failed')
+                alert(`Sent to ${j.recipients.length} ${j.recipients.length === 1 ? 'recipient' : 'recipients'}.`)
+              } catch (e) {
+                alert((e as Error).message)
+              }
+            }}
+            style={{ ...footerStat, color: '#D4B85A', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'Google Sans Code', monospace" }}
+          >
+            ↗ Send weekly digest
+          </button>
         </div>
         <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 9, color: '#7E7864' }}>
           Refreshed {refreshedAt} · GMT+7
