@@ -1,24 +1,7 @@
 import { redirect } from 'next/navigation'
 import { isAdmin } from '@/lib/admin'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import Link from 'next/link'
-
-const NAV = [
-  { href: '/admin', label: 'Dashboard' },
-  { href: '/admin/tonight', label: 'Tonight' },
-  { href: '/admin/notices', label: 'Notices' },
-  { href: '/admin/whisky', label: 'Whisky Library' },
-  { href: '/admin/fixtures', label: 'Fixtures' },
-  { href: '/admin/rules', label: 'House Rules' },
-  { href: '/admin/members', label: 'Members' },
-  { href: '/admin/mis', label: 'Intelligence' },
-  { href: '/admin/mis/pipeline', label: 'Pipeline' },
-  { href: '/admin/cards', label: 'Member Cards' },
-  { href: '/admin/journal', label: 'Journal' },
-  { href: '/admin/press', label: 'Press' },
-  { href: '/admin/quickref', label: 'Quick Reference' },
-  { href: '/admin/agreements', label: 'Agreements' },
-]
+import AdminNav from './_nav/AdminNav'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerSupabaseClient()
@@ -31,42 +14,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <>
     <style dangerouslySetInnerHTML={{ __html: `html, body { background: #052E20 !important; }` }} />
     <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <nav style={{
-        position: 'fixed', top: 0, left: 0, bottom: 0, width: 220,
-        background: '#052E20', padding: '32px 0', display: 'flex', flexDirection: 'column',
-        zIndex: 100,
-      }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/images/logo-mark-cream.svg" alt="" style={{
-          display: 'block', width: 40, height: 'auto', margin: '0 auto 16px', opacity: 0.5,
-        }} />
-        <div style={{
-          fontFamily: "'Rampant Sans', serif", fontSize: 20, fontWeight: 500,
-          color: '#E5D4C2', textAlign: 'center', marginBottom: 32, letterSpacing: '0.04em',
-        }}>
-          Admin
-        </div>
-        <div style={{ flex: 1 }}>
-          {NAV.map(n => (
-            <Link key={n.href} href={n.href} style={{
-              display: 'block', padding: '10px 24px', textDecoration: 'none',
-              fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12,
-              color: '#B2AA98', letterSpacing: '0.04em',
-            }}>
-              {n.label}
-            </Link>
-          ))}
-        </div>
-        <Link href="/members" style={{
-          display: 'block', padding: '10px 24px', textDecoration: 'none',
-          fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11,
-          color: '#B2AA98', opacity: 0.5, letterSpacing: '0.04em',
-        }}>
-          ← Back to Members
-        </Link>
-      </nav>
+      <AdminNav />
       <main style={{
-        marginLeft: 220, flex: 1, minHeight: '100vh', background: '#052E20',
+        marginLeft: 240, flex: 1, minHeight: '100vh', background: '#052E20',
         padding: '48px 40px',
       }}>
         {children}
