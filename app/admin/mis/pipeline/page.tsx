@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 
 // MIS Pipeline — list view.
@@ -156,6 +156,31 @@ export default function PipelinePage() {
   const conversionPct = totalActive > 0 ? Math.round((totalOnboarded / totalActive) * 100) : 0
 
   const stages: readonly string[] = showOfframps ? [...ACTIVE_STAGES, ...OFFRAMP_STAGES] : ACTIVE_STAGES
+  const scrollerRef = useRef<HTMLDivElement | null>(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
+  // Update scroll-availability state whenever stages or layout change.
+  useEffect(() => {
+    const el = scrollerRef.current
+    if (!el) return
+    const update = () => {
+      setCanScrollLeft(el.scrollLeft > 4)
+      setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4)
+    }
+    update()
+    el.addEventListener('scroll', update, { passive: true })
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => { el.removeEventListener('scroll', update); ro.disconnect() }
+  }, [stages.length, prospects.length])
+
+  const scrollBy = (dir: 1 | -1) => {
+    const el = scrollerRef.current
+    if (!el) return
+    const colWidth = el.scrollWidth / stages.length
+    el.scrollBy({ left: dir * colWidth * 1.5, behavior: 'smooth' })
+  }
 
   return (
     <>
@@ -230,28 +255,39 @@ export default function PipelinePage() {
         </label>
       </div>
 
-      {/* Kanban — grid (fits viewport) when 6 active stages, scrollable flex when off-ramps visible */}
+      {/* Kanban — single horizontal scroll with arrow buttons when needed */}
       {loading ? (
         <div style={emptyText}>Loading prospects…</div>
       ) : (
-        <div style={showOfframps ? kanbanScroll : { ...kanbanGrid, gridTemplateColumns: `repeat(${stages.length}, minmax(0, 1fr))` }}>
-          {stages.map(stage => {
-            const inStage = filtered.filter(p => p.stage === stage)
-            const accent = STAGE_ACCENT[stage] || '#5E6650'
-            return (
-              <div key={stage} style={showOfframps ? kanbanColScroll : kanbanCol}>
-                <div style={{ ...kanbanHead, borderTopColor: accent }}>
-                  <div style={kanbanStage}>{stage}</div>
-                  <div style={kanbanCount}>{inStage.length}</div>
+        <div style={{ position: 'relative' }}>
+          {canScrollLeft && (
+            <button onClick={() => scrollBy(-1)} style={{ ...scrollArrow, left: -14 }} aria-label="Scroll left">‹</button>
+          )}
+          {canScrollRight && (
+            <button onClick={() => scrollBy(1)} style={{ ...scrollArrow, right: -14 }} aria-label="Scroll right">›</button>
+          )}
+          <div
+            ref={scrollerRef}
+            style={showOfframps ? kanbanScroll : { ...kanbanGrid, gridTemplateColumns: `repeat(${stages.length}, minmax(0, 1fr))` }}
+          >
+            {stages.map(stage => {
+              const inStage = filtered.filter(p => p.stage === stage)
+              const accent = STAGE_ACCENT[stage] || '#5E6650'
+              return (
+                <div key={stage} style={showOfframps ? kanbanColScroll : kanbanCol}>
+                  <div style={{ ...kanbanHead, borderTopColor: accent }}>
+                    <div style={kanbanStage}>{stage}</div>
+                    <div style={kanbanCount}>{inStage.length}</div>
+                  </div>
+                  <div style={kanbanList}>
+                    {inStage.length === 0 ? (
+                      <div style={kanbanEmpty}>—</div>
+                    ) : inStage.map(p => <ProspectCard key={p.prospect_id} p={p} onChange={load} />)}
+                  </div>
                 </div>
-                <div style={kanbanList}>
-                  {inStage.length === 0 ? (
-                    <div style={kanbanEmpty}>—</div>
-                  ) : inStage.map(p => <ProspectCard key={p.prospect_id} p={p} onChange={load} />)}
-                </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
       )}
     </>
@@ -484,6 +520,18 @@ const attentionRowMeta: React.CSSProperties = {
 const attentionMore: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 10,
   color: '#D4B85A', opacity: 0.7, padding: '4px 8px', fontStyle: 'italic',
+}
+
+const scrollArrow: React.CSSProperties = {
+  position: 'absolute', top: 14,
+  width: 32, height: 32, borderRadius: '50%',
+  background: 'rgba(5,46,32,0.95)', color: '#D4B85A',
+  border: '1px solid rgba(212,184,90,0.40)',
+  fontSize: 18, lineHeight: 1, padding: 0,
+  cursor: 'pointer', zIndex: 10,
+  boxShadow: '0 6px 14px rgba(0,0,0,0.35)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  fontFamily: "'Rampant Sans', serif",
 }
 const filterRow: React.CSSProperties = {
   display: 'flex', gap: 12, marginBottom: 22, flexWrap: 'wrap',
