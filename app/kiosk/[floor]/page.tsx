@@ -140,7 +140,11 @@ export default function KioskPage({ params }: { params: Promise<{ floor: string 
       .catch(() => {})
   }, [floor.feature?.type])
 
-  // Look up the member when a card is tapped
+  // Look up the member when a card is tapped, AND fire-and-forget the
+  // Guardian Angel start. Idempotent on the server — if a visit is
+  // already in flight today, the existing one is returned. Failures are
+  // intentionally silent on the kiosk; staff see visits appear on the
+  // Tonight wall as the source of truth.
   useEffect(() => {
     if (!tappedUid) {
       setMember(null)
@@ -151,6 +155,11 @@ export default function KioskPage({ params }: { params: Promise<{ floor: string 
       .then(r => r.json())
       .then(d => { if (!cancelled) setMember(d) })
       .catch(() => { if (!cancelled) setMember({ found: false }) })
+    // Fire the visit-start in parallel; we don't await or surface the result.
+    fetch('/api/kiosk/start-visit', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid: tappedUid }),
+    }).catch(() => { /* deliberately silent — staff has the Tonight wall */ })
     return () => { cancelled = true }
   }, [tappedUid])
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
+import { vnDateString } from '@/lib/datetime'
 
 // POST /api/admin/visits/start-from-card
 // Body: { uid: string }
@@ -57,6 +58,30 @@ export async function POST(req: NextRequest) {
   const { data: member } = await sb.from('members').select('member_no, full_name').eq('member_no', member_no).maybeSingle()
   if (!member) return NextResponse.json({ error: 'member not found' }, { status: 404 })
 
+  // Idempotency — the kiosk fires this on every tap. If the member already
+  // has a visit in flight today (phase != closed, not archived), return
+  // that visit instead of creating a new one.
+  const today = vnDateString()
+  const { data: existing } = await sb.from('visits')
+    .select('visit_id, phase')
+    .eq('member_no', member_no)
+    .eq('visit_date', today)
+    .neq('phase', 'closed')
+    .is('archived_at', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (existing?.visit_id) {
+    return NextResponse.json({
+      ok: true,
+      visit_id: existing.visit_id,
+      booking_id: null,
+      reused: true,
+      member: { member_no: member.member_no, full_name: member.full_name },
+    })
+  }
+
   const { data: rows, error } = await sb.rpc('start_visit_for_member', {
     p_member_no: member_no,
     p_actor:     actor,
@@ -70,6 +95,7 @@ export async function POST(req: NextRequest) {
     ok: true,
     visit_id: row.visit_id,
     booking_id: row.booking_id || null,
+    reused: false,
     member: { member_no: member.member_no, full_name: member.full_name },
   })
 }
