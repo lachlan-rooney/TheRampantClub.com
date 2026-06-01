@@ -4,6 +4,8 @@ node_modules
 .env*.local
 tsconfig.tsbuildinfo
 scripts/import-whiskies.sql
+# Member data — never commit. Source CSVs / extracts for MIS migration go here.
+scripts/data/
 public/images/Lion.png
 public/images/lion-painting.png
 # Artwork masters — too big for git
