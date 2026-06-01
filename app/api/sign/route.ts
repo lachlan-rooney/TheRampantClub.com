@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     // 1. Validate the token
     const { data: invitation, error: invError } = await supabaseAdmin
       .from('signing_invitations')
-      .select('id, status')
+      .select('id, status, member_no, prospect_id')
       .eq('token', token)
       .eq('status', 'pending')
       .single()
@@ -218,7 +218,39 @@ export async function POST(req: NextRequest) {
       user_agent: ua,
     })
 
-    // 5. Mark invitation as signed
+    // 5. Close the MIS signing loop FIRST — if the invitation came from the
+    // pipeline it carries the provisional member_no and prospect_id, and we
+    // want those activated before we mark the invitation signed. That way a
+    // mid-flight failure leaves a resumable pending invitation rather than a
+    // closed invitation with a still-Pending-Signature member.
+    const today = new Date().toISOString().slice(0, 10)
+    if (invitation.member_no) {
+      await supabaseAdmin
+        .from('members')
+        .update({ status: 'Active', join_date: today })
+        .eq('member_no', invitation.member_no)
+    }
+    if (invitation.prospect_id) {
+      await supabaseAdmin
+        .from('prospects')
+        .update({
+          stage: 'Onboarded',
+          decision: 'Approved',
+          decision_date: today,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('prospect_id', invitation.prospect_id)
+
+      await supabaseAdmin.from('prospect_activity').insert({
+        prospect_id: invitation.prospect_id,
+        actor: email || 'signee',
+        event_type: 'signed',
+        to_value: invitation.member_no || null,
+        note: `Agreement signed. Member ${invitation.member_no || ''} activated.`.trim(),
+      })
+    }
+
+    // 5b. Now mark invitation as signed.
     await supabaseAdmin
       .from('signing_invitations')
       .update({ status: 'signed' })

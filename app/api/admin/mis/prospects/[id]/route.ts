@@ -36,13 +36,17 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await ctx.params
   const sb = svc()
-  const [{ data: prospect, error: pErr }, { data: activity }] = await Promise.all([
+  const [{ data: prospect, error: pErr }, { data: activity }, { data: invitations }] = await Promise.all([
     sb.from('prospects_with_score').select('*').eq('prospect_id', id).maybeSingle(),
     sb.from('prospect_activity').select('*').eq('prospect_id', id).order('created_at', { ascending: false }).limit(100),
+    sb.from('signing_invitations')
+      .select('id, token, full_name, email, status, member_no, created_at, viewed_at, view_count, last_reminded_at, reminder_count, revoked_at')
+      .eq('prospect_id', id)
+      .order('created_at', { ascending: false }),
   ])
   if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 })
   if (!prospect) return NextResponse.json({ error: 'not found' }, { status: 404 })
-  return NextResponse.json({ prospect, activity: activity || [] })
+  return NextResponse.json({ prospect, activity: activity || [], invitations: invitations || [] })
 }
 
 const TEXT_FIELDS = [

@@ -62,6 +62,21 @@ interface Activity {
   created_at: string
 }
 
+interface Invitation {
+  id: string
+  token: string
+  full_name: string | null
+  email: string | null
+  status: string
+  member_no: string | null
+  created_at: string
+  viewed_at: string | null
+  view_count: number | null
+  last_reminded_at: string | null
+  reminder_count: number | null
+  revoked_at: string | null
+}
+
 const ACTIVE_STAGES = [
   'Lead',
   'Initial Contact',
@@ -90,11 +105,17 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
   const router = useRouter()
   const [prospect, setProspect] = useState<Prospect | null>(null)
   const [activity, setActivity] = useState<Activity[]>([])
+  const [invitations, setInvitations] = useState<Invitation[]>([])
   const [loading, setLoading] = useState(true)
   const [savingMap, setSavingMap] = useState<Record<string, boolean>>({})
   const [error, setError] = useState<string | null>(null)
   const [conversionTier, setConversionTier] = useState('Pioneer')
-  const [showConvert, setShowConvert] = useState(false)
+  const [showInvite, setShowInvite] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteMobile, setInviteMobile] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sendResult, setSendResult] = useState<{ ok: boolean; msg: string } | null>(null)
+  const [showOverride, setShowOverride] = useState(false)
   const [converting, setConverting] = useState(false)
 
   const load = useCallback(() => {
@@ -104,6 +125,7 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
       .then(d => {
         if (d.prospect) setProspect(d.prospect)
         if (d.activity) setActivity(d.activity)
+        if (d.invitations) setInvitations(d.invitations)
         setLoading(false)
       })
       .catch(() => setLoading(false))
@@ -148,7 +170,38 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
     if (mn) router.push(`/admin/mis/${mn}/intake`)
   }, [allocateMember, router])
 
-  const convert = useCallback(async () => {
+  const sendInvitation = useCallback(async (opts: { resend?: boolean } = {}) => {
+    if (!inviteEmail.trim()) { setError('Email required for invitation.'); return }
+    setSending(true); setError(null); setSendResult(null)
+    try {
+      const r = await fetch(`/api/admin/mis/prospects/${prospect_id}/send-invitation`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tier: conversionTier,
+          email: inviteEmail.trim(),
+          mobile: inviteMobile.trim() || null,
+          resend: !!opts.resend,
+        }),
+      })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error || 'Send failed')
+      setSendResult({
+        ok: j.email_sent,
+        msg: j.email_sent
+          ? `Invitation sent to ${inviteEmail.trim()}. Member ${j.member_no} created with status Pending Signature.`
+          : `Invitation row created but email failed: ${j.email_error}. Link: ${j.link}`,
+      })
+      setShowInvite(false)
+      load()
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setSending(false)
+    }
+  }, [prospect_id, conversionTier, inviteEmail, inviteMobile, load])
+
+  const forceConvert = useCallback(async () => {
+    if (!confirm('Force convert without signing? The member will be Active immediately and no agreement will be on file. Admin override only.')) return
     setConverting(true); setError(null)
     try {
       const r = await fetch(`/api/admin/mis/prospects/${prospect_id}/convert`, {
@@ -157,7 +210,7 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
       })
       const j = await r.json()
       if (!r.ok) throw new Error(j.error || 'Convert failed')
-      setShowConvert(false)
+      setShowOverride(false)
       load()
     } catch (e) {
       setError((e as Error).message)
@@ -165,6 +218,29 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
       setConverting(false)
     }
   }, [prospect_id, conversionTier, load])
+
+  const revokeInvitation = useCallback(async (invitation_id: string) => {
+    if (!confirm('Revoke this invitation? The signing link will stop working.')) return
+    setError(null)
+    try {
+      const r = await fetch('/api/admin/agreements/revoke', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invitation_id }),
+      })
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}))
+        throw new Error(j.error || 'Revoke failed')
+      }
+      load()
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }, [load])
+
+  const copyLink = useCallback((token: string) => {
+    const base = typeof window !== 'undefined' ? window.location.origin : ''
+    navigator.clipboard.writeText(`${base}/sign/${token}`)
+  }, [])
 
   const archive = useCallback(async () => {
     if (!confirm('Archive this prospect? Will be hidden from the pipeline but preserved for audit.')) return
@@ -174,6 +250,21 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
 
   const stageIdx = useMemo(() => prospect ? ACTIVE_STAGES.indexOf(prospect.stage as typeof ACTIVE_STAGES[number]) : -1, [prospect])
   const isOfframp = useMemo(() => prospect ? (OFFRAMP_STAGES as readonly string[]).includes(prospect.stage) : false, [prospect])
+
+  const latestInvitation = useMemo(() => invitations[0] || null, [invitations])
+  const activeInvitation = useMemo(
+    () => invitations.find(i => i.status === 'pending' && !i.revoked_at) || null,
+    [invitations]
+  )
+
+  // Pre-fill invite email from latest invitation or by sniffing contact_info.
+  useEffect(() => {
+    if (inviteEmail) return
+    const fromInv = invitations.find(i => i.email)?.email
+    if (fromInv) { setInviteEmail(fromInv); return }
+    const m = prospect?.contact_info?.match(/[\w.+-]+@[\w-]+\.[\w.-]+/)
+    if (m) setInviteEmail(m[0])
+  }, [prospect, invitations, inviteEmail])
 
   if (loading) return <div style={emptyText}>Loading…</div>
   if (!prospect) return <div style={emptyText}>Prospect not found.</div>
@@ -340,22 +431,123 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
                 Allocate provisional member no.
               </button>
             )}
+
+            {/* Signing flow */}
             {prospect.stage !== 'Onboarded' && (
-              <button onClick={() => setShowConvert(s => !s)} style={btnAccent}>
-                {showConvert ? 'Cancel conversion' : '★ Convert to member'}
-              </button>
-            )}
-            {showConvert && prospect.stage !== 'Onboarded' && (
-              <div style={convertBlock}>
-                <div style={editLabel}>Tier</div>
-                <select value={conversionTier} onChange={e => setConversionTier(e.target.value)} style={inputStyle}>
-                  {TIERS.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-                <button onClick={convert} disabled={converting} style={{ ...btnPrimary, marginTop: 8, width: '100%' }}>
-                  {converting ? 'Converting…' : 'Confirm conversion'}
+              <>
+                {activeInvitation ? (
+                  <div style={inviteStatusBlock}>
+                    <div style={editLabel}>Invitation status</div>
+                    <div style={inviteStatusPill('pending')}>
+                      ✉ Pending · sent {fmtDate(activeInvitation.created_at)}
+                    </div>
+                    <div style={inviteMeta}>
+                      To: <span style={{ color: '#E5D4C2' }}>{activeInvitation.email}</span>
+                    </div>
+                    {activeInvitation.viewed_at && (
+                      <div style={inviteMeta}>
+                        Viewed: <span style={{ color: '#D4B85A' }}>{fmtDate(activeInvitation.viewed_at)}</span>
+                        {activeInvitation.view_count ? ` (${activeInvitation.view_count}×)` : ''}
+                      </div>
+                    )}
+                    {!activeInvitation.viewed_at && (
+                      <div style={{ ...inviteMeta, opacity: 0.5 }}>Not yet opened.</div>
+                    )}
+                    {activeInvitation.reminder_count ? (
+                      <div style={inviteMeta}>
+                        Reminders sent: {activeInvitation.reminder_count}
+                        {activeInvitation.last_reminded_at && ` · last ${fmtDate(activeInvitation.last_reminded_at)}`}
+                      </div>
+                    ) : null}
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                      <button onClick={() => sendInvitation({ resend: true })} disabled={sending} style={{ ...btnGhost, padding: '8px 12px', flex: 1 }}>
+                        {sending ? 'Sending…' : 'Resend email'}
+                      </button>
+                      <button onClick={() => copyLink(activeInvitation.token)} style={{ ...btnGhost, padding: '8px 12px' }}>
+                        Copy link
+                      </button>
+                      <button onClick={() => revokeInvitation(activeInvitation.id)} style={{ ...btnGhost, padding: '8px 12px', color: '#C27070', borderColor: 'rgba(180,70,70,0.30)' }}>
+                        Revoke
+                      </button>
+                    </div>
+                  </div>
+                ) : latestInvitation && latestInvitation.status === 'signed' ? (
+                  <div style={inviteStatusBlock}>
+                    <div style={editLabel}>Agreement</div>
+                    <div style={inviteStatusPill('signed')}>
+                      ✓ Signed · {fmtDate(latestInvitation.created_at)}
+                    </div>
+                    <div style={inviteMeta}>
+                      Member <span style={{ color: '#7AB07A' }}>{latestInvitation.member_no || prospect.converted_member_no}</span> is Active.
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowInvite(s => !s)} style={btnAccent}>
+                    {showInvite ? 'Cancel invitation' : '✉ Send signing invitation'}
+                  </button>
+                )}
+
+                {showInvite && !activeInvitation && (
+                  <div style={convertBlock}>
+                    <div style={editLabel}>Tier</div>
+                    <select value={conversionTier} onChange={e => setConversionTier(e.target.value)} style={inputStyle}>
+                      {TIERS.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <div style={editLabel}>Email *</div>
+                    <input
+                      type="email"
+                      value={inviteEmail}
+                      onChange={e => setInviteEmail(e.target.value)}
+                      placeholder="name@example.com"
+                      style={inputStyle}
+                    />
+                    <div style={editLabel}>Mobile (optional)</div>
+                    <input
+                      value={inviteMobile}
+                      onChange={e => setInviteMobile(e.target.value)}
+                      placeholder="+84 …"
+                      style={inputStyle}
+                    />
+                    <button
+                      onClick={() => sendInvitation()}
+                      disabled={sending || !inviteEmail.trim()}
+                      style={{ ...btnPrimary, marginTop: 8, width: '100%', opacity: !inviteEmail.trim() ? 0.4 : 1 }}
+                    >
+                      {sending ? 'Sending…' : 'Send invitation'}
+                    </button>
+                    <div style={{ ...inviteMeta, marginTop: 6 }}>
+                      Creates a Pending Signature member, emails the signing link, and flips this prospect to Application Received. They become Active when they sign.
+                    </div>
+                  </div>
+                )}
+
+                {sendResult && (
+                  <div style={sendResult.ok ? inviteSuccessBox : inviteWarnBox}>
+                    {sendResult.msg}
+                  </div>
+                )}
+
+                {/* Admin override: force-convert without signing */}
+                <button onClick={() => setShowOverride(s => !s)} style={{ ...btnGhost, fontSize: 10, opacity: 0.7 }}>
+                  {showOverride ? '— hide override' : '★ Force convert without signing'}
                 </button>
-              </div>
+                {showOverride && (
+                  <div style={convertBlock}>
+                    <div style={inviteMeta}>
+                      Skips the signing flow — member becomes Active immediately with no agreement on file. Use only when a paper agreement has been signed offline.
+                    </div>
+                    <div style={editLabel}>Tier</div>
+                    <select value={conversionTier} onChange={e => setConversionTier(e.target.value)} style={inputStyle}>
+                      {TIERS.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <button onClick={forceConvert} disabled={converting} style={{ ...btnPrimary, marginTop: 8, width: '100%', background: 'rgba(180,70,70,0.30)' }}>
+                      {converting ? 'Converting…' : 'Confirm force convert'}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
+
             <button onClick={archive} style={btnDanger}>
               Archive prospect
             </button>
@@ -396,11 +588,20 @@ function formatEvent(a: Activity): string {
     case 'letter_unsent':      return 'Letter sent — undone'
     case 'scored':             return 'Score updated'
     case 'member_no_allocated':return `Provisional ${a.to_value} allocated`
+    case 'invitation_sent':    return `Signing invitation sent · ${a.to_value}`
+    case 'invitation_resent':  return `Signing invitation resent · ${a.to_value}`
+    case 'signed':             return `Agreement signed${a.to_value ? ` · ${a.to_value} activated` : ''}`
     case 'converted':          return `Converted to member ${a.to_value}`
     case 'archived':           return 'Archived'
     case 'restored':           return 'Restored'
     default:                   return a.event_type
   }
+}
+
+function fmtDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  } catch { return iso }
 }
 
 // ── reusable field components ───────────────────────────────────────
@@ -706,6 +907,42 @@ const convertBlock: React.CSSProperties = {
   background: 'rgba(212,184,90,0.06)', border: '1px solid rgba(212,184,90,0.20)',
   borderRadius: 6,
   display: 'flex', flexDirection: 'column', gap: 6,
+}
+const inviteStatusBlock: React.CSSProperties = {
+  marginTop: 6, padding: '12px 14px',
+  background: 'rgba(122,176,122,0.06)', border: '1px solid rgba(122,176,122,0.22)',
+  borderRadius: 6,
+  display: 'flex', flexDirection: 'column', gap: 4,
+}
+function inviteStatusPill(kind: 'pending' | 'signed' | 'revoked'): React.CSSProperties {
+  const palette = {
+    pending: { fg: '#D4B85A', bg: 'rgba(212,184,90,0.16)', bd: 'rgba(212,184,90,0.40)' },
+    signed:  { fg: '#7AB07A', bg: 'rgba(122,176,122,0.16)', bd: 'rgba(122,176,122,0.40)' },
+    revoked: { fg: '#C27070', bg: 'rgba(180,70,70,0.16)',   bd: 'rgba(180,70,70,0.40)' },
+  }[kind]
+  return {
+    display: 'inline-block', padding: '4px 10px', borderRadius: 4,
+    background: palette.bg, color: palette.fg, border: `1px solid ${palette.bd}`,
+    fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+    letterSpacing: '0.08em', textTransform: 'uppercase',
+    width: 'fit-content',
+  }
+}
+const inviteMeta: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  color: '#B2AA98', letterSpacing: '0.04em', lineHeight: 1.55,
+}
+const inviteSuccessBox: React.CSSProperties = {
+  marginTop: 6, padding: '10px 14px',
+  background: 'rgba(122,176,122,0.10)', border: '1px solid rgba(122,176,122,0.30)',
+  borderRadius: 6, color: '#7AB07A',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, lineHeight: 1.55,
+}
+const inviteWarnBox: React.CSSProperties = {
+  marginTop: 6, padding: '10px 14px',
+  background: 'rgba(212,184,90,0.10)', border: '1px solid rgba(212,184,90,0.30)',
+  borderRadius: 6, color: '#D4B85A',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, lineHeight: 1.55,
 }
 const timelinePanel: React.CSSProperties = {
   padding: 18,
