@@ -17,20 +17,22 @@ function svc() {
   )
 }
 
-// ── GET /api/admin/mis/visits[?member_no=…&limit=…] ────────────────
+// ── GET /api/admin/mis/visits[?member_no=…&limit=…&include_archived=true] ──
 export async function GET(req: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const member_no = req.nextUrl.searchParams.get('member_no')
+  const includeArchived = req.nextUrl.searchParams.get('include_archived') === 'true'
   const limit = Math.min(Number(req.nextUrl.searchParams.get('limit') || 100), 500)
 
   const sb = svc()
   let q = sb.from('visits')
-    .select('visit_id, member_no, visit_date, space, duration_min, emotional_state, logged_by, notes, created_at')
+    .select('visit_id, member_no, visit_date, space, duration_min, emotional_state, logged_by, notes, created_at, archived_at')
     .order('visit_date', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(limit)
   if (member_no) q = q.eq('member_no', member_no)
+  if (!includeArchived) q = q.is('archived_at', null)
 
   const { data, error } = await q
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -77,14 +79,20 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ visit: data })
 }
 
-// ── DELETE /api/admin/mis/visits?visit_id=… ────────────────────────
+// ── DELETE /api/admin/mis/visits?visit_id=…[&restore=true] ─────────
+// Soft-archive by default: sets archived_at = now() so member_stats stops
+// counting the row (M reflects the change immediately). Pass ?restore=true
+// to un-archive instead.
 export async function DELETE(req: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const visit_id = req.nextUrl.searchParams.get('visit_id')
+  const restore = req.nextUrl.searchParams.get('restore') === 'true'
   if (!visit_id) return NextResponse.json({ error: 'visit_id required' }, { status: 400 })
 
   const sb = svc()
-  const { error } = await sb.from('visits').delete().eq('visit_id', visit_id)
+  const { error } = await sb.from('visits')
+    .update({ archived_at: restore ? null : new Date().toISOString() })
+    .eq('visit_id', visit_id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, archived: !restore })
 }

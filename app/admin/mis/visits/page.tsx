@@ -17,6 +17,7 @@ interface Visit {
   logged_by: string | null
   notes: string | null
   created_at: string
+  archived_at: string | null
 }
 
 interface MemberLite {
@@ -28,6 +29,7 @@ export default function MisVisitsLog() {
   const [visits, setVisits] = useState<Visit[]>([])
   const [members, setMembers] = useState<MemberLite[]>([])
   const [memberFilter, setMemberFilter] = useState('All members')
+  const [showArchived, setShowArchived] = useState(false)
   const [loading, setLoading] = useState(true)
 
   const memberByNo = useMemo(() => {
@@ -38,7 +40,10 @@ export default function MisVisitsLog() {
 
   const load = useCallback(() => {
     setLoading(true)
-    const qs = memberFilter !== 'All members' ? `?member_no=${encodeURIComponent(memberFilter)}` : ''
+    const params = new URLSearchParams()
+    if (memberFilter !== 'All members') params.set('member_no', memberFilter)
+    if (showArchived) params.set('include_archived', 'true')
+    const qs = params.toString() ? `?${params}` : ''
     Promise.all([
       fetch(`/api/admin/mis/visits${qs}`, { cache: 'no-store' }).then(r => r.json()),
       fetch('/api/admin/mis/members', { cache: 'no-store' }).then(r => r.json()),
@@ -47,7 +52,7 @@ export default function MisVisitsLog() {
       if (m.members) setMembers(m.members.map((x: { member_no: string; full_name: string }) => ({ member_no: x.member_no, full_name: x.full_name })))
       setLoading(false)
     }).catch(() => setLoading(false))
-  }, [memberFilter])
+  }, [memberFilter, showArchived])
 
   useEffect(() => { load() }, [load])
 
@@ -73,6 +78,10 @@ export default function MisVisitsLog() {
             <option key={m.member_no} value={m.member_no}>{m.member_no} · {m.full_name}</option>
           ))}
         </select>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#B2AA98', letterSpacing: '0.04em', cursor: 'pointer', userSelect: 'none' }}>
+          <input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)} />
+          Show archived
+        </label>
       </div>
 
       <div>
@@ -91,26 +100,34 @@ export default function MisVisitsLog() {
           <div style={emptyText}>
             No visits logged yet. Open a member profile and click &ldquo;Log a visit&rdquo; to begin.
           </div>
-        ) : visits.map(v => (
-          <Link key={v.visit_id} href={`/admin/mis/${v.member_no}`} style={rowLink}>
-            <div style={listRow}>
-              <span style={colDate}>{fmtDate(v.visit_date)}</span>
-              <span style={colMember}>
-                <span style={{ color: '#E5D4C2', fontFamily: "'Rampant Sans', serif", fontSize: 14 }}>
-                  {memberByNo[v.member_no] || v.member_no}
+        ) : visits.map(v => {
+          const isArchived = !!v.archived_at
+          return (
+            <Link key={v.visit_id} href={`/admin/mis/${v.member_no}`} style={rowLink}>
+              <div style={{ ...listRow, ...(isArchived ? { opacity: 0.5 } : {}) }}>
+                <span style={colDate}>{fmtDate(v.visit_date)}</span>
+                <span style={colMember}>
+                  <span style={{ color: '#E5D4C2', fontFamily: "'Rampant Sans', serif", fontSize: 14 }}>
+                    {memberByNo[v.member_no] || v.member_no}
+                  </span>
+                  <span style={{ marginLeft: 8, color: '#B2AA98', fontFamily: "'Google Sans Code', monospace", fontSize: 10, opacity: 0.7 }}>{v.member_no}</span>
+                  {isArchived && (
+                    <span style={{ marginLeft: 8, fontFamily: "'Google Sans Code', monospace", fontSize: 9, color: '#B2AA98', background: 'rgba(229,212,194,0.10)', padding: '1px 6px', borderRadius: 3, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                      archived
+                    </span>
+                  )}
                 </span>
-                <span style={{ marginLeft: 8, color: '#B2AA98', fontFamily: "'Google Sans Code', monospace", fontSize: 10, opacity: 0.7 }}>{v.member_no}</span>
-              </span>
-              <span style={colSpace}>{v.space || '—'}</span>
-              <span style={colMeta}>{v.duration_min != null ? `${v.duration_min} min` : '—'}</span>
-              <span style={colMeta}>{v.emotional_state || '—'}</span>
-              <span style={colLogged}>{v.logged_by || '—'}</span>
-            </div>
-            {v.notes && (
-              <div style={notesRow}>{v.notes}</div>
-            )}
-          </Link>
-        ))}
+                <span style={colSpace}>{v.space || '—'}</span>
+                <span style={colMeta}>{v.duration_min != null ? `${v.duration_min} min` : '—'}</span>
+                <span style={colMeta}>{v.emotional_state || '—'}</span>
+                <span style={colLogged}>{v.logged_by || '—'}</span>
+              </div>
+              {v.notes && (
+                <div style={notesRow}>{v.notes}</div>
+              )}
+            </Link>
+          )
+        })}
       </div>
     </>
   )

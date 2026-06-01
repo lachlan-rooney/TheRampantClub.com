@@ -16,6 +16,7 @@ interface Visit {
   logged_by: string | null
   notes: string | null
   created_at: string
+  archived_at: string | null
 }
 
 const SPACES = [
@@ -31,6 +32,7 @@ export default function VisitsPanel({ memberNo, onAfterChange }: { memberNo: str
   const [formOpen, setFormOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showArchived, setShowArchived] = useState(false)
 
   // form draft
   const [visitDate, setVisitDate] = useState(todayISO())
@@ -41,11 +43,16 @@ export default function VisitsPanel({ memberNo, onAfterChange }: { memberNo: str
 
   const load = useCallback(() => {
     setLoading(true)
-    fetch(`/api/admin/mis/visits?member_no=${encodeURIComponent(memberNo)}&limit=15`, { cache: 'no-store' })
+    const qs = new URLSearchParams({
+      member_no: memberNo,
+      limit: '20',
+      ...(showArchived ? { include_archived: 'true' } : {}),
+    })
+    fetch(`/api/admin/mis/visits?${qs}`, { cache: 'no-store' })
       .then(r => r.json())
       .then(d => { if (d.visits) setVisits(d.visits); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [memberNo])
+  }, [memberNo, showArchived])
 
   useEffect(() => { load() }, [load])
 
@@ -79,9 +86,13 @@ export default function VisitsPanel({ memberNo, onAfterChange }: { memberNo: str
     }
   }
 
-  const remove = async (visit_id: string) => {
-    if (!confirm('Delete this visit? This will be removed from the audit log permanently.')) return
+  const archive = async (visit_id: string) => {
+    if (!confirm('Archive this visit? It will be hidden from the live log and stop counting toward M, but the row is preserved.')) return
     const r = await fetch(`/api/admin/mis/visits?visit_id=${encodeURIComponent(visit_id)}`, { method: 'DELETE' })
+    if (r.ok) { load(); onAfterChange?.() }
+  }
+  const restore = async (visit_id: string) => {
+    const r = await fetch(`/api/admin/mis/visits?visit_id=${encodeURIComponent(visit_id)}&restore=true`, { method: 'DELETE' })
     if (r.ok) { load(); onAfterChange?.() }
   }
 
@@ -89,9 +100,20 @@ export default function VisitsPanel({ memberNo, onAfterChange }: { memberNo: str
     <div style={panel}>
       <div style={panelHeader}>
         <div style={panelLabel}>Recent visits</div>
-        <button onClick={() => setFormOpen(o => !o)} style={addBtn}>
-          {formOpen ? 'Cancel' : '+ Log a visit'}
-        </button>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+          <label style={archivedToggle}>
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={e => setShowArchived(e.target.checked)}
+              style={{ marginRight: 6 }}
+            />
+            Show archived
+          </label>
+          <button onClick={() => setFormOpen(o => !o)} style={addBtn}>
+            {formOpen ? 'Cancel' : '+ Log a visit'}
+          </button>
+        </div>
       </div>
 
       {formOpen && (
@@ -158,23 +180,34 @@ export default function VisitsPanel({ memberNo, onAfterChange }: { memberNo: str
         ) : visits.length === 0 ? (
           <div style={emptyText}>No visits logged yet.</div>
         ) : (
-          visits.map(v => (
-            <div key={v.visit_id} style={visitRow}>
-              <div style={visitDateCol}>{fmtDate(v.visit_date)}</div>
-              <div style={visitBody}>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'baseline' }}>
-                  {v.space && <span style={visitSpace}>{v.space}</span>}
-                  {v.duration_min != null && <span style={visitMeta}>{v.duration_min} min</span>}
-                  {v.emotional_state && <span style={visitEmotion}>· {v.emotional_state}</span>}
+          visits.map(v => {
+            const isArchived = !!v.archived_at
+            return (
+              <div key={v.visit_id} style={{ ...visitRow, ...(isArchived ? archivedRow : {}) }}>
+                <div style={visitDateCol}>{fmtDate(v.visit_date)}</div>
+                <div style={visitBody}>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'baseline' }}>
+                    {v.space && <span style={visitSpace}>{v.space}</span>}
+                    {v.duration_min != null && <span style={visitMeta}>{v.duration_min} min</span>}
+                    {v.emotional_state && <span style={visitEmotion}>· {v.emotional_state}</span>}
+                    {isArchived && <span style={archivedTag}>archived</span>}
+                  </div>
+                  {v.notes && <div style={visitNotes}>{v.notes}</div>}
+                  <div style={visitFooter}>
+                    Logged by {v.logged_by || '—'} · {new Date(v.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    {isArchived && v.archived_at && (
+                      <> · Archived {new Date(v.archived_at).toLocaleString('en-GB', { day: 'numeric', month: 'short' })}</>
+                    )}
+                  </div>
                 </div>
-                {v.notes && <div style={visitNotes}>{v.notes}</div>}
-                <div style={visitFooter}>
-                  Logged by {v.logged_by || '—'} · {new Date(v.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                </div>
+                {isArchived ? (
+                  <button onClick={() => restore(v.visit_id)} title="Restore visit" style={restoreBtn}>↩</button>
+                ) : (
+                  <button onClick={() => archive(v.visit_id)} title="Archive visit" style={archiveBtn}>×</button>
+                )}
               </div>
-              <button onClick={() => remove(v.visit_id)} title="Delete visit" style={deleteBtn}>×</button>
-            </div>
-          ))
+            )
+          })
         )}
       </div>
     </div>
@@ -267,11 +300,31 @@ const visitFooter: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 9,
   color: '#B2AA98', opacity: 0.55, letterSpacing: '0.06em', marginTop: 6,
 }
-const deleteBtn: React.CSSProperties = {
+const archiveBtn: React.CSSProperties = {
   flex: '0 0 28px', width: 28, height: 28, marginTop: 2,
   background: 'transparent', border: '1px solid rgba(229,212,194,0.10)',
   color: '#B2AA98', borderRadius: 4, cursor: 'pointer',
   fontSize: 14, lineHeight: 1, opacity: 0.6,
+}
+const restoreBtn: React.CSSProperties = {
+  flex: '0 0 28px', width: 28, height: 28, marginTop: 2,
+  background: 'rgba(212,184,90,0.10)', border: '1px solid rgba(212,184,90,0.30)',
+  color: '#D4B85A', borderRadius: 4, cursor: 'pointer',
+  fontSize: 12, lineHeight: 1,
+}
+const archivedRow: React.CSSProperties = {
+  opacity: 0.55,
+}
+const archivedTag: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#B2AA98', background: 'rgba(229,212,194,0.10)',
+  padding: '1px 6px', borderRadius: 3, letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+}
+const archivedToggle: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  color: '#B2AA98', letterSpacing: '0.06em',
+  cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center',
 }
 const emptyText: React.CSSProperties = {
   padding: '20px 0', textAlign: 'center',
