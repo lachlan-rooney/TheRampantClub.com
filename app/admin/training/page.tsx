@@ -319,8 +319,8 @@ const SECTIONS: SectionDef[] = [
         </ol>
         <h4 style={h4}>What Claude proposes</h4>
         <ul style={ulStyle}>
-          <li><strong>Visits</strong> — one row per identified member, written to <Code>visits</Code> (feeds the M term in PS(t)).</li>
-          <li><strong>Preferences</strong> — bottles loved, requested, asked about → <Code>preferences</Code> with S₀ / C / λ / F pre-chosen against the MIS rubric. Source is tagged <Code>Harmony Log</Code>.</li>
+          <li><strong>Visits</strong> — one row per identified member, written to <Code>visits</Code> at <Code>phase=&apos;accord&apos;</Code> so they enter the Guardian Angel lifecycle. Open the visit detail to add a <Code>data_for_next_overture</Code> note and close out.</li>
+          <li><strong>Preferences</strong> — bottles loved, requested, asked about → land in <Code>preference_candidates</Code> for a human review pass. Accepted ones become real preferences via <Link href="/admin/mis/candidates" style={linkStyle}>/admin/mis/candidates</Link>.</li>
           <li><strong>Bottle pours</strong> — depletes a bottle in the member&apos;s locker. &quot;finished&quot; → 0%; otherwise drops one quarter unless you specify a fill.</li>
           <li><strong>Prospects</strong> — walk-ins mentioned as potential members. Mints a new P-xxx at the Lead stage, links the referrer if hinted.</li>
           <li><strong>Complaints</strong> — friction items. If the narrative says &quot;we fixed it&quot;, they&apos;re marked resolved on the spot.</li>

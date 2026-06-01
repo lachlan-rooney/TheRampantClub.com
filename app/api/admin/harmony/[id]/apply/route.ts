@@ -119,9 +119,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         const r = resolveMember(memberHint, memberRoster)
         if (!r.match) throw new Error(r.reason || 'unresolved member')
         member_no = r.match.member_no
+        // Pass 2: AI-extracted visits land at phase='accord' so the team
+        // can open them via the Guardian Angel detail page and close them
+        // out with a data_for_next_overture note. They count toward M
+        // immediately via member_stats.
         const { data: row, error: insErr } = await sb.from('visits').insert({
           member_no,
           visit_date:      log.shift_date,
+          phase:           'accord',
+          arrival_time:    new Date().toISOString(),
           space:           payload.space      ? String(payload.space).slice(0, 80) : null,
           duration_min:    Number.isInteger(payload.duration_min) ? payload.duration_min : null,
           emotional_state: payload.emotional_state ? String(payload.emotional_state).slice(0, 80) : null,
@@ -136,24 +142,24 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         const r = resolveMember(memberHint, memberRoster)
         if (!r.match) throw new Error(r.reason || 'unresolved member')
         member_no = r.match.member_no
-        const { data: row, error: insErr } = await sb.from('preferences').insert({
+        // Pass 2: AI-proposed preferences go to the candidate queue, not
+        // directly into preferences. An admin reviews via /admin/mis/candidates
+        // and the promote_preference_candidate RPC handles the insert.
+        const { data: row, error: insErr } = await sb.from('preference_candidates').insert({
           member_no,
-          category:        String(payload.category || '').slice(0, 40) || 'Personal & Lifestyle',
-          subcategory:     payload.subcategory ? String(payload.subcategory).slice(0, 200) : null,
-          preference_name: String(payload.preference_name || 'Untitled preference').slice(0, 200),
-          detail:          payload.detail ? String(payload.detail).slice(0, 2000) : null,
-          verbatim_quote:  payload.verbatim_quote ? String(payload.verbatim_quote).slice(0, 1000) : null,
-          s0:              clampS0(payload.s0),
-          confidence:      snap(payload.confidence, ALLOWED_CONFIDENCE, 0.75),
-          lambda:          snap(payload.lambda,     ALLOWED_LAMBDA,     0.010),
-          frequency:       snap(payload.frequency,  ALLOWED_FREQUENCY,  1.0),
-          last_validated:  log.shift_date,
-          source:          'Harmony Log',
-          logged_by:       `Harmony Log · ${actor}`,
-        }).select('preference_id').single()
+          suggested_category:    String(payload.category || '').slice(0, 40) || null,
+          suggested_name:        String(payload.preference_name || 'Untitled preference').slice(0, 200),
+          detail:                payload.detail ? String(payload.detail).slice(0, 2000) : null,
+          verbatim_quote:        payload.verbatim_quote ? String(payload.verbatim_quote).slice(0, 1000) : null,
+          suggested_s0:          clampS0(payload.s0),
+          suggested_confidence:  snap(payload.confidence, ALLOWED_CONFIDENCE, 0.75),
+          suggested_lambda:      snap(payload.lambda,     ALLOWED_LAMBDA,     0.010),
+          suggested_frequency:   snap(payload.frequency,  ALLOWED_FREQUENCY,  1.0),
+          source:                'Harmony Log',
+        }).select('candidate_id').single()
         if (insErr || !row) throw new Error(insErr?.message || 'insert failed')
-        target_table = 'preferences'
-        target_id = row.preference_id
+        target_table = 'preference_candidates'
+        target_id = row.candidate_id
 
       } else if (e.kind === 'bottle_depletion') {
         const r = resolveMember(memberHint, memberRoster)

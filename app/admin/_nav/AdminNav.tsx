@@ -30,6 +30,7 @@ const GROUPS: Group[] = [
     items: [
       { href: '/admin/mis/pipeline', label: 'Pipeline' },
       { href: '/admin/mis', label: 'Members' },
+      { href: '/admin/mis/candidates', label: 'Pref Candidates' },
       { href: '/admin/members', label: 'User Roster' },
       { href: '/admin/cards', label: 'Member Cards' },
       { href: '/admin/agreements', label: 'Agreements' },
