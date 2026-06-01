@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import FormulaExplainer from '../FormulaExplainer'
 import VisitsPanel from '../VisitsPanel'
+import GiftingPanel from '../GiftingPanel'
 
 interface Member {
   member_no: string
@@ -278,6 +279,8 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
       )}
 
       <VisitsPanel memberNo={member.member_no} onAfterChange={loadPreferences} />
+
+      <GiftingPanel memberNo={member.member_no} memberName={member.full_name} />
 
       <FormulaExplainer variant="full" />
 
