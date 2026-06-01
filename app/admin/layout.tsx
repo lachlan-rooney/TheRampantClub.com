@@ -11,6 +11,7 @@ const NAV = [
   { href: '/admin/fixtures', label: 'Fixtures' },
   { href: '/admin/rules', label: 'House Rules' },
   { href: '/admin/members', label: 'Members' },
+  { href: '/admin/mis', label: 'Intelligence' },
   { href: '/admin/cards', label: 'Member Cards' },
   { href: '/admin/journal', label: 'Journal' },
   { href: '/admin/press', label: 'Press' },
