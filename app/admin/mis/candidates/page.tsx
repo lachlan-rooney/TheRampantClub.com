@@ -78,7 +78,13 @@ export default function CandidatesPage() {
   }
 
   const setDraft = (id: string, partial: Partial<Candidate>) => {
-    setDrafts(d => ({ ...d, [id]: { ...draftFor(candidates.find(c => c.candidate_id === id)!), ...partial } }))
+    setDrafts(d => {
+      // The list may have been refetched mid-keystroke; if the candidate
+      // is gone, store the partial under its id and let render handle it.
+      const current = candidates.find(c => c.candidate_id === id)
+      const base = current ? draftFor(current) : (d[id] || {})
+      return { ...d, [id]: { ...base, ...partial } }
+    })
   }
 
   const accept = async (c: Candidate) => {

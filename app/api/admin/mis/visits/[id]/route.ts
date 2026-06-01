@@ -22,6 +22,12 @@ function svc() {
 }
 
 const ALLOWED_PHASES = ['overture', 'accord', 'continuum', 'closed'] as const
+// The Guardian Angel cycle is strictly ordered. We refuse phase jumps so
+// arrival_time / departure_time always get stamped in the right slot and
+// the data_for_next_overture gate fires at the right moment.
+const PHASE_ORDER: Record<string, number> = {
+  overture: 0, accord: 1, continuum: 2, closed: 3,
+}
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -63,6 +69,14 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   // Phase transition with timestamp stamping.
   if (typeof body.phase === 'string' && (ALLOWED_PHASES as readonly string[]).includes(body.phase) && body.phase !== before.phase) {
     const next = body.phase
+    // Enforce forward-only single-step movement through the cycle.
+    const fromIdx = PHASE_ORDER[before.phase]
+    const toIdx   = PHASE_ORDER[next]
+    if (toIdx !== fromIdx + 1) {
+      return NextResponse.json({
+        error: `Cannot move from ${before.phase} to ${next}. The cycle is strictly overture → accord → continuum → closed.`,
+      }, { status: 400 })
+    }
     patch.phase = next
     const now = new Date().toISOString()
 
