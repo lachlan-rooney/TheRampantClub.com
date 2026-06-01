@@ -36,7 +36,6 @@ const GROUPS: Group[] = [
       { href: '/admin/decay-fit', label: 'Decay Fit' },
       { href: '/admin/observatory', label: 'Observatory' },
       { href: '/admin/gifts', label: 'Gifting' },
-      { href: '/admin/members', label: 'User Roster' },
       { href: '/admin/cards', label: 'Member Cards' },
       { href: '/admin/agreements', label: 'Agreements' },
     ],
@@ -59,6 +58,7 @@ const GROUPS: Group[] = [
       { href: '/admin/press', label: 'Press' },
       { href: '/admin/tier-budgets', label: 'Tier Budgets' },
       { href: '/admin/training', label: 'Training' },
+      { href: '/admin/members', label: 'User Roster' },
     ],
   },
 ]
@@ -160,15 +160,15 @@ const brandTitle: React.CSSProperties = {
 }
 const groupHeader: React.CSSProperties = {
   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-  width: '100%', padding: '8px 24px', background: 'transparent',
+  width: '100%', padding: '10px 24px', background: 'transparent',
   border: 'none', cursor: 'pointer',
-  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
-  letterSpacing: '0.16em', textTransform: 'uppercase',
-  marginTop: 6,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 13,
+  letterSpacing: '0.12em', textTransform: 'uppercase',
+  marginTop: 8,
 }
 const itemLink: React.CSSProperties = {
-  display: 'block', padding: '8px 24px', textDecoration: 'none',
-  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
+  display: 'block', padding: '7px 24px', textDecoration: 'none',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
   color: '#B2AA98', letterSpacing: '0.04em',
 }
 const itemLinkActive: React.CSSProperties = {
