@@ -205,7 +205,12 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
 
   return (
     <>
-      <Link href="/admin/mis" style={backLink}>← Back to members</Link>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
+        <Link href="/admin/mis" style={{ ...backLink, marginBottom: 0 }}>← Back to members</Link>
+        <Link href={`/admin/mis/${member.member_no}/intake`} style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#D4B85A', textDecoration: 'none', letterSpacing: '0.06em', borderBottom: '1px solid rgba(212,184,90,0.35)' }}>
+          ◆ Process interview transcript →
+        </Link>
+      </div>
 
       <div style={profileHeader}>
         <div>
