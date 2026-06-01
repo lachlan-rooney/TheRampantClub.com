@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { vnDateString } from '@/lib/datetime'
 
 // MIS Pipeline — add new prospect form. Captures the upstream essentials;
 // the rest is filled in on the detail page.
@@ -17,7 +18,7 @@ export default function NewProspectPage() {
   const [referred_by_name, setReferredByName] = useState('')
   const [referral_relationship, setReferralRelationship] = useState('')
   const [source_channel, setSourceChannel] = useState('')
-  const [first_contact_date, setFirstContactDate] = useState(new Date().toISOString().slice(0, 10))
+  const [first_contact_date, setFirstContactDate] = useState(vnDateString())
   const [next_action, setNextAction] = useState('')
   const [next_action_date, setNextActionDate] = useState('')
   const [assigned_to, setAssignedTo] = useState('')

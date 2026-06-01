@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
+import { vnDateString } from '@/lib/datetime'
 
 // POST /api/admin/mis/prospects/[id]/convert
 //
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       nickname:  body.nickname ? String(body.nickname).slice(0, 200) : prospect.nickname,
       tier,
       status: 'Active',
-      join_date: new Date().toISOString().slice(0, 10),
+      join_date: vnDateString(),
       referred_by: prospect.referred_by_name,
     })
     if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 })
@@ -73,7 +74,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   await sb.from('prospects').update({
     stage: 'Onboarded',
     decision: 'Approved',
-    decision_date: new Date().toISOString().slice(0, 10),
+    decision_date: vnDateString(),
     converted_member_no: member_no,
     updated_at: new Date().toISOString(),
   }).eq('prospect_id', id)

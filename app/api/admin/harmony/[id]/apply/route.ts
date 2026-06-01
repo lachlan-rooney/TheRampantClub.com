@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
+import { vnDateString } from '@/lib/datetime'
 
 // POST /api/admin/harmony/[id]/apply
 //
@@ -89,7 +90,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (!log) return NextResponse.json({ error: 'log not found' }, { status: 404 })
 
   const memberRoster = (members || []) as MemberLite[]
-  const today = new Date().toISOString().slice(0, 10)
+  const today = vnDateString()
   const applied: Array<{ id: string; kind: string; target_table: string; target_id: string }> = []
   const failed: Array<{ id: string; kind: string; reason: string }> = []
 

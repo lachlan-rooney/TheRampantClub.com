@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { vnDateString } from '@/lib/datetime'
 
 // Admin / Floor / Calendar / New booking
 
@@ -12,23 +13,16 @@ interface MemberLite {
   nickname: string | null
   tier: string
   status: string
+  email: string | null
 }
 
 const SPACES = ['Library Bar', 'The Studio', 'The Dining Room', 'The Rampant Room', 'Source & Origin Lab', 'Sports Club']
 const SESSIONS = ['', 'early', 'evening', 'late']
 
-function localISODate(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
 export default function NewBookingPage() {
   const router = useRouter()
-  // Local-calendar today — toISOString() would UTC-shift and default to
-  // yesterday for the pre-07:00 window at GMT+7.
-  const today = localISODate(new Date())
+  // Vietnam-time today regardless of viewer timezone.
+  const today = vnDateString()
   const [members, setMembers] = useState<MemberLite[]>([])
   const [memberQuery, setMemberQuery] = useState('')
   const [memberNo, setMemberNo] = useState('')
@@ -39,6 +33,7 @@ export default function NewBookingPage() {
   const [space, setSpace] = useState(SPACES[0])
   const [partySize, setPartySize] = useState('2')
   const [notes, setNotes] = useState('')
+  const [sendConfirmation, setSendConfirmation] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -76,16 +71,21 @@ export default function NewBookingPage() {
           space,
           party_size: partySize ? Number(partySize) : 1,
           notes: notes || null,
+          send_confirmation: sendConfirmation,
         }),
       })
       const j = await r.json()
       if (!r.ok) throw new Error(j.error || 'Save failed')
+      if (sendConfirmation && j.email_error) {
+        // Booking still saved — surface email failure but proceed to calendar.
+        alert(`Booking saved, but confirmation email failed: ${j.email_error}`)
+      }
       router.push('/admin/calendar')
     } catch (e) {
       setError((e as Error).message)
       setSaving(false)
     }
-  }, [memberNo, bookingDate, startTime, endTime, sessionLabel, space, partySize, notes, router])
+  }, [memberNo, bookingDate, startTime, endTime, sessionLabel, space, partySize, notes, sendConfirmation, router])
 
   return (
     <>
@@ -177,6 +177,32 @@ export default function NewBookingPage() {
           style={{ ...inputStyle, resize: 'vertical' }}
         />
       </div>
+
+      <label style={{
+        display: 'flex', alignItems: 'center', gap: 10, marginTop: 18, padding: '12px 14px',
+        background: 'rgba(212,184,90,0.06)', border: '1px solid rgba(212,184,90,0.20)',
+        borderRadius: 6, cursor: selectedMember?.email ? 'pointer' : 'not-allowed',
+        opacity: selectedMember && !selectedMember.email ? 0.5 : 1,
+      }}>
+        <input
+          type="checkbox"
+          checked={sendConfirmation}
+          onChange={e => setSendConfirmation(e.target.checked)}
+          disabled={!selectedMember || !selectedMember.email}
+        />
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#E5D4C2' }}>
+            Send confirmation email to the member
+          </div>
+          <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', marginTop: 4 }}>
+            {!selectedMember
+              ? 'Pick a member first.'
+              : selectedMember.email
+                ? `Will go to ${selectedMember.email}`
+                : `No email on file for ${selectedMember.full_name}. Add one to the member record to enable this.`}
+          </div>
+        </div>
+      </label>
 
       <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
         <button

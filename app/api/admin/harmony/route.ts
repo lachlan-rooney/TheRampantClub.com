@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
+import { vnDateString } from '@/lib/datetime'
 
 // GET  /api/admin/harmony   — list harmony logs with rollup counts
 // POST /api/admin/harmony   — create a new shift log (draft status)
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
 
   const shift_date = typeof body.shift_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.shift_date)
     ? body.shift_date
-    : new Date().toISOString().slice(0, 10)
+    : vnDateString()
 
   const shift_label_raw = typeof body.shift_label === 'string' ? body.shift_label : 'evening'
   const shift_label = ALLOWED_LABELS.includes(shift_label_raw) ? shift_label_raw : 'evening'

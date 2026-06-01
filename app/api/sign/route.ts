@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import { vnDateString } from '@/lib/datetime'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -223,7 +224,7 @@ export async function POST(req: NextRequest) {
     // want those activated before we mark the invitation signed. That way a
     // mid-flight failure leaves a resumable pending invitation rather than a
     // closed invitation with a still-Pending-Signature member.
-    const today = new Date().toISOString().slice(0, 10)
+    const today = vnDateString()
     if (invitation.member_no) {
       await supabaseAdmin
         .from('members')

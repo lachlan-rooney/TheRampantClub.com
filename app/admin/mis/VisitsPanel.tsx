@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import { vnDateString } from '@/lib/datetime'
 
 // Per-member visit log + inline "Log a visit" form. Drops onto the member
 // profile page. Every successful POST is what slowly turns M from 1.0 into
@@ -26,7 +27,7 @@ const SPACES = [
   'The Rampant Room', 'Source & Origin Lab', 'Sports Club', 'Other',
 ]
 
-const todayISO = () => new Date().toISOString().slice(0, 10)
+const todayISO = vnDateString
 
 export default function VisitsPanel({ memberNo, onAfterChange }: { memberNo: string; onAfterChange?: () => void }) {
   const [visits, setVisits] = useState<Visit[]>([])

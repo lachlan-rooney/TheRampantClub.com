@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
+import { vnDateString } from '@/lib/datetime'
 
 // Batch-saves preferences accepted from a transcript intake session.
 // The intake stream emits raw extractions; the UI lets the admin edit/discard
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'too many preferences in one batch' }, { status: 400 })
   }
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = vnDateString()
   const rows: Array<Record<string, unknown>> = []
   const errors: Array<{ index: number; reason: string }> = []
 

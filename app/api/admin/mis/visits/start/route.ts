@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
+import { vnDateString } from '@/lib/datetime'
 
 // POST /api/admin/mis/visits/start
 //
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
 
   const visit_date = typeof body.visit_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.visit_date)
     ? body.visit_date
-    : new Date().toISOString().slice(0, 10)
+    : vnDateString()
 
   const sb = svc()
   // Confirm the member exists so we get a clean error rather than a FK

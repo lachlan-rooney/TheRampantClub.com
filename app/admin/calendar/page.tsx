@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { vnDateString } from '@/lib/datetime'
 
 // Admin / Floor / Calendar
 //
@@ -44,15 +45,11 @@ function startOfWeek(d: Date): Date {
 function addDays(d: Date, n: number): Date {
   const out = new Date(d); out.setDate(d.getDate() + n); return out
 }
-// Local-calendar YYYY-MM-DD. Using toISOString() here would UTC-shift the
-// day, which lands the wrong day in the wrong column for several hours
-// each morning at GMT+7.
-function isoDate(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
+// Vietnam-time YYYY-MM-DD. Browser-local "today" can disagree with
+// Saigon "today" for several hours each morning if the user (or the
+// server during SSR) sits outside GMT+7. vnDateString pins to the
+// Vietnamese calendar regardless of viewer location.
+const isoDate = vnDateString
 
 export default function CalendarPage() {
   const router = useRouter()

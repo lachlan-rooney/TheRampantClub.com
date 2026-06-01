@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { vnDateString } from '@/lib/datetime'
 
 // Admin / Floor / Harmony Log / New
 //
@@ -13,7 +14,7 @@ const SHIFTS = ['early', 'evening', 'late', 'all-day']
 
 export default function NewHarmonyLogPage() {
   const router = useRouter()
-  const today = new Date().toISOString().slice(0, 10)
+  const today = vnDateString()
   const [shift_date, setShiftDate] = useState(today)
   const [shift_label, setShiftLabel] = useState('evening')
   const [attendee_count, setAttendeeCount] = useState('')
