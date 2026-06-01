@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
 
-// GET  /api/admin/recap   — list evening recap logs with rollup counts
-// POST /api/admin/recap   — create a new shift log (draft status)
+// GET  /api/admin/harmony   — list harmony logs with rollup counts
+// POST /api/admin/harmony   — create a new shift log (draft status)
 
 export const dynamic = 'force-dynamic'
 

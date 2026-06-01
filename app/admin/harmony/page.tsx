@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 
-// Admin / Floor / Evening Recap
+// Admin / Floor / Harmony Log
 //
 // Chronological list of past shift logs. Headline metric per row is the
 // AI extraction summary: total extractions, applied, pending review.
@@ -32,7 +32,7 @@ export default function HarmonyListPage() {
 
   const load = useCallback(() => {
     setLoading(true)
-    fetch('/api/admin/recap', { cache: 'no-store' })
+    fetch('/api/admin/harmony', { cache: 'no-store' })
       .then(r => r.json())
       .then(d => { setLogs(d.logs || []); setLoading(false) })
       .catch(() => setLoading(false))
@@ -44,12 +44,12 @@ export default function HarmonyListPage() {
       <div style={headerRow}>
         <div>
           <div style={eyebrow}>Floor</div>
-          <h1 style={pageTitle}>Evening Recap</h1>
+          <h1 style={pageTitle}>Harmony Log</h1>
           <p style={lede}>
             End-of-shift narrative — type what happened tonight in plain English. Claude reads it back and proposes structured updates (visits, preferences, bottle pours, walk-ins, complaints, card charges). Tick the ones you want, accept, done. Everything fans out to the right place.
           </p>
         </div>
-        <Link href="/admin/recap/new" style={btnPrimary}>＋ New shift</Link>
+        <Link href="/admin/harmony/new" style={btnPrimary}>＋ New shift</Link>
       </div>
 
       {loading ? (
@@ -57,7 +57,7 @@ export default function HarmonyListPage() {
       ) : logs.length === 0 ? (
         <div style={emptyBlock}>
           <div style={{ marginBottom: 16 }}>No shifts logged yet.</div>
-          <Link href="/admin/recap/new" style={btnPrimary}>＋ Log tonight</Link>
+          <Link href="/admin/harmony/new" style={btnPrimary}>＋ Log tonight</Link>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -68,7 +68,7 @@ export default function HarmonyListPage() {
             const totalReviewable = l.pending_count + l.accepted_count
             const preview = l.narrative.slice(0, 240) + (l.narrative.length > 240 ? '…' : '')
             return (
-              <Link key={l.id} href={`/admin/recap/${l.id}`} style={row}>
+              <Link key={l.id} href={`/admin/harmony/${l.id}`} style={row}>
                 <div style={dateBox}>
                   <div style={dateWeekday}>{weekday}</div>
                   <div style={dateNum}>{d.getDate()}</div>

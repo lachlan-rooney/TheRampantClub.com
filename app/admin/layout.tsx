@@ -21,6 +21,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       }}>
         {children}
       </main>
+      <div style={{
+        position: 'fixed', right: 16, bottom: 12, zIndex: 90,
+        padding: '4px 10px',
+        background: 'rgba(5,46,32,0.85)',
+        border: '1px solid rgba(229,212,194,0.10)',
+        borderRadius: 4,
+        fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+        color: '#7E7864', letterSpacing: '0.08em',
+        backdropFilter: 'blur(4px)',
+        pointerEvents: 'none',
+      }}>
+        Licensed from LR Growth Solutions PTE LTD
+      </div>
     </div>
     </>
   )

@@ -1,6 +1,10 @@
 -- Run once in the Supabase SQL editor, after db/mis_pass2_validations.sql.
 --
--- MIS Pass 2 — Guardian Angel cycle + Harmony Log feedback loop.
+-- MIS Pass 2 — Guardian Angel cycle + Accord Notes feedback loop.
+-- (The dissertation refers to the per-visit observation register as the
+--  "Harmony Log"; we surface it in the UI as "Accord Notes" so the term
+--  "Harmony Log" can stay on the existing AI shift-narrative tool. Table
+--  name harmony_observations preserves the dissertation lineage.)
 --
 -- Makes PS(t) live by wiring three loops:
 --   1. visits activate M (engagement multiplier)
@@ -53,10 +57,10 @@ alter table visits
 
 create index if not exists idx_visits_phase on visits (phase, visit_date desc);
 
--- ── 3. harmony_observations — per-visit structured log ────────────────
--- The dissertation's Harmony Log. Each row is one observation captured
--- during the Accord phase. Optionally links back to a preference (drives
--- write contract A) or spawns a candidate (drives write contract B).
+-- ── 3. harmony_observations — Accord Notes (per-visit observation log) ─
+-- Each row is one observation captured during the Accord phase. Optionally
+-- links back to a preference (drives write contract A) or spawns a
+-- candidate (drives write contract B). Surfaced in the UI as "Accord Notes".
 
 create table if not exists harmony_observations (
   observation_id  uuid primary key default gen_random_uuid(),
