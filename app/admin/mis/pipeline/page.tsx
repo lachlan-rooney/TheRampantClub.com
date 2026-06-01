@@ -46,6 +46,19 @@ const ACTIVE_STAGES = [
 ] as const
 const OFFRAMP_STAGES = ['Declined', 'Withdrawn', 'On Hold'] as const
 
+// Used by the hover quick-actions to figure out where → forwards a prospect.
+const NEXT_STAGE: Record<string, string | null> = {
+  'Lead':                  'Initial Contact',
+  'Initial Contact':       'Interview Scheduled',
+  'Interview Scheduled':   'Interview Complete',
+  'Interview Complete':    'Application Received',
+  'Application Received':  'Onboarded',
+  'Onboarded':             null,
+  'Declined':              null,
+  'Withdrawn':             null,
+  'On Hold':               'Lead',
+}
+
 const STAGE_ACCENT: Record<string, string> = {
   'Lead':                  '#5E6650',
   'Initial Contact':       '#7A8470',
@@ -148,16 +161,16 @@ export default function PipelinePage() {
         </label>
       </div>
 
-      {/* Kanban */}
+      {/* Kanban — grid (fits viewport) when 6 active stages, scrollable flex when off-ramps visible */}
       {loading ? (
         <div style={emptyText}>Loading prospects…</div>
       ) : (
-        <div style={kanban}>
+        <div style={showOfframps ? kanbanScroll : { ...kanbanGrid, gridTemplateColumns: `repeat(${stages.length}, minmax(0, 1fr))` }}>
           {stages.map(stage => {
             const inStage = filtered.filter(p => p.stage === stage)
             const accent = STAGE_ACCENT[stage] || '#5E6650'
             return (
-              <div key={stage} style={kanbanCol}>
+              <div key={stage} style={showOfframps ? kanbanColScroll : kanbanCol}>
                 <div style={{ ...kanbanHead, borderTopColor: accent }}>
                   <div style={kanbanStage}>{stage}</div>
                   <div style={kanbanCount}>{inStage.length}</div>
@@ -165,7 +178,7 @@ export default function PipelinePage() {
                 <div style={kanbanList}>
                   {inStage.length === 0 ? (
                     <div style={kanbanEmpty}>—</div>
-                  ) : inStage.map(p => <ProspectCard key={p.prospect_id} p={p} />)}
+                  ) : inStage.map(p => <ProspectCard key={p.prospect_id} p={p} onChange={load} />)}
                 </div>
               </div>
             )
@@ -189,26 +202,86 @@ function Stat({ label, value, accent }: { label: string; value: string; accent: 
   )
 }
 
-function ProspectCard({ p }: { p: Prospect }) {
+function ProspectCard({ p, onChange }: { p: Prospect; onChange: () => void }) {
+  const [hover, setHover] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const nextStage = NEXT_STAGE[p.stage]
+
+  const fire = async (action: () => Promise<Response>) => {
+    setBusy(true)
+    try {
+      const r = await action()
+      if (r.ok) onChange()
+    } finally {
+      setBusy(false)
+    }
+  }
+  const stop = (e: React.MouseEvent | React.SyntheticEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+  const moveNext = (e: React.MouseEvent) => {
+    stop(e)
+    if (!nextStage) return
+    fire(() => fetch(`/api/admin/mis/prospects/${p.prospect_id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stage: nextStage }),
+    }))
+  }
+  const toggleLetter = (e: React.MouseEvent) => {
+    stop(e)
+    fire(() => fetch(`/api/admin/mis/prospects/${p.prospect_id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ letter_sent: !p.letter_sent }),
+    }))
+  }
+  const archive = (e: React.MouseEvent) => {
+    stop(e)
+    if (!confirm(`Archive ${p.full_name}?`)) return
+    fire(() => fetch(`/api/admin/mis/prospects/${p.prospect_id}`, { method: 'DELETE' }))
+  }
+
   return (
-    <Link href={`/admin/mis/pipeline/${p.prospect_id}`} style={cardLink}>
-      <div style={card}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+    <Link
+      href={`/admin/mis/pipeline/${p.prospect_id}`}
+      style={cardLink}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <div style={{ ...card, ...(hover ? cardHover : {}), opacity: busy ? 0.6 : 1 }}>
+        {/* Quick-action overlay on hover */}
+        {hover && (
+          <div style={quickActions}>
+            {nextStage && (
+              <button onClick={moveNext} title={`Move to ${nextStage}`} style={quickBtn}>→</button>
+            )}
+            <button
+              onClick={toggleLetter}
+              title={p.letter_sent ? 'Mark letter not-sent' : 'Mark letter sent'}
+              style={{ ...quickBtn, color: p.letter_sent ? '#D4B85A' : '#B2AA98' }}
+            >
+              ✉
+            </button>
+            <button onClick={archive} title="Archive prospect" style={{ ...quickBtn, color: '#C27070' }}>×</button>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 }}>
           <div style={cardName}>{p.full_name}</div>
-          {p.letter_sent && <span style={letterDot} title="Letter sent">✉</span>}
+          {p.letter_sent && !hover && <span style={letterDot} title="Letter sent">✉</span>}
         </div>
         {p.nickname && <div style={cardSub}>{p.nickname}</div>}
 
         <div style={cardChipsRow}>
           {p.source_channel && (
             <span style={cardChip}>
-              {p.source_channel === 'Referral' ? '👤' : p.source_channel === 'Event' ? '🎪' : '✈'}
-              <span style={{ marginLeft: 4 }}>{p.source_channel}</span>
+              {p.source_channel === 'Referral' ? '↳' : p.source_channel === 'Event' ? '◇' : '→'}
+              <span style={{ marginLeft: 4 }}>{p.source_channel.slice(0, 3)}</span>
             </span>
           )}
           {p.overall_score != null && (
-            <span style={{ ...cardChip, background: 'rgba(212,184,90,0.12)', color: '#D4B85A' }}>
-              ⭐ {Number(p.overall_score).toFixed(1)}
+            <span style={{ ...cardChip, background: 'rgba(212,184,90,0.14)', color: '#D4B85A' }}>
+              ★ {Number(p.overall_score).toFixed(1)}
             </span>
           )}
           {p.days_in_pipeline != null && (
@@ -216,20 +289,15 @@ function ProspectCard({ p }: { p: Prospect }) {
           )}
         </div>
 
-        {p.referred_by_name && (
-          <div style={cardLine}>
-            <span style={cardLineLabel}>Ref</span> {p.referred_by_name}
-          </div>
-        )}
         {p.profession && (
           <div style={cardLine}>
-            <span style={cardLineLabel}>Sector</span> {p.profession}
+            {p.profession}
           </div>
         )}
         {p.next_action && (
           <div style={cardNextAction}>
             <span style={{ color: '#D4B85A' }}>→</span> {p.next_action}
-            {p.next_action_date && <span style={{ marginLeft: 6, opacity: 0.6 }}>· {fmtShort(p.next_action_date)}</span>}
+            {p.next_action_date && <span style={{ marginLeft: 4, opacity: 0.55 }}>· {fmtShort(p.next_action_date)}</span>}
           </div>
         )}
       </div>
@@ -289,32 +357,45 @@ const offrampToggle: React.CSSProperties = {
   color: '#B2AA98', cursor: 'pointer', userSelect: 'none',
   marginLeft: 'auto',
 }
-const kanban: React.CSSProperties = {
-  display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 12,
+const kanbanGrid: React.CSSProperties = {
+  display: 'grid', gap: 10, paddingBottom: 12,
+}
+const kanbanScroll: React.CSSProperties = {
+  display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 12,
 }
 const kanbanCol: React.CSSProperties = {
-  flex: '0 0 280px', minHeight: 400,
+  minWidth: 0,                                 // critical: allows grid cells to shrink below content width
+  minHeight: 400,
+  background: 'rgba(229,212,194,0.025)',
+  border: '1px solid rgba(229,212,194,0.08)', borderRadius: 10,
+  display: 'flex', flexDirection: 'column',
+}
+const kanbanColScroll: React.CSSProperties = {
+  flex: '0 0 240px',
+  minHeight: 400,
   background: 'rgba(229,212,194,0.025)',
   border: '1px solid rgba(229,212,194,0.08)', borderRadius: 10,
   display: 'flex', flexDirection: 'column',
 }
 const kanbanHead: React.CSSProperties = {
-  padding: '14px 16px 12px',
+  padding: '12px 12px 10px',
   borderTop: '3px solid #5E6650',
   borderRadius: '10px 10px 0 0',
   display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+  gap: 8,
 }
 const kanbanStage: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
   color: '#E5D4C2', letterSpacing: '0.10em', textTransform: 'uppercase',
+  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
 }
 const kanbanCount: React.CSSProperties = {
   fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#D4B85A', fontWeight: 600,
 }
 const kanbanList: React.CSSProperties = {
-  flex: 1, padding: '4px 10px 10px',
-  display: 'flex', flexDirection: 'column', gap: 8,
-  maxHeight: '70vh', overflowY: 'auto',
+  flex: 1, padding: '4px 8px 10px',
+  display: 'flex', flexDirection: 'column', gap: 6,
+  maxHeight: '75vh', overflowY: 'auto',
 }
 const kanbanEmpty: React.CSSProperties = {
   padding: '24px 8px', textAlign: 'center',
@@ -325,48 +406,74 @@ const cardLink: React.CSSProperties = {
   textDecoration: 'none', color: 'inherit',
 }
 const card: React.CSSProperties = {
-  padding: 12,
+  position: 'relative',
+  padding: 10,
   background: 'rgba(5,46,32,0.45)',
   border: '1px solid rgba(229,212,194,0.08)', borderRadius: 8,
   cursor: 'pointer',
-  transition: 'background 0.2s, border-color 0.2s, transform 0.2s',
+  transition: 'background 0.2s, border-color 0.2s, transform 0.15s, box-shadow 0.2s',
+}
+const cardHover: React.CSSProperties = {
+  background: 'rgba(5,46,32,0.75)',
+  borderColor: 'rgba(212,184,90,0.40)',
+  transform: 'translateY(-1px)',
+  boxShadow: '0 6px 14px rgba(0,0,0,0.25)',
+}
+const quickActions: React.CSSProperties = {
+  position: 'absolute', top: 6, right: 6,
+  display: 'flex', gap: 4,
+  background: 'rgba(5,46,32,0.95)',
+  border: '1px solid rgba(212,184,90,0.30)', borderRadius: 5,
+  padding: 2,
+  boxShadow: '0 4px 10px rgba(0,0,0,0.35)',
+  zIndex: 5,
+}
+const quickBtn: React.CSSProperties = {
+  width: 22, height: 22, padding: 0,
+  background: 'transparent', border: 'none',
+  color: '#E5D4C2', fontSize: 13, lineHeight: 1,
+  cursor: 'pointer', borderRadius: 3,
 }
 const cardName: React.CSSProperties = {
-  fontFamily: "'Rampant Sans', serif", fontSize: 14, color: '#E5D4C2',
-  fontWeight: 500, lineHeight: 1.2,
+  fontFamily: "'Rampant Sans', serif", fontSize: 13, color: '#E5D4C2',
+  fontWeight: 500, lineHeight: 1.2, paddingRight: 18,  // room for letter dot / hover overlay
 }
 const cardSub: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 10,
   color: '#B2AA98', opacity: 0.75, marginTop: 3, lineHeight: 1.3,
+  overflow: 'hidden', textOverflow: 'ellipsis',
+  display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
 }
 const cardChipsRow: React.CSSProperties = {
-  display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10,
+  display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 8,
 }
 const cardChip: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 9,
   color: '#B2AA98', background: 'rgba(229,212,194,0.06)',
-  padding: '2px 6px', borderRadius: 3, letterSpacing: '0.04em',
+  padding: '1px 5px', borderRadius: 3, letterSpacing: '0.04em',
   display: 'inline-flex', alignItems: 'center',
 }
 const cardChipMuted: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 9,
   color: '#B2AA98', opacity: 0.6,
-  padding: '2px 6px', letterSpacing: '0.04em',
+  padding: '1px 5px', letterSpacing: '0.04em',
 }
 const cardLine: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 10,
-  color: '#E5D4C2', opacity: 0.75, marginTop: 6, lineHeight: 1.4,
+  color: '#B2AA98', opacity: 0.65, marginTop: 6, lineHeight: 1.4,
+  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
 }
 const cardLineLabel: React.CSSProperties = {
   color: '#B2AA98', opacity: 0.7, letterSpacing: '0.06em',
   textTransform: 'uppercase', fontSize: 8, marginRight: 4,
 }
 const cardNextAction: React.CSSProperties = {
-  marginTop: 10, padding: '6px 8px',
+  marginTop: 8, padding: '5px 7px',
   background: 'rgba(212,184,90,0.06)', borderLeft: '2px solid rgba(212,184,90,0.30)',
   borderRadius: 3,
   fontFamily: "'Google Sans Code', monospace", fontSize: 10,
   color: '#E5D4C2',
+  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
 }
 const letterDot: React.CSSProperties = {
   fontSize: 11, color: '#D4B85A', flexShrink: 0,
