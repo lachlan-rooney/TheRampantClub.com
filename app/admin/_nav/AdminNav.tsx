@@ -33,6 +33,7 @@ const GROUPS: Group[] = [
       { href: '/admin/mis/pipeline', label: 'Pipeline' },
       { href: '/admin/mis', label: 'Members' },
       { href: '/admin/mis/candidates', label: 'Pref Candidates' },
+      { href: '/admin/decay-fit', label: 'Decay Fit' },
       { href: '/admin/gifts', label: 'Gifts' },
       { href: '/admin/members', label: 'User Roster' },
       { href: '/admin/cards', label: 'Member Cards' },
