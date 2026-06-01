@@ -50,11 +50,20 @@ interface Complaint {
   resolved_at: string | null
 }
 
+interface ClosingHandover {
+  shift_date: string
+  items: Array<{ id: string; label: string; checked: boolean; name: string | null; ts: string | null }>
+  free_notes: string | null
+  submitted_by: string | null
+  submitted_at: string | null
+}
+
 interface Data {
   birthdays: Birthday[]
   anniversaries: Anniversary[]
   lapsed: { bucket_30: LapsedRow[]; bucket_60: LapsedRow[]; bucket_90: LapsedRow[] }
   complaints: Complaint[]
+  last_closing: ClosingHandover | null
   counts: { birthdays: number; anniversaries: number; lapsed_total: number; complaints_open: number }
 }
 
@@ -125,7 +134,30 @@ export default function MXDailyPage() {
         <StatTile label="Open complaints"    value={data.counts.complaints_open} color="#C27070" />
       </div>
 
-      <div style={twoCol}>
+      {/* Closing handover from the previous shift — the loop-closer */}
+      {data.last_closing && (
+        <Panel
+          title={`Handover · closing of ${new Date(data.last_closing.shift_date + 'T12:00:00+07:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}`}
+          eyebrow="Yesterday's team"
+          action={<Link href="/admin/checklists" style={panelActionLink}>Open checklists →</Link>}
+        >
+          {data.last_closing.free_notes ? (
+            <div style={{ ...handoverBox }}>{data.last_closing.free_notes}</div>
+          ) : (
+            <div style={panelEmpty}>No handover note recorded.</div>
+          )}
+          <div style={{ ...panelHint, marginTop: 10 }}>
+            Signed off by <strong style={{ color: '#E5D4C2' }}>{data.last_closing.submitted_by || 'unknown'}</strong>
+            {data.last_closing.submitted_at && (
+              <> · {new Date(data.last_closing.submitted_at).toLocaleString('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</>
+            )}
+            {' · '}
+            {data.last_closing.items.filter(i => i.checked).length}/{data.last_closing.items.length} items ticked
+          </div>
+        </Panel>
+      )}
+
+      <div style={{ ...twoCol, marginTop: data.last_closing ? 16 : 0 }}>
         {/* LEFT: Birthdays + Anniversaries + Tonight */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Panel
@@ -438,6 +470,15 @@ const panelBadge: React.CSSProperties = {
 const panelHint: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 11,
   color: '#B2AA98', lineHeight: 1.6, opacity: 0.85,
+}
+const handoverBox: React.CSSProperties = {
+  padding: '12px 14px',
+  background: 'rgba(122,176,122,0.08)',
+  border: '1px solid rgba(122,176,122,0.25)',
+  borderLeft: '3px solid #7AB07A',
+  borderRadius: 4,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
+  color: '#E5D4C2', lineHeight: 1.7, whiteSpace: 'pre-wrap',
 }
 const panelEmpty: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 11,

@@ -47,12 +47,25 @@ export async function GET() {
     .limit(50)
     .then(r => r, () => ({ data: [] as Record<string, unknown>[], error: null }))
 
-  const [{ data: members }, { data: stats }, complaintsResult] = await Promise.all([
+  // Latest closing checklist for the handover panel. Same defensive
+  // wrap — if shift_checklists hasn't been migrated yet, this returns
+  // empty rather than 500'ing the dashboard.
+  const lastClosingQuery = sb
+    .from('shift_checklists')
+    .select('shift_date, items, free_notes, submitted_by, submitted_at')
+    .eq('kind', 'closing')
+    .order('shift_date', { ascending: false })
+    .limit(1)
+    .then(r => r, () => ({ data: [] as Record<string, unknown>[], error: null }))
+
+  const [{ data: members }, { data: stats }, complaintsResult, lastClosingResult] = await Promise.all([
     sb.from('members').select('member_no, full_name, nickname, tier, status, birthday, join_date').eq('status', 'Active'),
     sb.from('member_stats').select('member_no, last_visit, days_since_visit, total_visits'),
     complaintsQuery,
+    lastClosingQuery,
   ])
   const complaints = complaintsResult.error ? [] : (complaintsResult.data || [])
+  const lastClosing = lastClosingResult.error || !lastClosingResult.data?.length ? null : lastClosingResult.data[0]
 
   const statByMember = new Map<string, { last_visit: string | null; days_since_visit: number | null; total_visits: number }>()
   for (const s of stats || []) {
@@ -125,6 +138,7 @@ export async function GET() {
     anniversaries,
     lapsed,
     complaints: complaints || [],
+    last_closing: lastClosing || null,
     counts: {
       birthdays: birthdays.length,
       anniversaries: anniversaries.length,

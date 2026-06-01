@@ -97,8 +97,8 @@ const SECTIONS: SectionDef[] = [
           The sidebar is grouped by job-to-be-done:
         </p>
         <ul style={ulStyle}>
-          <li><strong>Floor</strong> — what you need when you&apos;re at the club: tonight&apos;s brief, the MX Daily checklist, notices, quick reference.</li>
-          <li><strong>Intelligence</strong> — the CRM itself: the Pipeline (prospects), the User roster, Member Cards (NFC), Agreements (signed PDFs).</li>
+          <li><strong>Floor</strong> — what you need at the club: MX Daily (the morning brief), Tonight (service prep), Calendar (bookings), Shift Checklists (opening/closing handover), Harmony Log (end-of-shift AI capture), Notices, Quick Reference.</li>
+          <li><strong>Intelligence</strong> — the CRM: Pipeline (prospects), Members, User Roster, Pref Candidates (review queue), Member Cards (NFC), Agreements (signed PDFs).</li>
           <li><strong>Whisky Library</strong> — Inventory, Lockers, Fixtures.</li>
           <li><strong>House</strong> — House Rules, Journal, Press, this Training doc.</li>
         </ul>
@@ -181,6 +181,74 @@ const SECTIONS: SectionDef[] = [
         </ol>
         <Callout title="When to use Force convert">
           The <em>★ Force convert without signing</em> override creates an Active member with no agreement on file. Only use this when a paper agreement has been signed offline and you&apos;re catching up the system.
+        </Callout>
+      </>
+    ),
+  },
+
+  {
+    id: 'guardian-angel',
+    title: 'Guardian Angel cycle (per visit)',
+    eyebrow: 'Intelligence',
+    intro: 'Each visit moves Overture → Accord → Continuum → Closed. This is what makes PS(t) live.',
+    body: (
+      <>
+        <p>
+          Every visit at The Rampant Club runs a four-phase cycle. The brief assembles itself before arrival, the team logs structured observations during, and a closing note feeds the next visit&apos;s brief — closing the loop the dissertation describes.
+        </p>
+        <h4 style={h4}>How to start a visit</h4>
+        <ol style={olStyle}>
+          <li>The natural way: a member taps their NFC card → kiosk auto-creates the visit at phase=<Code>overture</Code> and routes the host to it. If they have a confirmed booking today, it&apos;s linked automatically and the booking flips to <em>arrived</em>.</li>
+          <li>The manual way: open the member profile and click <strong>◉ Start tonight&apos;s visit →</strong>. Or, from the calendar, click <strong>◉ Start visit</strong> on the booking card.</li>
+        </ol>
+        <h4 style={h4}>Overture · pre-arrival brief</h4>
+        <p>
+          Three things, assembled live from current data: Score-5 non-negotiables (the never-get-wrong items), open <strong>⚠ REVALIDATE</strong> preferences (confirm these on the visit to lift R), and the last <Code>data_for_next_overture</Code> note from this member&apos;s previous closed visit. Click <strong>◆ Begin Accord →</strong> to step forward.
+        </p>
+        <h4 style={h4}>Accord · live observation log</h4>
+        <p>
+          Each observation has a category, a sentiment (Excellence / Neutral / Grievance), an optional 1–5 score, and one of three modes:
+        </p>
+        <ul style={ulStyle}>
+          <li><strong>Just an observation</strong> — pure record, no preference touched.</li>
+          <li><strong>Link to an existing preference</strong> with Confirmed / Contradicted / Revised — fires write contract A: <Code>validation_count</Code> climbs, <Code>last_validated</Code> resets, a <Code>validation_event</Code> lands. Revalidation flag clears.</li>
+          <li><strong>Spawn a new candidate</strong> — sends the proposal to the candidates queue for an admin to accept (write contract B) or reject.</li>
+        </ul>
+        <h4 style={h4}>Continuum · the loop-closer</h4>
+        <p>
+          The single most important field: <Code>data_for_next_overture</Code>. Write the one sentence the team needs from tonight when this member walks back in. Required to close the visit. Once written, hit <strong>◆ Mark visit closed →</strong>. Done.
+        </p>
+        <Callout title="The cycle is one-way">
+          Phases move forward only — overture → accord → continuum → closed. You can&apos;t skip steps or go backwards. If something was logged in error, archive the visit from the visits log.
+        </Callout>
+      </>
+    ),
+  },
+
+  {
+    id: 'candidates',
+    title: 'Preference candidates',
+    eyebrow: 'Intelligence',
+    intro: 'Review queue for new preferences proposed by observations and AI extractions.',
+    body: (
+      <>
+        <p>
+          <Link href="/admin/mis/candidates" style={linkStyle}>/admin/mis/candidates</Link> is the gate between &quot;the AI thinks this might be a preference&quot; and &quot;this is actually a preference.&quot; Two paths feed it:
+        </p>
+        <ul style={ulStyle}>
+          <li>An observation during Accord flagged as &quot;spawn a new candidate.&quot;</li>
+          <li>The Harmony Log&apos;s AI extraction proposing a preference from a shift narrative.</li>
+        </ul>
+        <h4 style={h4}>How to review</h4>
+        <ol style={olStyle}>
+          <li>Open the queue. Pending count shows at the top; default filter is pending.</li>
+          <li>Each card shows the suggested preference, the member, the source observation snippet (with a link back to the originating visit), and the source label.</li>
+          <li>Click <strong>Review</strong> to expand and edit the name, category, S₀ / Confidence / λ / Frequency. The system snaps your values to the allowed sets if they drift outside.</li>
+          <li><strong>Accept</strong> fires the atomic promote RPC — the preference lands with <Code>validation_count=1</Code> and the candidate marks the moment it was promoted.</li>
+          <li><strong>Reject</strong> closes the candidate with no preference written.</li>
+        </ol>
+        <Callout title="Why a queue?">
+          AI is good at suggesting; humans are still better at curating. Every preference in the member intelligence system has been through a human pass — that&apos;s what keeps PS(t) meaningful.
         </Callout>
       </>
     ),
@@ -294,6 +362,66 @@ const SECTIONS: SectionDef[] = [
           <li>Brief the team — call out anyone with a milestone, anyone with an open complaint, anyone the GM has asked the team to give special attention.</li>
           <li>After service, jot any new preferences or notes against the member.</li>
         </ul>
+      </>
+    ),
+  },
+
+  {
+    id: 'calendar',
+    title: 'Calendar & bookings',
+    eyebrow: 'Floor',
+    intro: 'Who&apos;s coming in, which room, when. Tap-to-start fires on card scan.',
+    body: (
+      <>
+        <p>
+          <Link href="/admin/calendar" style={linkStyle}>/admin/calendar</Link> is the weekly grid — day columns, today highlighted. Filter by space (Library Bar / The Studio / Dining Room / etc.). Each booking card shows the member, party size, time or session, and any notes.
+        </p>
+        <h4 style={h4}>Creating a booking</h4>
+        <ol style={olStyle}>
+          <li>Hit <strong>＋ New booking</strong> at top-right of the calendar.</li>
+          <li>Pick the member (autocomplete from the roster), date, space, party size.</li>
+          <li>Set <strong>either</strong> a precise start time <strong>or</strong> a session (early / evening / late). Both is fine. The calendar renders whichever you provided.</li>
+          <li>If the member has an email on file, tick <strong>Send confirmation email to the member</strong> — they get a clean confirmation through Resend. No email on file → the checkbox disables itself and tells you.</li>
+          <li>Save → land on the calendar with the booking visible on the right day.</li>
+        </ol>
+        <h4 style={h4}>Tap-to-start</h4>
+        <p>
+          When a member taps their NFC card at the kiosk, the system: (1) creates a visit at phase=<Code>overture</Code> with arrival_time stamped, (2) if exactly one confirmed booking exists for them today, links it and flips the booking to <em>arrived</em>, (3) routes the host straight into the Guardian Angel detail page. Walk-ins work the same way — no booking link, but the cycle starts cleanly.
+        </p>
+        <p>
+          From the calendar itself, today&apos;s confirmed/pending booking cards show a <strong>◉ Start visit</strong> button that does the same thing (member_no path instead of card_uid).
+        </p>
+        <Callout title="Multiple bookings same day">
+          If a member has more than one confirmed booking today (e.g. dinner then drinks), the tap-to-start skips the auto-link — staff resolves which booking the arrival applies to from the calendar.
+        </Callout>
+      </>
+    ),
+  },
+
+  {
+    id: 'checklists',
+    title: 'Shift checklists',
+    eyebrow: 'Floor',
+    intro: 'Opening and closing sheets. Tick as you go; sign off at the end.',
+    body: (
+      <>
+        <p>
+          <Link href="/admin/checklists" style={linkStyle}>/admin/checklists</Link> holds the day&apos;s opening and closing sheets side by side. The opening sheet is what the morning team works through; the closing sheet is what the night team finishes the day with. Both feed the MX Daily handover.
+        </p>
+        <h4 style={h4}>How to use a sheet</h4>
+        <ol style={olStyle}>
+          <li>Type your initials in the field at the top-right of the page. Stored in your browser so you only do this once.</li>
+          <li>Tick each item as you complete it. Your initials and a timestamp are captured automatically.</li>
+          <li>Write anything for the next team in <strong>Notes for the handover</strong>. This is the part Miss Châu reads on the MX Daily page in the morning.</li>
+          <li>At the end of the shift, hit <strong>Lock &amp; sign</strong>. The sheet is sealed, the locking person is recorded, and the sheet renders read-only.</li>
+        </ol>
+        <h4 style={h4}>Editing the item list</h4>
+        <p>
+          Items live in <Code>lib/checklist-templates.ts</Code>. Engineers can rename, add or remove items there; existing checklists keep whatever they already recorded. New items appear on every future day&apos;s sheet automatically.
+        </p>
+        <Callout title="Yesterday's closing → today's MX Daily">
+          The most recent closing sheet&apos;s handover note surfaces at the top of <Link href="/admin/mx-daily" style={linkStyle}>MX Daily</Link>. Miss Châu opens MX Daily first thing; reading the closing handover is part of her day-one ritual.
+        </Callout>
       </>
     ),
   },

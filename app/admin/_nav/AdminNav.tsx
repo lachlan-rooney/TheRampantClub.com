@@ -20,6 +20,7 @@ const GROUPS: Group[] = [
       { href: '/admin/mx-daily', label: 'MX Daily' },
       { href: '/admin/tonight', label: 'Tonight' },
       { href: '/admin/calendar', label: 'Calendar' },
+      { href: '/admin/checklists', label: 'Checklists' },
       { href: '/admin/harmony', label: 'Harmony Log' },
       { href: '/admin/notices', label: 'Notices' },
       { href: '/admin/quickref', label: 'Quick Reference' },
