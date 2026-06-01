@@ -65,7 +65,7 @@ export default function AdminMembers() {
   return (
     <>
       <h1 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 24, fontWeight: 500, color: '#E5D4C2', letterSpacing: '0.04em', marginBottom: 24 }}>
-        Members
+        User Roster
       </h1>
 
       <div>

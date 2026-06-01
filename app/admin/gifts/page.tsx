@@ -110,7 +110,7 @@ export default function GiftsPage() {
       <div style={headerRow}>
         <div>
           <div style={eyebrow}>Intelligence · Member Experience</div>
-          <h1 style={pageTitle}>Gifts</h1>
+          <h1 style={pageTitle}>Gifting</h1>
           <p style={lede}>
             Unreasonable Hospitality — the small, thoughtful gestures that make a member feel cared for. The budget is set by tier ({' '}
             <Link href="/admin/tier-budgets" style={linkStyle}>tier budgets →</Link>{' '}
