@@ -152,9 +152,8 @@ left join tier_budgets tb on tb.tier = a.tier;
 
 grant select on member_gifting_summary to authenticated;
 
--- ── 4. Storage bucket reminder ────────────────────────────────────────
--- Create a Supabase Storage bucket named "gift-photos" with admin-only
--- read/write policy:
---   - Bucket → Public: NO (private)
---   - Policy: same admin-only pattern as signed_agreements
--- Then the client uploads via supabase.storage.from('gift-photos').upload(...).
+-- ── 4. Storage bucket ─────────────────────────────────────────────────
+-- After this migration, run db/gifting_storage.sql to create the private
+-- gift-photos bucket + its admin-only RLS policies on storage.objects.
+-- Browser uploads go through signed URLs minted by the server, so the
+-- policies are belt-and-suspenders for any direct-from-client access.
