@@ -299,6 +299,44 @@ const SECTIONS: SectionDef[] = [
   },
 
   {
+    id: 'harmony',
+    title: 'Harmony Log',
+    eyebrow: 'Floor',
+    intro: 'End-of-shift narrative. Type what happened; Claude proposes structured updates.',
+    body: (
+      <>
+        <p>
+          <Link href="/admin/harmony" style={linkStyle}>/admin/harmony</Link> is where the team closes out a shift. You type one paragraph about the night — names, drinks, conversations, complaints, walk-ins, charges — and Claude reads it back and proposes a list of structured updates. You tick what to keep, hit Apply, and everything fans out to the right MIS tables.
+        </p>
+        <h4 style={h4}>Daily flow</h4>
+        <ol style={olStyle}>
+          <li>End of shift, open <Link href="/admin/harmony/new" style={linkStyle}>/admin/harmony/new</Link>.</li>
+          <li>Fill the shift metadata (date is pre-filled to today; pick early / evening / late / all-day).</li>
+          <li>Type the narrative. Be specific with names and drinks. Don&apos;t worry about format — write like you&apos;d brief the GM in person.</li>
+          <li>Hit <strong>Save &amp; Process</strong>. You land on the detail page and the extraction stream kicks off automatically.</li>
+          <li>Review the checklist on the right. Each row shows the proposed update — a tier, an icon, the member hint, and a one-line summary. Untick anything you don&apos;t want; click × to reject.</li>
+          <li>Hit <strong>Apply N →</strong>. Accepted rows fan out into the live tables.</li>
+        </ol>
+        <h4 style={h4}>What Claude proposes</h4>
+        <ul style={ulStyle}>
+          <li><strong>Visits</strong> — one row per identified member, written to <Code>visits</Code> (feeds the M term in PS(t)).</li>
+          <li><strong>Preferences</strong> — bottles loved, requested, asked about → <Code>preferences</Code> with S₀ / C / λ / F pre-chosen against the MIS rubric. Source is tagged <Code>Harmony Log</Code>.</li>
+          <li><strong>Bottle pours</strong> — depletes a bottle in the member&apos;s locker. &quot;finished&quot; → 0%; otherwise drops one quarter unless you specify a fill.</li>
+          <li><strong>Prospects</strong> — walk-ins mentioned as potential members. Mints a new P-xxx at the Lead stage, links the referrer if hinted.</li>
+          <li><strong>Complaints</strong> — friction items. If the narrative says &quot;we fixed it&quot;, they&apos;re marked resolved on the spot.</li>
+          <li><strong>Card charges</strong> — explicit amounts charged tonight. Inserts into <Code>card_transactions</Code> and decrements the live balance.</li>
+        </ul>
+        <Callout title="Member resolution">
+          The team writes names how they normally would (&quot;Smith&quot;, &quot;Tran&quot;, &quot;Sarah&quot;). The apply step matches them against the live roster. If exactly one member matches, the update goes through. If zero or many match, the row is marked <em>failed</em> with the reason — open the log to see why and fix manually.
+        </Callout>
+        <Callout title="Re-process is safe">
+          Hitting <strong>↻ Re-process</strong> wipes the pending extractions (already-applied rows are preserved) and re-runs Claude on the same narrative. Useful if you edit the narrative after seeing what was missed.
+        </Callout>
+      </>
+    ),
+  },
+
+  {
     id: 'mx-daily',
     title: 'MX Daily',
     eyebrow: 'Floor',
