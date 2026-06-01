@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
 
-// POST /api/admin/harmony/[id]/apply
+// POST /api/admin/recap/[id]/apply
 //
 // Body: { extraction_ids: string[] }
 //
@@ -126,7 +126,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           duration_min:    Number.isInteger(payload.duration_min) ? payload.duration_min : null,
           emotional_state: payload.emotional_state ? String(payload.emotional_state).slice(0, 80) : null,
           notes:           payload.notes      ? String(payload.notes).slice(0, 2000) : null,
-          logged_by:       `Harmony Log · ${actor}`,
+          logged_by:       `Evening Recap · ${actor}`,
         }).select('visit_id').single()
         if (insErr || !row) throw new Error(insErr?.message || 'insert failed')
         target_table = 'visits'
@@ -148,8 +148,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           lambda:          snap(payload.lambda,     ALLOWED_LAMBDA,     0.010),
           frequency:       snap(payload.frequency,  ALLOWED_FREQUENCY,  1.0),
           last_validated:  log.shift_date,
-          source:          'Harmony Log',
-          logged_by:       `Harmony Log · ${actor}`,
+          source:          'Evening Recap',
+          logged_by:       `Evening Recap · ${actor}`,
         }).select('preference_id').single()
         if (insErr || !row) throw new Error(insErr?.message || 'insert failed')
         target_table = 'preferences'
@@ -222,15 +222,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           referred_by_name,
           referred_by_member_no,
           first_contact_date: log.shift_date,
-          notes: payload.notes ? `[Harmony Log ${log.shift_date}] ${String(payload.notes).slice(0, 4000)}` : null,
+          notes: payload.notes ? `[Evening Recap ${log.shift_date}] ${String(payload.notes).slice(0, 4000)}` : null,
         })
         if (insErr) throw new Error(insErr.message)
         await sb.from('prospect_activity').insert({
           prospect_id,
-          actor: `Harmony Log · ${actor}`,
+          actor: `Evening Recap · ${actor}`,
           event_type: 'created',
           to_value: prospect_id,
-          note: 'Created from Harmony Log extraction.',
+          note: 'Created from Evening Recap extraction.',
         })
         target_table = 'prospects'
         target_id = prospect_id
@@ -249,7 +249,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           summary:   String(payload.summary || 'Complaint').slice(0, 500),
           details:   payload.detail ? String(payload.detail).slice(0, 4000) : null,
           status,
-          reported_by: `Harmony Log · ${actor}`,
+          reported_by: `Evening Recap · ${actor}`,
           resolution: status === 'resolved' && typeof payload.resolution === 'string' ? payload.resolution.slice(0, 4000) : null,
           resolved_by: status === 'resolved' ? actor : null,
           resolved_at: status === 'resolved' ? new Date().toISOString() : null,
@@ -266,7 +266,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         if (!Number.isFinite(amount) || amount <= 0) throw new Error('invalid amount_vnd')
         // Use the atomic RPC so insufficient credit / expiry are rejected
         // and balance updates stay consistent under concurrency.
-        const note = payload.note ? `Harmony Log: ${String(payload.note).slice(0, 400)}` : `Harmony Log charge ${log.shift_date}`
+        const note = payload.note ? `Evening Recap: ${String(payload.note).slice(0, 400)}` : `Evening Recap charge ${log.shift_date}`
         const { data: rpcRows, error: rpcErr } = await sb.rpc('apply_card_transaction', {
           p_member_number: member_no,
           p_kind:          'charge',

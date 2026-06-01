@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
 
-// PATCH /api/admin/harmony/extractions/[xid]
+// PATCH /api/admin/recap/extractions/[xid]
 //
 // Lifecycle changes that don't apply to the live tables — used for reject,
 // or for editing the payload before apply. POST to /apply on the parent

@@ -19,7 +19,7 @@ const GROUPS: Group[] = [
     items: [
       { href: '/admin/mx-daily', label: 'MX Daily' },
       { href: '/admin/tonight', label: 'Tonight' },
-      { href: '/admin/harmony', label: 'Harmony Log' },
+      { href: '/admin/recap', label: 'Evening Recap' },
       { href: '/admin/notices', label: 'Notices' },
       { href: '/admin/quickref', label: 'Quick Reference' },
     ],

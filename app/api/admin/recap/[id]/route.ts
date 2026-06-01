@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { isAdmin } from '@/lib/admin'
 
-// GET    /api/admin/harmony/[id]  — single log + its extractions
-// PATCH  /api/admin/harmony/[id]  — edit narrative or metadata
-// DELETE /api/admin/harmony/[id]  — delete a draft (extractions cascade)
+// GET    /api/admin/recap/[id]  — single log + its extractions
+// PATCH  /api/admin/recap/[id]  — edit narrative or metadata
+// DELETE /api/admin/recap/[id]  — delete a draft (extractions cascade)
 
 export const dynamic = 'force-dynamic'
 

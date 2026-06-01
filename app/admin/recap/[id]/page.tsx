@@ -4,7 +4,7 @@ import { use, useCallback, useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
-// Admin / Floor / Harmony Log / [id]
+// Admin / Floor / Evening Recap / [id]
 //
 // The detail + extraction review page. If ?run=1 is in the query, kicks
 // off the Claude SSE stream automatically on mount. Otherwise renders
@@ -67,7 +67,7 @@ export default function HarmonyLogDetail({ params }: { params: Promise<{ id: str
   const ranOnce = useRef(false)
 
   const load = useCallback(() => {
-    fetch(`/api/admin/harmony/${id}`, { cache: 'no-store' })
+    fetch(`/api/admin/recap/${id}`, { cache: 'no-store' })
       .then(r => r.json())
       .then(d => {
         if (d.log) setLog(d.log)
@@ -94,7 +94,7 @@ export default function HarmonyLogDetail({ params }: { params: Promise<{ id: str
     setSelected(new Set())
 
     try {
-      const r = await fetch(`/api/admin/harmony/${id}/extract`, {
+      const r = await fetch(`/api/admin/recap/${id}/extract`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
       })
       if (!r.ok || !r.body) {
@@ -157,7 +157,7 @@ export default function HarmonyLogDetail({ params }: { params: Promise<{ id: str
   }, [autoRun, log, extractions.length, streaming, startExtraction])
 
   const reject = useCallback(async (xid: string) => {
-    await fetch(`/api/admin/harmony/extractions/${xid}`, {
+    await fetch(`/api/admin/recap/extractions/${xid}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'rejected' }),
     })
@@ -169,7 +169,7 @@ export default function HarmonyLogDetail({ params }: { params: Promise<{ id: str
     if (selected.size === 0) return
     setApplying(true); setError(null)
     try {
-      const r = await fetch(`/api/admin/harmony/${id}/apply`, {
+      const r = await fetch(`/api/admin/recap/${id}/apply`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ extraction_ids: Array.from(selected) }),
       })
@@ -193,12 +193,12 @@ export default function HarmonyLogDetail({ params }: { params: Promise<{ id: str
 
   return (
     <>
-      <Link href="/admin/harmony" style={backLink}>← Harmony Log</Link>
+      <Link href="/admin/recap" style={backLink}>← Evening Recap</Link>
 
       {/* Hero */}
       <div style={hero}>
         <div>
-          <div style={eyebrow}>Floor · Harmony Log</div>
+          <div style={eyebrow}>Floor · Evening Recap</div>
           <h1 style={pageTitle}>
             {datePretty}
             <span style={{ marginLeft: 14, fontSize: 18, color: '#D4B85A', textTransform: 'capitalize', letterSpacing: '0.06em' }}>· {log.shift_label}</span>

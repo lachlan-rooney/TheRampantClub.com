@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
-// Admin / Floor / Harmony Log / New
+// Admin / Floor / Evening Recap / New
 //
 // Capture the night's narrative. Submit creates the log row + redirects
 // to the detail page where the Claude extraction stream runs.
@@ -27,7 +27,7 @@ export default function NewHarmonyLogPage() {
     if (!narrative.trim()) { setError('Narrative required.'); return }
     setSaving(true); setError(null)
     try {
-      const r = await fetch('/api/admin/harmony', {
+      const r = await fetch('/api/admin/recap', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           shift_date, shift_label,
@@ -40,7 +40,7 @@ export default function NewHarmonyLogPage() {
       const j = await r.json()
       if (!r.ok) throw new Error(j.error || 'Save failed')
       // Detail page reads ?run=1 and kicks off extraction automatically.
-      router.push(`/admin/harmony/${j.log.id}${then === 'extract' ? '?run=1' : ''}`)
+      router.push(`/admin/recap/${j.log.id}${then === 'extract' ? '?run=1' : ''}`)
     } catch (e) {
       setError((e as Error).message)
       setSaving(false)
@@ -49,10 +49,10 @@ export default function NewHarmonyLogPage() {
 
   return (
     <>
-      <Link href="/admin/harmony" style={backLink}>← Harmony Log</Link>
+      <Link href="/admin/recap" style={backLink}>← Evening Recap</Link>
 
       <div style={{ marginBottom: 24 }}>
-        <div style={eyebrow}>Floor · Harmony Log</div>
+        <div style={eyebrow}>Floor · Evening Recap</div>
         <h1 style={pageTitle}>Tonight&apos;s shift</h1>
         <p style={lede}>
           Type what happened tonight in plain English — who came in, what they drank, what they said, anything that mattered. Hit <strong>Process</strong> and Claude reads it back and proposes structured updates. You tick what to keep.
@@ -120,7 +120,7 @@ export default function NewHarmonyLogPage() {
         >
           Save as draft
         </button>
-        <Link href="/admin/harmony" style={btnGhost}>Cancel</Link>
+        <Link href="/admin/recap" style={btnGhost}>Cancel</Link>
       </div>
     </>
   )

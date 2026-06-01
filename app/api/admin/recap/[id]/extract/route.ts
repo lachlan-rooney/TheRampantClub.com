@@ -3,9 +3,9 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 import { isAdmin } from '@/lib/admin'
 
-// POST /api/admin/harmony/[id]/extract
+// POST /api/admin/recap/[id]/extract
 //
-// Reads the Harmony Log narrative, hands it to Claude Opus 4.7, streams
+// Reads the Evening Recap narrative, hands it to Claude Opus 4.7, streams
 // extracted events back as SSE (one JSON Lines object per event), and
 // persists every accepted line into harmony_extractions as status='pending'
 // so the staff review screen can render them and accept/reject each one.
@@ -24,7 +24,7 @@ function svc() {
   )
 }
 
-const SYSTEM_PROMPT = `You are the shift extractor for The Rampant Club's Harmony Log. A team member just typed a narrative of the evening. Read the whole thing, then emit one structured event per line as JSON.
+const SYSTEM_PROMPT = `You are the shift extractor for The Rampant Club's Evening Recap. A team member just typed a narrative of the evening. Read the whole thing, then emit one structured event per line as JSON.
 
 ## Output format — STRICT
 
