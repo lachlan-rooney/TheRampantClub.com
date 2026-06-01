@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
+import FormulaExplainer from './FormulaExplainer'
 
 interface MemberStats {
   active: number
@@ -56,6 +57,8 @@ export default function MisMembersList() {
           {filtered.length} of {members.length}
         </div>
       </div>
+
+      <FormulaExplainer />
 
       <div style={filterRow}>
         <input

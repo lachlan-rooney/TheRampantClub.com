@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
+import FormulaExplainer from '../FormulaExplainer'
 
 interface Member {
   member_no: string
@@ -118,6 +119,8 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
           </div>
         </div>
       )}
+
+      <FormulaExplainer variant="full" />
 
       <div style={filterRow}>
         <select value={category} onChange={e => setCategory(e.target.value)} style={{ ...inputStyle, minWidth: 220 }}>
