@@ -22,6 +22,8 @@ interface Prospect {
   next_action_date: string | null
   assigned_to: string | null
   notes: string | null
+  interview_date: string | null
+  interviewer: string | null
   profession: string | null
   cultural_fit: number | null
   social_compatibility: number | null
@@ -109,6 +111,39 @@ export default function PipelinePage() {
     })
   }, [prospects, search, source, assigned])
 
+  // Needs-attention buckets — surface the items the admin should touch today.
+  const attention = useMemo(() => {
+    const today = new Date()
+    const todayStr = today.toISOString().slice(0, 10)
+    const thirtyDaysAgo = new Date(today.getTime() - 30 * 86400000).toISOString().slice(0, 10)
+    const weekAhead = new Date(today.getTime() + 7 * 86400000).toISOString().slice(0, 10)
+
+    const stale: Prospect[] = []
+    const upcoming: Prospect[] = []
+    const dueToday: Prospect[] = []
+
+    for (const p of filtered) {
+      if (p.stage === 'Onboarded' || p.stage === 'Declined' || p.stage === 'Withdrawn') continue
+      // Stale: in pipeline > 30d and stuck at Lead/Initial Contact
+      if (p.days_in_pipeline != null && p.days_in_pipeline > 30 && (p.stage === 'Lead' || p.stage === 'Initial Contact')) {
+        stale.push(p)
+      }
+      // Upcoming interviews
+      if (p.interview_date && p.interview_date >= todayStr && p.interview_date <= weekAhead) {
+        upcoming.push(p)
+      }
+      // Actions due today or overdue
+      if (p.next_action && p.next_action_date && p.next_action_date <= todayStr) {
+        dueToday.push(p)
+      }
+    }
+    // Sort each bucket by urgency
+    stale.sort((a, b) => (b.days_in_pipeline || 0) - (a.days_in_pipeline || 0))
+    upcoming.sort((a, b) => (a.interview_date || '').localeCompare(b.interview_date || ''))
+    dueToday.sort((a, b) => (a.next_action_date || '').localeCompare(b.next_action_date || ''))
+    return { stale, upcoming, dueToday, thirtyDaysAgo }
+  }, [filtered])
+
   const stageCounts = useMemo(() => {
     const counts: Record<string, number> = {}
     for (const p of filtered) counts[p.stage] = (counts[p.stage] || 0) + 1
@@ -136,9 +171,43 @@ export default function PipelinePage() {
       <div style={statsStrip}>
         <Stat label="In pipeline" value={String(filtered.length)} accent="#E5D4C2" />
         <Stat label="Onboarded" value={String(totalOnboarded)} accent="#7AB07A" />
-        <Stat label="Off-ramps" value={String(totalOfframp)} accent="#C27070" />
+        <Stat label="Stale > 30d" value={String(attention.stale.length)} accent={attention.stale.length > 0 ? '#C49555' : '#B2AA98'} />
+        <Stat label="Actions due" value={String(attention.dueToday.length)} accent={attention.dueToday.length > 0 ? '#D4B85A' : '#B2AA98'} />
+        <Stat label="Interviews · 7d" value={String(attention.upcoming.length)} accent={attention.upcoming.length > 0 ? '#D4B85A' : '#B2AA98'} />
         <Stat label="Conversion" value={`${conversionPct}%`} accent="#D4B85A" />
       </div>
+
+      {/* Needs attention panel — shows up only if there's something to surface */}
+      {(attention.stale.length + attention.upcoming.length + attention.dueToday.length) > 0 && (
+        <div style={attentionPanel}>
+          <div style={attentionGrid}>
+            <AttentionCol
+              title="Actions due"
+              accent="#D4B85A"
+              empty="No actions due today."
+              items={attention.dueToday.slice(0, 5)}
+              renderMeta={p => p.next_action_date ? `${p.next_action || '—'} · ${fmtShort(p.next_action_date)}` : (p.next_action || '—')}
+              tail={attention.dueToday.length > 5 ? `+${attention.dueToday.length - 5} more` : null}
+            />
+            <AttentionCol
+              title="Interviews this week"
+              accent="#D4B85A"
+              empty="No interviews scheduled."
+              items={attention.upcoming.slice(0, 5)}
+              renderMeta={p => p.interview_date ? `${fmtShort(p.interview_date)}${p.interviewer ? ` · ${p.interviewer}` : ''}` : ''}
+              tail={attention.upcoming.length > 5 ? `+${attention.upcoming.length - 5} more` : null}
+            />
+            <AttentionCol
+              title="Stale leads"
+              accent="#C49555"
+              empty="Nothing stale."
+              items={attention.stale.slice(0, 5)}
+              renderMeta={p => `${p.days_in_pipeline}d in ${p.stage}`}
+              tail={attention.stale.length > 5 ? `+${attention.stale.length - 5} more` : null}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Filter row */}
       <div style={filterRow}>
@@ -192,12 +261,42 @@ export default function PipelinePage() {
 function Stat({ label, value, accent }: { label: string; value: string; accent: string }) {
   return (
     <div style={statCard}>
-      <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 24, fontWeight: 600, color: accent, lineHeight: 1 }}>
+      <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 22, fontWeight: 600, color: accent, lineHeight: 1 }}>
         {value}
       </div>
-      <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 9, color: '#B2AA98', letterSpacing: '0.14em', textTransform: 'uppercase', marginTop: 6 }}>
+      <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 9, color: '#B2AA98', letterSpacing: '0.14em', textTransform: 'uppercase', marginTop: 5 }}>
         {label}
       </div>
+    </div>
+  )
+}
+
+function AttentionCol({ title, accent, items, empty, renderMeta, tail }: {
+  title: string
+  accent: string
+  items: Prospect[]
+  empty: string
+  renderMeta: (p: Prospect) => string
+  tail: string | null
+}) {
+  return (
+    <div style={attentionColStyle}>
+      <div style={{ ...attentionTitle, color: accent }}>{title}</div>
+      {items.length === 0 ? (
+        <div style={attentionEmpty}>{empty}</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {items.map(p => (
+            <Link key={p.prospect_id} href={`/admin/mis/pipeline/${p.prospect_id}`} style={attentionRowLink}>
+              <div style={attentionRow}>
+                <div style={attentionRowName}>{p.full_name}</div>
+                <div style={attentionRowMeta}>{renderMeta(p)}</div>
+              </div>
+            </Link>
+          ))}
+          {tail && <div style={attentionMore}>{tail}</div>}
+        </div>
+      )}
     </div>
   )
 }
@@ -333,13 +432,58 @@ const addBtn: React.CSSProperties = {
   letterSpacing: '0.08em', textDecoration: 'none',
 }
 const statsStrip: React.CSSProperties = {
-  display: 'grid', gap: 14, marginBottom: 22,
-  gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+  display: 'grid', gap: 10, marginBottom: 16,
+  gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
 }
 const statCard: React.CSSProperties = {
-  padding: 16,
+  padding: 14,
   background: 'rgba(229,212,194,0.04)',
   border: '1px solid rgba(229,212,194,0.10)', borderRadius: 8,
+}
+
+// "Needs attention" panel — 3-column read-only digest above the kanban.
+const attentionPanel: React.CSSProperties = {
+  marginBottom: 20, padding: 18,
+  background: 'rgba(212,184,90,0.05)',
+  border: '1px solid rgba(212,184,90,0.18)', borderRadius: 10,
+}
+const attentionGrid: React.CSSProperties = {
+  display: 'grid', gap: 18,
+  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+}
+const attentionColStyle: React.CSSProperties = {
+  display: 'flex', flexDirection: 'column', gap: 8,
+}
+const attentionTitle: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  letterSpacing: '0.16em', textTransform: 'uppercase',
+  paddingBottom: 6,
+  borderBottom: '1px solid rgba(212,184,90,0.20)',
+}
+const attentionEmpty: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', opacity: 0.45, fontStyle: 'italic',
+  paddingTop: 4,
+}
+const attentionRowLink: React.CSSProperties = {
+  textDecoration: 'none', color: 'inherit', display: 'block',
+}
+const attentionRow: React.CSSProperties = {
+  padding: '6px 8px', borderRadius: 4,
+  transition: 'background 0.15s ease',
+}
+const attentionRowName: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 13,
+  color: '#E5D4C2', lineHeight: 1.2,
+}
+const attentionRowMeta: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  color: '#B2AA98', opacity: 0.75, marginTop: 2,
+  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+}
+const attentionMore: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  color: '#D4B85A', opacity: 0.7, padding: '4px 8px', fontStyle: 'italic',
 }
 const filterRow: React.CSSProperties = {
   display: 'flex', gap: 12, marginBottom: 22, flexWrap: 'wrap',
