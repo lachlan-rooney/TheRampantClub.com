@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import Footer from '@/components/Footer'
+import FooterGate from '@/components/FooterGate'
 import PWARegistrar from '@/components/PWARegistrar'
 
 export const metadata: Metadata = {
@@ -105,7 +105,7 @@ export default function RootLayout({
         ` }} />
         <PWARegistrar />
         {children}
-        <Footer />
+        <FooterGate />
       </body>
     </html>
   )
