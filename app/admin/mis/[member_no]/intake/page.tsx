@@ -3,18 +3,25 @@
 import { use, useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link'
 
-// MIS Pass 1.5 — Transcript intake UI.
-// Stream Claude's extraction live; let the admin review/edit each preference
-// in place before committing the batch to the preferences table.
+// MIS Pass 4 — Transcript intake UI.
+// The stream still emits per-preference 'preference' events for the live
+// preview so the admin sees extraction as it happens. When the server-side
+// reconcile completes, the route fires a single 'reconciled' event with the
+// canonical list + a flush summary; we REPLACE the staged list wholesale
+// (no merge — the streamed prefs were a preview, the reconciled payload is
+// the truth). Medical-forced rows are rendered as authoritative locks:
+// "MEDICAL — LOCKED" badge, disabled S₀/C/λ inputs. Non-medical rows stay
+// freely editable.
 
 const ALLOWED_C = [1.00, 0.75, 0.50, 0.25]
 const ALLOWED_L = [0.000, 0.002, 0.005, 0.010, 0.020]
 const ALLOWED_F = [0.8, 1.0, 1.2, 1.5]
-const CATEGORIES = [
-  'Personal & Lifestyle', 'Food & Beverage', 'Whisky & Beverage',
-  'Social & Networking', 'Business & Productivity', 'Wellness & Comfort',
-  'Cultural & Intellectual', 'Family & Personal', 'Travel & Global',
-]
+
+type LambdaOrigin =
+  | 'ai_specific'
+  | 'category_baseline_learned'
+  | 'category_baseline_designed'
+  | 'forced_medical'
 
 interface Extracted {
   uid: string
@@ -28,6 +35,30 @@ interface Extracted {
   lambda: number
   frequency: number
   accepted: boolean
+  lambda_origin: LambdaOrigin | null  // null while a row is still in the live-preview state
+}
+
+interface ReconciledPref {
+  category: string
+  subcategory: string
+  preference_name: string
+  detail: string
+  verbatim_quote: string
+  s0: number
+  confidence: number
+  lambda: number
+  frequency: number
+  source: 'Interview'
+  lambda_origin: LambdaOrigin
+}
+
+interface BaselineEntry { baselineLambda: number; source: 'learned' | 'designed' }
+interface ReconciledPayload {
+  preferences: ReconciledPref[]
+  dropped: { reason: string; item: unknown }[]
+  medicalForced: number
+  baselines: Record<string, BaselineEntry>
+  raw_count: number
 }
 
 interface Usage {
@@ -39,8 +70,17 @@ interface Usage {
 
 function predictPs(s0: number, c: number, f: number): number {
   // At save time t=0 and the new vc=1 → R=1.0. Visits=0 → M=1.0.
-  // PS(t) = min(5, s0 * c * f * R * M).
   return Math.min(5, s0 * c * f * 1.0 * 1.0)
+}
+
+function lambdaOriginLabel(o: LambdaOrigin | null): { text: string; tone: 'gold' | 'green' | 'grey' | 'red' } {
+  switch (o) {
+    case 'forced_medical':            return { text: 'MEDICAL — LOCKED',  tone: 'red'   }
+    case 'ai_specific':               return { text: 'AI · specific',     tone: 'gold'  }
+    case 'category_baseline_learned': return { text: 'baseline · learned',tone: 'green' }
+    case 'category_baseline_designed':return { text: 'baseline · designed', tone: 'grey' }
+    default:                          return { text: 'live preview',      tone: 'grey'  }
+  }
 }
 
 export default function MisIntakePage({ params }: { params: Promise<{ member_no: string }> }) {
@@ -48,16 +88,16 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
   const [memberName, setMemberName] = useState<string>('')
   const [transcript, setTranscript] = useState<string>('')
   const [extracted, setExtracted] = useState<Extracted[]>([])
-  const [phase, setPhase] = useState<'idle' | 'streaming' | 'reasoning' | 'done' | 'saving' | 'saved' | 'error'>('idle')
+  const [phase, setPhase] = useState<'idle' | 'streaming' | 'reasoning' | 'reconciling' | 'done' | 'saving' | 'saved' | 'error'>('idle')
   const [thinkingBuffer, setThinkingBuffer] = useState<string>('')
   const [reasoningTick, setReasoningTick] = useState(0)
   const [usage, setUsage] = useState<Usage | null>(null)
+  const [reconciled, setReconciled] = useState<ReconciledPayload | null>(null)
   const [errMsg, setErrMsg] = useState<string | null>(null)
-  const [saved, setSaved] = useState<number>(0)
+  const [saved, setSaved] = useState<{ inserted: number; medicalReforced: number } | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const resultsRef = useRef<HTMLDivElement | null>(null)
 
-  // Resolve the member's name for the heading.
   useEffect(() => {
     fetch('/api/admin/mis/members', { cache: 'no-store' })
       .then(r => r.json())
@@ -68,7 +108,6 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
       .catch(() => {})
   }, [member_no])
 
-  // Auto-scroll the results list as new prefs arrive.
   useEffect(() => {
     if (phase === 'streaming' && resultsRef.current) {
       resultsRef.current.scrollTop = resultsRef.current.scrollHeight
@@ -82,8 +121,9 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
     }
     setErrMsg(null)
     setExtracted([])
-    setSaved(0)
+    setSaved(null)
     setUsage(null)
+    setReconciled(null)
     setThinkingBuffer('')
     setPhase('streaming')
 
@@ -110,7 +150,6 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
         if (done) break
         buf += dec.decode(value, { stream: true })
 
-        // Parse SSE events: each separated by \n\n, each line either "event: x" or "data: y".
         let sep = buf.indexOf('\n\n')
         while (sep !== -1) {
           const raw = buf.slice(0, sep)
@@ -137,22 +176,45 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
       try { payload = JSON.parse(data) } catch { return }
 
       switch (evt) {
-        case 'status':
-          setPhase('streaming')
+        case 'status': {
+          const ph = String(payload.phase || '')
+          if (ph === 'reconciling') setPhase('reconciling')
+          else if (ph === 'starting') setPhase('streaming')
           break
+        }
         case 'thinking':
           setThinkingBuffer(prev => (prev + String(payload.text || '')).slice(-2000))
           setReasoningTick(t => t + 1)
           break
         case 'preference': {
-          const p = payload.pref as Extracted | undefined
+          const p = payload.pref as Omit<Extracted, 'uid' | 'accepted' | 'lambda_origin'> | undefined
           if (!p) return
-          setExtracted(prev => [...prev, { ...p, accepted: true, uid: crypto.randomUUID() }])
+          setExtracted(prev => [...prev, { ...p, accepted: true, uid: crypto.randomUUID(), lambda_origin: null }])
           break
         }
         case 'partial':
-          // Optional: could surface raw streaming text; we suppress for tidiness.
           break
+        case 'reconciled': {
+          // Replace the staged preview wholesale — never merge. The streamed
+          // rows were a preview; this payload is the truth.
+          const pl = payload as unknown as ReconciledPayload
+          setReconciled(pl)
+          setExtracted(pl.preferences.map(p => ({
+            uid: crypto.randomUUID(),
+            category: p.category,
+            subcategory: p.subcategory || null,
+            preference_name: p.preference_name,
+            detail: p.detail || null,
+            verbatim_quote: p.verbatim_quote || null,
+            s0: p.s0,
+            confidence: p.confidence,
+            lambda: p.lambda,
+            frequency: p.frequency,
+            accepted: true,
+            lambda_origin: p.lambda_origin,
+          })))
+          break
+        }
         case 'usage':
           setUsage(payload as unknown as Usage)
           break
@@ -173,12 +235,24 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
   }, [])
 
   const updatePref = (uid: string, patch: Partial<Extracted>) => {
-    setExtracted(prev => prev.map(p => p.uid === uid ? { ...p, ...patch } : p))
+    setExtracted(prev => prev.map(p => {
+      if (p.uid !== uid) return p
+      // Medical-locked rows ignore writes to S₀/C/λ — the lock survives the
+      // confirm step. Other fields (name, subcategory, detail, accepted) stay
+      // editable for context.
+      if (p.lambda_origin === 'forced_medical') {
+        const { s0, confidence, lambda, ...editable } = patch
+        void s0; void confidence; void lambda
+        return { ...p, ...editable }
+      }
+      return { ...p, ...patch }
+    }))
   }
   const removePref = (uid: string) => {
     setExtracted(prev => prev.filter(p => p.uid !== uid))
   }
   const acceptedCount = useMemo(() => extracted.filter(p => p.accepted).length, [extracted])
+  const medicalCount  = useMemo(() => extracted.filter(p => p.lambda_origin === 'forced_medical').length, [extracted])
 
   const save = useCallback(async () => {
     const payload = extracted.filter(p => p.accepted).map(p => ({
@@ -191,6 +265,7 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
       confidence: p.confidence,
       lambda: p.lambda,
       frequency: p.frequency,
+      lambda_origin: p.lambda_origin,
     }))
     if (payload.length === 0) {
       setErrMsg('Nothing selected to save.')
@@ -206,13 +281,21 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
       })
       const j = await r.json()
       if (!r.ok) throw new Error(j.error || `Save failed (${r.status})`)
-      setSaved(Number(j.inserted) || payload.length)
+      setSaved({ inserted: Number(j.inserted) || payload.length, medicalReforced: Number(j.medicalReforced) || 0 })
       setPhase('saved')
     } catch (e) {
       setErrMsg((e as Error).message)
       setPhase('done')
     }
   }, [member_no, extracted])
+
+  // Build the baseline summary phrase for the banner.
+  const baselineSummary = useMemo(() => {
+    if (!reconciled) return null
+    const learned = Object.entries(reconciled.baselines).filter(([, b]) => b.source === 'learned').map(([cat]) => cat)
+    if (learned.length === 0) return 'all baselines designed (no learned λ promoted yet)'
+    return `learned: ${learned.join(', ')}; designed: rest`
+  }, [reconciled])
 
   return (
     <>
@@ -226,17 +309,19 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
         <div style={{ display: 'flex', gap: 14, alignItems: 'baseline', fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#B2AA98' }}>
           <span>Extracted: <span style={{ color: '#E5D4C2' }}>{extracted.length}</span></span>
           <span>Selected: <span style={{ color: '#D4B85A' }}>{acceptedCount}</span></span>
+          {medicalCount > 0 && <span>Medical-locked: <span style={{ color: '#C27070' }}>{medicalCount}</span></span>}
         </div>
       </div>
 
       <p style={lede}>
         Paste an interview transcript below and Claude Opus 4.7 will extract preferences live,
-        scoring each one against the §2 derivation rules from the spec. Review, edit, and
-        commit — anything rejected is discarded, anything accepted lands in the member&rsquo;s
-        live profile.
+        scoring each one against the live category baselines (learned where promoted, designed otherwise).
+        When the stream ends, a reconciliation pass enforces the medical guardrail in code:
+        any allergy or religious-dietary signal is locked to S₀=5 / C=1.00 / λ=0 and surfaces here
+        as <code>MEDICAL — LOCKED</code>. You can edit non-medical rows freely; medical-forced rows
+        cannot be weakened. Review, commit.
       </p>
 
-      {/* Transcript input */}
       <div style={inputPanel}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <div style={panelLabel}>Transcript</div>
@@ -250,10 +335,10 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
           placeholder="Paste the transcript here. Stage directions in [brackets] like [Firmly] or [Laughs] are read for the cadence-aware adjustments."
           rows={10}
           style={textareaStyle}
-          disabled={phase === 'streaming' || phase === 'saving'}
+          disabled={phase === 'streaming' || phase === 'reconciling' || phase === 'saving'}
         />
         <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-          {phase === 'streaming' || phase === 'reasoning' ? (
+          {phase === 'streaming' || phase === 'reasoning' || phase === 'reconciling' ? (
             <button onClick={cancel} style={btnGhost}>Cancel</button>
           ) : (
             <button onClick={start} disabled={!transcript.trim()} style={btnPrimary}>
@@ -263,12 +348,14 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
         </div>
       </div>
 
-      {/* Live status row */}
-      {(phase === 'streaming' || phase === 'reasoning' || (thinkingBuffer && phase !== 'idle')) && (
+      {(phase === 'streaming' || phase === 'reasoning' || phase === 'reconciling' || (thinkingBuffer && phase !== 'idle')) && (
         <div style={statusRow}>
-          <div style={{ ...statusDot, animation: phase === 'streaming' ? 'rc-pulse 1.4s ease-in-out infinite' : 'none' }} />
+          <div style={{ ...statusDot, animation: phase === 'streaming' || phase === 'reconciling' ? 'rc-pulse 1.4s ease-in-out infinite' : 'none' }} />
           <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#D4B85A', letterSpacing: '0.06em' }}>
-            {phase === 'streaming' ? 'Claude is reading the transcript…' : phase === 'done' ? 'Finished.' : phase === 'error' ? 'Error.' : 'Working…'}
+            {phase === 'streaming' ? 'Claude is reading the transcript…' :
+              phase === 'reconciling' ? 'Reconciling — applying medical guardrail and baseline inheritance…' :
+              phase === 'done' ? 'Finished.' :
+              phase === 'error' ? 'Error.' : 'Working…'}
           </span>
           {thinkingBuffer && (
             <span style={{ marginLeft: 18, fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', opacity: 0.7, fontStyle: 'italic', flex: 1 }} title={thinkingBuffer}>
@@ -285,17 +372,41 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
         <div style={errorBox}>{errMsg}</div>
       )}
 
-      {/* Extracted preferences */}
+      {reconciled && (
+        <div style={banner}>
+          <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#E5D4C2', lineHeight: 1.7 }}>
+            <strong style={{ color: '#D4B85A' }}>{reconciled.preferences.length}</strong> preference{reconciled.preferences.length === 1 ? '' : 's'}
+            {' · '}
+            <strong style={{ color: reconciled.medicalForced > 0 ? '#C27070' : '#B2AA98' }}>{reconciled.medicalForced}</strong> medical-forced
+            {' · '}
+            <strong style={{ color: reconciled.dropped.length > 0 ? '#B2AA98' : '#7AB07A' }}>{reconciled.dropped.length}</strong> dropped
+            {reconciled.dropped.length > 0 && (
+              <span style={{ color: '#B2AA98', opacity: 0.75 }}> ({reconciled.dropped.map(d => d.reason).join(', ')})</span>
+            )}
+            <div style={{ marginTop: 4, color: '#B2AA98', opacity: 0.8 }}>baselines: {baselineSummary}</div>
+          </div>
+        </div>
+      )}
+
       {extracted.length > 0 && (
         <div ref={resultsRef} style={resultsList}>
           {extracted.map(p => {
             const pred = predictPs(p.s0, p.confidence, p.frequency)
             const healthPct = Math.round((pred / Math.max(p.s0, 1)) * 100)
+            const locked = p.lambda_origin === 'forced_medical'
+            const ol = lambdaOriginLabel(p.lambda_origin)
             return (
-              <div key={p.uid} style={{ ...prefCard, opacity: p.accepted ? 1 : 0.35 }}>
+              <div key={p.uid} style={{
+                ...prefCard,
+                opacity: p.accepted ? 1 : 0.35,
+                ...(locked ? { borderLeft: '3px solid #C27070' } : {}),
+              }}>
                 <div style={prefHead}>
                   <div style={{ flex: 1 }}>
-                    <div style={prefCategoryBadge}>{p.category}</div>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
+                      <div style={prefCategoryBadge}>{p.category}</div>
+                      <div style={originBadge(ol.tone)}>{ol.text}</div>
+                    </div>
                     <input
                       type="text"
                       value={p.preference_name}
@@ -341,18 +452,39 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
                 )}
 
                 <div style={prefControls}>
-                  <ScoreSelect label="S₀" value={p.s0} options={[1,2,3,4,5]} fmt={v => String(v)} onChange={v => updatePref(p.uid, { s0: v })} accent={p.s0 === 5 ? '#D4B85A' : undefined} />
-                  <ScoreSelect label="C" value={p.confidence} options={ALLOWED_C} fmt={v => v.toFixed(2)} onChange={v => updatePref(p.uid, { confidence: v })} />
-                  <ScoreSelect label="λ" value={p.lambda} options={ALLOWED_L} fmt={v => v.toFixed(3)} onChange={v => updatePref(p.uid, { lambda: v })} />
-                  <ScoreSelect label="F" value={p.frequency} options={ALLOWED_F} fmt={v => v.toFixed(1)} onChange={v => updatePref(p.uid, { frequency: v })} />
+                  <ScoreSelect
+                    label="S₀" value={p.s0} options={[1,2,3,4,5]} fmt={v => String(v)}
+                    onChange={v => updatePref(p.uid, { s0: v })}
+                    accent={p.s0 === 5 ? '#D4B85A' : undefined}
+                    disabled={locked}
+                  />
+                  <ScoreSelect
+                    label="C" value={p.confidence} options={ALLOWED_C} fmt={v => v.toFixed(2)}
+                    onChange={v => updatePref(p.uid, { confidence: v })}
+                    disabled={locked}
+                  />
+                  <ScoreSelect
+                    label="λ" value={p.lambda} options={ALLOWED_L} fmt={v => v.toFixed(3)}
+                    onChange={v => updatePref(p.uid, { lambda: v })}
+                    disabled={locked}
+                  />
+                  <ScoreSelect
+                    label="F" value={p.frequency} options={ALLOWED_F} fmt={v => v.toFixed(1)}
+                    onChange={v => updatePref(p.uid, { frequency: v })}
+                  />
                 </div>
+                {locked && (
+                  <div style={lockNote}>
+                    Medical signal detected by content-based guardrail. S₀ / C / λ are locked at this row;
+                    the medical lock is re-asserted at the save boundary.
+                  </div>
+                )}
               </div>
             )
           })}
         </div>
       )}
 
-      {/* Footer actions */}
       {(extracted.length > 0 || usage || phase === 'saved') && (
         <div style={footerBar}>
           {usage && (
@@ -362,9 +494,10 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
             </div>
           )}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
-            {phase === 'saved' && (
+            {phase === 'saved' && saved && (
               <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#7AB07A' }}>
-                ✓ Saved {saved} preferences
+                ✓ Saved {saved.inserted} preference{saved.inserted === 1 ? '' : 's'}
+                {saved.medicalReforced > 0 && ` · ${saved.medicalReforced} re-forced at save boundary`}
               </span>
             )}
             {(phase === 'done' || phase === 'error') && (
@@ -391,13 +524,14 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
   )
 }
 
-function ScoreSelect({ label, value, options, fmt, onChange, accent }: {
+function ScoreSelect({ label, value, options, fmt, onChange, accent, disabled }: {
   label: string
   value: number
   options: number[]
   fmt: (n: number) => string
   onChange: (v: number) => void
   accent?: string
+  disabled?: boolean
 }) {
   return (
     <div>
@@ -405,12 +539,33 @@ function ScoreSelect({ label, value, options, fmt, onChange, accent }: {
       <select
         value={value}
         onChange={e => onChange(Number(e.target.value))}
-        style={{ ...ctrlInput, color: accent || '#E5D4C2' }}
+        disabled={disabled}
+        style={{
+          ...ctrlInput,
+          color: accent || '#E5D4C2',
+          opacity: disabled ? 0.55 : 1,
+          cursor: disabled ? 'not-allowed' : 'pointer',
+        }}
       >
         {options.map(o => <option key={o} value={o}>{fmt(o)}</option>)}
       </select>
     </div>
   )
+}
+
+function originBadge(tone: 'gold' | 'green' | 'grey' | 'red'): React.CSSProperties {
+  const p = {
+    gold:  { fg: '#D4B85A', bg: 'rgba(212,184,90,0.10)', bd: 'rgba(212,184,90,0.30)' },
+    green: { fg: '#7AB07A', bg: 'rgba(122,176,122,0.10)', bd: 'rgba(122,176,122,0.30)' },
+    grey:  { fg: '#B2AA98', bg: 'rgba(229,212,194,0.06)', bd: 'rgba(229,212,194,0.16)' },
+    red:   { fg: '#C27070', bg: 'rgba(194,112,112,0.12)', bd: 'rgba(194,112,112,0.40)' },
+  }[tone]
+  return {
+    fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+    color: p.fg, background: p.bg, border: `1px solid ${p.bd}`,
+    borderRadius: 3, padding: '2px 8px',
+    letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600,
+  }
 }
 
 // ── styles ──────────────────────────────────────────────────────────
@@ -477,6 +632,11 @@ const errorBox: React.CSSProperties = {
   borderRadius: 6, color: '#E5D4C2',
   fontFamily: "'Google Sans Code', monospace", fontSize: 11,
 }
+const banner: React.CSSProperties = {
+  marginBottom: 14, padding: '12px 16px',
+  background: 'rgba(122,176,122,0.06)',
+  border: '1px solid rgba(122,176,122,0.20)', borderRadius: 6,
+}
 const resultsList: React.CSSProperties = {
   display: 'flex', flexDirection: 'column', gap: 12,
   marginBottom: 18,
@@ -496,7 +656,7 @@ const prefCategoryBadge: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 9,
   color: '#D4B85A', letterSpacing: '0.10em', textTransform: 'uppercase',
   background: 'rgba(212,184,90,0.08)', border: '1px solid rgba(212,184,90,0.20)',
-  borderRadius: 4, marginBottom: 6,
+  borderRadius: 4,
 }
 const prefNameInput: React.CSSProperties = {
   fontFamily: "'Rampant Sans', serif", fontSize: 16, fontWeight: 500,
@@ -553,6 +713,13 @@ const ctrlInput: React.CSSProperties = {
   border: '1px solid rgba(229,212,194,0.10)', borderRadius: 6,
   padding: '7px 8px', fontFamily: "'Google Sans Code', monospace",
   fontSize: 12, width: '100%', boxSizing: 'border-box', outline: 'none',
+}
+const lockNote: React.CSSProperties = {
+  marginTop: 10, padding: '8px 10px',
+  background: 'rgba(194,112,112,0.06)',
+  border: '1px solid rgba(194,112,112,0.20)', borderRadius: 4,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  color: '#C27070', lineHeight: 1.6,
 }
 const footerBar: React.CSSProperties = {
   display: 'flex', gap: 14, alignItems: 'center',
