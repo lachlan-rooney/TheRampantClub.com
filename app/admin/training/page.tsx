@@ -502,6 +502,40 @@ const SECTIONS: SectionDef[] = [
   },
 
   {
+    id: 'gifting',
+    title: 'Gifting · Unreasonable Hospitality',
+    eyebrow: 'Intelligence',
+    intro: '10–15% of each member’s dues earmarked for thoughtful, invisible love.',
+    body: (
+      <>
+        <p>
+          The principle: every member quietly carries a gifting budget — a percentage of what they pay us each year, set aside to surprise them. Birthday card with a bottle, dining experience after a difficult quarter, thank-you for a referral that mattered. The team logs what was given, why, and at what cost. The budget runs anniversary to anniversary so a year of nothing followed by a sudden splurge is visible.
+        </p>
+        <h4 style={h4}>Setting the budget</h4>
+        <p>
+          <Link href="/admin/tier-budgets" style={linkStyle}>/admin/tier-budgets</Link> — one row per tier with annual dues and a gifting percentage. Multiply them together and you get the per-member annual budget. The founder/GM owns this page; dial 10→15% when calibrating the &quot;invisible love&quot; cap.
+        </p>
+        <h4 style={h4}>Logging a gift</h4>
+        <ol style={olStyle}>
+          <li>Open <Link href="/admin/gifts" style={linkStyle}>/admin/gifts</Link> and hit <strong>＋ Log a gift</strong>.</li>
+          <li>Pick the member, the date, the occasion (birthday / anniversary / thoughtful / apology / recovery / dining moment / referral thanks / other), the category (bottle / experience / dining / etc.), and the cost in VND.</li>
+          <li>Write the gift description, the source (vendor name if applicable), and — most important — <strong>why we did this</strong>. The dissertation calls this the &quot;expected value&quot; field. It&apos;s the receipt against the loyalty case.</li>
+          <li>Optionally upload a photo. Pick a member first to enable upload; the file goes to the private <Code>gift-photos</Code> bucket and a signed read URL is generated when the ledger displays it.</li>
+        </ol>
+        <h4 style={h4}>Where it shows up</h4>
+        <ul style={ulStyle}>
+          <li><strong>The ledger itself</strong> — org-wide list with filters by occasion. A red &quot;unloved members&quot; banner surfaces anyone with budget but no gift this cycle — the alarm bell.</li>
+          <li><strong>MX Daily anniversaries panel</strong> — each anniversary row shows a tiny progress bar: how much of that member&apos;s annual budget is spent, with the bar going red if they&apos;ve had zero gifts. Miss Châu sees at a glance who&apos;s overdue for a touch.</li>
+          <li><strong>Member profile</strong> — coming soon: per-member gifting history with the same budget view.</li>
+        </ul>
+        <Callout title="Invisible love, visible spend">
+          The member never sees this page. The point is that the team can track and budget the &quot;random, thoughtful gifting&quot; principle systematically, so it actually happens, evenly, across every member, every year.
+        </Callout>
+      </>
+    ),
+  },
+
+  {
     id: 'troubleshooting',
     title: 'Troubleshooting',
     eyebrow: 'Reference',

@@ -58,14 +58,30 @@ export async function GET() {
     .limit(1)
     .then(r => r, () => ({ data: [] as Record<string, unknown>[], error: null }))
 
-  const [{ data: members }, { data: stats }, complaintsResult, lastClosingResult] = await Promise.all([
+  // Per-member gifting summary so the anniversary panel can show budget
+  // used vs. available without N round-trips.
+  const giftingSummaryQuery = sb.from('member_gifting_summary')
+    .select('member_no, annual_budget_vnd, spent_vnd, gift_count, window_end')
+    .then(r => r, () => ({ data: [] as Record<string, unknown>[], error: null }))
+
+  const [{ data: members }, { data: stats }, complaintsResult, lastClosingResult, giftingResult] = await Promise.all([
     sb.from('members').select('member_no, full_name, nickname, tier, status, birthday, join_date').eq('status', 'Active'),
     sb.from('member_stats').select('member_no, last_visit, days_since_visit, total_visits'),
     complaintsQuery,
     lastClosingQuery,
+    giftingSummaryQuery,
   ])
   const complaints = complaintsResult.error ? [] : (complaintsResult.data || [])
   const lastClosing = lastClosingResult.error || !lastClosingResult.data?.length ? null : lastClosingResult.data[0]
+  const giftingByMember = new Map<string, { annual_budget_vnd: number; spent_vnd: number; gift_count: number }>()
+  for (const r of (giftingResult.error ? [] : (giftingResult.data || []))) {
+    const row = r as { member_no: string; annual_budget_vnd: number; spent_vnd: number; gift_count: number }
+    giftingByMember.set(row.member_no, {
+      annual_budget_vnd: Number(row.annual_budget_vnd || 0),
+      spent_vnd: Number(row.spent_vnd || 0),
+      gift_count: Number(row.gift_count || 0),
+    })
+  }
 
   const statByMember = new Map<string, { last_visit: string | null; days_since_visit: number | null; total_visits: number }>()
   for (const s of stats || []) {
@@ -103,7 +119,22 @@ export async function GET() {
       anniversaryDate.setDate(anniversaryDate.getDate() + days)
       const years = anniversaryDate.getFullYear() - Number(jd.slice(0, 4))
       if (years < 1) return null
-      return { member_no: m.member_no, full_name: m.full_name, nickname: m.nickname, tier: m.tier, join_date: jd, years, days_until: days }
+      const gifting = giftingByMember.get(m.member_no) || null
+      return {
+        member_no: m.member_no,
+        full_name: m.full_name,
+        nickname: m.nickname,
+        tier: m.tier,
+        join_date: jd,
+        years,
+        days_until: days,
+        gifting: gifting ? {
+          budget_vnd: gifting.annual_budget_vnd,
+          spent_vnd:  gifting.spent_vnd,
+          remaining_vnd: Math.max(0, gifting.annual_budget_vnd - gifting.spent_vnd),
+          gift_count: gifting.gift_count,
+        } : null,
+      }
     })
     .filter((x): x is NonNullable<typeof x> => x !== null && x.days_until <= 7)
     .sort((a, b) => a.days_until - b.days_until)

@@ -24,6 +24,7 @@ interface Anniversary {
   join_date: string
   years: number
   days_until: number
+  gifting: { budget_vnd: number; spent_vnd: number; remaining_vnd: number; gift_count: number } | null
 }
 interface LapsedRow {
   member_no: string
@@ -209,11 +210,29 @@ export default function MXDailyPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {data.anniversaries.map(a => (
                   <Link key={a.member_no} href={`/admin/mis/${a.member_no}`} style={memberRow}>
-                    <div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={memberName}>{a.full_name}</div>
                       <div style={memberMeta}>{a.member_no} · {a.tier}</div>
+                      {a.gifting && a.gifting.budget_vnd > 0 && (
+                        <div style={giftingStrip}>
+                          <div style={giftingTrack}>
+                            <div style={{
+                              ...giftingFill,
+                              width: `${Math.min(100, Math.round((a.gifting.spent_vnd / a.gifting.budget_vnd) * 100))}%`,
+                              background: a.gifting.gift_count === 0 ? '#C27070' : '#7AB07A',
+                            }} />
+                          </div>
+                          <div style={giftingLabel}>
+                            <strong style={{ color: a.gifting.gift_count === 0 ? '#C27070' : '#E5D4C2' }}>
+                              {formatVndCompact(a.gifting.spent_vnd)}
+                            </strong>
+                            <span style={{ opacity: 0.6 }}> of {formatVndCompact(a.gifting.budget_vnd)} used</span>
+                            {a.gifting.gift_count === 0 && <span style={{ color: '#C27070' }}> · no gifts yet</span>}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div style={{ textAlign: 'right' }}>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
                       <div style={{ ...dayBadge(a.days_until), background: 'rgba(122,176,122,0.18)', color: '#7AB07A', borderColor: 'rgba(122,176,122,0.40)' }}>
                         {a.years}y · {labelForDays(a.days_until)}
                       </div>
@@ -479,6 +498,25 @@ const handoverBox: React.CSSProperties = {
   borderRadius: 4,
   fontFamily: "'Google Sans Code', monospace", fontSize: 12,
   color: '#E5D4C2', lineHeight: 1.7, whiteSpace: 'pre-wrap',
+}
+const giftingStrip: React.CSSProperties = {
+  marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3,
+}
+const giftingTrack: React.CSSProperties = {
+  height: 3, background: 'rgba(229,212,194,0.08)', borderRadius: 2, overflow: 'hidden',
+}
+const giftingFill: React.CSSProperties = {
+  height: '100%', transition: 'width 0.4s ease',
+}
+const giftingLabel: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#B2AA98', letterSpacing: '0.04em',
+}
+
+function formatVndCompact(v: number): string {
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M ₫`
+  if (v >= 1_000) return `${Math.round(v / 1_000)}k ₫`
+  return `${v} ₫`
 }
 const panelEmpty: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 11,
