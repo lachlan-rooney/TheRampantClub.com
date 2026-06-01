@@ -38,7 +38,22 @@ interface Preference {
   contradiction: boolean
   logged_by: string | null
   created_date: string | null
+  status?: string | null
 }
+
+interface EditDraft {
+  s0: number
+  confidence: number
+  lambda: number
+  frequency: number
+  status: string
+  notes: string
+}
+
+const ALLOWED_C = [1.00, 0.75, 0.50, 0.25]
+const ALLOWED_L = [0.000, 0.002, 0.005, 0.010, 0.020]
+const ALLOWED_F = [0.8, 1.0, 1.2, 1.5]
+const ALLOWED_STATUS = ['active', 'invalidated', 'archived']
 
 const CATEGORIES = [
   'All categories',
@@ -61,6 +76,60 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
   const [category, setCategory] = useState('All categories')
   const [revalOnly, setRevalOnly] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [drafts, setDrafts] = useState<Record<string, EditDraft>>({})
+  const [saving, setSaving] = useState<string | null>(null)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const draftFor = (p: Preference): EditDraft => drafts[p.preference_id] || {
+    s0: p.s0, confidence: p.confidence, lambda: p.lambda, frequency: p.frequency,
+    status: p.status || 'active', notes: '',
+  }
+  const setDraft = (preference_id: string, patch: Partial<EditDraft>) => {
+    setDrafts(prev => ({ ...prev, [preference_id]: { ...draftFor(preferences.find(x => x.preference_id === preference_id)!), ...prev[preference_id], ...patch } }))
+  }
+  const isDirty = (p: Preference) => {
+    const d = drafts[p.preference_id]
+    if (!d) return false
+    return d.s0 !== p.s0 || d.confidence !== p.confidence || d.lambda !== p.lambda || d.frequency !== p.frequency || d.status !== (p.status || 'active')
+  }
+
+  const submit = async (p: Preference, eventType: 'confirmed' | 'revised' | 'invalidated') => {
+    const d = draftFor(p)
+    setSaving(p.preference_id)
+    setErrors(e => ({ ...e, [p.preference_id]: '' }))
+    const body: Record<string, unknown> = {
+      preference_id: p.preference_id,
+      event_type: eventType,
+      notes: d.notes || null,
+    }
+    if (eventType === 'revised') {
+      body.s0 = d.s0
+      body.confidence = d.confidence
+      body.lambda = d.lambda
+      body.frequency = d.frequency
+      body.status = d.status
+    } else if (eventType === 'invalidated') {
+      body.status = 'invalidated'
+    }
+    try {
+      const r = await fetch('/api/admin/mis/validate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error || 'Save failed')
+      // Merge the refreshed preference back into state
+      if (j.preference) {
+        setPreferences(prev => prev.map(x => x.preference_id === p.preference_id ? { ...x, ...j.preference } : x))
+      }
+      // Clear the draft + notes after a successful save
+      setDrafts(prev => { const n = { ...prev }; delete n[p.preference_id]; return n })
+    } catch (e) {
+      setErrors(prev => ({ ...prev, [p.preference_id]: (e as Error).message }))
+    } finally {
+      setSaving(null)
+    }
+  }
 
   useEffect(() => {
     fetch(`/api/admin/mis/preferences?member_no=${encodeURIComponent(member_no)}`, { cache: 'no-store' })
@@ -195,6 +264,100 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
                     <div style={prefMetaItem}><span style={prefMetaLabel}>Source</span>{p.source || '—'}</div>
                     <div style={prefMetaItem}><span style={prefMetaLabel}>Logged by</span>{p.logged_by || '—'}</div>
                     {p.contradiction && <div style={prefMetaItem}><span style={prefMetaLabel}>Contradiction</span>YES</div>}
+                  </div>
+
+                  {/* Validate / revise controls */}
+                  <div style={editBlock}>
+                    <div style={prefSectionLabel}>Validate or revise</div>
+                    <div style={editGrid}>
+                      <div>
+                        <div style={editLabel}>S₀</div>
+                        <select
+                          value={draftFor(p).s0}
+                          onChange={e => setDraft(p.preference_id, { s0: Number(e.target.value) })}
+                          style={editInput}
+                        >
+                          {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <div style={editLabel}>Confidence</div>
+                        <select
+                          value={draftFor(p).confidence}
+                          onChange={e => setDraft(p.preference_id, { confidence: Number(e.target.value) })}
+                          style={editInput}
+                        >
+                          {ALLOWED_C.map(v => <option key={v} value={v}>{v.toFixed(2)}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <div style={editLabel}>Lambda</div>
+                        <select
+                          value={draftFor(p).lambda}
+                          onChange={e => setDraft(p.preference_id, { lambda: Number(e.target.value) })}
+                          style={editInput}
+                        >
+                          {ALLOWED_L.map(v => <option key={v} value={v}>{v.toFixed(3)}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <div style={editLabel}>Frequency</div>
+                        <select
+                          value={draftFor(p).frequency}
+                          onChange={e => setDraft(p.preference_id, { frequency: Number(e.target.value) })}
+                          style={editInput}
+                        >
+                          {ALLOWED_F.map(v => <option key={v} value={v}>{v.toFixed(1)}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <div style={editLabel}>Status</div>
+                        <select
+                          value={draftFor(p).status}
+                          onChange={e => setDraft(p.preference_id, { status: e.target.value })}
+                          style={editInput}
+                        >
+                          {ALLOWED_STATUS.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: 12 }}>
+                      <div style={editLabel}>Notes <span style={{ opacity: 0.5 }}>(saved to validation_events)</span></div>
+                      <textarea
+                        value={draftFor(p).notes}
+                        onChange={e => setDraft(p.preference_id, { notes: e.target.value })}
+                        placeholder="Optional context — e.g. 'Confirmed in conversation with Lachlan, 13 May.'"
+                        rows={2}
+                        style={{ ...editInput, width: '100%', resize: 'vertical', fontFamily: "'Google Sans Code', monospace" }}
+                      />
+                    </div>
+
+                    {errors[p.preference_id] && (
+                      <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(180,70,70,0.15)', border: '1px solid rgba(180,70,70,0.30)', borderRadius: 6, color: '#E5D4C2', fontFamily: "'Google Sans Code', monospace", fontSize: 11 }}>
+                        {errors[p.preference_id]}
+                      </div>
+                    )}
+
+                    <div style={editActions}>
+                      <button
+                        onClick={() => submit(p, isDirty(p) ? 'revised' : 'confirmed')}
+                        disabled={saving === p.preference_id}
+                        style={isDirty(p) ? btnPrimary : btnGhost}
+                      >
+                        {saving === p.preference_id ? '…' : isDirty(p) ? 'Save revision' : 'Confirm — still accurate'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!confirm('Invalidate this preference? It will be hidden from the live PS(t) view but the row stays for history.')) return
+                          submit(p, 'invalidated')
+                        }}
+                        disabled={saving === p.preference_id}
+                        style={btnDanger}
+                      >
+                        Invalidate
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -343,3 +506,35 @@ const emptyText: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 12,
   color: '#B2AA98', opacity: 0.6, fontStyle: 'italic',
 }
+const editBlock: React.CSSProperties = {
+  marginTop: 18, padding: '14px 16px',
+  background: 'rgba(229,212,194,0.04)',
+  border: '1px solid rgba(229,212,194,0.10)',
+  borderRadius: 8,
+}
+const editGrid: React.CSSProperties = {
+  display: 'grid', gap: 12, marginTop: 10,
+  gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+}
+const editLabel: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#B2AA98', letterSpacing: '0.10em', textTransform: 'uppercase',
+  marginBottom: 4,
+}
+const editInput: React.CSSProperties = {
+  background: 'rgba(5,46,32,0.5)', color: '#E5D4C2',
+  border: '1px solid rgba(229,212,194,0.10)', borderRadius: 6,
+  padding: '8px 10px', fontFamily: "'Google Sans Code', monospace",
+  fontSize: 12, width: '100%', boxSizing: 'border-box', outline: 'none',
+}
+const editActions: React.CSSProperties = {
+  display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap',
+}
+const btnBase: React.CSSProperties = {
+  border: 'none', borderRadius: 6, padding: '10px 18px',
+  fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11,
+  letterSpacing: '0.06em', cursor: 'pointer', color: '#E5D4C2',
+}
+const btnPrimary: React.CSSProperties = { ...btnBase, background: '#5E6650' }
+const btnGhost:   React.CSSProperties = { ...btnBase, background: 'rgba(229,212,194,0.10)' }
+const btnDanger:  React.CSSProperties = { ...btnBase, background: 'rgba(180,70,70,0.20)' }
