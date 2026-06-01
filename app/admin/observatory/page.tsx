@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   computePSt, decayCurve,
   type PrefInputs, type MemberEngagement,
 } from '@/lib/mis/live-pst'
+import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 
 // Admin / Observatory
 //
@@ -42,51 +43,281 @@ interface MemberSummary {
   avg_visits_per_month: number | null
   active_pref_count: number
 }
+interface LdcRow {
+  id: string
+  category: string
+  designed_lambda: number
+  learned_lambda: number
+  lambda_ci_lower: number | null
+  lambda_ci_upper: number | null
+  n_events: number
+  n_observations: number
+  status: string | null
+  ci_relative_width: number | null
+  meets_event_floor: boolean | null
+  ci_narrow_enough: boolean | null
+  fit_timestamp: string
+}
+interface CategorySlice {
+  category: string
+  designed_lambda: number
+  active: LdcRow | null
+  latestProposal: LdcRow | null
+  latestAny: LdcRow | null
+}
 interface Vitals {
   active_preferences: number
   total_exposure_days: number
   medical_locked: number
+  flagged_for_revalidation: number
   lambda_origin_breakdown: Record<string, number>
+  category_status_counts: { active: number; proposed: number; insufficient_data: number; no_fit_yet: number }
   total_validation_events: number
 }
 interface Snapshot {
   timestamp: string
   members: MemberSummary[]
   preferences: PreferenceRow[]
+  categories: CategorySlice[]
   vitals: Vitals
 }
+interface FeedEvent {
+  id: string
+  kind: 'validation' | 'preference_insert' | 'promotion'
+  subtype: string | null
+  timestamp: string
+  member_no: string | null
+  member_name: string | null
+  category: string | null
+  preference_id: string | null
+  preference_name: string | null
+  lambda: number | null
+  lambda_origin: string | null
+  learned_lambda: number | null
+  designed_lambda: number | null
+  days_since_last_validation: number | null
+  is_demo_fixture: boolean
+  loop_closure: boolean
+}
+
+const EVENT_FLOOR = 20
+const DEMO_HOLD_SECONDS = 30
+const POLL_INTERVAL_MS = 15_000
+const REALTIME_SUBSCRIBE_TIMEOUT_MS = 3_000
+
+type Transport = 'realtime' | 'polling' | 'probing'
+type DemoGate = 'open' | 'closed' | 'probing'
+type DemoState = 'idle' | 'promoting' | 'active' | 'reverting'
 
 export default function ObservatoryPage() {
   const [snap, setSnap] = useState<Snapshot | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedMember, setSelectedMember] = useState<string | null>(null)
   const [selectedPref, setSelectedPref] = useState<string | null>(null)
-  const [, setTick] = useState(0)  // forces 1s recompute
+  const [tick, setTick] = useState(0)  // forces 1s recompute + countdown
+  const [transport, setTransport] = useState<Transport>('probing')
+  const [transportNote, setTransportNote] = useState<string>('probing supabase realtime…')
+  const [demoGate, setDemoGate] = useState<DemoGate>('probing')
+  const [demoState, setDemoState] = useState<DemoState>('idle')
+  const [demoFixtureId, setDemoFixtureId] = useState<string | null>(null)
+  const [demoCountdownEnd, setDemoCountdownEnd] = useState<number | null>(null)
+  const [demoError, setDemoError] = useState<string | null>(null)
+  const [demoCategory, setDemoCategory] = useState<string>('Whisky & Beverage')
+  const [demoLambda, setDemoLambda] = useState<number>(0.002)
+  const [events, setEvents] = useState<FeedEvent[]>([])
+  const demoFixtureIdRef = useRef<string | null>(null)
+  useEffect(() => { demoFixtureIdRef.current = demoFixtureId }, [demoFixtureId])
 
-  // 1s recompute heartbeat — pure client math via computePSt, no DB poll.
+  // 1s heartbeat — drives Panel 1 recompute AND the demo countdown.
   useEffect(() => {
     const id = setInterval(() => setTick(t => (t + 1) % 1_000_000), 1000)
     return () => clearInterval(id)
   }, [])
 
+  // Snapshot loader, exposed so promote/revert can refresh on demand.
+  const fetchSnapshot = useCallback(async (preserveSelection = true) => {
+    try {
+      const r = await fetch('/api/admin/observatory/snapshot', { cache: 'no-store' })
+      const d = await r.json()
+      if (d.error) { setError(d.error); return null }
+      setSnap(d)
+      if (!preserveSelection && d.members?.length) {
+        setSelectedMember(d.members[0].member_no)
+        const firstPref = d.preferences.find((p: PreferenceRow) => p.member_no === d.members[0].member_no)
+        if (firstPref) setSelectedPref(firstPref.preference_id)
+      }
+      return d as Snapshot
+    } catch (e) {
+      setError(String(e))
+      return null
+    }
+  }, [])
+
+  // Events feed loader (full reload — used at mount and on poll tick).
+  const fetchEvents = useCallback(async () => {
+    try {
+      const r = await fetch('/api/admin/observatory/events?limit=100', { cache: 'no-store' })
+      const d = await r.json()
+      if (Array.isArray(d.events)) setEvents(d.events)
+    } catch { /* ignore — keep previous feed */ }
+  }, [])
+
+  // Initial load + on-mount sweep of any stale fixtures.
   useEffect(() => {
     let cancelled = false
-    fetch('/api/admin/observatory/snapshot', { cache: 'no-store' })
-      .then(r => r.json())
-      .then(d => {
+    ;(async () => {
+      // Sweep first — clears anything a previous tab left behind. The sweep
+      // call doubles as the demo-gate probe: 200 → gate open, 403 → closed.
+      try {
+        const r = await fetch('/api/admin/_debug/decay-demo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'sweep' }),
+        })
         if (cancelled) return
-        if (d.error) { setError(d.error); return }
-        setSnap(d)
-        // pick the most-active member by default, and their first pref
-        if (d.members?.length) {
-          setSelectedMember(d.members[0].member_no)
-          const firstPref = d.preferences.find((p: PreferenceRow) => p.member_no === d.members[0].member_no)
-          if (firstPref) setSelectedPref(firstPref.preference_id)
-        }
-      })
-      .catch(e => { if (!cancelled) setError(String(e)) })
+        if (r.status === 403) setDemoGate('closed')
+        else if (r.ok) setDemoGate('open')
+        else setDemoGate('closed')
+      } catch {
+        if (!cancelled) setDemoGate('closed')
+      }
+      if (cancelled) return
+      const d = await fetchSnapshot(false)
+      if (cancelled || !d) return
+      await fetchEvents()
+    })()
     return () => { cancelled = true }
+  }, [fetchSnapshot, fetchEvents])
+
+  // Transport — Realtime subscription with timeout fallback to polling.
+  // On a Realtime event we refetch the events feed (cheap) and, for LDC
+  // changes, the snapshot (Panel 2/3/5 derive from it).
+  useEffect(() => {
+    let unsub: (() => void) | null = null
+    let pollId: ReturnType<typeof setInterval> | null = null
+    let resolved = false
+
+    const fallback = (note: string) => {
+      if (resolved) return
+      resolved = true
+      setTransport('polling')
+      setTransportNote(note)
+      pollId = setInterval(() => {
+        fetchEvents()
+        fetchSnapshot(true)
+      }, POLL_INTERVAL_MS)
+    }
+
+    try {
+      const sb = createBrowserSupabaseClient()
+      const channel = sb.channel('observatory-live')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'preferences' }, () => {
+          fetchEvents(); fetchSnapshot(true)
+        })
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'validation_events' }, () => {
+          fetchEvents(); fetchSnapshot(true)
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'learned_decay_constants' }, () => {
+          fetchEvents(); fetchSnapshot(true)
+        })
+        .subscribe(status => {
+          if (resolved) return
+          if (status === 'SUBSCRIBED') {
+            resolved = true
+            setTransport('realtime')
+            setTransportNote('postgres_changes subscribed · live events arrive immediately')
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            fallback(`realtime ${status.toLowerCase()} — falling back to 15s polling`)
+          }
+        })
+      unsub = () => { try { sb.removeChannel(channel) } catch { /* ignore */ } }
+    } catch (e) {
+      fallback(`realtime init failed: ${(e as Error).message} — polling 15s`)
+    }
+
+    const timeoutId = setTimeout(
+      () => fallback('realtime did not subscribe within 3s — polling 15s'),
+      REALTIME_SUBSCRIBE_TIMEOUT_MS
+    )
+
+    return () => {
+      clearTimeout(timeoutId)
+      if (unsub) unsub()
+      if (pollId) clearInterval(pollId)
+    }
+  }, [fetchSnapshot, fetchEvents])
+
+  // Demo countdown — checked every tick. Fires revert when countdown hits 0.
+  const secondsLeft = useMemo(() => {
+    if (!demoCountdownEnd) return null
+    return Math.max(0, Math.ceil((demoCountdownEnd - Date.now()) / 1000))
+  }, [demoCountdownEnd, tick])
+
+  const revertDemo = useCallback(async () => {
+    const id = demoFixtureIdRef.current
+    if (!id) return
+    setDemoState('reverting')
+    try {
+      const r = await fetch('/api/admin/_debug/decay-demo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'revert', id }),
+      })
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}))
+        throw new Error(j.error || `revert failed (${r.status})`)
+      }
+    } catch (e) {
+      setDemoError((e as Error).message)
+    } finally {
+      setDemoFixtureId(null)
+      setDemoCountdownEnd(null)
+      setDemoState('idle')
+      await Promise.all([fetchSnapshot(true), fetchEvents()])
+    }
+  }, [fetchSnapshot, fetchEvents])
+
+  useEffect(() => {
+    if (demoState === 'active' && secondsLeft === 0) {
+      revertDemo()
+    }
+  }, [demoState, secondsLeft, revertDemo])
+
+  // Revert any active demo on unmount — best-effort, can't await in cleanup.
+  useEffect(() => {
+    return () => {
+      if (demoFixtureIdRef.current) {
+        const id = demoFixtureIdRef.current
+        try {
+          // Use sendBeacon so the request survives the page unload.
+          const body = new Blob([JSON.stringify({ action: 'revert', id })], { type: 'application/json' })
+          navigator.sendBeacon?.('/api/admin/_debug/decay-demo', body)
+        } catch { /* ignore */ }
+      }
+    }
   }, [])
+
+  const promoteDemo = useCallback(async () => {
+    if (demoGate !== 'open') return
+    setDemoError(null)
+    setDemoState('promoting')
+    try {
+      const r = await fetch('/api/admin/_debug/decay-demo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'promote', category: demoCategory, lambda: demoLambda }),
+      })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error || `promote failed (${r.status})`)
+      setDemoFixtureId(j.fixture_id)
+      setDemoCountdownEnd(Date.now() + DEMO_HOLD_SECONDS * 1000)
+      setDemoState('active')
+      await Promise.all([fetchSnapshot(true), fetchEvents()])
+    } catch (e) {
+      setDemoError((e as Error).message)
+      setDemoState('idle')
+    }
+  }, [demoCategory, demoLambda, demoGate, fetchSnapshot, fetchEvents])
 
   const memberPrefs = useMemo(() => {
     if (!snap || !selectedMember) return []
@@ -110,7 +341,10 @@ export default function ObservatoryPage() {
     <>
       <div style={{ marginBottom: 28 }}>
         <div style={eyebrow}>Intelligence · Live</div>
-        <h1 style={pageTitle}>The Observatory</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16, flexWrap: 'wrap' }}>
+          <h1 style={pageTitle}>The Observatory</h1>
+          <TransportPill transport={transport} note={transportNote} demoGate={demoGate} />
+        </div>
         <p style={lede}>
           A live, glass-box view of the system's mathematics. Every figure on this page traces to a real row.
           PS(t) is recomputed client-side from the stored inputs (λ, <code>last_validated</code>, validation
@@ -171,6 +405,145 @@ export default function ObservatoryPage() {
         ) : (
           <div style={empty}>This member has no active preferences.</div>
         )}
+      </section>
+
+      {/* ─── Panel 2 — Category decay posteriors ─── */}
+      <section style={panel}>
+        <div style={panelHead}>
+          <div>
+            <div style={panelEyebrow}>Panel 2 · Category posteriors</div>
+            <div style={panelTitle}>Designed prior vs learned posterior, 95% credible interval, distance to event floor</div>
+          </div>
+          <div style={metaText}>
+            {snap.vitals.category_status_counts.active} active ·
+            {' '}{snap.vitals.category_status_counts.proposed} proposed ·
+            {' '}{snap.vitals.category_status_counts.insufficient_data + snap.vitals.category_status_counts.no_fit_yet} awaiting evidence
+          </div>
+        </div>
+        <CategoryPosteriorsTable categories={snap.categories} />
+      </section>
+
+      {/* ─── Panel 3 — Loop-closure / baseline inheritance ─── */}
+      <section style={panel}>
+        <div style={panelHead}>
+          <div>
+            <div style={panelEyebrow}>Panel 3 · Loop-closure · baseline inheritance</div>
+            <div style={panelTitle}>What a new extraction would inherit right now</div>
+          </div>
+          {demoGate === 'open' && demoState !== 'idle' && (
+            <span style={demoActivePill}>
+              {demoState === 'promoting' ? 'promoting…' :
+                demoState === 'reverting' ? 'reverting…' :
+                  `DEMO ACTIVE · reverting in ${secondsLeft}s`}
+            </span>
+          )}
+        </div>
+
+        <p style={loopLede}>
+          For each canonical category, this is the λ a new preference inherits when the AI doesn't emit a
+          preference-specific signal. The source is <code>learned</code> when an active row exists in
+          <code> learned_decay_constants</code> for that category, else <code>designed</code> (the prior
+          centre from <code>lib/mis/decay-priors.ts</code>). This is what
+          <code> buildCategoryBaselines(getActiveLearnedLambda(sb))</code> returns — the same call the
+          intake route makes per request. Today every row reads <code>designed</code> because no proposal
+          has been promoted yet.
+        </p>
+
+        <BaselineTable categories={snap.categories} demoCategory={demoState === 'active' ? demoCategory : null} />
+
+        {/* Demo affordance */}
+        {demoGate === 'open' ? (
+          <div style={demoBlock}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 6 }}>
+              <span style={demoEyebrow}>DEV FIXTURE</span>
+              <span style={metaText}>
+                MIS_DEMO_ENABLED=1 detected. This promotes a real learned λ, shows what new extractions would
+                inherit, then reverts. Not a mock.
+              </span>
+            </div>
+            <div style={demoControls}>
+              <label style={pickerLabel}>
+                Category
+                <select
+                  value={demoCategory}
+                  onChange={e => setDemoCategory(e.target.value)}
+                  disabled={demoState !== 'idle'}
+                  style={pickerInput}
+                >
+                  {snap.categories.map(c => (
+                    <option key={c.category} value={c.category}>
+                      {c.category} · designed {c.designed_lambda.toFixed(3)}{c.active ? ' · already active' : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label style={pickerLabel}>
+                Learned λ
+                <select
+                  value={demoLambda}
+                  onChange={e => setDemoLambda(Number(e.target.value))}
+                  disabled={demoState !== 'idle'}
+                  style={pickerInput}
+                >
+                  {[0.002, 0.005, 0.010, 0.020].map(v => (
+                    <option key={v} value={v}>{v.toFixed(3)} · half-life {Math.round(Math.LN2 / v)}d</option>
+                  ))}
+                </select>
+              </label>
+              <div style={{ display: 'flex', alignItems: 'end', gap: 8 }}>
+                {demoState === 'idle' && (
+                  <button onClick={promoteDemo} style={demoBtn}>
+                    Demonstrate the loop
+                  </button>
+                )}
+                {demoState === 'active' && (
+                  <button onClick={revertDemo} style={demoBtnDanger}>
+                    Revert now
+                  </button>
+                )}
+                {(demoState === 'promoting' || demoState === 'reverting') && (
+                  <button disabled style={{ ...demoBtn, opacity: 0.6 }}>…</button>
+                )}
+              </div>
+            </div>
+            {demoError && <div style={errorBox}>{demoError}</div>}
+          </div>
+        ) : demoGate === 'closed' ? (
+          <div style={demoBlockClosed}>
+            <span style={demoEyebrow}>DEV FIXTURE</span>
+            <span style={metaText}>
+              {' '}Demo affordance disabled (<code>MIS_DEMO_ENABLED</code> not set to <code>1</code>).
+              Baselines above are read-only; this guards production scoring from accidental promotion.
+            </span>
+          </div>
+        ) : null}
+      </section>
+
+      {/* ─── Panel 4 — Live event stream + loop-closure ticker ─── */}
+      <section style={panel}>
+        <div style={panelHead}>
+          <div>
+            <div style={panelEyebrow}>Panel 4 · Live event stream</div>
+            <div style={panelTitle}>Scoring events as they happen, with the mathematical consequence of each</div>
+          </div>
+          <div style={metaText}>
+            {events.length === 0
+              ? `watching… ${transport === 'realtime' ? 'Realtime subscribed' : transport === 'polling' ? 'polling every 15s' : 'probing transport'}`
+              : `${events.length} event${events.length === 1 ? '' : 's'} · loop-closure: ${events.filter(e => e.loop_closure).length}`}
+          </div>
+        </div>
+        <EventStream events={events} transport={transport} />
+      </section>
+
+      {/* ─── Panel 5 — Aggregate vitals ─── */}
+      <section style={panel}>
+        <div style={panelHead}>
+          <div>
+            <div style={panelEyebrow}>Panel 5 · Aggregate vitals</div>
+            <div style={panelTitle}>What the system holds right now</div>
+          </div>
+        </div>
+        <VitalsGrid vitals={snap.vitals} />
       </section>
 
       {/* ─── Breadth table — all active preferences ─── */}
@@ -343,6 +716,404 @@ function TrajectoryChart({
       </text>
     </svg>
   )
+}
+
+// ─── Transport pill — visible "live · Realtime" vs "live · polling 15s" ─────
+
+function TransportPill({ transport, note, demoGate }: {
+  transport: Transport; note: string; demoGate: DemoGate
+}) {
+  const tone = transport === 'realtime' ? 'green' : transport === 'polling' ? 'gold' : 'grey'
+  const label = transport === 'realtime' ? 'live · Realtime'
+    : transport === 'polling'  ? 'live · polling 15s'
+    : 'probing transport…'
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+      <span style={transportPill(tone)} title={note}>
+        <span style={transportDot(tone)} />
+        {label}
+      </span>
+      {demoGate === 'open' && (
+        <span style={demoGatePill}>MIS_DEMO_ENABLED=1</span>
+      )}
+    </div>
+  )
+}
+
+// ─── Panel 3 — Baseline inheritance table ────────────────────────────────────
+
+function BaselineTable({ categories, demoCategory }: {
+  categories: CategorySlice[]
+  demoCategory: string | null
+}) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10, marginBottom: 14 }}>
+      {categories.map(c => {
+        const learned = c.active?.learned_lambda
+        const liveLambda = learned ?? c.designed_lambda
+        const source: 'learned' | 'designed' = learned != null ? 'learned' : 'designed'
+        const isDemoTarget = demoCategory === c.category
+        return (
+          <div key={c.category} style={{
+            ...baselineCard,
+            ...(isDemoTarget ? {
+              borderColor: 'rgba(122,176,122,0.55)',
+              background: 'rgba(122,176,122,0.06)',
+              boxShadow: '0 0 0 1px rgba(122,176,122,0.30)',
+            } : {}),
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <div style={catName}>{c.category}</div>
+              <span style={originPill(`category_baseline_${source}`)}>
+                {source}
+                {isDemoTarget && ' ← FLIPPED'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 14, marginTop: 10, alignItems: 'baseline' }}>
+              <div>
+                <div style={miniLabel}>baseline λ</div>
+                <div style={{ ...posteriorBig, color: source === 'learned' ? '#7AB07A' : '#E5D4C2' }}>
+                  {liveLambda.toFixed(4)}
+                </div>
+              </div>
+              <div>
+                <div style={miniLabel}>half-life</div>
+                <div style={posteriorBig}>{Math.round(Math.LN2 / liveLambda)}d</div>
+              </div>
+            </div>
+            {source === 'designed' && (
+              <div style={metaText}>from <code>decay-priors.ts</code></div>
+            )}
+            {source === 'learned' && c.active && (
+              <div style={metaText}>
+                designed was {c.designed_lambda.toFixed(4)} · promoted {new Date(c.active.fit_timestamp).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                {c.active.n_events > 0 && ` · d=${c.active.n_events}`}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── Panel 2 — Category posteriors ───────────────────────────────────────────
+
+function CategoryPosteriorsTable({ categories }: { categories: CategorySlice[] }) {
+  // Visualisation scale for the CI rail: max λ across all categories' priors and CIs,
+  // capped so a wide posterior doesn't squash the others.
+  const lambdaScaleMax = Math.max(
+    0.025,
+    ...categories.map(c => c.latestAny?.lambda_ci_upper ?? c.designed_lambda),
+  )
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {categories.map(c => {
+        const latest = c.active || c.latestProposal || c.latestAny
+        const statusKey = c.active
+          ? 'active'
+          : latest?.status === 'proposed' ? 'proposed'
+          : latest?.status === 'insufficient_data' ? 'insufficient_data'
+          : 'no_fit_yet'
+
+        const nEvents = latest?.n_events ?? 0
+        const floorPct = Math.min(100, (nEvents / EVENT_FLOOR) * 100)
+        const liveLambda = c.active?.learned_lambda ?? c.designed_lambda
+        const halfLifeLive = liveLambda > 0 ? Math.round(Math.LN2 / liveLambda) : null
+
+        const designedX  = (c.designed_lambda / lambdaScaleMax) * 100
+        const posteriorX = ((latest?.learned_lambda ?? c.designed_lambda) / lambdaScaleMax) * 100
+        const ciLoX = latest?.lambda_ci_lower != null ? (latest.lambda_ci_lower / lambdaScaleMax) * 100 : null
+        const ciHiX = latest?.lambda_ci_upper != null ? (latest.lambda_ci_upper / lambdaScaleMax) * 100 : null
+
+        return (
+          <div key={c.category} style={posteriorCard}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
+              <div style={catName}>{c.category}</div>
+              <span style={posteriorStatusPill(statusKey)}>{statusKey.replace(/_/g, ' ')}</span>
+              {halfLifeLive != null && (
+                <span style={metaText}>live λ={liveLambda.toFixed(4)} · half-life {halfLifeLive}d</span>
+              )}
+            </div>
+
+            <div style={posteriorGrid}>
+              <div>
+                <div style={miniLabel}>Designed prior</div>
+                <div style={posteriorBig}>{c.designed_lambda.toFixed(4)}</div>
+                <div style={metaText}>centre · {Math.round(Math.LN2 / c.designed_lambda)}d</div>
+              </div>
+              <div>
+                <div style={miniLabel}>Posterior centre</div>
+                <div style={{ ...posteriorBig, color: c.active ? '#7AB07A' : '#B2AA98' }}>
+                  {latest ? latest.learned_lambda.toFixed(4) : c.designed_lambda.toFixed(4)}
+                </div>
+                <div style={metaText}>
+                  {latest ? `Gamma(α+d, β+T) · n=${latest.n_observations}` : 'equals prior (no fit yet)'}
+                </div>
+              </div>
+              <div>
+                <div style={miniLabel}>95% credible interval</div>
+                {latest?.lambda_ci_lower != null && latest?.lambda_ci_upper != null ? (
+                  <>
+                    <div style={posteriorBig}>
+                      [{latest.lambda_ci_lower.toFixed(4)}, {latest.lambda_ci_upper.toFixed(4)}]
+                    </div>
+                    <div style={metaText}>
+                      rel-width {latest.ci_relative_width != null ? latest.ci_relative_width.toFixed(2) : '—'}
+                      {' '}({latest.ci_narrow_enough ? 'narrow enough' : 'too wide'})
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ ...posteriorBig, color: '#7E7864' }}>—</div>
+                    <div style={metaText}>pending fit</div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* CI rail */}
+            <div style={ciRail}>
+              {ciLoX != null && ciHiX != null && (
+                <div style={{
+                  position: 'absolute', top: 6, height: 8,
+                  left: `${ciLoX}%`, width: `${Math.max(0.5, ciHiX - ciLoX)}%`,
+                  background: 'rgba(122,176,122,0.20)',
+                  border: '1px solid rgba(122,176,122,0.45)',
+                  borderRadius: 2,
+                }} />
+              )}
+              <div style={{
+                position: 'absolute', top: 0, height: 20, width: 2,
+                left: `calc(${designedX}% - 1px)`,
+                background: '#B2AA98',
+              }} title={`designed prior centre · λ=${c.designed_lambda.toFixed(4)}`} />
+              <div style={{
+                position: 'absolute', top: 0, height: 20, width: 2,
+                left: `calc(${posteriorX}% - 1px)`,
+                background: c.active ? '#7AB07A' : '#D4B85A',
+              }} title={`posterior centre · λ=${(latest?.learned_lambda ?? c.designed_lambda).toFixed(4)}`} />
+              <div style={ciRailScale}>
+                <span>0</span>
+                <span>{lambdaScaleMax.toFixed(3)}</span>
+              </div>
+            </div>
+
+            {/* Distance to event floor */}
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                <span style={miniLabel}>Distance to event floor (contradictions)</span>
+                <span style={metaText}>
+                  {nEvents} / {EVENT_FLOOR} · {nEvents < EVENT_FLOOR ? `${EVENT_FLOOR - nEvents} to go` : 'floor met'}
+                </span>
+              </div>
+              <div style={progressTrack}>
+                <div style={{
+                  height: '100%',
+                  width: `${floorPct}%`,
+                  background: nEvents >= EVENT_FLOOR ? '#7AB07A' : '#D4B85A',
+                  borderRadius: 2, transition: 'width 0.3s ease',
+                }} />
+              </div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── Panel 5 — Aggregate vitals ──────────────────────────────────────────────
+
+function VitalsGrid({ vitals }: { vitals: Vitals }) {
+  const stat = (label: string, value: string, note?: string, tone?: 'gold' | 'green' | 'red') => (
+    <div style={vitalCard}>
+      <div style={miniLabel}>{label}</div>
+      <div style={{
+        ...vitalBig,
+        color: tone === 'gold' ? '#D4B85A' : tone === 'green' ? '#7AB07A' : tone === 'red' ? '#C27070' : '#E5D4C2',
+      }}>{value}</div>
+      {note && <div style={metaText}>{note}</div>}
+    </div>
+  )
+
+  const totalExpYears = (vitals.total_exposure_days / 365).toFixed(1)
+  const cs = vitals.category_status_counts
+
+  return (
+    <div>
+      <div style={vitalsGrid}>
+        {stat('Active preferences', vitals.active_preferences.toString())}
+        {stat('Total exposure accruing', `${vitals.total_exposure_days.toLocaleString()}d`,
+          `${totalExpYears} prefs·years · the survival data the fit will see`)}
+        {stat('Medical-locked', vitals.medical_locked.toString(),
+          'λ=0 by content guardrail — never decay', vitals.medical_locked > 0 ? 'red' : undefined)}
+        {stat('Flagged for revalidation', vitals.flagged_for_revalidation.toString(),
+          'PS(t) < 0.7·S₀ or stale beyond category window',
+          vitals.flagged_for_revalidation > 0 ? 'gold' : 'green')}
+        {stat('Validation events', vitals.total_validation_events.toString(),
+          vitals.total_validation_events === 0
+            ? 'Tank empty — every fit reads insufficient_data until events accrue'
+            : 'feeds the Bayesian fit')}
+      </div>
+
+      <div style={vitalsSubgrid}>
+        <div style={vitalCardSm}>
+          <div style={miniLabel}>Categories</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+            <span style={catStatChip('active')}>{cs.active} active</span>
+            <span style={catStatChip('proposed')}>{cs.proposed} proposed</span>
+            <span style={catStatChip('insufficient_data')}>{cs.insufficient_data} insufficient</span>
+            <span style={catStatChip('no_fit_yet')}>{cs.no_fit_yet} no fit yet</span>
+          </div>
+        </div>
+
+        <div style={vitalCardSm}>
+          <div style={miniLabel}>λ origin breakdown</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+            {Object.entries(vitals.lambda_origin_breakdown).map(([k, v]) => (
+              <span key={k} style={originPill(k)}>{v} {k.replace(/_/g, ' ')}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Panel 4 — Event stream ──────────────────────────────────────────────────
+
+function consequenceText(e: FeedEvent): string {
+  if (e.kind === 'validation') {
+    const days = e.days_since_last_validation
+    switch (e.subtype) {
+      case 'confirmed':
+        return `validation_count + 1, R recomputed (cap 1.30), spell clock reset, revalidation flag cleared${days != null ? ` · ${days}d since last validation` : ''}`
+      case 'contradicted':
+        return `fed to category exposure as an event (d+1); λ posterior updates at next monthly fit${days != null ? ` · ${days}d spell` : ''}`
+      case 'revised':
+        return `preference replaced; old row archived, new row inherits λ + lambda_origin`
+      case 'invalidated':
+        return `preference marked invalid; no longer scored`
+      default:
+        return `validation event`
+    }
+  }
+  if (e.kind === 'preference_insert') {
+    const origin = (e.lambda_origin || 'unknown').replace(/_/g, ' ')
+    const lam = e.lambda != null ? `λ=${e.lambda.toFixed(4)}` : 'no λ'
+    return `new preference written · ${lam} · origin: ${origin}${e.loop_closure ? ' · ← loop closed (inherited learned λ)' : ''}`
+  }
+  if (e.kind === 'promotion') {
+    if (e.subtype === 'active') {
+      const designed = e.designed_lambda != null ? e.designed_lambda.toFixed(4) : '—'
+      const learned  = e.learned_lambda  != null ? e.learned_lambda.toFixed(4) : '—'
+      return `λ PROMOTED · designed ${designed} → learned ${learned}${e.is_demo_fixture ? ' · DEMO fixture' : ''}`
+    }
+    return `learned_decay_constants ${e.subtype ?? 'updated'}`
+  }
+  return 'event'
+}
+
+function eventDotColor(e: FeedEvent): string {
+  if (e.kind === 'validation') {
+    if (e.subtype === 'confirmed') return '#7AB07A'
+    if (e.subtype === 'contradicted') return '#C27070'
+    return '#9E8FC4'
+  }
+  if (e.kind === 'preference_insert') return e.loop_closure ? '#7AB07A' : '#D4B85A'
+  if (e.kind === 'promotion') return e.is_demo_fixture ? '#C27070' : '#7AB07A'
+  return '#B2AA98'
+}
+
+function formatRelTime(iso: string): string {
+  const now = Date.now()
+  const then = Date.parse(iso)
+  if (!Number.isFinite(then)) return iso
+  const secs = Math.max(0, Math.floor((now - then) / 1000))
+  if (secs < 60)    return `${secs}s ago`
+  if (secs < 3600)  return `${Math.floor(secs / 60)}m ago`
+  if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`
+  return `${Math.floor(secs / 86400)}d ago`
+}
+
+function EventStream({ events, transport }: { events: FeedEvent[]; transport: Transport }) {
+  const loopClosure = events.filter(e => e.loop_closure)
+
+  if (events.length === 0) {
+    return (
+      <div style={emptyFeedBlock}>
+        <div style={{ fontSize: 14, color: '#E5D4C2', marginBottom: 8 }}>watching · no scoring events yet.</div>
+        <div style={{ lineHeight: 1.7 }}>
+          The subscription is live ({transport === 'realtime' ? 'postgres_changes' : transport === 'polling' ? '15s poll' : 'probing'}).
+          When validation events, preference inserts, or λ promotions arrive, they appear here in real time, each annotated
+          with what the system did because of it. This empty state is the honest one for an empty tank.
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      {/* Loop-closure ticker — events that prove the system learning from itself */}
+      {loopClosure.length > 0 && (
+        <div style={loopTicker}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
+            <span style={{ ...demoEyebrow, color: '#7AB07A' }}>LOOP CLOSURE TICKER</span>
+            <span style={metaText}>{loopClosure.length} event{loopClosure.length === 1 ? '' : 's'} where the system inherited a rate it learned</span>
+          </div>
+          {loopClosure.slice(0, 5).map(e => (
+            <div key={`lc_${e.id}`} style={loopTickerRow}>
+              <span style={{ ...transportDot('green'), boxShadow: '0 0 6px rgba(122,176,122,0.7)' }} />
+              <span style={{ ...metaText, color: '#E5D4C2' }}>
+                {e.kind === 'promotion'
+                  ? `λ PROMOTED · ${e.category}`
+                  : `${e.preference_name || 'preference'} · ${e.category}`}
+              </span>
+              <span style={metaText}>{consequenceText(e)}</span>
+              <span style={{ ...metaText, marginLeft: 'auto' }}>{formatRelTime(e.timestamp)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Full feed */}
+      <div style={feedList}>
+        {events.map(e => (
+          <div key={e.id} style={{ ...feedRow, ...(e.loop_closure ? feedRowLoop : {}) }}>
+            <span style={{ ...feedDot, background: eventDotColor(e) }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={feedLine1}>
+                <span style={feedKindLabel(e)}>
+                  {e.kind === 'validation'  ? `validation · ${e.subtype}` :
+                   e.kind === 'preference_insert' ? 'preference · insert' :
+                                                    `learned λ · ${e.subtype || 'change'}`}
+                </span>
+                {e.member_name && <span style={metaText}>· {e.member_name}</span>}
+                {e.category    && <span style={metaText}>· {e.category}</span>}
+                {e.preference_name && <span style={{ ...metaText, color: '#E5D4C2' }}>· {e.preference_name}</span>}
+                {e.is_demo_fixture && <span style={demoGatePill}>DEMO</span>}
+                <span style={{ ...metaText, marginLeft: 'auto' }}>{formatRelTime(e.timestamp)}</span>
+              </div>
+              <div style={feedLine2}>{consequenceText(e)}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
+function feedKindLabel(e: FeedEvent): React.CSSProperties {
+  const tone = e.kind === 'promotion' ? 'green'
+    : e.kind === 'preference_insert' ? 'gold'
+    : 'grey'
+  return {
+    fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+    color: tone === 'green' ? '#7AB07A' : tone === 'gold' ? '#D4B85A' : '#B2AA98',
+    letterSpacing: '0.06em', textTransform: 'uppercase',
+  }
 }
 
 // ─── Breadth table ───────────────────────────────────────────────────────────
@@ -656,4 +1427,198 @@ const errorBox: React.CSSProperties = {
   background: 'rgba(180,70,70,0.15)', border: '1px solid rgba(180,70,70,0.30)',
   borderRadius: 6, color: '#E5D4C2',
   fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+}
+
+// Panel 2 styles
+const posteriorCard: React.CSSProperties = {
+  padding: 16,
+  background: 'rgba(5,46,32,0.4)',
+  border: '1px solid rgba(229,212,194,0.08)', borderRadius: 8,
+}
+const catName: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 16, fontWeight: 500,
+  color: '#E5D4C2', letterSpacing: '0.04em',
+}
+const posteriorGrid: React.CSSProperties = {
+  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14,
+  marginBottom: 14,
+}
+const miniLabel: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#7E7864', letterSpacing: '0.10em', textTransform: 'uppercase',
+  marginBottom: 4,
+}
+const posteriorBig: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 16,
+  color: '#E5D4C2', letterSpacing: '0.04em',
+}
+const ciRail: React.CSSProperties = {
+  position: 'relative', height: 20, marginTop: 6, marginBottom: 4,
+  background: 'rgba(229,212,194,0.04)', borderRadius: 2,
+}
+const ciRailScale: React.CSSProperties = {
+  position: 'absolute', top: 22, left: 0, right: 0,
+  display: 'flex', justifyContent: 'space-between',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#7E7864',
+}
+const progressTrack: React.CSSProperties = {
+  height: 6, background: 'rgba(229,212,194,0.06)', borderRadius: 3, overflow: 'hidden',
+}
+function posteriorStatusPill(s: 'active' | 'proposed' | 'insufficient_data' | 'no_fit_yet'): React.CSSProperties {
+  const palette = {
+    active:            { fg: '#7AB07A', bg: 'rgba(122,176,122,0.16)', bd: 'rgba(122,176,122,0.40)' },
+    proposed:          { fg: '#D4B85A', bg: 'rgba(212,184,90,0.16)',  bd: 'rgba(212,184,90,0.40)'  },
+    insufficient_data: { fg: '#9E8FC4', bg: 'rgba(158,143,196,0.10)', bd: 'rgba(158,143,196,0.30)' },
+    no_fit_yet:        { fg: '#7E7864', bg: 'rgba(229,212,194,0.04)', bd: 'rgba(229,212,194,0.10)' },
+  }[s]
+  return {
+    background: palette.bg, color: palette.fg, border: `1px solid ${palette.bd}`,
+    borderRadius: 3, padding: '2px 8px',
+    fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+    letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600,
+  }
+}
+
+// Panel 5 styles
+const vitalsGrid: React.CSSProperties = {
+  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14,
+}
+const vitalsSubgrid: React.CSSProperties = {
+  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14,
+  marginTop: 14,
+}
+const vitalCard: React.CSSProperties = {
+  padding: 14,
+  background: 'rgba(5,46,32,0.4)',
+  border: '1px solid rgba(229,212,194,0.08)', borderRadius: 6,
+}
+const vitalCardSm: React.CSSProperties = { ...vitalCard, padding: 12 }
+const vitalBig: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 26, fontWeight: 600,
+  letterSpacing: '0.02em', marginBottom: 4,
+}
+function catStatChip(s: 'active' | 'proposed' | 'insufficient_data' | 'no_fit_yet'): React.CSSProperties {
+  return { ...posteriorStatusPill(s), fontSize: 9 }
+}
+
+// Transport / demo pill styles
+function transportPill(tone: 'green' | 'gold' | 'grey'): React.CSSProperties {
+  const p = {
+    green: { fg: '#7AB07A', bg: 'rgba(122,176,122,0.12)', bd: 'rgba(122,176,122,0.40)' },
+    gold:  { fg: '#D4B85A', bg: 'rgba(212,184,90,0.12)', bd: 'rgba(212,184,90,0.40)' },
+    grey:  { fg: '#B2AA98', bg: 'rgba(229,212,194,0.06)', bd: 'rgba(229,212,194,0.18)' },
+  }[tone]
+  return {
+    display: 'inline-flex', alignItems: 'center', gap: 6,
+    fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+    color: p.fg, background: p.bg, border: `1px solid ${p.bd}`,
+    borderRadius: 3, padding: '4px 10px',
+    letterSpacing: '0.08em', textTransform: 'uppercase',
+  }
+}
+function transportDot(tone: 'green' | 'gold' | 'grey'): React.CSSProperties {
+  return {
+    display: 'inline-block', width: 7, height: 7, borderRadius: 4,
+    background: tone === 'green' ? '#7AB07A' : tone === 'gold' ? '#D4B85A' : '#B2AA98',
+    boxShadow: tone === 'green' ? '0 0 6px rgba(122,176,122,0.7)' : 'none',
+  }
+}
+const demoGatePill: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#C27070', background: 'rgba(194,112,112,0.10)',
+  border: '1px solid rgba(194,112,112,0.35)', borderRadius: 3,
+  padding: '4px 8px', letterSpacing: '0.08em', textTransform: 'uppercase',
+}
+
+// Panel 3 styles
+const baselineCard: React.CSSProperties = {
+  padding: 14,
+  background: 'rgba(5,46,32,0.4)',
+  border: '1px solid rgba(229,212,194,0.08)', borderRadius: 6,
+  transition: 'all 0.3s ease',
+}
+const loopLede: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', opacity: 0.8, lineHeight: 1.7, margin: '0 0 14px',
+  maxWidth: 880,
+}
+const demoBlock: React.CSSProperties = {
+  marginTop: 6, padding: 16,
+  background: 'rgba(194,112,112,0.04)',
+  border: '1px dashed rgba(194,112,112,0.30)', borderRadius: 6,
+}
+const demoBlockClosed: React.CSSProperties = {
+  marginTop: 6, padding: '10px 14px',
+  background: 'rgba(229,212,194,0.02)',
+  border: '1px dashed rgba(229,212,194,0.10)', borderRadius: 6,
+}
+const demoEyebrow: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#C27070', letterSpacing: '0.16em', textTransform: 'uppercase',
+}
+const demoControls: React.CSSProperties = {
+  display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: 10, alignItems: 'end', marginTop: 10,
+}
+const demoBtn: React.CSSProperties = {
+  background: 'rgba(122,176,122,0.18)', color: '#7AB07A',
+  border: '1px solid rgba(122,176,122,0.40)', borderRadius: 4,
+  padding: '8px 16px', fontFamily: "'Google Sans Code', monospace",
+  fontSize: 11, letterSpacing: '0.06em', cursor: 'pointer',
+}
+const demoBtnDanger: React.CSSProperties = {
+  ...demoBtn, color: '#C27070',
+  background: 'rgba(194,112,112,0.12)', border: '1px solid rgba(194,112,112,0.40)',
+}
+const demoActivePill: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  color: '#C27070', background: 'rgba(194,112,112,0.12)',
+  border: '1px solid rgba(194,112,112,0.40)', borderRadius: 3,
+  padding: '4px 10px', letterSpacing: '0.06em',
+  animation: 'rc-pulse 1.2s ease-in-out infinite',
+}
+
+// Panel 4 styles
+const emptyFeedBlock: React.CSSProperties = {
+  padding: '32px 24px',
+  background: 'rgba(229,212,194,0.02)',
+  border: '1px dashed rgba(229,212,194,0.10)', borderRadius: 6,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
+  color: '#B2AA98', maxWidth: 760,
+}
+const loopTicker: React.CSSProperties = {
+  marginBottom: 14, padding: 14,
+  background: 'rgba(122,176,122,0.06)',
+  border: '1px solid rgba(122,176,122,0.30)', borderRadius: 6,
+}
+const loopTickerRow: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0',
+  borderBottom: '1px solid rgba(122,176,122,0.10)',
+}
+const feedList: React.CSSProperties = {
+  maxHeight: 480, overflowY: 'auto',
+  display: 'flex', flexDirection: 'column', gap: 4,
+  border: '1px solid rgba(229,212,194,0.06)', borderRadius: 6,
+  padding: 8,
+}
+const feedRow: React.CSSProperties = {
+  display: 'flex', alignItems: 'flex-start', gap: 10,
+  padding: '8px 10px',
+  borderBottom: '1px solid rgba(229,212,194,0.04)',
+}
+const feedRowLoop: React.CSSProperties = {
+  background: 'rgba(122,176,122,0.04)',
+  borderLeft: '2px solid #7AB07A',
+}
+const feedDot: React.CSSProperties = {
+  width: 8, height: 8, borderRadius: 4, marginTop: 5,
+  flexShrink: 0,
+}
+const feedLine1: React.CSSProperties = {
+  display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap',
+}
+const feedLine2: React.CSSProperties = {
+  marginTop: 2,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', opacity: 0.8, lineHeight: 1.5,
 }

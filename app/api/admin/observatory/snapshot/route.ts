@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { isAdmin } from '@/lib/admin'
+import { DESIGNED_LAMBDA, CANONICAL_CATEGORIES } from '@/lib/mis/extraction-decay'
 
 // Observatory snapshot — single read serving Panel 1 (live decomposition +
 // breadth table), Panel 2 (category posteriors), Panel 3 (baseline inheritance),
@@ -95,29 +96,51 @@ export async function GET() {
     .filter(m => m.active_pref_count > 0)
     .sort((a, b) => b.active_pref_count - a.active_pref_count || a.full_name.localeCompare(b.full_name))
 
-  // Per-category LDC slice for Panels 2 / 3 — latest row by status, all-time history.
+  // Per-category LDC slice for Panels 2 / 3 — always one row per canonical
+  // category. If no LDC row exists yet for a category (today's state), the
+  // slice still appears so Panel 2 can render the honest empty case: posterior
+  // equals the designed prior, 0/20 events, status='no fit yet'.
   type CatSlice = {
     category: string
+    designed_lambda: number
     active: LdcRow | null
     latestProposal: LdcRow | null  // 'proposed' or 'insufficient_data'
     latestAny: LdcRow | null
   }
   const byCat = new Map<string, CatSlice>()
+  for (const cat of CANONICAL_CATEGORIES) {
+    byCat.set(cat, {
+      category: cat,
+      designed_lambda: DESIGNED_LAMBDA[cat],
+      active: null, latestProposal: null, latestAny: null,
+    })
+  }
   for (const r of ldcAll) {
-    if (!byCat.has(r.category)) {
-      byCat.set(r.category, { category: r.category, active: null, latestProposal: null, latestAny: null })
-    }
-    const slice = byCat.get(r.category)!
+    const slice = byCat.get(r.category)
+    if (!slice) continue
     if (!slice.latestAny) slice.latestAny = r
     if (r.status === 'active' && !slice.active) slice.active = r
     if ((r.status === 'proposed' || r.status === 'insufficient_data') && !slice.latestProposal) {
       slice.latestProposal = r
     }
   }
-  const categories = Array.from(byCat.values())
+  const categories = CANONICAL_CATEGORIES.map(c => byCat.get(c)!)
 
   // Vitals — Panel 5.
   const medicalLocked = preferences.filter(p => p.lambda === 0 || p.lambda_origin === 'forced_medical').length
+  const flaggedForRevalidation = preferences.filter(p => {
+    if (!p.last_validated) return false
+    const days = Math.max(0, Math.floor((Date.now() - Date.parse(p.last_validated)) / 86400000))
+    if (days > 180) return true
+    if (p.s0 >= 4 && days > 90) return true
+    // Score-based flag: PS(t) below 0.7·S0. Compute inline (live-pst is a
+    // client module; this is a snapshot count, exact numerics not needed).
+    const decay = Math.exp(-p.lambda * days)
+    const r = Math.min(1.3, 1 + 0.075 * (p.validation_count - 1))
+    const raw = p.s0 * p.confidence * decay * p.frequency * r * 1.0
+    const pst = Math.min(5, raw)
+    return pst < 0.7 * p.s0
+  }).length
   const totalExposureDays = preferences.reduce((acc, p) => {
     if (!p.last_validated) return acc
     const d = Math.max(0, Math.floor((Date.now() - Date.parse(p.last_validated)) / 86400000))
@@ -128,6 +151,12 @@ export async function GET() {
     acc[k] = (acc[k] || 0) + 1
     return acc
   }, {} as Record<string, number>)
+  const categoryStatusCounts = {
+    active:            categories.filter(c => c.active !== null).length,
+    proposed:          categories.filter(c => c.latestProposal?.status === 'proposed').length,
+    insufficient_data: categories.filter(c => c.latestProposal?.status === 'insufficient_data').length,
+    no_fit_yet:        categories.filter(c => c.latestAny === null).length,
+  }
 
   return NextResponse.json({
     timestamp: new Date().toISOString(),
@@ -138,7 +167,9 @@ export async function GET() {
       active_preferences: preferences.length,
       total_exposure_days: totalExposureDays,
       medical_locked: medicalLocked,
+      flagged_for_revalidation: flaggedForRevalidation,
       lambda_origin_breakdown: lambdaOriginBreakdown,
+      category_status_counts: categoryStatusCounts,
       total_validation_events: totalEvents,
     },
   })

@@ -53,15 +53,58 @@ export async function POST(req: NextRequest) {
   }
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let body: { action?: string; category?: string; lambda?: number; id?: string }
+  let body: { action?: string; category?: string; lambda?: number; id?: string; max_age_seconds?: number }
   try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
 
   const action = body.action
-  if (action !== 'promote' && action !== 'revert') {
-    return NextResponse.json({ error: "action must be 'promote' or 'revert'" }, { status: 400 })
+  if (action !== 'promote' && action !== 'revert' && action !== 'sweep') {
+    return NextResponse.json({ error: "action must be 'promote', 'revert', or 'sweep'" }, { status: 400 })
   }
 
   const sb = svc()
+
+  // ── action: 'sweep' — clean up stale fixtures ─────────────────────────
+  // Called by the Observatory on load to make sure a dead-client demo run
+  // can't leave a learned λ live forever. Two independent verifications
+  // before any row is touched:
+  //   - notes === '__DEMO_FIXTURE__' (tag check — same as revert uses)
+  //   - fit_timestamp older than max_age_seconds (default 300s = 5min)
+  // Either condition's absence means the row is not eligible. Real promoted
+  // rows have neither the tag NOR an age relevant here, so they're
+  // structurally protected.
+  if (action === 'sweep') {
+    const maxAge = Number.isFinite(body.max_age_seconds) ? Number(body.max_age_seconds) : 300
+    const cutoff = new Date(Date.now() - maxAge * 1000).toISOString()
+
+    const { data: stale, error: findErr } = await sb
+      .from('learned_decay_constants')
+      .select('id, category, fit_timestamp, notes')
+      .eq('status', 'active')
+      .eq('notes', FIXTURE_TAG)
+      .lt('fit_timestamp', cutoff)
+    if (findErr) return NextResponse.json({ error: findErr.message }, { status: 500 })
+
+    const stalRows = stale || []
+    if (stalRows.length === 0) {
+      return NextResponse.json({ ok: true, action: 'sweep', reverted: 0, cutoff })
+    }
+
+    const ids = stalRows.map(r => r.id)
+    const { error: updErr } = await sb
+      .from('learned_decay_constants')
+      .update({ status: 'superseded' })
+      .in('id', ids)
+      .eq('notes', FIXTURE_TAG)  // belt-and-braces — double-check the tag at write
+    if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 })
+
+    return NextResponse.json({
+      ok: true,
+      action: 'sweep',
+      reverted: stalRows.length,
+      cutoff,
+      categories: stalRows.map(r => r.category),
+    })
+  }
 
   if (action === 'promote') {
     const category = String(body.category || '').trim()
