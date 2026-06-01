@@ -55,6 +55,30 @@ const ALLOWED_L = [0.000, 0.002, 0.005, 0.010, 0.020]
 const ALLOWED_F = [0.8, 1.0, 1.2, 1.5]
 const ALLOWED_STATUS = ['active', 'invalidated', 'archived']
 
+// Plain-English explanations shown in hover tooltips next to each control.
+// Kept short so the popover stays compact; the full doc lives in the
+// FormulaExplainer at the top of the page.
+const TIPS = {
+  s0:        'How much this preference matters. 5 = absolute (allergy / identity), 1 = barely an opinion. Raising it amplifies PS(t) proportionally; the cap at 5 limits how high any score can go.',
+  confidence:'How certain we are the preference is real. 1.00 = stated explicitly. 0.75 = pattern seen repeatedly. 0.25 = inferred from one instance. Acts as a multiplier — drags PS(t) down when low.',
+  lambda:    'How quickly the preference goes stale. 0 = never decays (medical, identity). 0.020 = halves every ~35 days. Doesn’t affect today’s score; only matters as time passes since last validation.',
+  frequency: 'How often the preference comes into play in practice. 1.0 = monthly default. 1.5 = daily / every visit, amplifies. 0.8 = rare, tones down.',
+  status:    'Active = appears in live PS(t) view. Invalidated = hidden from live view but kept for audit history. Archived = soft-deleted.',
+} as const
+
+// Predict the PS(t) the row will have right after a save.
+// At save time:  t = 0 (last_validated refreshes), vc → vc+1, M = 1.0 while visits is empty.
+function predictPs(draft: EditDraft, currentValidationCount: number): { ps: number; health: number } {
+  if (draft.status !== 'active') return { ps: 0, health: 0 }
+  const newVc = currentValidationCount + 1
+  const r = Math.min(1.3, 1.0 + 0.075 * (newVc - 1))
+  const m = 1.0  // visits is empty for now; will reflect real M once Pass 2 Harmony Log lands
+  const raw = draft.s0 * draft.confidence * draft.frequency * r * m
+  const ps = Math.min(5, raw)
+  const health = Math.round((ps / Math.max(draft.s0, 1)) * 100)
+  return { ps, health }
+}
+
 const CATEGORIES = [
   'All categories',
   'Personal & Lifestyle',
@@ -67,6 +91,27 @@ const CATEGORIES = [
   'Family & Personal',
   'Travel & Global',
 ]
+
+function InfoDot({ tip }: { tip: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex' }}>
+      <span
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        tabIndex={0}
+        role="button"
+        aria-label="More info"
+        style={infoDotStyle}
+      >
+        i
+      </span>
+      {open && <span style={tooltipStyle}>{tip}</span>}
+    </span>
+  )
+}
 
 export default function MisMemberProfile({ params }: { params: Promise<{ member_no: string }> }) {
   const { member_no } = use(params)
@@ -271,7 +316,7 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
                     <div style={prefSectionLabel}>Validate or revise</div>
                     <div style={editGrid}>
                       <div>
-                        <div style={editLabel}>S₀</div>
+                        <div style={editLabel}>S₀ <InfoDot tip={TIPS.s0} /></div>
                         <select
                           value={draftFor(p).s0}
                           onChange={e => setDraft(p.preference_id, { s0: Number(e.target.value) })}
@@ -281,7 +326,7 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
                         </select>
                       </div>
                       <div>
-                        <div style={editLabel}>Confidence</div>
+                        <div style={editLabel}>Confidence <InfoDot tip={TIPS.confidence} /></div>
                         <select
                           value={draftFor(p).confidence}
                           onChange={e => setDraft(p.preference_id, { confidence: Number(e.target.value) })}
@@ -291,7 +336,7 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
                         </select>
                       </div>
                       <div>
-                        <div style={editLabel}>Lambda</div>
+                        <div style={editLabel}>Lambda <InfoDot tip={TIPS.lambda} /></div>
                         <select
                           value={draftFor(p).lambda}
                           onChange={e => setDraft(p.preference_id, { lambda: Number(e.target.value) })}
@@ -301,7 +346,7 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
                         </select>
                       </div>
                       <div>
-                        <div style={editLabel}>Frequency</div>
+                        <div style={editLabel}>Frequency <InfoDot tip={TIPS.frequency} /></div>
                         <select
                           value={draftFor(p).frequency}
                           onChange={e => setDraft(p.preference_id, { frequency: Number(e.target.value) })}
@@ -311,7 +356,7 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
                         </select>
                       </div>
                       <div>
-                        <div style={editLabel}>Status</div>
+                        <div style={editLabel}>Status <InfoDot tip={TIPS.status} /></div>
                         <select
                           value={draftFor(p).status}
                           onChange={e => setDraft(p.preference_id, { status: e.target.value })}
@@ -321,6 +366,42 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
                         </select>
                       </div>
                     </div>
+
+                    {/* Live preview of post-save PS(t) */}
+                    {(() => {
+                      const d = draftFor(p)
+                      const pred = predictPs(d, p.validation_count)
+                      const delta = pred.ps - p.ps_t
+                      const isHidden = d.status !== 'active'
+                      return (
+                        <div style={previewRow}>
+                          <div style={previewItem}>
+                            <span style={previewLabel}>Current</span>
+                            <span style={previewValue}>
+                              {Number(p.ps_t).toFixed(2)}
+                              <span style={{ ...previewSub, color: '#B2AA98' }}> · {p.score_health_pct}%</span>
+                            </span>
+                          </div>
+                          <span style={previewArrow}>→</span>
+                          <div style={previewItem}>
+                            <span style={previewLabel}>After save</span>
+                            {isHidden ? (
+                              <span style={{ ...previewValue, color: '#C27070', fontSize: 12 }}>(hidden from live view)</span>
+                            ) : (
+                              <span style={previewValue}>
+                                {pred.ps.toFixed(2)}
+                                <span style={{ ...previewSub, color: pred.health >= 100 ? '#D4B85A' : '#B2AA98' }}> · {pred.health}%</span>
+                              </span>
+                            )}
+                          </div>
+                          {!isHidden && Math.abs(delta) > 0.005 && (
+                            <span style={{ ...previewDelta, color: delta > 0 ? '#7AB07A' : '#C27070' }}>
+                              {delta > 0 ? '▲' : '▼'} {delta > 0 ? '+' : ''}{delta.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })()}
 
                     <div style={{ marginTop: 12 }}>
                       <div style={editLabel}>Notes <span style={{ opacity: 0.5 }}>(saved to validation_events)</span></div>
@@ -538,3 +619,54 @@ const btnBase: React.CSSProperties = {
 const btnPrimary: React.CSSProperties = { ...btnBase, background: '#5E6650' }
 const btnGhost:   React.CSSProperties = { ...btnBase, background: 'rgba(229,212,194,0.10)' }
 const btnDanger:  React.CSSProperties = { ...btnBase, background: 'rgba(180,70,70,0.20)' }
+
+const infoDotStyle: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  width: 14, height: 14, marginLeft: 4,
+  borderRadius: '50%',
+  background: 'rgba(212,184,90,0.18)', color: '#D4B85A',
+  fontFamily: 'Georgia, serif', fontSize: 9, fontWeight: 600, fontStyle: 'italic',
+  cursor: 'help', userSelect: 'none', textTransform: 'none', letterSpacing: 0,
+  outline: 'none',
+}
+const tooltipStyle: React.CSSProperties = {
+  position: 'absolute', left: '50%', bottom: 'calc(100% + 8px)',
+  transform: 'translateX(-50%)',
+  width: 260, padding: '10px 12px',
+  background: '#0A3D2B', color: '#E5D4C2',
+  border: '1px solid rgba(212,184,90,0.30)', borderRadius: 6,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  letterSpacing: 0, textTransform: 'none', lineHeight: 1.55,
+  boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+  zIndex: 50, pointerEvents: 'none',
+}
+const previewRow: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
+  marginTop: 14, padding: '12px 14px',
+  background: 'rgba(5,46,32,0.5)',
+  border: '1px solid rgba(212,184,90,0.18)', borderRadius: 6,
+}
+const previewItem: React.CSSProperties = {
+  display: 'flex', flexDirection: 'column', gap: 2, minWidth: 110,
+}
+const previewLabel: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#B2AA98', letterSpacing: '0.10em', textTransform: 'uppercase',
+}
+const previewValue: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 18, fontWeight: 600,
+  color: '#E5D4C2', letterSpacing: '0.02em',
+}
+const previewSub: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, fontWeight: 400,
+  marginLeft: 4,
+}
+const previewArrow: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 18,
+  color: '#D4B85A', opacity: 0.6,
+}
+const previewDelta: React.CSSProperties = {
+  marginLeft: 'auto',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 12, fontWeight: 600,
+  letterSpacing: '0.04em',
+}
