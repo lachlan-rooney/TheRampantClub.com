@@ -18,22 +18,22 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <main style={{
         marginLeft: 240, flex: 1, minHeight: '100vh', background: '#052E20',
         padding: '48px 40px',
+        display: 'flex', flexDirection: 'column',
       }}>
-        {children}
+        <div style={{ flex: 1 }}>
+          {children}
+        </div>
+        <div style={{
+          marginTop: 48,
+          paddingTop: 16,
+          textAlign: 'right',
+          borderTop: '1px solid rgba(229,212,194,0.06)',
+          fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+          color: '#7E7864', letterSpacing: '0.08em',
+        }}>
+          Licensed from LR Growth Solutions PTE LTD
+        </div>
       </main>
-      <div style={{
-        position: 'fixed', right: 16, bottom: 12, zIndex: 90,
-        padding: '4px 10px',
-        background: 'rgba(5,46,32,0.85)',
-        border: '1px solid rgba(229,212,194,0.10)',
-        borderRadius: 4,
-        fontFamily: "'Google Sans Code', monospace", fontSize: 9,
-        color: '#7E7864', letterSpacing: '0.08em',
-        backdropFilter: 'blur(4px)',
-        pointerEvents: 'none',
-      }}>
-        Licensed from LR Growth Solutions PTE LTD
-      </div>
     </div>
     </>
   )
