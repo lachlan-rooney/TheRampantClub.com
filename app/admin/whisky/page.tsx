@@ -49,10 +49,13 @@ export default function AdminWhisky() {
   const [saving, setSaving] = useState<string | null>(null)
 
   // Filter + sort — easier to scan a long catalogue when you're hunting
-  // for "the things that need a refill" specifically.
+  // for "the things that need a refill" specifically. The search is
+  // multi-token AND-match across every field a staffer might reach for
+  // (name, distillery, region, cask type, age, ABV, tasting notes).
   const [filterText, setFilterText] = useState('')
   const [showOnlyLow, setShowOnlyLow] = useState(false)
   const [showOnlyInStock, setShowOnlyInStock] = useState(false)
+  const [showOnlyMissingNotes, setShowOnlyMissingNotes] = useState(false)
 
   // Global trend graph — loaded on demand (the user asked for "upon
   // request" so we don't pay the query cost on every page mount).
@@ -166,17 +169,70 @@ export default function AdminWhisky() {
   }
 
   const filtered = useMemo(() => {
-    const q = filterText.trim().toLowerCase()
+    const tokens = filterText.trim().toLowerCase().split(/\s+/).filter(Boolean)
     return whiskies.filter(w => {
       if (showOnlyLow && (w.current_fill_pct ?? 100) > 25) return false
       if (showOnlyInStock && !w.in_stock) return false
-      if (!q) return true
-      return [w.name, w.distillery, w.region].filter(Boolean).join(' ').toLowerCase().includes(q)
+      if (showOnlyMissingNotes && !!(w.tasting_notes && w.tasting_notes.trim().length > 0)) return false
+      if (tokens.length === 0) return true
+      // Match every token in the haystack independently. A staff member
+      // can type "islay 10" or "smoky speyside" and get the union of
+      // attributes hit, not a brittle single-substring lookup that only
+      // checked name/distillery/region.
+      const hay = [
+        w.name, w.distillery, w.region,
+        w.cask_type, w.age, w.abv,
+        w.tasting_notes,
+      ].filter(Boolean).join(' ').toLowerCase()
+      return tokens.every(t => hay.includes(t))
     })
-  }, [whiskies, filterText, showOnlyLow, showOnlyInStock])
+  }, [whiskies, filterText, showOnlyLow, showOnlyInStock, showOnlyMissingNotes])
 
   const lowCount = useMemo(() => whiskies.filter(w => (w.current_fill_pct ?? 100) <= 25).length, [whiskies])
   const inStockCount = useMemo(() => whiskies.filter(w => w.in_stock).length, [whiskies])
+  const missingNotesCount = useMemo(
+    () => whiskies.filter(w => !w.tasting_notes || w.tasting_notes.trim().length === 0).length,
+    [whiskies]
+  )
+
+  // CSV export — current inventory report. Downloads what the user is
+  // CURRENTLY looking at (after filter / sort), not always the full
+  // catalogue, so "low fill only" + export gives them just the refill list.
+  const exportCsv = () => {
+    const rows = filtered
+    const header = [
+      'name', 'distillery', 'region', 'age', 'abv', 'cask_type',
+      'in_stock', 'committees_pick',
+      'current_fill_pct', 'last_fill_updated_at', 'last_fill_updated_email',
+      'tasting_notes',
+    ]
+    const esc = (v: unknown) => {
+      if (v == null) return ''
+      const s = String(v)
+      if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`
+      return s
+    }
+    const lines = [header.join(',')]
+    for (const w of rows) {
+      lines.push([
+        esc(w.name), esc(w.distillery), esc(w.region), esc(w.age), esc(w.abv), esc(w.cask_type),
+        esc(w.in_stock ? 'yes' : 'no'),
+        esc(w.committees_pick ? 'yes' : 'no'),
+        esc(w.current_fill_pct ?? ''),
+        esc(w.last_fill_updated_at ?? ''),
+        esc(w.last_fill_updated_email ?? ''),
+        esc(w.tasting_notes),
+      ].join(','))
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    const stamp = new Date().toISOString().slice(0, 10)
+    a.href = url
+    a.download = `trc-whisky-inventory-${stamp}.csv`
+    document.body.appendChild(a); a.click(); document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
 
   // Per-whisky history slices for sparklines. Indexed once per history
   // refresh so each row render is O(1).
@@ -204,9 +260,13 @@ export default function AdminWhisky() {
 
       {/* ── Stat strip ─────────────────────────────────────────────────── */}
       <div style={statStrip}>
-        <Stat label="Whiskies"       value={whiskies.length} />
-        <Stat label="In stock"       value={inStockCount} color="#7AB07A" />
+        <Stat label="Whiskies"        value={whiskies.length} />
+        <Stat label="In stock"        value={inStockCount} color="#7AB07A" />
         <Stat label="Low fill (≤25%)" value={lowCount} color={lowCount > 0 ? '#C27070' : '#7E7864'} />
+        <Stat label="No tasting notes" value={missingNotesCount} color={missingNotesCount > 0 ? '#D4B85A' : '#7E7864'} />
+        <button onClick={exportCsv} style={exportBtn} title="Export the currently-filtered list as CSV">
+          ⤓ Export CSV
+        </button>
         <button onClick={openTrend} style={trendBtn}>
           {trendOpen ? '↓' : '↑'} Inventory trend
         </button>
@@ -232,7 +292,7 @@ export default function AdminWhisky() {
         <input
           value={filterText}
           onChange={e => setFilterText(e.target.value)}
-          placeholder="Filter by name, distillery, or region…"
+          placeholder="Search across name, distillery, region, cask, age, ABV, tasting notes…"
           style={{ ...inputStyle, flex: 1, minWidth: 220 }}
         />
         <button onClick={() => setShowOnlyLow(v => !v)} style={{ ...chip, ...(showOnlyLow ? chipActive : null) }}>
@@ -241,6 +301,17 @@ export default function AdminWhisky() {
         <button onClick={() => setShowOnlyInStock(v => !v)} style={{ ...chip, ...(showOnlyInStock ? chipActive : null) }}>
           in stock only
         </button>
+        <button onClick={() => setShowOnlyMissingNotes(v => !v)} style={{ ...chip, ...(showOnlyMissingNotes ? chipActive : null) }}>
+          no notes yet
+        </button>
+        {(filterText || showOnlyLow || showOnlyInStock || showOnlyMissingNotes) && (
+          <button
+            onClick={() => { setFilterText(''); setShowOnlyLow(false); setShowOnlyInStock(false); setShowOnlyMissingNotes(false) }}
+            style={{ ...chip, color: '#E58F4A' }}
+          >
+            clear ({filtered.length} / {whiskies.length})
+          </button>
+        )}
       </div>
 
       {/* ── New / edit form (unchanged from before) ───────────────────── */}
@@ -605,9 +676,16 @@ function Stat({ label, value, color }: { label: string; value: number; color?: s
 }
 
 const trendBtn: React.CSSProperties = {
-  marginLeft: 'auto',
   background: 'rgba(212,184,90,0.10)', color: '#D4B85A',
   border: '1px solid rgba(212,184,90,0.40)', borderRadius: 6,
+  padding: '10px 18px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, letterSpacing: '0.08em',
+  cursor: 'pointer',
+}
+const exportBtn: React.CSSProperties = {
+  marginLeft: 'auto',
+  background: 'rgba(122,176,122,0.10)', color: '#7AB07A',
+  border: '1px solid rgba(122,176,122,0.35)', borderRadius: 6,
   padding: '10px 18px',
   fontFamily: "'Google Sans Code', monospace", fontSize: 11, letterSpacing: '0.08em',
   cursor: 'pointer',
