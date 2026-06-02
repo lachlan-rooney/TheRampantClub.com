@@ -221,11 +221,23 @@ export interface ExtractedPreference {
   confidence?: number;
   lambda?: number;
   frequency?: number;
-  /** Optional one-sentence reasoning for the S₀/C/λ choice. Probe-mode only;
-   *  the demo route's prompt asks the model to include this. The scoring
-   *  rubric is unchanged — the rationale explains the existing choice, not
-   *  a different one. Empty string if the AI didn't emit it. */
-  rationale?: string;
+  /** Optional per-factor reasoning (probe mode). Accepts EITHER the legacy
+   *  one-string shape OR the per-factor object — reconcile normalises both
+   *  into RationaleDetail and applies rule-label overrides per origin. The
+   *  scoring rubric is unchanged; rationale only explains existing choices. */
+  rationale?: string | RationaleDetail;
+}
+
+/** Per-factor reasoning. Each clause should explain ONLY its own factor —
+ *  F explains frequency (how often it applies), C explains confidence, λ
+ *  explains decay, S₀ explains importance — without bleeding into others.
+ *  Rule-labelled factors override the AI's per-factor text after reconcile. */
+export interface RationaleDetail {
+  summary?: string;
+  s0?: string;
+  c?: string;
+  lambda?: string;
+  f?: string;
 }
 
 export interface ReconciledPreference {
@@ -245,10 +257,11 @@ export interface ReconciledPreference {
     | "category_baseline_designed"
     | "forced_medical"     // content-detected medical signal — red "MEDICAL — LOCKED" badge
     | "ai_permanent";      // AI judged λ=0 (lifelong identity) without medical content — gold "PERMANENT — LOCKED" badge
-  /** Optional one-sentence reasoning from the AI explaining its S₀/C/λ choice.
-   *  Empty string when the input didn't carry one. Passthrough only — reconcile
-   *  never invents or modifies this. */
-  rationale: string;
+  /** Per-factor reasoning. AI-judged factors carry the model's text; rule-forced
+   *  factors carry deterministic rule labels written by reconcile (so the card
+   *  never displays AI prose explaining a value the code actually set). Empty
+   *  object when the input had no rationale and no rules applied. */
+  rationale: RationaleDetail;
 }
 
 const ALLOWED_CONFIDENCE = [1.0, 0.75, 0.5, 0.25];
@@ -263,6 +276,58 @@ function snapToSet(v: number | undefined, set: number[], fallback: number): numb
 function clampInt(v: number | undefined, lo: number, hi: number, fallback: number): number {
   if (v == null || !isFinite(v)) return fallback;
   return Math.max(lo, Math.min(hi, Math.round(v)));
+}
+
+/** Normalise the back-compat rationale input. A bare string becomes
+ *  `{ summary: string }`; an object is passed through. Missing → `{}`. */
+function normaliseRationale(input: string | RationaleDetail | undefined): RationaleDetail {
+  if (!input) return {};
+  if (typeof input === "string") return { summary: input };
+  return {
+    summary: input.summary,
+    s0:      input.s0,
+    c:       input.c,
+    lambda:  input.lambda,
+    f:       input.f,
+  };
+}
+
+/** Rule-label overrides for factors set by deterministic code, NOT by the AI.
+ *  This is the principle: every number must trace to its TRUE cause. Letting
+ *  the AI narrate a value the guardrail set would be a quiet dishonesty.
+ *
+ *  Override map per origin:
+ *    - forced_medical   → S₀, C, λ all rule-labelled (medical guardrail forced all three)
+ *    - ai_permanent     → S₀, C, λ all rule-labelled (permanence lock forced all three)
+ *    - category_baseline_designed → λ only (other factors AI-judged)
+ *    - category_baseline_learned  → λ only (other factors AI-judged)
+ *    - ai_specific      → nothing overridden (everything AI-judged)
+ *
+ *  F is NEVER overridden — reconcile doesn't force it for any origin, so the
+ *  AI's frequency reasoning stays put. On a forced row, three lines are rule
+ *  labels and only F is AI prose — that's correct, not a wart. */
+function applyRuleLabels(
+  r: RationaleDetail,
+  origin: ReconciledPreference["lambda_origin"],
+  category: string,
+  lambdaValue: number,
+): RationaleDetail {
+  const out = { ...r };
+  if (origin === "forced_medical") {
+    out.s0     = "Forced to 5 by medical guardrail — content-detected medical/allergy signal sets maximum importance.";
+    out.c      = "Forced to 1.00 by medical guardrail — content-detected medical/allergy signal sets full confidence.";
+    out.lambda = "Locked at λ=0 by medical guardrail — content-detected medical/allergy signal. Never decays.";
+  } else if (origin === "ai_permanent") {
+    out.s0     = "Forced to 5 — model judged this lifelong/identity-level. Permanence lock implies absolute importance.";
+    out.c      = "Forced to 1.00 — model judged this lifelong/identity-level. Permanence lock implies full confidence.";
+    out.lambda = "Locked at λ=0 — model judged this lifelong/identity-level. Never decays.";
+  } else if (origin === "category_baseline_designed") {
+    out.lambda = `No preference-specific decay signal — inherited the ${category} designed baseline λ=${lambdaValue.toFixed(3)}.`;
+  } else if (origin === "category_baseline_learned") {
+    out.lambda = `No preference-specific decay signal — inherited the ${category} learned baseline λ=${lambdaValue.toFixed(3)}.`;
+  }
+  // ai_specific: every factor stays AI-judged; out keeps the model's text as-is.
+  return out;
 }
 
 /**
@@ -345,7 +410,7 @@ export function reconcile(
       frequency: snapToSet(r.frequency, ALLOWED_FREQUENCY, 1.0),
       source: "Interview",
       lambda_origin,
-      rationale: r.rationale ?? "",
+      rationale: applyRuleLabels(normaliseRationale(r.rationale), lambda_origin, r.category, lambda),
     });
   }
   return { preferences: out, dropped, medicalForced, aiPermanent };

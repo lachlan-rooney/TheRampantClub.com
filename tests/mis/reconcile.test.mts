@@ -224,15 +224,132 @@ const withoutRationale: ExtractedPreference = {
   // no rationale field
 }
 const r15 = reconcile([withRationale, withoutRationale], baselinesDayOne)
-check("15a. rationale carried through verbatim when AI provides it",
-  r15.preferences[0]?.rationale === "emphatic + repeated + tied to father → high importance, slow decay",
-  `got: "${r15.preferences[0]?.rationale}"`)
-check("15b. empty rationale when AI omits the field",
-  r15.preferences[1]?.rationale === "",
-  `got: "${r15.preferences[1]?.rationale}"`)
+// Pass-A refresh: rationale is now an OBJECT with optional per-factor fields.
+// Legacy string input normalises to { summary: <string> } — the back-compat
+// path the analyser's drill-down reads through.
+check("15a. rationale.summary carries through when AI provides a string (back-compat)",
+  r15.preferences[0]?.rationale?.summary === "emphatic + repeated + tied to father → high importance, slow decay",
+  `got: "${r15.preferences[0]?.rationale?.summary}"`)
+check("15b. empty rationale object when AI omits the field (no rules applied)",
+  r15.preferences[1]?.rationale && Object.keys(r15.preferences[1].rationale).filter(k => (r15.preferences[1].rationale as Record<string, unknown>)[k] !== undefined).length === 0,
+  `got: ${JSON.stringify(r15.preferences[1]?.rationale)}`)
 check("15c. rationale does NOT influence scoring — S₀/C/λ unchanged",
   r15.preferences[0]?.s0 === 5 && r15.preferences[0]?.confidence === 1.0 && r15.preferences[0]?.lambda === 0.002,
   `s0=${r15.preferences[0]?.s0} c=${r15.preferences[0]?.confidence} λ=${r15.preferences[0]?.lambda}`)
+
+// ── Cases 16-19: rule-label overrides per lambda_origin ──────────────
+// reconcile applies deterministic rule labels on factors the AI didn't choose.
+// Asking the AI to explain a value the code set would produce plausible but
+// FALSE prose — these tests prove the override happens correctly.
+
+// 16. forced_medical: S₀, C, λ all rule-labelled — F stays AI.
+const allergyForLabels: ExtractedPreference = {
+  category: "Food & Beverage",
+  preference_name: "Shellfish allergy",
+  verbatim_quote: "throat closes up — I carry an EpiPen",
+  s0: 3, confidence: 0.75, lambda: 0.005, frequency: 1.0,
+  rationale: {
+    summary: "AI thinks this is just a strong dislike",
+    s0:      "AI's s0 reason (should be overridden)",
+    c:       "AI's c reason (should be overridden)",
+    lambda:  "AI's lambda reason (should be overridden)",
+    f:       "applies whenever dining",
+  },
+}
+const r16 = reconcile([allergyForLabels], baselinesDayOne)
+const p16 = r16.preferences[0]
+check("16a. forced_medical → S₀ rule-labelled (contains 'medical guardrail')",
+  !!p16?.rationale?.s0?.toLowerCase().includes("medical guardrail"),
+  `s0=${p16?.rationale?.s0}`)
+check("16b. forced_medical → C rule-labelled (contains 'medical guardrail')",
+  !!p16?.rationale?.c?.toLowerCase().includes("medical guardrail"),
+  `c=${p16?.rationale?.c}`)
+check("16c. forced_medical → λ rule-labelled (contains 'medical guardrail')",
+  !!p16?.rationale?.lambda?.toLowerCase().includes("medical guardrail"),
+  `λ=${p16?.rationale?.lambda}`)
+check("16d. forced_medical → F is the AI's text (not overridden)",
+  p16?.rationale?.f === "applies whenever dining",
+  `f=${p16?.rationale?.f}`)
+
+// 17. ai_permanent: S₀, C, λ all rule-labelled (distinct from medical) — F stays AI.
+const anniversaryForLabels: ExtractedPreference = {
+  category: "Family & Personal",
+  preference_name: "Wedding anniversary 14 October",
+  verbatim_quote: "wife Sophie, our anniversary's the fourteenth of October",
+  s0: 4, confidence: 0.75, lambda: 0, frequency: 1.0,
+  rationale: {
+    summary: "identity-level family fact",
+    s0:      "AI's s0 reason (should be overridden, but different from medical)",
+    c:       "AI's c reason (should be overridden)",
+    lambda:  "AI's lambda reason (should be overridden)",
+    f:       "annual, applies once a year",
+  },
+}
+const r17 = reconcile([anniversaryForLabels], baselinesDayOne)
+const p17 = r17.preferences[0]
+check("17a. ai_permanent → λ rule-labelled mentioning identity/lifelong (NOT 'medical guardrail')",
+  !!p17?.rationale?.lambda &&
+    !p17.rationale.lambda.toLowerCase().includes("medical guardrail") &&
+    (p17.rationale.lambda.toLowerCase().includes("lifelong") || p17.rationale.lambda.toLowerCase().includes("identity")),
+  `λ=${p17?.rationale?.lambda}`)
+check("17b. ai_permanent → S₀ rule-labelled (permanence lock, not medical)",
+  !!p17?.rationale?.s0 &&
+    !p17.rationale.s0.toLowerCase().includes("medical guardrail") &&
+    p17.rationale.s0.toLowerCase().includes("permanence"),
+  `s0=${p17?.rationale?.s0}`)
+check("17c. ai_permanent → F is the AI's text (not overridden)",
+  p17?.rationale?.f === "annual, applies once a year",
+  `f=${p17?.rationale?.f}`)
+
+// 18. category_baseline_designed: λ rule-labelled (inherited); S₀, C, F all AI.
+const baselineAi: ExtractedPreference = {
+  category: "Whisky & Beverage",
+  preference_name: "Drinks neat by default",
+  verbatim_quote: "always neat",
+  s0: 4, confidence: 1.0, frequency: 1.0,
+  // no lambda → baseline fallback
+  rationale: {
+    s0:      "'always' → strong rule",
+    c:       "explicit, no hedge",
+    f:       "interview baseline",
+  },
+}
+const r18 = reconcile([baselineAi], baselinesDayOne)
+const p18 = r18.preferences[0]
+check("18a. category_baseline_designed → λ rule-labelled mentioning 'inherited' and the baseline",
+  !!p18?.rationale?.lambda && p18.rationale.lambda.toLowerCase().includes("inherited"),
+  `λ=${p18?.rationale?.lambda}`)
+check("18b. category_baseline_designed → S₀ stays AI prose ('always' → strong rule)",
+  p18?.rationale?.s0 === "'always' → strong rule",
+  `s0=${p18?.rationale?.s0}`)
+check("18c. category_baseline_designed → C stays AI prose",
+  p18?.rationale?.c === "explicit, no hedge",
+  `c=${p18?.rationale?.c}`)
+check("18d. category_baseline_designed → F stays AI prose",
+  p18?.rationale?.f === "interview baseline",
+  `f=${p18?.rationale?.f}`)
+
+// 19. ai_specific: nothing overridden, every factor stays AI.
+const aiSpecific: ExtractedPreference = {
+  category: "Food & Beverage",
+  preference_name: "Loves spicy",
+  verbatim_quote: "the spicier the better",
+  s0: 4, confidence: 1.0, lambda: 0.005, frequency: 1.0,
+  rationale: {
+    s0:      "strong positive 'loves'",
+    c:       "explicit, no hedge",
+    lambda:  "established taste, baseline F&B decay",
+    f:       "interview baseline",
+  },
+}
+const r19 = reconcile([aiSpecific], baselinesDayOne)
+const p19 = r19.preferences[0]
+check("19. ai_specific → all four factor rationales kept verbatim (no overrides)",
+  p19?.rationale?.s0     === "strong positive 'loves'" &&
+  p19?.rationale?.c      === "explicit, no hedge" &&
+  p19?.rationale?.lambda === "established taste, baseline F&B decay" &&
+  p19?.rationale?.f      === "interview baseline",
+  `got: ${JSON.stringify(p19?.rationale)}`)
 
 // ── Cases 11-13: content-first precedence + ai_permanent (Pass-7 refinement) ─
 // The medical guardrail has TWO triggers (content-detected + AI-emitted λ=0).

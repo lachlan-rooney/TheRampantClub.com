@@ -103,17 +103,39 @@ export async function POST(req: NextRequest) {
 
   // ── Probe-mode prompt addition ─────────────────────────────────────
   // The ONLY scoring-adjacent change in this route vs. the live intake is to
-  // ask the model for a one-sentence rationale per preference. The scoring
-  // rubric inside buildSystemPrompt is byte-for-byte unchanged; this
-  // appendix only ADDS an output field. The integration check ("scoring
-  // UNCHANGED vs. last Callum run") catches any drift if asking for
-  // explanations accidentally nudged judgement.
+  // ask the model for a per-factor rationale per preference. The scoring
+  // rubric inside buildSystemPrompt is byte-for-byte unchanged — this
+  // appendix only ADDS an output field. The proof that scores can't move
+  // because of this prompt: buildSystemPrompt's output is identical to the
+  // live intake's, and the appendix below explicitly forbids altering the
+  // rubric and asks each per-factor clause to explain ONLY its own factor.
+  //
+  // Per-factor (not single string): different factors are set by different
+  // things — some by the AI, some by deterministic code. The card shows the
+  // AI's reasoning per AI-judged factor and a rule label per code-forced
+  // factor (applied in reconcile, see lib/mis/extraction-decay.ts). Asking
+  // for one combined sentence let the AI narrate values the guardrail set,
+  // which is a quiet dishonesty on a glass-box surface.
   const PROBE_RATIONALE_APPENDIX = `
 
-PROBE MODE — ADDITIONAL FIELD ONLY:
-Additionally, include a one-sentence \`rationale\` field per preference explaining why you chose its S₀, C and λ — for example, "emphatic + repeated + tied to father → high importance, slow decay". The rationale must NOT alter the scoring rubric above; it explains your existing choice, not a different one.
+PROBE MODE — ADDITIONAL OUTPUT ONLY (does not change scoring):
+Additionally, include a \`rationale\` OBJECT field on each preference with five short clauses: \`summary\`, \`s0\`, \`c\`, \`lambda\`, \`f\`. Each clause is one short string explaining that factor's value, citing the transcript signal.
 
-Return ONLY the JSON array.`
+Single-line shape (each preference object stays on ONE line — including its rationale; do NOT pretty-print or wrap):
+  "rationale": {"summary":"…","s0":"…","c":"…","lambda":"…","f":"…"}
+
+What each clause explains (and ONLY that):
+  - summary: one-line headline, e.g. "emphatic, repeated, tied to father → identity-level"
+  - s0:      why this importance score — what the transcript signals about importance
+  - c:       why this confidence — what the transcript signals about confidence
+  - lambda:  why this decay rate — what the transcript signals about how lifelong vs transient
+  - f:       why this frequency — what the transcript signals about how often it applies
+
+Each per-factor clause must explain ONLY its own factor. F explains frequency (how often it applies), C explains confidence (how sure you are), λ explains decay (how lifelong vs transient), S₀ explains importance — the clauses must not bleed into each other or re-litigate other factors. On a medical/identity-locked preference, the F clause must explain frequency only and must NOT re-narrate the medical/identity significance.
+
+The rationale fields must NOT alter the scoring rubric above; they explain your existing choices, not different ones. The S₀/C/λ/F values themselves remain byte-for-byte governed by the same rubric.
+
+Return ONLY the JSON Lines (one preference per line, each preference's complete JSON including its rationale on a single line).`
   const systemPrompt = buildSystemPrompt(baselines) + PROBE_RATIONALE_APPENDIX
 
   const encoder = new TextEncoder()
@@ -164,14 +186,45 @@ Return ONLY the JSON array.`
           }],
         })
 
+        // Brace-balanced buffer — defence in depth in case the model still
+        // pretty-prints the rationale object across multiple lines despite
+        // the appendix asking for single-line output. We accumulate complete
+        // brace-balanced objects from the stream and parse each one.
+        let pending = ''
+        let depth = 0
         const handleLine = (line: string) => {
-          const raw = tryParseRawObject(line)
-          if (raw) assembledRaw.push(raw)
-          const display = raw ? validateForDisplay(raw) : null
-          if (display) {
-            extracted += 1
-            send('preference', { index: extracted, pref: display })
+          // Fast-path: a single-line complete object (the expected case).
+          if (depth === 0 && pending === '') {
+            const raw = tryParseRawObject(line)
+            if (raw) {
+              assembledRaw.push(raw)
+              const display = validateForDisplay(raw)
+              if (display) {
+                extracted += 1
+                send('preference', { index: extracted, pref: display })
+              }
+              return
+            }
           }
+          // Slow-path: accumulate until braces balance, then parse.
+          for (const ch of line) {
+            if (ch === '{') depth++
+            else if (ch === '}') depth--
+            pending += ch
+            if (depth === 0 && pending.trim()) {
+              const raw = tryParseRawObject(pending.trim())
+              if (raw) {
+                assembledRaw.push(raw)
+                const display = validateForDisplay(raw)
+                if (display) {
+                  extracted += 1
+                  send('preference', { index: extracted, pref: display })
+                }
+              }
+              pending = ''
+            }
+          }
+          if (pending) pending += '\n'
         }
 
         for await (const event of claudeStream) {
@@ -268,7 +321,22 @@ function tryParseRawObject(line: string): ExtractedPreference | null {
     confidence:      numberOrUndef(obj.confidence),
     lambda:          numberOrUndef(obj.lambda),
     frequency:       numberOrUndef(obj.frequency),
-    rationale:       typeof obj.rationale === 'string' ? obj.rationale.trim() : undefined,
+    // Accept either shape — model may emit string (legacy) or object (per-factor).
+    rationale:       parseRationaleField(obj.rationale),
+  }
+}
+
+function parseRationaleField(raw: unknown): string | { summary?: string; s0?: string; c?: string; lambda?: string; f?: string } | undefined {
+  if (typeof raw === 'string') return raw.trim() || undefined
+  if (!raw || typeof raw !== 'object') return undefined
+  const o = raw as Record<string, unknown>
+  const str = (v: unknown) => typeof v === 'string' && v.trim() ? v.trim() : undefined
+  return {
+    summary: str(o.summary),
+    s0:      str(o.s0),
+    c:       str(o.c),
+    lambda:  str(o.lambda),
+    f:       str(o.f),
   }
 }
 
@@ -302,7 +370,7 @@ function validateForDisplay(raw: ExtractedPreference): {
   confidence: number
   lambda: number
   frequency: number
-  rationale: string | null
+  rationale: ExtractedPreference['rationale'] | null
 } | null {
   if (!CANONICAL.has(raw.category)) return null
   if (!raw.preference_name) return null

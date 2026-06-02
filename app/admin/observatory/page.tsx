@@ -99,8 +99,46 @@ interface DemoExtractedPref {
     | 'category_baseline_designed'
     | 'forced_medical'
     | 'ai_permanent'
-  rationale: string | null
+  rationale: string | RationaleDetail | null
   uid: string
+}
+
+// Per-factor rationale (mirrors lib/mis/extraction-decay.ts).
+interface RationaleDetail {
+  summary?: string
+  s0?: string
+  c?: string
+  lambda?: string
+  f?: string
+}
+
+/** Back-compat reader: handles both the legacy single-string rationale and
+ *  the new per-factor object. Returns the summary line for callers that
+ *  only need a one-liner (e.g. the consistency analyser's drill-down). */
+function rationaleSummary(r: string | RationaleDetail | null | undefined): string {
+  if (!r) return ''
+  if (typeof r === 'string') return r
+  return r.summary || ''
+}
+
+/** Per-factor rationale access — returns the rule-labelled or AI text for a
+ *  given factor. Empty string when neither was supplied. */
+function rationaleFactor(r: string | RationaleDetail | null | undefined, f: 's0' | 'c' | 'lambda' | 'f'): string {
+  if (!r || typeof r === 'string') return ''
+  return r[f] || ''
+}
+
+/** Whether a factor is rule-forced (i.e. its rationale came from code, not the
+ *  AI). Used to show a 🔒 glyph on the line. */
+function isFactorForced(origin: string | null | undefined, factor: 's0' | 'c' | 'lambda' | 'f'): boolean {
+  if (factor === 'f') return false
+  if (origin === 'forced_medical' || origin === 'ai_permanent') {
+    return factor === 's0' || factor === 'c' || factor === 'lambda'
+  }
+  if (origin === 'category_baseline_designed' || origin === 'category_baseline_learned') {
+    return factor === 'lambda'
+  }
+  return false
 }
 interface DemoReconciledSummary {
   count: number
@@ -1824,14 +1862,59 @@ function DemoPreferenceCard({ pref, index, phase, expanded, onToggleExpand }: {
           <button onClick={onToggleExpand} style={rationaleToggle}>
             {expanded ? '▾' : '▸'} rationale
           </button>
-          {expanded && (
-            <div style={rationaleBlock}>
-              <span style={{ color: '#7E7864' }}>AI: </span>
-              {pref.rationale}
-            </div>
-          )}
+          {expanded && <RationaleBreakdown pref={pref} />}
         </div>
       )}
+    </div>
+  )
+}
+
+/** Per-factor rationale breakdown. One line per factor. Rule-forced factors
+ *  carry a 🔒 glyph + a subtle "rule" tone so it's glanceable that the line
+ *  came from deterministic code rather than the AI. */
+function RationaleBreakdown({ pref }: { pref: DemoExtractedPref }) {
+  // Legacy string rationale — show as one summary line, no per-factor breakdown.
+  if (typeof pref.rationale === 'string') {
+    return (
+      <div style={rationaleBlock}>
+        <span style={{ color: '#7E7864' }}>AI: </span>
+        {pref.rationale}
+      </div>
+    )
+  }
+  const r = pref.rationale
+  if (!r) return null
+
+  const factors: Array<{
+    key: 's0' | 'c' | 'lambda' | 'f'
+    label: string
+    value: string
+    text: string
+    forced: boolean
+  }> = [
+    { key: 's0',     label: 'S₀', value: pref.s0.toString(),         text: rationaleFactor(r, 's0'),     forced: isFactorForced(pref.lambda_origin, 's0') },
+    { key: 'c',      label: 'C',  value: pref.confidence.toFixed(2), text: rationaleFactor(r, 'c'),      forced: isFactorForced(pref.lambda_origin, 'c') },
+    { key: 'lambda', label: 'λ',  value: pref.lambda.toFixed(3),     text: rationaleFactor(r, 'lambda'), forced: isFactorForced(pref.lambda_origin, 'lambda') },
+    { key: 'f',      label: 'F',  value: pref.frequency.toFixed(1),  text: rationaleFactor(r, 'f'),      forced: false },
+  ]
+
+  return (
+    <div style={rationaleBlock}>
+      {r.summary && (
+        <div style={rationaleSummaryLine}>{r.summary}</div>
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {factors.map(f => (
+          <div key={f.key} style={f.forced ? rationaleFactorRowForced : rationaleFactorRow}>
+            <span style={rationaleFactorLabel}>{f.label}</span>
+            <span style={rationaleFactorValue}>{f.value}</span>
+            {f.forced && <span style={lockGlyph}>🔒</span>}
+            <span style={f.forced ? rationaleFactorTextForced : rationaleFactorText}>
+              {f.text || (f.forced ? '(rule-forced; no AI rationale needed)' : '(no rationale supplied)')}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -2468,10 +2551,10 @@ function MatrixRow({ row }: { row: MatrixRowData }) {
                         <span style={drilldownFactorValue(row.deviance[i]?.f || false)}>{cell.pref.frequency.toFixed(1)}</span>
                       </div>
                     </div>
-                    {cell.pref.rationale && (
+                    {rationaleSummary(cell.pref.rationale) && (
                       <div style={drilldownRationale}>
                         <span style={{ color: '#7E7864' }}>rationale: </span>
-                        {cell.pref.rationale}
+                        {rationaleSummary(cell.pref.rationale)}
                       </div>
                     )}
                   </>
@@ -3141,6 +3224,41 @@ const rationaleToggle: React.CSSProperties = {
   border: '1px solid rgba(229,212,194,0.10)', borderRadius: 4,
   padding: '4px 10px', fontFamily: "'Google Sans Code', monospace",
   fontSize: 10, letterSpacing: '0.06em', cursor: 'pointer',
+}
+const rationaleSummaryLine: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#E5D4C2', lineHeight: 1.6,
+  paddingBottom: 8, marginBottom: 8,
+  borderBottom: '1px solid rgba(229,212,194,0.08)',
+  fontStyle: 'italic',
+}
+const rationaleFactorRow: React.CSSProperties = {
+  display: 'grid', gridTemplateColumns: '24px 56px 1fr', gap: 8,
+  alignItems: 'baseline',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  lineHeight: 1.55,
+}
+const rationaleFactorRowForced: React.CSSProperties = {
+  display: 'grid', gridTemplateColumns: '24px 56px 22px 1fr', gap: 6,
+  alignItems: 'baseline',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  lineHeight: 1.55,
+}
+const rationaleFactorLabel: React.CSSProperties = {
+  color: '#7E7864', letterSpacing: '0.06em',
+}
+const rationaleFactorValue: React.CSSProperties = {
+  color: '#E5D4C2', fontWeight: 600,
+}
+const lockGlyph: React.CSSProperties = {
+  fontSize: 10, opacity: 0.85,
+}
+const rationaleFactorText: React.CSSProperties = {
+  color: '#B2AA98', lineHeight: 1.6,
+}
+const rationaleFactorTextForced: React.CSSProperties = {
+  color: '#D4B85A', lineHeight: 1.6,
+  fontStyle: 'italic',
 }
 const rationaleBlock: React.CSSProperties = {
   marginTop: 6, padding: '8px 12px',
