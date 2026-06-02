@@ -210,10 +210,20 @@ export default function AdminWhisky() {
   }
 
   const handleSubmit = async () => {
-    const payload = {
+    // Stamp tasting_notes_source = 'human' whenever notes are non-empty
+    // — without this, rows entered via this form land with source=null,
+    // which the backfill script treats as "queue for AI overwrite"
+    // (the skip-rule only spares 'human' and 'claude-auto-backfill-%').
+    const notesTrimmed = tastingNotes.trim()
+    const hasNotes = notesTrimmed.length > 0
+    const payload: Record<string, unknown> = {
       name, distillery: distillery || null, region: region || null,
       cask_type: caskType || null, age: age || null, abv: abv || null,
-      tasting_notes: tastingNotes || null, committees_pick: committeesPick, in_stock: inStock,
+      tasting_notes: hasNotes ? notesTrimmed : null,
+      committees_pick: committeesPick, in_stock: inStock,
+      tasting_notes_source:       hasNotes ? 'human' : null,
+      tasting_notes_confidence:   null,
+      tasting_notes_generated_at: null,
     }
     if (editing) {
       await supabase.from('whiskies').update(payload).eq('id', editing.id)
