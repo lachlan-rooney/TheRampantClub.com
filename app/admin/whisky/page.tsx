@@ -59,6 +59,102 @@ export default function AdminWhisky() {
     })
   }
 
+  // ── Stocktake mode ──────────────────────────────────────────────────
+  // When active: a snapshot of each whisky's pre-stocktake fill is held
+  // so the report can show before → after. Reviewed whiskies sink to the
+  // bottom of the list, dimmed, until the session is finished and the
+  // alphabetical order is restored.
+  const [stocktakeMode, setStocktakeMode] = useState(false)
+  const [stocktakeStartedAt, setStocktakeStartedAt] = useState<string | null>(null)
+  const [stocktakeBefore, setStocktakeBefore] = useState<Map<string, number | null>>(new Map())
+  // For each reviewed whisky: { fillBefore, fillAfter, changed, note? }
+  const [stocktakeReviewed, setStocktakeReviewed] = useState<Map<string, {
+    fillBefore: number | null; fillAfter: number; changed: boolean; note: string | null
+  }>>(new Map())
+
+  const startStocktake = () => {
+    const snap = new Map<string, number | null>()
+    for (const w of whiskies) snap.set(w.id, w.current_fill_pct ?? null)
+    setStocktakeBefore(snap)
+    setStocktakeReviewed(new Map())
+    setStocktakeStartedAt(new Date().toISOString())
+    setStocktakeMode(true)
+  }
+
+  const cancelStocktake = () => {
+    if (!window.confirm('Cancel this stocktake? Any fill updates already saved during the session stay (they are real DB writes), but the session report will not be generated.')) return
+    setStocktakeMode(false)
+    setStocktakeBefore(new Map())
+    setStocktakeReviewed(new Map())
+    setStocktakeStartedAt(null)
+  }
+
+  // Auto-marks a whisky as reviewed during stocktake. Called from the
+  // fill-save flow and from the explicit "no change" button.
+  const markReviewed = useCallback((w: Whisky, fillAfter: number, changed: boolean, note: string | null) => {
+    setStocktakeReviewed(prev => {
+      const next = new Map(prev)
+      next.set(w.id, {
+        fillBefore: stocktakeBefore.get(w.id) ?? null,
+        fillAfter,
+        changed,
+        note,
+      })
+      return next
+    })
+  }, [stocktakeBefore])
+
+  const finishStocktake = () => {
+    if (stocktakeReviewed.size === 0) {
+      alert('No whiskies reviewed yet — nothing to report.')
+      return
+    }
+    // Detailed report CSV.
+    const reviewed = [...stocktakeReviewed.entries()]
+    const byId = new Map(whiskies.map(w => [w.id, w]))
+    const esc = (v: unknown) => {
+      if (v == null) return ''
+      const s = String(v)
+      if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`
+      return s
+    }
+    const lines = [
+      'name,distillery,region,fill_before_pct,fill_after_pct,delta_pct,changed,note,reviewed_at',
+    ]
+    const finishedAt = new Date().toISOString()
+    for (const [id, r] of reviewed) {
+      const w = byId.get(id)
+      if (!w) continue
+      const delta = (r.fillBefore == null) ? r.fillAfter : (r.fillAfter - r.fillBefore)
+      lines.push([
+        esc(w.name), esc(w.distillery), esc(w.region),
+        esc(r.fillBefore ?? ''), esc(r.fillAfter), esc(delta),
+        esc(r.changed ? 'yes' : 'no'),
+        esc(r.note ?? ''),
+        esc(finishedAt),
+      ].join(','))
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    const stamp = finishedAt.slice(0, 10)
+    a.href = url
+    a.download = `trc-stocktake-${stamp}.csv`
+    document.body.appendChild(a); a.click(); document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    // Reset state.
+    setStocktakeMode(false)
+    setStocktakeBefore(new Map())
+    setStocktakeReviewed(new Map())
+    setStocktakeStartedAt(null)
+  }
+
+  // "Confirm unchanged" — staff visually verified the bottle and the
+  // level is the same. Marks reviewed without a DB write.
+  const confirmUnchanged = (w: Whisky) => {
+    markReviewed(w, w.current_fill_pct ?? 100, false, 'confirmed unchanged')
+  }
+
   // Filter + sort — easier to scan a long catalogue when you're hunting
   // for "the things that need a refill" specifically. The search is
   // multi-token AND-match across every field a staffer might reach for
@@ -153,10 +249,42 @@ export default function AdminWhisky() {
       if (j.history) {
         setHistory(prev => [j.history as FillHistoryRow, ...prev])
       }
+      // Stocktake bookkeeping — record the before/after if we're in a
+      // session. saveFill works exactly the same whether stocktake is on
+      // or off; the only side effect is the row sinking to the bottom.
+      if (stocktakeMode) {
+        const before = stocktakeBefore.get(w.id) ?? (w.current_fill_pct ?? null)
+        markReviewed(w, draftFill, before !== draftFill, draftNote || null)
+      }
       cancelFillEdit()
     } finally {
       setSaving(null)
     }
+  }
+
+  // Inline catalogue-metadata edits (name, distillery, region, cask, age,
+  // ABV, tasting notes). One field at a time, save on blur, optimistic
+  // local update. Whisky_fill_history only tracks fill changes; metadata
+  // edits hit the table directly.
+  const patchMetadata = async (id: string, field: keyof Whisky, value: string | null) => {
+    // Optimistic local update first.
+    setWhiskies(prev => prev.map(x => x.id === id ? { ...x, [field]: value } as Whisky : x))
+    const payload: Record<string, unknown> = { [field]: value }
+    // Tasting notes coming from the inline editor are by definition a
+    // human edit; stamp the source so the auto-backfill never overrides.
+    if (field === 'tasting_notes') {
+      payload.tasting_notes_source = value && value.trim().length > 0 ? 'human' : null
+      payload.tasting_notes_confidence = null
+      payload.tasting_notes_generated_at = null
+      setWhiskies(prev => prev.map(x => x.id === id ? {
+        ...x,
+        tasting_notes_source: payload.tasting_notes_source as string | null,
+        tasting_notes_confidence: null,
+        tasting_notes_generated_at: null,
+      } : x))
+    }
+    const { error } = await supabase.from('whiskies').update(payload).eq('id', id)
+    if (error) { alert(`Save failed: ${error.message}`); load() }
   }
 
   const loadHistory = useCallback(async () => {
@@ -187,7 +315,7 @@ export default function AdminWhisky() {
 
   const filtered = useMemo(() => {
     const tokens = filterText.trim().toLowerCase().split(/\s+/).filter(Boolean)
-    return whiskies.filter(w => {
+    const matching = whiskies.filter(w => {
       if (showOnlyLow && (w.current_fill_pct ?? 100) > 25) return false
       if (showOnlyInStock && !w.in_stock) return false
       if (showOnlyMissingNotes && !!(w.tasting_notes && w.tasting_notes.trim().length > 0)) return false
@@ -203,7 +331,18 @@ export default function AdminWhisky() {
       ].filter(Boolean).join(' ').toLowerCase()
       return tokens.every(t => hay.includes(t))
     })
-  }, [whiskies, filterText, showOnlyLow, showOnlyInStock, showOnlyMissingNotes])
+    // Stocktake mode rearranges the list: unreviewed first (alphabetical),
+    // reviewed sink to the bottom (still alphabetical, dimmed in the UI).
+    // Normal mode = catalogue load order (already name-sorted by the
+    // supabase query).
+    if (!stocktakeMode) return matching
+    const unreviewed: Whisky[] = []
+    const reviewed: Whisky[] = []
+    for (const w of matching) {
+      if (stocktakeReviewed.has(w.id)) reviewed.push(w); else unreviewed.push(w)
+    }
+    return [...unreviewed, ...reviewed]
+  }, [whiskies, filterText, showOnlyLow, showOnlyInStock, showOnlyMissingNotes, stocktakeMode, stocktakeReviewed])
 
   const lowCount = useMemo(() => whiskies.filter(w => (w.current_fill_pct ?? 100) <= 25).length, [whiskies])
   const inStockCount = useMemo(() => whiskies.filter(w => w.in_stock).length, [whiskies])
@@ -281,6 +420,11 @@ export default function AdminWhisky() {
         <Stat label="In stock"        value={inStockCount} color="#7AB07A" />
         <Stat label="Low fill (≤25%)" value={lowCount} color={lowCount > 0 ? '#C27070' : '#7E7864'} />
         <Stat label="No tasting notes" value={missingNotesCount} color={missingNotesCount > 0 ? '#D4B85A' : '#7E7864'} />
+        {!stocktakeMode && (
+          <button onClick={startStocktake} style={stocktakeStartBtn} title="Begin a stocktake session — reviewed whiskies sink to the bottom; finish to log a full report.">
+            ☑ Start stocktake
+          </button>
+        )}
         <button onClick={exportCsv} style={exportBtn} title="Export the currently-filtered list as CSV">
           ⤓ Export CSV
         </button>
@@ -288,6 +432,31 @@ export default function AdminWhisky() {
           {trendOpen ? '↓' : '↑'} Inventory trend
         </button>
       </div>
+
+      {/* ── Stocktake banner ─────────────────────────────────────────── */}
+      {stocktakeMode && (
+        <div style={stocktakeBanner}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+            <span style={stocktakeChip}>STOCKTAKE LIVE</span>
+            <span style={{ color: '#E5D4C2', fontFamily: "'Google Sans Code', monospace", fontSize: 12 }}>
+              <strong style={{ color: '#7AB07A' }}>{stocktakeReviewed.size}</strong>
+              <span style={{ color: '#7E7864' }}> / {whiskies.length} reviewed</span>
+              {stocktakeStartedAt && (
+                <span style={{ color: '#7E7864', marginLeft: 12 }}>· started {timeAgo(stocktakeStartedAt)}</span>
+              )}
+            </span>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+              <button onClick={cancelStocktake} style={stocktakeCancelBtn}>Cancel</button>
+              <button onClick={finishStocktake} style={stocktakeFinishBtn} disabled={stocktakeReviewed.size === 0}>
+                Finish &amp; download report
+              </button>
+            </div>
+          </div>
+          <div style={{ marginTop: 6, fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', letterSpacing: '0.04em' }}>
+            Update a fill or click <strong>✓ unchanged</strong> on each whisky as you check it. Reviewed rows sink to the bottom of the list (dimmed) so you can see what's left.
+          </div>
+        </div>
+      )}
 
       {/* ── Global trend graph (lazy-loaded) ──────────────────────────── */}
       {trendOpen && (
@@ -396,22 +565,24 @@ export default function AdminWhisky() {
           const isEditingFill = fillEditing === w.id
           const wHistory = historyByWhisky.get(w.id) || []
           const sparkPoints = wHistory.slice(0, 12).reverse()  // oldest → newest in the spark
+          const isReviewed = stocktakeMode && stocktakeReviewed.has(w.id)
           return (
-            <div key={w.id} style={whiskyRow}>
+            <div key={w.id} style={{ ...whiskyRow, ...(isReviewed ? reviewedRow : null) }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <button
                   type="button"
                   onClick={() => toggleExpanded(w.id)}
                   style={whiskyTitleBtn}
-                  title={expandedIds.has(w.id) ? 'Hide tasting notes' : 'Show tasting notes'}
+                  title={expandedIds.has(w.id) ? 'Hide details' : 'Show details + tasting notes'}
                 >
                   <span style={{ ...expandCaret, transform: expandedIds.has(w.id) ? 'rotate(90deg)' : 'rotate(0deg)' }}>▸</span>
                   <span style={whiskyName}>{w.name}</span>
                   {(!w.tasting_notes || w.tasting_notes.trim().length === 0) && (
-                    <span style={missingNotesBadge} title="No tasting notes yet — click Edit to add them">
+                    <span style={missingNotesBadge} title="No tasting notes yet — expand to add them">
                       ⓘ no notes
                     </span>
                   )}
+                  {isReviewed && <span style={reviewedBadge}>✓ reviewed</span>}
                   {w.distillery && <span style={whiskySub}>· {w.distillery}</span>}
                   {w.region && <span style={regionPill}>{w.region}</span>}
                 </button>
@@ -422,22 +593,37 @@ export default function AdminWhisky() {
                 )}
                 {expandedIds.has(w.id) && (
                   <div style={notesBlock}>
-                    {w.tasting_notes && w.tasting_notes.trim().length > 0 ? (
-                      <>
-                        <div style={notesProse}>{w.tasting_notes}</div>
-                        <div style={notesAttribution}>
-                          {w.tasting_notes_source === 'human'
-                            ? 'Entered manually by the team'
-                            : w.tasting_notes_source?.startsWith('claude-auto-backfill-')
-                              ? `Auto-backfilled · confidence ${w.tasting_notes_confidence ?? '—'}${w.tasting_notes_generated_at ? ' · ' + new Date(w.tasting_notes_generated_at).toLocaleDateString() : ''}`
-                              : w.tasting_notes_source
-                                ? `Source: ${w.tasting_notes_source}`
-                                : null}
-                        </div>
-                      </>
-                    ) : (
-                      <div style={notesEmpty}>No tasting notes recorded yet. Click <strong>Edit</strong> on this row to add them.</div>
-                    )}
+                    {/* Inline catalogue-metadata editors */}
+                    <div style={inlineFieldGrid}>
+                      <InlineField label="Name"       value={w.name}              onSave={v => patchMetadata(w.id, 'name', v)} />
+                      <InlineField label="Distillery" value={w.distillery || ''}  onSave={v => patchMetadata(w.id, 'distillery', v || null)} />
+                      <InlineField label="Region"     value={w.region || ''}      onSave={v => patchMetadata(w.id, 'region', v || null)} select={REGIONS as readonly string[]} />
+                      <InlineField label="Cask type"  value={w.cask_type || ''}   onSave={v => patchMetadata(w.id, 'cask_type', v || null)} />
+                      <InlineField label="Age"        value={w.age || ''}         onSave={v => patchMetadata(w.id, 'age', v || null)} />
+                      <InlineField label="ABV"        value={w.abv || ''}         onSave={v => patchMetadata(w.id, 'abv', v || null)} />
+                    </div>
+                    <div style={{ marginTop: 12 }}>
+                      <div style={{ ...labelStyle, marginBottom: 6 }}>Tasting notes</div>
+                      <textarea
+                        defaultValue={w.tasting_notes || ''}
+                        onBlur={e => {
+                          const v = e.target.value.trim()
+                          if (v !== (w.tasting_notes || '')) patchMetadata(w.id, 'tasting_notes', v || null)
+                        }}
+                        rows={4}
+                        placeholder="Nose: … Palate: … Finish: …"
+                        style={{ ...inputStyle, resize: 'vertical', fontSize: 12 }}
+                      />
+                      <div style={notesAttribution}>
+                        {w.tasting_notes_source === 'human'
+                          ? 'Entered manually by the team'
+                          : w.tasting_notes_source?.startsWith('claude-auto-backfill-')
+                            ? `Auto-backfilled · confidence ${w.tasting_notes_confidence ?? '—'}${w.tasting_notes_generated_at ? ' · ' + new Date(w.tasting_notes_generated_at).toLocaleDateString() : ''} — editing will re-stamp as human-curated`
+                            : w.tasting_notes && w.tasting_notes.trim().length > 0
+                              ? null
+                              : 'No tasting notes recorded yet — type to add'}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -498,6 +684,15 @@ export default function AdminWhisky() {
                 >
                   {w.in_stock ? 'In Stock' : 'Out'}
                 </button>
+                {stocktakeMode && !isReviewed && (
+                  <button
+                    onClick={() => confirmUnchanged(w)}
+                    style={{ ...rowBtn, color: '#7AB07A', fontWeight: 600 }}
+                    title="Mark this whisky as reviewed without changing its fill"
+                  >
+                    ✓ unchanged
+                  </button>
+                )}
                 <button onClick={() => startEdit(w)} style={{ ...rowBtn, opacity: 0.5 }}>Edit</button>
                 <button onClick={() => handleDelete(w.id)} style={{ ...rowBtn, opacity: 0.5 }}>Delete</button>
               </div>
@@ -509,6 +704,69 @@ export default function AdminWhisky() {
         )}
       </div>
     </>
+  )
+}
+
+// ─── Inline metadata editor ──────────────────────────────────────────────────
+// Single field that swaps to an input/select on click and saves on blur.
+// Used inside the expand panel for the catalogue's editable columns.
+
+function InlineField({ label, value, onSave, select }: {
+  label: string
+  value: string
+  onSave: (v: string) => void
+  select?: readonly string[]
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value)
+  useEffect(() => { setDraft(value) }, [value])
+
+  if (!editing) {
+    return (
+      <button
+        onClick={() => setEditing(true)}
+        style={inlineFieldDisplay}
+        title="Click to edit"
+      >
+        <div style={inlineFieldLabel}>{label}</div>
+        <div style={{ ...inlineFieldValue, color: value ? '#E5D4C2' : '#7E7864', fontStyle: value ? 'normal' : 'italic' }}>
+          {value || '— add —'}
+        </div>
+      </button>
+    )
+  }
+
+  const commit = () => {
+    setEditing(false)
+    const trimmed = draft.trim()
+    if (trimmed !== (value || '').trim()) onSave(trimmed)
+  }
+
+  return (
+    <div style={inlineFieldDisplay}>
+      <div style={inlineFieldLabel}>{label}</div>
+      {select ? (
+        <select
+          value={draft}
+          autoFocus
+          onChange={e => setDraft(e.target.value)}
+          onBlur={commit}
+          style={{ ...inputStyle, fontSize: 12, padding: '6px 8px' }}
+        >
+          <option value="">—</option>
+          {select.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+        </select>
+      ) : (
+        <input
+          value={draft}
+          autoFocus
+          onChange={e => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+          style={{ ...inputStyle, fontSize: 12, padding: '6px 8px' }}
+        />
+      )}
+    </div>
   )
 }
 
@@ -792,6 +1050,75 @@ const whiskyName: React.CSSProperties = {
 const whiskySub: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98',
 }
+// Stocktake banner + buttons.
+const stocktakeStartBtn: React.CSSProperties = {
+  background: 'rgba(122,176,122,0.10)', color: '#7AB07A',
+  border: '1px solid rgba(122,176,122,0.45)', borderRadius: 6,
+  padding: '10px 18px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, letterSpacing: '0.08em',
+  cursor: 'pointer',
+}
+const stocktakeBanner: React.CSSProperties = {
+  marginBottom: 16, padding: '14px 18px',
+  background: 'linear-gradient(90deg, rgba(122,176,122,0.10) 0%, rgba(212,184,90,0.08) 100%)',
+  border: '1px solid rgba(122,176,122,0.40)',
+  borderLeft: '3px solid #7AB07A',
+  borderRadius: 8,
+}
+const stocktakeChip: React.CSSProperties = {
+  display: 'inline-block',
+  background: '#7AB07A', color: '#052E20',
+  padding: '4px 10px', borderRadius: 4,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10, fontWeight: 700,
+  letterSpacing: '0.14em',
+}
+const stocktakeCancelBtn: React.CSSProperties = {
+  background: 'transparent', color: '#B2AA98',
+  border: '1px solid rgba(229,212,194,0.20)', borderRadius: 4,
+  padding: '6px 14px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, letterSpacing: '0.06em',
+  cursor: 'pointer',
+}
+const stocktakeFinishBtn: React.CSSProperties = {
+  background: '#7AB07A', color: '#052E20',
+  border: 'none', borderRadius: 4,
+  padding: '6px 16px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
+  cursor: 'pointer',
+}
+const reviewedRow: React.CSSProperties = {
+  opacity: 0.35,
+  background: 'rgba(122,176,122,0.04)',
+}
+const reviewedBadge: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#7AB07A',
+  background: 'rgba(122,176,122,0.14)',
+  border: '1px solid rgba(122,176,122,0.40)',
+  borderRadius: 4, padding: '2px 7px',
+  letterSpacing: '0.08em', textTransform: 'uppercase',
+}
+
+// Inline catalogue-metadata editors inside the expand panel.
+const inlineFieldGrid: React.CSSProperties = {
+  display: 'grid', gap: 8,
+  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+}
+const inlineFieldDisplay: React.CSSProperties = {
+  background: 'rgba(229,212,194,0.04)',
+  border: '1px solid rgba(229,212,194,0.10)',
+  borderRadius: 6, padding: '8px 10px',
+  textAlign: 'left', cursor: 'pointer', width: '100%',
+  display: 'flex', flexDirection: 'column', gap: 4,
+}
+const inlineFieldLabel: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#B2AA98', letterSpacing: '0.10em', textTransform: 'uppercase',
+}
+const inlineFieldValue: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
+}
+
 // Whole-title click target — the entire name strip is the disclosure
 // affordance so staff don't have to hunt for a tiny chevron.
 const whiskyTitleBtn: React.CSSProperties = {
