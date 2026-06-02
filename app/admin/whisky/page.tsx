@@ -238,6 +238,42 @@ export default function AdminWhisky() {
     setWhiskies(prev => prev.map(w => w.id === id ? { ...w, [field]: !current } : w))
   }
 
+  // ── Bulk-select mode ──────────────────────────────────────────────────
+  // Toggling on shows a checkbox on each row + a sticky action bar at
+  // the bottom. Bulk actions apply to the SELECTED subset, not the
+  // whole filtered list — so you can filter to "Islay", then untick the
+  // one you don't want changed, and the bulk op skips it. Selection
+  // clears on mode exit or on successful bulk apply.
+  const [bulkMode, setBulkMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const toggleSelected = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+  const enterBulkMode = () => { setBulkMode(true); setSelectedIds(new Set()) }
+  const exitBulkMode  = () => { setBulkMode(false); setSelectedIds(new Set()) }
+  const selectAllFiltered = () => setSelectedIds(new Set(filtered.map(w => w.id)))
+  const clearSelection    = () => setSelectedIds(new Set())
+
+  const bulkPatch = async (patch: Partial<Whisky>) => {
+    if (selectedIds.size === 0) return
+    setBulkBusy(true)
+    try {
+      const ids = [...selectedIds]
+      const { error } = await supabase.from('whiskies').update(patch).in('id', ids)
+      if (error) { alert(`Bulk update failed: ${error.message}`); return }
+      // Optimistic local merge so the UI reflects it immediately.
+      setWhiskies(prev => prev.map(w => selectedIds.has(w.id) ? { ...w, ...patch } as Whisky : w))
+      clearSelection()
+    } finally {
+      setBulkBusy(false)
+    }
+  }
+
   // Delete is a hard CASCADE: removing a whisky also removes its
   // whisky_fill_history rows (FK has on delete cascade) and any future
   // tasting-note audit trail. A single window.confirm is too easy to
@@ -480,9 +516,18 @@ export default function AdminWhisky() {
         <Stat label="In stock"        value={inStockCount} color="#7AB07A" />
         <Stat label="Low fill (≤25%)" value={lowCount} color={lowCount > 0 ? '#C27070' : '#7E7864'} />
         <Stat label="No tasting notes" value={missingNotesCount} color={missingNotesCount > 0 ? '#D4B85A' : '#7E7864'} />
-        {!stocktakeMode && (
+        {!stocktakeMode && !bulkMode && (
           <button onClick={startStocktake} style={stocktakeStartBtn} title="Begin a stocktake session — reviewed whiskies sink to the bottom; finish to log a full report.">
             ☑ Start stocktake
+          </button>
+        )}
+        {!stocktakeMode && (
+          <button
+            onClick={bulkMode ? exitBulkMode : enterBulkMode}
+            style={{ ...stocktakeStartBtn, color: bulkMode ? '#E58F4A' : '#7AB07A', borderColor: bulkMode ? 'rgba(229,143,74,0.45)' : 'rgba(122,176,122,0.45)' }}
+            title="Multi-select rows and apply changes (in-stock, committee's pick, region) in one go."
+          >
+            {bulkMode ? '✕ Exit bulk' : '☐ Bulk edit'}
           </button>
         )}
         <button onClick={exportCsv} style={exportBtn} title="Export the currently-filtered list as CSV">
@@ -626,8 +671,18 @@ export default function AdminWhisky() {
           const wHistory = historyByWhisky.get(w.id) || []
           const sparkPoints = wHistory.slice(0, 12).reverse()  // oldest → newest in the spark
           const isReviewed = stocktakeMode && stocktakeReviewed.has(w.id)
+          const isSelected = bulkMode && selectedIds.has(w.id)
           return (
-            <div key={w.id} style={{ ...whiskyRow, ...(isReviewed ? reviewedRow : null) }}>
+            <div key={w.id} style={{ ...whiskyRow, ...(isReviewed ? reviewedRow : null), ...(isSelected ? bulkSelectedRow : null) }}>
+              {bulkMode && (
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => toggleSelected(w.id)}
+                  style={{ marginRight: 10, marginTop: 6, cursor: 'pointer', accentColor: '#7AB07A', flexShrink: 0 }}
+                  aria-label={`Select ${w.name}`}
+                />
+              )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <button
                   type="button"
@@ -843,6 +898,73 @@ export default function AdminWhisky() {
             </div>
           </div>
         </>
+      )}
+
+      {/* ── Bulk action bar ────────────────────────────────────────────
+          Sticky at the bottom of the viewport while bulk mode is on.
+          Counts the selected subset, offers select-all-filtered + clear,
+          then the actual bulk operations. Each op writes via the same
+          patch path (PATCH whiskies WHERE id IN (...)) so the audit
+          trail and RLS rules are identical to a single-row edit. */}
+      {bulkMode && (
+        <div style={bulkBar} role="region" aria-label="Bulk edit actions">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={bulkCountText}>
+              <strong>{selectedIds.size}</strong> selected
+              <span style={{ color: '#7E7864', marginLeft: 6 }}>/ {filtered.length} in view</span>
+            </span>
+            <button onClick={selectAllFiltered} style={bulkChip} disabled={selectedIds.size === filtered.length}>
+              Select all in view
+            </button>
+            <button onClick={clearSelection} style={bulkChip} disabled={selectedIds.size === 0}>
+              Clear
+            </button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 'auto' }}>
+            <button
+              onClick={() => bulkPatch({ in_stock: true })}
+              disabled={selectedIds.size === 0 || bulkBusy}
+              style={bulkActionBtn}
+              title="Mark all selected as in stock"
+            >
+              ✓ Mark in stock
+            </button>
+            <button
+              onClick={() => bulkPatch({ in_stock: false })}
+              disabled={selectedIds.size === 0 || bulkBusy}
+              style={bulkActionBtn}
+              title="Mark all selected as out of stock"
+            >
+              ✕ Mark out of stock
+            </button>
+            <button
+              onClick={() => bulkPatch({ committees_pick: true })}
+              disabled={selectedIds.size === 0 || bulkBusy}
+              style={bulkActionBtn}
+              title="Add committee's pick to all selected"
+            >
+              ◆ Add pick
+            </button>
+            <button
+              onClick={() => bulkPatch({ committees_pick: false })}
+              disabled={selectedIds.size === 0 || bulkBusy}
+              style={bulkActionBtn}
+              title="Remove committee's pick from all selected"
+            >
+              ◇ Remove pick
+            </button>
+            <select
+              onChange={e => { if (e.target.value) bulkPatch({ region: e.target.value }); e.target.value = '' }}
+              disabled={selectedIds.size === 0 || bulkBusy}
+              style={bulkActionSelect}
+              defaultValue=""
+              aria-label="Bulk set region"
+            >
+              <option value="" disabled>Set region…</option>
+              {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+        </div>
       )}
     </>
   )
@@ -1321,6 +1443,48 @@ const stocktakeFinishBtn: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
   cursor: 'pointer',
 }
+// Bulk-edit row highlight when checkbox is selected.
+const bulkSelectedRow: React.CSSProperties = {
+  background: 'rgba(122,176,122,0.06)',
+  borderLeft: '2px solid #7AB07A',
+  paddingLeft: 12,
+}
+// Sticky bulk-action bar at the bottom of the viewport.
+const bulkBar: React.CSSProperties = {
+  position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
+  display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
+  padding: '12px 24px',
+  background: 'rgba(10, 53, 38, 0.96)',
+  backdropFilter: 'blur(8px)',
+  borderTop: '1px solid rgba(122,176,122,0.40)',
+  boxShadow: '0 -10px 30px rgba(0,0,0,0.45)',
+}
+const bulkCountText: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
+  color: '#E5D4C2', letterSpacing: '0.04em',
+}
+const bulkChip: React.CSSProperties = {
+  background: 'transparent', color: '#B2AA98',
+  border: '1px solid rgba(229,212,194,0.18)', borderRadius: 4,
+  padding: '5px 12px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  letterSpacing: '0.06em', cursor: 'pointer',
+}
+const bulkActionBtn: React.CSSProperties = {
+  background: 'rgba(122,176,122,0.15)', color: '#7AB07A',
+  border: '1px solid rgba(122,176,122,0.40)', borderRadius: 4,
+  padding: '6px 12px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  letterSpacing: '0.06em', cursor: 'pointer',
+}
+const bulkActionSelect: React.CSSProperties = {
+  background: 'rgba(212,184,90,0.12)', color: '#D4B85A',
+  border: '1px solid rgba(212,184,90,0.40)', borderRadius: 4,
+  padding: '6px 10px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  letterSpacing: '0.06em', cursor: 'pointer',
+}
+
 const reviewedRow: React.CSSProperties = {
   opacity: 0.35,
   background: 'rgba(122,176,122,0.04)',
