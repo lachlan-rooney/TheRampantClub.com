@@ -53,7 +53,7 @@ export async function GET() {
   // empty rather than 500'ing the dashboard.
   const lastClosingQuery = sb
     .from('shift_checklists')
-    .select('shift_date, items, free_notes, submitted_by, submitted_at')
+    .select('shift_date, items, free_notes, submitted_by, submitted_at, handover_acknowledged_by, handover_acknowledged_at')
     .eq('kind', 'closing')
     .order('shift_date', { ascending: false })
     .limit(1)

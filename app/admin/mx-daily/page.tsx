@@ -57,6 +57,8 @@ interface ClosingHandover {
   free_notes: string | null
   submitted_by: string | null
   submitted_at: string | null
+  handover_acknowledged_by: string | null
+  handover_acknowledged_at: string | null
 }
 
 interface MissedSeal {
@@ -79,6 +81,19 @@ export default function MXDailyPage() {
   const [showAddComplaint, setShowAddComplaint] = useState(false)
   const [c, setC] = useState({ member_no: '', member_name: '', summary: '', severity: 2, category: '', details: '' })
   const [submitting, setSubmitting] = useState(false)
+  // Handover-ack state. Shares the localStorage initials key with the
+  // checklists page so a staff member only types their initials once
+  // per session across both surfaces.
+  const [ackInitials, setAckInitials] = useState('')
+  const [ackBusy, setAckBusy] = useState(false)
+  const [ackError, setAckError] = useState<string | null>(null)
+  useEffect(() => {
+    try { setAckInitials(localStorage.getItem('checklist_initials') || '') } catch { /* */ }
+  }, [])
+  const persistAckInitials = (v: string) => {
+    setAckInitials(v)
+    try { localStorage.setItem('checklist_initials', v) } catch { /* */ }
+  }
 
   const load = useCallback(() => {
     setLoading(true)
@@ -107,6 +122,28 @@ export default function MXDailyPage() {
     setShowAddComplaint(false)
     setSubmitting(false)
     load()
+  }
+
+  const acknowledgeHandover = async () => {
+    if (!data?.last_closing) return
+    if (!ackInitials.trim()) { setAckError('Enter your initials first.'); return }
+    setAckBusy(true); setAckError(null)
+    try {
+      const r = await fetch('/api/admin/checklists/ack', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shift_date: data.last_closing.shift_date,
+          acknowledged_by: ackInitials.trim(),
+        }),
+      })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error || 'Ack failed')
+      load()  // refresh so the panel flips to the receipt view
+    } catch (e) {
+      setAckError((e as Error).message)
+    } finally {
+      setAckBusy(false)
+    }
   }
 
   const setComplaintStatus = async (id: string, status: string, resolution?: string) => {
@@ -193,6 +230,41 @@ export default function MXDailyPage() {
             {' · '}
             {data.last_closing.items.filter(i => i.checked).length}/{data.last_closing.items.length} items ticked
           </div>
+
+          {/* Handover-read receipt — closes the seam two-way. Already
+              read? Render the receipt with whose initials and when.
+              Otherwise inline form: type initials, ✓ Acknowledge. */}
+          {data.last_closing.handover_acknowledged_at ? (
+            <div style={ackReceipt}>
+              <span style={{ color: '#7AB07A' }}>✓ Read by <strong>{data.last_closing.handover_acknowledged_by || 'unknown'}</strong></span>
+              <span style={{ color: '#7E7864', marginLeft: 6 }}>
+                · {new Date(data.last_closing.handover_acknowledged_at).toLocaleString('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+          ) : (
+            <div style={ackBlock}>
+              <div style={{ ...panelHint, color: '#D4B85A', marginBottom: 6 }}>
+                Acknowledge that you&apos;ve read this handover — closes the audit seam between shifts.
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <input
+                  value={ackInitials}
+                  onChange={e => persistAckInitials(e.target.value)}
+                  placeholder="Your initials"
+                  maxLength={20}
+                  style={ackInput}
+                />
+                <button
+                  onClick={acknowledgeHandover}
+                  disabled={!ackInitials.trim() || ackBusy}
+                  style={{ ...ackBtn, opacity: !ackInitials.trim() || ackBusy ? 0.5 : 1 }}
+                >
+                  {ackBusy ? 'Acknowledging…' : '✓ Acknowledge handover'}
+                </button>
+                {ackError && <span style={{ color: '#C27070', fontSize: 11, fontFamily: "'Google Sans Code', monospace" }}>{ackError}</span>}
+              </div>
+            </div>
+          )}
         </Panel>
       )}
 
@@ -528,6 +600,40 @@ const panelHint: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 11,
   color: '#B2AA98', lineHeight: 1.6, opacity: 0.85,
 }
+// Handover-ack — the read receipt that closes the seam two-way.
+// Form appears below the handover note when not yet ack'd; receipt
+// replaces it once recorded. Stylistically deliberately quiet — the
+// goal is "yes, I read this" without making the panel feel like a
+// task list.
+const ackBlock: React.CSSProperties = {
+  marginTop: 14, padding: '10px 14px',
+  background: 'rgba(212,184,90,0.06)',
+  border: '1px solid rgba(212,184,90,0.30)',
+  borderLeft: '2px solid #D4B85A',
+  borderRadius: 4,
+}
+const ackInput: React.CSSProperties = {
+  background: 'rgba(5,46,32,0.55)', color: '#E5D4C2',
+  border: '1px solid rgba(229,212,194,0.18)', borderRadius: 4,
+  padding: '6px 10px', maxWidth: 140,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  outline: 'none',
+}
+const ackBtn: React.CSSProperties = {
+  background: 'rgba(122,176,122,0.16)', color: '#7AB07A',
+  border: '1px solid rgba(122,176,122,0.40)', borderRadius: 4,
+  padding: '6px 14px', cursor: 'pointer',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, letterSpacing: '0.06em',
+}
+const ackReceipt: React.CSSProperties = {
+  marginTop: 12, padding: '8px 12px',
+  background: 'rgba(122,176,122,0.10)',
+  border: '1px solid rgba(122,176,122,0.30)',
+  borderLeft: '2px solid #7AB07A',
+  borderRadius: 4,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+}
+
 // Missed-seal alerts — sits ABOVE the handover panel when any gaps exist.
 // Amber tone (judgment/attention) rather than red (destructive), and
 // disappears entirely when zero gaps so absence is the success state.
