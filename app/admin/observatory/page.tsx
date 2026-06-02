@@ -169,10 +169,13 @@ export default function ObservatoryPage() {
   const demoFixtureIdRef = useRef<string | null>(null)
   useEffect(() => { demoFixtureIdRef.current = demoFixtureId }, [demoFixtureId])
 
-  // Panel 6 — Demo live extraction state
-  const [demoSampleId, setDemoSampleId] = useState<string>(OBSERVATORY_SAMPLES[0]?.id || '')
-  const [demoTranscript, setDemoTranscript] = useState<string>('')
-  const [demoMemberName, setDemoMemberName] = useState<string>('Demo Member')
+  // Panel 6 — Demo live extraction state. Default to the first sample loaded
+  // so the textarea has content on mount — otherwise the picker shows "Callum"
+  // but the transcript is empty and the Run button is silently disabled.
+  const initialSample = OBSERVATORY_SAMPLES[0]
+  const [demoSampleId, setDemoSampleId] = useState<string>(initialSample?.id || '')
+  const [demoTranscript, setDemoTranscript] = useState<string>(initialSample?.transcript || '')
+  const [demoMemberName, setDemoMemberName] = useState<string>(initialSample?.member_name || 'Demo Member')
   const [demoExtracted, setDemoExtracted] = useState<DemoExtractedPref[]>([])
   const [demoSummary, setDemoSummary] = useState<DemoReconciledSummary | null>(null)
   const [demoPhase, setDemoPhase] = useState<DemoPhase>('idle')
@@ -1517,7 +1520,15 @@ function DemoExtractionPanel({
         {(phase === 'streaming' || phase === 'reconciling') ? (
           <button onClick={onCancel} style={btnGhostDemo}>Cancel</button>
         ) : (
-          <button onClick={onRun} disabled={!transcript.trim()} style={demoBtn}>
+          <button
+            onClick={onRun}
+            disabled={!transcript.trim()}
+            style={{
+              ...demoBtn,
+              ...(transcript.trim() ? {} : { opacity: 0.4, cursor: 'not-allowed' }),
+            }}
+            title={transcript.trim() ? '' : 'Load a sample or paste a transcript first'}
+          >
             {phase === 'done' || phase === 'error' ? 'Run extraction again' : 'Run extraction'}
           </button>
         )}
