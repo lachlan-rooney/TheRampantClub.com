@@ -384,6 +384,14 @@ export default function AdminWhisky() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                   <span style={whiskyName}>{w.name}</span>
+                  {(!w.tasting_notes || w.tasting_notes.trim().length === 0) && (
+                    <span
+                      style={missingNotesBadge}
+                      title="No tasting notes yet — click Edit to add them"
+                    >
+                      ⓘ no notes
+                    </span>
+                  )}
                   {w.distillery && <span style={whiskySub}>· {w.distillery}</span>}
                   {w.region && <span style={regionPill}>{w.region}</span>}
                 </div>
@@ -743,6 +751,18 @@ const whiskyName: React.CSSProperties = {
 }
 const whiskySub: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98',
+}
+// Small gold badge that surfaces on rows with no tasting notes — staff
+// can scan the catalogue and see at a glance which ones still need
+// manual entry after the backfill round.
+const missingNotesBadge: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#D4B85A',
+  background: 'rgba(212,184,90,0.10)',
+  border: '1px solid rgba(212,184,90,0.40)',
+  borderRadius: 4, padding: '2px 7px',
+  letterSpacing: '0.06em', textTransform: 'uppercase',
+  cursor: 'help',
 }
 const regionPill: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 10,
