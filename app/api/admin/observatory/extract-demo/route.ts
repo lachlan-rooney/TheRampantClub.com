@@ -100,7 +100,21 @@ export async function POST(req: NextRequest) {
     sb as Parameters<typeof getActiveLearnedLambda>[0]
   )
   const baselines = buildCategoryBaselines(learnedLambda)
-  const systemPrompt = buildSystemPrompt(baselines)
+
+  // ── Probe-mode prompt addition ─────────────────────────────────────
+  // The ONLY scoring-adjacent change in this route vs. the live intake is to
+  // ask the model for a one-sentence rationale per preference. The scoring
+  // rubric inside buildSystemPrompt is byte-for-byte unchanged; this
+  // appendix only ADDS an output field. The integration check ("scoring
+  // UNCHANGED vs. last Callum run") catches any drift if asking for
+  // explanations accidentally nudged judgement.
+  const PROBE_RATIONALE_APPENDIX = `
+
+PROBE MODE — ADDITIONAL FIELD ONLY:
+Additionally, include a one-sentence \`rationale\` field per preference explaining why you chose its S₀, C and λ — for example, "emphatic + repeated + tied to father → high importance, slow decay". The rationale must NOT alter the scoring rubric above; it explains your existing choice, not a different one.
+
+Return ONLY the JSON array.`
+  const systemPrompt = buildSystemPrompt(baselines) + PROBE_RATIONALE_APPENDIX
 
   const encoder = new TextEncoder()
 
@@ -241,6 +255,7 @@ function tryParseRawObject(line: string): ExtractedPreference | null {
     confidence:      numberOrUndef(obj.confidence),
     lambda:          numberOrUndef(obj.lambda),
     frequency:       numberOrUndef(obj.frequency),
+    rationale:       typeof obj.rationale === 'string' ? obj.rationale.trim() : undefined,
   }
 }
 
@@ -274,6 +289,7 @@ function validateForDisplay(raw: ExtractedPreference): {
   confidence: number
   lambda: number
   frequency: number
+  rationale: string | null
 } | null {
   if (!CANONICAL.has(raw.category)) return null
   if (!raw.preference_name) return null
@@ -292,5 +308,6 @@ function validateForDisplay(raw: ExtractedPreference): {
     detail:          raw.detail ?? null,
     verbatim_quote:  raw.verbatim_quote ?? null,
     s0, confidence, lambda, frequency,
+    rationale:       raw.rationale ?? null,
   }
 }

@@ -204,6 +204,36 @@ for (const c of cases) {
   check(c.label, conditions.length === 0, conditions.join("; "));
 }
 
+// ── Case 15: rationale passthrough (probe-mode field) ───────────────
+// reconcile must copy an AI-provided rationale through verbatim, and must
+// pass empty-string when the input has no rationale. The field is text only;
+// it must NOT influence any scoring decision.
+const withRationale: ExtractedPreference = {
+  category: "Whisky & Beverage",
+  preference_name: "Peat preference",
+  detail: "Islay regulars",
+  verbatim_quote: "I'm a peat man, always have been",
+  s0: 5, confidence: 1.0, lambda: 0.002, frequency: 1.0,
+  rationale: "emphatic + repeated + tied to father → high importance, slow decay",
+}
+const withoutRationale: ExtractedPreference = {
+  category: "Whisky & Beverage",
+  preference_name: "Sherry-cask kick",
+  verbatim_quote: "might've moved on entirely",
+  s0: 3, confidence: 0.5, lambda: 0.020, frequency: 1.0,
+  // no rationale field
+}
+const r15 = reconcile([withRationale, withoutRationale], baselinesDayOne)
+check("15a. rationale carried through verbatim when AI provides it",
+  r15.preferences[0]?.rationale === "emphatic + repeated + tied to father → high importance, slow decay",
+  `got: "${r15.preferences[0]?.rationale}"`)
+check("15b. empty rationale when AI omits the field",
+  r15.preferences[1]?.rationale === "",
+  `got: "${r15.preferences[1]?.rationale}"`)
+check("15c. rationale does NOT influence scoring — S₀/C/λ unchanged",
+  r15.preferences[0]?.s0 === 5 && r15.preferences[0]?.confidence === 1.0 && r15.preferences[0]?.lambda === 0.002,
+  `s0=${r15.preferences[0]?.s0} c=${r15.preferences[0]?.confidence} λ=${r15.preferences[0]?.lambda}`)
+
 // ── Cases 11-13: content-first precedence + ai_permanent (Pass-7 refinement) ─
 // The medical guardrail has TWO triggers (content-detected + AI-emitted λ=0).
 // Both still lock the row at λ=0 / s0=5 / c=1. The distinction is labelling:

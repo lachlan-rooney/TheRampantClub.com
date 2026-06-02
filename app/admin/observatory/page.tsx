@@ -99,14 +99,25 @@ interface DemoExtractedPref {
     | 'category_baseline_designed'
     | 'forced_medical'
     | 'ai_permanent'
+  rationale: string | null
   uid: string
 }
 interface DemoReconciledSummary {
   count: number
   medicalForced: number
   aiPermanent: number
-  dropped: { reason: string; item: unknown }[]
+  dropped: { reason: string; item: { category?: string; preference_name?: string; verbatim_quote?: string } }[]
   baselines: Record<string, { baselineLambda: number; source: 'learned' | 'designed' }>
+}
+interface ProbeRun {
+  id: string
+  label: string                // sample id or "pasted"
+  member_name: string
+  transcript_snippet: string   // first ~120 chars for the run list
+  preferences: DemoExtractedPref[]
+  summary: DemoReconciledSummary
+  ran_at: string               // ISO
+  tokens: { input: number; output: number; cache_read: number; cache_created: number }
 }
 type DemoPhase = 'idle' | 'streaming' | 'reconciling' | 'done' | 'error'
 
@@ -166,7 +177,19 @@ export default function ObservatoryPage() {
   const [demoSummary, setDemoSummary] = useState<DemoReconciledSummary | null>(null)
   const [demoPhase, setDemoPhase] = useState<DemoPhase>('idle')
   const [demoExtractError, setDemoExtractError] = useState<string | null>(null)
+  const [expandedRationales, setExpandedRationales] = useState<Set<string>>(new Set())
+  const [probeRuns, setProbeRuns] = useState<ProbeRun[]>([])
+  const [demoTokens, setDemoTokens] = useState<{ input: number; output: number; cache_read: number; cache_created: number }>({ input: 0, output: 0, cache_read: 0, cache_created: 0 })
+  const [compareIds, setCompareIds] = useState<[string | null, string | null]>([null, null])
   const demoAbortRef = useRef<AbortController | null>(null)
+
+  const toggleRationale = useCallback((uid: string) => {
+    setExpandedRationales(prev => {
+      const next = new Set(prev)
+      if (next.has(uid)) next.delete(uid); else next.add(uid)
+      return next
+    })
+  }, [])
 
   const loadDemoSample = useCallback((id: string) => {
     const s = OBSERVATORY_SAMPLES.find(x => x.id === id)
@@ -247,7 +270,7 @@ export default function ObservatoryPage() {
         case 'preference': {
           const p = payload.pref as Omit<DemoExtractedPref, 'uid' | 'lambda_origin'> | undefined
           if (!p) return
-          setDemoExtracted(prev => [...prev, { ...p, uid: crypto.randomUUID() }])
+          setDemoExtracted(prev => [...prev, { ...p, rationale: p.rationale ?? null, uid: crypto.randomUUID() }])
           break
         }
         case 'reconciled': {
@@ -255,6 +278,7 @@ export default function ObservatoryPage() {
             category: string; subcategory: string; preference_name: string; detail: string; verbatim_quote: string;
             s0: number; confidence: number; lambda: number; frequency: number;
             lambda_origin: DemoExtractedPref['lambda_origin']
+            rationale?: string
           }>
           setDemoExtracted(pref.map(p => ({
             category: p.category,
@@ -264,6 +288,7 @@ export default function ObservatoryPage() {
             verbatim_quote: p.verbatim_quote || null,
             s0: p.s0, confidence: p.confidence, lambda: p.lambda, frequency: p.frequency,
             lambda_origin: p.lambda_origin,
+            rationale: p.rationale ?? null,
             uid: crypto.randomUUID(),
           })))
           setDemoSummary({
@@ -272,6 +297,15 @@ export default function ObservatoryPage() {
             aiPermanent:   Number(payload.aiPermanent)   || 0,
             dropped: (payload.dropped as DemoReconciledSummary['dropped']) || [],
             baselines: (payload.baselines as DemoReconciledSummary['baselines']) || {},
+          })
+          break
+        }
+        case 'usage': {
+          setDemoTokens({
+            input:         Number((payload as { input_tokens?: number }).input_tokens) || 0,
+            output:        Number((payload as { output_tokens?: number }).output_tokens) || 0,
+            cache_read:    Number((payload as { cache_read_input_tokens?: number }).cache_read_input_tokens) || 0,
+            cache_created: Number((payload as { cache_creation_input_tokens?: number }).cache_creation_input_tokens) || 0,
           })
           break
         }
@@ -285,6 +319,41 @@ export default function ObservatoryPage() {
       }
     }
   }, [demoTranscript, demoMemberName])
+
+  // Capture each completed run for in-session compare. Cap at 10 — oldest drops.
+  // Kept in React state only; gone on refresh. No persistence anywhere.
+  useEffect(() => {
+    if (demoPhase !== 'done' || !demoSummary) return
+    const sample = OBSERVATORY_SAMPLES.find(s => s.id === demoSampleId)
+    const label = sample ? sample.label : 'pasted transcript'
+    const run: ProbeRun = {
+      id: crypto.randomUUID(),
+      label,
+      member_name: demoMemberName,
+      transcript_snippet: demoTranscript.slice(0, 140).replace(/\s+/g, ' ').trim(),
+      preferences: demoExtracted,
+      summary: demoSummary,
+      ran_at: new Date().toISOString(),
+      tokens: demoTokens,
+    }
+    setProbeRuns(prev => {
+      // Avoid re-capturing if the user is still on the same 'done' state and
+      // demoExtracted hasn't changed (no shallow effect re-fire).
+      if (prev[0]?.preferences === demoExtracted) return prev
+      return [run, ...prev].slice(0, 10)
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demoPhase])
+
+  const restoreRun = useCallback((id: string) => {
+    const run = probeRuns.find(r => r.id === id)
+    if (!run) return
+    setDemoExtracted(run.preferences)
+    setDemoSummary(run.summary)
+    setDemoTokens(run.tokens)
+    setDemoMemberName(run.member_name)
+    setDemoPhase('done')
+  }, [probeRuns])
 
   // 1s heartbeat — drives Panel 1 recompute AND the demo countdown.
   useEffect(() => {
@@ -737,21 +806,46 @@ export default function ObservatoryPage() {
         </p>
 
         {demoGate === 'open' ? (
-          <DemoExtractionPanel
-            sampleId={demoSampleId}
-            samples={OBSERVATORY_SAMPLES}
-            transcript={demoTranscript}
-            memberName={demoMemberName}
-            phase={demoPhase}
-            extracted={demoExtracted}
-            summary={demoSummary}
-            error={demoExtractError}
-            onLoadSample={loadDemoSample}
-            onTranscriptChange={setDemoTranscript}
-            onMemberNameChange={setDemoMemberName}
-            onRun={runDemoExtraction}
-            onCancel={cancelDemoRun}
-          />
+          <>
+            <DemoExtractionPanel
+              sampleId={demoSampleId}
+              samples={OBSERVATORY_SAMPLES}
+              transcript={demoTranscript}
+              memberName={demoMemberName}
+              phase={demoPhase}
+              extracted={demoExtracted}
+              summary={demoSummary}
+              error={demoExtractError}
+              expandedRationales={expandedRationales}
+              onToggleRationale={toggleRationale}
+              onLoadSample={loadDemoSample}
+              onTranscriptChange={setDemoTranscript}
+              onMemberNameChange={setDemoMemberName}
+              onRun={runDemoExtraction}
+              onCancel={cancelDemoRun}
+            />
+            {probeRuns.length > 0 && (
+              <ProbeRunsStrip
+                runs={probeRuns}
+                onRestore={restoreRun}
+                compareIds={compareIds}
+                onCompareToggle={(id) => setCompareIds(([a, b]) => {
+                  if (a === id) return [null, b]
+                  if (b === id) return [a, null]
+                  if (!a) return [id, b]
+                  if (!b) return [a, id]
+                  return [id, b]
+                })}
+              />
+            )}
+            {compareIds[0] && compareIds[1] && (
+              <ProbeCompareView
+                a={probeRuns.find(r => r.id === compareIds[0])!}
+                b={probeRuns.find(r => r.id === compareIds[1])!}
+                onClose={() => setCompareIds([null, null])}
+              />
+            )}
+          </>
         ) : (
           <div style={demoBlockClosed}>
             <span style={demoEyebrow}>DEMO SURFACE</span>
@@ -1352,6 +1446,7 @@ function feedKindLabel(e: FeedEvent): React.CSSProperties {
 
 function DemoExtractionPanel({
   sampleId, samples, transcript, memberName, phase, extracted, summary, error,
+  expandedRationales, onToggleRationale,
   onLoadSample, onTranscriptChange, onMemberNameChange, onRun, onCancel,
 }: {
   sampleId: string
@@ -1362,6 +1457,8 @@ function DemoExtractionPanel({
   extracted: DemoExtractedPref[]
   summary: DemoReconciledSummary | null
   error: string | null
+  expandedRationales: Set<string>
+  onToggleRationale: (uid: string) => void
   onLoadSample: (id: string) => void
   onTranscriptChange: (v: string) => void
   onMemberNameChange: (v: string) => void
@@ -1457,10 +1554,32 @@ function DemoExtractionPanel({
         </div>
       )}
 
+      {reconciled && summary && summary.dropped.length > 0 && (
+        <div style={droppedStrip}>
+          <div style={{ ...miniLabel, color: '#C27070', marginBottom: 6 }}>
+            ⚠ DROPPED · {summary.dropped.length} row{summary.dropped.length === 1 ? '' : 's'} did not survive reconciliation
+          </div>
+          {summary.dropped.map((d, i) => (
+            <div key={i} style={droppedRow}>
+              <span style={{ color: '#C27070', marginRight: 8 }}>·</span>
+              <span style={{ color: '#E5D4C2' }}>{d.item?.preference_name || '(unnamed)'}</span>
+              <span style={{ color: '#7E7864' }}> — {d.reason}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {extracted.length > 0 && (
         <div style={demoExtractedList}>
           {extracted.map((p, i) => (
-            <DemoPreferenceCard key={p.uid} pref={p} index={i + 1} phase={phase} />
+            <DemoPreferenceCard
+              key={p.uid}
+              pref={p}
+              index={i + 1}
+              phase={phase}
+              expanded={expandedRationales.has(p.uid)}
+              onToggleExpand={() => onToggleRationale(p.uid)}
+            />
           ))}
         </div>
       )}
@@ -1468,8 +1587,20 @@ function DemoExtractionPanel({
   )
 }
 
-function DemoPreferenceCard({ pref, index, phase }: {
+// Probe attention regex — substring match (deliberately loose; the affordance's
+// job is to flag every not-locked row that could be a miss, then let the human
+// judge). Mirrors the user's spec exactly so reviewers can audit the surface
+// area at a glance.
+const PROBE_MEDICAL_ADJACENT = /medic|allerg|intoleran|epipen|anaphyla/i
+function isMedicalAdjacent(p: DemoExtractedPref): boolean {
+  const hay = [p.preference_name, p.detail, p.verbatim_quote, p.subcategory, p.category]
+    .filter(Boolean).join(' ')
+  return PROBE_MEDICAL_ADJACENT.test(hay)
+}
+
+function DemoPreferenceCard({ pref, index, phase, expanded, onToggleExpand }: {
   pref: DemoExtractedPref; index: number; phase: DemoPhase
+  expanded: boolean; onToggleExpand: () => void
 }) {
   // Streaming heuristic: AI-emitted λ=0 = the model thinks this is permanent.
   // Whether it's MEDICAL or PERMANENT depends on content-detection, which only
@@ -1497,6 +1628,16 @@ function DemoPreferenceCard({ pref, index, phase }: {
                : isPermanent ? 'rgba(212,184,90,0.04)'
                : null
 
+  // ── Probe-mode edge flags (advisory only — do NOT certify correctness) ──
+  // The medical-adjacent affordance flags FOR ATTENTION when a row contains
+  // medical-ish language AND was not locked. It does NOT claim the non-firing
+  // is "correct" — the same pattern catches the trap cases (correctly not
+  // locked, e.g. "medicinal" tasting note) AND the misses (incorrectly not
+  // locked — a real allergy the guardrail failed to catch). The badge's job
+  // is to make every such row visible so a human can tell them apart.
+  const showMedicalAdjacentAttention = isReconciled && !isLocked && isMedicalAdjacent(pref)
+  const showLowConfidence = isReconciled && pref.confidence <= 0.50 && !isLocked
+
   return (
     <div style={{
       ...demoPrefCard,
@@ -1507,6 +1648,22 @@ function DemoPreferenceCard({ pref, index, phase }: {
         <span style={demoIndex}>#{index}</span>
         <span style={prefCategoryBadge}>{pref.category}</span>
         <span style={originBadge(originLabel.tone)}>{originLabel.text}</span>
+        {showLowConfidence && (
+          <span
+            style={attentionBadge}
+            title="C ≤ 0.50 — the AI hedged this scoring (e.g. one-off mention, qualifier). Worth a closer look."
+          >
+            ⚠ LOW CONFIDENCE
+          </span>
+        )}
+        {showMedicalAdjacentAttention && (
+          <span
+            style={attentionBadgeMedicalAdjacent}
+            title={`Pattern-matched: contains medical-adjacent language (matched /medic|allerg|intoleran|epipen|anaphyla/i) and was NOT locked. The badge does NOT certify the non-firing as correct — the same pattern catches "medicinal tasting note" (correctly unlocked) AND a missed allergy (incorrectly unlocked). Verify which this is.`}
+          >
+            ⚠ MEDICAL-ADJACENT · UNLOCKED · VERIFY
+          </span>
+        )}
         {phase === 'streaming' && !isReconciled && <span style={liveTag}>· live</span>}
       </div>
       <div style={demoPrefName}>{pref.preference_name}</div>
@@ -1525,6 +1682,149 @@ function DemoPreferenceCard({ pref, index, phase }: {
           <span style={demoFactor}><strong style={{ color: '#C27070' }}>never decays</strong></span>
         )}
       </div>
+
+      {pref.rationale && (
+        <div style={{ marginTop: 10 }}>
+          <button onClick={onToggleExpand} style={rationaleToggle}>
+            {expanded ? '▾' : '▸'} rationale
+          </button>
+          {expanded && (
+            <div style={rationaleBlock}>
+              <span style={{ color: '#7E7864' }}>AI: </span>
+              {pref.rationale}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Probe runs (in-session) + compare view ──────────────────────────────────
+
+function ProbeRunsStrip({ runs, onRestore, compareIds, onCompareToggle }: {
+  runs: ProbeRun[]
+  onRestore: (id: string) => void
+  compareIds: [string | null, string | null]
+  onCompareToggle: (id: string) => void
+}) {
+  return (
+    <div style={probeRunsStrip}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+        <span style={{ ...miniLabel, color: '#D4B85A' }}>PROBE RUNS · last {runs.length}</span>
+        <span style={metaText}>
+          click a run to restore · check 2 to compare side-by-side · kept for this session only, nothing is saved
+        </span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {runs.map((r, i) => {
+          const selected = compareIds[0] === r.id || compareIds[1] === r.id
+          return (
+            <div key={r.id} style={{
+              ...probeRunRow,
+              ...(selected ? { background: 'rgba(212,184,90,0.10)', borderColor: 'rgba(212,184,90,0.45)' } : {}),
+            }}>
+              <input
+                type="checkbox"
+                checked={selected}
+                onChange={() => onCompareToggle(r.id)}
+                style={{ marginRight: 6 }}
+                title="select for compare"
+              />
+              <button onClick={() => onRestore(r.id)} style={probeRunButton}>
+                <span style={{ color: '#7E7864', marginRight: 8 }}>#{runs.length - i}</span>
+                <span style={{ color: '#E5D4C2' }}>{r.label}</span>
+                <span style={metaText}> · {r.summary.count} prefs</span>
+                {r.summary.medicalForced > 0 && <span style={{ ...metaText, color: '#C27070' }}> · {r.summary.medicalForced} medical</span>}
+                {r.summary.aiPermanent  > 0 && <span style={{ ...metaText, color: '#D4B85A' }}> · {r.summary.aiPermanent} permanent</span>}
+                {r.summary.dropped.length > 0 && <span style={metaText}> · {r.summary.dropped.length} dropped</span>}
+                <span style={{ ...metaText, marginLeft: 'auto' }}>
+                  {new Date(r.ran_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </span>
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function ProbeCompareView({ a, b, onClose }: {
+  a: ProbeRun
+  b: ProbeRun
+  onClose: () => void
+}) {
+  // Group preferences by category so both columns line up by topic.
+  const allCats = Array.from(new Set([
+    ...a.preferences.map(p => p.category),
+    ...b.preferences.map(p => p.category),
+  ])).sort()
+
+  return (
+    <div style={probeCompareWrap}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 12 }}>
+        <span style={{ ...miniLabel, color: '#D4B85A' }}>COMPARE</span>
+        <span style={metaText}>category-aligned · locked rows highlighted in colour</span>
+        <button onClick={onClose} style={{ ...btnGhostDemo, marginLeft: 'auto', padding: '4px 10px', fontSize: 10 }}>close</button>
+      </div>
+      <div style={probeCompareGrid}>
+        <div style={probeCompareCol}>
+          <div style={probeCompareHeader}>
+            <strong>{a.label}</strong>
+            <div style={metaText}>{a.summary.count} prefs · {a.summary.medicalForced} medical · {a.summary.aiPermanent} permanent · {a.summary.dropped.length} dropped</div>
+          </div>
+          <ProbeCompareCategoryList cats={allCats} prefs={a.preferences} />
+        </div>
+        <div style={probeCompareCol}>
+          <div style={probeCompareHeader}>
+            <strong>{b.label}</strong>
+            <div style={metaText}>{b.summary.count} prefs · {b.summary.medicalForced} medical · {b.summary.aiPermanent} permanent · {b.summary.dropped.length} dropped</div>
+          </div>
+          <ProbeCompareCategoryList cats={allCats} prefs={b.preferences} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ProbeCompareCategoryList({ cats, prefs }: {
+  cats: string[]
+  prefs: DemoExtractedPref[]
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {cats.map(cat => {
+        const rows = prefs.filter(p => p.category === cat)
+        if (rows.length === 0) {
+          return (
+            <div key={cat} style={probeCompareCatBlock}>
+              <div style={{ ...miniLabel, marginBottom: 6 }}>{cat}</div>
+              <div style={{ ...metaText, opacity: 0.5 }}>— no preferences in this category —</div>
+            </div>
+          )
+        }
+        return (
+          <div key={cat} style={probeCompareCatBlock}>
+            <div style={{ ...miniLabel, marginBottom: 6 }}>{cat}</div>
+            {rows.map(r => {
+              const locked = r.lambda_origin === 'forced_medical' || r.lambda_origin === 'ai_permanent'
+              const tone = r.lambda_origin === 'forced_medical' ? '#C27070'
+                         : r.lambda_origin === 'ai_permanent'   ? '#D4B85A'
+                         : '#E5D4C2'
+              return (
+                <div key={r.uid} style={{
+                  ...probeCompareRow,
+                  ...(locked ? { borderLeft: `2px solid ${tone}`, paddingLeft: 8 } : {}),
+                }}>
+                  <span style={{ color: tone }}>{r.preference_name}</span>
+                  <span style={metaText}> · s0={r.s0} c={r.confidence.toFixed(2)} λ={r.lambda.toFixed(3)}</span>
+                </div>
+              )
+            })}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -2116,6 +2416,98 @@ const demoFactor: React.CSSProperties = {
 const liveTag: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 9,
   color: '#D4B85A', letterSpacing: '0.06em', fontStyle: 'italic',
+}
+// Probe edge flags — both rendered with dashed borders so they're visually
+// distinct from the solid origin badges, and clearly read as ADVISORY
+// (attention, not verdict). The medical-adjacent badge is deliberately NOT
+// green — it does not certify the non-firing as correct, only flags it for
+// the human to judge.
+const attentionBadge: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#D4B85A', background: 'rgba(212,184,90,0.06)',
+  border: '1px dashed rgba(212,184,90,0.45)',
+  borderRadius: 3, padding: '2px 8px',
+  letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'help',
+}
+const attentionBadgeMedicalAdjacent: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#E58F4A', background: 'rgba(229,143,74,0.08)',
+  border: '1px dashed rgba(229,143,74,0.50)',
+  borderRadius: 3, padding: '2px 8px',
+  letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600,
+  cursor: 'help',
+}
+const rationaleToggle: React.CSSProperties = {
+  background: 'transparent', color: '#B2AA98',
+  border: '1px solid rgba(229,212,194,0.10)', borderRadius: 4,
+  padding: '4px 10px', fontFamily: "'Google Sans Code', monospace",
+  fontSize: 10, letterSpacing: '0.06em', cursor: 'pointer',
+}
+const rationaleBlock: React.CSSProperties = {
+  marginTop: 6, padding: '8px 12px',
+  background: 'rgba(212,184,90,0.04)',
+  border: '1px solid rgba(212,184,90,0.18)',
+  borderLeft: '2px solid #D4B85A',
+  borderRadius: 4,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#E5D4C2', lineHeight: 1.6,
+}
+const droppedStrip: React.CSSProperties = {
+  marginTop: 14, padding: 12,
+  background: 'rgba(194,112,112,0.04)',
+  border: '1px dashed rgba(194,112,112,0.30)', borderRadius: 6,
+}
+const droppedRow: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  padding: '2px 0', lineHeight: 1.6,
+}
+// Probe runs + compare view
+const probeRunsStrip: React.CSSProperties = {
+  marginTop: 16, padding: 14,
+  background: 'rgba(229,212,194,0.02)',
+  border: '1px solid rgba(229,212,194,0.08)', borderRadius: 6,
+}
+const probeRunRow: React.CSSProperties = {
+  display: 'flex', alignItems: 'center',
+  padding: '4px 8px', borderRadius: 4,
+  background: 'rgba(5,46,32,0.4)',
+  border: '1px solid rgba(229,212,194,0.06)',
+}
+const probeRunButton: React.CSSProperties = {
+  flex: 1, display: 'flex', alignItems: 'baseline', gap: 4,
+  background: 'transparent', border: 'none',
+  padding: '6px 4px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', letterSpacing: '0.04em',
+  cursor: 'pointer', textAlign: 'left',
+}
+const probeCompareWrap: React.CSSProperties = {
+  marginTop: 16, padding: 14,
+  background: 'rgba(5,46,32,0.5)',
+  border: '1px solid rgba(212,184,90,0.30)', borderRadius: 6,
+}
+const probeCompareGrid: React.CSSProperties = {
+  display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14,
+}
+const probeCompareCol: React.CSSProperties = {
+  padding: 12,
+  background: 'rgba(229,212,194,0.02)',
+  border: '1px solid rgba(229,212,194,0.06)', borderRadius: 4,
+}
+const probeCompareHeader: React.CSSProperties = {
+  marginBottom: 10, paddingBottom: 8,
+  borderBottom: '1px solid rgba(229,212,194,0.08)',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#E5D4C2',
+}
+const probeCompareCatBlock: React.CSSProperties = {
+  padding: '8px 10px',
+  background: 'rgba(5,46,32,0.3)',
+  border: '1px solid rgba(229,212,194,0.05)', borderRadius: 4,
+}
+const probeCompareRow: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  padding: '3px 0', lineHeight: 1.5,
 }
 function originBadge(tone: 'red' | 'gold' | 'green' | 'grey' | 'amber'): React.CSSProperties {
   const p = {

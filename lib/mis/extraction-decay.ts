@@ -221,6 +221,11 @@ export interface ExtractedPreference {
   confidence?: number;
   lambda?: number;
   frequency?: number;
+  /** Optional one-sentence reasoning for the S₀/C/λ choice. Probe-mode only;
+   *  the demo route's prompt asks the model to include this. The scoring
+   *  rubric is unchanged — the rationale explains the existing choice, not
+   *  a different one. Empty string if the AI didn't emit it. */
+  rationale?: string;
 }
 
 export interface ReconciledPreference {
@@ -240,6 +245,10 @@ export interface ReconciledPreference {
     | "category_baseline_designed"
     | "forced_medical"     // content-detected medical signal — red "MEDICAL — LOCKED" badge
     | "ai_permanent";      // AI judged λ=0 (lifelong identity) without medical content — gold "PERMANENT — LOCKED" badge
+  /** Optional one-sentence reasoning from the AI explaining its S₀/C/λ choice.
+   *  Empty string when the input didn't carry one. Passthrough only — reconcile
+   *  never invents or modifies this. */
+  rationale: string;
 }
 
 const ALLOWED_CONFIDENCE = [1.0, 0.75, 0.5, 0.25];
@@ -336,6 +345,7 @@ export function reconcile(
       frequency: snapToSet(r.frequency, ALLOWED_FREQUENCY, 1.0),
       source: "Interview",
       lambda_origin,
+      rationale: r.rationale ?? "",
     });
   }
   return { preferences: out, dropped, medicalForced, aiPermanent };
