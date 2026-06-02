@@ -37,6 +37,18 @@ interface Locker {
   updated_at: string
 }
 
+interface ActivityRow {
+  id: string
+  locker_no: string
+  event_type: 'assigned' | 'unassigned' | 'status_changed' | 'label_changed'
+            | 'notes_changed' | 'position_changed' | 'retired' | 'misc_patch'
+  before_state: Record<string, unknown> | null
+  after_state:  Record<string, unknown> | null
+  changed_by_email: string | null
+  notes: string | null
+  created_at: string
+}
+
 interface BottleContent {
   id: string
   locker_no: string
@@ -543,9 +555,11 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
 }) {
   const [locker, setLocker] = useState<Locker | null>(null)
   const [contents, setContents] = useState<BottleContent[]>([])
+  const [activity, setActivity] = useState<ActivityRow[]>([])
   const [loading, setLoading] = useState(true)
   const [memberQuery, setMemberQuery] = useState('')
   const [adding, setAdding] = useState(false)
+  const [showActivity, setShowActivity] = useState(false)
   // Picker state — bottle entry is a SELECTION, not a typing exercise.
   // selectedWhisky drives the Add button; bottleQuery only filters the list.
   const [selectedWhisky, setSelectedWhisky] = useState<WhiskyLite | null>(null)
@@ -577,6 +591,7 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
       .then(j => {
         setLocker(j.locker)
         setContents(j.contents || [])
+        setActivity(j.activity || [])
         if (!silent) setLoading(false)
       })
   }, [locker_no])
@@ -881,11 +896,75 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
                 </div>
               </div>
             </Section>
+
+            {/* Activity timeline — collapsed by default to keep the drawer
+                scannable. Expand to see assignment / status / position
+                history. Bottle additions live in Contents above; this is
+                about the LOCKER itself. */}
+            <Section title={`Activity · ${activity.length} event${activity.length === 1 ? '' : 's'}`}>
+              {activity.length === 0 ? (
+                <div style={emptyHint}>No locker activity logged yet. (Migration may not have been applied — see db/locker_activity.sql.)</div>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setShowActivity(v => !v)}
+                    style={{ ...tinyBtn, alignSelf: 'flex-start', marginBottom: 4 }}
+                  >
+                    {showActivity ? 'Hide history' : `Show last ${Math.min(activity.length, 50)} event${activity.length === 1 ? '' : 's'}`}
+                  </button>
+                  {showActivity && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {activity.map(a => (
+                        <div key={a.id} style={activityRow}>
+                          <span style={activityTimestamp}>
+                            {new Date(a.created_at).toLocaleString('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <span style={activityChip(a.event_type)}>{a.event_type.replace(/_/g, ' ')}</span>
+                          <span style={activityDescription}>{describeActivity(a)}</span>
+                          {a.changed_by_email && (
+                            <span style={{ color: '#7E7864', fontSize: 9, marginLeft: 'auto' }}>{a.changed_by_email}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </Section>
           </>
         )}
       </div>
     </>
   )
+}
+
+// Plain-English summary of an activity row — preferred over rendering
+// raw before/after JSON to non-technical staff.
+function describeActivity(a: ActivityRow): string {
+  const before = a.before_state || {}
+  const after  = a.after_state  || {}
+  const fmt = (v: unknown) => v == null || v === '' ? '—' : String(v)
+  switch (a.event_type) {
+    case 'assigned':
+      return `member set to ${fmt(after.member_no)}`
+    case 'unassigned':
+      return `member ${fmt(before.member_no)} removed`
+    case 'status_changed':
+      return `status ${fmt(before.status)} → ${fmt(after.status)}`
+    case 'retired':
+      return `retired (was ${fmt(before.status)}${before.member_no ? `, member ${fmt(before.member_no)}` : ''})`
+    case 'label_changed':
+      return `label ${fmt(before.label)} → ${fmt(after.label)}`
+    case 'notes_changed':
+      return 'notes updated'
+    case 'position_changed':
+      return `position (${fmt(before.position_row)},${fmt(before.position_col)}) → (${fmt(after.position_row)},${fmt(after.position_col)})`
+    default: {
+      // Generic before/after dump for misc_patch.
+      const changedKeys = Object.keys(after).join(', ')
+      return `changed: ${changedKeys || '(unknown)'}`
+    }
+  }
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -1115,6 +1194,41 @@ const memberRow: React.CSSProperties = {
   color: '#E5D4C2', fontFamily: "'Google Sans Code', monospace", fontSize: 11,
   cursor: 'pointer', textAlign: 'left',
 }
+// Activity timeline rows in the locker drawer.
+const activityRow: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+  padding: '6px 8px',
+  background: 'rgba(5,46,32,0.4)',
+  border: '1px solid rgba(229,212,194,0.06)',
+  borderRadius: 4,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+}
+const activityTimestamp: React.CSSProperties = {
+  color: '#7E7864', letterSpacing: '0.04em', minWidth: 100,
+}
+const activityDescription: React.CSSProperties = {
+  color: '#E5D4C2', flex: 1,
+}
+function activityChip(eventType: string): React.CSSProperties {
+  const tone =
+      eventType === 'assigned'         ? '#7AB07A'
+    : eventType === 'unassigned'       ? '#E58F4A'
+    : eventType === 'retired'          ? '#C27070'
+    : eventType === 'status_changed'   ? '#D4B85A'
+    : eventType === 'position_changed' ? '#B2AA98'
+    : eventType === 'label_changed'    ? '#B2AA98'
+    : eventType === 'notes_changed'    ? '#B2AA98'
+    :                                    '#7E7864'
+  return {
+    fontFamily: "'Google Sans Code', monospace", fontSize: 8,
+    color: tone,
+    background: tone + '14',
+    border: `1px solid ${tone}40`,
+    borderRadius: 3, padding: '2px 6px',
+    letterSpacing: '0.06em', textTransform: 'uppercase',
+  }
+}
+
 const tinyBtn: React.CSSProperties = {
   background: 'rgba(229,212,194,0.06)', color: '#B2AA98',
   border: '1px solid rgba(229,212,194,0.12)', borderRadius: 4,
