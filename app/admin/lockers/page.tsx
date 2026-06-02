@@ -68,11 +68,15 @@ interface WhiskyLite {
 }
 
 const STATUSES = ['occupied', 'reserved', 'empty', 'retired'] as const
-// Doorway column index in the wall grid (1-indexed). A door sits between
-// cols 6 and 7 — the entrance to the Rampant Room. Physical layout is
-// 6 lockers · door · 4 lockers, total 10 lockable columns. This is a
-// visual fact about the wall; lockers cannot occupy the door slot.
-const WALL_DOOR_AFTER_COL = 6
+// Physical wall geometry — fixed facts about the room, not derived from
+// whatever lockers happen to be seeded yet. A missing locker becomes a
+// ghost tile in the right slot; an extra locker beyond these bounds still
+// surfaces (we don't hide it) so the renderer never silently drops data.
+const WALL_LEFT_ROWS  = 4   // four rows on the left of the entrance
+const WALL_LEFT_COLS  = 6   // six lockers per row on the left
+const WALL_RIGHT_ROWS = 3   // three rows on the right
+const WALL_RIGHT_COLS = 4   // four lockers per row on the right
+const WALL_DOOR_AFTER_COL = WALL_LEFT_COLS
 
 export default function LockersPage() {
   const [lockers, setLockers] = useState<Locker[]>([])
@@ -117,33 +121,10 @@ export default function LockersPage() {
   }, [])
   useEffect(() => { load(); loadWhiskies() }, [load, loadWhiskies])
 
-  const gridDims = useMemo(() => {
-    // The wall has two sides separated by the entrance door, and the sides
-    // can have different row counts in real life — currently 4 rows × 6 cols
-    // on the left, 3 rows × 4 cols on the right. We track maximums separately
-    // so the renderer can size the two sub-grids to match the physical wall
-    // and gel them visually (right tiles get scaled to the left's height).
-    let maxR = 0, maxC = 0
-    let leftR = 0, rightR = 0, rightC = 0
-    for (const l of lockers) {
-      if (l.position_row && l.position_row > maxR) maxR = l.position_row
-      if (l.position_col && l.position_col > maxC) maxC = l.position_col
-      if (l.position_row && l.position_col) {
-        if (l.position_col <= WALL_DOOR_AFTER_COL) {
-          if (l.position_row > leftR) leftR = l.position_row
-        } else {
-          if (l.position_row > rightR) rightR = l.position_row
-          if (l.position_col > rightC) rightC = l.position_col
-        }
-      }
-    }
-    return {
-      rows: maxR, cols: maxC,
-      leftRows: leftR,
-      rightRows: rightR,
-      rightCols: Math.max(0, rightC - WALL_DOOR_AFTER_COL),
-    }
-  }, [lockers])
+  // Wall geometry is fixed in WALL_* constants — but we still need to know
+  // whether ANY locker has been seeded, to decide between the empty-state
+  // CTA and the wall renderer.
+  const hasAnyLocker = lockers.length > 0
 
   const lockerByPos = useMemo(() => {
     const m = new Map<string, Locker>()
@@ -179,7 +160,7 @@ export default function LockersPage() {
 
   if (loading) return <div style={emptyText}>Loading lockers…</div>
 
-  const noGrid = gridDims.rows === 0 || gridDims.cols === 0
+  const noGrid = !hasAnyLocker
 
   return (
     <>
@@ -246,31 +227,20 @@ export default function LockersPage() {
           <button onClick={() => setSeedOpen(true)} style={btnPrimary}>＋ Seed the grid</button>
         </div>
       ) : (() => {
-        // Wall layout (physical reality):
-        //   • Left side : leftRows × WALL_DOOR_AFTER_COL  (currently 4 × 6)
-        //   • Door      : single panel, full height of the left side
-        //   • Right side: rightRows × rightCols           (currently 3 × 4)
-        // The right side has FEWER rows than the left but should READ as the
-        // same height — so its tiles get scaled up. Right tile height is
-        // computed from left's total height so the two sides line up to the
-        // pixel: rightTileH × rightRows + gaps == leftTileH × leftRows + gaps.
-        const hasDoor   = gridDims.rightCols > 0
-        const leftCols  = WALL_DOOR_AFTER_COL
-        const leftRows  = gridDims.leftRows  || gridDims.rows
-        const rightRows = gridDims.rightRows || gridDims.rows
-        const rightCols = gridDims.rightCols
+        // Wall geometry comes from WALL_* constants — the physical room is
+        // fixed at 4×6 (left) · door · 3×4 (right). Right-side tile height
+        // is computed so the right side's three rows fill the same vertical
+        // space as the left side's four rows, to the pixel.
         const leftTileH = 72
         const gap = 6
-        const leftWallH = leftRows * leftTileH + Math.max(0, leftRows - 1) * gap
-        const rightTileH = rightRows > 0
-          ? Math.max(72, Math.floor((leftWallH - Math.max(0, rightRows - 1) * gap) / rightRows))
-          : leftTileH
+        const leftWallH  = WALL_LEFT_ROWS  * leftTileH + (WALL_LEFT_ROWS  - 1) * gap
+        const rightTileH = Math.floor((leftWallH - (WALL_RIGHT_ROWS - 1) * gap) / WALL_RIGHT_ROWS)
         return (
           <div style={wallSplit}>
             {/* LEFT sub-grid */}
             <SubGrid
-              cols={leftCols}
-              rows={leftRows}
+              cols={WALL_LEFT_COLS}
+              rows={WALL_LEFT_ROWS}
               colOffset={0}
               tileH={leftTileH}
               gap={gap}
@@ -280,33 +250,28 @@ export default function LockersPage() {
               filter={filter}
             />
 
-            {/* DOOR — sized to match the LEFT wall's total tile height,
-                offset so it aligns under the column-header strip. */}
-            {hasDoor && (
-              <div style={doorColumn}>
-                <div style={doorColumnHeader}>↕</div>
-                <div style={{ ...doorColumnPanel, height: leftWallH }}>
-                  <span style={doorColumnLabel}>
-                    {'ENTRANCE'.split('').map((ch, i) => <span key={i}>{ch}</span>)}
-                  </span>
-                </div>
+            {/* DOOR — height pinned to the left wall's tile-stack height. */}
+            <div style={doorColumn}>
+              <div style={doorColumnHeader}>↕</div>
+              <div style={{ ...doorColumnPanel, height: leftWallH }}>
+                <span style={doorColumnLabel}>
+                  {'ENTRANCE'.split('').map((ch, i) => <span key={i}>{ch}</span>)}
+                </span>
               </div>
-            )}
+            </div>
 
-            {/* RIGHT sub-grid (no row labels — the left side carries them) */}
-            {hasDoor && (
-              <SubGrid
-                cols={rightCols}
-                rows={rightRows}
-                colOffset={WALL_DOOR_AFTER_COL}
-                tileH={rightTileH}
-                gap={gap}
-                showRowLabels={false}
-                lockerByPos={lockerByPos}
-                onOpen={(no) => setOpenLocker(no)}
-                filter={filter}
-              />
-            )}
+            {/* RIGHT sub-grid — taller tiles so 3 rows == left's 4 rows. */}
+            <SubGrid
+              cols={WALL_RIGHT_COLS}
+              rows={WALL_RIGHT_ROWS}
+              colOffset={WALL_DOOR_AFTER_COL}
+              tileH={rightTileH}
+              gap={gap}
+              showRowLabels={false}
+              lockerByPos={lockerByPos}
+              onOpen={(no) => setOpenLocker(no)}
+              filter={filter}
+            />
           </div>
         )
       })()}
