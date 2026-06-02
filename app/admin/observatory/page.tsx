@@ -244,6 +244,32 @@ export default function ObservatoryPage() {
   const [demoExtractError, setDemoExtractError] = useState<string | null>(null)
   const [expandedRationales, setExpandedRationales] = useState<Set<string>>(new Set())
   const [probeRuns, setProbeRuns] = useState<ProbeRun[]>([])
+  // Collapsible panels — persist state per-panel in localStorage so the user's
+  // chosen layout survives reloads. Default everything OPEN (initial visit
+  // sees the whole report); subsequent visits restore whatever was collapsed.
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('observatory_collapsed_panels')
+      if (raw) setCollapsed(JSON.parse(raw))
+    } catch { /* ignore */ }
+  }, [])
+  useEffect(() => {
+    try { localStorage.setItem('observatory_collapsed_panels', JSON.stringify(collapsed)) }
+    catch { /* ignore quota errors */ }
+  }, [collapsed])
+  const togglePanel = useCallback((id: string) => {
+    setCollapsed(prev => ({ ...prev, [id]: !prev[id] }))
+  }, [])
+  const isOpen = useCallback((id: string) => !collapsed[id], [collapsed])
+  const collapseAll = useCallback(() => {
+    setCollapsed({
+      panel1: true, panel2: true, panel3: true, panel4: true,
+      panel5: true, panel6: true, breadth: true,
+    })
+  }, [])
+  const expandAll = useCallback(() => setCollapsed({}), [])
+
   const [consistencyReport, setConsistencyReport] = useState<ConsistencyReport | null>(null)
   const [consistencyTriple, setConsistencyTriple] = useState<ProbeRun[] | null>(null)
   const [analysisPhase, setAnalysisPhase] = useState<'idle' | 'analysing' | 'done' | 'error'>('idle')
@@ -728,6 +754,8 @@ export default function ObservatoryPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16, flexWrap: 'wrap' }}>
           <h1 style={pageTitle}>The Observatory</h1>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button onClick={collapseAll} style={collapseAllBtn} title="Collapse every panel">collapse all</button>
+            <button onClick={expandAll}   style={collapseAllBtn} title="Expand every panel">expand all</button>
             <TransportPill transport={transport} note={transportNote} demoGate={demoGate} />
             <RefreshButton
               busy={refreshing}
@@ -750,14 +778,17 @@ export default function ObservatoryPage() {
       </div>
 
       {/* ─── Panel 1 — Live PS(t) decomposition ─── */}
-      <section style={panel}>
-        <div style={panelHead}>
+      <CollapsiblePanel
+        id="panel1"
+        open={isOpen('panel1')}
+        onToggle={() => togglePanel('panel1')}
+        head={
           <div>
             <div style={panelEyebrow}>Panel 1 · Live decomposition</div>
             <div style={panelTitle}>PS(t) = S₀ · C · e<sup>−λt</sup> · F · R · M, capped at 5</div>
           </div>
-        </div>
-
+        }
+      >
         <div style={pickerRow}>
           <label style={pickerLabel}>
             Member
@@ -799,40 +830,51 @@ export default function ObservatoryPage() {
         ) : (
           <div style={empty}>This member has no active preferences.</div>
         )}
-      </section>
+      </CollapsiblePanel>
 
       {/* ─── Panel 2 — Category decay posteriors ─── */}
-      <section style={panel}>
-        <div style={panelHead}>
-          <div>
-            <div style={panelEyebrow}>Panel 2 · Category posteriors</div>
-            <div style={panelTitle}>Designed prior vs learned posterior, 95% credible interval, distance to event floor</div>
-          </div>
-          <div style={metaText}>
-            {snap.vitals.category_status_counts.active} active ·
-            {' '}{snap.vitals.category_status_counts.proposed} proposed ·
-            {' '}{snap.vitals.category_status_counts.insufficient_data + snap.vitals.category_status_counts.no_fit_yet} awaiting evidence
-          </div>
-        </div>
+      <CollapsiblePanel
+        id="panel2"
+        open={isOpen('panel2')}
+        onToggle={() => togglePanel('panel2')}
+        head={
+          <>
+            <div>
+              <div style={panelEyebrow}>Panel 2 · Category posteriors</div>
+              <div style={panelTitle}>Designed prior vs learned posterior, 95% credible interval, distance to event floor</div>
+            </div>
+            <div style={metaText}>
+              {snap.vitals.category_status_counts.active} active ·
+              {' '}{snap.vitals.category_status_counts.proposed} proposed ·
+              {' '}{snap.vitals.category_status_counts.insufficient_data + snap.vitals.category_status_counts.no_fit_yet} awaiting evidence
+            </div>
+          </>
+        }
+      >
         <CategoryPosteriorsTable categories={snap.categories} />
-      </section>
+      </CollapsiblePanel>
 
       {/* ─── Panel 3 — Loop-closure / baseline inheritance ─── */}
-      <section style={panel}>
-        <div style={panelHead}>
-          <div>
-            <div style={panelEyebrow}>Panel 3 · Loop-closure · baseline inheritance</div>
-            <div style={panelTitle}>What a new extraction would inherit right now</div>
-          </div>
-          {demoGate === 'open' && demoState !== 'idle' && (
-            <span style={demoActivePill}>
-              {demoState === 'promoting' ? 'promoting…' :
-                demoState === 'reverting' ? 'reverting…' :
-                  `DEMO ACTIVE · reverting in ${secondsLeft}s`}
-            </span>
-          )}
-        </div>
-
+      <CollapsiblePanel
+        id="panel3"
+        open={isOpen('panel3')}
+        onToggle={() => togglePanel('panel3')}
+        head={
+          <>
+            <div>
+              <div style={panelEyebrow}>Panel 3 · Loop-closure · baseline inheritance</div>
+              <div style={panelTitle}>What a new extraction would inherit right now</div>
+            </div>
+            {demoGate === 'open' && demoState !== 'idle' && (
+              <span style={demoActivePill}>
+                {demoState === 'promoting' ? 'promoting…' :
+                  demoState === 'reverting' ? 'reverting…' :
+                    `DEMO ACTIVE · reverting in ${secondsLeft}s`}
+              </span>
+            )}
+          </>
+        }
+      >
         <p style={loopLede}>
           For each canonical category, this is the λ a new preference inherits when the AI doesn't emit a
           preference-specific signal. The source is <code>learned</code> when an active row exists in
@@ -911,47 +953,62 @@ export default function ObservatoryPage() {
             </span>
           </div>
         ) : null}
-      </section>
+      </CollapsiblePanel>
 
       {/* ─── Panel 4 — Live event stream + loop-closure ticker ─── */}
-      <section style={panel}>
-        <div style={panelHead}>
-          <div>
-            <div style={panelEyebrow}>Panel 4 · Live event stream</div>
-            <div style={panelTitle}>Scoring events as they happen, with the mathematical consequence of each</div>
-          </div>
-          <div style={metaText}>
-            {events.length === 0
-              ? `watching… ${transport === 'realtime' ? 'Realtime subscribed' : transport === 'polling' ? 'polling every 15s' : 'probing transport'}`
-              : `${events.length} event${events.length === 1 ? '' : 's'} · loop-closure: ${events.filter(e => e.loop_closure).length}`}
-          </div>
-        </div>
+      <CollapsiblePanel
+        id="panel4"
+        open={isOpen('panel4')}
+        onToggle={() => togglePanel('panel4')}
+        head={
+          <>
+            <div>
+              <div style={panelEyebrow}>Panel 4 · Live event stream</div>
+              <div style={panelTitle}>Scoring events as they happen, with the mathematical consequence of each</div>
+            </div>
+            <div style={metaText}>
+              {events.length === 0
+                ? `watching… ${transport === 'realtime' ? 'Realtime subscribed' : transport === 'polling' ? 'polling every 15s' : 'probing transport'}`
+                : `${events.length} event${events.length === 1 ? '' : 's'} · loop-closure: ${events.filter(e => e.loop_closure).length}`}
+            </div>
+          </>
+        }
+      >
         <EventStream events={events} transport={transport} />
-      </section>
+      </CollapsiblePanel>
 
       {/* ─── Panel 5 — Aggregate vitals ─── */}
-      <section style={panel}>
-        <div style={panelHead}>
+      <CollapsiblePanel
+        id="panel5"
+        open={isOpen('panel5')}
+        onToggle={() => togglePanel('panel5')}
+        head={
           <div>
             <div style={panelEyebrow}>Panel 5 · Aggregate vitals</div>
             <div style={panelTitle}>What the system holds right now</div>
           </div>
-        </div>
+        }
+      >
         <VitalsGrid vitals={snap.vitals} />
-      </section>
+      </CollapsiblePanel>
 
       {/* ─── Panel 6 — Demo · Live extraction (gated, saves nothing) ─── */}
-      <section style={panel}>
-        <div style={panelHead}>
-          <div>
-            <div style={panelEyebrow}>Panel 6 · Demo · Live extraction</div>
-            <div style={panelTitle}>Paste a transcript, watch the system extract preferences in real time</div>
-          </div>
-          {demoGate === 'open' && demoPhase !== 'idle' && demoPhase !== 'done' && (
-            <span style={demoActivePill}>{demoPhase === 'streaming' ? 'extracting…' : demoPhase === 'reconciling' ? 'reconciling…' : 'error'}</span>
-          )}
-        </div>
-
+      <CollapsiblePanel
+        id="panel6"
+        open={isOpen('panel6')}
+        onToggle={() => togglePanel('panel6')}
+        head={
+          <>
+            <div>
+              <div style={panelEyebrow}>Panel 6 · Demo · Live extraction</div>
+              <div style={panelTitle}>Paste a transcript, watch the system extract preferences in real time</div>
+            </div>
+            {demoGate === 'open' && demoPhase !== 'idle' && demoPhase !== 'done' && (
+              <span style={demoActivePill}>{demoPhase === 'streaming' ? 'extracting…' : demoPhase === 'reconciling' ? 'reconciling…' : 'error'}</span>
+            )}
+          </>
+        }
+      >
         <p style={loopLede}>
           Demo runs the same engine as the live intake — same <code>buildSystemPrompt</code>, same
           <code> reconcile</code> from <code>lib/mis/extraction-decay.ts</code>, same Claude model, same SSE
@@ -1022,25 +1079,31 @@ export default function ObservatoryPage() {
             </span>
           </div>
         )}
-      </section>
+      </CollapsiblePanel>
 
       {/* ─── Breadth table — all active preferences ─── */}
-      <section style={panel}>
-        <div style={panelHead}>
-          <div>
-            <div style={panelEyebrow}>Breadth · all {snap.preferences.length} active preferences</div>
-            <div style={panelTitle}>Current PS(t) across the live profile</div>
-          </div>
-          <div style={metaText}>
-            snapshot: {new Date(snap.timestamp).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-          </div>
-        </div>
+      <CollapsiblePanel
+        id="breadth"
+        open={isOpen('breadth')}
+        onToggle={() => togglePanel('breadth')}
+        head={
+          <>
+            <div>
+              <div style={panelEyebrow}>Breadth · all {snap.preferences.length} active preferences</div>
+              <div style={panelTitle}>Current PS(t) across the live profile</div>
+            </div>
+            <div style={metaText}>
+              snapshot: {new Date(snap.timestamp).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+            </div>
+          </>
+        }
+      >
         <BreadthTable preferences={snap.preferences} members={snap.members} onPick={(memberNo, prefId) => {
           setSelectedMember(memberNo)
           setSelectedPref(prefId)
           if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
         }} />
-      </section>
+      </CollapsiblePanel>
     </>
   )
 }
@@ -1866,6 +1929,35 @@ function DemoPreferenceCard({ pref, index, phase, expanded, onToggleExpand }: {
         </div>
       )}
     </div>
+  )
+}
+
+/** Collapsible section wrapper used by every Panel 1-6 + the breadth table.
+ *  Renders head children (eyebrow + title + optional right-side meta) plus a
+ *  chevron toggle that flips collapse state. When collapsed, body is hidden.
+ *  Collapse state lives in the parent component (persisted to localStorage). */
+function CollapsiblePanel({ id, open, onToggle, head, children }: {
+  id: string
+  open: boolean
+  onToggle: () => void
+  head: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <section style={panel} id={id}>
+      <div style={panelHead}>
+        {head}
+        <button
+          onClick={onToggle}
+          style={chevronBtn}
+          aria-label={open ? 'collapse panel' : 'expand panel'}
+          title={open ? 'collapse panel' : 'expand panel'}
+        >
+          <span style={{ ...chevronGlyph, transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }}>▾</span>
+        </button>
+      </div>
+      {open && <>{children}</>}
+    </section>
   )
 }
 
@@ -3019,6 +3111,26 @@ function transportDot(tone: 'green' | 'gold' | 'grey'): React.CSSProperties {
     background: tone === 'green' ? '#7AB07A' : tone === 'gold' ? '#D4B85A' : '#B2AA98',
     boxShadow: tone === 'green' ? '0 0 6px rgba(122,176,122,0.7)' : 'none',
   }
+}
+const chevronBtn: React.CSSProperties = {
+  background: 'transparent', color: '#7E7864',
+  border: '1px solid rgba(229,212,194,0.12)', borderRadius: 4,
+  width: 28, height: 28, padding: 0,
+  marginLeft: 'auto',
+  cursor: 'pointer',
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  flexShrink: 0,
+}
+const chevronGlyph: React.CSSProperties = {
+  display: 'inline-block', fontSize: 12, lineHeight: 1,
+  transition: 'transform 180ms ease-out',
+}
+const collapseAllBtn: React.CSSProperties = {
+  background: 'transparent', color: '#B2AA98',
+  border: '1px solid rgba(229,212,194,0.12)', borderRadius: 4,
+  padding: '4px 10px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  letterSpacing: '0.04em', cursor: 'pointer',
 }
 const refreshBtn: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: 8,
