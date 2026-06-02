@@ -315,7 +315,10 @@ export default function LockersPage() {
           members={members}
           whiskies={whiskies}
           onClose={() => setOpenLocker(null)}
-          onChange={load}
+          /* Silent refresh — the drawer is open, we don't want to flip the
+             page-level loading flag (which would unmount the drawer with
+             everything else). The wall tile updates in place. */
+          onChange={() => load(true)}
         />
       )}
     </>
