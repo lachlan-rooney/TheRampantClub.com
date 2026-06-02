@@ -226,35 +226,37 @@ export default function LockersPage() {
           <button onClick={() => setSeedOpen(true)} style={btnPrimary}>＋ Seed the grid</button>
         </div>
       ) : (() => {
-        // If the wall is wide enough for a door (>5 lockable cols), the
-        // grid template inserts a door column between col 5 and col 6.
-        // Otherwise it's a plain row × cols grid.
+        // If the wall is wide enough for a door (>5 lockable cols), the grid
+        // gets one extra column track between col 5 and col 6. Every row
+        // (including the header) renders a door cell into that track — the
+        // stacked cells visually merge into one continuous door panel.
+        // This is segment-rendered on purpose: no grid-row span, no overlay,
+        // nothing that can desync from the locker rows around it.
         const hasDoor = gridDims.cols > WALL_DOOR_AFTER_COL
         const leftCols  = hasDoor ? WALL_DOOR_AFTER_COL : gridDims.cols
         const rightCols = hasDoor ? gridDims.cols - WALL_DOOR_AFTER_COL : 0
         const gridTemplateColumns = hasDoor
-          ? `36px repeat(${leftCols}, minmax(72px, 1fr)) 56px repeat(${rightCols}, minmax(72px, 1fr))`
+          ? `36px repeat(${leftCols}, minmax(72px, 1fr)) 48px repeat(${rightCols}, minmax(72px, 1fr))`
           : `36px repeat(${gridDims.cols}, minmax(72px, 1fr))`
-        // Door cell sits at CSS column = 1 (row label) + leftCols + 1 = leftCols + 2.
-        // Spans the header row + every locker row visually as one panel.
-        const doorCssCol = leftCols + 2
+        const totalRows = gridDims.rows
         return (
           <div style={{ ...wallGrid, gridTemplateColumns }}>
-            {/* column headers — split by the door */}
+            {/* column headers — split by the door header */}
             <div />
             {Array.from({ length: leftCols }, (_, c) => (
               <div key={`ch-${c}`} style={gridHeader}>{String(c + 1).padStart(2, '0')}</div>
             ))}
-            {hasDoor && <div style={doorHeader} aria-hidden="true" />}
+            {hasDoor && <div style={doorHeaderCell}>↕</div>}
             {Array.from({ length: rightCols }, (_, c) => (
               <div key={`ch-r-${c}`} style={gridHeader}>{String(WALL_DOOR_AFTER_COL + c + 1).padStart(2, '0')}</div>
             ))}
 
             {/* rows */}
-            {Array.from({ length: gridDims.rows }, (_, r) => (
+            {Array.from({ length: totalRows }, (_, r) => (
               <RowFragment
                 key={`r-${r}`}
                 rowIdx={r + 1}
+                rowIdxOf={totalRows}
                 leftCols={leftCols}
                 rightCols={rightCols}
                 hasDoor={hasDoor}
@@ -263,25 +265,6 @@ export default function LockersPage() {
                 filter={filter}
               />
             ))}
-
-            {/* The door — single tall panel spanning header + all rows.
-                Rendered last so it sits visually over the door-column slots
-                each row leaves blank. */}
-            {hasDoor && (
-              <div
-                style={{
-                  ...doorPanel,
-                  gridColumn: doorCssCol,
-                  gridRow: `1 / span ${gridDims.rows + 1}`,
-                }}
-                title="Entrance — door between columns 05 and 06"
-              >
-                <div style={doorFrame}>
-                  <div style={doorHandle} />
-                  <div style={doorLabel}>ENTRANCE</div>
-                </div>
-              </div>
-            )}
           </div>
         )
       })()}
@@ -300,8 +283,9 @@ export default function LockersPage() {
   )
 }
 
-function RowFragment({ rowIdx, leftCols, rightCols, hasDoor, lockerByPos, onOpen, filter }: {
+function RowFragment({ rowIdx, rowIdxOf, leftCols, rightCols, hasDoor, lockerByPos, onOpen, filter }: {
   rowIdx: number
+  rowIdxOf: number
   leftCols: number
   rightCols: number
   hasDoor: boolean
@@ -340,12 +324,30 @@ function RowFragment({ rowIdx, leftCols, rightCols, hasDoor, lockerByPos, onOpen
     )
   }
 
+  // Door segment for THIS row — one per data row, rendering style depends
+  // on position so the stacked cells read as a continuous door panel.
+  // The middle row carries the visible "ENTRANCE" label.
+  const isFirstDoorRow  = rowIdx === 1
+  const isLastDoorRow   = rowIdx === rowIdxOf
+  const isMiddleDoorRow = rowIdx === Math.ceil(rowIdxOf / 2)
+
   return (
     <>
       <div style={gridRowLabel}>{rowLetter}</div>
       {Array.from({ length: leftCols }, (_, c) => renderTile(c + 1))}
-      {/* Door slot — left blank so the spanning <doorPanel> sibling can sit over it. */}
-      {hasDoor && <div aria-hidden="true" />}
+      {hasDoor && (
+        <div
+          style={doorSegmentStyle(isFirstDoorRow, isLastDoorRow)}
+          aria-hidden={!isMiddleDoorRow}
+          title={isMiddleDoorRow ? 'Entrance — door between columns 05 and 06' : undefined}
+        >
+          {isMiddleDoorRow && (
+            <span style={doorSegmentLabel}>
+              {'ENTRANCE'.split('').map((ch, i) => <span key={i}>{ch}</span>)}
+            </span>
+          )}
+        </div>
+      )}
       {Array.from({ length: rightCols }, (_, c) => renderTile(WALL_DOOR_AFTER_COL + c + 1))}
     </>
   )
@@ -967,47 +969,39 @@ const whiskyRow: React.CSSProperties = {
 }
 
 // ── Wall door ──
-// Vertical panel that visually divides the wall between cols 5 and 6,
-// representing the actual doorway into the Rampant Room. It's purely
-// architectural — not interactive — but the visual gap matters: it lets
-// staff orient themselves against the real wall at a glance.
-const doorHeader: React.CSSProperties = {
+// One small door cell per row, stacked. Each cell is the same height as a
+// locker tile (minHeight 72), so the column lines up. The stack of cells
+// reads as a continuous vertical door panel; the top cell rounds at the
+// top and the bottom cell rounds at the bottom. The middle cell carries
+// the ENTRANCE label so the door is clearly recognisable.
+const doorHeaderCell: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#D4B85A', letterSpacing: '0.10em',
+  textAlign: 'center', padding: '4px 0',
+}
+function doorSegmentStyle(isFirst: boolean, isLast: boolean): React.CSSProperties {
+  return {
+    minHeight: 72,
+    background: 'linear-gradient(180deg, rgba(94,102,80,0.30) 0%, rgba(94,102,80,0.18) 100%)',
+    borderLeft:  '1px solid rgba(212,184,90,0.35)',
+    borderRight: '1px solid rgba(212,184,90,0.35)',
+    borderTop:    isFirst ? '1px solid rgba(212,184,90,0.55)' : 'none',
+    borderBottom: isLast  ? '1px solid rgba(212,184,90,0.55)' : 'none',
+    borderTopLeftRadius:     isFirst ? 4 : 0,
+    borderTopRightRadius:    isFirst ? 4 : 0,
+    borderBottomLeftRadius:  isLast  ? 4 : 0,
+    borderBottomRightRadius: isLast  ? 4 : 0,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    position: 'relative',
+  }
+}
+const doorSegmentLabel: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 9,
-  color: '#7E7864', letterSpacing: '0.10em', textAlign: 'center',
-  padding: '4px 0',
-}
-const doorPanel: React.CSSProperties = {
-  // Sits inside the same grid as the locker tiles; the gridColumn/gridRow
-  // are set inline based on the actual layout numbers.
-  alignSelf: 'stretch', justifySelf: 'stretch',
-  padding: 6,
-  background: 'linear-gradient(180deg, rgba(94,102,80,0.18) 0%, rgba(94,102,80,0.10) 100%)',
-  border: '1px solid rgba(212,184,90,0.30)',
-  borderRadius: 4,
-  position: 'relative',
-  display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center',
-}
-const doorFrame: React.CSSProperties = {
-  flex: 1,
-  position: 'relative',
-  border: '1px solid rgba(212,184,90,0.20)',
-  borderRadius: 3,
-  background:
-    'repeating-linear-gradient(180deg, rgba(229,212,194,0.04) 0 18px, rgba(229,212,194,0.02) 18px 36px)',
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-}
-const doorHandle: React.CSSProperties = {
-  position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
-  width: 6, height: 6, borderRadius: '50%',
-  background: '#D4B85A',
-  boxShadow: '0 0 6px rgba(212,184,90,0.65)',
-}
-const doorLabel: React.CSSProperties = {
-  writingMode: 'vertical-rl',
-  textOrientation: 'mixed',
-  transform: 'rotate(180deg)',
-  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
-  color: '#D4B85A', letterSpacing: '0.32em',
+  color: '#D4B85A', letterSpacing: '0.18em',
   textTransform: 'uppercase',
-  opacity: 0.85,
+  // Stack each character so it reads vertically without writing-mode/rotation,
+  // which can render unpredictably in some grid contexts.
+  display: 'flex', flexDirection: 'column', alignItems: 'center',
+  lineHeight: 1.1,
+  textAlign: 'center',
 }
