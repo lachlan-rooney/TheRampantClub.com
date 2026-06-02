@@ -17,6 +17,29 @@
 
 begin;
 
+-- 0. Base sheet table (idempotent — if you already ran
+--    db/shift_checklists.sql this block is a no-op).
+create table if not exists shift_checklists (
+  id            uuid primary key default gen_random_uuid(),
+  shift_date    date        not null,
+  kind          varchar(10) not null check (kind in ('opening','closing')),
+  items         jsonb       not null default '[]'::jsonb,
+  free_notes    text,
+  submitted_by  text,
+  submitted_at  timestamptz,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
+  unique (shift_date, kind)
+);
+create index if not exists idx_checklists_date on shift_checklists (shift_date desc, kind);
+
+alter table shift_checklists enable row level security;
+drop policy if exists "admin all on shift_checklists" on shift_checklists;
+create policy "admin all on shift_checklists" on shift_checklists
+  for all
+  using      (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.is_admin = true))
+  with check (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.is_admin = true));
+
 -- 1. The editable templates. Exactly two rows, kind is the primary key.
 create table if not exists checklist_templates (
   kind        varchar(10) primary key check (kind in ('opening','closing')),
