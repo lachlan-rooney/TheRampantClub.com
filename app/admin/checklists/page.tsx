@@ -192,6 +192,69 @@ export default function ChecklistsPage() {
 
   return (
     <>
+      {/* Print stylesheet — applies only when the user prints the sealed
+          audit-record modal. Hides everything except the modal body and
+          switches to a light, ink-friendly palette so the printed output
+          reads as a clean compliance document (binder backup, inspector
+          handover) rather than a dark-mode screenshot. The on-screen
+          experience is untouched — this only fires for @media print. */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          /* Reset the page to a white sheet */
+          html, body {
+            background: #ffffff !important;
+            color: #000000 !important;
+          }
+          /* Hide everything except the detail modal */
+          body > *:not([data-print-root]) { display: none !important; }
+          [data-print-root] { display: block !important; }
+          [data-print-root] [data-print-hide] { display: none !important; }
+
+          /* Modal frame becomes a flat document */
+          [data-print-root] [data-print-modal] {
+            position: static !important;
+            transform: none !important;
+            width: auto !important;
+            max-height: none !important;
+            background: #ffffff !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: #000000 !important;
+            padding: 0 !important;
+          }
+          [data-print-root] [data-print-modal] * {
+            color: #000000 !important;
+            background: transparent !important;
+            border-color: #888888 !important;
+            box-shadow: none !important;
+          }
+          /* Sheet blocks: visible card outline, page-break safety */
+          [data-print-root] [data-print-sheet] {
+            border: 1px solid #888888 !important;
+            border-radius: 4px !important;
+            padding: 14px !important;
+            margin-bottom: 14px !important;
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+          /* Zone headers stand out in print */
+          [data-print-root] [data-print-zone] {
+            font-weight: 700 !important;
+            border-bottom: 1px solid #cccccc !important;
+            padding-bottom: 3px !important;
+            margin-top: 10px !important;
+          }
+          /* Text-input answers get a quoted box */
+          [data-print-root] [data-print-value] {
+            border: 1px solid #aaaaaa !important;
+            padding: 4px 8px !important;
+            margin-top: 4px !important;
+            background: #fafafa !important;
+          }
+          /* No URLs on hyperlinks (avoids "Go to live page (http://...)") */
+          [data-print-root] a[href]::after { content: "" !important; }
+        }
+      `}} />
       <div style={headerRow}>
         <div>
           <div style={eyebrow}>Floor</div>
@@ -318,9 +381,9 @@ export default function ChecklistsPage() {
         const opening = history.find(s => s.shift_date === detailDate && s.kind === 'opening') || null
         const closing = history.find(s => s.shift_date === detailDate && s.kind === 'closing') || null
         return (
-          <>
-            <div style={detailBackdrop} onClick={() => setDetailDate(null)} />
-            <div style={detailModal} role="dialog">
+          <div data-print-root>
+            <div style={detailBackdrop} onClick={() => setDetailDate(null)} data-print-hide />
+            <div style={detailModal} role="dialog" data-print-modal>
               <div style={detailHeader}>
                 <div>
                   <div style={eyebrow}>Sealed audit record</div>
@@ -333,7 +396,7 @@ export default function ChecklistsPage() {
                     Read-only. Items shown are the SHEET&apos;S OWN SNAPSHOT — never the live template — so this is what the signing team actually saw and ticked that night.
                   </div>
                 </div>
-                <button onClick={() => setDetailDate(null)} style={detailCloseBtn} aria-label="Close">✕</button>
+                <button onClick={() => setDetailDate(null)} style={detailCloseBtn} aria-label="Close" data-print-hide>✕</button>
               </div>
 
               <div style={detailBody}>
@@ -344,7 +407,7 @@ export default function ChecklistsPage() {
                 )}
               </div>
 
-              <div style={detailFooter}>
+              <div style={detailFooter} data-print-hide>
                 <button onClick={() => { setDate(detailDate); setDetailDate(null) }} style={detailFooterBtn}>
                   Go to this date on the live page →
                 </button>
@@ -353,7 +416,7 @@ export default function ChecklistsPage() {
                 </button>
               </div>
             </div>
-          </>
+          </div>
         )
       })()}
     </>
@@ -390,7 +453,7 @@ function DetailSheet({ sheet, kindLabel, kindColor }: {
   const sealed = !!sheet.submitted_at
 
   return (
-    <div style={detailSheetBlock}>
+    <div style={detailSheetBlock} data-print-sheet>
       <div style={detailSheetHeader}>
         <div style={{ ...sheetEyebrow, color: kindColor }}>{kindLabel}</div>
         <div style={detailSealLine}>
@@ -407,7 +470,7 @@ function DetailSheet({ sheet, kindLabel, kindColor }: {
 
       {grouped.map(({ zone, items }) => (
         <div key={zone} style={{ marginTop: 10 }}>
-          <div style={{ ...zoneLabel, color: kindColor }}>{zone}</div>
+          <div style={{ ...zoneLabel, color: kindColor }} data-print-zone>{zone}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {items.map(it => {
               const isText = it.type === 'text'
@@ -415,7 +478,9 @@ function DetailSheet({ sheet, kindLabel, kindColor }: {
               const filled = value.trim().length > 0
               return (
                 <div key={it.id} style={detailItemRow}>
-                  <span style={{ fontSize: 11, marginTop: 2, color: it.checked || filled ? kindColor : '#5E6650', flexShrink: 0 }}>
+                  <span
+                    style={{ fontSize: 11, marginTop: 2, color: it.checked || filled ? kindColor : '#5E6650', flexShrink: 0 }}
+                  >
                     {isText ? (filled ? '✎' : '○') : (it.checked ? '✓' : '○')}
                   </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -424,7 +489,7 @@ function DetailSheet({ sheet, kindLabel, kindColor }: {
                     </div>
                     {it.label_vn && <div style={itemLabelVn}>{it.label_vn}</div>}
                     {isText && filled && (
-                      <div style={detailItemValue}>{value}</div>
+                      <div style={detailItemValue} data-print-value>{value}</div>
                     )}
                     {it.checked && it.name && (
                       <div style={itemMeta}>Ticked by {it.name} · {fmtTimestamp(it.ts ?? null)}</div>
