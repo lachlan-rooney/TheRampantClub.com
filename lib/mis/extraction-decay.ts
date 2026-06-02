@@ -427,18 +427,24 @@ function applyRuleLabels(
 }
 
 /**
- * Guardrails (Pass-7 refinement: content-first precedence + ai_permanent label):
+ * Guardrails (Pass-B: three-tier lock taxonomy, content-first precedence):
  *   - drop non-canonical categories (logged)
- *   - lock s0=5, C=1, λ=0 when EITHER trigger fires (both fail-safes intact):
- *       1. CONTENT-BASED medical detection (isMedicalPreference) → 'forced_medical'  (red)
- *       2. AI-emitted lambda=0 without medical content      → 'ai_permanent'         (gold)
- *     Precedence is content-first: if isMedicalPreference fires it's forced_medical
- *     even when the AI also emitted λ=0. ai_permanent only catches the residue —
- *     the model judging "lifelong identity" (anniversary, dad's whisky, no
- *     birthdays) where there's no medical signal in the text. Same scoring effect
- *     either way; only the label and audit trail differ.
- *   - else: usable AI lambda -> snap + keep ('ai_specific'); missing/unusable ->
- *     category baseline (learned or designed)
+ *   - lock s0=5, C=1, λ=0 when ANY of THREE triggers fires, resolved in
+ *     strict deterministic precedence (medical wins over identity, which
+ *     wins over the ai-permanent residue):
+ *       1. CONTENT-BASED medical detection (isMedicalPreference)
+ *          → 'forced_medical' — over-catch bias (a false lock is harmless)
+ *       2. CONTENT-BASED identity detection (isIdentityPreference)
+ *          → 'forced_identity' — under-catch bias (a false lock is invisible
+ *          and self-perpetuating)
+ *       3. AI emitted λ=0 with NEITHER guardrail firing
+ *          → 'ai_permanent' — model's own judgement, the residue
+ *     The first two are code-deterministic; the third is judgement.
+ *     Same scoring effect for all three (s0=5/C=1/λ=0); only the label and
+ *     audit trail differ. See canonical doc §4 (lock taxonomy) + §6
+ *     (provenance tags) for the dissertation-grade reasoning.
+ *   - else: usable AI lambda -> snap + keep ('ai_specific'); missing/unusable
+ *     -> category baseline (learned or designed)
  *   - C, F snapped; R/M and stray fields not carried forward
  *
  * Precedence chain: MEDICAL > IDENTITY > AI_PERMANENT > AI_SPECIFIC > baseline.

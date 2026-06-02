@@ -11,7 +11,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:e2e": "playwright test",
-    "test:mis": "node tests/mis/medical_guardrail_tests.mjs && tsx tests/mis/reconcile.test.mts && tsx tests/mis/live-pst.test.mts"
+    "test:mis": "node tests/mis/medical_guardrail_tests.mjs && node tests/mis/identity_guardrail_tests.mjs && tsx tests/mis/reconcile.test.mts && tsx tests/mis/live-pst.test.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",

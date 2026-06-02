@@ -6,12 +6,19 @@ import { vnDateString } from '@/lib/datetime'
 // GET /api/admin/mx-daily
 //
 // Aggregator for the Member Experience Manager's morning check-in. Returns
-// the four panels in one call so the page renders in a single round-trip:
-//   - tonight: members with a booking later today (placeholder until we wire
-//     a real bookings source — for now, returns []).
+// the panels in one call so the page renders in a single round-trip:
 //   - birthdays: members with a birthday in the next 7 days.
+//   - anniversaries: members with a join-anniversary in the next 7 days.
 //   - lapsed: Active members whose last visit was > 30 days ago, bucketed.
 //   - complaints: open or acknowledged complaints in the last 14 days.
+//   - last_closing: the previous shift's closing handover (drives the
+//     handover panel + the handover-ack receipt seam).
+//   - missed_seals: shift days in the last 7 without a complete sealed
+//     opening + closing record — the "did we record last night?" alert.
+//
+// Tonight bookings are NOT returned here — the Tonight page is a separate
+// surface (/admin/tonight) that queries bookings_with_member directly. MX
+// Daily and Tonight share data via member_no joins, not via API push.
 
 export const dynamic = 'force-dynamic'
 
