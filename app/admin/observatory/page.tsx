@@ -207,6 +207,7 @@ export default function ObservatoryPage() {
   const [expandedRationales, setExpandedRationales] = useState<Set<string>>(new Set())
   const [probeRuns, setProbeRuns] = useState<ProbeRun[]>([])
   const [consistencyReport, setConsistencyReport] = useState<ConsistencyReport | null>(null)
+  const [consistencyTriple, setConsistencyTriple] = useState<ProbeRun[] | null>(null)
   const [analysisPhase, setAnalysisPhase] = useState<'idle' | 'analysing' | 'done' | 'error'>('idle')
   const [analysisError, setAnalysisError] = useState<string | null>(null)
   const [demoTokens, setDemoTokens] = useState<{ input: number; output: number; cache_read: number; cache_created: number }>({ input: 0, output: 0, cache_read: 0, cache_created: 0 })
@@ -418,16 +419,22 @@ export default function ObservatoryPage() {
     if (!analysableTriple) return
     setAnalysisError(null)
     setConsistencyReport(null)
+    setConsistencyTriple(null)
     setAnalysisPhase('analysing')
+    // Snapshot the triple AT analysis time so the report stays bound to the
+    // specific three runs that were analysed — even if the user captures more
+    // runs afterwards (which would shift `analysableTriple`).
+    const snapshot = analysableTriple
     try {
       const r = await fetch('/api/admin/observatory/consistency', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ runs: analysableTriple }),
+        body: JSON.stringify({ runs: snapshot }),
       })
       const j = await r.json()
       if (!r.ok) throw new Error(j.error || `analysis failed (${r.status})`)
       setConsistencyReport(j as ConsistencyReport)
+      setConsistencyTriple(snapshot)
       setAnalysisPhase('done')
     } catch (e) {
       setAnalysisError((e as Error).message)
@@ -649,6 +656,15 @@ export default function ObservatoryPage() {
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes rc-pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
         @keyframes rc-spin  { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes rc-reveal {
+          from { opacity: 0; transform: translateY(6px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes rc-safety-attention {
+          0%   { transform: scale(0.99); box-shadow: 0 0 0 0 rgba(194,112,112,0); }
+          40%  { transform: scale(1.005); box-shadow: 0 0 0 1px rgba(194,112,112,0.9), 0 0 28px rgba(194,112,112,0.55); }
+          100% { transform: scale(1); box-shadow: 0 0 0 1px rgba(194,112,112,0.7), 0 0 22px rgba(194,112,112,0.45); }
+        }
       ` }} />
       <div style={{ marginBottom: 28 }}>
         <div style={eyebrow}>Intelligence · Live</div>
@@ -926,8 +942,8 @@ export default function ObservatoryPage() {
                 onRun={runConsistencyAnalysis}
               />
             )}
-            {consistencyReport && (
-              <ConsistencyReportView report={consistencyReport} />
+            {consistencyReport && consistencyTriple && (
+              <ConsistencyReportView report={consistencyReport} triple={consistencyTriple as [ProbeRun, ProbeRun, ProbeRun]} />
             )}
             {compareIds[0] && compareIds[1] && (
               <ProbeCompareView
@@ -1969,103 +1985,509 @@ function ConsistencyControl({ triple, phase, error, onRun }: {
   )
 }
 
-function ConsistencyReportView({ report }: { report: ConsistencyReport }) {
-  const tone = report.verdict === 'safety_inconsistency' ? 'safety'
-             : report.verdict === 'judgment_variance'   ? 'amber'
-             : 'green'
+// ─── Helpers: name-similarity matcher, cell state, drift detection ──────────
+
+type MatrixCell =
+  | { kind: 'present';          pref: DemoExtractedPref }
+  | { kind: 'granularity_gap' }  // analyser classified GRANULARITY → absence is the finding
+  | { kind: 'matcher_miss' }     // analyser classified invariant/judgment → row SHOULD be present
+                                 //   in all 3 runs; UI couldn't align it confidently.
+
+type MatrixRowData = {
+  preference: string
+  detail: string
+  classification: 'invariant' | 'judgment' | 'granularity' | 'safety'
+  cells: [MatrixCell, MatrixCell, MatrixCell]
+  /** Per-cell flags: which factor (if any) is the deviant value vs the row's mode.
+   *  Only computed for `present` cells; flag-objects line up index-for-index with cells. */
+  deviance: { s0?: boolean; c?: boolean; lambda?: boolean; f?: boolean }[]
+  driftedFactors: Set<'s0' | 'c' | 'lambda' | 'f'>
+  isSafetyLocked: boolean
+}
+
+/** Normalise a preference name for fuzzy matching across runs. */
+function normPrefName(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+/** Find a captured-run preference that matches a canonical name from the
+ *  analyser's invariants/variances list. Three-pass: exact → substring → token
+ *  overlap > 0.5. Returns null when we can't align confidently — the matcher's
+ *  job is to be honest about what it COULD align, not to force a match. */
+function matchPrefInRun(canonical: string, run: ProbeRun): DemoExtractedPref | null {
+  const lc = normPrefName(canonical)
+  // Pass 1: exact normalised match.
+  for (const p of run.preferences) {
+    if (normPrefName(p.preference_name) === lc) return p
+  }
+  // Pass 2: substring containment either direction.
+  for (const p of run.preferences) {
+    const pn = normPrefName(p.preference_name)
+    if (pn && (pn.includes(lc) || lc.includes(pn))) return p
+  }
+  // Pass 3: token overlap ratio > 0.5 on tokens of length ≥ 3.
+  const toks = lc.split(' ').filter(t => t.length >= 3)
+  if (toks.length === 0) return null
+  let best: { pref: DemoExtractedPref; overlap: number } | null = null
+  for (const p of run.preferences) {
+    const ptoks = normPrefName(p.preference_name).split(' ').filter(t => t.length >= 3)
+    if (ptoks.length === 0) continue
+    const matched = toks.filter(t => ptoks.some(pt => pt.includes(t) || t.includes(pt))).length
+    const overlap = matched / toks.length
+    if (overlap > 0.5 && (!best || overlap > best.overlap)) {
+      best = { pref: p, overlap }
+    }
+  }
+  return best?.pref ?? null
+}
+
+/** For each cell in a row, flag the factor(s) whose value differs from the
+ *  row's mode across present cells. Empty when no drift. */
+function computeRowDeviance(cells: MatrixCell[]): {
+  deviance: { s0?: boolean; c?: boolean; lambda?: boolean; f?: boolean }[]
+  drifted: Set<'s0' | 'c' | 'lambda' | 'f'>
+} {
+  const drifted = new Set<'s0' | 'c' | 'lambda' | 'f'>()
+  const presents = cells.map(c => c.kind === 'present' ? c.pref : null)
+  const presentOnly = presents.filter((p): p is DemoExtractedPref => p !== null)
+  const deviance: { s0?: boolean; c?: boolean; lambda?: boolean; f?: boolean }[] =
+    cells.map(() => ({}))
+  if (presentOnly.length < 2) return { deviance, drifted }
+
+  const mode = <T,>(arr: T[]): T => {
+    const counts = new Map<T, number>()
+    for (const v of arr) counts.set(v, (counts.get(v) || 0) + 1)
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0]
+  }
+  const modeS0 = mode(presentOnly.map(p => p.s0))
+  const modeC  = mode(presentOnly.map(p => p.confidence))
+  const modeL  = mode(presentOnly.map(p => p.lambda))
+  const modeF  = mode(presentOnly.map(p => p.frequency))
+
+  if (!presentOnly.every(p => p.s0 === modeS0))                                  drifted.add('s0')
+  if (!presentOnly.every(p => Math.abs(p.confidence - modeC) < 1e-6))            drifted.add('c')
+  if (!presentOnly.every(p => Math.abs(p.lambda - modeL) < 1e-6))                drifted.add('lambda')
+  if (!presentOnly.every(p => Math.abs(p.frequency - modeF) < 1e-6))             drifted.add('f')
+
+  for (let i = 0; i < cells.length; i++) {
+    const c = cells[i]
+    if (c.kind !== 'present') continue
+    if (drifted.has('s0')     && c.pref.s0 !== modeS0)                            deviance[i].s0 = true
+    if (drifted.has('c')      && Math.abs(c.pref.confidence - modeC) > 1e-6)      deviance[i].c = true
+    if (drifted.has('lambda') && Math.abs(c.pref.lambda - modeL) > 1e-6)          deviance[i].lambda = true
+    if (drifted.has('f')      && Math.abs(c.pref.frequency - modeF) > 1e-6)       deviance[i].f = true
+  }
+  return { deviance, drifted }
+}
+
+function buildRow(
+  preference: string,
+  detail: string,
+  classification: MatrixRowData['classification'],
+  runs: [ProbeRun, ProbeRun, ProbeRun],
+): MatrixRowData {
+  const matched = runs.map(r => matchPrefInRun(preference, r))
+  const cells: MatrixCell[] = matched.map<MatrixCell>(p => {
+    if (p) return { kind: 'present', pref: p }
+    if (classification === 'granularity') return { kind: 'granularity_gap' }
+    return { kind: 'matcher_miss' }
+  })
+  const { deviance, drifted } = computeRowDeviance(cells)
+  const isSafetyLocked = matched.some(p =>
+    p !== null && (p.lambda_origin === 'forced_medical' || p.lambda_origin === 'ai_permanent')
+  )
+  return {
+    preference, detail, classification,
+    cells: cells as [MatrixCell, MatrixCell, MatrixCell],
+    deviance, driftedFactors: drifted, isSafetyLocked,
+  }
+}
+
+function buildAllRows(
+  report: ConsistencyReport,
+  runs: [ProbeRun, ProbeRun, ProbeRun],
+): MatrixRowData[] {
+  const rows: MatrixRowData[] = []
+  for (const inv of report.invariants) {
+    rows.push(buildRow(inv.preference, inv.detail, 'invariant', runs))
+  }
+  for (const v of report.variances) {
+    const cls = v.type === 'safety' ? 'safety' : v.type === 'judgment' ? 'judgment' : 'granularity'
+    rows.push(buildRow(v.preference, v.detail, cls, runs))
+  }
+  // Safety/permanence-locked rows to the top; preserve original order within groups.
+  return [
+    ...rows.filter(r => r.isSafetyLocked),
+    ...rows.filter(r => !r.isSafetyLocked),
+  ]
+}
+
+// ─── ConsistencyReportView ───────────────────────────────────────────────────
+
+function ConsistencyReportView({ report, triple }: {
+  report: ConsistencyReport
+  triple: [ProbeRun, ProbeRun, ProbeRun]
+}) {
+  const tone: 'safety' | 'amber' | 'green' =
+      report.verdict === 'safety_inconsistency' ? 'safety'
+    : report.verdict === 'judgment_variance'   ? 'amber'
+    :                                            'green'
+
+  const rows = useMemo(() => buildAllRows(report, triple), [report, triple])
+  const safetyRows    = rows.filter(r => r.isSafetyLocked)
+  const nonSafetyRows = rows.filter(r => !r.isSafetyLocked)
+
+  // Evidence tally — recomputed from the actual rows, not just claimed counts.
+  const held         = rows.filter(r => r.classification === 'invariant').length
+  const judgmentN    = rows.filter(r => r.classification === 'judgment').length
+  const granularityN = rows.filter(r => r.classification === 'granularity').length
+  const safetyN      = rows.filter(r => r.classification === 'safety').length
 
   return (
     <div style={consistencyReportWrap}>
-      {/* Headline verdict bar */}
-      <div style={verdictBar(tone)}>
-        {tone === 'safety' && (
-          <div style={{ ...miniLabel, color: '#FFFFFF', marginBottom: 4 }}>⛔ SAFETY INCONSISTENCY</div>
-        )}
-        {tone === 'amber' && (
-          <div style={{ ...miniLabel, color: '#D4B85A', marginBottom: 4 }}>⚠ JUDGMENT VARIANCE</div>
-        )}
-        {tone === 'green' && (
-          <div style={{ ...miniLabel, color: '#7AB07A', marginBottom: 4 }}>✓ JUDGMENT STABLE</div>
-        )}
-        <div style={{
-          fontFamily: "'Rampant Sans', serif", fontSize: 17, fontWeight: 500,
-          color: tone === 'safety' ? '#FFFFFF' : '#E5D4C2',
-          letterSpacing: '0.04em',
-        }}>
-          {report.headline}
+      {/* ── 1. VERDICT READING ── */}
+      <div style={{ ...stagger(0) }}>
+        <VerdictReading tone={tone} headline={report.headline} verdict={report.verdict} />
+        <div style={{ ...evidenceTally, marginTop: 10 }}>
+          <span style={tallyValue('#7AB07A')}>{held}</span> held
+          <span style={tallyDivider}>·</span>
+          <span style={tallyValue('#D4B85A')}>{judgmentN}</span> judgment
+          <span style={tallyDivider}>·</span>
+          <span style={tallyValue('#B2AA98')}>{granularityN}</span> granularity
+          <span style={tallyDivider}>·</span>
+          <span style={tallyValue(safetyN > 0 ? '#C27070' : '#7E7864')}>{safetyN}</span> safety
+        </div>
+        <div style={{ ...countsLine, marginTop: 4 }}>
+          Run counts <span style={mono}>{report.counts.join(' / ')}</span>
+          {(() => {
+            const lo = Math.min(...report.counts), hi = Math.max(...report.counts)
+            const spread = hi - lo
+            if (spread === 0) return null
+            return tone === 'safety' ? null : (
+              <span style={{ color: '#7E7864' }}>
+                · spread {spread}
+                {report.verdict === 'stable' && ' attributable to granularity, not judgment'}
+              </span>
+            )
+          })()}
         </div>
       </div>
 
-      {/* Counts line */}
-      <div style={{ ...metaText, marginTop: 12 }}>
-        Preference counts: <strong style={{ color: '#E5D4C2' }}>{report.counts.join(' / ')}</strong>
-        {tone !== 'safety' && (
-          <> · spread {(() => {
-            const lo = Math.min(...report.counts), hi = Math.max(...report.counts)
-            return hi - lo
-          })()} {report.verdict === 'stable' ? '(granularity-only)' : '(see variances)'}</>
+      {/* ── 2. SAFETY & PERMANENCE LOCKS BAND ── */}
+      <div style={{ ...safetyBand(safetyRows.some(r => r.driftedFactors.size > 0) || safetyN > 0), ...stagger(1) }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
+          <span style={{ ...miniLabel, color: '#7AB07A' }}>SAFETY &amp; PERMANENCE LOCKS</span>
+          <span style={metaText}>
+            {safetyRows.length === 0
+              ? '— no locked preferences in this triple'
+              : safetyRows.every(r => r.driftedFactors.size === 0 && r.cells.every(c => c.kind === 'present'))
+              ? '— all locked rows held identically across all 3 runs'
+              : '— a locked row showed inconsistency, see below'}
+          </span>
+        </div>
+        {safetyRows.length === 0 ? (
+          <div style={metaText}>None present.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {safetyRows.map(r => (
+              <div key={r.preference} style={safetyRowStyle(r.driftedFactors.size > 0)}>
+                <span style={{ color: r.driftedFactors.size > 0 ? '#C27070' : '#7AB07A', flexShrink: 0 }}>
+                  {r.driftedFactors.size > 0 ? '⛔' : '✓'}
+                </span>
+                <span style={{ color: '#E5D4C2', fontWeight: 500 }}>{r.preference}</span>
+                <span style={metaText}>— {r.detail}</span>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
-      {/* Invariants */}
-      {report.invariants.length > 0 && (
-        <div style={{ marginTop: 14 }}>
-          <div style={{ ...miniLabel, color: '#7AB07A', marginBottom: 8 }}>WHAT HELD ACROSS ALL 3 RUNS</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {report.invariants.map((inv, i) => (
-              <div key={i} style={invariantRow}>
-                <span style={{ color: '#7AB07A', marginRight: 8 }}>✓</span>
-                <span style={{ color: '#E5D4C2' }}>{inv.preference}</span>
-                <span style={{ ...metaText, marginLeft: 6 }}>— {inv.detail}</span>
+      {/* ── 3. RUN-COMPARISON MATRIX ── */}
+      <div style={{ ...stagger(2) }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
+          <span style={miniLabel}>RUN COMPARISON</span>
+          <span style={metaText}>· preferences down · runs across · each cell shows S₀ / C / λ</span>
+        </div>
+        <MatrixLegend />
+        <div style={matrixWrap}>
+          <div style={matrixHeader}>
+            <div style={matrixHeaderCellPref}>preference</div>
+            {[1, 2, 3].map(i => (
+              <div key={i} style={matrixHeaderCellRun}>
+                Run {i}
+                <span style={{ ...metaText, marginLeft: 4 }}>({triple[i - 1].preferences.length})</span>
+              </div>
+            ))}
+          </div>
+          {nonSafetyRows.length === 0 && safetyRows.length === 0 && (
+            <div style={{ ...metaText, padding: 16, textAlign: 'center' }}>
+              No preferences classified by the analyser.
+            </div>
+          )}
+          {[...safetyRows, ...nonSafetyRows].map(row => (
+            <MatrixRow key={row.preference} row={row} />
+          ))}
+        </div>
+      </div>
+
+      {/* ── 4. SYNTHESIS — preceded by held/differed backbone ── */}
+      <div style={{ ...stagger(3) }}>
+        {(report.invariants.length > 0 || report.variances.length > 0) && (
+          <div style={{ marginTop: 18 }}>
+            <div style={{ ...miniLabel, marginBottom: 10 }}>FINDINGS</div>
+            {report.invariants.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ ...miniLabelInner, color: '#7AB07A' }}>HELD</div>
+                <ul style={findingsList}>
+                  {report.invariants.map((inv, i) => (
+                    <li key={i} style={findingItem}>
+                      <span style={{ color: '#7AB07A' }}>✓</span>
+                      <span style={{ color: '#E5D4C2' }}>{inv.preference}</span>
+                      <span style={metaText}>— {inv.detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {report.variances.length > 0 && (
+              <div>
+                <div style={{ ...miniLabelInner, color: '#D4B85A' }}>DIFFERED</div>
+                <ul style={findingsList}>
+                  {report.variances.map((v, i) => (
+                    <li key={i} style={findingItem}>
+                      <span style={typeTag(v.type)}>{v.type.toUpperCase()}</span>
+                      <span style={{ color: '#E5D4C2' }}>{v.preference}</span>
+                      <span style={metaText}>— {v.detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {report.synthesis && (
+          <div style={synthesisBlock}>
+            <div style={{ ...miniLabel, marginBottom: 10 }}>SYNTHESIS</div>
+            <p style={synthesisProse}>{report.synthesis}</p>
+          </div>
+        )}
+      </div>
+
+      {/* ── 5. FOOTER ── */}
+      <div style={{ ...reportFooter, ...stagger(4) }}>
+        Analysis compares the three captured runs in this session. Nothing is saved.
+        Verdict is reproducible across re-runs; classification of borderline items may rephrase.
+      </div>
+    </div>
+  )
+}
+
+function VerdictReading({ tone, headline, verdict }: {
+  tone: 'safety' | 'amber' | 'green'
+  headline: string
+  verdict: ConsistencyReport['verdict']
+}) {
+  if (tone === 'safety') {
+    return (
+      <div style={verdictBarSafety}>
+        <div style={{ ...miniLabel, color: '#FFFFFF', marginBottom: 6, letterSpacing: '0.18em' }}>
+          ⛔ SAFETY INCONSISTENCY
+        </div>
+        <div style={{
+          fontFamily: "'Rampant Sans', serif", fontSize: 19, fontWeight: 500,
+          color: '#FFFFFF', letterSpacing: '0.03em', lineHeight: 1.4,
+        }}>
+          {headline}
+        </div>
+        <div style={{
+          marginTop: 6,
+          fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+          color: '#FFFFFF', opacity: 0.92, letterSpacing: '0.04em',
+        }}>
+          The medical guardrail is enforced in code and cannot vary for the same input.
+          This indicates a code defect — investigate immediately.
+        </div>
+      </div>
+    )
+  }
+  if (tone === 'amber') {
+    return (
+      <div style={verdictBarAmber}>
+        <div style={{ ...miniLabel, color: '#D4B85A', marginBottom: 4 }}>
+          JUDGMENT VARIANCE
+        </div>
+        <div style={{
+          fontFamily: "'Rampant Sans', serif", fontSize: 17, fontWeight: 500,
+          color: '#E5D4C2', letterSpacing: '0.04em',
+        }}>
+          {headline}
+        </div>
+      </div>
+    )
+  }
+  // Stable — calm, low-contrast, single line.
+  return (
+    <div style={verdictBarStable}>
+      <div style={{ ...miniLabel, color: '#7AB07A', marginBottom: 4 }}>
+        JUDGMENT STABLE
+      </div>
+      <div style={{
+        fontFamily: "'Rampant Sans', serif", fontSize: 17, fontWeight: 500,
+        color: '#E5D4C2', letterSpacing: '0.04em',
+      }}>
+        {headline}
+      </div>
+    </div>
+  )
+  void verdict
+}
+
+function MatrixLegend() {
+  return (
+    <div style={matrixLegend}>
+      <span style={legendItem}>
+        <span style={legendMarker('#7AB07A', 'solid')} />
+        held identically
+      </span>
+      <span style={legendItem}>
+        <span style={legendMarker('#D4B85A', 'solid')} />
+        moved factor (Δ)
+      </span>
+      <span style={legendItem}>
+        <span style={legendMarker('#B2AA98', 'dashed')} />
+        granularity gap
+      </span>
+      <span style={legendItem}>
+        <span style={legendMarker('#E58F4A', 'dashed')} />
+        matcher miss — alignment failure
+      </span>
+    </div>
+  )
+}
+
+function MatrixRow({ row }: { row: MatrixRowData }) {
+  const [expanded, setExpanded] = useState(false)
+  const hasDrift = row.driftedFactors.size > 0
+  const hasMatcherMiss = row.cells.some(c => c.kind === 'matcher_miss')
+  const rowDriftsOrGaps =
+    hasDrift ||
+    hasMatcherMiss ||
+    row.cells.some(c => c.kind === 'granularity_gap')
+  const tone: 'safety' | 'judgment' | 'granularity' | 'matcher' | 'stable' =
+      row.classification === 'safety'      ? 'safety'
+    : hasMatcherMiss                       ? 'matcher'
+    : row.classification === 'judgment'    ? 'judgment'
+    : row.classification === 'granularity' ? 'granularity'
+    :                                        'stable'
+
+  return (
+    <>
+      <div
+        style={matrixRowStyle(tone)}
+        onClick={() => rowDriftsOrGaps && setExpanded(e => !e)}
+        title={rowDriftsOrGaps ? 'click to expand' : ''}
+      >
+        <div style={matrixRowPrefCell}>
+          {hasDrift && <span style={{ color: '#D4B85A', marginRight: 6 }}>Δ</span>}
+          {row.classification === 'safety' && !hasDrift && <span style={{ color: '#C27070', marginRight: 6 }}>⚠</span>}
+          {row.classification === 'granularity' && !hasDrift && !hasMatcherMiss && <span style={{ color: '#B2AA98', marginRight: 6 }}>⊘</span>}
+          <span style={{ color: tone === 'stable' ? '#B2AA98' : '#E5D4C2' }}>
+            {row.preference}
+          </span>
+          {rowDriftsOrGaps && (
+            <span style={{ ...metaText, marginLeft: 6, fontSize: 9 }}>
+              {expanded ? '▾' : '▸'}
+            </span>
+          )}
+        </div>
+        {row.cells.map((cell, i) => (
+          <MatrixCellView key={i} cell={cell} deviance={row.deviance[i] || {}} />
+        ))}
+      </div>
+      {expanded && rowDriftsOrGaps && (
+        <div style={matrixDrilldown}>
+          <div style={{ ...metaText, marginBottom: 10 }}>{row.detail}</div>
+          <div style={drilldownGrid}>
+            {row.cells.map((cell, i) => (
+              <div key={i} style={drilldownCol}>
+                <div style={{ ...miniLabel, marginBottom: 6 }}>Run {i + 1}</div>
+                {cell.kind === 'present' ? (
+                  <>
+                    <div style={drilldownFactors}>
+                      <div style={drilldownFactorRow}>
+                        <span style={drilldownFactorLabel}>S₀</span>
+                        <span style={drilldownFactorValue(row.deviance[i]?.s0 || false)}>{cell.pref.s0}</span>
+                      </div>
+                      <div style={drilldownFactorRow}>
+                        <span style={drilldownFactorLabel}>C</span>
+                        <span style={drilldownFactorValue(row.deviance[i]?.c || false)}>{cell.pref.confidence.toFixed(2)}</span>
+                      </div>
+                      <div style={drilldownFactorRow}>
+                        <span style={drilldownFactorLabel}>λ</span>
+                        <span style={drilldownFactorValue(row.deviance[i]?.lambda || false)}>{cell.pref.lambda.toFixed(3)}</span>
+                      </div>
+                      <div style={drilldownFactorRow}>
+                        <span style={drilldownFactorLabel}>F</span>
+                        <span style={drilldownFactorValue(row.deviance[i]?.f || false)}>{cell.pref.frequency.toFixed(1)}</span>
+                      </div>
+                    </div>
+                    {cell.pref.rationale && (
+                      <div style={drilldownRationale}>
+                        <span style={{ color: '#7E7864' }}>rationale: </span>
+                        {cell.pref.rationale}
+                      </div>
+                    )}
+                  </>
+                ) : cell.kind === 'granularity_gap' ? (
+                  <div style={drilldownAbsence('granularity')}>
+                    <strong>absent</strong> — split/merged differently in this run (cosmetic, expected)
+                  </div>
+                ) : (
+                  <div style={drilldownAbsence('matcher')}>
+                    <strong>unmatched</strong> — analyser said this preference should be present here, but the UI couldn't confidently align a row by name. Not a system finding; a UI matcher limitation.
+                  </div>
+                )}
               </div>
             ))}
           </div>
         </div>
       )}
+    </>
+  )
+}
 
-      {/* Variances */}
-      {report.variances.length > 0 && (
-        <div style={{ marginTop: 14 }}>
-          <div style={{ ...miniLabel, marginBottom: 8 }}>WHAT DIFFERED</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {report.variances.map((v, i) => {
-              const tag = v.type === 'safety'      ? { text: 'SAFETY',      fg: '#FFFFFF', bg: '#C27070', bd: '#C27070' }
-                        : v.type === 'judgment'    ? { text: 'JUDGMENT',    fg: '#D4B85A', bg: 'rgba(212,184,90,0.12)', bd: 'rgba(212,184,90,0.40)' }
-                        :                            { text: 'GRANULARITY', fg: '#B2AA98', bg: 'rgba(229,212,194,0.06)', bd: 'rgba(229,212,194,0.18)' }
-              return (
-                <div key={i} style={varianceRow}>
-                  <span style={{
-                    fontFamily: "'Google Sans Code', monospace", fontSize: 9,
-                    color: tag.fg, background: tag.bg, border: `1px solid ${tag.bd}`,
-                    borderRadius: 3, padding: '2px 7px',
-                    letterSpacing: '0.08em', textTransform: 'uppercase',
-                    flexShrink: 0,
-                  }}>{tag.text}</span>
-                  <span style={{ color: '#E5D4C2' }}>{v.preference}</span>
-                  <span style={{ ...metaText }}>— {v.detail}</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Synthesis */}
-      {report.synthesis && (
-        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(229,212,194,0.08)' }}>
-          <div style={{ ...miniLabel, marginBottom: 6 }}>AI SYNTHESIS</div>
-          <div style={{
-            fontFamily: "'Google Sans Code', monospace", fontSize: 12,
-            color: '#E5D4C2', lineHeight: 1.7,
-          }}>
-            {report.synthesis}
-          </div>
-        </div>
-      )}
-
-      <div style={{ ...metaText, marginTop: 14, opacity: 0.7, fontStyle: 'italic' }}>
-        Analysis compares the three captured runs in this session. Nothing is saved.
+function MatrixCellView({ cell, deviance }: {
+  cell: MatrixCell
+  deviance: { s0?: boolean; c?: boolean; lambda?: boolean; f?: boolean }
+}) {
+  if (cell.kind === 'granularity_gap') {
+    return (
+      <div style={matrixCellGap} title="absent — split/merged differently across runs (granularity)">
+        <span style={{ color: '#7E7864', letterSpacing: '0.4em' }}>· · ·</span>
       </div>
+    )
+  }
+  if (cell.kind === 'matcher_miss') {
+    return (
+      <div
+        style={matrixCellMatcherMiss}
+        title="alignment failure — analyser said this preference should be present in this run, but the UI couldn't confidently match a row by name. Not a system inconsistency; a matcher limitation."
+      >
+        <span style={{ color: '#E58F4A' }}>unmatched</span>
+      </div>
+    )
+  }
+  const p = cell.pref
+  return (
+    <div style={matrixCellPresent(p.lambda_origin)}>
+      <span style={mono}>
+        <span style={factorChar(deviance.s0 || false)}>{p.s0}</span>
+        <span style={factorSep}>/</span>
+        <span style={factorChar(deviance.c || false)}>{p.confidence.toFixed(2)}</span>
+        <span style={factorSep}>/</span>
+        <span style={factorChar(deviance.lambda || false)}>{p.lambda.toFixed(3)}</span>
+      </span>
     </div>
   )
 }
@@ -2765,42 +3187,297 @@ const analysisBtn: React.CSSProperties = {
   fontWeight: 600,
 }
 const consistencyReportWrap: React.CSSProperties = {
-  marginTop: 14, padding: 18,
-  background: 'rgba(5,46,32,0.5)',
+  marginTop: 14, padding: 20,
+  background: 'rgba(5,46,32,0.55)',
   border: '1px solid rgba(229,212,194,0.10)', borderRadius: 8,
 }
-function verdictBar(tone: 'green' | 'amber' | 'safety'): React.CSSProperties {
-  if (tone === 'safety') return {
-    padding: '16px 18px',
-    background: '#C27070',
-    border: '2px solid #C27070',
-    borderRadius: 6,
-    boxShadow: '0 0 0 1px rgba(194,112,112,0.6), 0 0 18px rgba(194,112,112,0.40)',
-  }
-  if (tone === 'amber') return {
-    padding: '14px 16px',
-    background: 'rgba(212,184,90,0.10)',
-    border: '1px solid rgba(212,184,90,0.45)', borderRadius: 6,
-  }
+
+// Staggered reveal — applied via inline style with animation-delay per section.
+// Restrained: a brief 6px rise + fade-in. The keyframes are emitted alongside
+// the existing rc-pulse/rc-spin keyframes at the top of the render.
+function stagger(idx: number): React.CSSProperties {
   return {
-    padding: '14px 16px',
-    background: 'rgba(122,176,122,0.08)',
-    border: '1px solid rgba(122,176,122,0.40)', borderRadius: 6,
+    animation: 'rc-reveal 280ms cubic-bezier(0.16, 1, 0.3, 1) both',
+    animationDelay: `${idx * 80}ms`,
   }
 }
-const invariantRow: React.CSSProperties = {
-  display: 'flex', alignItems: 'baseline', gap: 4, flexWrap: 'wrap',
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
-  padding: '4px 8px',
-  background: 'rgba(122,176,122,0.04)',
-  borderLeft: '2px solid rgba(122,176,122,0.30)',
-  borderRadius: 3,
+
+// ── Verdict reading (three distinct registers) ──
+const verdictBarStable: React.CSSProperties = {
+  padding: '14px 18px',
+  background: 'rgba(122,176,122,0.06)',
+  border: '1px solid rgba(122,176,122,0.28)',
+  borderLeft: '3px solid rgba(122,176,122,0.55)',
+  borderRadius: 6,
 }
-const varianceRow: React.CSSProperties = {
+const verdictBarAmber: React.CSSProperties = {
+  padding: '14px 18px',
+  background: 'rgba(212,184,90,0.06)',
+  border: '1px solid rgba(212,184,90,0.35)',
+  borderLeft: '3px solid #D4B85A',
+  borderRadius: 6,
+}
+const verdictBarSafety: React.CSSProperties = {
+  padding: '20px 22px',
+  background: 'linear-gradient(135deg, #C27070 0%, #A85858 100%)',
+  border: '2px solid #C27070',
+  borderRadius: 6,
+  marginLeft: -22, marginRight: -22, marginTop: -20,
+  borderTopLeftRadius: 8, borderTopRightRadius: 8,
+  boxShadow: '0 0 0 1px rgba(194,112,112,0.7), 0 0 22px rgba(194,112,112,0.45)',
+  animation: 'rc-safety-attention 0.6s ease-out both',
+}
+
+// ── Evidence tally + counts line ──
+const evidenceTally: React.CSSProperties = {
+  display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', letterSpacing: '0.06em',
+}
+function tallyValue(color: string): React.CSSProperties {
+  return {
+    fontFamily: "'Google Sans Code', monospace", fontSize: 14,
+    color, fontWeight: 600, marginRight: 4,
+  }
+}
+const tallyDivider: React.CSSProperties = {
+  color: '#5E6650', margin: '0 2px',
+}
+const countsLine: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', letterSpacing: '0.04em',
+}
+
+// ── Safety band ──
+function safetyBand(hasIssue: boolean): React.CSSProperties {
+  return {
+    marginTop: 18, padding: 14,
+    background: hasIssue ? 'rgba(194,112,112,0.08)' : 'rgba(122,176,122,0.04)',
+    border: `1px solid ${hasIssue ? 'rgba(194,112,112,0.40)' : 'rgba(122,176,122,0.28)'}`,
+    borderRadius: 6,
+  }
+}
+function safetyRowStyle(hasIssue: boolean): React.CSSProperties {
+  return {
+    display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap',
+    fontFamily: "'Google Sans Code', monospace", fontSize: 12,
+    padding: '4px 8px',
+    borderLeft: `2px solid ${hasIssue ? '#C27070' : 'rgba(122,176,122,0.45)'}`,
+    background: hasIssue ? 'rgba(194,112,112,0.06)' : 'transparent',
+    borderRadius: 3,
+  }
+}
+
+// ── Matrix legend + table ──
+const matrixLegend: React.CSSProperties = {
+  display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 10,
+}
+const legendItem: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 6,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#7E7864', letterSpacing: '0.06em', textTransform: 'uppercase',
+}
+function legendMarker(color: string, kind: 'solid' | 'dashed'): React.CSSProperties {
+  return {
+    display: 'inline-block', width: 14, height: 2,
+    background: kind === 'solid' ? color : 'transparent',
+    borderTop: kind === 'dashed' ? `1.5px dashed ${color}` : 'none',
+  }
+}
+const matrixWrap: React.CSSProperties = {
+  marginTop: 6,
+  border: '1px solid rgba(229,212,194,0.10)',
+  borderRadius: 6,
+  overflow: 'hidden',
+  background: 'rgba(5,46,32,0.5)',
+}
+const matrixHeader: React.CSSProperties = {
+  display: 'grid', gridTemplateColumns: 'minmax(260px, 2.4fr) repeat(3, minmax(120px, 1fr))',
+  background: 'rgba(5,46,32,0.7)',
+  borderBottom: '1px solid rgba(229,212,194,0.10)',
+}
+const matrixHeaderCellPref: React.CSSProperties = {
+  padding: '10px 12px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#7E7864', letterSpacing: '0.12em', textTransform: 'uppercase',
+}
+const matrixHeaderCellRun: React.CSSProperties = {
+  padding: '10px 12px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#7E7864', letterSpacing: '0.12em', textTransform: 'uppercase',
+  borderLeft: '1px solid rgba(229,212,194,0.06)',
+  textAlign: 'left',
+}
+function matrixRowStyle(tone: 'safety' | 'judgment' | 'granularity' | 'matcher' | 'stable'): React.CSSProperties {
+  const borderLeft =
+      tone === 'safety'      ? '3px solid #C27070'
+    : tone === 'matcher'     ? '3px dashed #E58F4A'
+    : tone === 'judgment'    ? '3px solid #D4B85A'
+    : tone === 'granularity' ? '3px dashed rgba(178,170,152,0.40)'
+    :                          '3px solid transparent'
+  const bg =
+      tone === 'safety'      ? 'rgba(194,112,112,0.05)'
+    : tone === 'matcher'     ? 'rgba(229,143,74,0.04)'
+    : tone === 'judgment'    ? 'rgba(212,184,90,0.04)'
+    : tone === 'granularity' ? 'rgba(229,212,194,0.02)'
+    :                          'transparent'
+  return {
+    display: 'grid', gridTemplateColumns: 'minmax(260px, 2.4fr) repeat(3, minmax(120px, 1fr))',
+    borderBottom: '1px solid rgba(229,212,194,0.05)',
+    borderLeft, background: bg,
+    cursor: tone === 'stable' ? 'default' : 'pointer',
+  }
+}
+const matrixRowPrefCell: React.CSSProperties = {
+  padding: '8px 12px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  letterSpacing: '0.04em',
+  display: 'flex', alignItems: 'baseline', gap: 0,
+}
+const matrixCellGap: React.CSSProperties = {
+  padding: '8px 12px',
+  borderLeft: '1px solid rgba(229,212,194,0.06)',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  textAlign: 'left',
+}
+const matrixCellMatcherMiss: React.CSSProperties = {
+  padding: '8px 12px',
+  borderLeft: '1px solid rgba(229,212,194,0.06)',
+  background: 'rgba(229,143,74,0.06)',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  letterSpacing: '0.06em',
+  textAlign: 'left',
+}
+function matrixCellPresent(origin: DemoExtractedPref['lambda_origin']): React.CSSProperties {
+  // Subtle origin-coded left edge so a cell's lock status is readable at a glance,
+  // without competing with the row-level drift highlight.
+  const edge =
+      origin === 'forced_medical' ? 'inset 2px 0 0 rgba(194,112,112,0.25)'
+    : origin === 'ai_permanent'   ? 'inset 2px 0 0 rgba(212,184,90,0.25)'
+    : origin === 'ai_specific'    ? 'inset 2px 0 0 rgba(212,184,90,0.10)'
+    :                               'inset 2px 0 0 rgba(178,170,152,0.10)'
+  return {
+    padding: '8px 12px',
+    borderLeft: '1px solid rgba(229,212,194,0.06)',
+    fontFamily: "'Google Sans Code', monospace", fontSize: 12,
+    letterSpacing: '0.04em',
+    boxShadow: edge,
+    color: '#E5D4C2',
+  }
+}
+const mono: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace",
+}
+function factorChar(deviant: boolean): React.CSSProperties {
+  if (deviant) return {
+    color: '#D4B85A', fontWeight: 600,
+    background: 'rgba(212,184,90,0.12)',
+    padding: '0 4px', borderRadius: 2,
+    borderBottom: '1.5px solid #D4B85A',
+  }
+  return { color: '#E5D4C2' }
+}
+const factorSep: React.CSSProperties = {
+  color: '#5E6650', margin: '0 4px',
+}
+
+// ── Drill-down ──
+const matrixDrilldown: React.CSSProperties = {
+  padding: '14px 16px',
+  background: 'rgba(5,46,32,0.7)',
+  borderBottom: '1px solid rgba(229,212,194,0.05)',
+}
+const drilldownGrid: React.CSSProperties = {
+  display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12,
+}
+const drilldownCol: React.CSSProperties = {
+  padding: 12,
+  background: 'rgba(229,212,194,0.03)',
+  border: '1px solid rgba(229,212,194,0.06)',
+  borderRadius: 4,
+}
+const drilldownFactors: React.CSSProperties = {
+  display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8,
+}
+const drilldownFactorRow: React.CSSProperties = {
+  display: 'flex', alignItems: 'baseline', gap: 10,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
+}
+const drilldownFactorLabel: React.CSSProperties = {
+  color: '#7E7864', width: 18,
+}
+function drilldownFactorValue(deviant: boolean): React.CSSProperties {
+  if (deviant) return {
+    color: '#D4B85A', fontWeight: 600,
+    background: 'rgba(212,184,90,0.12)',
+    padding: '0 5px', borderRadius: 2,
+    borderBottom: '1.5px solid #D4B85A',
+  }
+  return { color: '#E5D4C2' }
+}
+const drilldownRationale: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  color: '#B2AA98', lineHeight: 1.6,
+  marginTop: 8, paddingTop: 8,
+  borderTop: '1px solid rgba(229,212,194,0.06)',
+}
+function drilldownAbsence(kind: 'granularity' | 'matcher'): React.CSSProperties {
+  return {
+    padding: '10px 12px',
+    background: kind === 'granularity' ? 'rgba(229,212,194,0.04)' : 'rgba(229,143,74,0.06)',
+    border: kind === 'granularity' ? '1px dashed rgba(229,212,194,0.18)' : '1px dashed rgba(229,143,74,0.40)',
+    borderRadius: 4,
+    fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+    color: kind === 'granularity' ? '#B2AA98' : '#E58F4A',
+    lineHeight: 1.6,
+  }
+}
+
+// ── Findings backbone + synthesis ──
+const miniLabelInner: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  letterSpacing: '0.14em', textTransform: 'uppercase',
+  marginBottom: 6,
+}
+const findingsList: React.CSSProperties = {
+  margin: 0, padding: 0, listStyle: 'none',
+  display: 'flex', flexDirection: 'column', gap: 4,
+}
+const findingItem: React.CSSProperties = {
   display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap',
   fontFamily: "'Google Sans Code', monospace", fontSize: 11,
-  padding: '4px 8px',
-  borderRadius: 3,
+  padding: '3px 8px',
+  borderLeft: '2px solid rgba(229,212,194,0.08)',
+}
+function typeTag(type: 'granularity' | 'judgment' | 'safety'): React.CSSProperties {
+  const t =
+      type === 'safety'    ? { fg: '#FFFFFF', bg: '#C27070', bd: '#C27070' }
+    : type === 'judgment'  ? { fg: '#D4B85A', bg: 'rgba(212,184,90,0.12)', bd: 'rgba(212,184,90,0.45)' }
+    :                        { fg: '#B2AA98', bg: 'rgba(229,212,194,0.06)', bd: 'rgba(229,212,194,0.20)' }
+  return {
+    fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+    color: t.fg, background: t.bg, border: `1px solid ${t.bd}`,
+    borderRadius: 3, padding: '2px 7px',
+    letterSpacing: '0.08em', textTransform: 'uppercase',
+    flexShrink: 0,
+  }
+}
+const synthesisBlock: React.CSSProperties = {
+  marginTop: 18, padding: '18px 20px',
+  background: 'rgba(229,212,194,0.03)',
+  border: '1px solid rgba(229,212,194,0.10)',
+  borderRadius: 6,
+}
+const synthesisProse: React.CSSProperties = {
+  margin: 0,
+  fontFamily: "'Rampant Sans', serif", fontSize: 14,
+  color: '#E5D4C2', lineHeight: 1.75, letterSpacing: '0.02em',
+}
+const reportFooter: React.CSSProperties = {
+  marginTop: 16, paddingTop: 12,
+  borderTop: '1px solid rgba(229,212,194,0.06)',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  color: '#7E7864', lineHeight: 1.6, fontStyle: 'italic',
 }
 function originBadge(tone: 'red' | 'gold' | 'green' | 'grey' | 'amber'): React.CSSProperties {
   const p = {
