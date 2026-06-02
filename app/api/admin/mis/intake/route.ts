@@ -187,11 +187,13 @@ export async function POST(req: NextRequest) {
         send('status', { phase: 'reconciling' })
         const reconciled = reconcile(assembledRaw, baselines)
         send('reconciled', {
-          preferences: reconciled.preferences,
-          dropped:      reconciled.dropped,
-          medicalForced: reconciled.medicalForced,
+          preferences:    reconciled.preferences,
+          dropped:        reconciled.dropped,
+          medicalForced:  reconciled.medicalForced,
+          identityForced: reconciled.identityForced,
+          aiPermanent:    reconciled.aiPermanent,
           baselines,
-          raw_count:    assembledRaw.length,
+          raw_count:      assembledRaw.length,
         })
         send('done', { count: reconciled.preferences.length })
       } catch (e) {

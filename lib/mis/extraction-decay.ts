@@ -92,6 +92,96 @@ export function isMedicalPreference(p: ExtractedPreference): boolean {
 }
 
 /* ===========================================================================
+ * IDENTITY GUARDRAIL — content-based, NARROW / HIGH-PRECISION, UNDER-CATCH bias.
+ *
+ * Opposite of medical: a false IDENTITY lock is COSTLY (a wrongly-permanent
+ * preference never decays and never flags for revalidation — invisible and
+ * self-perpetuating), so the detector is biased to UNDER-CATCH. Locks only on
+ * clear declarative identity/relationship facts. Emphasis, sentiment, and
+ * incidental mention must NOT lock. When in doubt, leave AI-judged.
+ *
+ * PHRASE-ONLY (no bare stems): every lock requires a structural pattern that
+ * signals declarative identity claim, not preference. "I'm a peat man" never
+ * locks because no relationship/heritage/declarative-rule pattern matches.
+ *
+ * CASE-SENSITIVE haystack (unlike medical's lowercased haystack) — patterns
+ * 1c and 5 rely on [A-Z] to distinguish proper nouns from common words.
+ *
+ * Disqualifier baked into patterns: pattern 1a only matches when the
+ * relation's possessive is followed by an IDENTITY ATTRIBUTE (birthday,
+ * name, anniversary…). "my father's dram" doesn't match because "dram"
+ * isn't an identity attribute. Pattern 1c's `\s+[A-Z]` is blocked by the
+ * possessive apostrophe so "my late father's dram" never reaches the
+ * relation-plus-name interpretation.
+ *
+ * Verified: 25/25 cases in tests/mis/identity_guardrail_tests.mjs (the JS
+ * twin) including every critical negative — peat, Laphroaig, "Bollinger on
+ * our anniversary", "British food", "tennis with my wife", "I don't drink
+ * gin" — plus the disqualifier-compound case.
+ * =========================================================================== */
+
+const IDENTITY_RELATIONSHIPS = "wife|husband|spouse|partner|son|daughter|child|children|father|mother|brother|sister|fianc[eé]|fianc[eé]e";
+
+const IDENTITY_HERITAGE = "Singaporean|Peranakan|Vietnamese|British|Scottish|English|Irish|Welsh|American|Canadian|Australian|Malaysian|Thai|Indian|Japanese|Korean|Chinese|French|Italian|Spanish|German|Dutch|Swedish|Danish|Norwegian|Russian|Filipino|Indonesian|Cambodian|Burmese|Nepalese|Pakistani|Bangladeshi|Israeli|Lebanese|Egyptian|Moroccan|Brazilian|Argentinian|Mexican|Peruvian|Greek|Turkish|Portuguese|Polish|Czech|Hungarian|Romanian|Ukrainian|Sri Lankan|South African|New Zealander";
+
+const IDENTITY_RELIGION = "Muslim|Jewish|Christian|Catholic|Protestant|Orthodox|Buddhist|Hindu|Sikh|Bahá'í|Bahai|Taoist|Shinto";
+
+const IDENTITY_ATTRIBUTES = "birthday|birthdays|anniversary|name|date\\s+of\\s+birth|dob|nationality|heritage|origin";
+
+const I_AM = "(?:I['’]?m|I\\s+am)";
+
+const IDENTITY_PHRASES: RegExp[] = [
+  // 1a. Relationship's identity attribute — possessive + identity noun.
+  //     The DISQUALIFIER is baked in: only matches when the noun after `'s`
+  //     is an identity attribute. "my father's dram" → no match.
+  new RegExp(`\\bmy\\s+(?:late\\s+|deceased\\s+|former\\s+|ex[\\s-]?)?(?:${IDENTITY_RELATIONSHIPS})['’]?s\\s+(?:${IDENTITY_ATTRIBUTES})\\b`, 'i'),
+
+  // 1b. Relationship as declarative subject — "my wife is …", "my father was …".
+  new RegExp(`\\bmy\\s+(?:late\\s+|deceased\\s+|former\\s+|ex[\\s-]?)?(?:${IDENTITY_RELATIONSHIPS})\\s+(?:is|was)\\s+`, 'i'),
+
+  // 1c. Relationship + proper-name introduction — "my wife Sophie".
+  //     CASE-SENSITIVE: the [A-Z] requirement is what makes this narrow.
+  //     Disqualifier built in: `\s+[A-Z]` is blocked by `'s` (apostrophe
+  //     intervenes), so "my late father's dram" never matches.
+  new RegExp(`\\bmy\\s+(?:late\\s+|deceased\\s+|former\\s+|ex[\\s-]?)?(?:${IDENTITY_RELATIONSHIPS})\\s+[A-Z][a-z]+\\b`),
+
+  // 2. Anniversary as DECLARATIVE FACT — must be followed by a date connector.
+  //    "we have Bollinger on our anniversary" → no date follows → no match.
+  new RegExp(`\\bour\\s+(?:wedding\\s+)?anniversary['’]?s?\\s+(?:is|was|falls|the|on\\s+the|date\\s+is)\\b`, 'i'),
+
+  // 3. Heritage / nationality claim — "I'm Singaporean".
+  new RegExp(`\\b${I_AM}\\s+(?:a\\s+)?(?:${IDENTITY_HERITAGE})\\b`, 'i'),
+
+  // 4. Religious identity — "I'm Muslim". Dietary rules (halal/kosher) are
+  //    medical-precedence — caught earlier; never reach this detector.
+  new RegExp(`\\b${I_AM}\\s+(?:a\\s+)?(?:${IDENTITY_RELIGION})\\b`, 'i'),
+
+  // 5. "I'm from [Place]" — case-sensitive on place. "from work" won't match.
+  new RegExp(`\\b${I_AM}\\s+from\\s+[A-Z]\\w+`),
+
+  // 6. Declarative lifelong rule about identity events.
+  //    NARROW: only matches rules about identity-relevant EVENTS.
+  //    "I don't drink gin" → no event noun → no match.
+  new RegExp(`\\bI\\s+don['’]?t\\s+(?:do|celebrate|observe|mark|believe\\s+in)\\s+(?:my\\s+own\\s+)?(?:birthdays?|anniversary|anniversaries|holidays?|christmas|easter|hanukkah|halloween|new\\s+year)\\b`, 'i'),
+];
+
+function identityHaystack(p: ExtractedPreference): string {
+  // PRESERVE CASE — patterns 1c and 5 require [A-Z] to distinguish proper
+  // nouns from common words. Two-space join keeps adjacent fields from
+  // forming spurious phrases at the join.
+  return [p.preference_name, p.detail, p.verbatim_quote, p.subcategory, p.category]
+    .filter(Boolean).join("  ");
+}
+
+/** TRUE if the preference shows clear declarative identity/relationship-fact content.
+ *  NARROW / UNDER-CATCH — when in doubt, returns false (do not lock). */
+export function isIdentityPreference(p: ExtractedPreference): boolean {
+  const text = identityHaystack(p);
+  for (const re of IDENTITY_PHRASES) if (re.test(text)) return true;
+  return false;
+}
+
+/* ===========================================================================
  * LEARNED-λ live lookup + baselines (medical handled at reconcile)
  * =========================================================================== */
 
@@ -256,7 +346,8 @@ export interface ReconciledPreference {
     | "category_baseline_learned"
     | "category_baseline_designed"
     | "forced_medical"     // content-detected medical signal — red "MEDICAL — LOCKED" badge
-    | "ai_permanent";      // AI judged λ=0 (lifelong identity) without medical content — gold "PERMANENT — LOCKED" badge
+    | "forced_identity"    // content-detected declarative identity/relationship fact — gold "IDENTITY — LOCKED" badge
+    | "ai_permanent";      // AI judged λ=0 (lifelong identity-like) without medical/identity content — gold "PERMANENT — LOCKED" badge
   /** Per-factor reasoning. AI-judged factors carry the model's text; rule-forced
    *  factors carry deterministic rule labels written by reconcile (so the card
    *  never displays AI prose explaining a value the code actually set). Empty
@@ -298,6 +389,7 @@ function normaliseRationale(input: string | RationaleDetail | undefined): Ration
  *
  *  Override map per origin:
  *    - forced_medical   → S₀, C, λ all rule-labelled (medical guardrail forced all three)
+ *    - forced_identity  → S₀, C, λ all rule-labelled (identity guardrail forced all three)
  *    - ai_permanent     → S₀, C, λ all rule-labelled (permanence lock forced all three)
  *    - category_baseline_designed → λ only (other factors AI-judged)
  *    - category_baseline_learned  → λ only (other factors AI-judged)
@@ -317,6 +409,10 @@ function applyRuleLabels(
     out.s0     = "Forced to 5 by medical guardrail — content-detected medical/allergy signal sets maximum importance.";
     out.c      = "Forced to 1.00 by medical guardrail — content-detected medical/allergy signal sets full confidence.";
     out.lambda = "Locked at λ=0 by medical guardrail — content-detected medical/allergy signal. Never decays.";
+  } else if (origin === "forced_identity") {
+    out.s0     = "Forced to 5 by identity guardrail — content-detected declarative identity/relationship fact. Identity facts carry absolute importance.";
+    out.c      = "Forced to 1.00 by identity guardrail — declarative identity statement, not a hedged preference.";
+    out.lambda = "Locked at λ=0 by identity guardrail — content-detected identity/relationship fact. Never decays (deterministic; not a model judgement).";
   } else if (origin === "ai_permanent") {
     out.s0     = "Forced to 5 — model judged this lifelong/identity-level. Permanence lock implies absolute importance.";
     out.c      = "Forced to 1.00 — model judged this lifelong/identity-level. Permanence lock implies full confidence.";
@@ -345,10 +441,10 @@ function applyRuleLabels(
  *     category baseline (learned or designed)
  *   - C, F snapped; R/M and stray fields not carried forward
  *
- * medicalForced counts ONLY the content-medical fires (its original meaning,
- * preserved for callers). aiPermanent counts the identity-permanence locks
- * separately so the demo banner can read "1 medical-forced · 3 permanent-locked"
- * rather than collapsing both into one number.
+ * Precedence chain: MEDICAL > IDENTITY > AI_PERMANENT > AI_SPECIFIC > baseline.
+ * Counters split by lambda_origin so the banner can read
+ * "1 medical · 2 identity · 1 permanent-locked" rather than collapsing the
+ * three lock paths into one ambiguous number.
  */
 export function reconcile(
   raw: ExtractedPreference[],
@@ -357,11 +453,13 @@ export function reconcile(
   preferences: ReconciledPreference[];
   dropped: { reason: string; item: ExtractedPreference }[];
   medicalForced: number;
+  identityForced: number;
   aiPermanent: number;
 } {
   const out: ReconciledPreference[] = [];
   const dropped: { reason: string; item: ExtractedPreference }[] = [];
   let medicalForced = 0;
+  let identityForced = 0;
   let aiPermanent = 0;
 
   for (const r of raw) {
@@ -371,18 +469,25 @@ export function reconcile(
     }
 
     const contentMedical = isMedicalPreference(r);
+    const contentIdentity = isIdentityPreference(r);
     const aiSaidZero = r.lambda != null && isFinite(r.lambda) && r.lambda === 0;
 
     let lambda: number, s0: number, confidence: number;
     let lambda_origin: ReconciledPreference["lambda_origin"];
 
     if (contentMedical) {
-      // Safety path — content-detected medical. Fires even if AI ALSO emitted λ=0;
-      // the precedence ensures ai_permanent never overrides the medical label.
+      // Safety path — content-detected medical. Fires even if AI ALSO emitted λ=0
+      // or identity content is also present; medical precedence wins absolutely.
       lambda = 0; s0 = 5; confidence = 1.0; lambda_origin = "forced_medical";
       medicalForced++;
+    } else if (contentIdentity) {
+      // Identity path — code-forced declarative identity/relationship fact.
+      // Deterministic; cannot vary run-to-run for the same input. Closes the
+      // anniversary/Sophie/no-birthdays drift the consistency analyser surfaced.
+      lambda = 0; s0 = 5; confidence = 1.0; lambda_origin = "forced_identity";
+      identityForced++;
     } else if (aiSaidZero) {
-      // Identity-permanence path — AI judged λ=0 without medical content signal.
+      // Residue path — AI judged λ=0 without medical OR identity content signal.
       // Same lock (s0=5/c=1/λ=0) so the row never decays, with an honest label.
       lambda = 0; s0 = 5; confidence = 1.0; lambda_origin = "ai_permanent";
       aiPermanent++;
@@ -413,7 +518,7 @@ export function reconcile(
       rationale: applyRuleLabels(normaliseRationale(r.rationale), lambda_origin, r.category, lambda),
     });
   }
-  return { preferences: out, dropped, medicalForced, aiPermanent };
+  return { preferences: out, dropped, medicalForced, identityForced, aiPermanent };
 }
 
 /* ===========================================================================
@@ -430,6 +535,8 @@ export async function extractPreferencesFromTranscript(args: {
   preferences: ReconciledPreference[];
   dropped: { reason: string; item: ExtractedPreference }[];
   medicalForced: number;
+  identityForced: number;
+  aiPermanent: number;
   baselinesUsed: Record<string, { baselineLambda: number; source: "learned" | "designed" }>;
 }> {
   const learned = await getActiveLearnedLambda(args.supabase);
@@ -452,6 +559,7 @@ export async function extractPreferencesFromTranscript(args: {
   const parsed = JSON.parse(text);
   if (!Array.isArray(parsed)) throw new Error("Extractor did not return a JSON array.");
 
-  const { preferences, dropped, medicalForced } = reconcile(parsed as ExtractedPreference[], baselines);
-  return { preferences, dropped, medicalForced, baselinesUsed: baselines };
+  const { preferences, dropped, medicalForced, identityForced, aiPermanent } =
+    reconcile(parsed as ExtractedPreference[], baselines);
+  return { preferences, dropped, medicalForced, identityForced, aiPermanent, baselinesUsed: baselines };
 }

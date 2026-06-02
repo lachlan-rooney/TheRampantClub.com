@@ -267,11 +267,13 @@ Return ONLY the JSON Lines (one preference per line, each preference's complete 
         send('status', { phase: 'reconciling' })
         const reconciled = reconcile(assembledRaw, baselines)
         send('reconciled', {
-          preferences: reconciled.preferences,
-          dropped:      reconciled.dropped,
-          medicalForced: reconciled.medicalForced,
+          preferences:    reconciled.preferences,
+          dropped:        reconciled.dropped,
+          medicalForced:  reconciled.medicalForced,
+          identityForced: reconciled.identityForced,
+          aiPermanent:    reconciled.aiPermanent,
           baselines,
-          raw_count:    assembledRaw.length,
+          raw_count:      assembledRaw.length,
         })
         send('done', { count: reconciled.preferences.length })
       } catch (e) {

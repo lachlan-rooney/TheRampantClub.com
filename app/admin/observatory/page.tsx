@@ -98,6 +98,7 @@ interface DemoExtractedPref {
     | 'category_baseline_learned'
     | 'category_baseline_designed'
     | 'forced_medical'
+    | 'forced_identity'
     | 'ai_permanent'
   rationale: string | RationaleDetail | null
   uid: string
@@ -132,7 +133,7 @@ function rationaleFactor(r: string | RationaleDetail | null | undefined, f: 's0'
  *  AI). Used to show a 🔒 glyph on the line. */
 function isFactorForced(origin: string | null | undefined, factor: 's0' | 'c' | 'lambda' | 'f'): boolean {
   if (factor === 'f') return false
-  if (origin === 'forced_medical' || origin === 'ai_permanent') {
+  if (origin === 'forced_medical' || origin === 'forced_identity' || origin === 'ai_permanent') {
     return factor === 's0' || factor === 'c' || factor === 'lambda'
   }
   if (origin === 'category_baseline_designed' || origin === 'category_baseline_learned') {
@@ -143,6 +144,7 @@ function isFactorForced(origin: string | null | undefined, factor: 's0' | 'c' | 
 interface DemoReconciledSummary {
   count: number
   medicalForced: number
+  identityForced: number
   aiPermanent: number
   dropped: { reason: string; item: { category?: string; preference_name?: string; verbatim_quote?: string } }[]
   baselines: Record<string, { baselineLambda: number; source: 'learned' | 'designed' }>
@@ -388,8 +390,9 @@ export default function ObservatoryPage() {
           })))
           setDemoSummary({
             count: pref.length,
-            medicalForced: Number(payload.medicalForced) || 0,
-            aiPermanent:   Number(payload.aiPermanent)   || 0,
+            medicalForced:  Number(payload.medicalForced)  || 0,
+            identityForced: Number(payload.identityForced) || 0,
+            aiPermanent:    Number(payload.aiPermanent)    || 0,
             dropped: (payload.dropped as DemoReconciledSummary['dropped']) || [],
             baselines: (payload.baselines as DemoReconciledSummary['baselines']) || {},
           })
@@ -1766,7 +1769,7 @@ function DemoExtractionPanel({
         )}
         {phase === 'done' && summary && (
           <span style={metaText}>
-            done · {summary.count} preference{summary.count === 1 ? '' : 's'} · {summary.medicalForced} medical-forced · {summary.dropped.length} dropped
+            done · {summary.count} preference{summary.count === 1 ? '' : 's'} · {summary.medicalForced} medical · {summary.identityForced} identity · {summary.aiPermanent} permanent · {summary.dropped.length} dropped
           </span>
         )}
       </div>
@@ -1776,8 +1779,9 @@ function DemoExtractionPanel({
       {reconciled && summary && (
         <div style={demoSummaryBanner}>
           <strong style={{ color: '#D4B85A' }}>{summary.count}</strong> preference{summary.count === 1 ? '' : 's'} ·
-          {' '}<strong style={{ color: summary.medicalForced > 0 ? '#C27070' : '#B2AA98' }}>{summary.medicalForced}</strong> medical-forced ·
-          {' '}<strong style={{ color: summary.aiPermanent  > 0 ? '#D4B85A' : '#B2AA98' }}>{summary.aiPermanent}</strong> permanent-locked ·
+          {' '}<strong style={{ color: summary.medicalForced  > 0 ? '#C27070' : '#B2AA98' }}>{summary.medicalForced}</strong> medical-forced ·
+          {' '}<strong style={{ color: summary.identityForced > 0 ? '#D4B85A' : '#B2AA98' }}>{summary.identityForced}</strong> identity-locked ·
+          {' '}<strong style={{ color: summary.aiPermanent    > 0 ? '#D4B85A' : '#B2AA98' }}>{summary.aiPermanent}</strong> permanent-locked ·
           {' '}<strong style={{ color: summary.dropped.length > 0 ? '#B2AA98' : '#7AB07A' }}>{summary.dropped.length}</strong> dropped
           {summary.dropped.length > 0 && (
             <span style={{ color: '#B2AA98', opacity: 0.75 }}> ({summary.dropped.map(d => d.reason).join(', ')})</span>
@@ -1846,10 +1850,12 @@ function DemoPreferenceCard({ pref, index, phase, expanded, onToggleExpand }: {
   // content guardrail actually fires.
   const isReconciled = pref.lambda_origin != null
   const isMedical   = pref.lambda_origin === 'forced_medical'
+  const isIdentity  = pref.lambda_origin === 'forced_identity'
   const isPermanent = pref.lambda_origin === 'ai_permanent'
-  const isLocked    = isMedical || isPermanent || (!isReconciled && pref.lambda === 0)
+  const isLocked    = isMedical || isIdentity || isPermanent || (!isReconciled && pref.lambda === 0)
   const originLabel: { text: string; tone: 'red' | 'gold' | 'green' | 'grey' | 'amber' } =
     isMedical                                           ? { text: 'MEDICAL — LOCKED',         tone: 'red'   } :
+    isIdentity                                          ? { text: 'IDENTITY — LOCKED',        tone: 'gold'  } :
     isPermanent                                         ? { text: 'PERMANENT — LOCKED',       tone: 'amber' } :
     pref.lambda_origin === 'ai_specific'                ? { text: 'AI · SPECIFIC',             tone: 'gold'  } :
     pref.lambda_origin === 'category_baseline_learned'  ? { text: 'BASELINE · LEARNED',        tone: 'green' } :
@@ -1858,10 +1864,12 @@ function DemoPreferenceCard({ pref, index, phase, expanded, onToggleExpand }: {
                                                           { text: 'LIVE · pending reconcile',  tone: 'grey'  }
 
   const borderColor = isMedical   ? '#C27070'
+                    : isIdentity  ? '#D4B85A'
                     : isPermanent ? '#D4B85A'
                     : isLocked    ? '#D4B85A'
                     : null
   const cardBg = isMedical   ? 'rgba(194,112,112,0.04)'
+               : isIdentity  ? 'rgba(212,184,90,0.05)'
                : isPermanent ? 'rgba(212,184,90,0.04)'
                : null
 
@@ -2048,8 +2056,9 @@ function ProbeRunsStrip({ runs, onRestore, compareIds, onCompareToggle }: {
                 <span style={{ color: '#7E7864', marginRight: 8 }}>#{runs.length - i}</span>
                 <span style={{ color: '#E5D4C2' }}>{r.label}</span>
                 <span style={metaText}> · {r.summary.count} prefs</span>
-                {r.summary.medicalForced > 0 && <span style={{ ...metaText, color: '#C27070' }}> · {r.summary.medicalForced} medical</span>}
-                {r.summary.aiPermanent  > 0 && <span style={{ ...metaText, color: '#D4B85A' }}> · {r.summary.aiPermanent} permanent</span>}
+                {r.summary.medicalForced  > 0 && <span style={{ ...metaText, color: '#C27070' }}> · {r.summary.medicalForced} medical</span>}
+                {r.summary.identityForced > 0 && <span style={{ ...metaText, color: '#D4B85A' }}> · {r.summary.identityForced} identity</span>}
+                {r.summary.aiPermanent    > 0 && <span style={{ ...metaText, color: '#D4B85A' }}> · {r.summary.aiPermanent} permanent</span>}
                 {r.summary.dropped.length > 0 && <span style={metaText}> · {r.summary.dropped.length} dropped</span>}
                 <span style={{ ...metaText, marginLeft: 'auto' }}>
                   {new Date(r.ran_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
@@ -2085,14 +2094,14 @@ function ProbeCompareView({ a, b, onClose }: {
         <div style={probeCompareCol}>
           <div style={probeCompareHeader}>
             <strong>{a.label}</strong>
-            <div style={metaText}>{a.summary.count} prefs · {a.summary.medicalForced} medical · {a.summary.aiPermanent} permanent · {a.summary.dropped.length} dropped</div>
+            <div style={metaText}>{a.summary.count} prefs · {a.summary.medicalForced} medical · {a.summary.identityForced} identity · {a.summary.aiPermanent} permanent · {a.summary.dropped.length} dropped</div>
           </div>
           <ProbeCompareCategoryList cats={allCats} prefs={a.preferences} />
         </div>
         <div style={probeCompareCol}>
           <div style={probeCompareHeader}>
             <strong>{b.label}</strong>
-            <div style={metaText}>{b.summary.count} prefs · {b.summary.medicalForced} medical · {b.summary.aiPermanent} permanent · {b.summary.dropped.length} dropped</div>
+            <div style={metaText}>{b.summary.count} prefs · {b.summary.medicalForced} medical · {b.summary.identityForced} identity · {b.summary.aiPermanent} permanent · {b.summary.dropped.length} dropped</div>
           </div>
           <ProbeCompareCategoryList cats={allCats} prefs={b.preferences} />
         </div>
@@ -2121,9 +2130,12 @@ function ProbeCompareCategoryList({ cats, prefs }: {
           <div key={cat} style={probeCompareCatBlock}>
             <div style={{ ...miniLabel, marginBottom: 6 }}>{cat}</div>
             {rows.map(r => {
-              const locked = r.lambda_origin === 'forced_medical' || r.lambda_origin === 'ai_permanent'
-              const tone = r.lambda_origin === 'forced_medical' ? '#C27070'
-                         : r.lambda_origin === 'ai_permanent'   ? '#D4B85A'
+              const locked = r.lambda_origin === 'forced_medical'
+                          || r.lambda_origin === 'forced_identity'
+                          || r.lambda_origin === 'ai_permanent'
+              const tone = r.lambda_origin === 'forced_medical'  ? '#C27070'
+                         : r.lambda_origin === 'forced_identity' ? '#D4B85A'
+                         : r.lambda_origin === 'ai_permanent'    ? '#D4B85A'
                          : '#E5D4C2'
               return (
                 <div key={r.uid} style={{
@@ -2213,18 +2225,20 @@ type MatrixRowData = {
    *  Only computed for `present` cells; flag-objects line up index-for-index with cells. */
   deviance: { s0?: boolean; c?: boolean; lambda?: boolean; f?: boolean }[]
   driftedFactors: Set<'s0' | 'c' | 'lambda' | 'f'>
-  // The fix: split the old `isSafetyLocked` (which lumped these two together
-  // and over-escalated permanence drift to alarm severity) into two distinct
-  // categories. Medical = safety (deterministic guardrail; alarms on drift).
-  // Permanence = judgment-level model decision (drift is judgment variance).
+  // Three lock kinds, three severities:
+  //   • Medical   — deterministic guardrail. Drift = code defect = ⛔ alarm (red).
+  //   • Identity  — deterministic guardrail (Pass B). Drift = code defect = ⛔ alarm (red).
+  //   • Permanence (ai_permanent residue) — model judgement. Drift = judgment variance (amber).
+  // Lumping any two together would either over-escalate permanence drift or
+  // under-escalate identity drift, both of which would hide what the band is
+  // trying to say.
   isMedicalLocked: boolean       // ANY cell with lambda_origin === 'forced_medical'
+  isIdentityLocked: boolean      // ANY cell with lambda_origin === 'forced_identity'
   isPermanenceLocked: boolean    // ANY cell with lambda_origin === 'ai_permanent'
   /** Shape of permanence drift (when isPermanenceLocked).
    *  - 'held':                     all present cells ai_permanent + all scores identical
    *  - 'classification_toggled':  lambda_origin VARIED across runs — the model
-   *    judged it identity-permanent in some and decaying in others. THIS is
-   *    the meaningful shape, the one Pass B will fix. The band's job is to
-   *    say so plainly.
+   *    judged it identity-permanent in some and decaying in others.
    *  - 'score_drift_within_lock': all cells stayed ai_permanent but a score moved. */
   permanenceShape: 'held' | 'classification_toggled' | 'score_drift_within_lock'
   permanenceLockedRuns: number[]   // 1-indexed: cells where lambda_origin === 'ai_permanent'
@@ -2233,6 +2247,13 @@ type MatrixRowData = {
   medicalShape: 'held' | 'classification_toggled' | 'score_drift_within_lock'
   medicalLockedRuns: number[]
   medicalUnlockedRuns: number[]
+  // Symmetric fields for the identity case. Drift here is deterministic-rule
+  // drift — if any present cell isn't forced_identity in a same-transcript
+  // triple, the isIdentityPreference detector is non-deterministic on the
+  // SAME input and the band must say "code defect", same severity as medical.
+  identityShape: 'held' | 'classification_toggled' | 'score_drift_within_lock'
+  identityLockedRuns: number[]
+  identityUnlockedRuns: number[]
 }
 
 /** Normalise a preference name for fuzzy matching across runs. */
@@ -2319,7 +2340,7 @@ function computeRowDeviance(cells: MatrixCell[]): {
  *  one). The band's job is to say what the change MEANS. */
 function lockShape(
   cells: MatrixCell[],
-  lockOrigin: 'forced_medical' | 'ai_permanent',
+  lockOrigin: 'forced_medical' | 'forced_identity' | 'ai_permanent',
   anyDrifted: boolean,
 ): {
   shape: 'held' | 'classification_toggled' | 'score_drift_within_lock'
@@ -2354,22 +2375,27 @@ function buildRow(
   const { deviance, drifted } = computeRowDeviance(cells)
 
   const isMedicalLocked    = matched.some(p => p?.lambda_origin === 'forced_medical')
+  const isIdentityLocked   = matched.some(p => p?.lambda_origin === 'forced_identity')
   const isPermanenceLocked = matched.some(p => p?.lambda_origin === 'ai_permanent')
 
-  const med  = lockShape(cells, 'forced_medical', drifted.size > 0)
-  const perm = lockShape(cells, 'ai_permanent',   drifted.size > 0)
+  const med  = lockShape(cells, 'forced_medical',  drifted.size > 0)
+  const idn  = lockShape(cells, 'forced_identity', drifted.size > 0)
+  const perm = lockShape(cells, 'ai_permanent',    drifted.size > 0)
 
   return {
     preference, detail, classification,
     cells: cells as [MatrixCell, MatrixCell, MatrixCell],
     deviance, driftedFactors: drifted,
-    isMedicalLocked, isPermanenceLocked,
+    isMedicalLocked, isIdentityLocked, isPermanenceLocked,
     permanenceShape: perm.shape,
     permanenceLockedRuns:   perm.lockedRuns,
     permanenceUnlockedRuns: perm.unlockedRuns,
     medicalShape: med.shape,
     medicalLockedRuns:      med.lockedRuns,
     medicalUnlockedRuns:    med.unlockedRuns,
+    identityShape: idn.shape,
+    identityLockedRuns:     idn.lockedRuns,
+    identityUnlockedRuns:   idn.unlockedRuns,
   }
 }
 
@@ -2385,12 +2411,13 @@ function buildAllRows(
     const cls = v.type === 'safety' ? 'safety' : v.type === 'judgment' ? 'judgment' : 'granularity'
     rows.push(buildRow(v.preference, v.detail, cls, runs))
   }
-  // Medical + permanence rows both pin to top of matrix — both are important,
-  // just for different reasons (the rendering treats them with different
-  // severities; the sort just gets them all above the bulk of the table).
+  // All three lock kinds pin to top of matrix — each rendered with its own
+  // severity in the sub-bands below. The sort just gets them above the bulk.
+  const isAnyLocked = (r: MatrixRowData) =>
+    r.isMedicalLocked || r.isIdentityLocked || r.isPermanenceLocked
   return [
-    ...rows.filter(r =>  r.isMedicalLocked ||  r.isPermanenceLocked),
-    ...rows.filter(r => !r.isMedicalLocked && !r.isPermanenceLocked),
+    ...rows.filter(isAnyLocked),
+    ...rows.filter(r => !isAnyLocked(r)),
   ]
 }
 
@@ -2445,6 +2472,22 @@ function medicalRowMessage(r: MatrixRowData): string {
   return r.detail || 'medical-locked; a score varied within the lock — investigate.'
 }
 
+// Identity drift is deterministic-rule drift (Pass B). For a same-transcript
+// triple, isIdentityPreference is a pure function — every cell must classify
+// the same way. Any toggle means the detector regex matched on one rendering
+// of the same text and not another, which is a code defect.
+function identityRowMessage(r: MatrixRowData): string {
+  if (r.identityShape === 'held') {
+    return r.detail || 'forced_identity (S₀=5/C=1/λ=0) in all 3 runs — declarative identity/relationship fact, code-locked'
+  }
+  if (r.identityShape === 'classification_toggled') {
+    const lockedPhrase   = runListPhrase(r.identityLockedRuns)
+    const unlockedPhrase = runListPhrase(r.identityUnlockedRuns)
+    return `forced_identity in ${lockedPhrase}, NOT locked in ${unlockedPhrase}. The identity guardrail is enforced in code and cannot vary for the same input — this is a GUARDRAIL CODE DEFECT.`
+  }
+  return r.detail || 'identity-locked; a score varied within the lock — investigate.'
+}
+
 // ─── ConsistencyReportView ───────────────────────────────────────────────────
 
 function ConsistencyReportView({ report, triple }: {
@@ -2457,12 +2500,18 @@ function ConsistencyReportView({ report, triple }: {
     :                                            'green'
 
   const rows = useMemo(() => buildAllRows(report, triple), [report, triple])
+  // Precedence in the rendering matches the precedence in reconcile:
+  // MEDICAL > IDENTITY > PERMANENCE. A row that's medical-locked never appears
+  // in the identity band; a row that's identity-locked never appears in the
+  // permanence band.
   const medicalRows     = rows.filter(r => r.isMedicalLocked)
-  const permanenceRows  = rows.filter(r => r.isPermanenceLocked && !r.isMedicalLocked)
-  const nonLockedRows   = rows.filter(r => !r.isMedicalLocked && !r.isPermanenceLocked)
-  const lockedRows      = [...medicalRows, ...permanenceRows]
-  // Has a row in either band actually drifted?
+  const identityRows    = rows.filter(r => r.isIdentityLocked && !r.isMedicalLocked)
+  const permanenceRows  = rows.filter(r => r.isPermanenceLocked && !r.isMedicalLocked && !r.isIdentityLocked)
+  const nonLockedRows   = rows.filter(r => !r.isMedicalLocked && !r.isIdentityLocked && !r.isPermanenceLocked)
+  const lockedRows      = [...medicalRows, ...identityRows, ...permanenceRows]
+  // Has a row in each band actually drifted?
   const medicalToggled    = medicalRows.some(r => r.medicalShape !== 'held')
+  const identityToggled   = identityRows.some(r => r.identityShape !== 'held')
   const permanenceDrifted = permanenceRows.some(r => r.permanenceShape !== 'held')
 
   // Evidence tally — recomputed from the actual rows, not just claimed counts.
@@ -2501,23 +2550,26 @@ function ConsistencyReportView({ report, triple }: {
         </div>
       </div>
 
-      {/* ── 2. SAFETY & PERMANENCE LOCKS — two sub-bands, distinct severities ── */}
+      {/* ── 2. SAFETY · IDENTITY · PERMANENCE LOCKS — three sub-bands ── */}
       <div style={{ ...stagger(1) }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
-          <span style={{ ...miniLabel, color: '#7AB07A' }}>SAFETY &amp; PERMANENCE LOCKS</span>
+          <span style={{ ...miniLabel, color: '#7AB07A' }}>SAFETY · IDENTITY · PERMANENCE LOCKS</span>
           <span style={metaText}>
-            {medicalRows.length === 0 && permanenceRows.length === 0
+            {medicalRows.length === 0 && identityRows.length === 0 && permanenceRows.length === 0
               ? '— no locked preferences in this triple'
               : (() => {
-                  // Honest combined-state meta: separate medical from permanence,
-                  // never imply safety where it's only permanence-judgment drift.
+                  // Honest combined-state meta: separate medical / identity /
+                  // permanence; never imply safety where it's only judgment drift.
                   const medPhrase = medicalRows.length === 0 ? null
                     : medicalToggled ? '⛔ medical lock differed across runs'
                     : 'medical locks held'
+                  const idnPhrase = identityRows.length === 0 ? null
+                    : identityToggled ? '⛔ identity lock differed across runs'
+                    : 'identity locks held'
                   const permPhrase = permanenceRows.length === 0 ? null
                     : permanenceDrifted ? `permanence classification varied on ${permanenceRows.filter(r => r.permanenceShape !== 'held').length} row${permanenceRows.filter(r => r.permanenceShape !== 'held').length === 1 ? '' : 's'} — judgment-level (see below)`
                     : 'permanence classifications held'
-                  return '— ' + [medPhrase, permPhrase].filter(Boolean).join('; ') + '.'
+                  return '— ' + [medPhrase, idnPhrase, permPhrase].filter(Boolean).join('; ') + '.'
                 })()}
           </span>
         </div>
@@ -2546,6 +2598,44 @@ function ConsistencyReportView({ report, triple }: {
                     <span style={{ color: isAlarm ? '#FFFFFF' : '#E5D4C2', fontWeight: 500 }}>{r.preference}</span>
                     <span style={{ ...metaText, color: isAlarm ? '#FFFFFF' : '#B2AA98' }}>
                       — {medicalRowMessage(r)}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* — IDENTITY LOCKS sub-band (forced_identity). Deterministic guardrail
+             — same severity discipline as medical: any drift on a same-transcript
+             triple is a CODE DEFECT (the detector matched on one rendering of
+             the same text and not another). Red ⛔ when toggled; calm when held.
+             The "held identically across all 3 runs" wording is what visibly
+             flips when Pass B resolves the anniversary/Sophie/no-birthdays
+             drift that the consistency analyser surfaced. — */}
+        {identityRows.length > 0 && (
+          <div style={subBand(identityToggled ? 'alarm' : 'calm')}>
+            <div style={subBandHeader}>
+              <span style={{ ...miniLabel, color: identityToggled ? '#FFFFFF' : '#7AB07A' }}>
+                IDENTITY LOCKS
+              </span>
+              <span style={{ ...metaText, color: identityToggled ? '#FFFFFF' : '#B2AA98' }}>
+                {identityToggled
+                  ? '⛔ an identity lock differed across runs — GUARDRAIL CODE DEFECT (the identity guardrail is enforced in code and cannot vary for the same input)'
+                  : 'identity guardrail enforcements · held identically across all 3 runs'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {identityRows.map(r => {
+                const isAlarm = r.identityShape !== 'held'
+                return (
+                  <div key={r.preference} style={lockedRowStyle(isAlarm ? 'identity_alarm' : 'identity_calm')}>
+                    <span style={{ color: isAlarm ? '#FFFFFF' : '#7AB07A', flexShrink: 0 }}>
+                      {isAlarm ? '⛔' : '✓'}
+                    </span>
+                    <span style={{ color: isAlarm ? '#FFFFFF' : '#E5D4C2', fontWeight: 500 }}>{r.preference}</span>
+                    <span style={{ ...metaText, color: isAlarm ? '#FFFFFF' : '#B2AA98' }}>
+                      — {identityRowMessage(r)}
                     </span>
                   </div>
                 )
@@ -2688,7 +2778,7 @@ function VerdictReading({ tone, headline, verdict }: {
           fontFamily: "'Google Sans Code', monospace", fontSize: 11,
           color: '#FFFFFF', opacity: 0.92, letterSpacing: '0.04em',
         }}>
-          The medical guardrail is enforced in code and cannot vary for the same input.
+          The medical and identity guardrails are enforced in code and cannot vary for the same input.
           This indicates a code defect — investigate immediately.
         </div>
       </div>
@@ -3115,6 +3205,7 @@ function originPill(o: string): React.CSSProperties {
     category_baseline_learned:  { fg: '#7AB07A', bg: 'rgba(122,176,122,0.10)', bd: 'rgba(122,176,122,0.30)' },
     category_baseline_designed: { fg: '#B2AA98', bg: 'rgba(229,212,194,0.06)', bd: 'rgba(229,212,194,0.18)' },
     forced_medical:             { fg: '#C27070', bg: 'rgba(194,112,112,0.12)', bd: 'rgba(194,112,112,0.40)' },
+    forced_identity:            { fg: '#D4B85A', bg: 'rgba(212,184,90,0.14)', bd: 'rgba(212,184,90,0.45)' },
     ai_permanent:               { fg: '#D4B85A', bg: 'rgba(212,184,90,0.16)', bd: 'rgba(212,184,90,0.50)' },
     '(null)':                   { fg: '#7E7864', bg: 'rgba(229,212,194,0.04)', bd: 'rgba(229,212,194,0.10)' },
   }
@@ -3719,10 +3810,16 @@ const subBandHeader: React.CSSProperties = {
   display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap',
   marginBottom: 10,
 }
-function lockedRowStyle(tone: 'medical_calm' | 'medical_alarm' | 'permanence_calm' | 'permanence_amber'): React.CSSProperties {
+function lockedRowStyle(tone:
+  | 'medical_calm' | 'medical_alarm'
+  | 'identity_calm' | 'identity_alarm'
+  | 'permanence_calm' | 'permanence_amber'
+): React.CSSProperties {
   const cfg =
       tone === 'medical_alarm'    ? { border: '#C27070',                bg: 'rgba(194,112,112,0.14)' }
     : tone === 'medical_calm'     ? { border: 'rgba(122,176,122,0.45)', bg: 'transparent' }
+    : tone === 'identity_alarm'   ? { border: '#C27070',                bg: 'rgba(194,112,112,0.14)' }
+    : tone === 'identity_calm'    ? { border: 'rgba(122,176,122,0.45)', bg: 'transparent' }
     : tone === 'permanence_amber' ? { border: '#D4B85A',                bg: 'rgba(212,184,90,0.06)' }
     :                               { border: 'rgba(122,176,122,0.45)', bg: 'transparent' }
   return {
@@ -3819,10 +3916,11 @@ function matrixCellPresent(origin: DemoExtractedPref['lambda_origin']): React.CS
   // Subtle origin-coded left edge so a cell's lock status is readable at a glance,
   // without competing with the row-level drift highlight.
   const edge =
-      origin === 'forced_medical' ? 'inset 2px 0 0 rgba(194,112,112,0.25)'
-    : origin === 'ai_permanent'   ? 'inset 2px 0 0 rgba(212,184,90,0.25)'
-    : origin === 'ai_specific'    ? 'inset 2px 0 0 rgba(212,184,90,0.10)'
-    :                               'inset 2px 0 0 rgba(178,170,152,0.10)'
+      origin === 'forced_medical'  ? 'inset 2px 0 0 rgba(194,112,112,0.25)'
+    : origin === 'forced_identity' ? 'inset 2px 0 0 rgba(212,184,90,0.30)'
+    : origin === 'ai_permanent'    ? 'inset 2px 0 0 rgba(212,184,90,0.25)'
+    : origin === 'ai_specific'     ? 'inset 2px 0 0 rgba(212,184,90,0.10)'
+    :                                'inset 2px 0 0 rgba(178,170,152,0.10)'
   return {
     padding: '8px 12px',
     borderLeft: '1px solid rgba(229,212,194,0.06)',

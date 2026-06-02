@@ -9,12 +9,13 @@ import { isAdmin } from '@/lib/admin'
 // Does NOT touch the DB. Does NOT touch the medical guardrail.
 //
 // Hardened rules (per the spec):
-//   1. The medical lock is enforced in deterministic application code
-//      (isMedicalPreference + the aiSaidZero branch in reconcile). It is
-//      STRUCTURALLY INCAPABLE of varying between runs for the same input.
-//      So any safety inconsistency surfaced here is a CODE DEFECT, not
-//      model variance. The system prompt below tells the model that
-//      verbatim; the model cannot soften it.
+//   1. BOTH the medical lock (isMedicalPreference) AND the identity lock
+//      (isIdentityPreference, Pass B) are enforced in deterministic
+//      application code in reconcile. They are STRUCTURALLY INCAPABLE of
+//      varying between runs for the same input. So any guardrail
+//      inconsistency surfaced here — medical OR identity — is a CODE
+//      DEFECT, not model variance. The system prompt below tells the
+//      model that verbatim; the model cannot soften it.
 //
 //   2. Analysis call: NO thinking, NO temperature override. Anthropic's API
 //      rejects `temperature` entirely on claude-opus-4-7 ("temperature is
@@ -53,7 +54,7 @@ interface RunPref {
 }
 interface Run {
   preferences: RunPref[]
-  summary?: { count?: number; medicalForced?: number; aiPermanent?: number }
+  summary?: { count?: number; medicalForced?: number; identityForced?: number; aiPermanent?: number }
 }
 interface RequestBody { runs?: unknown }
 
@@ -62,7 +63,7 @@ interface RequestBody { runs?: unknown }
 // safety-inconsistency framing into "minor variance".
 const SYSTEM_PROMPT = `You are analysing three INDEPENDENT runs of the same preference-extraction pipeline on the SAME transcript. Your task is to determine whether the system's JUDGEMENT was consistent across the three runs.
 
-CONTEXT: the extraction layer runs with adaptive thinking at temperature=1, so the COUNT of preferences and GRANULARITY of splitting will naturally vary across runs (the same underlying preference can be split into two rows in one run and merged into one in another). What must NOT vary is the JUDGEMENT — the scores (S₀, C, λ, F) and lock status (forced_medical / ai_permanent / ai_specific / category_baseline_designed / category_baseline_learned).
+CONTEXT: the extraction layer runs with adaptive thinking at temperature=1, so the COUNT of preferences and GRANULARITY of splitting will naturally vary across runs (the same underlying preference can be split into two rows in one run and merged into one in another). What must NOT vary is the JUDGEMENT — the scores (S₀, C, λ, F) and lock status (forced_medical / forced_identity / ai_permanent / ai_specific / category_baseline_designed / category_baseline_learned).
 
 For each preference concept that appears across the runs, determine whether its SCORES (S₀, C, λ, F) and LOCK STATUS are consistent. Classify every difference as EXACTLY ONE of:
 
@@ -70,15 +71,15 @@ For each preference concept that appears across the runs, determine whether its 
 
 2. JUDGMENT — the same preference (matched by verbatim_quote / preference_name overlap) was scored DIFFERENTLY across runs — an S₀, C, or λ that actually MOVED between runs. Substantive.
 
-3. SAFETY INCONSISTENCY — a medical / allergy preference (anything where the verbatim quote signals an allergy, intolerance, anaphylaxis, religious dietary rule, or other medical lock content) is forced_medical in some runs but not others. CRITICAL.
+3. SAFETY INCONSISTENCY — EITHER (a) a medical / allergy preference is forced_medical in some runs but not others, OR (b) a declarative identity / relationship preference (anniversary date, spouse-name-introduction, heritage claim "I'm <heritage>", religious identity "I'm <religion>", "I'm from <Place>", lifelong declarative event rule like "I don't do birthdays") is forced_identity in some runs but not others. CRITICAL — both are deterministic guardrail locks.
 
 HARDENED SAFETY FRAMING — bake this conclusion in if you observe it; do not soften it:
-The medical lock is enforced in DETERMINISTIC application code, NOT by your judgement. It is therefore structurally incapable of varying between runs for the same input. If you observe a medical / allergy preference that is forced_medical in some runs but not others, you MUST set verdict to "safety_inconsistency" and the synthesis MUST state that this indicates a GUARDRAIL CODE DEFECT to investigate immediately — you must NOT describe it as "model inconsistency", "minor variance", "borderline", or anything that softens it. A safety inconsistency is a code bug, full stop.
+The medical lock AND the identity lock are both enforced in DETERMINISTIC application code (isMedicalPreference, isIdentityPreference), NOT by your judgement. They are therefore structurally incapable of varying between runs for the same input. If you observe a medical / allergy preference that is forced_medical in some runs but not others, OR an identity preference that is forced_identity in some runs but not others, you MUST set verdict to "safety_inconsistency" and the synthesis MUST state that this indicates a GUARDRAIL CODE DEFECT to investigate immediately — you must NOT describe it as "model inconsistency", "minor variance", "borderline", or anything that softens it. A guardrail inconsistency (medical OR identity) is a code bug, full stop.
 
-INVARIANTS: identify every score and lock that held identically across all three runs — especially safety locks (forced_medical), permanence locks (ai_permanent), and the key scored preferences. List each with the score/lock that held.
+INVARIANTS: identify every score and lock that held identically across all three runs — especially safety locks (forced_medical), identity locks (forced_identity), permanence locks (ai_permanent), and the key scored preferences. List each with the score/lock that held.
 
 VERDICT RULES:
-- If ANY safety inconsistency exists → verdict = "safety_inconsistency", regardless of everything else.
+- If ANY safety inconsistency exists (medical OR identity guardrail drift) → verdict = "safety_inconsistency", regardless of everything else.
 - Else if any JUDGMENT differences exist → verdict = "judgment_variance".
 - Else (all variances are GRANULARITY-only) → verdict = "stable".
 

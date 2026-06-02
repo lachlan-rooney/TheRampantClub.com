@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
 import { vnDateString } from '@/lib/datetime'
-import { isMedicalPreference, type ExtractedPreference } from '@/lib/mis/extraction-decay'
+import { isMedicalPreference, isIdentityPreference, type ExtractedPreference } from '@/lib/mis/extraction-decay'
 
 // MIS Pass 4 — Bulk-save of reconciled preferences.
 //
@@ -12,21 +12,23 @@ import { isMedicalPreference, type ExtractedPreference } from '@/lib/mis/extract
 // for the preferences table, so it re-asserts the two invariants that the
 // UI displays but cannot, alone, guarantee:
 //
-//   1. MEDICAL LOCK RE-ASSERTION. Every incoming row is re-tested with the
-//      same content-based isMedicalPreference predicate the reconcile step
-//      uses. If a row tests medical at save time but arrives without forced
-//      values (admin edited it, or a malformed client payload tampered),
-//      the row is re-forced to s0=5 / C=1.00 / lambda=0 / lambda_origin=
-//      'forced_medical'. The lock must survive the confirm step — an allergy
-//      the admin can accidentally un-force is the same safety hole as the
-//      one we already closed at the reconcile boundary.
+//   1. MEDICAL & IDENTITY LOCK RE-ASSERTION. Every incoming row is re-tested
+//      with the same content-based predicates the reconcile step uses
+//      (isMedicalPreference, isIdentityPreference, in MEDICAL > IDENTITY
+//      precedence). If a row tests medical or identity at save time but
+//      arrives without forced values (admin edited it, or a malformed client
+//      payload tampered), the row is re-forced to s0=5 / C=1.00 / lambda=0
+//      with the appropriate origin. Locks must survive the confirm step — an
+//      allergy or a declarative identity fact the admin can accidentally
+//      un-force is the same safety hole we already closed at reconcile.
 //
-//   2. NON-NULL lambda_origin. Every Pass-4-written row must carry one of the
-//      four origins ('ai_specific' | 'category_baseline_learned' |
-//      'category_baseline_designed' | 'forced_medical'). The column is the
-//      audit trail and the loop-closure evidence; a silent null defeats both.
-//      If any row arrives without a valid origin, the whole batch fails with
-//      a per-row error rather than silently writing a null.
+//   2. NON-NULL lambda_origin. Every written row must carry one of the
+//      allowed origins ('ai_specific' | 'category_baseline_learned' |
+//      'category_baseline_designed' | 'forced_medical' | 'forced_identity'
+//      | 'ai_permanent'). The column is the audit trail and the
+//      loop-closure evidence; a silent null defeats both. If any row
+//      arrives without a valid origin, the whole batch fails with a
+//      per-row error rather than silently writing a null.
 //
 // The numeric allowed-sets are still snapped (defense in depth against a
 // malformed client payload), and every other field is shape-validated.
@@ -43,7 +45,7 @@ const allowedLambda     = [0.000, 0.002, 0.005, 0.010, 0.020]
 const allowedFrequency  = [0.8, 1.0, 1.2, 1.5]
 const allowedOrigin = new Set([
   'ai_specific', 'category_baseline_learned', 'category_baseline_designed',
-  'forced_medical', 'ai_permanent',
+  'forced_medical', 'forced_identity', 'ai_permanent',
 ])
 
 function snap(v: unknown, allowed: number[]): number | null {
@@ -95,6 +97,7 @@ export async function POST(req: NextRequest) {
   const rows: Array<Record<string, unknown>> = []
   const errors: Array<{ index: number; reason: string }> = []
   let medicalReforced = 0
+  let identityReforced = 0
   let permanentReforced = 0
 
   ;(body.preferences as IncomingPref[]).forEach((p, i) => {
@@ -105,12 +108,13 @@ export async function POST(req: NextRequest) {
       if (!preference_name) throw new Error('preference_name required')
 
       // ── Lock re-assertion ─────────────────────────────────────────
-      // Mirror reconcile's content-first precedence:
-      //   1. Content-detected medical (isMedicalPreference) → forced_medical lock.
-      //   2. Else if the incoming λ snaps to 0           → ai_permanent lock.
-      //   3. Else                                         → standard validation.
-      // Both lock paths force s0=5/c=1/λ=0 regardless of what the client sent;
-      // ai_permanent only catches the residue, exactly as reconcile does.
+      // Mirror reconcile's content-first precedence exactly:
+      //   1. Content-detected medical (isMedicalPreference)  → forced_medical lock.
+      //   2. Else content-detected identity (isIdentityPreference) → forced_identity lock.
+      //   3. Else if the incoming λ snaps to 0               → ai_permanent lock.
+      //   4. Else                                            → standard validation.
+      // All three lock paths force s0=5/c=1/λ=0 regardless of what the client
+      // sent; ai_permanent only catches the residue, exactly as reconcile does.
       const previewPref: ExtractedPreference = {
         category,
         subcategory:     typeof p.subcategory     === 'string' ? p.subcategory     : undefined,
@@ -118,7 +122,8 @@ export async function POST(req: NextRequest) {
         detail:          typeof p.detail          === 'string' ? p.detail          : undefined,
         verbatim_quote:  typeof p.verbatim_quote  === 'string' ? p.verbatim_quote  : undefined,
       }
-      const detectedMedical = isMedicalPreference(previewPref)
+      const detectedMedical  = isMedicalPreference(previewPref)
+      const detectedIdentity = !detectedMedical && isIdentityPreference(previewPref)
       const incomingLambdaIsZero = snap(p.lambda, allowedLambda) === 0.000
 
       let s0: number
@@ -134,10 +139,20 @@ export async function POST(req: NextRequest) {
           incomingLambdaIsZero &&
           p.lambda_origin === 'forced_medical'
         if (!arrivedForced) medicalReforced++
+      } else if (detectedIdentity) {
+        // Identity lock — declarative identity/relationship fact (Pass B).
+        // Deterministic guardrail; cannot be un-forced by client edits.
+        s0 = 5; confidence = 1.00; lambda = 0.000; lambda_origin = 'forced_identity'
+        const arrivedIdentity =
+          Number(p.s0) === 5 &&
+          snap(p.confidence, allowedConfidence) === 1.00 &&
+          incomingLambdaIsZero &&
+          p.lambda_origin === 'forced_identity'
+        if (!arrivedIdentity) identityReforced++
       } else if (incomingLambdaIsZero) {
-        // Identity-permanence lock (the AI judged λ=0 without medical content).
-        // Same fail-safe as forced_medical — s0=5/c=1/λ=0 is enforced at the
-        // write boundary regardless of what the client sent for those fields.
+        // Identity-permanence residue (AI judged λ=0 without medical OR
+        // identity content). Same fail-safe — s0=5/c=1/λ=0 enforced at the
+        // write boundary regardless of what the client sent.
         s0 = 5; confidence = 1.00; lambda = 0.000; lambda_origin = 'ai_permanent'
         const arrivedPermanent =
           Number(p.s0) === 5 &&
@@ -156,8 +171,9 @@ export async function POST(req: NextRequest) {
         lambda = l
         const origin = typeof p.lambda_origin === 'string' ? p.lambda_origin : ''
         if (!allowedOrigin.has(origin)) throw new Error(`lambda_origin invalid: "${origin}"`)
-        if (origin === 'forced_medical') throw new Error('forced_medical origin requires medical content signal')
-        if (origin === 'ai_permanent')   throw new Error('ai_permanent origin requires λ=0')
+        if (origin === 'forced_medical')  throw new Error('forced_medical origin requires medical content signal')
+        if (origin === 'forced_identity') throw new Error('forced_identity origin requires identity content signal')
+        if (origin === 'ai_permanent')    throw new Error('ai_permanent origin requires λ=0')
         lambda_origin = origin
       }
 
@@ -212,10 +228,10 @@ export async function POST(req: NextRequest) {
     const chunk = rows.slice(i, i + 100)
     const { error } = await sb.from('preferences').insert(chunk)
     if (error) {
-      return NextResponse.json({ error: error.message, inserted, medicalReforced, permanentReforced }, { status: 500 })
+      return NextResponse.json({ error: error.message, inserted, medicalReforced, identityReforced, permanentReforced }, { status: 500 })
     }
     inserted += chunk.length
   }
 
-  return NextResponse.json({ ok: true, inserted, medicalReforced, permanentReforced })
+  return NextResponse.json({ ok: true, inserted, medicalReforced, identityReforced, permanentReforced })
 }

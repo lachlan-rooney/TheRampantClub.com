@@ -271,34 +271,39 @@ check("16d. forced_medical → F is the AI's text (not overridden)",
   p16?.rationale?.f === "applies whenever dining",
   `f=${p16?.rationale?.f}`)
 
-// 17. ai_permanent: S₀, C, λ all rule-labelled (distinct from medical) — F stays AI.
-const anniversaryForLabels: ExtractedPreference = {
-  category: "Family & Personal",
-  preference_name: "Wedding anniversary 14 October",
-  verbatim_quote: "wife Sophie, our anniversary's the fourteenth of October",
+// 17. (Pass-B UPDATED) ai_permanent: rule-labels distinct from medical AND from
+//     identity — uses a NON-IDENTITY AI-λ=0 row so the rule-label assertions
+//     test the ai_permanent path specifically. The original "wife Sophie /
+//     anniversary" input now routes to forced_identity (covered in case 12).
+const aiPermanentForLabels: ExtractedPreference = {
+  category: "Whisky & Beverage",
+  preference_name: "Permanent taste preference",
+  verbatim_quote: "this never changes for me, my whole life",
   s0: 4, confidence: 0.75, lambda: 0, frequency: 1.0,
   rationale: {
-    summary: "identity-level family fact",
-    s0:      "AI's s0 reason (should be overridden, but different from medical)",
+    summary: "AI's lifelong taste judgement",
+    s0:      "AI's s0 reason (should be overridden, but different from medical AND identity)",
     c:       "AI's c reason (should be overridden)",
     lambda:  "AI's lambda reason (should be overridden)",
-    f:       "annual, applies once a year",
+    f:       "every whisky occasion",
   },
 }
-const r17 = reconcile([anniversaryForLabels], baselinesDayOne)
+const r17 = reconcile([aiPermanentForLabels], baselinesDayOne)
 const p17 = r17.preferences[0]
-check("17a. ai_permanent → λ rule-labelled mentioning identity/lifelong (NOT 'medical guardrail')",
+check("17a. ai_permanent → λ rule-labelled mentioning identity/lifelong (NOT 'medical guardrail', NOT 'identity guardrail')",
   !!p17?.rationale?.lambda &&
     !p17.rationale.lambda.toLowerCase().includes("medical guardrail") &&
+    !p17.rationale.lambda.toLowerCase().includes("identity guardrail") &&
     (p17.rationale.lambda.toLowerCase().includes("lifelong") || p17.rationale.lambda.toLowerCase().includes("identity")),
   `λ=${p17?.rationale?.lambda}`)
-check("17b. ai_permanent → S₀ rule-labelled (permanence lock, not medical)",
+check("17b. ai_permanent → S₀ rule-labelled mentioning 'permanence' (not medical, not identity-guardrail)",
   !!p17?.rationale?.s0 &&
     !p17.rationale.s0.toLowerCase().includes("medical guardrail") &&
+    !p17.rationale.s0.toLowerCase().includes("identity guardrail") &&
     p17.rationale.s0.toLowerCase().includes("permanence"),
   `s0=${p17?.rationale?.s0}`)
 check("17c. ai_permanent → F is the AI's text (not overridden)",
-  p17?.rationale?.f === "annual, applies once a year",
+  p17?.rationale?.f === "every whisky occasion",
   `f=${p17?.rationale?.f}`)
 
 // 18. category_baseline_designed: λ rule-labelled (inherited); S₀, C, F all AI.
@@ -351,6 +356,191 @@ check("19. ai_specific → all four factor rationales kept verbatim (no override
   p19?.rationale?.f      === "interview baseline",
   `got: ${JSON.stringify(p19?.rationale)}`)
 
+// ── Cases 20-23: Pass-B Identity-Permanence Guardrail ────────────────
+// Code-forced identity origin for declarative identity/relationship facts.
+// NARROW / under-catch bias: locks only on clear identity statements.
+// Precedence: MEDICAL > IDENTITY > AI_PERMANENT. F is never overridden.
+
+// 20. LOCKS — clear declarative identity/relationship facts.
+const idWifeSophie: ExtractedPreference = {
+  category: "Family & Personal",
+  preference_name: "Wife — Sophie",
+  verbatim_quote: "my wife Sophie",
+  s0: 4, confidence: 0.75, lambda: 0.002, frequency: 1.0,
+}
+const idAnniversaryDate: ExtractedPreference = {
+  category: "Family & Personal",
+  preference_name: "Wedding anniversary",
+  verbatim_quote: "our anniversary is 14 October",
+  s0: 4, confidence: 0.75, lambda: 0.002, frequency: 1.0,
+}
+const idNoBirthday: ExtractedPreference = {
+  category: "Personal & Lifestyle",
+  preference_name: "No birthday celebrations",
+  verbatim_quote: "I don't do birthdays, I'll walk straight out",
+  s0: 4, confidence: 0.75, lambda: 0.002, frequency: 1.0,
+}
+const idSingaporean: ExtractedPreference = {
+  category: "Personal & Lifestyle",
+  preference_name: "Singaporean heritage",
+  verbatim_quote: "I'm Singaporean",
+  s0: 3, confidence: 0.75, lambda: 0.005, frequency: 1.0,
+}
+
+const r20a = reconcile([idWifeSophie], baselinesDayOne)
+check("20a. 'my wife Sophie' → forced_identity (λ=0/s0=5/c=1)",
+  r20a.preferences[0]?.lambda_origin === ("forced_identity" as ReconciledPreference["lambda_origin"])
+    && r20a.preferences[0]?.lambda === 0 && r20a.preferences[0]?.s0 === 5 && r20a.preferences[0]?.confidence === 1.0,
+  `origin=${r20a.preferences[0]?.lambda_origin} λ=${r20a.preferences[0]?.lambda} s0=${r20a.preferences[0]?.s0} c=${r20a.preferences[0]?.confidence}`)
+
+const r20b = reconcile([idAnniversaryDate], baselinesDayOne)
+check("20b. 'our anniversary is 14 October' → forced_identity",
+  r20b.preferences[0]?.lambda_origin === ("forced_identity" as ReconciledPreference["lambda_origin"])
+    && r20b.preferences[0]?.lambda === 0,
+  `origin=${r20b.preferences[0]?.lambda_origin} λ=${r20b.preferences[0]?.lambda}`)
+
+const r20c = reconcile([idNoBirthday], baselinesDayOne)
+check("20c. 'I don't do birthdays' declarative rule → forced_identity",
+  r20c.preferences[0]?.lambda_origin === ("forced_identity" as ReconciledPreference["lambda_origin"])
+    && r20c.preferences[0]?.lambda === 0,
+  `origin=${r20c.preferences[0]?.lambda_origin}`)
+
+const r20d = reconcile([idSingaporean], baselinesDayOne)
+check("20d. 'I'm Singaporean' heritage → forced_identity",
+  r20d.preferences[0]?.lambda_origin === ("forced_identity" as ReconciledPreference["lambda_origin"])
+    && r20d.preferences[0]?.lambda === 0,
+  `origin=${r20d.preferences[0]?.lambda_origin}`)
+
+// 21. MUST NOT LOCK — Trap 3 — emphasis/sentiment ≠ identity.
+const peatPreference: ExtractedPreference = {
+  category: "Whisky & Beverage",
+  preference_name: "Peated Islay whisky",
+  verbatim_quote: "I'm a peat man. Always have been. Not negotiable.",
+  s0: 5, confidence: 1.0, lambda: 0.002, frequency: 1.0,
+}
+const laphroaigSentiment: ExtractedPreference = {
+  category: "Whisky & Beverage",
+  preference_name: "Laphroaig",
+  verbatim_quote: "Laphroaig, my late father's dram. His study. Eight years old again.",
+  s0: 5, confidence: 1.0, lambda: 0.002, frequency: 1.0,
+}
+const lovePlace: ExtractedPreference = {
+  category: "Social & Networking",
+  preference_name: "Club enthusiasm",
+  verbatim_quote: "I absolutely love this place",
+  s0: 4, confidence: 0.75, lambda: 0.005, frequency: 1.0,
+}
+
+const r21a = reconcile([peatPreference], baselinesDayOne)
+check("21a. 'I'm a peat man, always have been' → ai_specific (NOT identity)",
+  r21a.preferences[0]?.lambda_origin === "ai_specific" && r21a.preferences[0]?.lambda === 0.002,
+  `origin=${r21a.preferences[0]?.lambda_origin} λ=${r21a.preferences[0]?.lambda}`)
+
+const r21b = reconcile([lovePlace], baselinesDayOne)
+check("21b. 'I absolutely love this place' → ai_specific (NOT identity; emphasis ≠ identity)",
+  r21b.preferences[0]?.lambda_origin === "ai_specific",
+  `origin=${r21b.preferences[0]?.lambda_origin}`)
+
+const r21c = reconcile([laphroaigSentiment], baselinesDayOne)
+check("21c. 'Laphroaig, my late father's dram' → ai_specific λ=0.002 (sentiment ≠ identity)",
+  r21c.preferences[0]?.lambda_origin === "ai_specific" && r21c.preferences[0]?.lambda === 0.002,
+  `origin=${r21c.preferences[0]?.lambda_origin} λ=${r21c.preferences[0]?.lambda}`)
+
+// 22. PRECEDENCE — Trap 2 — MEDICAL > IDENTITY > AI_PERMANENT.
+const halalRow: ExtractedPreference = {
+  category: "Food & Beverage",
+  preference_name: "Halal only",
+  verbatim_quote: "I keep halal",
+  s0: 4, confidence: 1.0, lambda: 0.005, frequency: 1.0,
+}
+const identityWithAiZero: ExtractedPreference = {
+  category: "Family & Personal",
+  preference_name: "Wife Sophie",
+  verbatim_quote: "my wife Sophie",
+  s0: 5, confidence: 1.0, lambda: 0, frequency: 1.0, // AI also emitted λ=0
+}
+const tasteAiZero: ExtractedPreference = {
+  category: "Whisky & Beverage",
+  preference_name: "Permanent taste",
+  verbatim_quote: "this never changes for me, has always been my drink",
+  s0: 5, confidence: 1.0, lambda: 0, frequency: 1.0, // AI says permanent, no identity content
+}
+
+const r22a = reconcile([halalRow], baselinesDayOne)
+check("22a. 'I keep halal' → forced_medical (medical precedence wins over identity)",
+  r22a.preferences[0]?.lambda_origin === "forced_medical",
+  `origin=${r22a.preferences[0]?.lambda_origin} (halal is a MEDICAL_STEM; identity never reached)`)
+
+const r22b = reconcile([identityWithAiZero], baselinesDayOne)
+check("22b. identity content + AI λ=0 → forced_identity (identity precedence wins over ai_permanent)",
+  r22b.preferences[0]?.lambda_origin === ("forced_identity" as ReconciledPreference["lambda_origin"]),
+  `origin=${r22b.preferences[0]?.lambda_origin} (must NOT be ai_permanent)`)
+
+const r22c = reconcile([tasteAiZero], baselinesDayOne)
+check("22c. non-identity AI λ=0 (taste) → ai_permanent (residue path still works)",
+  r22c.preferences[0]?.lambda_origin === "ai_permanent",
+  `origin=${r22c.preferences[0]?.lambda_origin}`)
+
+// 22d. Disqualifier doesn't over-negate — compound row: father-possessive
+//      disqualifies the father stem, BUT independent anniversary phrase fires.
+const compoundFather: ExtractedPreference = {
+  category: "Family & Personal",
+  preference_name: "Anniversary date",
+  verbatim_quote: "my late father's whisky was Laphroaig, and our anniversary is 14 October",
+  s0: 4, confidence: 0.75, lambda: 0.002, frequency: 1.0,
+}
+const r22d = reconcile([compoundFather], baselinesDayOne)
+check("22d. compound: father-possessive disqualified, anniversary still locks → forced_identity",
+  r22d.preferences[0]?.lambda_origin === ("forced_identity" as ReconciledPreference["lambda_origin"]),
+  `origin=${r22d.preferences[0]?.lambda_origin} (anniversary phrase must fire independently of father-possessive)`)
+
+// 22e. Disqualifier doesn't interact with medical — "my father's allergy"
+//      hits the medical detector FIRST. Precedence makes identity irrelevant
+//      here; this case proves the disqualifier can't open a medical gap.
+const fathersAllergy: ExtractedPreference = {
+  category: "Food & Beverage",
+  preference_name: "Family allergy",
+  verbatim_quote: "my father's allergy is severe",
+  s0: 3, confidence: 0.5, lambda: 0.005, frequency: 1.0,
+}
+const r22e = reconcile([fathersAllergy], baselinesDayOne)
+check("22e. 'my father's allergy' → forced_medical (medical fires first; identity disqualifier is irrelevant)",
+  r22e.preferences[0]?.lambda_origin === "forced_medical",
+  `origin=${r22e.preferences[0]?.lambda_origin} (proves the disqualifier can't open a medical hole)`)
+
+// 23. Rule-label overrides for forced_identity (mirrors cases 16/17 for medical/permanent).
+const idForLabels: ExtractedPreference = {
+  category: "Family & Personal",
+  preference_name: "Wife — Sophie",
+  verbatim_quote: "my wife Sophie",
+  s0: 4, confidence: 0.75, lambda: 0.002, frequency: 1.0,
+  rationale: {
+    summary: "AI summary",
+    s0:      "AI's S₀ reason (should be overridden by identity rule label)",
+    c:       "AI's C reason (should be overridden)",
+    lambda:  "AI's λ reason (should be overridden)",
+    f:       "applies whenever we're together",
+  },
+}
+const r23 = reconcile([idForLabels], baselinesDayOne)
+const p23 = r23.preferences[0]
+check("23a. forced_identity → S₀ rule-labelled (contains 'identity')",
+  !!p23?.rationale?.s0?.toLowerCase().includes("identity"),
+  `s0=${p23?.rationale?.s0}`)
+check("23b. forced_identity → C rule-labelled (contains 'identity')",
+  !!p23?.rationale?.c?.toLowerCase().includes("identity"),
+  `c=${p23?.rationale?.c}`)
+check("23c. forced_identity → λ rule-labelled (contains 'identity' AND NOT 'medical guardrail')",
+  !!p23?.rationale?.lambda?.toLowerCase().includes("identity") &&
+    !p23?.rationale?.lambda?.toLowerCase().includes("medical guardrail"),
+  `λ=${p23?.rationale?.lambda}`)
+check("23d. forced_identity → F is the AI's text (not overridden)",
+  p23?.rationale?.f === "applies whenever we're together",
+  `f=${p23?.rationale?.f}`)
+check("23e. identityForced counter increments for the forced_identity row",
+  (r23 as unknown as { identityForced?: number }).identityForced === 1,
+  `identityForced=${(r23 as unknown as { identityForced?: number }).identityForced}`)
+
 // ── Cases 11-13: content-first precedence + ai_permanent (Pass-7 refinement) ─
 // The medical guardrail has TWO triggers (content-detected + AI-emitted λ=0).
 // Both still lock the row at λ=0 / s0=5 / c=1. The distinction is labelling:
@@ -359,11 +549,24 @@ check("19. ai_specific → all four factor rationales kept verbatim (no override
 // Precedence is content-first: a row that is BOTH content-medical AND AI-zeroed
 // lands as forced_medical. ai_permanent only catches the residue.
 
+// Pass-B note: this input contains BOTH "my wife — Sophie" and "our
+// anniversary's the fourteenth of October" — two identity-triggering
+// phrases. Post-Pass-B, this row resolves as forced_identity, not
+// ai_permanent (case 12 below tests this transition explicitly). The
+// pre-Pass-B value (ai_permanent) is preserved on a separate row used by
+// cases 14a and 17 — those use a non-identity-triggering AI-λ=0 row.
 const callumAnniversary: ExtractedPreference = {
   category: "Family & Personal",
   preference_name: "Wedding anniversary 14 October",
   detail: "marks every year with Sophie",
   verbatim_quote: "my wife — Sophie. Our anniversary's the fourteenth of October",
+  s0: 5, confidence: 1.0, lambda: 0, frequency: 1.0,
+}
+// A non-identity AI-λ=0 row used for ai_permanent assertions post-Pass-B.
+const nonIdentityAiZero: ExtractedPreference = {
+  category: "Whisky & Beverage",
+  preference_name: "Permanent taste preference",
+  verbatim_quote: "this never changes for me, my whole life",
   s0: 5, confidence: 1.0, lambda: 0, frequency: 1.0,
 }
 const epipenContentAndZero: ExtractedPreference = {
@@ -381,15 +584,24 @@ check("11. content-detected allergy (AI λ=0.005) → forced_medical (safety pat
   c11.preferences.length === 1 && c11.preferences[0].lambda_origin === "forced_medical",
   `origin=${c11.preferences[0]?.lambda_origin}`)
 
-// Case 12: identity-permanence — AI emitted λ=0 on non-medical content → ai_permanent.
+// Case 12 (Pass-B UPDATED): the Callum anniversary input now contains
+// declarative identity content ("my wife — Sophie" + "our anniversary's the
+// fourteenth of October") → forced_identity, not ai_permanent. Pass B
+// extracts identity into a deterministic code-forced origin; ai_permanent
+// now only catches AI-λ=0 residue without identity content (see case 22c).
 const c12 = reconcile([callumAnniversary], baselinesDayOne)
-check("12. identity λ=0 on non-medical (anniversary) → ai_permanent (gold lock, not red)",
+check("12. (Pass-B) identity content + AI λ=0 → forced_identity (the new code-forced path)",
   c12.preferences.length === 1
-    && c12.preferences[0].lambda_origin === ("ai_permanent" as ReconciledPreference["lambda_origin"])
+    && c12.preferences[0].lambda_origin === ("forced_identity" as ReconciledPreference["lambda_origin"])
     && c12.preferences[0].lambda === 0
     && c12.preferences[0].s0 === 5
     && c12.preferences[0].confidence === 1.0,
   `origin=${c12.preferences[0]?.lambda_origin} λ=${c12.preferences[0]?.lambda} s0=${c12.preferences[0]?.s0} c=${c12.preferences[0]?.confidence}`)
+// Companion: ai_permanent still fires for a non-identity AI-λ=0 row (residue path).
+const c12residue = reconcile([nonIdentityAiZero], baselinesDayOne)
+check("12-residue. non-identity AI λ=0 → ai_permanent (residue path intact)",
+  c12residue.preferences[0]?.lambda_origin === "ai_permanent",
+  `origin=${c12residue.preferences[0]?.lambda_origin}`)
 
 // Case 13: precedence — both content-medical AND AI-zeroed → forced_medical wins.
 // This is the case that PROVES the ordering is right.
@@ -398,7 +610,11 @@ check("13. both content-medical AND AI-zeroed → forced_medical (content-first 
   c13.preferences.length === 1 && c13.preferences[0].lambda_origin === "forced_medical",
   `origin=${c13.preferences[0]?.lambda_origin} — ai_permanent must NOT win when content also fires`)
 
-// Case 14: counter — medicalForced counts only content-medical fires; ai_permanent is separate.
+// Case 14 (Pass-B UPDATED): mixed batch now contains [identity_anniversary,
+// shellfish_allergy, epipen_with_aiZero]. Counters per origin:
+//   medicalForced  = 2 (shellfish + epipen — both content-medical)
+//   identityForced = 1 (anniversary — now code-forced identity)
+//   aiPermanent    = 0 (epipen's AI-λ=0 was overridden by medical precedence)
 const c14 = reconcile(
   [callumAnniversary, cases[0].input /* shellfish allergy */, epipenContentAndZero],
   baselinesDayOne
@@ -406,6 +622,9 @@ const c14 = reconcile(
 check("14a. medicalForced counts content-medical only (2 of 3 in mixed batch)",
   c14.medicalForced === 2,
   `got medicalForced=${c14.medicalForced} — expected 2 (shellfish + epipen both content-detected)`)
+check("14b. (Pass-B) identityForced counts identity-detected only (1 of 3: anniversary)",
+  (c14 as unknown as { identityForced?: number }).identityForced === 1,
+  `got identityForced=${(c14 as unknown as { identityForced?: number }).identityForced} — expected 1 (anniversary now forced_identity)`)
 
 // ── Case 10: medicalForced counts correctly over a mixed batch ───────
 const batch: ExtractedPreference[] = [

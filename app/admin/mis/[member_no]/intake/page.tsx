@@ -22,6 +22,7 @@ type LambdaOrigin =
   | 'category_baseline_learned'
   | 'category_baseline_designed'
   | 'forced_medical'
+  | 'forced_identity'
   | 'ai_permanent'
 
 interface Extracted {
@@ -58,6 +59,7 @@ interface ReconciledPayload {
   preferences: ReconciledPref[]
   dropped: { reason: string; item: unknown }[]
   medicalForced: number
+  identityForced?: number
   aiPermanent?: number
   baselines: Record<string, BaselineEntry>
   raw_count: number
@@ -78,6 +80,7 @@ function predictPs(s0: number, c: number, f: number): number {
 function lambdaOriginLabel(o: LambdaOrigin | null): { text: string; tone: 'gold' | 'green' | 'grey' | 'red' | 'amber' } {
   switch (o) {
     case 'forced_medical':            return { text: 'MEDICAL — LOCKED',   tone: 'red'   }
+    case 'forced_identity':           return { text: 'IDENTITY — LOCKED',  tone: 'gold'  }
     case 'ai_permanent':              return { text: 'PERMANENT — LOCKED', tone: 'amber' }
     case 'ai_specific':               return { text: 'AI · specific',      tone: 'gold'  }
     case 'category_baseline_learned': return { text: 'baseline · learned', tone: 'green' }
@@ -86,7 +89,7 @@ function lambdaOriginLabel(o: LambdaOrigin | null): { text: string; tone: 'gold'
   }
 }
 function isLockedOrigin(o: LambdaOrigin | null): boolean {
-  return o === 'forced_medical' || o === 'ai_permanent'
+  return o === 'forced_medical' || o === 'forced_identity' || o === 'ai_permanent'
 }
 
 export default function MisIntakePage({ params }: { params: Promise<{ member_no: string }> }) {
@@ -390,6 +393,10 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
             <strong style={{ color: '#D4B85A' }}>{reconciled.preferences.length}</strong> preference{reconciled.preferences.length === 1 ? '' : 's'}
             {' · '}
             <strong style={{ color: reconciled.medicalForced > 0 ? '#C27070' : '#B2AA98' }}>{reconciled.medicalForced}</strong> medical-forced
+            {' · '}
+            <strong style={{ color: (reconciled.identityForced ?? 0) > 0 ? '#D4B85A' : '#B2AA98' }}>{reconciled.identityForced ?? 0}</strong> identity-locked
+            {' · '}
+            <strong style={{ color: (reconciled.aiPermanent ?? 0) > 0 ? '#D4B85A' : '#B2AA98' }}>{reconciled.aiPermanent ?? 0}</strong> permanent-locked
             {' · '}
             <strong style={{ color: reconciled.dropped.length > 0 ? '#B2AA98' : '#7AB07A' }}>{reconciled.dropped.length}</strong> dropped
             {reconciled.dropped.length > 0 && (
