@@ -79,17 +79,64 @@ export default function AgreementsPage() {
 
   useEffect(() => { load() }, [])
 
-  const deleteInvitation = async (id: string) => {
-    if (!window.confirm('Delete this invitation?')) return
-    await supabase.from('signing_invitations').delete().eq('id', id)
-    load()
+  // Confirm-modal state — three destructive paths route through one
+  // branded modal: delete invitation (low stakes), delete signed
+  // agreement (high stakes, legal record), revoke invitation (locks
+  // out a live URL). Tone is severity-coded.
+  const [confirmModal, setConfirmModal] = useState<{
+    kind: 'invitation_delete' | 'agreement_delete' | 'invitation_revoke'
+    id: string
+    invitationId?: string
+    label: string  // human-readable subject (the name / email being affected)
+  } | null>(null)
+  const [confirmBusy, setConfirmBusy] = useState(false)
+
+  const requestDeleteInvitation = (id: string, label: string) => {
+    setConfirmModal({ kind: 'invitation_delete', id, label })
+  }
+  const requestDeleteAgreement = (id: string, invitationId: string, label: string) => {
+    setConfirmModal({ kind: 'agreement_delete', id, invitationId, label })
+  }
+  const requestRevokeInvitation = (id: string, label: string) => {
+    setConfirmModal({ kind: 'invitation_revoke', id, label })
+  }
+  const closeConfirm = () => { if (!confirmBusy) setConfirmModal(null) }
+  const runConfirm = async () => {
+    if (!confirmModal) return
+    setConfirmBusy(true)
+    try {
+      if (confirmModal.kind === 'invitation_delete') {
+        await supabase.from('signing_invitations').delete().eq('id', confirmModal.id)
+        load()
+      } else if (confirmModal.kind === 'agreement_delete') {
+        await supabase.from('signed_agreements').delete().eq('id', confirmModal.id)
+        if (confirmModal.invitationId) {
+          await supabase.from('signing_invitations').delete().eq('id', confirmModal.invitationId)
+        }
+        load()
+      } else if (confirmModal.kind === 'invitation_revoke') {
+        const r = await fetch('/api/admin/agreements/revoke', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ invitation_id: confirmModal.id }),
+        })
+        if (r.ok) load()
+        else {
+          const d = await r.json().catch(() => ({}))
+          showToast(`Revoke failed: ${d.error || r.statusText}`, 'error')
+          return
+        }
+      }
+      setConfirmModal(null)
+    } finally {
+      setConfirmBusy(false)
+    }
   }
 
-  const deleteAgreement = async (id: string, invitationId: string) => {
-    if (!window.confirm('Delete this signed agreement? This cannot be undone.')) return
-    await supabase.from('signed_agreements').delete().eq('id', id)
-    await supabase.from('signing_invitations').delete().eq('id', invitationId)
-    load()
+  // Toast for non-blocking notices (replaces alert()).
+  const [toast, setToast] = useState<{ message: string; tone: 'info' | 'error' } | null>(null)
+  const showToast = (message: string, tone: 'info' | 'error' = 'info') => {
+    setToast({ message, tone })
+    setTimeout(() => setToast(null), 4200)
   }
 
   const generateLink = async () => {
@@ -119,7 +166,7 @@ export default function AgreementsPage() {
     if (!filename) return
     const { data, error } = await supabase.storage.from('signed_agreements').createSignedUrl(filename, 60)
     if (error || !data?.signedUrl) {
-      alert('Could not generate download link')
+      showToast('Could not generate download link', 'error')
       return
     }
     window.open(data.signedUrl, '_blank')
@@ -146,29 +193,9 @@ export default function AgreementsPage() {
       body: JSON.stringify({ invitation_id: id }),
     })
     setBusyId(null)
-    if (r.ok) { load() } else {
+    if (r.ok) { showToast('Reminder sent.', 'info'); load() } else {
       const d = await r.json().catch(() => ({}))
-      alert(`Reminder failed: ${d.error || r.statusText}`)
-    }
-  }
-
-  const revokeInvitation = async (id: string) => {
-    if (!window.confirm(
-      'Revoke this signing link?\n\n' +
-      'The existing URL will stop working immediately and CANNOT be un-revoked. ' +
-      'You\'ll need to generate a new link if the prospect still wants to sign.\n\n' +
-      'Continue?'
-    )) return
-    setBusyId(id)
-    const r = await fetch('/api/admin/agreements/revoke', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ invitation_id: id }),
-    })
-    setBusyId(null)
-    if (r.ok) load()
-    else {
-      const d = await r.json().catch(() => ({}))
-      alert(`Revoke failed: ${d.error || r.statusText}`)
+      showToast(`Reminder failed: ${d.error || r.statusText}`, 'error')
     }
   }
 
@@ -345,14 +372,14 @@ export default function AgreementsPage() {
                       style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#D4B85A', cursor: 'pointer' }}
                     >{busyId === inv.id ? 'Sending…' : 'Send Reminder'}</button>
                     <button
-                      onClick={() => revokeInvitation(inv.id)}
+                      onClick={() => requestRevokeInvitation(inv.id, `${inv.full_name} (${inv.email})`)}
                       disabled={busyId === inv.id}
                       style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B45656', opacity: 0.7, cursor: 'pointer' }}
                     >Revoke</button>
                   </>
                 )}
                 <button
-                  onClick={() => deleteInvitation(inv.id)}
+                  onClick={() => requestDeleteInvitation(inv.id, `${inv.full_name} (${inv.email})`)}
                   style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.25, cursor: 'pointer' }}
                 >Delete</button>
               </div>
@@ -434,7 +461,7 @@ export default function AgreementsPage() {
                   )}
                   <div style={{ gridColumn: '1 / -1', marginTop: 8 }}>
                     <button
-                      onClick={() => deleteAgreement(agr.id, agr.invitation_id)}
+                      onClick={() => requestDeleteAgreement(agr.id, agr.invitation_id, agr.full_name || agr.email || agr.id)}
                       style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.3, cursor: 'pointer' }}
                     >
                       Delete Agreement
@@ -446,6 +473,136 @@ export default function AgreementsPage() {
           ))}
         </div>
       )}
+
+      {/* ── Confirm modal (branded, replaces native window.confirm) ──── */}
+      {confirmModal && (() => {
+        const config = (() => {
+          if (confirmModal.kind === 'invitation_delete') return {
+            title:    'Delete invitation?',
+            severity: 'amber' as const,
+            body:     'Removes the signing record. If the recipient hasn\'t signed yet, their link will no longer resolve.',
+            confirm:  'Delete invitation',
+          }
+          if (confirmModal.kind === 'agreement_delete') return {
+            title:    'Delete signed agreement?',
+            severity: 'red' as const,
+            body:     'Destroys the signed legal record AND the originating invitation. The signed PDF in storage is NOT touched, but its index entry is gone. Cannot be undone.',
+            confirm:  'Delete legal record',
+          }
+          return {  // invitation_revoke
+            title:    'Revoke signing link?',
+            severity: 'red' as const,
+            body:     'The existing URL stops working immediately and CANNOT be un-revoked. You\'ll need to generate a new link if the prospect still wants to sign.',
+            confirm:  'Revoke',
+          }
+        })()
+        const tone = config.severity === 'red'
+          ? { border: '#C27070', accent: '#C27070', confirmBg: '#C27070', confirmFg: '#FFFFFF', eyebrow: '⚠ PERMANENT' }
+          : { border: '#D4B85A', accent: '#D4B85A', confirmBg: '#D4B85A', confirmFg: '#052E20', eyebrow: 'CONFIRM' }
+        return (
+          <>
+            <div style={confirmBackdrop} onClick={closeConfirm} />
+            <div style={{ ...confirmModalBox, borderColor: tone.border, borderLeft: `3px solid ${tone.accent}` }} role="dialog">
+              <div style={{ ...confirmEyebrow, color: tone.accent }}>{tone.eyebrow}</div>
+              <div style={confirmTitle}>{config.title}</div>
+              <div style={confirmSubject}>{confirmModal.label}</div>
+              <p style={confirmBody}>{config.body}</p>
+              <div style={confirmActions}>
+                <button onClick={closeConfirm} disabled={confirmBusy} style={confirmCancelBtn}>Cancel</button>
+                <button
+                  onClick={runConfirm}
+                  disabled={confirmBusy}
+                  style={{ ...confirmGoBtn, background: tone.confirmBg, color: tone.confirmFg, opacity: confirmBusy ? 0.5 : 1 }}
+                >
+                  {confirmBusy ? 'Working…' : config.confirm}
+                </button>
+              </div>
+            </div>
+          </>
+        )
+      })()}
+
+      {/* ── Toast (non-blocking notice) ─────────────────────────────── */}
+      {toast && (
+        <div
+          style={toast.tone === 'error' ? toastErrorBox : toastInfoBox}
+          role="status"
+        >
+          <span style={{ marginRight: 8, color: toast.tone === 'error' ? '#C27070' : '#7AB07A' }}>
+            {toast.tone === 'error' ? '✕' : '✓'}
+          </span>
+          {toast.message}
+        </div>
+      )}
     </>
   )
+}
+
+// ── Confirm + toast styles ──────────────────────────────────────────
+const confirmBackdrop: React.CSSProperties = {
+  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300,
+}
+const confirmModalBox: React.CSSProperties = {
+  position: 'fixed',
+  top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+  width: 'min(480px, 92vw)',
+  background: '#0A3526',
+  border: '1px solid rgba(212,184,90,0.45)',
+  borderRadius: 8,
+  padding: '22px 24px',
+  zIndex: 301,
+  boxShadow: '0 20px 60px rgba(0,0,0,0.55)',
+}
+const confirmEyebrow: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700,
+  marginBottom: 8,
+}
+const confirmTitle: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 18,
+  color: '#E5D4C2', letterSpacing: '0.02em', marginBottom: 6,
+}
+const confirmSubject: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', marginBottom: 12,
+}
+const confirmBody: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', lineHeight: 1.65, marginBottom: 14,
+}
+const confirmActions: React.CSSProperties = {
+  display: 'flex', gap: 10, justifyContent: 'flex-end',
+}
+const confirmCancelBtn: React.CSSProperties = {
+  background: 'transparent', color: '#B2AA98',
+  border: '1px solid rgba(229,212,194,0.20)', borderRadius: 4,
+  padding: '8px 16px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, letterSpacing: '0.06em',
+  cursor: 'pointer',
+}
+const confirmGoBtn: React.CSSProperties = {
+  border: 'none', borderRadius: 4,
+  padding: '8px 18px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
+  cursor: 'pointer',
+}
+const toastBase: React.CSSProperties = {
+  position: 'fixed', bottom: 24, right: 24, zIndex: 400,
+  padding: '12px 18px',
+  background: '#0A3526',
+  borderRadius: 8,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
+  color: '#E5D4C2', letterSpacing: '0.02em',
+  display: 'flex', alignItems: 'center',
+  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+}
+const toastInfoBox: React.CSSProperties = {
+  ...toastBase,
+  border: '1px solid rgba(122,176,122,0.45)',
+  borderLeft: '3px solid #7AB07A',
+}
+const toastErrorBox: React.CSSProperties = {
+  ...toastBase,
+  border: '1px solid rgba(194,112,112,0.45)',
+  borderLeft: '3px solid #C27070',
 }
