@@ -48,6 +48,17 @@ export default function AdminWhisky() {
   const [draftNote, setDraftNote] = useState<string>('')
   const [saving, setSaving] = useState<string | null>(null)
 
+  // Expanded rows — click anywhere on the whisky's title strip to reveal
+  // its tasting notes inline. A Set so multiple rows can be open at once.
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const toggleExpanded = (id: string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
   // Filter + sort — easier to scan a long catalogue when you're hunting
   // for "the things that need a refill" specifically. The search is
   // multi-token AND-match across every field a staffer might reach for
@@ -162,6 +173,12 @@ export default function AdminWhisky() {
       setLoadingHistory(false)
     }
   }, [])
+
+  // Load the full fill history once on mount so the per-row sparklines
+  // are populated immediately after a reload. Previously history only
+  // loaded when the user opened the global trend graph, which made the
+  // sparklines disappear on refresh.
+  useEffect(() => { loadHistory() }, [loadHistory])
 
   const openTrend = () => {
     setTrendOpen(true)
@@ -382,22 +399,45 @@ export default function AdminWhisky() {
           return (
             <div key={w.id} style={whiskyRow}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => toggleExpanded(w.id)}
+                  style={whiskyTitleBtn}
+                  title={expandedIds.has(w.id) ? 'Hide tasting notes' : 'Show tasting notes'}
+                >
+                  <span style={{ ...expandCaret, transform: expandedIds.has(w.id) ? 'rotate(90deg)' : 'rotate(0deg)' }}>▸</span>
                   <span style={whiskyName}>{w.name}</span>
                   {(!w.tasting_notes || w.tasting_notes.trim().length === 0) && (
-                    <span
-                      style={missingNotesBadge}
-                      title="No tasting notes yet — click Edit to add them"
-                    >
+                    <span style={missingNotesBadge} title="No tasting notes yet — click Edit to add them">
                       ⓘ no notes
                     </span>
                   )}
                   {w.distillery && <span style={whiskySub}>· {w.distillery}</span>}
                   {w.region && <span style={regionPill}>{w.region}</span>}
-                </div>
+                </button>
                 {w.last_fill_updated_at && (
                   <div style={fillAuditLine}>
                     Last fill: {w.last_fill_updated_email || 'unknown'} · {timeAgo(w.last_fill_updated_at)}
+                  </div>
+                )}
+                {expandedIds.has(w.id) && (
+                  <div style={notesBlock}>
+                    {w.tasting_notes && w.tasting_notes.trim().length > 0 ? (
+                      <>
+                        <div style={notesProse}>{w.tasting_notes}</div>
+                        <div style={notesAttribution}>
+                          {w.tasting_notes_source === 'human'
+                            ? 'Entered manually by the team'
+                            : w.tasting_notes_source?.startsWith('claude-auto-backfill-')
+                              ? `Auto-backfilled · confidence ${w.tasting_notes_confidence ?? '—'}${w.tasting_notes_generated_at ? ' · ' + new Date(w.tasting_notes_generated_at).toLocaleDateString() : ''}`
+                              : w.tasting_notes_source
+                                ? `Source: ${w.tasting_notes_source}`
+                                : null}
+                        </div>
+                      </>
+                    ) : (
+                      <div style={notesEmpty}>No tasting notes recorded yet. Click <strong>Edit</strong> on this row to add them.</div>
+                    )}
                   </div>
                 )}
               </div>
@@ -751,6 +791,42 @@ const whiskyName: React.CSSProperties = {
 }
 const whiskySub: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98',
+}
+// Whole-title click target — the entire name strip is the disclosure
+// affordance so staff don't have to hunt for a tiny chevron.
+const whiskyTitleBtn: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+  width: '100%', textAlign: 'left',
+  background: 'transparent', border: 'none', padding: 0,
+  cursor: 'pointer', color: 'inherit',
+}
+const expandCaret: React.CSSProperties = {
+  display: 'inline-block',
+  color: '#7E7864', fontSize: 10,
+  transition: 'transform 0.18s ease',
+}
+// Inline tasting-notes block — soft card under the row when expanded.
+const notesBlock: React.CSSProperties = {
+  marginTop: 8, padding: '10px 14px',
+  background: 'rgba(5,46,32,0.45)',
+  border: '1px solid rgba(229,212,194,0.08)',
+  borderLeft: '2px solid rgba(212,184,90,0.40)',
+  borderRadius: 6,
+}
+const notesProse: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
+  color: '#E5D4C2', lineHeight: 1.65, letterSpacing: '0.01em',
+  whiteSpace: 'pre-wrap',
+}
+const notesAttribution: React.CSSProperties = {
+  marginTop: 8, paddingTop: 6,
+  borderTop: '1px solid rgba(229,212,194,0.08)',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#7E7864', letterSpacing: '0.06em', textTransform: 'uppercase',
+}
+const notesEmpty: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', fontStyle: 'italic', lineHeight: 1.6,
 }
 // Small gold badge that surfaces on rows with no tasting notes — staff
 // can scan the catalogue and see at a glance which ones still need

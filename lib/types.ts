@@ -39,6 +39,12 @@ export interface Whisky {
   current_fill_pct: number | null
   last_fill_updated_at: string | null
   last_fill_updated_email: string | null
+  // Tasting-notes provenance — 'human' for hand-entered, 'claude-auto-backfill-<date>'
+  // for one-shot model fills, null for legacy rows. Confidence + generated_at
+  // only populated for auto-backfilled rows.
+  tasting_notes_source: string | null
+  tasting_notes_confidence: string | null
+  tasting_notes_generated_at: string | null
 }
 
 export interface Fixture {
