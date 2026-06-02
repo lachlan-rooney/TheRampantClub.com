@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 
@@ -68,15 +68,11 @@ interface WhiskyLite {
 }
 
 const STATUSES = ['occupied', 'reserved', 'empty', 'retired'] as const
-// Physical wall geometry — fixed facts about the room, not derived from
-// whatever lockers happen to be seeded yet. A missing locker becomes a
-// ghost tile in the right slot; an extra locker beyond these bounds still
-// surfaces (we don't hide it) so the renderer never silently drops data.
-const WALL_LEFT_ROWS  = 4   // four rows on the left of the entrance
-const WALL_LEFT_COLS  = 6   // six lockers per row on the left
-const WALL_RIGHT_ROWS = 3   // three rows on the right
-const WALL_RIGHT_COLS = 4   // four lockers per row on the right
-const WALL_DOOR_AFTER_COL = WALL_LEFT_COLS
+// The door sits between columns 6 and 7 — that's the only fixed fact.
+// Everything else (how many rows / cols on each side) comes from the
+// actual seeded data; the renderer doesn't invent ghost slots for
+// positions that nobody created.
+const WALL_DOOR_AFTER_COL = 6
 
 export default function LockersPage() {
   const [lockers, setLockers] = useState<Locker[]>([])
@@ -121,9 +117,30 @@ export default function LockersPage() {
   }, [])
   useEffect(() => { load(); loadWhiskies() }, [load, loadWhiskies])
 
-  // Wall geometry is fixed in WALL_* constants — but we still need to know
-  // whether ANY locker has been seeded, to decide between the empty-state
-  // CTA and the wall renderer.
+  // Wall geometry is purely data-driven: each side reports its own max row
+  // and max column based on what's actually seeded. The door slot itself
+  // isn't a position you can put a locker in, so the split is fixed at
+  // WALL_DOOR_AFTER_COL — but everything else (4 rows vs 3, 6 cols vs 4)
+  // emerges from the data, no ghost slots invented.
+  const wallDims = useMemo(() => {
+    let leftR = 0, leftC = 0, rightR = 0, rightC = 0
+    for (const l of lockers) {
+      if (l.position_row == null || l.position_col == null) continue
+      if (l.position_col <= WALL_DOOR_AFTER_COL) {
+        if (l.position_row > leftR)  leftR  = l.position_row
+        if (l.position_col > leftC)  leftC  = l.position_col
+      } else {
+        if (l.position_row > rightR) rightR = l.position_row
+        if (l.position_col > rightC) rightC = l.position_col
+      }
+    }
+    return {
+      leftRows:  leftR,
+      leftCols:  leftC,
+      rightRows: rightR,
+      rightCols: Math.max(0, rightC - WALL_DOOR_AFTER_COL),
+    }
+  }, [lockers])
   const hasAnyLocker = lockers.length > 0
 
   const lockerByPos = useMemo(() => {
@@ -227,51 +244,63 @@ export default function LockersPage() {
           <button onClick={() => setSeedOpen(true)} style={btnPrimary}>＋ Seed the grid</button>
         </div>
       ) : (() => {
-        // Wall geometry comes from WALL_* constants — the physical room is
-        // fixed at 4×6 (left) · door · 3×4 (right). Right-side tile height
-        // is computed so the right side's three rows fill the same vertical
-        // space as the left side's four rows, to the pixel.
+        // Data-driven geometry: each side's row/col count is whatever the
+        // seeded lockers cover. The door's height matches the LEFT side's
+        // total tile height; the RIGHT side's tile height is computed so
+        // its rows fill the same vertical span (so 3 right rows == 4 left
+        // rows visually, gelled with no awkward stub at the bottom).
         const leftTileH = 72
         const gap = 6
-        const leftWallH  = WALL_LEFT_ROWS  * leftTileH + (WALL_LEFT_ROWS  - 1) * gap
-        const rightTileH = Math.floor((leftWallH - (WALL_RIGHT_ROWS - 1) * gap) / WALL_RIGHT_ROWS)
+        const leftRows  = wallDims.leftRows
+        const leftCols  = wallDims.leftCols
+        const rightRows = wallDims.rightRows
+        const rightCols = wallDims.rightCols
+        const leftWallH = leftRows > 0
+          ? leftRows * leftTileH + (leftRows - 1) * gap
+          : 0
+        const rightTileH = rightRows > 0
+          ? Math.max(72, Math.floor((leftWallH - (rightRows - 1) * gap) / rightRows))
+          : leftTileH
         return (
           <div style={wallSplit}>
-            {/* LEFT sub-grid */}
-            <SubGrid
-              cols={WALL_LEFT_COLS}
-              rows={WALL_LEFT_ROWS}
-              colOffset={0}
-              tileH={leftTileH}
-              gap={gap}
-              showRowLabels
-              lockerByPos={lockerByPos}
-              onOpen={(no) => setOpenLocker(no)}
-              filter={filter}
-            />
+            {leftCols > 0 && (
+              <SubGrid
+                cols={leftCols}
+                rows={leftRows}
+                colOffset={0}
+                tileH={leftTileH}
+                gap={gap}
+                showRowLabels
+                lockerByPos={lockerByPos}
+                onOpen={(no) => setOpenLocker(no)}
+                filter={filter}
+              />
+            )}
 
-            {/* DOOR — height pinned to the left wall's tile-stack height. */}
-            <div style={doorColumn}>
-              <div style={doorColumnHeader}>↕</div>
-              <div style={{ ...doorColumnPanel, height: leftWallH }}>
-                <span style={doorColumnLabel}>
-                  {'ENTRANCE'.split('').map((ch, i) => <span key={i}>{ch}</span>)}
-                </span>
+            {leftCols > 0 && rightCols > 0 && (
+              <div style={doorColumn}>
+                <div style={doorColumnHeader}>↕</div>
+                <div style={{ ...doorColumnPanel, height: leftWallH }}>
+                  <span style={doorColumnLabel}>
+                    {'ENTRANCE'.split('').map((ch, i) => <span key={i}>{ch}</span>)}
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* RIGHT sub-grid — taller tiles so 3 rows == left's 4 rows. */}
-            <SubGrid
-              cols={WALL_RIGHT_COLS}
-              rows={WALL_RIGHT_ROWS}
-              colOffset={WALL_DOOR_AFTER_COL}
-              tileH={rightTileH}
-              gap={gap}
-              showRowLabels={false}
-              lockerByPos={lockerByPos}
-              onOpen={(no) => setOpenLocker(no)}
-              filter={filter}
-            />
+            {rightCols > 0 && (
+              <SubGrid
+                cols={rightCols}
+                rows={rightRows}
+                colOffset={WALL_DOOR_AFTER_COL}
+                tileH={rightTileH}
+                gap={gap}
+                showRowLabels={leftCols === 0}
+                lockerByPos={lockerByPos}
+                onOpen={(no) => setOpenLocker(no)}
+                filter={filter}
+              />
+            )}
           </div>
         )
       })()}
@@ -290,10 +319,12 @@ export default function LockersPage() {
   )
 }
 
-// One side of the wall. Self-contained CSS grid (column headers + locker
-// rows). Tile height is a prop so the right side can be scaled to match
-// the left side's total height. colOffset shifts the column-number labels
-// so the right side reads "07 08 09 10" instead of "01 02 03 04".
+// One side of the wall. Each locker tile is placed at its explicit (row, col)
+// in the CSS grid, so positions that have no locker stay genuinely empty —
+// no ghost divs, no dashed outlines, just blank space the grid still
+// reserves for column alignment. tileH lets the right side scale up to
+// match the left side's total height; colOffset shifts column number
+// labels (so the right side reads "07..10" not "01..04").
 function SubGrid({ cols, rows, colOffset, tileH, gap, showRowLabels, lockerByPos, onOpen, filter }: {
   cols: number
   rows: number
@@ -305,56 +336,76 @@ function SubGrid({ cols, rows, colOffset, tileH, gap, showRowLabels, lockerByPos
   onOpen: (locker_no: string) => void
   filter: string
 }) {
-  const renderTile = (rowIdx: number, colIdx1: number) => {
-    const l = lockerByPos.get(`${rowIdx}-${colIdx1}`)
-    if (!l) return <div key={`empty-${rowIdx}-${colIdx1}`} style={{ ...tileGhost, minHeight: tileH }} />
-    const dim = filter !== 'all' && l.status !== filter
-    return (
-      <button
-        key={l.locker_no}
-        onClick={() => onOpen(l.locker_no)}
-        style={{
-          ...tileBase,
-          ...tileByStatus(l.status),
-          minHeight: tileH,
-          opacity: dim ? 0.25 : 1,
-        }}
-        title={`${l.locker_no} · ${l.member_name || 'unassigned'}`}
-      >
-        <div style={tileNo}>{l.locker_no}</div>
-        <div style={tileName}>{l.label || l.member_name || (l.status === 'reserved' ? 'Reserved' : l.status === 'retired' ? 'Retired' : '—')}</div>
-        <div style={tileMeta}>
-          {l.bottle_count > 0 ? `${l.bottle_count} btl` : ''}
-        </div>
-        {l.bottle_count > 0 && (
-          <div style={tileFillTrack}>
-            <div style={{ ...tileFillBar, width: `${l.avg_fill_pct}%`, background: fillColor(l.avg_fill_pct) }} />
-          </div>
-        )}
-      </button>
-    )
-  }
-
+  const labelOffset = showRowLabels ? 1 : 0
   const gridTemplateColumns = showRowLabels
     ? `36px repeat(${cols}, minmax(72px, 1fr))`
     : `repeat(${cols}, minmax(72px, 1fr))`
 
+  // Real lockers in this side, addressed by their stored position. relCol
+  // is the column WITHIN this sub-grid (1..cols), independent of where the
+  // sub-grid sits on the overall wall.
+  const tiles: Array<{ l: Locker; relCol: number }> = []
+  for (let r = 1; r <= rows; r++) {
+    for (let c = 1; c <= cols; c++) {
+      const l = lockerByPos.get(`${r}-${colOffset + c}`)
+      if (l) tiles.push({ l, relCol: c })
+    }
+  }
+
   return (
     <div style={{ ...subGridWrap, gridTemplateColumns, gap }}>
-      {/* Column headers */}
-      {showRowLabels && <div />}
+      {/* Column headers (row 1) */}
       {Array.from({ length: cols }, (_, c) => (
-        <div key={`ch-${c}`} style={gridHeader}>{String(colOffset + c + 1).padStart(2, '0')}</div>
+        <div
+          key={`ch-${c}`}
+          style={{ ...gridHeader, gridRow: 1, gridColumn: c + 1 + labelOffset }}
+        >
+          {String(colOffset + c + 1).padStart(2, '0')}
+        </div>
       ))}
-      {/* Rows */}
-      {Array.from({ length: rows }, (_, r) => {
+
+      {/* Row labels (col 1) — one per data row, placed explicitly */}
+      {showRowLabels && Array.from({ length: rows }, (_, r) => {
         const rowIdx = r + 1
         const rowLetter = 'ABCDEFGHIJKLMNOPQRST'[rowIdx - 1] || `R${rowIdx}`
         return (
-          <Fragment key={`row-${rowIdx}`}>
-            {showRowLabels && <div style={gridRowLabel}>{rowLetter}</div>}
-            {Array.from({ length: cols }, (_, c) => renderTile(rowIdx, colOffset + c + 1))}
-          </Fragment>
+          <div
+            key={`rl-${rowIdx}`}
+            style={{ ...gridRowLabel, gridRow: rowIdx + 1, gridColumn: 1 }}
+          >
+            {rowLetter}
+          </div>
+        )
+      })}
+
+      {/* Lockers — explicit grid placement, no ghosts for empty positions */}
+      {tiles.map(({ l, relCol }) => {
+        const dim = filter !== 'all' && l.status !== filter
+        return (
+          <button
+            key={l.locker_no}
+            onClick={() => onOpen(l.locker_no)}
+            style={{
+              ...tileBase,
+              ...tileByStatus(l.status),
+              minHeight: tileH,
+              opacity: dim ? 0.25 : 1,
+              gridRow: (l.position_row ?? 1) + 1,
+              gridColumn: relCol + labelOffset,
+            }}
+            title={`${l.locker_no} · ${l.member_name || 'unassigned'}`}
+          >
+            <div style={tileNo}>{l.locker_no}</div>
+            <div style={tileName}>{l.label || l.member_name || (l.status === 'reserved' ? 'Reserved' : l.status === 'retired' ? 'Retired' : '—')}</div>
+            <div style={tileMeta}>
+              {l.bottle_count > 0 ? `${l.bottle_count} btl` : ''}
+            </div>
+            {l.bottle_count > 0 && (
+              <div style={tileFillTrack}>
+                <div style={{ ...tileFillBar, width: `${l.avg_fill_pct}%`, background: fillColor(l.avg_fill_pct) }} />
+              </div>
+            )}
+          </button>
         )
       })}
     </div>
