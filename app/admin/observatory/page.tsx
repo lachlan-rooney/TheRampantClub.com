@@ -2213,7 +2213,26 @@ type MatrixRowData = {
    *  Only computed for `present` cells; flag-objects line up index-for-index with cells. */
   deviance: { s0?: boolean; c?: boolean; lambda?: boolean; f?: boolean }[]
   driftedFactors: Set<'s0' | 'c' | 'lambda' | 'f'>
-  isSafetyLocked: boolean
+  // The fix: split the old `isSafetyLocked` (which lumped these two together
+  // and over-escalated permanence drift to alarm severity) into two distinct
+  // categories. Medical = safety (deterministic guardrail; alarms on drift).
+  // Permanence = judgment-level model decision (drift is judgment variance).
+  isMedicalLocked: boolean       // ANY cell with lambda_origin === 'forced_medical'
+  isPermanenceLocked: boolean    // ANY cell with lambda_origin === 'ai_permanent'
+  /** Shape of permanence drift (when isPermanenceLocked).
+   *  - 'held':                     all present cells ai_permanent + all scores identical
+   *  - 'classification_toggled':  lambda_origin VARIED across runs — the model
+   *    judged it identity-permanent in some and decaying in others. THIS is
+   *    the meaningful shape, the one Pass B will fix. The band's job is to
+   *    say so plainly.
+   *  - 'score_drift_within_lock': all cells stayed ai_permanent but a score moved. */
+  permanenceShape: 'held' | 'classification_toggled' | 'score_drift_within_lock'
+  permanenceLockedRuns: number[]   // 1-indexed: cells where lambda_origin === 'ai_permanent'
+  permanenceUnlockedRuns: number[] // 1-indexed: cells present but NOT 'ai_permanent'
+  // Symmetric fields for the medical case (relevant if verdict === 'safety_inconsistency'):
+  medicalShape: 'held' | 'classification_toggled' | 'score_drift_within_lock'
+  medicalLockedRuns: number[]
+  medicalUnlockedRuns: number[]
 }
 
 /** Normalise a preference name for fuzzy matching across runs. */
@@ -2291,6 +2310,35 @@ function computeRowDeviance(cells: MatrixCell[]): {
   return { deviance, drifted }
 }
 
+/** Compute drift shape for a locked classification (medical or permanence).
+ *  Keys off the per-cell lambda_origin varying across present cells — NOT
+ *  off λ itself moving. That's deliberate: λ flipping from 0 to 0.002 and
+ *  lambda_origin flipping ai_permanent→ai_specific are the SAME event seen
+ *  two ways; describing it as "the model's classification changed" (the
+ *  meaningful framing) beats describing it as "λ drifted" (the mechanical
+ *  one). The band's job is to say what the change MEANS. */
+function lockShape(
+  cells: MatrixCell[],
+  lockOrigin: 'forced_medical' | 'ai_permanent',
+  anyDrifted: boolean,
+): {
+  shape: 'held' | 'classification_toggled' | 'score_drift_within_lock'
+  lockedRuns: number[]
+  unlockedRuns: number[]
+} {
+  const lockedRuns: number[] = []
+  const unlockedRuns: number[] = []
+  for (let i = 0; i < cells.length; i++) {
+    const c = cells[i]
+    if (c.kind !== 'present') continue
+    if (c.pref.lambda_origin === lockOrigin) lockedRuns.push(i + 1)
+    else                                     unlockedRuns.push(i + 1)
+  }
+  if (unlockedRuns.length > 0) return { shape: 'classification_toggled', lockedRuns, unlockedRuns }
+  if (anyDrifted)              return { shape: 'score_drift_within_lock', lockedRuns, unlockedRuns }
+  return { shape: 'held', lockedRuns, unlockedRuns }
+}
+
 function buildRow(
   preference: string,
   detail: string,
@@ -2304,13 +2352,24 @@ function buildRow(
     return { kind: 'matcher_miss' }
   })
   const { deviance, drifted } = computeRowDeviance(cells)
-  const isSafetyLocked = matched.some(p =>
-    p !== null && (p.lambda_origin === 'forced_medical' || p.lambda_origin === 'ai_permanent')
-  )
+
+  const isMedicalLocked    = matched.some(p => p?.lambda_origin === 'forced_medical')
+  const isPermanenceLocked = matched.some(p => p?.lambda_origin === 'ai_permanent')
+
+  const med  = lockShape(cells, 'forced_medical', drifted.size > 0)
+  const perm = lockShape(cells, 'ai_permanent',   drifted.size > 0)
+
   return {
     preference, detail, classification,
     cells: cells as [MatrixCell, MatrixCell, MatrixCell],
-    deviance, driftedFactors: drifted, isSafetyLocked,
+    deviance, driftedFactors: drifted,
+    isMedicalLocked, isPermanenceLocked,
+    permanenceShape: perm.shape,
+    permanenceLockedRuns:   perm.lockedRuns,
+    permanenceUnlockedRuns: perm.unlockedRuns,
+    medicalShape: med.shape,
+    medicalLockedRuns:      med.lockedRuns,
+    medicalUnlockedRuns:    med.unlockedRuns,
   }
 }
 
@@ -2326,11 +2385,64 @@ function buildAllRows(
     const cls = v.type === 'safety' ? 'safety' : v.type === 'judgment' ? 'judgment' : 'granularity'
     rows.push(buildRow(v.preference, v.detail, cls, runs))
   }
-  // Safety/permanence-locked rows to the top; preserve original order within groups.
+  // Medical + permanence rows both pin to top of matrix — both are important,
+  // just for different reasons (the rendering treats them with different
+  // severities; the sort just gets them all above the bulk of the table).
   return [
-    ...rows.filter(r => r.isSafetyLocked),
-    ...rows.filter(r => !r.isSafetyLocked),
+    ...rows.filter(r =>  r.isMedicalLocked ||  r.isPermanenceLocked),
+    ...rows.filter(r => !r.isMedicalLocked && !r.isPermanenceLocked),
   ]
+}
+
+// ── Per-row band wording ──────────────────────────────────────────────
+// The honesty of the band lives in its wording. For permanence drift we
+// explicitly distinguish two shapes:
+//   • classification_toggled: lambda_origin VARIED across runs — the model
+//     couldn't decide whether this was identity-permanent. THIS is the case
+//     Pass B will fix (code-forcing identity permanence so it can't toggle).
+//     Saying so explicitly now means after Pass B the wording visibly
+//     changes to "held identically", which is the before/after the user
+//     needs to be able to read.
+//   • score_drift_within_lock: lambda_origin stayed ai_permanent in all
+//     runs, but a score moved — ordinary judgment variance that Pass B
+//     won't touch.
+
+function runListPhrase(runs: number[]): string {
+  if (runs.length === 0) return ''
+  if (runs.length === 1) return `run ${runs[0]}`
+  if (runs.length === 2) return `runs ${runs[0]} & ${runs[1]}`
+  return `runs ${runs.slice(0, -1).join(', ')} & ${runs[runs.length - 1]}`
+}
+
+function permanenceRowMessage(r: MatrixRowData): string {
+  if (r.permanenceShape === 'held') {
+    return r.detail || 'judged identity-permanent (λ=0) in all 3 runs'
+  }
+  if (r.permanenceShape === 'classification_toggled') {
+    const lockedPhrase   = runListPhrase(r.permanenceLockedRuns)
+    const unlockedPhrase = runListPhrase(r.permanenceUnlockedRuns)
+    return `classification toggled — judged identity-permanent in ${lockedPhrase}, decaying in ${unlockedPhrase}. The model couldn't decide whether this is permanent.`
+  }
+  // score_drift_within_lock
+  const moved = [...r.driftedFactors]
+    .map(f => f === 's0' ? 'S₀' : f === 'c' ? 'C' : f === 'lambda' ? 'λ' : 'F')
+    .join(' / ')
+  return `permanence held (ai_permanent in all 3 runs); ${moved || 'a score'} varied — judgment-level.`
+}
+
+function medicalRowMessage(r: MatrixRowData): string {
+  if (r.medicalShape === 'held') {
+    return r.detail || 'forced_medical (S₀=5/C=1/λ=0) in all 3 runs'
+  }
+  if (r.medicalShape === 'classification_toggled') {
+    const lockedPhrase   = runListPhrase(r.medicalLockedRuns)
+    const unlockedPhrase = runListPhrase(r.medicalUnlockedRuns)
+    return `forced_medical in ${lockedPhrase}, NOT locked in ${unlockedPhrase}. The medical guardrail is enforced in code and cannot vary for the same input — this is a GUARDRAIL CODE DEFECT.`
+  }
+  // score_drift_within_lock — should be impossible for forced_medical
+  // (reconcile forces s0/c/λ deterministically) but render honestly if it
+  // ever happens.
+  return r.detail || 'medical-locked; a score varied within the lock — investigate.'
 }
 
 // ─── ConsistencyReportView ───────────────────────────────────────────────────
@@ -2345,8 +2457,13 @@ function ConsistencyReportView({ report, triple }: {
     :                                            'green'
 
   const rows = useMemo(() => buildAllRows(report, triple), [report, triple])
-  const safetyRows    = rows.filter(r => r.isSafetyLocked)
-  const nonSafetyRows = rows.filter(r => !r.isSafetyLocked)
+  const medicalRows     = rows.filter(r => r.isMedicalLocked)
+  const permanenceRows  = rows.filter(r => r.isPermanenceLocked && !r.isMedicalLocked)
+  const nonLockedRows   = rows.filter(r => !r.isMedicalLocked && !r.isPermanenceLocked)
+  const lockedRows      = [...medicalRows, ...permanenceRows]
+  // Has a row in either band actually drifted?
+  const medicalToggled    = medicalRows.some(r => r.medicalShape !== 'held')
+  const permanenceDrifted = permanenceRows.some(r => r.permanenceShape !== 'held')
 
   // Evidence tally — recomputed from the actual rows, not just claimed counts.
   const held         = rows.filter(r => r.classification === 'invariant').length
@@ -2384,31 +2501,86 @@ function ConsistencyReportView({ report, triple }: {
         </div>
       </div>
 
-      {/* ── 2. SAFETY & PERMANENCE LOCKS BAND ── */}
-      <div style={{ ...safetyBand(safetyRows.some(r => r.driftedFactors.size > 0) || safetyN > 0), ...stagger(1) }}>
+      {/* ── 2. SAFETY & PERMANENCE LOCKS — two sub-bands, distinct severities ── */}
+      <div style={{ ...stagger(1) }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
           <span style={{ ...miniLabel, color: '#7AB07A' }}>SAFETY &amp; PERMANENCE LOCKS</span>
           <span style={metaText}>
-            {safetyRows.length === 0
+            {medicalRows.length === 0 && permanenceRows.length === 0
               ? '— no locked preferences in this triple'
-              : safetyRows.every(r => r.driftedFactors.size === 0 && r.cells.every(c => c.kind === 'present'))
-              ? '— all locked rows held identically across all 3 runs'
-              : '— a locked row showed inconsistency, see below'}
+              : (() => {
+                  // Honest combined-state meta: separate medical from permanence,
+                  // never imply safety where it's only permanence-judgment drift.
+                  const medPhrase = medicalRows.length === 0 ? null
+                    : medicalToggled ? '⛔ medical lock differed across runs'
+                    : 'medical locks held'
+                  const permPhrase = permanenceRows.length === 0 ? null
+                    : permanenceDrifted ? `permanence classification varied on ${permanenceRows.filter(r => r.permanenceShape !== 'held').length} row${permanenceRows.filter(r => r.permanenceShape !== 'held').length === 1 ? '' : 's'} — judgment-level (see below)`
+                    : 'permanence classifications held'
+                  return '— ' + [medPhrase, permPhrase].filter(Boolean).join('; ') + '.'
+                })()}
           </span>
         </div>
-        {safetyRows.length === 0 ? (
-          <div style={metaText}>None present.</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {safetyRows.map(r => (
-              <div key={r.preference} style={safetyRowStyle(r.driftedFactors.size > 0)}>
-                <span style={{ color: r.driftedFactors.size > 0 ? '#C27070' : '#7AB07A', flexShrink: 0 }}>
-                  {r.driftedFactors.size > 0 ? '⛔' : '✓'}
-                </span>
-                <span style={{ color: '#E5D4C2', fontWeight: 500 }}>{r.preference}</span>
-                <span style={metaText}>— {r.detail}</span>
-              </div>
-            ))}
+
+        {/* — SAFETY LOCKS sub-band (forced_medical only). Safety/⛔/red only here. — */}
+        {medicalRows.length > 0 && (
+          <div style={subBand(medicalToggled ? 'alarm' : 'calm')}>
+            <div style={subBandHeader}>
+              <span style={{ ...miniLabel, color: medicalToggled ? '#FFFFFF' : '#7AB07A' }}>
+                SAFETY LOCKS
+              </span>
+              <span style={{ ...metaText, color: medicalToggled ? '#FFFFFF' : '#B2AA98' }}>
+                {medicalToggled
+                  ? '⛔ a medical lock differed across runs — GUARDRAIL CODE DEFECT (medical guardrail is enforced in code; this cannot vary for the same input)'
+                  : 'medical guardrail enforcements · held identically across all 3 runs'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {medicalRows.map(r => {
+                const isAlarm = r.medicalShape !== 'held'
+                return (
+                  <div key={r.preference} style={lockedRowStyle(isAlarm ? 'medical_alarm' : 'medical_calm')}>
+                    <span style={{ color: isAlarm ? '#FFFFFF' : '#7AB07A', flexShrink: 0 }}>
+                      {isAlarm ? '⛔' : '✓'}
+                    </span>
+                    <span style={{ color: isAlarm ? '#FFFFFF' : '#E5D4C2', fontWeight: 500 }}>{r.preference}</span>
+                    <span style={{ ...metaText, color: isAlarm ? '#FFFFFF' : '#B2AA98' }}>
+                      — {medicalRowMessage(r)}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* — PERMANENCE LOCKS sub-band (ai_permanent only). Amber Δ at most; NEVER red, NEVER ⛔, NEVER 'safety'. — */}
+        {permanenceRows.length > 0 && (
+          <div style={subBand(permanenceDrifted ? 'amber' : 'calm')}>
+            <div style={subBandHeader}>
+              <span style={{ ...miniLabel, color: permanenceDrifted ? '#D4B85A' : '#7AB07A' }}>
+                PERMANENCE LOCKS
+              </span>
+              <span style={metaText}>
+                {permanenceDrifted
+                  ? `model identity-level judgments · classification toggled on ${permanenceRows.filter(r => r.permanenceShape === 'classification_toggled').length} row${permanenceRows.filter(r => r.permanenceShape === 'classification_toggled').length === 1 ? '' : 's'} — judgment-level variance (not safety)`
+                  : 'model identity-level judgments · held identically across all 3 runs'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {permanenceRows.map(r => {
+                const drifted = r.permanenceShape !== 'held'
+                return (
+                  <div key={r.preference} style={lockedRowStyle(drifted ? 'permanence_amber' : 'permanence_calm')}>
+                    <span style={{ color: drifted ? '#D4B85A' : '#7AB07A', flexShrink: 0 }}>
+                      {drifted ? 'Δ' : '✓'}
+                    </span>
+                    <span style={{ color: '#E5D4C2', fontWeight: 500 }}>{r.preference}</span>
+                    <span style={metaText}>— {permanenceRowMessage(r)}</span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
       </div>
@@ -2430,12 +2602,12 @@ function ConsistencyReportView({ report, triple }: {
               </div>
             ))}
           </div>
-          {nonSafetyRows.length === 0 && safetyRows.length === 0 && (
+          {lockedRows.length === 0 && nonLockedRows.length === 0 && (
             <div style={{ ...metaText, padding: 16, textAlign: 'center' }}>
               No preferences classified by the analyser.
             </div>
           )}
-          {[...safetyRows, ...nonSafetyRows].map(row => (
+          {[...lockedRows, ...nonLockedRows].map(row => (
             <MatrixRow key={row.preference} row={row} />
           ))}
         </div>
@@ -3514,22 +3686,51 @@ const countsLine: React.CSSProperties = {
   color: '#B2AA98', letterSpacing: '0.04em',
 }
 
-// ── Safety band ──
-function safetyBand(hasIssue: boolean): React.CSSProperties {
+// ── Safety + permanence sub-bands ──
+// Two distinct severities, never collapsed into one. ⛔ / red / the word
+// "safety" appears ONLY in the medical sub-band's alarm state. Permanence
+// drift renders amber Δ at most; never red, never ⛔, never "safety."
+
+function subBand(tone: 'calm' | 'amber' | 'alarm'): React.CSSProperties {
+  if (tone === 'alarm') return {
+    marginTop: 10, padding: 14,
+    background: 'rgba(194,112,112,0.10)',
+    border: '1px solid rgba(194,112,112,0.55)',
+    borderLeft: '3px solid #C27070',
+    borderRadius: 6,
+  }
+  if (tone === 'amber') return {
+    marginTop: 10, padding: 14,
+    background: 'rgba(212,184,90,0.05)',
+    border: '1px solid rgba(212,184,90,0.30)',
+    borderLeft: '3px solid #D4B85A',
+    borderRadius: 6,
+  }
+  // calm
   return {
-    marginTop: 18, padding: 14,
-    background: hasIssue ? 'rgba(194,112,112,0.08)' : 'rgba(122,176,122,0.04)',
-    border: `1px solid ${hasIssue ? 'rgba(194,112,112,0.40)' : 'rgba(122,176,122,0.28)'}`,
+    marginTop: 10, padding: 14,
+    background: 'rgba(122,176,122,0.04)',
+    border: '1px solid rgba(122,176,122,0.28)',
+    borderLeft: '3px solid rgba(122,176,122,0.55)',
     borderRadius: 6,
   }
 }
-function safetyRowStyle(hasIssue: boolean): React.CSSProperties {
+const subBandHeader: React.CSSProperties = {
+  display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap',
+  marginBottom: 10,
+}
+function lockedRowStyle(tone: 'medical_calm' | 'medical_alarm' | 'permanence_calm' | 'permanence_amber'): React.CSSProperties {
+  const cfg =
+      tone === 'medical_alarm'    ? { border: '#C27070',                bg: 'rgba(194,112,112,0.14)' }
+    : tone === 'medical_calm'     ? { border: 'rgba(122,176,122,0.45)', bg: 'transparent' }
+    : tone === 'permanence_amber' ? { border: '#D4B85A',                bg: 'rgba(212,184,90,0.06)' }
+    :                               { border: 'rgba(122,176,122,0.45)', bg: 'transparent' }
   return {
     display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap',
     fontFamily: "'Google Sans Code', monospace", fontSize: 12,
     padding: '4px 8px',
-    borderLeft: `2px solid ${hasIssue ? '#C27070' : 'rgba(122,176,122,0.45)'}`,
-    background: hasIssue ? 'rgba(194,112,112,0.06)' : 'transparent',
+    borderLeft: `2px solid ${cfg.border}`,
+    background: cfg.bg,
     borderRadius: 3,
   }
 }
