@@ -96,6 +96,19 @@ export default function LockersPage() {
   // tiles. Matches against assigned member's full name, nickname, AND
   // locker number, so the bar can find by any of those.
   const [memberSearch, setMemberSearch] = useState('')
+  // Low-fill alert toggle — when on, only tiles with ≥1 bottle at ≤25%
+  // stay un-dimmed. Surfaces "which member lockers need a refill check"
+  // at a glance without having to scroll/eyeball each tile's fill bar.
+  const [showLowFillOnly, setShowLowFillOnly] = useState(false)
+  // Per-locker low-fill count, computed from the contents array we
+  // already loaded. Map locker_no → number of bottles ≤25%.
+  const lowFillByLocker = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const c of contents) {
+      if (c.fill_pct <= 25) m.set(c.locker_no, (m.get(c.locker_no) || 0) + 1)
+    }
+    return m
+  }, [contents])
 
   // Whiskies come from the same `whiskies` table the Atlas reads; RLS lets
   // admins see everything, and the catalogue is small enough to ship in one
@@ -228,6 +241,13 @@ export default function LockersPage() {
               {s === 'all' ? 'All' : s}
             </button>
           ))}
+          <button
+            onClick={() => setShowLowFillOnly(v => !v)}
+            style={{ ...chip, ...(showLowFillOnly ? chipActive : null), borderLeft: '2px solid #C27070' }}
+            title="Highlight lockers with ≥1 bottle at ≤25%"
+          >
+            ≤25% only{counts.lowFill > 0 ? ` (${counts.lowFill})` : ''}
+          </button>
         </div>
         <input
           value={memberSearch}
@@ -292,6 +312,8 @@ export default function LockersPage() {
               onOpen={(no) => setOpenLocker(no)}
               filter={filter}
               memberSearch={memberSearch}
+              lowFillByLocker={lowFillByLocker}
+              showLowFillOnly={showLowFillOnly}
             />
 
             <div style={doorColumn}>
@@ -315,6 +337,8 @@ export default function LockersPage() {
               onOpen={(no) => setOpenLocker(no)}
               filter={filter}
               memberSearch={memberSearch}
+              lowFillByLocker={lowFillByLocker}
+              showLowFillOnly={showLowFillOnly}
             />
           </div>
         )
@@ -347,6 +371,7 @@ export default function LockersPage() {
 function SubGrid({
   cols, rows, colOffset, tileH, gap, showRowLabels,
   dividerAfterRow, lockerByPos, onOpen, filter, memberSearch,
+  lowFillByLocker, showLowFillOnly,
 }: {
   cols: number
   rows: number
@@ -359,6 +384,8 @@ function SubGrid({
   onOpen: (locker_no: string) => void
   filter: string
   memberSearch: string
+  lowFillByLocker: Map<string, number>
+  showLowFillOnly: boolean
 }) {
   // Search predicate: matches against member full name, nickname, OR
   // the locker number itself. Case-insensitive, substring match. Empty
@@ -426,7 +453,11 @@ function SubGrid({
               />
             )
           }
-          const dim = (filter !== 'all' && l.status !== filter) || !matchesSearch(l)
+          const lowFillCount = lowFillByLocker.get(l.locker_no) || 0
+          const dim =
+            (filter !== 'all' && l.status !== filter) ||
+            !matchesSearch(l) ||
+            (showLowFillOnly && lowFillCount === 0)
           const isSearchHit = q.length > 0 && matchesSearch(l)
           return (
             <button
@@ -438,9 +469,15 @@ function SubGrid({
                 ...cellPlacement,
                 opacity: dim ? 0.18 : 1,
                 ...(isSearchHit ? { outline: '2px solid #D4B85A', outlineOffset: 1 } : {}),
+                position: 'relative',  // anchor the low-fill dot
               }}
-              title={`${l.locker_no} · ${l.member_name || 'unassigned'}`}
+              title={`${l.locker_no} · ${l.member_name || 'unassigned'}${lowFillCount > 0 ? ` · ${lowFillCount} bottle${lowFillCount === 1 ? '' : 's'} ≤25%` : ''}`}
             >
+              {lowFillCount > 0 && (
+                <span style={lowFillDot} aria-label={`${lowFillCount} low-fill bottles`}>
+                  {lowFillCount > 1 ? lowFillCount : ''}
+                </span>
+              )}
               <div style={tileNo}>{l.locker_no}</div>
               <div style={tileName}>{l.label || l.member_name || (l.status === 'reserved' ? 'Reserved' : l.status === 'retired' ? 'Retired' : '—')}</div>
               <div style={tileMeta}>
@@ -965,6 +1002,20 @@ const tileName: React.CSSProperties = {
 const tileMeta: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 9,
   color: '#D4B85A', letterSpacing: '0.06em',
+}
+// Low-fill alert dot — top-right corner of a locker tile. Solid red,
+// shows the count if >1 bottle is low (so a locker with 3 low bottles
+// reads "3"); silent dot if exactly 1. Pulses subtly to draw the eye.
+const lowFillDot: React.CSSProperties = {
+  position: 'absolute', top: 4, right: 4,
+  minWidth: 14, height: 14, padding: '0 4px',
+  borderRadius: 7,
+  background: '#C27070',
+  color: '#FFFFFF',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 8, fontWeight: 700,
+  letterSpacing: '0.04em',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  boxShadow: '0 0 6px rgba(194,112,112,0.45)',
 }
 const tileFillTrack: React.CSSProperties = {
   marginTop: 'auto', height: 3,
