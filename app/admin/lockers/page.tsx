@@ -69,9 +69,10 @@ interface WhiskyLite {
 
 const STATUSES = ['occupied', 'reserved', 'empty', 'retired'] as const
 // Doorway column index in the wall grid (1-indexed). A door sits between
-// cols 5 and 6 — the entrance to the Rampant Room. This is a visual fact
-// about the physical wall; lockers cannot occupy it.
-const WALL_DOOR_AFTER_COL = 5
+// cols 6 and 7 — the entrance to the Rampant Room. Physical layout is
+// 6 lockers · door · 4 lockers, total 10 lockable columns. This is a
+// visual fact about the wall; lockers cannot occupy the door slot.
+const WALL_DOOR_AFTER_COL = 6
 
 export default function LockersPage() {
   const [lockers, setLockers] = useState<Locker[]>([])
