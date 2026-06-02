@@ -109,8 +109,8 @@ export default function LockersPage() {
     }
   }, [])
 
-  const load = useCallback(() => {
-    setLoading(true)
+  const load = useCallback((silent = false) => {
+    if (!silent) setLoading(true)
     Promise.all([
       fetch('/api/admin/lockers', { cache: 'no-store' }).then(r => r.json()),
       fetch('/api/admin/mis/members', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ members: [] })),
@@ -118,10 +118,44 @@ export default function LockersPage() {
       setLockers(l.lockers || [])
       setContents(l.contents || [])
       setMembers(m.members || [])
-      setLoading(false)
+      if (!silent) setLoading(false)
     })
   }, [])
-  useEffect(() => { load(); loadWhiskies() }, [load, loadWhiskies])
+
+  // Auto-seed the 36 wall positions on mount. The endpoint upserts with
+  // ignoreDuplicates so lockers that already exist (and their assignments
+  // / contents / labels) are never touched — this only adds missing bays
+  // so the wall renders all 36 boxes including a fully editable D row.
+  const ensureLayout = useCallback(async () => {
+    const positions: Array<{ locker_no: string; position_row: number; position_col: number }> = []
+    const letters = ['A', 'B', 'C', 'D']
+    for (let r = 1; r <= WALL_LEFT_ROWS; r++) {
+      for (let c = 1; c <= WALL_LEFT_COLS; c++) {
+        positions.push({ locker_no: `${letters[r - 1]}-${String(c).padStart(2, '0')}`, position_row: r, position_col: c })
+      }
+    }
+    for (let r = 1; r <= WALL_RIGHT_ROWS; r++) {
+      for (let c = 1; c <= WALL_RIGHT_COLS; c++) {
+        const absCol = WALL_DOOR_AFTER_COL + c
+        positions.push({ locker_no: `${letters[r - 1]}-${String(absCol).padStart(2, '0')}`, position_row: r, position_col: absCol })
+      }
+    }
+    await fetch('/api/admin/lockers', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ positions }),
+    }).catch(() => { /* best-effort; if it fails the wall still renders empty-slot placeholders */ })
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      await ensureLayout()
+      if (cancelled) return
+      load()
+      loadWhiskies()
+    })()
+    return () => { cancelled = true }
+  }, [load, loadWhiskies, ensureLayout])
 
   const hasAnyLocker = lockers.length > 0
 
@@ -265,6 +299,7 @@ export default function LockersPage() {
               tileH={rightTileH}
               gap={gap}
               showRowLabels={false}
+              dividerAfterRow={WALL_LEFT_DIVIDER_AFTER_ROW}
               lockerByPos={lockerByPos}
               onOpen={(no) => setOpenLocker(no)}
               filter={filter}
@@ -463,24 +498,33 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
     return () => document.removeEventListener('mousedown', onClick)
   }, [bottleListOpen])
 
-  const load = useCallback(() => {
-    setLoading(true)
+  // Initial load shows the "Loading…" placeholder. Subsequent refreshes
+  // (after a patch or content change) use silent=true so the drawer body
+  // never unmounts — the user sees the new value land in place, not the
+  // panel disappearing and coming back.
+  const load = useCallback((silent = false) => {
+    if (!silent) setLoading(true)
     fetch(`/api/admin/lockers/${locker_no}`, { cache: 'no-store' })
       .then(r => r.json())
       .then(j => {
         setLocker(j.locker)
         setContents(j.contents || [])
-        setLoading(false)
+        if (!silent) setLoading(false)
       })
   }, [locker_no])
   useEffect(() => { load() }, [load])
 
   const patch = async (patchBody: Record<string, unknown>) => {
+    // Optimistic update — the clicked chip changes state immediately,
+    // before the server roundtrip. Silent refetch then reconciles with
+    // anything the server normalised (e.g. member_name on member_no
+    // change, updated_at).
+    setLocker(prev => prev ? { ...prev, ...(patchBody as Partial<Locker>) } : prev)
     await fetch(`/api/admin/lockers/${locker_no}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patchBody),
     })
-    load()
+    load(true)
     onChange()
   }
 
@@ -503,7 +547,7 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
     setBottleQuery('')
     setFillPct('100')
     setAdding(false)
-    load()
+    load(true)
     onChange()
   }
 
@@ -527,14 +571,14 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-    load()
+    load(true)
     onChange()
   }
 
   const removeBottle = async (id: string) => {
     if (!confirm('Remove this bottle from the locker?')) return
     await fetch(`/api/admin/lockers/${locker_no}/contents?id=${id}`, { method: 'DELETE' })
-    load()
+    load(true)
     onChange()
   }
 
