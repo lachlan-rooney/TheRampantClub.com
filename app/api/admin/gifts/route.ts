@@ -39,13 +39,33 @@ export async function GET(req: NextRequest) {
   const { data, error } = await q
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Resolve member names for the ledger view.
+  // Resolve member names for the ledger view + per-gift edit counts so
+  // the row can show an "n edits" indicator without an extra round-trip.
   const list = data || []
   if (list.length === 0) return NextResponse.json({ gifts: [] })
   const memberNos = Array.from(new Set(list.map(g => g.member_no)))
-  const { data: members } = await sb.from('members').select('member_no, full_name, tier').in('member_no', memberNos)
-  const map = new Map((members || []).map(m => [m.member_no, m] as const))
-  const enriched = list.map(g => ({ ...g, member: map.get(g.member_no) || null }))
+  const giftIds   = list.map(g => g.id)
+  const [{ data: members }, editsResult] = await Promise.all([
+    sb.from('members').select('member_no, full_name, tier').in('member_no', memberNos),
+    sb.from('gift_edits').select('gift_id, created_at')
+      .in('gift_id', giftIds)
+      .order('created_at', { ascending: false })
+      .then(r => r, () => ({ data: [] as Record<string, unknown>[], error: null })),
+  ])
+  const memberMap = new Map((members || []).map(m => [m.member_no, m] as const))
+  const edits = (editsResult.data || []) as { gift_id: string; created_at: string }[]
+  const editsByGift = new Map<string, { count: number; last_edited_at: string }>()
+  for (const e of edits) {
+    const cur = editsByGift.get(e.gift_id)
+    if (cur) cur.count++
+    else editsByGift.set(e.gift_id, { count: 1, last_edited_at: e.created_at })
+  }
+  const enriched = list.map(g => ({
+    ...g,
+    member: memberMap.get(g.member_no) || null,
+    edit_count:     editsByGift.get(g.id)?.count ?? 0,
+    last_edited_at: editsByGift.get(g.id)?.last_edited_at ?? null,
+  }))
   return NextResponse.json({ gifts: enriched })
 }
 

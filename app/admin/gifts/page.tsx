@@ -26,6 +26,17 @@ interface Gift {
   photo_url: string | null
   created_at: string
   member: { member_no: string; full_name: string; tier: string } | null
+  edit_count?: number
+  last_edited_at?: string | null
+}
+
+interface GiftEdit {
+  id: string
+  edited_by_email: string | null
+  before_state: Record<string, unknown> | null
+  after_state:  Record<string, unknown> | null
+  changed_fields: string[] | null
+  created_at: string
 }
 
 interface MemberLite {
@@ -63,6 +74,53 @@ export default function GiftsPage() {
   // Signed URLs from the server expire in 1h; cache each one with its own
   // soft expiry so a long-lived session refreshes them.
   const [photoCache, setPhotoCache] = useState<Record<string, { url: string; expires: number }>>({})
+  // Edit + delete state.
+  const [editingGiftId, setEditingGiftId] = useState<string | null>(null)
+  const [confirmDeleteGift, setConfirmDeleteGift] = useState<Gift | null>(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
+  // Edit history viewer — keyed per gift, lazy-loaded.
+  const [expandedHistory, setExpandedHistory] = useState<Set<string>>(new Set())
+  const [historyByGift, setHistoryByGift] = useState<Record<string, GiftEdit[] | null>>({})
+
+  // Toast for non-blocking notices.
+  const [toast, setToast] = useState<{ message: string; tone: 'info' | 'error' } | null>(null)
+  const showToast = (message: string, tone: 'info' | 'error' = 'info') => {
+    setToast({ message, tone })
+    setTimeout(() => setToast(null), 4200)
+  }
+
+  const toggleHistory = async (gift: Gift) => {
+    setExpandedHistory(prev => {
+      const next = new Set(prev)
+      if (next.has(gift.id)) next.delete(gift.id); else next.add(gift.id)
+      return next
+    })
+    if (!historyByGift[gift.id]) {
+      try {
+        const r = await fetch(`/api/admin/gifts/${gift.id}`, { cache: 'no-store' })
+        const j = await r.json()
+        if (r.ok) setHistoryByGift(prev => ({ ...prev, [gift.id]: j.edits || [] }))
+      } catch { /* */ }
+    }
+  }
+
+  const runDelete = async () => {
+    if (!confirmDeleteGift) return
+    setDeleteBusy(true)
+    try {
+      const r = await fetch(`/api/admin/gifts/${confirmDeleteGift.id}`, { method: 'DELETE' })
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}))
+        showToast(`Delete failed: ${j.error || r.statusText}`, 'error')
+        return
+      }
+      setConfirmDeleteGift(null)
+      showToast('Gift deleted.')
+      load()
+    } finally {
+      setDeleteBusy(false)
+    }
+  }
 
   const load = useCallback(() => {
     setLoading(true)
@@ -182,6 +240,18 @@ export default function GiftsPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {gifts.map(g => {
             const photoUrl = g.photo_url ? photoCache[g.photo_url]?.url || null : null
+            // Edit-mode renders the inline form in place of the card.
+            if (editingGiftId === g.id) {
+              return (
+                <AddGiftForm
+                  key={`edit-${g.id}`}
+                  members={members}
+                  initial={g}
+                  onCancel={() => setEditingGiftId(null)}
+                  onSaved={() => { setEditingGiftId(null); load() }}
+                />
+              )
+            }
             return (
               <div key={g.id} style={giftCard}>
                 {photoUrl && (
@@ -207,31 +277,129 @@ export default function GiftsPage() {
                       <span style={whyLabel}>Why · </span>{g.expected_value}
                     </div>
                   )}
+
+                  <div style={giftRowActions}>
+                    {(g.edit_count ?? 0) > 0 && (
+                      <button onClick={() => toggleHistory(g)} style={giftSmallBtn} title="Show edit history">
+                        ⏱ {g.edit_count} edit{g.edit_count === 1 ? '' : 's'}
+                      </button>
+                    )}
+                    <button onClick={() => setEditingGiftId(g.id)} style={giftSmallBtn}>Edit</button>
+                    <button onClick={() => setConfirmDeleteGift(g)} style={{ ...giftSmallBtn, color: '#C27070' }}>Delete</button>
+                  </div>
+
+                  {expandedHistory.has(g.id) && (
+                    <div style={giftHistoryBlock}>
+                      {historyByGift[g.id] == null ? (
+                        <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', fontStyle: 'italic' }}>Loading history…</div>
+                      ) : historyByGift[g.id]!.length === 0 ? (
+                        <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', fontStyle: 'italic' }}>No edits recorded.</div>
+                      ) : (
+                        historyByGift[g.id]!.map(e => (
+                          <div key={e.id} style={giftHistoryRow}>
+                            <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#7E7864' }}>
+                              {new Date(e.created_at).toLocaleString('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                              {e.edited_by_email && <span> · {e.edited_by_email}</span>}
+                            </div>
+                            <div style={{ marginTop: 4 }}>
+                              {(e.changed_fields || []).map(f => {
+                                const before = e.before_state?.[f]
+                                const after  = e.after_state?.[f]
+                                return (
+                                  <div key={f} style={giftHistoryField}>
+                                    <span style={giftHistoryFieldLabel}>{f}</span>
+                                    <span style={giftHistoryFieldBefore}>{formatHistoryValue(before)}</span>
+                                    <span style={{ color: '#7E7864' }}>→</span>
+                                    <span style={giftHistoryFieldAfter}>{formatHistoryValue(after)}</span>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )
           })}
         </div>
       )}
+
+      {/* ── Delete confirm modal ──────────────────────────────────── */}
+      {confirmDeleteGift && (
+        <>
+          <div style={giftConfirmBackdrop} onClick={() => !deleteBusy && setConfirmDeleteGift(null)} />
+          <div style={giftConfirmModalBox} role="dialog">
+            <div style={giftConfirmEyebrow}>⚠ PERMANENT</div>
+            <div style={giftConfirmTitle}>Delete gift record?</div>
+            <div style={giftConfirmSubject}>
+              {confirmDeleteGift.member?.full_name || confirmDeleteGift.member_no} · {formatVnd(confirmDeleteGift.cost_vnd)} · {confirmDeleteGift.gift_date}
+            </div>
+            <p style={giftConfirmBody}>
+              Removes the gift from the ledger AND the audit trail of edits it accumulated.
+              The associated photo (if any) is also unlinked from storage.
+              Cannot be undone — consider editing instead if the values just need correcting.
+            </p>
+            <div style={giftConfirmActions}>
+              <button onClick={() => setConfirmDeleteGift(null)} disabled={deleteBusy} style={giftConfirmCancelBtn}>Cancel</button>
+              <button onClick={runDelete} disabled={deleteBusy} style={{ ...giftConfirmGoBtn, opacity: deleteBusy ? 0.5 : 1 }}>
+                {deleteBusy ? 'Deleting…' : 'Delete gift'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Toast ────────────────────────────────────────────────────── */}
+      {toast && (
+        <div style={toast.tone === 'error' ? giftToastErrorBox : giftToastInfoBox} role="status">
+          <span style={{ marginRight: 8, color: toast.tone === 'error' ? '#C27070' : '#7AB07A' }}>
+            {toast.tone === 'error' ? '✕' : '✓'}
+          </span>
+          {toast.message}
+        </div>
+      )}
     </>
   )
 }
 
+// Format a value pulled from gift_edits' before/after_state jsonb. The
+// jsonb keeps native JSON types, so a null cost becomes JSON null and
+// dates are ISO strings. Render them in compact, scannable form.
+function formatHistoryValue(v: unknown): string {
+  if (v == null) return '—'
+  if (typeof v === 'number') {
+    // Heuristic: large integers are VND amounts; format with commas.
+    if (Number.isInteger(v) && v >= 1000) return new Intl.NumberFormat('en-US').format(v)
+    return String(v)
+  }
+  if (typeof v === 'string') return v.length > 60 ? v.slice(0, 57) + '…' : v
+  return JSON.stringify(v)
+}
+
 // ── AddGiftForm ───────────────────────────────────────────────────────
-function AddGiftForm({ members, onCancel, onSaved }: { members: MemberLite[]; onCancel: () => void; onSaved: () => void }) {
+function AddGiftForm({ members, onCancel, onSaved, initial }: {
+  members: MemberLite[]
+  onCancel: () => void
+  onSaved: () => void
+  initial?: Gift | null
+}) {
   const today = vnDateString()
+  const editMode = !!initial
   const [memberQuery, setMemberQuery] = useState('')
-  const [memberNo, setMemberNo] = useState('')
-  const [giftDate, setGiftDate] = useState(today)
-  const [occasion, setOccasion] = useState<Occasion>('thoughtful')
-  const [category, setCategory] = useState<Category | ''>('')
-  const [description, setDescription] = useState('')
-  const [source, setSource] = useState('')
-  const [costVnd, setCostVnd] = useState('')
-  const [expectedValue, setExpectedValue] = useState('')
+  const [memberNo, setMemberNo] = useState(initial?.member_no ?? '')
+  const [giftDate, setGiftDate] = useState(initial?.gift_date ?? today)
+  const [occasion, setOccasion] = useState<Occasion>((initial?.occasion as Occasion) ?? 'thoughtful')
+  const [category, setCategory] = useState<Category | ''>((initial?.category as Category) ?? '')
+  const [description, setDescription] = useState(initial?.description ?? '')
+  const [source, setSource] = useState(initial?.source ?? '')
+  const [costVnd, setCostVnd] = useState(initial ? String(initial.cost_vnd) : '')
+  const [expectedValue, setExpectedValue] = useState(initial?.expected_value ?? '')
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
-  const [photoPath, setPhotoPath] = useState<string | null>(null)
+  const [photoPath, setPhotoPath] = useState<string | null>(initial?.photo_url ?? null)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -297,19 +465,25 @@ function AddGiftForm({ members, onCancel, onSaved }: { members: MemberLite[]; on
     if (!costVnd) { setError('Cost required.'); return }
     setSubmitting(true); setError(null)
     try {
-      const r = await fetch('/api/admin/gifts', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          member_no: memberNo,
-          gift_date: giftDate,
-          occasion,
-          category: category || null,
-          description,
-          source: source || null,
-          cost_vnd: Number(costVnd),
-          expected_value: expectedValue || null,
-          photo_url: photoPath || null,
-        }),
+      const url    = editMode ? `/api/admin/gifts/${initial!.id}` : '/api/admin/gifts'
+      const method = editMode ? 'PATCH' : 'POST'
+      // In edit mode the API ignores member_no (member can't be moved
+      // post-fact; that would invalidate the gifting summary). New-gift
+      // mode still needs it.
+      const body: Record<string, unknown> = {
+        gift_date: giftDate,
+        occasion,
+        category: category || null,
+        description,
+        source: source || null,
+        cost_vnd: Number(costVnd),
+        expected_value: expectedValue || null,
+        photo_url: photoPath || null,
+      }
+      if (!editMode) body.member_no = memberNo
+      const r = await fetch(url, {
+        method, headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
       })
       const j = await r.json()
       if (!r.ok) throw new Error(j.error || 'Save failed')
@@ -323,7 +497,7 @@ function AddGiftForm({ members, onCancel, onSaved }: { members: MemberLite[]; on
 
   return (
     <div style={addBlock}>
-      <div style={addHeader}>Log a gift</div>
+      <div style={addHeader}>{editMode ? `Edit gift · ${initial?.gift_date}` : 'Log a gift'}</div>
       {error && <div style={errorBox}>{error}</div>}
 
       <div style={fieldRow}>
@@ -429,7 +603,7 @@ function AddGiftForm({ members, onCancel, onSaved }: { members: MemberLite[]; on
 
       <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
         <button onClick={submit} disabled={submitting || uploadingPhoto || !memberNo} style={{ ...btnPrimary, opacity: !memberNo ? 0.4 : 1 }}>
-          {submitting ? 'Saving…' : 'Save gift'}
+          {submitting ? 'Saving…' : (editMode ? 'Save changes' : 'Save gift')}
         </button>
         <button onClick={onCancel} style={btnGhost}>Cancel</button>
       </div>
@@ -668,3 +842,113 @@ const errorBox: React.CSSProperties = {
 }
 // percentUsed not used in this file yet, but kept available for future per-member panel reuse
 void percentUsed
+
+// ── Edit-mode + history + confirm + toast styles ────────────────────
+const giftRowActions: React.CSSProperties = {
+  display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap',
+}
+const giftSmallBtn: React.CSSProperties = {
+  background: 'transparent', color: '#B2AA98',
+  border: '1px solid rgba(229,212,194,0.16)', borderRadius: 4,
+  padding: '4px 12px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  letterSpacing: '0.04em', cursor: 'pointer',
+}
+const giftHistoryBlock: React.CSSProperties = {
+  marginTop: 10, padding: '10px 12px',
+  background: 'rgba(5,46,32,0.55)',
+  border: '1px solid rgba(229,212,194,0.10)',
+  borderLeft: '2px solid #9E8FC4',
+  borderRadius: 4,
+}
+const giftHistoryRow: React.CSSProperties = {
+  padding: '6px 0',
+  borderBottom: '1px solid rgba(229,212,194,0.06)',
+}
+const giftHistoryField: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  padding: '2px 0',
+}
+const giftHistoryFieldLabel: React.CSSProperties = {
+  color: '#9E8FC4', minWidth: 110, fontWeight: 600, letterSpacing: '0.04em',
+}
+const giftHistoryFieldBefore: React.CSSProperties = {
+  color: '#C27070', background: 'rgba(194,112,112,0.08)',
+  padding: '1px 6px', borderRadius: 2,
+}
+const giftHistoryFieldAfter: React.CSSProperties = {
+  color: '#7AB07A', background: 'rgba(122,176,122,0.08)',
+  padding: '1px 6px', borderRadius: 2,
+}
+
+// Delete-confirm modal + toast — same visual language as the other admin pages.
+const giftConfirmBackdrop: React.CSSProperties = {
+  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300,
+}
+const giftConfirmModalBox: React.CSSProperties = {
+  position: 'fixed',
+  top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+  width: 'min(520px, 92vw)',
+  background: '#0A3526',
+  border: '1px solid rgba(194,112,112,0.45)',
+  borderLeft: '3px solid #C27070',
+  borderRadius: 8,
+  padding: '22px 24px',
+  zIndex: 301,
+  boxShadow: '0 20px 60px rgba(0,0,0,0.55)',
+}
+const giftConfirmEyebrow: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#C27070', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700,
+  marginBottom: 8,
+}
+const giftConfirmTitle: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 18,
+  color: '#E5D4C2', letterSpacing: '0.02em', marginBottom: 6,
+}
+const giftConfirmSubject: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', marginBottom: 12,
+}
+const giftConfirmBody: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', lineHeight: 1.65, marginBottom: 14,
+}
+const giftConfirmActions: React.CSSProperties = {
+  display: 'flex', gap: 10, justifyContent: 'flex-end',
+}
+const giftConfirmCancelBtn: React.CSSProperties = {
+  background: 'transparent', color: '#B2AA98',
+  border: '1px solid rgba(229,212,194,0.20)', borderRadius: 4,
+  padding: '8px 16px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, letterSpacing: '0.06em',
+  cursor: 'pointer',
+}
+const giftConfirmGoBtn: React.CSSProperties = {
+  background: '#C27070', color: '#FFFFFF',
+  border: 'none', borderRadius: 4,
+  padding: '8px 18px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
+  cursor: 'pointer',
+}
+const giftToastBase: React.CSSProperties = {
+  position: 'fixed', bottom: 24, right: 24, zIndex: 400,
+  padding: '12px 18px',
+  background: '#0A3526',
+  borderRadius: 8,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
+  color: '#E5D4C2', letterSpacing: '0.02em',
+  display: 'flex', alignItems: 'center',
+  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+}
+const giftToastInfoBox: React.CSSProperties = {
+  ...giftToastBase,
+  border: '1px solid rgba(122,176,122,0.45)',
+  borderLeft: '3px solid #7AB07A',
+}
+const giftToastErrorBox: React.CSSProperties = {
+  ...giftToastBase,
+  border: '1px solid rgba(194,112,112,0.45)',
+  borderLeft: '3px solid #C27070',
+}
