@@ -41,7 +41,7 @@ export default function FormulaExplainer({ variant = 'compact' }: Props) {
             <Variable
               symbol="S₀" name="Importance" range="1–5"
               tldr="How much this matters."
-              detail="5 means absolute / non-negotiable (allergies, dietary religion, lifelong identity). 3 is a calm steady preference. 1 is barely an opinion. Set once at interview, never changes."
+              detail="5 means absolute / non-negotiable (allergies, dietary religion, lifelong identity). 3 is a calm steady preference. 1 is barely an opinion. Most preferences are set at interview and stay fixed; for allergies, dietary rules and identity facts the system locks importance at 5 automatically."
               accent="#D4B85A"
             />
             <Variable
@@ -52,7 +52,7 @@ export default function FormulaExplainer({ variant = 'compact' }: Props) {
             <Variable
               symbol="e^(−λt)" name="Decay" range="λ ∈ {0, 0.002, 0.005, 0.010, 0.020}"
               tldr="How quickly stale information loses weight."
-              detail="t is days since the preference was last validated. Medical and identity (λ=0) never decay. Mood / seasonal (λ=0.020) halves every 35 days. Other classes sit between."
+              detail="t is days since the preference was last validated. Allergies, dietary rules and identity facts (λ=0) are guaranteed permanent — the system enforces this rather than deciding it case by case — so they never decay. Mood / seasonal (λ=0.020) halves every 35 days; other classes sit between."
             />
             <Variable
               symbol="F" name="Frequency" range="0.8 / 1.0 / 1.2 / 1.5"

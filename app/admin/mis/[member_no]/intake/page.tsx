@@ -499,7 +499,7 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
                   <div style={isMedical ? lockNote : lockNotePermanent}>
                     {isMedical
                       ? 'Medical signal detected by content-based guardrail. S₀ / C / λ are locked at this row; the medical lock is re-asserted at the save boundary.'
-                      : 'The AI judged this a lifelong-identity preference (λ=0). Not a medical lock — same scoring effect, different reason. S₀ / C / λ are locked and re-asserted at the save boundary.'}
+                      : 'The AI judged this specific item lifelong (λ=0) — it wasn’t caught by the medical or identity guardrails, so the model’s own call applies here. Same scoring effect as a guardrail lock, reached by judgment rather than rule. S₀ / C / λ are locked and re-asserted at the save boundary.'}
                   </div>
                 )}
               </div>
