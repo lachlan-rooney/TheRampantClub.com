@@ -44,6 +44,17 @@ export default function ChecklistsPage() {
   const [error, setError] = useState<string | null>(null)
   const [missingNotice, setMissingNotice] = useState<string | null>(null)
   const [history, setHistory] = useState<Sheet[]>([])
+  // Detail-view modal — opens when a row in Recent Shifts is clicked.
+  // The audit record renders read-only from the sheet's OWN snapshotted
+  // items, independent of the live template. Closing the modal does
+  // nothing to the underlying state.
+  const [detailDate, setDetailDate] = useState<string | null>(null)
+  useEffect(() => {
+    if (!detailDate) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setDetailDate(null) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [detailDate])
 
   const load = useCallback(() => {
     setLoading(true)
@@ -266,23 +277,30 @@ export default function ChecklistsPage() {
                 if (s.kind === 'opening') slot.opening = s; else slot.closing = s
               }
               const rows = [...byDate.entries()].sort((a, b) => b[0].localeCompare(a[0]))
-              return rows.map(([d, slot]) => (
-                <button
-                  key={d}
-                  onClick={() => setDate(d)}
-                  style={{ ...historyRowBtn, ...(d === date ? historyRowBtnActive : null) }}
-                >
-                  <span style={historyDate}>
-                    {new Date(d + 'T12:00:00+07:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
-                  </span>
-                  <span style={historyChip(slot.opening?.submitted_at ? '#D4B85A' : '#7E7864')}>
-                    {slot.opening?.submitted_at ? '✓ opening' : slot.opening ? '○ opening' : '— opening'}
-                  </span>
-                  <span style={historyChip(slot.closing?.submitted_at ? '#7AB07A' : '#7E7864')}>
-                    {slot.closing?.submitted_at ? '✓ closing' : slot.closing ? '○ closing' : '— closing'}
-                  </span>
-                </button>
-              ))
+              return rows.map(([d, slot]) => {
+                const anySealed = !!(slot.opening?.submitted_at || slot.closing?.submitted_at)
+                return (
+                  <button
+                    key={d}
+                    onClick={() => anySealed ? setDetailDate(d) : setDate(d)}
+                    title={anySealed ? 'Open sealed audit record' : 'Go to this date on the live page'}
+                    style={{ ...historyRowBtn, ...(d === date ? historyRowBtnActive : null) }}
+                  >
+                    <span style={historyDate}>
+                      {new Date(d + 'T12:00:00+07:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
+                    </span>
+                    <span style={historyChip(slot.opening?.submitted_at ? '#D4B85A' : '#7E7864')}>
+                      {slot.opening?.submitted_at ? '✓ opening' : slot.opening ? '○ opening' : '— opening'}
+                    </span>
+                    <span style={historyChip(slot.closing?.submitted_at ? '#7AB07A' : '#7E7864')}>
+                      {slot.closing?.submitted_at ? '✓ closing' : slot.closing ? '○ closing' : '— closing'}
+                    </span>
+                    {anySealed && (
+                      <span style={{ ...historyChip('#B2AA98'), marginLeft: 'auto' }}>view record →</span>
+                    )}
+                  </button>
+                )
+              })
             })()}
           </div>
         </div>
@@ -291,7 +309,134 @@ export default function ChecklistsPage() {
       <div style={hintRow}>
         Reading yesterday&apos;s closing handover is part of MX Daily — open <Link href="/admin/mx-daily" style={linkStyle}>MX Daily</Link> at the start of your shift.
       </div>
+
+      {/* ── Sealed audit record modal ────────────────────────────────
+          Renders the snapshotted items from the sheet itself (NOT the
+          live template), so a sheet sealed under an old template reads
+          here exactly as it was signed. Closes on Esc / backdrop click. */}
+      {detailDate && (() => {
+        const opening = history.find(s => s.shift_date === detailDate && s.kind === 'opening') || null
+        const closing = history.find(s => s.shift_date === detailDate && s.kind === 'closing') || null
+        return (
+          <>
+            <div style={detailBackdrop} onClick={() => setDetailDate(null)} />
+            <div style={detailModal} role="dialog">
+              <div style={detailHeader}>
+                <div>
+                  <div style={eyebrow}>Sealed audit record</div>
+                  <h2 style={detailDateHeading}>
+                    {new Date(detailDate + 'T12:00:00+07:00').toLocaleDateString('en-GB', {
+                      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+                    })}
+                  </h2>
+                  <div style={detailSubline}>
+                    Read-only. Items shown are the SHEET&apos;S OWN SNAPSHOT — never the live template — so this is what the signing team actually saw and ticked that night.
+                  </div>
+                </div>
+                <button onClick={() => setDetailDate(null)} style={detailCloseBtn} aria-label="Close">✕</button>
+              </div>
+
+              <div style={detailBody}>
+                {opening && <DetailSheet sheet={opening} kindLabel="Opening" kindColor="#D4B85A" />}
+                {closing && <DetailSheet sheet={closing} kindLabel="Closing" kindColor="#7AB07A" />}
+                {!opening && !closing && (
+                  <div style={emptyText}>No sealed record for this date.</div>
+                )}
+              </div>
+
+              <div style={detailFooter}>
+                <button onClick={() => { setDate(detailDate); setDetailDate(null) }} style={detailFooterBtn}>
+                  Go to this date on the live page →
+                </button>
+                <button onClick={() => window.print()} style={detailFooterBtn}>
+                  Print
+                </button>
+              </div>
+            </div>
+          </>
+        )
+      })()}
     </>
+  )
+}
+
+// ── DetailSheet ───────────────────────────────────────────────────────
+// Read-only render of a sealed (or in-progress) sheet's snapshot. No
+// editing, no fill controls — just the audit truth: what was ticked,
+// what was written, who signed, when.
+function DetailSheet({ sheet, kindLabel, kindColor }: {
+  sheet: Sheet
+  kindLabel: string
+  kindColor: string
+}) {
+  const grouped = useMemo(() => {
+    const byZone = new Map<string, SheetItemState[]>()
+    for (const it of sheet.items) {
+      const zone = it.zone || '(no zone)'
+      if (!byZone.has(zone)) byZone.set(zone, [])
+      byZone.get(zone)!.push(it)
+    }
+    const zones = [...byZone.entries()].map(([zone, items]) => ({
+      zone,
+      items: items.slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
+      minSort: Math.min(...items.map(i => i.sort_order ?? 0)),
+    }))
+    zones.sort((a, b) => a.minSort - b.minSort)
+    return zones
+  }, [sheet.items])
+
+  const total = sheet.items.length
+  const ticked = sheet.items.filter(i => i.checked).length
+  const sealed = !!sheet.submitted_at
+
+  return (
+    <div style={detailSheetBlock}>
+      <div style={detailSheetHeader}>
+        <div style={{ ...sheetEyebrow, color: kindColor }}>{kindLabel}</div>
+        <div style={detailSealLine}>
+          {sealed ? (
+            <>
+              <strong style={{ color: kindColor }}>✓ Signed off by {sheet.submitted_by}</strong>
+              <span style={{ color: '#7E7864', marginLeft: 8 }}>· {fmtTimestamp(sheet.submitted_at)}</span>
+            </>
+          ) : (
+            <span style={{ color: '#E58F4A' }}>○ In progress — not yet sealed ({ticked}/{total} ticked)</span>
+          )}
+        </div>
+      </div>
+
+      {grouped.map(({ zone, items }) => (
+        <div key={zone} style={{ marginTop: 10 }}>
+          <div style={{ ...zoneLabel, color: kindColor }}>{zone}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {items.map(it => {
+              const isText = it.type === 'text'
+              const value  = sheet.item_values?.[it.id] ?? ''
+              const filled = value.trim().length > 0
+              return (
+                <div key={it.id} style={detailItemRow}>
+                  <span style={{ fontSize: 11, marginTop: 2, color: it.checked || filled ? kindColor : '#5E6650', flexShrink: 0 }}>
+                    {isText ? (filled ? '✎' : '○') : (it.checked ? '✓' : '○')}
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ ...itemLabel, color: it.checked || filled ? '#E5D4C2' : '#7E7864' }}>
+                      {it.label_en || it.label}
+                    </div>
+                    {it.label_vn && <div style={itemLabelVn}>{it.label_vn}</div>}
+                    {isText && filled && (
+                      <div style={detailItemValue}>{value}</div>
+                    )}
+                    {it.checked && it.name && (
+                      <div style={itemMeta}>Ticked by {it.name} · {fmtTimestamp(it.ts ?? null)}</div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -615,6 +760,89 @@ const errorBox: React.CSSProperties = {
   borderRadius: 6, color: '#E5D4C2',
   fontFamily: "'Google Sans Code', monospace", fontSize: 11,
 }
+// ── Detail-view modal ─────────────────────────────────────────────────
+// Read-only audit-record renderer. Modal sits over the page so the
+// editable surface stays in place behind it; close to return to live.
+const detailBackdrop: React.CSSProperties = {
+  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 200,
+}
+const detailModal: React.CSSProperties = {
+  position: 'fixed',
+  top: '5vh', left: '50%', transform: 'translateX(-50%)',
+  width: 'min(1100px, 94vw)', maxHeight: '90vh',
+  background: '#0A3526',
+  border: '1px solid rgba(229,212,194,0.15)',
+  borderRadius: 10,
+  zIndex: 201,
+  boxShadow: '0 30px 80px rgba(0,0,0,0.55)',
+  display: 'flex', flexDirection: 'column',
+}
+const detailHeader: React.CSSProperties = {
+  display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+  gap: 14,
+  padding: '22px 26px 14px',
+  borderBottom: '1px solid rgba(229,212,194,0.10)',
+}
+const detailDateHeading: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 22, fontWeight: 500,
+  color: '#E5D4C2', margin: '4px 0 2px', letterSpacing: '0.03em',
+}
+const detailSubline: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  color: '#7E7864', letterSpacing: '0.04em', lineHeight: 1.5,
+  maxWidth: 720,
+}
+const detailCloseBtn: React.CSSProperties = {
+  background: 'transparent', color: '#B2AA98',
+  border: '1px solid rgba(229,212,194,0.18)', borderRadius: 4,
+  padding: '6px 10px', cursor: 'pointer',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 13,
+}
+const detailBody: React.CSSProperties = {
+  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
+  gap: 18, padding: 22, overflowY: 'auto', flex: 1,
+}
+const detailSheetBlock: React.CSSProperties = {
+  padding: 16,
+  background: 'rgba(229,212,194,0.03)',
+  border: '1px solid rgba(229,212,194,0.10)',
+  borderRadius: 8,
+}
+const detailSheetHeader: React.CSSProperties = {
+  paddingBottom: 10, marginBottom: 4,
+  borderBottom: '1px solid rgba(229,212,194,0.08)',
+}
+const detailSealLine: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#E5D4C2', marginTop: 4, letterSpacing: '0.04em',
+}
+const detailItemRow: React.CSSProperties = {
+  display: 'flex', alignItems: 'flex-start', gap: 8,
+  padding: '6px 8px',
+  borderRadius: 3,
+}
+const detailItemValue: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#E5D4C2', lineHeight: 1.55, marginTop: 4,
+  padding: '6px 10px',
+  background: 'rgba(5,46,32,0.6)',
+  border: '1px solid rgba(229,212,194,0.10)',
+  borderRadius: 4,
+  whiteSpace: 'pre-wrap',
+}
+const detailFooter: React.CSSProperties = {
+  display: 'flex', gap: 10, justifyContent: 'flex-end',
+  padding: '14px 22px',
+  borderTop: '1px solid rgba(229,212,194,0.10)',
+}
+const detailFooterBtn: React.CSSProperties = {
+  background: 'rgba(229,212,194,0.06)', color: '#B2AA98',
+  border: '1px solid rgba(229,212,194,0.18)', borderRadius: 4,
+  padding: '8px 16px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  letterSpacing: '0.06em', cursor: 'pointer',
+}
+
 const historyHead: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 10,
   color: '#B2AA98', letterSpacing: '0.14em', textTransform: 'uppercase',
