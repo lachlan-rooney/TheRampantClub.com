@@ -234,7 +234,12 @@ export interface ReconciledPreference {
   lambda: number;
   frequency: number;
   source: "Interview";
-  lambda_origin: "ai_specific" | "category_baseline_learned" | "category_baseline_designed" | "forced_medical";
+  lambda_origin:
+    | "ai_specific"
+    | "category_baseline_learned"
+    | "category_baseline_designed"
+    | "forced_medical"     // content-detected medical signal — red "MEDICAL — LOCKED" badge
+    | "ai_permanent";      // AI judged λ=0 (lifelong identity) without medical content — gold "PERMANENT — LOCKED" badge
 }
 
 const ALLOWED_CONFIDENCE = [1.0, 0.75, 0.5, 0.25];
@@ -252,21 +257,38 @@ function clampInt(v: number | undefined, lo: number, hi: number, fallback: numbe
 }
 
 /**
- * Guardrails:
+ * Guardrails (Pass-7 refinement: content-first precedence + ai_permanent label):
  *   - drop non-canonical categories (logged)
- *   - CONTENT-BASED medical detection (isMedicalPreference) OR an AI-emitted lambda=0 ->
- *     force s0=5, C=1.00, lambda=0, origin='forced_medical'. (Both triggers; fail-safe.)
- *   - else: usable AI lambda -> snap + keep ('ai_specific'); missing/unusable -> category
- *     baseline (learned or designed)
+ *   - lock s0=5, C=1, λ=0 when EITHER trigger fires (both fail-safes intact):
+ *       1. CONTENT-BASED medical detection (isMedicalPreference) → 'forced_medical'  (red)
+ *       2. AI-emitted lambda=0 without medical content      → 'ai_permanent'         (gold)
+ *     Precedence is content-first: if isMedicalPreference fires it's forced_medical
+ *     even when the AI also emitted λ=0. ai_permanent only catches the residue —
+ *     the model judging "lifelong identity" (anniversary, dad's whisky, no
+ *     birthdays) where there's no medical signal in the text. Same scoring effect
+ *     either way; only the label and audit trail differ.
+ *   - else: usable AI lambda -> snap + keep ('ai_specific'); missing/unusable ->
+ *     category baseline (learned or designed)
  *   - C, F snapped; R/M and stray fields not carried forward
+ *
+ * medicalForced counts ONLY the content-medical fires (its original meaning,
+ * preserved for callers). aiPermanent counts the identity-permanence locks
+ * separately so the demo banner can read "1 medical-forced · 3 permanent-locked"
+ * rather than collapsing both into one number.
  */
 export function reconcile(
   raw: ExtractedPreference[],
   baselines: Record<string, { baselineLambda: number; source: "learned" | "designed" }>
-): { preferences: ReconciledPreference[]; dropped: { reason: string; item: ExtractedPreference }[]; medicalForced: number } {
+): {
+  preferences: ReconciledPreference[];
+  dropped: { reason: string; item: ExtractedPreference }[];
+  medicalForced: number;
+  aiPermanent: number;
+} {
   const out: ReconciledPreference[] = [];
   const dropped: { reason: string; item: ExtractedPreference }[] = [];
   let medicalForced = 0;
+  let aiPermanent = 0;
 
   for (const r of raw) {
     if (!r.category || !CANONICAL_CATEGORIES.includes(r.category)) {
@@ -274,16 +296,22 @@ export function reconcile(
       continue;
     }
 
-    // FAIL-SAFE medical: content signal, OR the model itself emitted lambda=0 (honour, don't rely on it).
+    const contentMedical = isMedicalPreference(r);
     const aiSaidZero = r.lambda != null && isFinite(r.lambda) && r.lambda === 0;
-    const medical = isMedicalPreference(r) || aiSaidZero;
 
     let lambda: number, s0: number, confidence: number;
     let lambda_origin: ReconciledPreference["lambda_origin"];
 
-    if (medical) {
+    if (contentMedical) {
+      // Safety path — content-detected medical. Fires even if AI ALSO emitted λ=0;
+      // the precedence ensures ai_permanent never overrides the medical label.
       lambda = 0; s0 = 5; confidence = 1.0; lambda_origin = "forced_medical";
       medicalForced++;
+    } else if (aiSaidZero) {
+      // Identity-permanence path — AI judged λ=0 without medical content signal.
+      // Same lock (s0=5/c=1/λ=0) so the row never decays, with an honest label.
+      lambda = 0; s0 = 5; confidence = 1.0; lambda_origin = "ai_permanent";
+      aiPermanent++;
     } else {
       s0 = clampInt(r.s0, 1, 5, 3);
       confidence = snapToSet(r.confidence, ALLOWED_CONFIDENCE, 1.0);
@@ -310,7 +338,7 @@ export function reconcile(
       lambda_origin,
     });
   }
-  return { preferences: out, dropped, medicalForced };
+  return { preferences: out, dropped, medicalForced, aiPermanent };
 }
 
 /* ===========================================================================

@@ -21,6 +21,7 @@ import {
   CANONICAL_CATEGORIES,
   DESIGNED_LAMBDA,
   type ExtractedPreference,
+  type ReconciledPreference,
 } from "../../lib/mis/extraction-decay.js";
 
 let pass = 0, fail = 0;
@@ -202,6 +203,62 @@ for (const c of cases) {
   if (c.expectConfidence != null && p.confidence !== c.expectConfidence) conditions.push(`C=${p.confidence} (want ${c.expectConfidence})`);
   check(c.label, conditions.length === 0, conditions.join("; "));
 }
+
+// ── Cases 11-13: content-first precedence + ai_permanent (Pass-7 refinement) ─
+// The medical guardrail has TWO triggers (content-detected + AI-emitted λ=0).
+// Both still lock the row at λ=0 / s0=5 / c=1. The distinction is labelling:
+//   - content-detected medical → forced_medical (the safety path; red badge)
+//   - AI-emitted λ=0 WITHOUT medical content → ai_permanent (identity-permanence; gold badge)
+// Precedence is content-first: a row that is BOTH content-medical AND AI-zeroed
+// lands as forced_medical. ai_permanent only catches the residue.
+
+const callumAnniversary: ExtractedPreference = {
+  category: "Family & Personal",
+  preference_name: "Wedding anniversary 14 October",
+  detail: "marks every year with Sophie",
+  verbatim_quote: "my wife — Sophie. Our anniversary's the fourteenth of October",
+  s0: 5, confidence: 1.0, lambda: 0, frequency: 1.0,
+}
+const epipenContentAndZero: ExtractedPreference = {
+  // Both content-medical (EpiPen, allergy in detail) AND AI-emitted λ=0 — must land forced_medical.
+  category: "Wellness & Comfort",
+  preference_name: "Peanut allergy",
+  detail: "anaphylactic — carries an EpiPen",
+  verbatim_quote: "I'm allergic to peanuts, carry an EpiPen",
+  s0: 5, confidence: 1.0, lambda: 0, frequency: 1.0,
+}
+
+// Case 11: safety path intact — content-detected allergy with AI λ=0.005 still locks forced_medical.
+const c11 = reconcile([cases[0].input /* shellfish allergy, λ=0.005 in input */], baselinesDayOne)
+check("11. content-detected allergy (AI λ=0.005) → forced_medical (safety path untouched)",
+  c11.preferences.length === 1 && c11.preferences[0].lambda_origin === "forced_medical",
+  `origin=${c11.preferences[0]?.lambda_origin}`)
+
+// Case 12: identity-permanence — AI emitted λ=0 on non-medical content → ai_permanent.
+const c12 = reconcile([callumAnniversary], baselinesDayOne)
+check("12. identity λ=0 on non-medical (anniversary) → ai_permanent (gold lock, not red)",
+  c12.preferences.length === 1
+    && c12.preferences[0].lambda_origin === ("ai_permanent" as ReconciledPreference["lambda_origin"])
+    && c12.preferences[0].lambda === 0
+    && c12.preferences[0].s0 === 5
+    && c12.preferences[0].confidence === 1.0,
+  `origin=${c12.preferences[0]?.lambda_origin} λ=${c12.preferences[0]?.lambda} s0=${c12.preferences[0]?.s0} c=${c12.preferences[0]?.confidence}`)
+
+// Case 13: precedence — both content-medical AND AI-zeroed → forced_medical wins.
+// This is the case that PROVES the ordering is right.
+const c13 = reconcile([epipenContentAndZero], baselinesDayOne)
+check("13. both content-medical AND AI-zeroed → forced_medical (content-first precedence)",
+  c13.preferences.length === 1 && c13.preferences[0].lambda_origin === "forced_medical",
+  `origin=${c13.preferences[0]?.lambda_origin} — ai_permanent must NOT win when content also fires`)
+
+// Case 14: counter — medicalForced counts only content-medical fires; ai_permanent is separate.
+const c14 = reconcile(
+  [callumAnniversary, cases[0].input /* shellfish allergy */, epipenContentAndZero],
+  baselinesDayOne
+)
+check("14a. medicalForced counts content-medical only (2 of 3 in mixed batch)",
+  c14.medicalForced === 2,
+  `got medicalForced=${c14.medicalForced} — expected 2 (shellfish + epipen both content-detected)`)
 
 // ── Case 10: medicalForced counts correctly over a mixed batch ───────
 const batch: ExtractedPreference[] = [

@@ -6,6 +6,7 @@ import {
   type PrefInputs, type MemberEngagement,
 } from '@/lib/mis/live-pst'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
+import { OBSERVATORY_SAMPLES, type SampleTranscript } from '@/lib/observatory-samples'
 
 // Admin / Observatory
 //
@@ -81,6 +82,34 @@ interface Snapshot {
   categories: CategorySlice[]
   vitals: Vitals
 }
+// Panel 6 — Demo live-extraction types
+interface DemoExtractedPref {
+  category: string
+  subcategory: string | null
+  preference_name: string
+  detail: string | null
+  verbatim_quote: string | null
+  s0: number
+  confidence: number
+  lambda: number
+  frequency: number
+  lambda_origin?:
+    | 'ai_specific'
+    | 'category_baseline_learned'
+    | 'category_baseline_designed'
+    | 'forced_medical'
+    | 'ai_permanent'
+  uid: string
+}
+interface DemoReconciledSummary {
+  count: number
+  medicalForced: number
+  aiPermanent: number
+  dropped: { reason: string; item: unknown }[]
+  baselines: Record<string, { baselineLambda: number; source: 'learned' | 'designed' }>
+}
+type DemoPhase = 'idle' | 'streaming' | 'reconciling' | 'done' | 'error'
+
 interface FeedEvent {
   id: string
   kind: 'validation' | 'preference_insert' | 'promotion'
@@ -117,6 +146,7 @@ export default function ObservatoryPage() {
   const [tick, setTick] = useState(0)  // forces 1s recompute + countdown
   const [transport, setTransport] = useState<Transport>('probing')
   const [transportNote, setTransportNote] = useState<string>('probing supabase realtime…')
+  const [refreshing, setRefreshing] = useState<boolean>(false)
   const [demoGate, setDemoGate] = useState<DemoGate>('probing')
   const [demoState, setDemoState] = useState<DemoState>('idle')
   const [demoFixtureId, setDemoFixtureId] = useState<string | null>(null)
@@ -127,6 +157,134 @@ export default function ObservatoryPage() {
   const [events, setEvents] = useState<FeedEvent[]>([])
   const demoFixtureIdRef = useRef<string | null>(null)
   useEffect(() => { demoFixtureIdRef.current = demoFixtureId }, [demoFixtureId])
+
+  // Panel 6 — Demo live extraction state
+  const [demoSampleId, setDemoSampleId] = useState<string>(OBSERVATORY_SAMPLES[0]?.id || '')
+  const [demoTranscript, setDemoTranscript] = useState<string>('')
+  const [demoMemberName, setDemoMemberName] = useState<string>('Demo Member')
+  const [demoExtracted, setDemoExtracted] = useState<DemoExtractedPref[]>([])
+  const [demoSummary, setDemoSummary] = useState<DemoReconciledSummary | null>(null)
+  const [demoPhase, setDemoPhase] = useState<DemoPhase>('idle')
+  const [demoExtractError, setDemoExtractError] = useState<string | null>(null)
+  const demoAbortRef = useRef<AbortController | null>(null)
+
+  const loadDemoSample = useCallback((id: string) => {
+    const s = OBSERVATORY_SAMPLES.find(x => x.id === id)
+    if (!s) return
+    setDemoSampleId(id)
+    setDemoTranscript(s.transcript)
+    setDemoMemberName(s.member_name)
+  }, [])
+
+  const cancelDemoRun = useCallback(() => {
+    demoAbortRef.current?.abort()
+    setDemoPhase('idle')
+  }, [])
+
+  const runDemoExtraction = useCallback(async () => {
+    if (!demoTranscript.trim()) {
+      setDemoExtractError('Paste a transcript or load a sample first.')
+      return
+    }
+    setDemoExtractError(null)
+    setDemoExtracted([])
+    setDemoSummary(null)
+    setDemoPhase('streaming')
+
+    const controller = new AbortController()
+    demoAbortRef.current = controller
+
+    try {
+      const r = await fetch('/api/admin/observatory/extract-demo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transcript: demoTranscript, member_name: demoMemberName }),
+        signal: controller.signal,
+      })
+      if (!r.ok || !r.body) {
+        const txt = await r.text().catch(() => '')
+        let msg = txt
+        try { msg = JSON.parse(txt).error || txt } catch { /* keep txt */ }
+        throw new Error(msg || `Request failed (${r.status})`)
+      }
+      const reader = r.body.getReader()
+      const dec = new TextDecoder()
+      let buf = ''
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buf += dec.decode(value, { stream: true })
+        let sep = buf.indexOf('\n\n')
+        while (sep !== -1) {
+          const raw = buf.slice(0, sep)
+          buf = buf.slice(sep + 2)
+          handleDemoFrame(raw)
+          sep = buf.indexOf('\n\n')
+        }
+      }
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') return
+      setDemoExtractError((e as Error).message)
+      setDemoPhase('error')
+    }
+
+    function handleDemoFrame(raw: string) {
+      let evt = 'message', data = ''
+      for (const line of raw.split('\n')) {
+        if (line.startsWith('event:')) evt = line.slice(6).trim()
+        else if (line.startsWith('data:')) data += line.slice(5).trim()
+      }
+      if (!data) return
+      let payload: Record<string, unknown>
+      try { payload = JSON.parse(data) } catch { return }
+
+      switch (evt) {
+        case 'status': {
+          const ph = String(payload.phase || '')
+          if (ph === 'reconciling') setDemoPhase('reconciling')
+          break
+        }
+        case 'preference': {
+          const p = payload.pref as Omit<DemoExtractedPref, 'uid' | 'lambda_origin'> | undefined
+          if (!p) return
+          setDemoExtracted(prev => [...prev, { ...p, uid: crypto.randomUUID() }])
+          break
+        }
+        case 'reconciled': {
+          const pref = (payload.preferences || []) as Array<{
+            category: string; subcategory: string; preference_name: string; detail: string; verbatim_quote: string;
+            s0: number; confidence: number; lambda: number; frequency: number;
+            lambda_origin: DemoExtractedPref['lambda_origin']
+          }>
+          setDemoExtracted(pref.map(p => ({
+            category: p.category,
+            subcategory: p.subcategory || null,
+            preference_name: p.preference_name,
+            detail: p.detail || null,
+            verbatim_quote: p.verbatim_quote || null,
+            s0: p.s0, confidence: p.confidence, lambda: p.lambda, frequency: p.frequency,
+            lambda_origin: p.lambda_origin,
+            uid: crypto.randomUUID(),
+          })))
+          setDemoSummary({
+            count: pref.length,
+            medicalForced: Number(payload.medicalForced) || 0,
+            aiPermanent:   Number(payload.aiPermanent)   || 0,
+            dropped: (payload.dropped as DemoReconciledSummary['dropped']) || [],
+            baselines: (payload.baselines as DemoReconciledSummary['baselines']) || {},
+          })
+          break
+        }
+        case 'done':
+          setDemoPhase('done')
+          break
+        case 'error':
+          setDemoExtractError(String(payload.message || 'Unknown error'))
+          setDemoPhase('error')
+          break
+      }
+    }
+  }, [demoTranscript, demoMemberName])
 
   // 1s heartbeat — drives Panel 1 recompute AND the demo countdown.
   useEffect(() => {
@@ -339,11 +497,25 @@ export default function ObservatoryPage() {
 
   return (
     <>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes rc-pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+        @keyframes rc-spin  { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      ` }} />
       <div style={{ marginBottom: 28 }}>
         <div style={eyebrow}>Intelligence · Live</div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16, flexWrap: 'wrap' }}>
           <h1 style={pageTitle}>The Observatory</h1>
-          <TransportPill transport={transport} note={transportNote} demoGate={demoGate} />
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <TransportPill transport={transport} note={transportNote} demoGate={demoGate} />
+            <RefreshButton
+              busy={refreshing}
+              onClick={async () => {
+                setRefreshing(true)
+                try { await Promise.all([fetchSnapshot(true), fetchEvents()]) }
+                finally { setRefreshing(false) }
+              }}
+            />
+          </div>
         </div>
         <p style={lede}>
           A live, glass-box view of the system's mathematics. Every figure on this page traces to a real row.
@@ -546,6 +718,52 @@ export default function ObservatoryPage() {
         <VitalsGrid vitals={snap.vitals} />
       </section>
 
+      {/* ─── Panel 6 — Demo · Live extraction (gated, saves nothing) ─── */}
+      <section style={panel}>
+        <div style={panelHead}>
+          <div>
+            <div style={panelEyebrow}>Panel 6 · Demo · Live extraction</div>
+            <div style={panelTitle}>Paste a transcript, watch the system extract preferences in real time</div>
+          </div>
+          {demoGate === 'open' && demoPhase !== 'idle' && demoPhase !== 'done' && (
+            <span style={demoActivePill}>{demoPhase === 'streaming' ? 'extracting…' : demoPhase === 'reconciling' ? 'reconciling…' : 'error'}</span>
+          )}
+        </div>
+
+        <p style={loopLede}>
+          Demo runs the same engine as the live intake — same <code>buildSystemPrompt</code>, same
+          <code> reconcile</code> from <code>lib/mis/extraction-decay.ts</code>, same Claude model, same SSE
+          streaming. The only difference: there is no save path. Nothing reaches the database. <strong style={{ color: '#E5D4C2' }}>Demo runs on sample data. Nothing is saved.</strong>
+        </p>
+
+        {demoGate === 'open' ? (
+          <DemoExtractionPanel
+            sampleId={demoSampleId}
+            samples={OBSERVATORY_SAMPLES}
+            transcript={demoTranscript}
+            memberName={demoMemberName}
+            phase={demoPhase}
+            extracted={demoExtracted}
+            summary={demoSummary}
+            error={demoExtractError}
+            onLoadSample={loadDemoSample}
+            onTranscriptChange={setDemoTranscript}
+            onMemberNameChange={setDemoMemberName}
+            onRun={runDemoExtraction}
+            onCancel={cancelDemoRun}
+          />
+        ) : (
+          <div style={demoBlockClosed}>
+            <span style={demoEyebrow}>DEMO SURFACE</span>
+            <span style={metaText}>
+              {' '}Demo affordance disabled (<code>MIS_DEMO_ENABLED</code> not set to <code>1</code>).
+              When enabled, this panel runs the live extraction pipeline on a bundled fictional
+              transcript and streams the result here. No database write of any kind.
+            </span>
+          </div>
+        )}
+      </section>
+
       {/* ─── Breadth table — all active preferences ─── */}
       <section style={panel}>
         <div style={panelHead}>
@@ -718,7 +936,7 @@ function TrajectoryChart({
   )
 }
 
-// ─── Transport pill — visible "live · Realtime" vs "live · polling 15s" ─────
+// ─── Transport pill — honest about how the page receives updates ────────────
 
 function TransportPill({ transport, note, demoGate }: {
   transport: Transport; note: string; demoGate: DemoGate
@@ -728,7 +946,7 @@ function TransportPill({ transport, note, demoGate }: {
     : transport === 'polling'  ? 'live · polling 15s'
     : 'probing transport…'
   return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+    <>
       <span style={transportPill(tone)} title={note}>
         <span style={transportDot(tone)} />
         {label}
@@ -736,7 +954,18 @@ function TransportPill({ transport, note, demoGate }: {
       {demoGate === 'open' && (
         <span style={demoGatePill}>MIS_DEMO_ENABLED=1</span>
       )}
-    </div>
+    </>
+  )
+}
+
+// ─── Refresh button — manual snapshot + events reload ───────────────────────
+
+function RefreshButton({ busy, onClick }: { busy: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick} disabled={busy} style={refreshBtn}>
+      <span style={refreshGlyph(busy)}>↻</span>
+      {busy ? 'refreshing…' : 'refresh'}
+    </button>
   )
 }
 
@@ -1065,7 +1294,10 @@ function EventStream({ events, transport }: { events: FeedEvent[]; transport: Tr
           </div>
           {loopClosure.slice(0, 5).map(e => (
             <div key={`lc_${e.id}`} style={loopTickerRow}>
-              <span style={{ ...transportDot('green'), boxShadow: '0 0 6px rgba(122,176,122,0.7)' }} />
+              <span style={{
+                display: 'inline-block', width: 7, height: 7, borderRadius: 4,
+                background: '#7AB07A', boxShadow: '0 0 6px rgba(122,176,122,0.7)',
+              }} />
               <span style={{ ...metaText, color: '#E5D4C2' }}>
                 {e.kind === 'promotion'
                   ? `λ PROMOTED · ${e.category}`
@@ -1114,6 +1346,187 @@ function feedKindLabel(e: FeedEvent): React.CSSProperties {
     color: tone === 'green' ? '#7AB07A' : tone === 'gold' ? '#D4B85A' : '#B2AA98',
     letterSpacing: '0.06em', textTransform: 'uppercase',
   }
+}
+
+// ─── Panel 6 — Demo extraction surface ───────────────────────────────────────
+
+function DemoExtractionPanel({
+  sampleId, samples, transcript, memberName, phase, extracted, summary, error,
+  onLoadSample, onTranscriptChange, onMemberNameChange, onRun, onCancel,
+}: {
+  sampleId: string
+  samples: readonly SampleTranscript[]
+  transcript: string
+  memberName: string
+  phase: DemoPhase
+  extracted: DemoExtractedPref[]
+  summary: DemoReconciledSummary | null
+  error: string | null
+  onLoadSample: (id: string) => void
+  onTranscriptChange: (v: string) => void
+  onMemberNameChange: (v: string) => void
+  onRun: () => void
+  onCancel: () => void
+}) {
+  const reconciled = phase === 'done' && summary !== null
+  const baselineSummary = summary ? (() => {
+    const learned = Object.entries(summary.baselines)
+      .filter(([, b]) => b.source === 'learned').map(([cat]) => cat)
+    return learned.length === 0
+      ? 'all baselines designed (no learned λ promoted)'
+      : `learned: ${learned.join(', ')} · rest designed`
+  })() : null
+
+  return (
+    <>
+      <div style={demoControlsRow}>
+        <label style={pickerLabel}>
+          Sample transcript
+          <select
+            value={sampleId}
+            onChange={e => onLoadSample(e.target.value)}
+            disabled={phase === 'streaming' || phase === 'reconciling'}
+            style={pickerInput}
+          >
+            <option value="">— choose a sample —</option>
+            {samples.map(s => (
+              <option key={s.id} value={s.id}>{s.label}</option>
+            ))}
+          </select>
+        </label>
+        <label style={pickerLabel}>
+          Member name (for the prompt)
+          <input
+            type="text"
+            value={memberName}
+            onChange={e => onMemberNameChange(e.target.value)}
+            disabled={phase === 'streaming' || phase === 'reconciling'}
+            style={pickerInput}
+            placeholder="Demo Member"
+          />
+        </label>
+      </div>
+
+      <textarea
+        value={transcript}
+        onChange={e => onTranscriptChange(e.target.value)}
+        disabled={phase === 'streaming' || phase === 'reconciling'}
+        placeholder="Load a bundled sample above, or paste a fictional transcript here. Real member transcripts have no business on this surface."
+        rows={6}
+        style={demoTextarea}
+      />
+
+      <div style={{ display: 'flex', gap: 10, marginTop: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        {(phase === 'streaming' || phase === 'reconciling') ? (
+          <button onClick={onCancel} style={btnGhostDemo}>Cancel</button>
+        ) : (
+          <button onClick={onRun} disabled={!transcript.trim()} style={demoBtn}>
+            {phase === 'done' || phase === 'error' ? 'Run extraction again' : 'Run extraction'}
+          </button>
+        )}
+        {phase === 'streaming' && (
+          <span style={metaText}>Claude is reading the transcript · {extracted.length} preference{extracted.length === 1 ? '' : 's'} so far…</span>
+        )}
+        {phase === 'reconciling' && (
+          <span style={metaText}>Applying medical guardrail and baseline inheritance…</span>
+        )}
+        {phase === 'done' && summary && (
+          <span style={metaText}>
+            done · {summary.count} preference{summary.count === 1 ? '' : 's'} · {summary.medicalForced} medical-forced · {summary.dropped.length} dropped
+          </span>
+        )}
+      </div>
+
+      {error && <div style={errorBox}>{error}</div>}
+
+      {reconciled && summary && (
+        <div style={demoSummaryBanner}>
+          <strong style={{ color: '#D4B85A' }}>{summary.count}</strong> preference{summary.count === 1 ? '' : 's'} ·
+          {' '}<strong style={{ color: summary.medicalForced > 0 ? '#C27070' : '#B2AA98' }}>{summary.medicalForced}</strong> medical-forced ·
+          {' '}<strong style={{ color: summary.aiPermanent  > 0 ? '#D4B85A' : '#B2AA98' }}>{summary.aiPermanent}</strong> permanent-locked ·
+          {' '}<strong style={{ color: summary.dropped.length > 0 ? '#B2AA98' : '#7AB07A' }}>{summary.dropped.length}</strong> dropped
+          {summary.dropped.length > 0 && (
+            <span style={{ color: '#B2AA98', opacity: 0.75 }}> ({summary.dropped.map(d => d.reason).join(', ')})</span>
+          )}
+          <div style={{ marginTop: 4, color: '#B2AA98', opacity: 0.85 }}>
+            baselines used: {baselineSummary}
+          </div>
+          <div style={{ marginTop: 6, color: '#7E7864', fontSize: 10, fontStyle: 'italic' }}>
+            No database write occurred. The list below exists only in this browser session.
+          </div>
+        </div>
+      )}
+
+      {extracted.length > 0 && (
+        <div style={demoExtractedList}>
+          {extracted.map((p, i) => (
+            <DemoPreferenceCard key={p.uid} pref={p} index={i + 1} phase={phase} />
+          ))}
+        </div>
+      )}
+    </>
+  )
+}
+
+function DemoPreferenceCard({ pref, index, phase }: {
+  pref: DemoExtractedPref; index: number; phase: DemoPhase
+}) {
+  // Streaming heuristic: AI-emitted λ=0 = the model thinks this is permanent.
+  // Whether it's MEDICAL or PERMANENT depends on content-detection, which only
+  // runs at reconcile. During streaming, render λ=0 as "PERMANENT — suspected"
+  // (the conservative label); reconcile then upgrades to MEDICAL where the
+  // content guardrail actually fires.
+  const isReconciled = pref.lambda_origin != null
+  const isMedical   = pref.lambda_origin === 'forced_medical'
+  const isPermanent = pref.lambda_origin === 'ai_permanent'
+  const isLocked    = isMedical || isPermanent || (!isReconciled && pref.lambda === 0)
+  const originLabel: { text: string; tone: 'red' | 'gold' | 'green' | 'grey' | 'amber' } =
+    isMedical                                           ? { text: 'MEDICAL — LOCKED',         tone: 'red'   } :
+    isPermanent                                         ? { text: 'PERMANENT — LOCKED',       tone: 'amber' } :
+    pref.lambda_origin === 'ai_specific'                ? { text: 'AI · SPECIFIC',             tone: 'gold'  } :
+    pref.lambda_origin === 'category_baseline_learned'  ? { text: 'BASELINE · LEARNED',        tone: 'green' } :
+    pref.lambda_origin === 'category_baseline_designed' ? { text: 'BASELINE · DESIGNED',       tone: 'grey'  } :
+    isLocked                                            ? { text: 'PERMANENT — suspected',     tone: 'amber' } :
+                                                          { text: 'LIVE · pending reconcile',  tone: 'grey'  }
+
+  const borderColor = isMedical   ? '#C27070'
+                    : isPermanent ? '#D4B85A'
+                    : isLocked    ? '#D4B85A'
+                    : null
+  const cardBg = isMedical   ? 'rgba(194,112,112,0.04)'
+               : isPermanent ? 'rgba(212,184,90,0.04)'
+               : null
+
+  return (
+    <div style={{
+      ...demoPrefCard,
+      ...(borderColor ? { borderLeft: `3px solid ${borderColor}` } : {}),
+      ...(cardBg      ? { background: cardBg } : {}),
+    }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+        <span style={demoIndex}>#{index}</span>
+        <span style={prefCategoryBadge}>{pref.category}</span>
+        <span style={originBadge(originLabel.tone)}>{originLabel.text}</span>
+        {phase === 'streaming' && !isReconciled && <span style={liveTag}>· live</span>}
+      </div>
+      <div style={demoPrefName}>{pref.preference_name}</div>
+      {pref.detail && <div style={demoPrefDetail}>{pref.detail}</div>}
+      {pref.verbatim_quote && <div style={demoPrefQuote}>“{pref.verbatim_quote}”</div>}
+
+      <div style={demoFactorRow}>
+        <span style={demoFactor}>S₀ <strong style={{ color: pref.s0 === 5 ? '#D4B85A' : '#E5D4C2' }}>{pref.s0}</strong></span>
+        <span style={demoFactor}>C <strong style={{ color: '#E5D4C2' }}>{pref.confidence.toFixed(2)}</strong></span>
+        <span style={demoFactor}>λ <strong style={{ color: pref.lambda === 0 ? '#C27070' : '#E5D4C2' }}>{pref.lambda.toFixed(3)}</strong></span>
+        <span style={demoFactor}>F <strong style={{ color: '#E5D4C2' }}>{pref.frequency.toFixed(1)}</strong></span>
+        {pref.lambda > 0 && (
+          <span style={demoFactor}>half-life <strong style={{ color: '#B2AA98' }}>{Math.round(Math.LN2 / pref.lambda)}d</strong></span>
+        )}
+        {pref.lambda === 0 && (
+          <span style={demoFactor}><strong style={{ color: '#C27070' }}>never decays</strong></span>
+        )}
+      </div>
+    </div>
+  )
 }
 
 // ─── Breadth table ───────────────────────────────────────────────────────────
@@ -1356,6 +1769,7 @@ function originPill(o: string): React.CSSProperties {
     category_baseline_learned:  { fg: '#7AB07A', bg: 'rgba(122,176,122,0.10)', bd: 'rgba(122,176,122,0.30)' },
     category_baseline_designed: { fg: '#B2AA98', bg: 'rgba(229,212,194,0.06)', bd: 'rgba(229,212,194,0.18)' },
     forced_medical:             { fg: '#C27070', bg: 'rgba(194,112,112,0.12)', bd: 'rgba(194,112,112,0.40)' },
+    ai_permanent:               { fg: '#D4B85A', bg: 'rgba(212,184,90,0.16)', bd: 'rgba(212,184,90,0.50)' },
     '(null)':                   { fg: '#7E7864', bg: 'rgba(229,212,194,0.04)', bd: 'rgba(229,212,194,0.10)' },
   }
   const p = palette[o] || palette['(null)']
@@ -1502,7 +1916,7 @@ function catStatChip(s: 'active' | 'proposed' | 'insufficient_data' | 'no_fit_ye
   return { ...posteriorStatusPill(s), fontSize: 9 }
 }
 
-// Transport / demo pill styles
+// Transport pill + refresh button + demo gate pill styles
 function transportPill(tone: 'green' | 'gold' | 'grey'): React.CSSProperties {
   const p = {
     green: { fg: '#7AB07A', bg: 'rgba(122,176,122,0.12)', bd: 'rgba(122,176,122,0.40)' },
@@ -1522,6 +1936,20 @@ function transportDot(tone: 'green' | 'gold' | 'grey'): React.CSSProperties {
     display: 'inline-block', width: 7, height: 7, borderRadius: 4,
     background: tone === 'green' ? '#7AB07A' : tone === 'gold' ? '#D4B85A' : '#B2AA98',
     boxShadow: tone === 'green' ? '0 0 6px rgba(122,176,122,0.7)' : 'none',
+  }
+}
+const refreshBtn: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 8,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', background: 'rgba(229,212,194,0.04)',
+  border: '1px solid rgba(229,212,194,0.18)', borderRadius: 4,
+  padding: '6px 14px', letterSpacing: '0.06em', cursor: 'pointer',
+}
+function refreshGlyph(busy: boolean): React.CSSProperties {
+  return {
+    display: 'inline-block', fontSize: 14,
+    animation: busy ? 'rc-spin 0.8s linear infinite' : 'none',
+    color: busy ? '#D4B85A' : '#B2AA98',
   }
 }
 const demoGatePill: React.CSSProperties = {
@@ -1621,4 +2049,86 @@ const feedLine2: React.CSSProperties = {
   marginTop: 2,
   fontFamily: "'Google Sans Code', monospace", fontSize: 11,
   color: '#B2AA98', opacity: 0.8, lineHeight: 1.5,
+}
+
+// Panel 6 styles
+const demoControlsRow: React.CSSProperties = {
+  display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, marginBottom: 10,
+}
+const demoTextarea: React.CSSProperties = {
+  width: '100%', boxSizing: 'border-box',
+  padding: 14, background: 'rgba(5,46,32,0.5)', color: '#E5D4C2',
+  border: '1px solid rgba(229,212,194,0.10)', borderRadius: 8,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
+  lineHeight: 1.6, resize: 'vertical', outline: 'none',
+  minHeight: 140,
+}
+const btnGhostDemo: React.CSSProperties = {
+  background: 'rgba(229,212,194,0.10)', color: '#B2AA98',
+  border: '1px solid rgba(229,212,194,0.15)', borderRadius: 4,
+  padding: '8px 16px', fontFamily: "'Google Sans Code', monospace",
+  fontSize: 11, letterSpacing: '0.06em', cursor: 'pointer',
+}
+const demoSummaryBanner: React.CSSProperties = {
+  marginTop: 14, padding: '12px 16px',
+  background: 'rgba(122,176,122,0.06)',
+  border: '1px solid rgba(122,176,122,0.30)', borderRadius: 6,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#E5D4C2', lineHeight: 1.7,
+}
+const demoExtractedList: React.CSSProperties = {
+  marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8,
+  maxHeight: 560, overflowY: 'auto',
+  border: '1px solid rgba(229,212,194,0.06)', borderRadius: 6,
+  padding: 10,
+}
+const demoPrefCard: React.CSSProperties = {
+  padding: 14,
+  background: 'rgba(5,46,32,0.4)',
+  border: '1px solid rgba(229,212,194,0.08)', borderRadius: 6,
+}
+const demoIndex: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  color: '#7E7864', letterSpacing: '0.04em',
+}
+const demoPrefName: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 16, fontWeight: 500,
+  color: '#E5D4C2', letterSpacing: '0.04em', marginTop: 4,
+}
+const demoPrefDetail: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', opacity: 0.85, marginTop: 4, lineHeight: 1.6,
+}
+const demoPrefQuote: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', opacity: 0.75, fontStyle: 'italic',
+  borderLeft: '2px solid rgba(212,184,90,0.30)',
+  paddingLeft: 12, marginTop: 8, lineHeight: 1.6,
+}
+const demoFactorRow: React.CSSProperties = {
+  display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 10,
+  paddingTop: 8, borderTop: '1px solid rgba(229,212,194,0.06)',
+}
+const demoFactor: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#7E7864', letterSpacing: '0.04em',
+}
+const liveTag: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#D4B85A', letterSpacing: '0.06em', fontStyle: 'italic',
+}
+function originBadge(tone: 'red' | 'gold' | 'green' | 'grey' | 'amber'): React.CSSProperties {
+  const p = {
+    red:   { fg: '#C27070', bg: 'rgba(194,112,112,0.14)', bd: 'rgba(194,112,112,0.50)' },
+    gold:  { fg: '#D4B85A', bg: 'rgba(212,184,90,0.10)',  bd: 'rgba(212,184,90,0.30)'  },
+    green: { fg: '#7AB07A', bg: 'rgba(122,176,122,0.12)', bd: 'rgba(122,176,122,0.30)' },
+    grey:  { fg: '#B2AA98', bg: 'rgba(229,212,194,0.06)', bd: 'rgba(229,212,194,0.18)' },
+    amber: { fg: '#D4B85A', bg: 'rgba(212,184,90,0.18)',  bd: 'rgba(212,184,90,0.55)'  },
+  }[tone]
+  return {
+    fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+    color: p.fg, background: p.bg, border: `1px solid ${p.bd}`,
+    borderRadius: 3, padding: '2px 8px',
+    letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600,
+  }
 }

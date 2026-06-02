@@ -22,6 +22,7 @@ type LambdaOrigin =
   | 'category_baseline_learned'
   | 'category_baseline_designed'
   | 'forced_medical'
+  | 'ai_permanent'
 
 interface Extracted {
   uid: string
@@ -57,6 +58,7 @@ interface ReconciledPayload {
   preferences: ReconciledPref[]
   dropped: { reason: string; item: unknown }[]
   medicalForced: number
+  aiPermanent?: number
   baselines: Record<string, BaselineEntry>
   raw_count: number
 }
@@ -73,14 +75,18 @@ function predictPs(s0: number, c: number, f: number): number {
   return Math.min(5, s0 * c * f * 1.0 * 1.0)
 }
 
-function lambdaOriginLabel(o: LambdaOrigin | null): { text: string; tone: 'gold' | 'green' | 'grey' | 'red' } {
+function lambdaOriginLabel(o: LambdaOrigin | null): { text: string; tone: 'gold' | 'green' | 'grey' | 'red' | 'amber' } {
   switch (o) {
-    case 'forced_medical':            return { text: 'MEDICAL — LOCKED',  tone: 'red'   }
-    case 'ai_specific':               return { text: 'AI · specific',     tone: 'gold'  }
-    case 'category_baseline_learned': return { text: 'baseline · learned',tone: 'green' }
+    case 'forced_medical':            return { text: 'MEDICAL — LOCKED',   tone: 'red'   }
+    case 'ai_permanent':              return { text: 'PERMANENT — LOCKED', tone: 'amber' }
+    case 'ai_specific':               return { text: 'AI · specific',      tone: 'gold'  }
+    case 'category_baseline_learned': return { text: 'baseline · learned', tone: 'green' }
     case 'category_baseline_designed':return { text: 'baseline · designed', tone: 'grey' }
-    default:                          return { text: 'live preview',      tone: 'grey'  }
+    default:                          return { text: 'live preview',       tone: 'grey'  }
   }
+}
+function isLockedOrigin(o: LambdaOrigin | null): boolean {
+  return o === 'forced_medical' || o === 'ai_permanent'
 }
 
 export default function MisIntakePage({ params }: { params: Promise<{ member_no: string }> }) {
@@ -94,7 +100,7 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
   const [usage, setUsage] = useState<Usage | null>(null)
   const [reconciled, setReconciled] = useState<ReconciledPayload | null>(null)
   const [errMsg, setErrMsg] = useState<string | null>(null)
-  const [saved, setSaved] = useState<{ inserted: number; medicalReforced: number } | null>(null)
+  const [saved, setSaved] = useState<{ inserted: number; medicalReforced: number; permanentReforced: number } | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const resultsRef = useRef<HTMLDivElement | null>(null)
 
@@ -237,10 +243,10 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
   const updatePref = (uid: string, patch: Partial<Extracted>) => {
     setExtracted(prev => prev.map(p => {
       if (p.uid !== uid) return p
-      // Medical-locked rows ignore writes to S₀/C/λ — the lock survives the
-      // confirm step. Other fields (name, subcategory, detail, accepted) stay
-      // editable for context.
-      if (p.lambda_origin === 'forced_medical') {
+      // Locked rows (forced_medical OR ai_permanent) ignore writes to S₀/C/λ —
+      // the lock survives the confirm step. Other fields (name, subcategory,
+      // detail, accepted) stay editable for context.
+      if (isLockedOrigin(p.lambda_origin)) {
         const { s0, confidence, lambda, ...editable } = patch
         void s0; void confidence; void lambda
         return { ...p, ...editable }
@@ -251,8 +257,9 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
   const removePref = (uid: string) => {
     setExtracted(prev => prev.filter(p => p.uid !== uid))
   }
-  const acceptedCount = useMemo(() => extracted.filter(p => p.accepted).length, [extracted])
-  const medicalCount  = useMemo(() => extracted.filter(p => p.lambda_origin === 'forced_medical').length, [extracted])
+  const acceptedCount   = useMemo(() => extracted.filter(p => p.accepted).length, [extracted])
+  const medicalCount    = useMemo(() => extracted.filter(p => p.lambda_origin === 'forced_medical').length, [extracted])
+  const permanentCount  = useMemo(() => extracted.filter(p => p.lambda_origin === 'ai_permanent').length, [extracted])
 
   const save = useCallback(async () => {
     const payload = extracted.filter(p => p.accepted).map(p => ({
@@ -281,7 +288,11 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
       })
       const j = await r.json()
       if (!r.ok) throw new Error(j.error || `Save failed (${r.status})`)
-      setSaved({ inserted: Number(j.inserted) || payload.length, medicalReforced: Number(j.medicalReforced) || 0 })
+      setSaved({
+        inserted: Number(j.inserted) || payload.length,
+        medicalReforced: Number(j.medicalReforced) || 0,
+        permanentReforced: Number(j.permanentReforced) || 0,
+      })
       setPhase('saved')
     } catch (e) {
       setErrMsg((e as Error).message)
@@ -309,7 +320,8 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
         <div style={{ display: 'flex', gap: 14, alignItems: 'baseline', fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#B2AA98' }}>
           <span>Extracted: <span style={{ color: '#E5D4C2' }}>{extracted.length}</span></span>
           <span>Selected: <span style={{ color: '#D4B85A' }}>{acceptedCount}</span></span>
-          {medicalCount > 0 && <span>Medical-locked: <span style={{ color: '#C27070' }}>{medicalCount}</span></span>}
+          {medicalCount > 0   && <span>Medical-locked: <span style={{ color: '#C27070' }}>{medicalCount}</span></span>}
+          {permanentCount > 0 && <span>Permanent-locked: <span style={{ color: '#D4B85A' }}>{permanentCount}</span></span>}
         </div>
       </div>
 
@@ -393,13 +405,16 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
           {extracted.map(p => {
             const pred = predictPs(p.s0, p.confidence, p.frequency)
             const healthPct = Math.round((pred / Math.max(p.s0, 1)) * 100)
-            const locked = p.lambda_origin === 'forced_medical'
+            const locked = isLockedOrigin(p.lambda_origin)
+            const isMedical   = p.lambda_origin === 'forced_medical'
+            const isPermanent = p.lambda_origin === 'ai_permanent'
             const ol = lambdaOriginLabel(p.lambda_origin)
             return (
               <div key={p.uid} style={{
                 ...prefCard,
                 opacity: p.accepted ? 1 : 0.35,
-                ...(locked ? { borderLeft: '3px solid #C27070' } : {}),
+                ...(isMedical   ? { borderLeft: '3px solid #C27070' } : {}),
+                ...(isPermanent ? { borderLeft: '3px solid #D4B85A' } : {}),
               }}>
                 <div style={prefHead}>
                   <div style={{ flex: 1 }}>
@@ -474,9 +489,10 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
                   />
                 </div>
                 {locked && (
-                  <div style={lockNote}>
-                    Medical signal detected by content-based guardrail. S₀ / C / λ are locked at this row;
-                    the medical lock is re-asserted at the save boundary.
+                  <div style={isMedical ? lockNote : lockNotePermanent}>
+                    {isMedical
+                      ? 'Medical signal detected by content-based guardrail. S₀ / C / λ are locked at this row; the medical lock is re-asserted at the save boundary.'
+                      : 'The AI judged this a lifelong-identity preference (λ=0). Not a medical lock — same scoring effect, different reason. S₀ / C / λ are locked and re-asserted at the save boundary.'}
                   </div>
                 )}
               </div>
@@ -497,7 +513,8 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
             {phase === 'saved' && saved && (
               <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#7AB07A' }}>
                 ✓ Saved {saved.inserted} preference{saved.inserted === 1 ? '' : 's'}
-                {saved.medicalReforced > 0 && ` · ${saved.medicalReforced} re-forced at save boundary`}
+                {saved.medicalReforced   > 0 && ` · ${saved.medicalReforced} medical re-forced at save`}
+                {saved.permanentReforced > 0 && ` · ${saved.permanentReforced} permanent re-locked at save`}
               </span>
             )}
             {(phase === 'done' || phase === 'error') && (
@@ -553,12 +570,13 @@ function ScoreSelect({ label, value, options, fmt, onChange, accent, disabled }:
   )
 }
 
-function originBadge(tone: 'gold' | 'green' | 'grey' | 'red'): React.CSSProperties {
+function originBadge(tone: 'gold' | 'green' | 'grey' | 'red' | 'amber'): React.CSSProperties {
   const p = {
     gold:  { fg: '#D4B85A', bg: 'rgba(212,184,90,0.10)', bd: 'rgba(212,184,90,0.30)' },
     green: { fg: '#7AB07A', bg: 'rgba(122,176,122,0.10)', bd: 'rgba(122,176,122,0.30)' },
     grey:  { fg: '#B2AA98', bg: 'rgba(229,212,194,0.06)', bd: 'rgba(229,212,194,0.16)' },
     red:   { fg: '#C27070', bg: 'rgba(194,112,112,0.12)', bd: 'rgba(194,112,112,0.40)' },
+    amber: { fg: '#D4B85A', bg: 'rgba(212,184,90,0.16)', bd: 'rgba(212,184,90,0.50)' },
   }[tone]
   return {
     fontFamily: "'Google Sans Code', monospace", fontSize: 9,
@@ -720,6 +738,13 @@ const lockNote: React.CSSProperties = {
   border: '1px solid rgba(194,112,112,0.20)', borderRadius: 4,
   fontFamily: "'Google Sans Code', monospace", fontSize: 10,
   color: '#C27070', lineHeight: 1.6,
+}
+const lockNotePermanent: React.CSSProperties = {
+  marginTop: 10, padding: '8px 10px',
+  background: 'rgba(212,184,90,0.06)',
+  border: '1px solid rgba(212,184,90,0.20)', borderRadius: 4,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  color: '#D4B85A', lineHeight: 1.6,
 }
 const footerBar: React.CSSProperties = {
   display: 'flex', gap: 14, alignItems: 'center',

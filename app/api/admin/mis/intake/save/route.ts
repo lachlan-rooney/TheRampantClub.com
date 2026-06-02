@@ -42,7 +42,8 @@ const allowedConfidence = [1.00, 0.75, 0.50, 0.25]
 const allowedLambda     = [0.000, 0.002, 0.005, 0.010, 0.020]
 const allowedFrequency  = [0.8, 1.0, 1.2, 1.5]
 const allowedOrigin = new Set([
-  'ai_specific', 'category_baseline_learned', 'category_baseline_designed', 'forced_medical',
+  'ai_specific', 'category_baseline_learned', 'category_baseline_designed',
+  'forced_medical', 'ai_permanent',
 ])
 
 function snap(v: unknown, allowed: number[]): number | null {
@@ -94,6 +95,7 @@ export async function POST(req: NextRequest) {
   const rows: Array<Record<string, unknown>> = []
   const errors: Array<{ index: number; reason: string }> = []
   let medicalReforced = 0
+  let permanentReforced = 0
 
   ;(body.preferences as IncomingPref[]).forEach((p, i) => {
     try {
@@ -102,11 +104,13 @@ export async function POST(req: NextRequest) {
       const preference_name = String(p.preference_name || '').trim()
       if (!preference_name) throw new Error('preference_name required')
 
-      // ── Medical lock re-assertion ─────────────────────────────────
-      // Run the same content-based detection reconcile uses. If it triggers,
-      // the row is forced to medical regardless of what the client sent.
-      // This closes the gap where a malformed client payload could send
-      // unlocked values for a row the UI displayed as locked.
+      // ── Lock re-assertion ─────────────────────────────────────────
+      // Mirror reconcile's content-first precedence:
+      //   1. Content-detected medical (isMedicalPreference) → forced_medical lock.
+      //   2. Else if the incoming λ snaps to 0           → ai_permanent lock.
+      //   3. Else                                         → standard validation.
+      // Both lock paths force s0=5/c=1/λ=0 regardless of what the client sent;
+      // ai_permanent only catches the residue, exactly as reconcile does.
       const previewPref: ExtractedPreference = {
         category,
         subcategory:     typeof p.subcategory     === 'string' ? p.subcategory     : undefined,
@@ -115,6 +119,7 @@ export async function POST(req: NextRequest) {
         verbatim_quote:  typeof p.verbatim_quote  === 'string' ? p.verbatim_quote  : undefined,
       }
       const detectedMedical = isMedicalPreference(previewPref)
+      const incomingLambdaIsZero = snap(p.lambda, allowedLambda) === 0.000
 
       let s0: number
       let confidence: number
@@ -123,14 +128,22 @@ export async function POST(req: NextRequest) {
 
       if (detectedMedical) {
         s0 = 5; confidence = 1.00; lambda = 0.000; lambda_origin = 'forced_medical'
-        // Count only the rows we had to FORCE — rows that already arrived
-        // with the forced values aren't counted as a re-assertion.
         const arrivedForced =
           Number(p.s0) === 5 &&
           snap(p.confidence, allowedConfidence) === 1.00 &&
-          snap(p.lambda, allowedLambda) === 0.000 &&
+          incomingLambdaIsZero &&
           p.lambda_origin === 'forced_medical'
         if (!arrivedForced) medicalReforced++
+      } else if (incomingLambdaIsZero) {
+        // Identity-permanence lock (the AI judged λ=0 without medical content).
+        // Same fail-safe as forced_medical — s0=5/c=1/λ=0 is enforced at the
+        // write boundary regardless of what the client sent for those fields.
+        s0 = 5; confidence = 1.00; lambda = 0.000; lambda_origin = 'ai_permanent'
+        const arrivedPermanent =
+          Number(p.s0) === 5 &&
+          snap(p.confidence, allowedConfidence) === 1.00 &&
+          p.lambda_origin === 'ai_permanent'
+        if (!arrivedPermanent) permanentReforced++
       } else {
         const s0In = Number(p.s0)
         if (!Number.isInteger(s0In) || s0In < 1 || s0In > 5) throw new Error('s0 must be integer 1..5')
@@ -141,13 +154,10 @@ export async function POST(req: NextRequest) {
         const l = snap(p.lambda, allowedLambda)
         if (l == null) throw new Error('lambda out of allowed set')
         lambda = l
-        // lambda_origin must be a valid non-medical origin. 'forced_medical' is
-        // only legal when isMedicalPreference fires — a row labelled medical
-        // by the client without content signal is rejected, so a hand-crafted
-        // payload can't smuggle the forced values onto a non-medical row.
         const origin = typeof p.lambda_origin === 'string' ? p.lambda_origin : ''
         if (!allowedOrigin.has(origin)) throw new Error(`lambda_origin invalid: "${origin}"`)
         if (origin === 'forced_medical') throw new Error('forced_medical origin requires medical content signal')
+        if (origin === 'ai_permanent')   throw new Error('ai_permanent origin requires λ=0')
         lambda_origin = origin
       }
 
@@ -202,10 +212,10 @@ export async function POST(req: NextRequest) {
     const chunk = rows.slice(i, i + 100)
     const { error } = await sb.from('preferences').insert(chunk)
     if (error) {
-      return NextResponse.json({ error: error.message, inserted, medicalReforced }, { status: 500 })
+      return NextResponse.json({ error: error.message, inserted, medicalReforced, permanentReforced }, { status: 500 })
     }
     inserted += chunk.length
   }
 
-  return NextResponse.json({ ok: true, inserted, medicalReforced })
+  return NextResponse.json({ ok: true, inserted, medicalReforced, permanentReforced })
 }
