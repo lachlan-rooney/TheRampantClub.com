@@ -138,6 +138,19 @@ Return ONLY the JSON array.`
         const claudeStream = anthropic.messages.stream({
           model: 'claude-opus-4-7',
           max_tokens: 32000,
+          // No temperature override. Anthropic's API REJECTS temperature ≠ 1
+          // when extended/adaptive thinking is enabled ("temperature may
+          // only be set to 1 when thinking is enabled or in adaptive mode"),
+          // so the choice for a demo surface is: (a) keep adaptive thinking
+          // and accept count-level variance run-to-run, or (b) drop thinking
+          // for repeatability and lose the model's per-pref reasoning depth
+          // (which feeds the rationale field). We pick (a): the honest
+          // framing — "scoring + safety judgement is stable run-to-run; the
+          // count varies because compound preferences can split or merge,
+          // which is a granularity call, not a judgment call" — is the
+          // accurate story and the API constraint makes it structurally
+          // unavoidable. Do NOT introduce temperature here without first
+          // disabling thinking.
           thinking: { type: 'adaptive' },
           output_config: { effort: 'high' },
           system: [{

@@ -109,15 +109,39 @@ interface DemoReconciledSummary {
   dropped: { reason: string; item: { category?: string; preference_name?: string; verbatim_quote?: string } }[]
   baselines: Record<string, { baselineLambda: number; source: 'learned' | 'designed' }>
 }
+interface ConsistencyReport {
+  verdict: 'stable' | 'judgment_variance' | 'safety_inconsistency'
+  headline: string
+  invariants: { preference: string; detail: string }[]
+  variances: { preference: string; type: 'granularity' | 'judgment' | 'safety'; detail: string }[]
+  counts: number[]
+  synthesis: string
+}
+
 interface ProbeRun {
   id: string
   label: string                // sample id or "pasted"
   member_name: string
   transcript_snippet: string   // first ~120 chars for the run list
+  transcript_hash?: string     // SHA-256[:16] of the FULL transcript. Optional only because
+                               // session state from before this field was added may not have it;
+                               // pre-existing runs without a hash are skipped in same-transcript
+                               // gating (NOT backfilled — that reintroduces collision risk).
   preferences: DemoExtractedPref[]
   summary: DemoReconciledSummary
   ran_at: string               // ISO
   tokens: { input: number; output: number; cache_read: number; cache_created: number }
+}
+
+// SHA-256 of the full transcript, first 8 bytes as hex (16 chars). Web Crypto;
+// the analyser uses hash equality as the "same transcript" gate so paste-runs
+// and sample-runs both get a hard match.
+async function sha256Hex16(text: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
+  return Array.from(new Uint8Array(buf))
+    .slice(0, 8)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
 }
 type DemoPhase = 'idle' | 'streaming' | 'reconciling' | 'done' | 'error'
 
@@ -182,6 +206,9 @@ export default function ObservatoryPage() {
   const [demoExtractError, setDemoExtractError] = useState<string | null>(null)
   const [expandedRationales, setExpandedRationales] = useState<Set<string>>(new Set())
   const [probeRuns, setProbeRuns] = useState<ProbeRun[]>([])
+  const [consistencyReport, setConsistencyReport] = useState<ConsistencyReport | null>(null)
+  const [analysisPhase, setAnalysisPhase] = useState<'idle' | 'analysing' | 'done' | 'error'>('idle')
+  const [analysisError, setAnalysisError] = useState<string | null>(null)
   const [demoTokens, setDemoTokens] = useState<{ input: number; output: number; cache_read: number; cache_created: number }>({ input: 0, output: 0, cache_read: 0, cache_created: 0 })
   const [compareIds, setCompareIds] = useState<[string | null, string | null]>([null, null])
   const demoAbortRef = useRef<AbortController | null>(null)
@@ -327,24 +354,31 @@ export default function ObservatoryPage() {
   // Kept in React state only; gone on refresh. No persistence anywhere.
   useEffect(() => {
     if (demoPhase !== 'done' || !demoSummary) return
-    const sample = OBSERVATORY_SAMPLES.find(s => s.id === demoSampleId)
-    const label = sample ? sample.label : 'pasted transcript'
-    const run: ProbeRun = {
-      id: crypto.randomUUID(),
-      label,
-      member_name: demoMemberName,
-      transcript_snippet: demoTranscript.slice(0, 140).replace(/\s+/g, ' ').trim(),
-      preferences: demoExtracted,
-      summary: demoSummary,
-      ran_at: new Date().toISOString(),
-      tokens: demoTokens,
-    }
-    setProbeRuns(prev => {
-      // Avoid re-capturing if the user is still on the same 'done' state and
-      // demoExtracted hasn't changed (no shallow effect re-fire).
-      if (prev[0]?.preferences === demoExtracted) return prev
-      return [run, ...prev].slice(0, 10)
-    })
+    let cancelled = false
+    ;(async () => {
+      const sample = OBSERVATORY_SAMPLES.find(s => s.id === demoSampleId)
+      const label = sample ? sample.label : 'pasted transcript'
+      const transcript_hash = await sha256Hex16(demoTranscript)
+      if (cancelled) return
+      const run: ProbeRun = {
+        id: crypto.randomUUID(),
+        label,
+        member_name: demoMemberName,
+        transcript_snippet: demoTranscript.slice(0, 140).replace(/\s+/g, ' ').trim(),
+        transcript_hash,
+        preferences: demoExtracted,
+        summary: demoSummary,
+        ran_at: new Date().toISOString(),
+        tokens: demoTokens,
+      }
+      setProbeRuns(prev => {
+        // Avoid re-capturing if the user is still on the same 'done' state and
+        // demoExtracted hasn't changed (no shallow effect re-fire).
+        if (prev[0]?.preferences === demoExtracted) return prev
+        return [run, ...prev].slice(0, 10)
+      })
+    })()
+    return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [demoPhase])
 
@@ -357,6 +391,49 @@ export default function ObservatoryPage() {
     setDemoMemberName(run.member_name)
     setDemoPhase('done')
   }, [probeRuns])
+
+  // ── Same-transcript triple detection ────────────────────────────────
+  // Group captured runs by transcript_hash (skip undefined-hash runs — those
+  // were captured before the field existed). Find the most-recently-active
+  // group with ≥ 3 runs; that group's three most-recent runs are the
+  // analyser's input.
+  const analysableTriple = useMemo<ProbeRun[] | null>(() => {
+    const hashed = probeRuns.filter(r => !!r.transcript_hash)
+    if (hashed.length < 3) return null
+    const groups = new Map<string, ProbeRun[]>()
+    for (const r of hashed) {
+      const k = r.transcript_hash!
+      if (!groups.has(k)) groups.set(k, [])
+      groups.get(k)!.push(r)
+    }
+    const qualifying = [...groups.values()].filter(g => g.length >= 3)
+    if (qualifying.length === 0) return null
+    // Pick the group whose most-recent run is most recent overall.
+    qualifying.sort((a, b) => (b[0]?.ran_at || '').localeCompare(a[0]?.ran_at || ''))
+    // Each group's runs are already in reverse-chrono order (probeRuns is).
+    return qualifying[0].slice(0, 3)
+  }, [probeRuns])
+
+  const runConsistencyAnalysis = useCallback(async () => {
+    if (!analysableTriple) return
+    setAnalysisError(null)
+    setConsistencyReport(null)
+    setAnalysisPhase('analysing')
+    try {
+      const r = await fetch('/api/admin/observatory/consistency', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ runs: analysableTriple }),
+      })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error || `analysis failed (${r.status})`)
+      setConsistencyReport(j as ConsistencyReport)
+      setAnalysisPhase('done')
+    } catch (e) {
+      setAnalysisError((e as Error).message)
+      setAnalysisPhase('error')
+    }
+  }, [analysableTriple])
 
   // 1s heartbeat — drives Panel 1 recompute AND the demo countdown.
   useEffect(() => {
@@ -840,6 +917,17 @@ export default function ObservatoryPage() {
                   return [id, b]
                 })}
               />
+            )}
+            {probeRuns.length > 0 && (
+              <ConsistencyControl
+                triple={analysableTriple}
+                phase={analysisPhase}
+                error={analysisError}
+                onRun={runConsistencyAnalysis}
+              />
+            )}
+            {consistencyReport && (
+              <ConsistencyReportView report={consistencyReport} />
             )}
             {compareIds[0] && compareIds[1] && (
               <ProbeCompareView
@@ -1840,6 +1928,148 @@ function ProbeCompareCategoryList({ cats, prefs }: {
   )
 }
 
+// ─── Consistency analyser button + report ────────────────────────────────────
+
+function ConsistencyControl({ triple, phase, error, onRun }: {
+  triple: ProbeRun[] | null
+  phase: 'idle' | 'analysing' | 'done' | 'error'
+  error: string | null
+  onRun: () => void
+}) {
+  const enabled = triple !== null && phase !== 'analysing'
+  const tooltip = !triple ? 'Run the same transcript three times to enable.' : ''
+  const counts = triple?.map(r => r.preferences.length).join(' / ')
+  return (
+    <div style={consistencyControl}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+        <button
+          onClick={onRun}
+          disabled={!enabled}
+          style={{
+            ...analysisBtn,
+            ...(enabled ? {} : { opacity: 0.4, cursor: 'not-allowed' }),
+          }}
+          title={tooltip}
+        >
+          {phase === 'analysing' ? 'Analysing…' : 'AI consistency analysis'}
+        </button>
+        {triple ? (
+          <span style={metaText}>
+            ready to analyse the 3 most-recent runs of <strong style={{ color: '#E5D4C2' }}>{triple[0].label}</strong> ·
+            counts {counts}
+          </span>
+        ) : (
+          <span style={metaText}>
+            requires ≥ 3 runs of the same transcript · gate is hash-equality, not label
+          </span>
+        )}
+      </div>
+      {error && <div style={errorBox}>{error}</div>}
+    </div>
+  )
+}
+
+function ConsistencyReportView({ report }: { report: ConsistencyReport }) {
+  const tone = report.verdict === 'safety_inconsistency' ? 'safety'
+             : report.verdict === 'judgment_variance'   ? 'amber'
+             : 'green'
+
+  return (
+    <div style={consistencyReportWrap}>
+      {/* Headline verdict bar */}
+      <div style={verdictBar(tone)}>
+        {tone === 'safety' && (
+          <div style={{ ...miniLabel, color: '#FFFFFF', marginBottom: 4 }}>⛔ SAFETY INCONSISTENCY</div>
+        )}
+        {tone === 'amber' && (
+          <div style={{ ...miniLabel, color: '#D4B85A', marginBottom: 4 }}>⚠ JUDGMENT VARIANCE</div>
+        )}
+        {tone === 'green' && (
+          <div style={{ ...miniLabel, color: '#7AB07A', marginBottom: 4 }}>✓ JUDGMENT STABLE</div>
+        )}
+        <div style={{
+          fontFamily: "'Rampant Sans', serif", fontSize: 17, fontWeight: 500,
+          color: tone === 'safety' ? '#FFFFFF' : '#E5D4C2',
+          letterSpacing: '0.04em',
+        }}>
+          {report.headline}
+        </div>
+      </div>
+
+      {/* Counts line */}
+      <div style={{ ...metaText, marginTop: 12 }}>
+        Preference counts: <strong style={{ color: '#E5D4C2' }}>{report.counts.join(' / ')}</strong>
+        {tone !== 'safety' && (
+          <> · spread {(() => {
+            const lo = Math.min(...report.counts), hi = Math.max(...report.counts)
+            return hi - lo
+          })()} {report.verdict === 'stable' ? '(granularity-only)' : '(see variances)'}</>
+        )}
+      </div>
+
+      {/* Invariants */}
+      {report.invariants.length > 0 && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ ...miniLabel, color: '#7AB07A', marginBottom: 8 }}>WHAT HELD ACROSS ALL 3 RUNS</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {report.invariants.map((inv, i) => (
+              <div key={i} style={invariantRow}>
+                <span style={{ color: '#7AB07A', marginRight: 8 }}>✓</span>
+                <span style={{ color: '#E5D4C2' }}>{inv.preference}</span>
+                <span style={{ ...metaText, marginLeft: 6 }}>— {inv.detail}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Variances */}
+      {report.variances.length > 0 && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ ...miniLabel, marginBottom: 8 }}>WHAT DIFFERED</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {report.variances.map((v, i) => {
+              const tag = v.type === 'safety'      ? { text: 'SAFETY',      fg: '#FFFFFF', bg: '#C27070', bd: '#C27070' }
+                        : v.type === 'judgment'    ? { text: 'JUDGMENT',    fg: '#D4B85A', bg: 'rgba(212,184,90,0.12)', bd: 'rgba(212,184,90,0.40)' }
+                        :                            { text: 'GRANULARITY', fg: '#B2AA98', bg: 'rgba(229,212,194,0.06)', bd: 'rgba(229,212,194,0.18)' }
+              return (
+                <div key={i} style={varianceRow}>
+                  <span style={{
+                    fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+                    color: tag.fg, background: tag.bg, border: `1px solid ${tag.bd}`,
+                    borderRadius: 3, padding: '2px 7px',
+                    letterSpacing: '0.08em', textTransform: 'uppercase',
+                    flexShrink: 0,
+                  }}>{tag.text}</span>
+                  <span style={{ color: '#E5D4C2' }}>{v.preference}</span>
+                  <span style={{ ...metaText }}>— {v.detail}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Synthesis */}
+      {report.synthesis && (
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(229,212,194,0.08)' }}>
+          <div style={{ ...miniLabel, marginBottom: 6 }}>AI SYNTHESIS</div>
+          <div style={{
+            fontFamily: "'Google Sans Code', monospace", fontSize: 12,
+            color: '#E5D4C2', lineHeight: 1.7,
+          }}>
+            {report.synthesis}
+          </div>
+        </div>
+      )}
+
+      <div style={{ ...metaText, marginTop: 14, opacity: 0.7, fontStyle: 'italic' }}>
+        Analysis compares the three captured runs in this session. Nothing is saved.
+      </div>
+    </div>
+  )
+}
+
 // ─── Breadth table ───────────────────────────────────────────────────────────
 
 function BreadthTable({
@@ -2519,6 +2749,58 @@ const probeCompareCatBlock: React.CSSProperties = {
 const probeCompareRow: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 11,
   padding: '3px 0', lineHeight: 1.5,
+}
+
+// Consistency analyser
+const consistencyControl: React.CSSProperties = {
+  marginTop: 14, padding: 12,
+  background: 'rgba(212,184,90,0.04)',
+  border: '1px solid rgba(212,184,90,0.20)', borderRadius: 6,
+}
+const analysisBtn: React.CSSProperties = {
+  background: 'rgba(212,184,90,0.16)', color: '#D4B85A',
+  border: '1px solid rgba(212,184,90,0.50)', borderRadius: 4,
+  padding: '8px 18px', fontFamily: "'Google Sans Code', monospace",
+  fontSize: 11, letterSpacing: '0.06em', cursor: 'pointer',
+  fontWeight: 600,
+}
+const consistencyReportWrap: React.CSSProperties = {
+  marginTop: 14, padding: 18,
+  background: 'rgba(5,46,32,0.5)',
+  border: '1px solid rgba(229,212,194,0.10)', borderRadius: 8,
+}
+function verdictBar(tone: 'green' | 'amber' | 'safety'): React.CSSProperties {
+  if (tone === 'safety') return {
+    padding: '16px 18px',
+    background: '#C27070',
+    border: '2px solid #C27070',
+    borderRadius: 6,
+    boxShadow: '0 0 0 1px rgba(194,112,112,0.6), 0 0 18px rgba(194,112,112,0.40)',
+  }
+  if (tone === 'amber') return {
+    padding: '14px 16px',
+    background: 'rgba(212,184,90,0.10)',
+    border: '1px solid rgba(212,184,90,0.45)', borderRadius: 6,
+  }
+  return {
+    padding: '14px 16px',
+    background: 'rgba(122,176,122,0.08)',
+    border: '1px solid rgba(122,176,122,0.40)', borderRadius: 6,
+  }
+}
+const invariantRow: React.CSSProperties = {
+  display: 'flex', alignItems: 'baseline', gap: 4, flexWrap: 'wrap',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  padding: '4px 8px',
+  background: 'rgba(122,176,122,0.04)',
+  borderLeft: '2px solid rgba(122,176,122,0.30)',
+  borderRadius: 3,
+}
+const varianceRow: React.CSSProperties = {
+  display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  padding: '4px 8px',
+  borderRadius: 3,
 }
 function originBadge(tone: 'red' | 'gold' | 'green' | 'grey' | 'amber'): React.CSSProperties {
   const p = {
