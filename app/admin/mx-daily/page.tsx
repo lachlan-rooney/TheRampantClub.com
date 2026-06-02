@@ -59,13 +59,18 @@ interface ClosingHandover {
   submitted_at: string | null
 }
 
+interface MissedSeal {
+  shift_date: string
+  missing: ('opening' | 'closing')[]
+}
 interface Data {
   birthdays: Birthday[]
   anniversaries: Anniversary[]
   lapsed: { bucket_30: LapsedRow[]; bucket_60: LapsedRow[]; bucket_90: LapsedRow[] }
   complaints: Complaint[]
   last_closing: ClosingHandover | null
-  counts: { birthdays: number; anniversaries: number; lapsed_total: number; complaints_open: number }
+  missed_seals: MissedSeal[]
+  counts: { birthdays: number; anniversaries: number; lapsed_total: number; complaints_open: number; missed_seals: number }
 }
 
 export default function MXDailyPage() {
@@ -133,7 +138,40 @@ export default function MXDailyPage() {
         <StatTile label="Anniversaries (7d)" value={data.counts.anniversaries} color="#7AB07A" />
         <StatTile label="Lapsed members"     value={data.counts.lapsed_total} color="#C27070" />
         <StatTile label="Open complaints"    value={data.counts.complaints_open} color="#C27070" />
+        <StatTile label="Missed seals (7d)"  value={data.counts.missed_seals} color={data.counts.missed_seals > 0 ? '#E58F4A' : '#7AB07A'} />
       </div>
+
+      {/* Missed-seal alerts — surfaces audit-trail gaps from the last 7
+          shift-days. Rendered ABOVE the handover panel so it's the first
+          thing the morning team sees if a sheet wasn't sealed last night.
+          Hidden when there are no gaps — absence is the success state. */}
+      {data.missed_seals && data.missed_seals.length > 0 && (
+        <div style={missedSealsPanel}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
+            <span style={missedSealsEyebrow}>⚠ Missed seals · last 7 days</span>
+            <span style={{ ...lede, fontSize: 11, color: '#B2AA98', margin: 0 }}>
+              {data.missed_seals.length} shift-day{data.missed_seals.length === 1 ? '' : 's'} without a complete sealed record.
+            </span>
+            <Link href="/admin/checklists" style={{ ...panelActionLink, marginLeft: 'auto' }}>
+              Open checklists →
+            </Link>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {data.missed_seals.map(m => (
+              <div key={m.shift_date} style={missedSealsRow}>
+                <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#E5D4C2', minWidth: 140 }}>
+                  {new Date(m.shift_date + 'T12:00:00+07:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
+                </span>
+                {m.missing.includes('opening') && <span style={missedSealsChip}>opening unsealed</span>}
+                {m.missing.includes('closing') && <span style={missedSealsChip}>closing unsealed</span>}
+              </div>
+            ))}
+          </div>
+          <div style={{ ...lede, fontSize: 10, color: '#7E7864', marginTop: 10, lineHeight: 1.6 }}>
+            A missed seal means either no checklist was started for that shift, or one was started but never locked. Open the day on the checklists page to inspect, complete if possible, or note the gap for the audit record.
+          </div>
+        </div>
+      )}
 
       {/* Closing handover from the previous shift — the loop-closer */}
       {data.last_closing && (
@@ -490,6 +528,37 @@ const panelHint: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 11,
   color: '#B2AA98', lineHeight: 1.6, opacity: 0.85,
 }
+// Missed-seal alerts — sits ABOVE the handover panel when any gaps exist.
+// Amber tone (judgment/attention) rather than red (destructive), and
+// disappears entirely when zero gaps so absence is the success state.
+const missedSealsPanel: React.CSSProperties = {
+  marginBottom: 18, padding: '14px 18px',
+  background: 'rgba(229,143,74,0.08)',
+  border: '1px solid rgba(229,143,74,0.35)',
+  borderLeft: '3px solid #E58F4A',
+  borderRadius: 6,
+}
+const missedSealsEyebrow: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  color: '#E58F4A', letterSpacing: '0.14em', textTransform: 'uppercase',
+  fontWeight: 700,
+}
+const missedSealsRow: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+  padding: '6px 10px',
+  background: 'rgba(229,143,74,0.04)',
+  border: '1px solid rgba(229,143,74,0.18)',
+  borderRadius: 4,
+}
+const missedSealsChip: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#E58F4A',
+  background: 'rgba(229,143,74,0.12)',
+  border: '1px solid rgba(229,143,74,0.40)',
+  borderRadius: 3, padding: '2px 8px',
+  letterSpacing: '0.08em', textTransform: 'uppercase',
+}
+
 const handoverBox: React.CSSProperties = {
   padding: '12px 14px',
   background: 'rgba(122,176,122,0.08)',

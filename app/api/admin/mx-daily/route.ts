@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { isAdmin } from '@/lib/admin'
+import { vnDateString } from '@/lib/datetime'
 
 // GET /api/admin/mx-daily
 //
@@ -58,21 +59,60 @@ export async function GET() {
     .limit(1)
     .then(r => r, () => ({ data: [] as Record<string, unknown>[], error: null }))
 
+  // Missed-seal alerts — surfaces any shift day in the last 7 (excluding
+  // today, whose evening shift hasn't happened yet) without a sealed
+  // opening AND/OR closing sheet. Gives the morning team an immediate
+  // "did we actually record last night?" signal on the dashboard.
+  const todayVn = vnDateString()
+  const todayDate = new Date(todayVn + 'T00:00:00+07:00')
+  const window7Start = new Date(todayDate); window7Start.setDate(window7Start.getDate() - 7)
+  const window7End   = new Date(todayDate); window7End.setDate(window7End.getDate() - 1)
+  const sealedRangeQuery = sb
+    .from('shift_checklists')
+    .select('shift_date, kind, submitted_at')
+    .gte('shift_date', vnDateString(window7Start))
+    .lte('shift_date', vnDateString(window7End))
+    .then(r => r, () => ({ data: [] as Record<string, unknown>[], error: null }))
+
   // Per-member gifting summary so the anniversary panel can show budget
   // used vs. available without N round-trips.
   const giftingSummaryQuery = sb.from('member_gifting_summary')
     .select('member_no, annual_budget_vnd, spent_vnd, gift_count, window_end')
     .then(r => r, () => ({ data: [] as Record<string, unknown>[], error: null }))
 
-  const [{ data: members }, { data: stats }, complaintsResult, lastClosingResult, giftingResult] = await Promise.all([
+  const [
+    { data: members }, { data: stats },
+    complaintsResult, lastClosingResult, giftingResult, sealedRangeResult,
+  ] = await Promise.all([
     sb.from('members').select('member_no, full_name, nickname, tier, status, birthday, join_date').eq('status', 'Active'),
     sb.from('member_stats').select('member_no, last_visit, days_since_visit, total_visits'),
     complaintsQuery,
     lastClosingQuery,
     giftingSummaryQuery,
+    sealedRangeQuery,
   ])
   const complaints = complaintsResult.error ? [] : (complaintsResult.data || [])
   const lastClosing = lastClosingResult.error || !lastClosingResult.data?.length ? null : lastClosingResult.data[0]
+
+  // Compute missed-seal alerts. The 7-day window ends YESTERDAY (today's
+  // closing hasn't happened yet, so an empty today is not a miss). For
+  // each date in the window, a kind is "missed" if either no row exists
+  // OR the row exists but submitted_at is null (started but not sealed).
+  type SealRow = { shift_date: string; kind: 'opening' | 'closing'; submitted_at: string | null }
+  const sealedRows = (sealedRangeResult.error ? [] : (sealedRangeResult.data || [])) as SealRow[]
+  const sealByDateKind = new Map<string, boolean>()
+  for (const r of sealedRows) sealByDateKind.set(`${r.shift_date}-${r.kind}`, !!r.submitted_at)
+  const missedSeals: { shift_date: string; missing: ('opening' | 'closing')[] }[] = []
+  for (let i = 7; i >= 1; i--) {
+    const d = new Date(todayDate); d.setDate(d.getDate() - i)
+    const ds = vnDateString(d)
+    const openingSealed = sealByDateKind.get(`${ds}-opening`) === true
+    const closingSealed = sealByDateKind.get(`${ds}-closing`) === true
+    const missing: ('opening' | 'closing')[] = []
+    if (!openingSealed) missing.push('opening')
+    if (!closingSealed) missing.push('closing')
+    if (missing.length > 0) missedSeals.push({ shift_date: ds, missing })
+  }
   const giftingByMember = new Map<string, { annual_budget_vnd: number; spent_vnd: number; gift_count: number }>()
   for (const r of (giftingResult.error ? [] : (giftingResult.data || []))) {
     const row = r as { member_no: string; annual_budget_vnd: number; spent_vnd: number; gift_count: number }
@@ -170,11 +210,13 @@ export async function GET() {
     lapsed,
     complaints: complaints || [],
     last_closing: lastClosing || null,
+    missed_seals: missedSeals,
     counts: {
       birthdays: birthdays.length,
       anniversaries: anniversaries.length,
       lapsed_total: lapsedRaw.length,
       complaints_open: (complaints || []).filter(c => c.status === 'open').length,
+      missed_seals: missedSeals.length,
     },
   })
 }
