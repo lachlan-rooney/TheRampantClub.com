@@ -2,6 +2,15 @@
 
 Extracted from the live Apps Script (Master Intelligence Sheet, ID `1Z1XfrCemeKyO1etsJMNJfp54PK6hnmZIDK-7iQFm40Q`). This is the source of truth for the web migration — **build to what the sheet actually computes, not to the v2 plan doc**, then change deliberately where flagged below.
 
+> **Companion document:** `MIS_scoring_and_ML_reference.md` — the model & ML narrative
+> reference. This file is the **implementation contract**: formula, DDL, taxonomy, fixed
+> enums, source-column map. The narrative file owns the survival-model derivation,
+> propose-only governance, calibration, and dissertation-grade reasoning. Both must
+> agree byte-for-byte on the formula, the four enums, the 9 categories, the lock
+> taxonomy (§4 here / §4 there), the designed-λ table (§5 here / §5.1 there), and the
+> provenance tag list (§6 here / §6 there).
+> **If they disagree, the code is the tiebreaker.**
+
 ---
 
 ## 0. Discrepancies the build must resolve (decisions for Lachlan)
@@ -14,9 +23,9 @@ The codebase grew in layers and disagrees with itself in four places. Pick one o
 
 3. **Two revalidation rules.** Tab-builder (richer): flag if `PS < 0.7·S₀ OR days>180 OR (S₀≥4 AND days>90)`. Enhancement writer (simpler): `days>180 → REVALIDATE, days>90 → Monitor`. *Recommendation: use the richer tab-builder rule — it's score-aware, which is the point of the system.*
 
-4. **Category taxonomy has four conflicting lists.** The **9-category SETTINGS list is canonical** because it's what the actual member data (Mikey/Evan/Brandon) uses. The `_callClaude` enhancement prompt's list (`Health & Safety | Dietary | Beverage/Whisky | …`) and the stale column-note list (`Service & Environment`, `Communication`, …) are both **wrong** — discard them. The interview processor must emit only the 9 canonical values.
+4. **Category taxonomy has four conflicting lists.** The **9-category SETTINGS list is canonical** because it's what the actual member data (Mikey/Evan/Brandon) uses. The `_callClaude` enhancement prompt's list (`Health & Safety | Dietary | Beverage/Whisky | …`) and the stale column-note list (`Service & Environment`, `Communication`, …) are both **wrong** — discard them. The interview processor must emit only the 9 canonical values. **(Medical and identity preferences live in whichever ordinary category they naturally belong to and are locked at row level — see §4.)**
 
-Also discard: the `K4` column note claiming decay values of `0.10 / 0.20 / 0.30`. It is stale. The real λ set is `0.000 / 0.002 / 0.005 / 0.010 / 0.020` (see §3).
+Also discard: the `K4` column note claiming decay values of `0.10 / 0.20 / 0.30`. It is stale. The real λ set is `0.000 / 0.002 / 0.005 / 0.010 / 0.020` (see §2).
 
 ---
 
@@ -66,7 +75,7 @@ These are the rules the interview processor (`callClaudeForPreferences`) applies
 ### λ — Decay (enum: 0.000 / 0.002 / 0.005 / 0.010 / 0.020)
 | λ | Class | Test |
 |---|-------|------|
-| 0.000 | Medical / safety / religious identity | Same in 10 years? |
+| 0.000 | Medical / dietary identity / declarative identity facts (see §4) | Same in 10 years? |
 | 0.002 | Core personality / cultural identity / lifelong aesthetic | About who they *are*? |
 | 0.005 | Established habit, consistent preference | Consistent across contexts? |
 | 0.010 | Variable / emerging / mood-dependent | Could change in 2–3 months? |
@@ -104,7 +113,7 @@ M = LEAST(1.5, GREATEST(0.8, 1.0 + 0.25 × (avg_visits_per_month − 1)))   othe
 - Humour `[Laughs]` → S₀ −1
 - Relief/reluctant `[Sheepish]` → λ = 0.010
 
-Health & Safety preferences are **always** S₀=5, C=1.00, λ=0.000.
+Medical and declarative-identity preferences (see §4) are **always** S₀=5, C=1.00, λ=0.000 — enforced by code-deterministic guardrails, not by AI judgement.
 
 ---
 
@@ -124,7 +133,74 @@ Travel & Global
 
 ---
 
-## 4. Source column map (for the migration scripts)
+## 4. Permanence locks — row-level overrides, not categories
+
+Some preferences must never decay. They are pinned to **S₀=5, C=1.00, λ=0.000** as a **row-level override applied inside the preference's natural category** — not via a separate category. ("Health & Safety" is not a category.) Three origins of a λ=0 lock are resolved in strict deterministic precedence:
+
+**MEDICAL > IDENTITY > AI-PERMANENT**
+
+The first two are **enforced in code** (content-detected, deterministic, never trusted to the AI). The third is the residual case where the AI itself judged a preference permanent and neither guardrail fired. Each carries a distinct provenance tag (§6).
+
+| origin | trigger | bias | enforced by | nature |
+|---|---|---|---|---|
+| `forced_medical` | content-detected medical / allergy / dietary signal | over-catch (safe — a false lock is harmless) | `isMedicalPreference` in `lib/mis/extraction-decay.ts` | code-deterministic |
+| `forced_identity` | content-detected declarative identity / relationship fact | under-catch (precision — a false lock is invisible and self-perpetuating) | `isIdentityPreference` in `lib/mis/extraction-decay.ts` | code-deterministic |
+| `ai_permanent` | model emitted λ=0; neither guardrail fired | — | the AI's own judgement | model-judged residue |
+
+**Bias contrast.** A false medical lock is harmless (the preference becomes a fact); a false identity lock is costly and invisible (a wrongly-permanent preference never decays and never flags for revalidation).
+
+**Fact vs preference discriminator.** "I'm a peat man" stays a slow-decaying preference (taste); "my wife, Sophie" locks (relationship fact). Emphasis is not identity; relationship/identity structure is.
+
+**Precedence example.** "I keep halal" is identity-flavoured but locks as `forced_medical` because medical detection runs first.
+
+For the full bias reasoning, the consistency-analyser drift that motivated the identity guardrail, and the sentiment-anchored / structural-disqualifier examples, see narrative §4.
+
+---
+
+## 5. Designed λ per category
+
+Every category has a **designed λ** — the decay-rate prior centre, before any learning. Allowed values are `{0.000, 0.002, 0.005, 0.010, 0.020}` day⁻¹ (half-lives ∞, ≈347, ≈139, ≈69, ≈35 days). The designed-λ map lives in `lib/mis/decay-priors.ts` as a single source of truth — imported by both the learning job and the extraction engine — so they cannot diverge.
+
+| Category | Designed λ | Half-life | Basis |
+|---|---|---|---|
+| Whisky & Beverage | 0.005 | ≈139 d | modal of live rows (excl. medical zeros) |
+| Food & Beverage | 0.005 | ≈139 d | modal of live rows |
+| Cultural & Intellectual | 0.005 | ≈139 d | modal of live rows |
+| Travel & Global | 0.005 | ≈139 d | modal of live rows (thin) |
+| Personal & Lifestyle | 0.002 | ≈347 d | modal of live rows (medical zeros excluded) |
+| Social & Networking | 0.002 | ≈347 d | modal of live rows |
+| Business & Productivity | 0.002 | ≈347 d | operators set ~year half-life |
+| Wellness & Comfort | 0.002 | ≈347 d | modal of live rows (sparse — reconsider once n_active > 20) |
+| Family & Personal | 0.002 | ≈347 d | first-principles core-identity (no live rows yet) |
+
+These values were re-anchored from the original specification to the modal values present in live data; in five of nine categories staff filed preferences as more durable (slower-decaying) than the specification assumed. The prior encodes what operators actually believe.
+
+**Medical and identity locks (λ=0) are not in this table** — they are row-level overrides per §4 and are excluded from learning at the view layer because λ=0 cannot be fit.
+
+For the v1-vs-operator anchoring reasoning and the implication that operator practice surfaced a finding, see narrative §5.1.
+
+---
+
+## 6. λ provenance tags (`lambda_origin`)
+
+Every extracted preference is stamped with a `lambda_origin` recording where its decay rate came from. This is the audit trail — used by the consistency analyser, the per-factor rationale UI, and the dissertation appendix.
+
+| tag | meaning | nature |
+|---|---|---|
+| `ai_specific` | model assigned a confident per-preference λ from transcript signal | model judgement |
+| `category_baseline_learned` | no preference-specific signal; inherited the category's **learned** λ | the loop closing |
+| `category_baseline_designed` | no preference-specific signal; inherited the category's **designed** λ | the seed |
+| `forced_medical` | medical lock fired (§4) | code-deterministic |
+| `forced_identity` | identity lock fired (§4) | code-deterministic |
+| `ai_permanent` | model emitted λ=0; neither guardrail fired (§4) | model judgement |
+
+A promotion on `/admin/decay-fit` flips a row's provenance from `category_baseline_designed` → `category_baseline_learned` for subsequent extractions — the visible signature of the loop closing.
+
+For the closed-loop mechanics (live lookup, learned-over-designed merge, the ML governance), see narrative §6.
+
+---
+
+## 7. Source column map (for the migration scripts)
 
 **PREFERENCE REGISTER** (22 cols). Data lives in A, D–N, S–V. **Formula columns B, C, O, P, Q, R are derived — never migrate them as data; recompute via the view.**
 
@@ -181,7 +257,7 @@ Current data volume is tiny — 3 members (M001 Mikey Brenker, M002 Evan Roberts
 
 ---
 
-## 5. DDL — paste into the build
+## 8. DDL — paste into the build
 
 ```sql
 -- ── MEMBERS (from DIRECTORY A–I, N) ──
@@ -357,7 +433,7 @@ The legacy sheet joins preferences → members **by member name** (Register colu
 
 ---
 
-## 6. Member health index (optional admin metric — port as-is)
+## 9. Member health index (optional admin metric — port as-is)
 ```
 visit_score   = LEAST(visits/10, 1) * 30
 recency_score = days_since<14 ?40 : <30 ?30 : <45 ?15 : 0
