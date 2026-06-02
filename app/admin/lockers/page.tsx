@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import { Fragment, useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 
@@ -118,12 +118,31 @@ export default function LockersPage() {
   useEffect(() => { load(); loadWhiskies() }, [load, loadWhiskies])
 
   const gridDims = useMemo(() => {
+    // The wall has two sides separated by the entrance door, and the sides
+    // can have different row counts in real life — currently 4 rows × 6 cols
+    // on the left, 3 rows × 4 cols on the right. We track maximums separately
+    // so the renderer can size the two sub-grids to match the physical wall
+    // and gel them visually (right tiles get scaled to the left's height).
     let maxR = 0, maxC = 0
+    let leftR = 0, rightR = 0, rightC = 0
     for (const l of lockers) {
       if (l.position_row && l.position_row > maxR) maxR = l.position_row
       if (l.position_col && l.position_col > maxC) maxC = l.position_col
+      if (l.position_row && l.position_col) {
+        if (l.position_col <= WALL_DOOR_AFTER_COL) {
+          if (l.position_row > leftR) leftR = l.position_row
+        } else {
+          if (l.position_row > rightR) rightR = l.position_row
+          if (l.position_col > rightC) rightC = l.position_col
+        }
+      }
     }
-    return { rows: maxR, cols: maxC }
+    return {
+      rows: maxR, cols: maxC,
+      leftRows: leftR,
+      rightRows: rightR,
+      rightCols: Math.max(0, rightC - WALL_DOOR_AFTER_COL),
+    }
   }, [lockers])
 
   const lockerByPos = useMemo(() => {
@@ -227,45 +246,67 @@ export default function LockersPage() {
           <button onClick={() => setSeedOpen(true)} style={btnPrimary}>＋ Seed the grid</button>
         </div>
       ) : (() => {
-        // If the wall is wide enough for a door (>5 lockable cols), the grid
-        // gets one extra column track between col 5 and col 6. Every row
-        // (including the header) renders a door cell into that track — the
-        // stacked cells visually merge into one continuous door panel.
-        // This is segment-rendered on purpose: no grid-row span, no overlay,
-        // nothing that can desync from the locker rows around it.
-        const hasDoor = gridDims.cols > WALL_DOOR_AFTER_COL
-        const leftCols  = hasDoor ? WALL_DOOR_AFTER_COL : gridDims.cols
-        const rightCols = hasDoor ? gridDims.cols - WALL_DOOR_AFTER_COL : 0
-        const gridTemplateColumns = hasDoor
-          ? `36px repeat(${leftCols}, minmax(72px, 1fr)) 48px repeat(${rightCols}, minmax(72px, 1fr))`
-          : `36px repeat(${gridDims.cols}, minmax(72px, 1fr))`
-        const totalRows = gridDims.rows
+        // Wall layout (physical reality):
+        //   • Left side : leftRows × WALL_DOOR_AFTER_COL  (currently 4 × 6)
+        //   • Door      : single panel, full height of the left side
+        //   • Right side: rightRows × rightCols           (currently 3 × 4)
+        // The right side has FEWER rows than the left but should READ as the
+        // same height — so its tiles get scaled up. Right tile height is
+        // computed from left's total height so the two sides line up to the
+        // pixel: rightTileH × rightRows + gaps == leftTileH × leftRows + gaps.
+        const hasDoor   = gridDims.rightCols > 0
+        const leftCols  = WALL_DOOR_AFTER_COL
+        const leftRows  = gridDims.leftRows  || gridDims.rows
+        const rightRows = gridDims.rightRows || gridDims.rows
+        const rightCols = gridDims.rightCols
+        const leftTileH = 72
+        const gap = 6
+        const leftWallH = leftRows * leftTileH + Math.max(0, leftRows - 1) * gap
+        const rightTileH = rightRows > 0
+          ? Math.max(72, Math.floor((leftWallH - Math.max(0, rightRows - 1) * gap) / rightRows))
+          : leftTileH
         return (
-          <div style={{ ...wallGrid, gridTemplateColumns }}>
-            {/* column headers — split by the door header */}
-            <div />
-            {Array.from({ length: leftCols }, (_, c) => (
-              <div key={`ch-${c}`} style={gridHeader}>{String(c + 1).padStart(2, '0')}</div>
-            ))}
-            {hasDoor && <div style={doorHeaderCell}>↕</div>}
-            {Array.from({ length: rightCols }, (_, c) => (
-              <div key={`ch-r-${c}`} style={gridHeader}>{String(WALL_DOOR_AFTER_COL + c + 1).padStart(2, '0')}</div>
-            ))}
+          <div style={wallSplit}>
+            {/* LEFT sub-grid */}
+            <SubGrid
+              cols={leftCols}
+              rows={leftRows}
+              colOffset={0}
+              tileH={leftTileH}
+              gap={gap}
+              showRowLabels
+              lockerByPos={lockerByPos}
+              onOpen={(no) => setOpenLocker(no)}
+              filter={filter}
+            />
 
-            {/* rows */}
-            {Array.from({ length: totalRows }, (_, r) => (
-              <RowFragment
-                key={`r-${r}`}
-                rowIdx={r + 1}
-                rowIdxOf={totalRows}
-                leftCols={leftCols}
-                rightCols={rightCols}
-                hasDoor={hasDoor}
+            {/* DOOR — sized to match the LEFT wall's total tile height,
+                offset so it aligns under the column-header strip. */}
+            {hasDoor && (
+              <div style={doorColumn}>
+                <div style={doorColumnHeader}>↕</div>
+                <div style={{ ...doorColumnPanel, height: leftWallH }}>
+                  <span style={doorColumnLabel}>
+                    {'ENTRANCE'.split('').map((ch, i) => <span key={i}>{ch}</span>)}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* RIGHT sub-grid (no row labels — the left side carries them) */}
+            {hasDoor && (
+              <SubGrid
+                cols={rightCols}
+                rows={rightRows}
+                colOffset={WALL_DOOR_AFTER_COL}
+                tileH={rightTileH}
+                gap={gap}
+                showRowLabels={false}
                 lockerByPos={lockerByPos}
                 onOpen={(no) => setOpenLocker(no)}
                 filter={filter}
               />
-            ))}
+            )}
           </div>
         )
       })()}
@@ -284,21 +325,24 @@ export default function LockersPage() {
   )
 }
 
-function RowFragment({ rowIdx, rowIdxOf, leftCols, rightCols, hasDoor, lockerByPos, onOpen, filter }: {
-  rowIdx: number
-  rowIdxOf: number
-  leftCols: number
-  rightCols: number
-  hasDoor: boolean
+// One side of the wall. Self-contained CSS grid (column headers + locker
+// rows). Tile height is a prop so the right side can be scaled to match
+// the left side's total height. colOffset shifts the column-number labels
+// so the right side reads "07 08 09 10" instead of "01 02 03 04".
+function SubGrid({ cols, rows, colOffset, tileH, gap, showRowLabels, lockerByPos, onOpen, filter }: {
+  cols: number
+  rows: number
+  colOffset: number
+  tileH: number
+  gap: number
+  showRowLabels: boolean
   lockerByPos: Map<string, Locker>
   onOpen: (locker_no: string) => void
   filter: string
 }) {
-  const rowLetter = 'ABCDEFGHIJKLMNOPQRST'[rowIdx - 1] || `R${rowIdx}`
-
-  const renderTile = (colIdx1: number) => {
+  const renderTile = (rowIdx: number, colIdx1: number) => {
     const l = lockerByPos.get(`${rowIdx}-${colIdx1}`)
-    if (!l) return <div key={`empty-${rowIdx}-${colIdx1}`} style={tileGhost} />
+    if (!l) return <div key={`empty-${rowIdx}-${colIdx1}`} style={{ ...tileGhost, minHeight: tileH }} />
     const dim = filter !== 'all' && l.status !== filter
     return (
       <button
@@ -307,6 +351,7 @@ function RowFragment({ rowIdx, rowIdxOf, leftCols, rightCols, hasDoor, lockerByP
         style={{
           ...tileBase,
           ...tileByStatus(l.status),
+          minHeight: tileH,
           opacity: dim ? 0.25 : 1,
         }}
         title={`${l.locker_no} · ${l.member_name || 'unassigned'}`}
@@ -325,32 +370,29 @@ function RowFragment({ rowIdx, rowIdxOf, leftCols, rightCols, hasDoor, lockerByP
     )
   }
 
-  // Door segment for THIS row — one per data row, rendering style depends
-  // on position so the stacked cells read as a continuous door panel.
-  // The middle row carries the visible "ENTRANCE" label.
-  const isFirstDoorRow  = rowIdx === 1
-  const isLastDoorRow   = rowIdx === rowIdxOf
-  const isMiddleDoorRow = rowIdx === Math.ceil(rowIdxOf / 2)
+  const gridTemplateColumns = showRowLabels
+    ? `36px repeat(${cols}, minmax(72px, 1fr))`
+    : `repeat(${cols}, minmax(72px, 1fr))`
 
   return (
-    <>
-      <div style={gridRowLabel}>{rowLetter}</div>
-      {Array.from({ length: leftCols }, (_, c) => renderTile(c + 1))}
-      {hasDoor && (
-        <div
-          style={doorSegmentStyle(isFirstDoorRow, isLastDoorRow)}
-          aria-hidden={!isMiddleDoorRow}
-          title={isMiddleDoorRow ? 'Entrance — door between columns 05 and 06' : undefined}
-        >
-          {isMiddleDoorRow && (
-            <span style={doorSegmentLabel}>
-              {'ENTRANCE'.split('').map((ch, i) => <span key={i}>{ch}</span>)}
-            </span>
-          )}
-        </div>
-      )}
-      {Array.from({ length: rightCols }, (_, c) => renderTile(WALL_DOOR_AFTER_COL + c + 1))}
-    </>
+    <div style={{ ...subGridWrap, gridTemplateColumns, gap }}>
+      {/* Column headers */}
+      {showRowLabels && <div />}
+      {Array.from({ length: cols }, (_, c) => (
+        <div key={`ch-${c}`} style={gridHeader}>{String(colOffset + c + 1).padStart(2, '0')}</div>
+      ))}
+      {/* Rows */}
+      {Array.from({ length: rows }, (_, r) => {
+        const rowIdx = r + 1
+        const rowLetter = 'ABCDEFGHIJKLMNOPQRST'[rowIdx - 1] || `R${rowIdx}`
+        return (
+          <Fragment key={`row-${rowIdx}`}>
+            {showRowLabels && <div style={gridRowLabel}>{rowLetter}</div>}
+            {Array.from({ length: cols }, (_, c) => renderTile(rowIdx, colOffset + c + 1))}
+          </Fragment>
+        )
+      })}
+    </div>
   )
 }
 
@@ -787,13 +829,6 @@ const seedBlock: React.CSSProperties = {
   background: 'rgba(212,184,90,0.06)', border: '1px solid rgba(212,184,90,0.20)',
   borderRadius: 8,
 }
-const wallGrid: React.CSSProperties = {
-  display: 'grid', gap: 6,
-  background: 'rgba(229,212,194,0.02)',
-  border: '1px solid rgba(229,212,194,0.06)',
-  padding: 12, borderRadius: 8, marginTop: 8,
-  overflowX: 'auto',
-}
 const gridHeader: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 9,
   color: '#7E7864', letterSpacing: '0.10em', textAlign: 'center',
@@ -970,39 +1005,47 @@ const whiskyRow: React.CSSProperties = {
 }
 
 // ── Wall door ──
-// One small door cell per row, stacked. Each cell is the same height as a
-// locker tile (minHeight 72), so the column lines up. The stack of cells
-// reads as a continuous vertical door panel; the top cell rounds at the
-// top and the bottom cell rounds at the bottom. The middle cell carries
-// the ENTRANCE label so the door is clearly recognisable.
-const doorHeaderCell: React.CSSProperties = {
+// The door is a single tall panel between the two sub-grids. Its height is
+// pinned to the LEFT sub-grid's total tile height (computed in the page) so
+// it always lines up with the locker rows on the left, regardless of how
+// many rows live on the right side.
+const wallSplit: React.CSSProperties = {
+  display: 'flex', alignItems: 'flex-start', gap: 12,
+  background: 'rgba(229,212,194,0.02)',
+  border: '1px solid rgba(229,212,194,0.06)',
+  padding: 12, borderRadius: 8, marginTop: 8,
+  overflowX: 'auto',
+}
+const subGridWrap: React.CSSProperties = {
+  display: 'grid',
+  flex: '0 0 auto',
+}
+const doorColumn: React.CSSProperties = {
+  display: 'flex', flexDirection: 'column', flex: '0 0 auto',
+  width: 56,
+}
+const doorColumnHeader: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 11,
   color: '#D4B85A', letterSpacing: '0.10em',
   textAlign: 'center', padding: '4px 0',
+  // Match the height of the column-number headers in the sub-grids so the
+  // door's top edge sits flush with the top of row A's tiles on either side.
+  minHeight: 22,
 }
-function doorSegmentStyle(isFirst: boolean, isLast: boolean): React.CSSProperties {
-  return {
-    minHeight: 72,
-    background: 'linear-gradient(180deg, rgba(94,102,80,0.30) 0%, rgba(94,102,80,0.18) 100%)',
-    borderLeft:  '1px solid rgba(212,184,90,0.35)',
-    borderRight: '1px solid rgba(212,184,90,0.35)',
-    borderTop:    isFirst ? '1px solid rgba(212,184,90,0.55)' : 'none',
-    borderBottom: isLast  ? '1px solid rgba(212,184,90,0.55)' : 'none',
-    borderTopLeftRadius:     isFirst ? 4 : 0,
-    borderTopRightRadius:    isFirst ? 4 : 0,
-    borderBottomLeftRadius:  isLast  ? 4 : 0,
-    borderBottomRightRadius: isLast  ? 4 : 0,
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    position: 'relative',
-  }
+const doorColumnPanel: React.CSSProperties = {
+  // height is set inline to leftWallH so the door matches the left side
+  background: 'linear-gradient(180deg, rgba(94,102,80,0.30) 0%, rgba(94,102,80,0.18) 100%)',
+  border: '1px solid rgba(212,184,90,0.45)',
+  borderRadius: 4,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  position: 'relative',
 }
-const doorSegmentLabel: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
-  color: '#D4B85A', letterSpacing: '0.18em',
+const doorColumnLabel: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#D4B85A', letterSpacing: '0.22em',
   textTransform: 'uppercase',
-  // Stack each character so it reads vertically without writing-mode/rotation,
-  // which can render unpredictably in some grid contexts.
+  // Stack each character so it reads vertically without writing-mode/rotation.
   display: 'flex', flexDirection: 'column', alignItems: 'center',
-  lineHeight: 1.1,
+  lineHeight: 1.15,
   textAlign: 'center',
 }
