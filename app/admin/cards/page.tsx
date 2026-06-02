@@ -88,8 +88,25 @@ export default function AdminCards() {
   }
   useEffect(() => { loadMembers(); loadOrphans() }, [])
 
-  const purgeAccount = async (memberNumber: string) => {
-    if (!confirm(`Permanently delete the credit account for member ${memberNumber}? This wipes the row and all transaction history. Cannot be undone.`)) return
+  // Confirm-modal state — three destructive paths route through it:
+  //   • purge  → wipe credit account + transaction history (most destructive)
+  //   • unlink → release a card from its member (moderate; balance kept)
+  //   • relink → reassign a card from one member to another (moderate)
+  const [confirmModal, setConfirmModal] = useState<
+    | { kind: 'purge'; memberNumber: string; memberName: string }
+    | { kind: 'unlink'; uid: string; memberName: string }
+    | { kind: 'relink'; uid: string; fromName: string; fromBalance: number; toNumber: string; toName: string }
+    | null
+  >(null)
+  const [confirmBusy, setConfirmBusy] = useState(false)
+  const closeConfirm = () => { if (!confirmBusy) setConfirmModal(null) }
+
+  const purgeAccount = (memberNumber: string) => {
+    const memberName = members.find(m => m.member_number === memberNumber)?.full_name || memberNumber
+    setConfirmModal({ kind: 'purge', memberNumber, memberName })
+  }
+
+  const runPurge = async (memberNumber: string) => {
     setBusy(true)
     const r = await fetch('/api/admin/cards/purge', {
       method: 'POST',
@@ -170,23 +187,30 @@ export default function AdminCards() {
     // Confirm before stealing a card from another member.
     const currentOwner = members.find(m => m.card_uid === uid && m.member_number !== pickerNumber)
     if (currentOwner) {
-      const ok = confirm(
-        `Card ${uid} is currently linked to ${currentOwner.full_name} (${currentOwner.member_number}).\n\n` +
-        `Reassign it to ${members.find(m => m.member_number === pickerNumber)?.full_name || pickerNumber}?\n\n` +
-        `Their credit balance (${fmt(currentOwner.credit_vnd)}) will be preserved on their account.`
-      )
-      if (!ok) return
+      setConfirmModal({
+        kind: 'relink',
+        uid,
+        fromName:    `${currentOwner.full_name} (${currentOwner.member_number})`,
+        fromBalance: currentOwner.credit_vnd,
+        toNumber:    pickerNumber,
+        toName:      members.find(m => m.member_number === pickerNumber)?.full_name || pickerNumber,
+      })
+      return
     }
+    await doLinkCard(uid, pickerNumber)
+  }
+
+  const doLinkCard = async (linkUid: string, memberNumber: string) => {
     setBusy(true)
     const r = await fetch('/api/admin/cards/link', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ uid, member_number: pickerNumber }),
+      body: JSON.stringify({ uid: linkUid, member_number: memberNumber }),
     })
     setBusy(false)
     if (r.ok) {
       showToast('Card linked')
-      handleScan(uid)
+      handleScan(linkUid)
       loadMembers()
     } else {
       const d = await r.json().catch(() => ({}))
@@ -194,20 +218,45 @@ export default function AdminCards() {
     }
   }
 
-  const unlinkCard = async () => {
+  const unlinkCard = () => {
     if (!uid) return
-    if (!confirm('Unlink this card from its member? Credit balance will be preserved if relinked to the same member.')) return
+    const owner = members.find(m => m.card_uid === uid)
+    setConfirmModal({
+      kind: 'unlink',
+      uid,
+      memberName: owner ? `${owner.full_name} (${owner.member_number})` : 'unknown member',
+    })
+  }
+
+  const doUnlinkCard = async (unlinkUid: string) => {
     setBusy(true)
     const r = await fetch('/api/admin/cards/link', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ uid }),
+      body: JSON.stringify({ uid: unlinkUid }),
     })
     setBusy(false)
     if (r.ok) {
       showToast('Card unlinked')
-      handleScan(uid)
+      handleScan(unlinkUid)
       loadMembers()
+    }
+  }
+
+  const runConfirm = async () => {
+    if (!confirmModal) return
+    setConfirmBusy(true)
+    try {
+      if (confirmModal.kind === 'purge') {
+        await runPurge(confirmModal.memberNumber)
+      } else if (confirmModal.kind === 'unlink') {
+        await doUnlinkCard(confirmModal.uid)
+      } else if (confirmModal.kind === 'relink') {
+        await doLinkCard(confirmModal.uid, confirmModal.toNumber)
+      }
+      setConfirmModal(null)
+    } finally {
+      setConfirmBusy(false)
     }
   }
 
@@ -525,6 +574,109 @@ export default function AdminCards() {
           {toast}
         </div>
       )}
+
+      {/* ── Confirm modal (branded, replaces native window.confirm) ──── */}
+      {confirmModal && (() => {
+        const config = (() => {
+          if (confirmModal.kind === 'purge') return {
+            title:    'Purge credit account?',
+            severity: 'red' as const,
+            subject:  `${confirmModal.memberName} (${confirmModal.memberNumber})`,
+            body:     'Permanently deletes the credit account row AND all transaction history. The audit trail is GONE. Cannot be undone.',
+            confirm:  'Purge account',
+            eyebrow:  '⚠ PERMANENT',
+          }
+          if (confirmModal.kind === 'unlink') return {
+            title:    'Unlink card?',
+            severity: 'amber' as const,
+            subject:  `Card ${confirmModal.uid} · ${confirmModal.memberName}`,
+            body:     'The card stops resolving to the member. The member\'s credit balance is preserved — re-linking the same card later restores access.',
+            confirm:  'Unlink',
+            eyebrow:  'CONFIRM',
+          }
+          return {  // relink
+            title:    'Reassign card to another member?',
+            severity: 'amber' as const,
+            subject:  `Card ${confirmModal.uid}: ${confirmModal.fromName} → ${confirmModal.toName} (${confirmModal.toNumber})`,
+            body:     `${confirmModal.fromName}'s credit balance (${fmt(confirmModal.fromBalance)}) stays on their account. The card just stops resolving to them.`,
+            confirm:  'Reassign',
+            eyebrow:  'CONFIRM',
+          }
+        })()
+        const tone = config.severity === 'red'
+          ? { border: '#C27070', accent: '#C27070', confirmBg: '#C27070', confirmFg: '#FFFFFF' }
+          : { border: '#D4B85A', accent: '#D4B85A', confirmBg: '#D4B85A', confirmFg: '#052E20' }
+        return (
+          <>
+            <div style={cardsConfirmBackdrop} onClick={closeConfirm} />
+            <div style={{ ...cardsConfirmModalBox, borderColor: tone.border, borderLeft: `3px solid ${tone.accent}` }} role="dialog">
+              <div style={{ ...cardsConfirmEyebrow, color: tone.accent }}>{config.eyebrow}</div>
+              <div style={cardsConfirmTitle}>{config.title}</div>
+              <div style={cardsConfirmSubject}>{config.subject}</div>
+              <p style={cardsConfirmBody}>{config.body}</p>
+              <div style={cardsConfirmActions}>
+                <button onClick={closeConfirm} disabled={confirmBusy} style={cardsConfirmCancelBtn}>Cancel</button>
+                <button
+                  onClick={runConfirm}
+                  disabled={confirmBusy}
+                  style={{ ...cardsConfirmGoBtn, background: tone.confirmBg, color: tone.confirmFg, opacity: confirmBusy ? 0.5 : 1 }}
+                >
+                  {confirmBusy ? 'Working…' : config.confirm}
+                </button>
+              </div>
+            </div>
+          </>
+        )
+      })()}
     </>
   )
+}
+
+// ── Confirm modal styles (scoped, named cardsConfirm* to not collide) ──
+const cardsConfirmBackdrop: React.CSSProperties = {
+  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300,
+}
+const cardsConfirmModalBox: React.CSSProperties = {
+  position: 'fixed',
+  top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+  width: 'min(520px, 92vw)',
+  background: '#0A3526',
+  border: '1px solid rgba(212,184,90,0.45)',
+  borderRadius: 8,
+  padding: '22px 24px',
+  zIndex: 301,
+  boxShadow: '0 20px 60px rgba(0,0,0,0.55)',
+}
+const cardsConfirmEyebrow: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700,
+  marginBottom: 8,
+}
+const cardsConfirmTitle: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 18,
+  color: '#E5D4C2', letterSpacing: '0.02em', marginBottom: 6,
+}
+const cardsConfirmSubject: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', marginBottom: 12,
+}
+const cardsConfirmBody: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', lineHeight: 1.65, marginBottom: 14,
+}
+const cardsConfirmActions: React.CSSProperties = {
+  display: 'flex', gap: 10, justifyContent: 'flex-end',
+}
+const cardsConfirmCancelBtn: React.CSSProperties = {
+  background: 'transparent', color: '#B2AA98',
+  border: '1px solid rgba(229,212,194,0.20)', borderRadius: 4,
+  padding: '8px 16px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, letterSpacing: '0.06em',
+  cursor: 'pointer',
+}
+const cardsConfirmGoBtn: React.CSSProperties = {
+  border: 'none', borderRadius: 4,
+  padding: '8px 18px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
+  cursor: 'pointer',
 }
