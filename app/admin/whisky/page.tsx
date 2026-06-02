@@ -120,7 +120,7 @@ export default function AdminWhisky() {
     })
   }, [stocktakeBefore])
 
-  const finishStocktake = () => {
+  const finishStocktake = async () => {
     if (stocktakeReviewed.size === 0) {
       showToast('No whiskies reviewed yet — mark at least one before finishing.', 'warn')
       return
@@ -158,12 +158,68 @@ export default function AdminWhisky() {
     a.download = `trc-stocktake-${stamp}.csv`
     document.body.appendChild(a); a.click(); document.body.removeChild(a)
     URL.revokeObjectURL(url)
+
+    // Persist a session row so the history panel reflects it. Failure
+    // here is non-fatal — the CSV is already downloaded — but log a
+    // toast so staff know to retry or note it.
+    try {
+      const summary = reviewed
+        .map(([id, r]) => {
+          const w = byId.get(id)
+          if (!w) return null
+          return { id, name: w.name, fill_before: r.fillBefore, fill_after: r.fillAfter, changed: r.changed }
+        })
+        .filter((x): x is { id: string; name: string; fill_before: number | null; fill_after: number; changed: boolean } => x !== null)
+      const resp = await fetch('/api/admin/whiskies/stocktake', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          started_at: stocktakeStartedAt,
+          finished_by: null,  // server uses session email; finished_by is room for a written name later
+          total_catalogue_count: whiskies.length,
+          summary,
+        }),
+      })
+      if (resp.ok) {
+        showToast('Stocktake session saved.', 'info')
+        loadStocktakeHistory()
+      } else {
+        const j = await resp.json().catch(() => ({}))
+        showToast(`Stocktake CSV downloaded; session save failed: ${j.error || resp.status}`, 'warn')
+      }
+    } catch (e) {
+      showToast(`Stocktake CSV downloaded; session save failed: ${(e as Error).message}`, 'warn')
+    }
+
     // Reset state.
     setStocktakeMode(false)
     setStocktakeBefore(new Map())
     setStocktakeReviewed(new Map())
     setStocktakeStartedAt(null)
   }
+
+  // Stocktake history — last 20 sessions, loaded once on mount and after
+  // each new finish so the panel is always current.
+  interface StocktakeSession {
+    id: string
+    started_at: string
+    finished_at: string
+    finished_by: string | null
+    finished_by_email: string | null
+    reviewed_count: number
+    changed_count: number
+    unchanged_count: number
+    total_catalogue_count: number
+  }
+  const [stocktakeHistory, setStocktakeHistory] = useState<StocktakeSession[]>([])
+  const loadStocktakeHistory = useCallback(async () => {
+    try {
+      const r = await fetch('/api/admin/whiskies/stocktake?limit=20', { cache: 'no-store' })
+      if (!r.ok) return
+      const j = await r.json()
+      if (Array.isArray(j.sessions)) setStocktakeHistory(j.sessions)
+    } catch { /* */ }
+  }, [])
+  useEffect(() => { loadStocktakeHistory() }, [loadStocktakeHistory])
 
   // "Confirm unchanged" — staff visually verified the bottle and the
   // level is the same. Marks reviewed without a DB write.
@@ -575,6 +631,47 @@ export default function AdminWhisky() {
           ) : (
             <TrendGraph history={history} whiskies={whiskies} />
           )}
+        </div>
+      )}
+
+      {/* ── Recent stocktakes (last 20) ─────────────────────────────── */}
+      {stocktakeHistory.length > 0 && (
+        <div style={stocktakeHistoryBlock}>
+          <div style={{ ...miniLabel, marginBottom: 8 }}>
+            Recent stocktakes · {stocktakeHistory.length}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {stocktakeHistory.map(s => {
+              const finishedDate = new Date(s.finished_at)
+              const durationMin = Math.max(0, Math.round((new Date(s.finished_at).getTime() - new Date(s.started_at).getTime()) / 60000))
+              return (
+                <div key={s.id} style={stocktakeHistoryRow}>
+                  <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#E5D4C2', minWidth: 200 }}>
+                    {finishedDate.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98' }}>
+                    by {s.finished_by_email || s.finished_by || 'unknown'}
+                  </span>
+                  <span style={{ ...stocktakeHistoryChip('#7AB07A') }}>
+                    {s.reviewed_count} reviewed
+                  </span>
+                  {s.changed_count > 0 && (
+                    <span style={{ ...stocktakeHistoryChip('#D4B85A') }}>
+                      {s.changed_count} changed
+                    </span>
+                  )}
+                  <span style={{ ...stocktakeHistoryChip('#7E7864') }}>
+                    {Math.round(100 * s.reviewed_count / Math.max(1, s.total_catalogue_count))}% of catalogue
+                  </span>
+                  {durationMin > 0 && (
+                    <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#7E7864', marginLeft: 'auto' }}>
+                      {durationMin}m session
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
@@ -1443,6 +1540,33 @@ const stocktakeFinishBtn: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
   cursor: 'pointer',
 }
+// Stocktake history strip — sits between the trend graph and the
+// filter row. Hidden when there are no sessions yet.
+const stocktakeHistoryBlock: React.CSSProperties = {
+  marginBottom: 14, padding: '12px 14px',
+  background: 'rgba(122,176,122,0.04)',
+  border: '1px solid rgba(122,176,122,0.20)',
+  borderLeft: '2px solid #7AB07A',
+  borderRadius: 6,
+}
+const stocktakeHistoryRow: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+  padding: '6px 10px',
+  background: 'rgba(229,212,194,0.03)',
+  border: '1px solid rgba(229,212,194,0.08)',
+  borderRadius: 4,
+}
+function stocktakeHistoryChip(c: string): React.CSSProperties {
+  return {
+    fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+    color: c,
+    background: c + '14',
+    border: `1px solid ${c}40`,
+    borderRadius: 3, padding: '2px 8px',
+    letterSpacing: '0.08em', textTransform: 'uppercase',
+  }
+}
+
 // Bulk-edit row highlight when checkbox is selected.
 const bulkSelectedRow: React.CSSProperties = {
   background: 'rgba(122,176,122,0.06)',
