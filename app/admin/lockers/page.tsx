@@ -92,6 +92,10 @@ export default function LockersPage() {
   const [seedCols, setSeedCols] = useState(10)
   const [seedPrefix, setSeedPrefix] = useState('')
   const [filter, setFilter] = useState<string>('all')
+  // Member-search highlight — type a name fragment to dim non-matching
+  // tiles. Matches against assigned member's full name, nickname, AND
+  // locker number, so the bar can find by any of those.
+  const [memberSearch, setMemberSearch] = useState('')
 
   // Whiskies come from the same `whiskies` table the Atlas reads; RLS lets
   // admins see everything, and the catalogue is small enough to ship in one
@@ -225,6 +229,12 @@ export default function LockersPage() {
             </button>
           ))}
         </div>
+        <input
+          value={memberSearch}
+          onChange={e => setMemberSearch(e.target.value)}
+          placeholder="Find a member or locker no…"
+          style={{ ...inputStyle, maxWidth: 260, flex: '0 1 260px' }}
+        />
         <button onClick={() => setSeedOpen(s => !s)} style={btnGhost}>
           {seedOpen ? 'Cancel' : noGrid ? '＋ Seed grid' : '＋ Add more lockers'}
         </button>
@@ -281,6 +291,7 @@ export default function LockersPage() {
               lockerByPos={lockerByPos}
               onOpen={(no) => setOpenLocker(no)}
               filter={filter}
+              memberSearch={memberSearch}
             />
 
             <div style={doorColumn}>
@@ -303,6 +314,7 @@ export default function LockersPage() {
               lockerByPos={lockerByPos}
               onOpen={(no) => setOpenLocker(no)}
               filter={filter}
+              memberSearch={memberSearch}
             />
           </div>
         )
@@ -334,7 +346,7 @@ export default function LockersPage() {
 // row width between two data rows.
 function SubGrid({
   cols, rows, colOffset, tileH, gap, showRowLabels,
-  dividerAfterRow, lockerByPos, onOpen, filter,
+  dividerAfterRow, lockerByPos, onOpen, filter, memberSearch,
 }: {
   cols: number
   rows: number
@@ -346,7 +358,21 @@ function SubGrid({
   lockerByPos: Map<string, Locker>
   onOpen: (locker_no: string) => void
   filter: string
+  memberSearch: string
 }) {
+  // Search predicate: matches against member full name, nickname, OR
+  // the locker number itself. Case-insensitive, substring match. Empty
+  // query = no dimming. Status filter and search compose multiplicatively.
+  const q = memberSearch.trim().toLowerCase()
+  const matchesSearch = (l: Locker) => {
+    if (!q) return true
+    return (
+      l.locker_no.toLowerCase().includes(q) ||
+      (l.member_name || '').toLowerCase().includes(q) ||
+      (l.member_nickname || '').toLowerCase().includes(q) ||
+      (l.label || '').toLowerCase().includes(q)
+    )
+  }
   const labelOffset = showRowLabels ? 1 : 0
   const gridTemplateColumns = showRowLabels
     ? `36px repeat(${cols}, minmax(72px, 1fr))`
@@ -400,7 +426,8 @@ function SubGrid({
               />
             )
           }
-          const dim = filter !== 'all' && l.status !== filter
+          const dim = (filter !== 'all' && l.status !== filter) || !matchesSearch(l)
+          const isSearchHit = q.length > 0 && matchesSearch(l)
           return (
             <button
               key={l.locker_no}
@@ -409,7 +436,8 @@ function SubGrid({
                 ...tileBase,
                 ...tileByStatus(l.status),
                 ...cellPlacement,
-                opacity: dim ? 0.25 : 1,
+                opacity: dim ? 0.18 : 1,
+                ...(isSearchHit ? { outline: '2px solid #D4B85A', outlineOffset: 1 } : {}),
               }}
               title={`${l.locker_no} · ${l.member_name || 'unassigned'}`}
             >

@@ -28,6 +28,11 @@ interface Sheet {
   submitted_by: string | null
   submitted_at: string | null
   template_version_at?: string | null
+  // Closing-sheet only — the handover-ack receipt written by the
+  // opening team via MX Daily. Stays null for opening sheets and for
+  // closing sheets that haven't been acknowledged yet.
+  handover_acknowledged_by?: string | null
+  handover_acknowledged_at?: string | null
 }
 
 const OPENING_LABEL = 'Opening · club ready to open'
@@ -452,6 +457,15 @@ function DetailSheet({ sheet, kindLabel, kindColor }: {
   const ticked = sheet.items.filter(i => i.checked).length
   const sealed = !!sheet.submitted_at
 
+  // Closing-only — render the handover-ack receipt under the seal line
+  // when present. Three states the loop can be in for a closing sheet:
+  //   1. sealed AND acknowledged → "✓ Sealed... · ✓ Read by X · t"
+  //   2. sealed but not yet acknowledged → "✓ Sealed... · ○ awaiting handover-ack"
+  //   3. not sealed → existing "in progress" state, no ack possible yet
+  const isClosing = sheet.kind === 'closing'
+  const ackBy = sheet.handover_acknowledged_by
+  const ackAt = sheet.handover_acknowledged_at
+
   return (
     <div style={detailSheetBlock} data-print-sheet>
       <div style={detailSheetHeader}>
@@ -466,6 +480,20 @@ function DetailSheet({ sheet, kindLabel, kindColor }: {
             <span style={{ color: '#E58F4A' }}>○ In progress — not yet sealed ({ticked}/{total} ticked)</span>
           )}
         </div>
+        {isClosing && sealed && (
+          <div style={detailAckLine}>
+            {ackAt ? (
+              <>
+                <strong style={{ color: '#7AB07A' }}>✓ Handover read by {ackBy || 'unknown'}</strong>
+                <span style={{ color: '#7E7864', marginLeft: 8 }}>· {fmtTimestamp(ackAt)}</span>
+              </>
+            ) : (
+              <span style={{ color: '#B2AA98', fontStyle: 'italic' }}>
+                ○ Awaiting handover-acknowledgement — opening team will tick this on MX Daily.
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {grouped.map(({ zone, items }) => (
@@ -880,6 +908,10 @@ const detailSheetHeader: React.CSSProperties = {
 const detailSealLine: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 11,
   color: '#E5D4C2', marginTop: 4, letterSpacing: '0.04em',
+}
+const detailAckLine: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  color: '#B2AA98', marginTop: 4, letterSpacing: '0.04em',
 }
 const detailItemRow: React.CSSProperties = {
   display: 'flex', alignItems: 'flex-start', gap: 8,
