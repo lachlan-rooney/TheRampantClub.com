@@ -81,13 +81,29 @@ export default function AdminWhisky() {
     setStocktakeMode(true)
   }
 
-  const cancelStocktake = () => {
-    if (!window.confirm('Cancel this stocktake? Any fill updates already saved during the session stay (they are real DB writes), but the session report will not be generated.')) return
+  // Modal-driven cancel — branded confirmation, not the OS-native dialog
+  // that breaks the visual frame. Same posture as the delete modal but
+  // amber (judgment-level decision) rather than red (destructive).
+  const [stocktakeCancelOpen, setStocktakeCancelOpen] = useState(false)
+  const cancelStocktake = () => setStocktakeCancelOpen(true)
+  const confirmCancelStocktake = () => {
     setStocktakeMode(false)
     setStocktakeBefore(new Map())
     setStocktakeReviewed(new Map())
     setStocktakeStartedAt(null)
+    setStocktakeCancelOpen(false)
   }
+  const dismissCancelStocktake = () => setStocktakeCancelOpen(false)
+
+  // Non-blocking toast for friendly notices (replaces alert()). Auto-
+  // dismisses after a few seconds so it never blocks the flow.
+  const [toast, setToast] = useState<{ message: string; tone: 'info' | 'warn' } | null>(null)
+  useEffect(() => {
+    if (!toast) return
+    const id = setTimeout(() => setToast(null), 3800)
+    return () => clearTimeout(id)
+  }, [toast])
+  const showToast = (message: string, tone: 'info' | 'warn' = 'info') => setToast({ message, tone })
 
   // Auto-marks a whisky as reviewed during stocktake. Called from the
   // fill-save flow and from the explicit "no change" button.
@@ -106,7 +122,7 @@ export default function AdminWhisky() {
 
   const finishStocktake = () => {
     if (stocktakeReviewed.size === 0) {
-      alert('No whiskies reviewed yet — nothing to report.')
+      showToast('No whiskies reviewed yet — mark at least one before finishing.', 'warn')
       return
     }
     // Detailed report CSV.
@@ -431,6 +447,12 @@ export default function AdminWhisky() {
 
   return (
     <>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes rc-toast-in {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      ` }} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <h1 style={pageTitle}>Whisky Library</h1>
         {!showForm && (
@@ -731,6 +753,37 @@ export default function AdminWhisky() {
           <div style={emptyText}>No whiskies match this filter.</div>
         )}
       </div>
+
+      {/* ── Stocktake cancel confirmation (branded, replaces window.confirm) ── */}
+      {stocktakeCancelOpen && (
+        <>
+          <div style={deleteBackdrop} onClick={dismissCancelStocktake} />
+          <div style={cancelModal} role="dialog" aria-labelledby="cancel-title">
+            <div style={{ ...miniLabel, color: '#D4B85A', marginBottom: 8 }} id="cancel-title">CANCEL STOCKTAKE</div>
+            <div style={cancelHeadline}>End this session without saving a report?</div>
+            <div style={deleteBodyText}>
+              <strong style={{ color: '#E5D4C2' }}>{stocktakeReviewed.size}</strong> whisk{stocktakeReviewed.size === 1 ? 'y has' : 'ies have'} been reviewed so far. Fill updates already saved during the session <strong>stay in the database</strong> (they are real audit-trail writes). The only thing you lose by cancelling is the session report CSV.
+            </div>
+            <div style={deleteBodyText}>
+              If you want the report, click <strong>Finish &amp; download</strong> instead.
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 14 }}>
+              <button onClick={dismissCancelStocktake} style={deleteCancelBtn}>Keep going</button>
+              <button onClick={confirmCancelStocktake} style={cancelConfirmBtn}>End session</button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Toast notice ─────────────────────────────────────────────── */}
+      {toast && (
+        <div style={toast.tone === 'warn' ? toastWarn : toastInfo} role="status">
+          <span style={{ marginRight: 8, color: toast.tone === 'warn' ? '#D4B85A' : '#7AB07A' }}>
+            {toast.tone === 'warn' ? '!' : '✓'}
+          </span>
+          {toast.message}
+        </div>
+      )}
 
       {/* ── Delete confirmation modal ──────────────────────────────────
           Hard-delete cascades to whisky_fill_history, so the user has to
@@ -1155,6 +1208,59 @@ const deleteBodyText: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 11,
   color: '#B2AA98', lineHeight: 1.65, marginBottom: 10,
 }
+// Stocktake-cancel modal — amber-toned (judgment call, not destructive)
+// so it doesn't share the delete modal's red emergency vocabulary. Same
+// position + frame as the delete modal so the visual posture is
+// consistent.
+const cancelModal: React.CSSProperties = {
+  position: 'fixed',
+  top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+  width: 'min(480px, 92vw)',
+  background: '#0A3526',
+  border: '1px solid rgba(212,184,90,0.45)',
+  borderLeft: '3px solid #D4B85A',
+  borderRadius: 8,
+  padding: '22px 24px',
+  zIndex: 301,
+  boxShadow: '0 20px 60px rgba(0,0,0,0.55)',
+}
+const cancelHeadline: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 17,
+  color: '#E5D4C2', letterSpacing: '0.02em',
+  marginBottom: 12,
+}
+const cancelConfirmBtn: React.CSSProperties = {
+  background: '#D4B85A', color: '#052E20',
+  border: 'none', borderRadius: 4,
+  padding: '8px 18px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
+  cursor: 'pointer',
+}
+
+// Toast — bottom-right pill, auto-dismisses. Two tones: info (green) for
+// success/confirmation, warn (gold) for non-blocking validation notices.
+const toastBase: React.CSSProperties = {
+  position: 'fixed', bottom: 24, right: 24, zIndex: 400,
+  padding: '12px 18px',
+  background: '#0A3526',
+  borderRadius: 8,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
+  color: '#E5D4C2', letterSpacing: '0.02em',
+  display: 'flex', alignItems: 'center',
+  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+  animation: 'rc-toast-in 0.22s ease-out',
+}
+const toastInfo: React.CSSProperties = {
+  ...toastBase,
+  border: '1px solid rgba(122,176,122,0.45)',
+  borderLeft: '3px solid #7AB07A',
+}
+const toastWarn: React.CSSProperties = {
+  ...toastBase,
+  border: '1px solid rgba(212,184,90,0.45)',
+  borderLeft: '3px solid #D4B85A',
+}
+
 const deleteCancelBtn: React.CSSProperties = {
   background: 'transparent', color: '#B2AA98',
   border: '1px solid rgba(229,212,194,0.20)', borderRadius: 4,
