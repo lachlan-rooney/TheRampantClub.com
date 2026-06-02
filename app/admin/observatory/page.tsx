@@ -211,7 +211,7 @@ export default function ObservatoryPage() {
   const [analysisPhase, setAnalysisPhase] = useState<'idle' | 'analysing' | 'done' | 'error'>('idle')
   const [analysisError, setAnalysisError] = useState<string | null>(null)
   const [demoTokens, setDemoTokens] = useState<{ input: number; output: number; cache_read: number; cache_created: number }>({ input: 0, output: 0, cache_read: 0, cache_created: 0 })
-  const [compareIds, setCompareIds] = useState<[string | null, string | null]>([null, null])
+  const [compareIds, setCompareIds] = useState<string[]>([])
   const demoAbortRef = useRef<AbortController | null>(null)
 
   const toggleRationale = useCallback((uid: string) => {
@@ -398,6 +398,22 @@ export default function ObservatoryPage() {
   // were captured before the field existed). Find the most-recently-active
   // group with ≥ 3 runs; that group's three most-recent runs are the
   // analyser's input.
+  // If the user has explicitly checked 3 runs that share a transcript_hash,
+  // the analyser uses those (manual override). Otherwise it falls back to the
+  // auto-pick (most-recent matching triple). If 3 are checked but they span
+  // multiple hashes, explicitTriple is null and the analyser button surfaces
+  // a "selected runs span multiple transcripts" hint.
+  const explicitTriple = useMemo<ProbeRun[] | null>(() => {
+    if (compareIds.length !== 3) return null
+    const picked = compareIds
+      .map(id => probeRuns.find(r => r.id === id))
+      .filter((r): r is ProbeRun => !!r && !!r.transcript_hash)
+    if (picked.length !== 3) return null
+    const hash = picked[0].transcript_hash
+    if (!picked.every(r => r.transcript_hash === hash)) return null
+    return picked
+  }, [compareIds, probeRuns])
+
   const analysableTriple = useMemo<ProbeRun[] | null>(() => {
     const hashed = probeRuns.filter(r => !!r.transcript_hash)
     if (hashed.length < 3) return null
@@ -416,7 +432,10 @@ export default function ObservatoryPage() {
   }, [probeRuns])
 
   const runConsistencyAnalysis = useCallback(async () => {
-    if (!analysableTriple) return
+    // Explicit selection (3 checkboxes sharing a hash) wins; else fall back
+    // to the auto-pick of the most-recent matching triple.
+    const triple = explicitTriple ?? analysableTriple
+    if (!triple) return
     setAnalysisError(null)
     setConsistencyReport(null)
     setConsistencyTriple(null)
@@ -424,7 +443,7 @@ export default function ObservatoryPage() {
     // Snapshot the triple AT analysis time so the report stays bound to the
     // specific three runs that were analysed — even if the user captures more
     // runs afterwards (which would shift `analysableTriple`).
-    const snapshot = analysableTriple
+    const snapshot = triple
     try {
       const r = await fetch('/api/admin/observatory/consistency', {
         method: 'POST',
@@ -440,7 +459,7 @@ export default function ObservatoryPage() {
       setAnalysisError((e as Error).message)
       setAnalysisPhase('error')
     }
-  }, [analysableTriple])
+  }, [analysableTriple, explicitTriple])
 
   // 1s heartbeat — drives Panel 1 recompute AND the demo countdown.
   useEffect(() => {
@@ -925,18 +944,20 @@ export default function ObservatoryPage() {
                 runs={probeRuns}
                 onRestore={restoreRun}
                 compareIds={compareIds}
-                onCompareToggle={(id) => setCompareIds(([a, b]) => {
-                  if (a === id) return [null, b]
-                  if (b === id) return [a, null]
-                  if (!a) return [id, b]
-                  if (!b) return [a, id]
-                  return [id, b]
+                onCompareToggle={(id) => setCompareIds(prev => {
+                  if (prev.includes(id)) return prev.filter(x => x !== id)
+                  // Cap at 3: 2 selected → 2-up compare; 3 selected → consistency
+                  // analyser uses these instead of the auto-pick.
+                  if (prev.length >= 3) return prev
+                  return [...prev, id]
                 })}
               />
             )}
             {probeRuns.length > 0 && (
               <ConsistencyControl
-                triple={analysableTriple}
+                triple={explicitTriple ?? analysableTriple}
+                source={explicitTriple ? 'explicit' : analysableTriple ? 'auto' : null}
+                explicitMismatch={compareIds.length === 3 && explicitTriple === null}
                 phase={analysisPhase}
                 error={analysisError}
                 onRun={runConsistencyAnalysis}
@@ -945,11 +966,11 @@ export default function ObservatoryPage() {
             {consistencyReport && consistencyTriple && (
               <ConsistencyReportView report={consistencyReport} triple={consistencyTriple as [ProbeRun, ProbeRun, ProbeRun]} />
             )}
-            {compareIds[0] && compareIds[1] && (
+            {compareIds.length === 2 && (
               <ProbeCompareView
                 a={probeRuns.find(r => r.id === compareIds[0])!}
                 b={probeRuns.find(r => r.id === compareIds[1])!}
-                onClose={() => setCompareIds([null, null])}
+                onClose={() => setCompareIds([])}
               />
             )}
           </>
@@ -1820,7 +1841,7 @@ function DemoPreferenceCard({ pref, index, phase, expanded, onToggleExpand }: {
 function ProbeRunsStrip({ runs, onRestore, compareIds, onCompareToggle }: {
   runs: ProbeRun[]
   onRestore: (id: string) => void
-  compareIds: [string | null, string | null]
+  compareIds: string[]
   onCompareToggle: (id: string) => void
 }) {
   return (
@@ -1828,12 +1849,13 @@ function ProbeRunsStrip({ runs, onRestore, compareIds, onCompareToggle }: {
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
         <span style={{ ...miniLabel, color: '#D4B85A' }}>PROBE RUNS · last {runs.length}</span>
         <span style={metaText}>
-          click a run to restore · check 2 to compare side-by-side · kept for this session only, nothing is saved
+          click a run to restore · check 2 to compare side-by-side · check 3 to override the auto-pick for AI consistency analysis · kept for this session only, nothing is saved
         </span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {runs.map((r, i) => {
-          const selected = compareIds[0] === r.id || compareIds[1] === r.id
+          const selected = compareIds.includes(r.id)
+          const atCap = compareIds.length >= 3 && !selected
           return (
             <div key={r.id} style={{
               ...probeRunRow,
@@ -1842,9 +1864,10 @@ function ProbeRunsStrip({ runs, onRestore, compareIds, onCompareToggle }: {
               <input
                 type="checkbox"
                 checked={selected}
+                disabled={atCap}
                 onChange={() => onCompareToggle(r.id)}
-                style={{ marginRight: 6 }}
-                title="select for compare"
+                style={{ marginRight: 6, opacity: atCap ? 0.35 : 1 }}
+                title={atCap ? '3 already selected (max)' : '2 = side-by-side compare · 3 = AI consistency analysis'}
               />
               <button onClick={() => onRestore(r.id)} style={probeRunButton}>
                 <span style={{ color: '#7E7864', marginRight: 8 }}>#{runs.length - i}</span>
@@ -1946,14 +1969,20 @@ function ProbeCompareCategoryList({ cats, prefs }: {
 
 // ─── Consistency analyser button + report ────────────────────────────────────
 
-function ConsistencyControl({ triple, phase, error, onRun }: {
+function ConsistencyControl({ triple, source, explicitMismatch, phase, error, onRun }: {
   triple: ProbeRun[] | null
+  source: 'explicit' | 'auto' | null
+  explicitMismatch: boolean
   phase: 'idle' | 'analysing' | 'done' | 'error'
   error: string | null
   onRun: () => void
 }) {
   const enabled = triple !== null && phase !== 'analysing'
-  const tooltip = !triple ? 'Run the same transcript three times to enable.' : ''
+  const tooltip = !triple
+    ? (explicitMismatch
+       ? 'Three runs selected but they span multiple transcripts. Tick 3 of the same.'
+       : 'Run the same transcript three times to enable.')
+    : ''
   const counts = triple?.map(r => r.preferences.length).join(' / ')
   return (
     <div style={consistencyControl}>
@@ -1971,12 +2000,19 @@ function ConsistencyControl({ triple, phase, error, onRun }: {
         </button>
         {triple ? (
           <span style={metaText}>
-            ready to analyse the 3 most-recent runs of <strong style={{ color: '#E5D4C2' }}>{triple[0].label}</strong> ·
+            {source === 'explicit'
+              ? <>analysing the <strong style={{ color: '#D4B85A' }}>3 selected runs</strong> of </>
+              : <>analysing the 3 most-recent runs of </>}
+            <strong style={{ color: '#E5D4C2' }}>{triple[0].label}</strong> ·
             counts {counts}
+          </span>
+        ) : explicitMismatch ? (
+          <span style={{ ...metaText, color: '#E58F4A' }}>
+            ⚠ selected runs span multiple transcripts · tick 3 of the same to analyse
           </span>
         ) : (
           <span style={metaText}>
-            requires ≥ 3 runs of the same transcript · gate is hash-equality, not label
+            requires ≥ 3 runs of the same transcript · auto-picks the most-recent triple, or tick 3 to override
           </span>
         )}
       </div>
