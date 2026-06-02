@@ -396,7 +396,7 @@ export default function ObservatoryPage() {
       // Sweep first — clears anything a previous tab left behind. The sweep
       // call doubles as the demo-gate probe: 200 → gate open, 403 → closed.
       try {
-        const r = await fetch('/api/admin/_debug/decay-demo', {
+        const r = await fetch('/api/admin/debug/decay-demo', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'sweep' }),
@@ -485,7 +485,7 @@ export default function ObservatoryPage() {
     if (!id) return
     setDemoState('reverting')
     try {
-      const r = await fetch('/api/admin/_debug/decay-demo', {
+      const r = await fetch('/api/admin/debug/decay-demo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'revert', id }),
@@ -518,7 +518,7 @@ export default function ObservatoryPage() {
         try {
           // Use sendBeacon so the request survives the page unload.
           const body = new Blob([JSON.stringify({ action: 'revert', id })], { type: 'application/json' })
-          navigator.sendBeacon?.('/api/admin/_debug/decay-demo', body)
+          navigator.sendBeacon?.('/api/admin/debug/decay-demo', body)
         } catch { /* ignore */ }
       }
     }
@@ -529,7 +529,7 @@ export default function ObservatoryPage() {
     setDemoError(null)
     setDemoState('promoting')
     try {
-      const r = await fetch('/api/admin/_debug/decay-demo', {
+      const r = await fetch('/api/admin/debug/decay-demo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'promote', category: demoCategory, lambda: demoLambda }),

@@ -20,7 +20,7 @@ import {
 //
 // Guarantees:
 //   1. Gated by MIS_DEMO_ENABLED='1' (trip-wire BEFORE the admin check —
-//      same posture as _debug/decay-demo). When the gate is off the route
+//      same posture as debug/decay-demo). When the gate is off the route
 //      403s and the UI renders a "demo disabled" state.
 //   2. NO writes. No `from('preferences')`, no `.insert(`, no `.update(`,
 //      no `.upsert(`, no `.delete(`, no `.rpc(` to any save function. The
