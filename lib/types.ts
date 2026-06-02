@@ -34,6 +34,11 @@ export interface Whisky {
   in_stock: boolean
   image_url: string | null
   added_at: string
+  // Fill tracking — current fill % of the open bar bottle plus the audit
+  // trail of the last update (full history lives in whisky_fill_history).
+  current_fill_pct: number | null
+  last_fill_updated_at: string | null
+  last_fill_updated_email: string | null
 }
 
 export interface Fixture {

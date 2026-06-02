@@ -1,25 +1,30 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import type { Whisky } from '@/lib/types'
 
+// Admin / Whisky Library
+//
+// Catalogue + bar-stock fill tracking. Each whisky row has an inline fill
+// % that staff update on their weekly bar walk; every update writes a
+// history entry with the admin's identity, and the page renders both a
+// per-row sparkline and an expandable "Inventory trend" graph at the top.
+//
+// The fill controls live alongside the existing catalogue editor (name /
+// distillery / region etc) so a single page does both jobs — no context
+// switch between "stock count" and "edit metadata".
+
 const REGIONS = ['Highland', 'Speyside', 'Islay', 'Lowland', 'Campbeltown', 'Islands', 'Japan', 'Ireland', 'Australia', 'Canada', 'China', 'Czechia', 'England', 'France', 'Germany', 'India', 'Mexico', 'Netherlands', 'New Zealand', 'Poland', 'Sweden', 'Switzerland', 'Taiwan', 'USA', 'Vietnam', 'Wales', 'Other'] as const
 
-const inputStyle: React.CSSProperties = {
-  background: 'rgba(229,212,194,0.06)', color: '#E5D4C2',
-  border: '1px solid rgba(229,212,194,0.1)', borderRadius: 8,
-  padding: '10px 14px', fontFamily: "'Google Sans Code', 'DM Mono', monospace",
-  fontSize: 12, width: '100%', boxSizing: 'border-box',
-}
-const labelStyle: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10,
-  color: '#B2AA98', letterSpacing: '0.04em', marginBottom: 4, display: 'block',
-}
-const btnStyle: React.CSSProperties = {
-  background: 'rgba(229,212,194,0.1)', color: '#E5D4C2', border: 'none',
-  borderRadius: 6, padding: '10px 24px', cursor: 'pointer',
-  fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12,
+interface FillHistoryRow {
+  id: string
+  whisky_id: string
+  fill_pct: number
+  previous_fill_pct: number | null
+  updated_by_email: string | null
+  note: string | null
+  created_at: string
 }
 
 export default function AdminWhisky() {
@@ -36,14 +41,34 @@ export default function AdminWhisky() {
   const [committeesPick, setCommitteesPick] = useState(false)
   const [inStock, setInStock] = useState(true)
 
+  // Fill UI state — separate from the catalogue editor so staff can update
+  // stock without opening the full edit form.
+  const [fillEditing, setFillEditing] = useState<string | null>(null)  // whisky id
+  const [draftFill, setDraftFill] = useState<number>(100)
+  const [draftNote, setDraftNote] = useState<string>('')
+  const [saving, setSaving] = useState<string | null>(null)
+
+  // Filter + sort — easier to scan a long catalogue when you're hunting
+  // for "the things that need a refill" specifically.
+  const [filterText, setFilterText] = useState('')
+  const [showOnlyLow, setShowOnlyLow] = useState(false)
+  const [showOnlyInStock, setShowOnlyInStock] = useState(false)
+
+  // Global trend graph — loaded on demand (the user asked for "upon
+  // request" so we don't pay the query cost on every page mount).
+  const [trendOpen, setTrendOpen] = useState(false)
+  const [history, setHistory] = useState<FillHistoryRow[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  const [historyError, setHistoryError] = useState<string | null>(null)
+
   const supabase = createBrowserSupabaseClient()
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const { data } = await supabase.from('whiskies').select('*').order('name')
-    if (data) setWhiskies(data)
-  }
+    if (data) setWhiskies(data as Whisky[])
+  }, [supabase])
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [load])
 
   const resetForm = () => {
     setName(''); setDistillery(''); setRegion(''); setCaskType(''); setAge(''); setAbv('')
@@ -83,19 +108,144 @@ export default function AdminWhisky() {
     load()
   }
 
+  const startFillEdit = (w: Whisky) => {
+    setFillEditing(w.id)
+    setDraftFill(w.current_fill_pct ?? 100)
+    setDraftNote('')
+  }
+
+  const cancelFillEdit = () => {
+    setFillEditing(null)
+    setDraftNote('')
+  }
+
+  const saveFill = async (w: Whisky) => {
+    setSaving(w.id)
+    try {
+      const r = await fetch(`/api/admin/whiskies/fill?id=${encodeURIComponent(w.id)}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fill_pct: draftFill, note: draftNote || undefined }),
+      })
+      const j = await r.json()
+      if (!r.ok) { alert(j.error || 'Failed to save fill'); return }
+      // Optimistic merge — the API echo gives us the canonical timestamp
+      // and admin email so the audit attribution updates immediately.
+      setWhiskies(prev => prev.map(x => x.id === w.id ? {
+        ...x,
+        current_fill_pct:        j.fill_pct,
+        last_fill_updated_at:    j.last_fill_updated_at ?? new Date().toISOString(),
+        last_fill_updated_email: j.last_fill_updated_email ?? x.last_fill_updated_email,
+      } : x))
+      if (j.history) {
+        setHistory(prev => [j.history as FillHistoryRow, ...prev])
+      }
+      cancelFillEdit()
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  const loadHistory = useCallback(async () => {
+    setLoadingHistory(true)
+    setHistoryError(null)
+    try {
+      const r = await fetch('/api/admin/whiskies/fill', { cache: 'no-store' })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error || 'failed')
+      setHistory(j.history || [])
+    } catch (e) {
+      setHistoryError((e as Error).message)
+    } finally {
+      setLoadingHistory(false)
+    }
+  }, [])
+
+  const openTrend = () => {
+    setTrendOpen(true)
+    if (history.length === 0 && !loadingHistory) loadHistory()
+  }
+
+  const filtered = useMemo(() => {
+    const q = filterText.trim().toLowerCase()
+    return whiskies.filter(w => {
+      if (showOnlyLow && (w.current_fill_pct ?? 100) > 25) return false
+      if (showOnlyInStock && !w.in_stock) return false
+      if (!q) return true
+      return [w.name, w.distillery, w.region].filter(Boolean).join(' ').toLowerCase().includes(q)
+    })
+  }, [whiskies, filterText, showOnlyLow, showOnlyInStock])
+
+  const lowCount = useMemo(() => whiskies.filter(w => (w.current_fill_pct ?? 100) <= 25).length, [whiskies])
+  const inStockCount = useMemo(() => whiskies.filter(w => w.in_stock).length, [whiskies])
+
+  // Per-whisky history slices for sparklines. Indexed once per history
+  // refresh so each row render is O(1).
+  const historyByWhisky = useMemo(() => {
+    const m = new Map<string, FillHistoryRow[]>()
+    for (const h of history) {
+      if (!m.has(h.whisky_id)) m.set(h.whisky_id, [])
+      m.get(h.whisky_id)!.push(h)
+    }
+    return m
+  }, [history])
+
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h1 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 24, fontWeight: 500, color: '#E5D4C2', letterSpacing: '0.04em' }}>
-          Whisky Library
-        </h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <h1 style={pageTitle}>Whisky Library</h1>
         {!showForm && (
           <button onClick={() => { resetForm(); setShowForm(true) }} style={btnStyle}>+ New Whisky</button>
         )}
       </div>
 
+      <div style={subline}>
+        Catalogue + open-bottle fill tracking. Click a fill cell to update — every change is logged with your name and time, and the trend graph reads the same audit trail.
+      </div>
+
+      {/* ── Stat strip ─────────────────────────────────────────────────── */}
+      <div style={statStrip}>
+        <Stat label="Whiskies"       value={whiskies.length} />
+        <Stat label="In stock"       value={inStockCount} color="#7AB07A" />
+        <Stat label="Low fill (≤25%)" value={lowCount} color={lowCount > 0 ? '#C27070' : '#7E7864'} />
+        <button onClick={openTrend} style={trendBtn}>
+          {trendOpen ? '↓' : '↑'} Inventory trend
+        </button>
+      </div>
+
+      {/* ── Global trend graph (lazy-loaded) ──────────────────────────── */}
+      {trendOpen && (
+        <div style={trendBlock}>
+          {loadingHistory ? (
+            <div style={emptyText}>Loading history…</div>
+          ) : historyError ? (
+            <div style={{ ...emptyText, color: '#C27070' }}>{historyError}</div>
+          ) : history.length === 0 ? (
+            <div style={emptyText}>No fill updates logged yet. The graph will populate as staff record weekly fills.</div>
+          ) : (
+            <TrendGraph history={history} whiskies={whiskies} />
+          )}
+        </div>
+      )}
+
+      {/* ── Filters ────────────────────────────────────────────────────── */}
+      <div style={filterRow}>
+        <input
+          value={filterText}
+          onChange={e => setFilterText(e.target.value)}
+          placeholder="Filter by name, distillery, or region…"
+          style={{ ...inputStyle, flex: 1, minWidth: 220 }}
+        />
+        <button onClick={() => setShowOnlyLow(v => !v)} style={{ ...chip, ...(showOnlyLow ? chipActive : null) }}>
+          ≤25% only
+        </button>
+        <button onClick={() => setShowOnlyInStock(v => !v)} style={{ ...chip, ...(showOnlyInStock ? chipActive : null) }}>
+          in stock only
+        </button>
+      </div>
+
+      {/* ── New / edit form (unchanged from before) ───────────────────── */}
       {showForm && (
-        <div style={{ padding: 24, background: 'rgba(229,212,194,0.03)', borderRadius: 8, marginBottom: 32, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={editBlock}>
           <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2' }}>
             {editing ? `Editing: ${editing.name}` : 'New Whisky'}
           </div>
@@ -113,7 +263,7 @@ export default function AdminWhisky() {
             <div style={{ flex: 1 }}>
               <label style={labelStyle}>Region</label>
               <select style={inputStyle} value={region} onChange={e => setRegion(e.target.value)}>
-                <option value="">Select...</option>
+                <option value="">Select…</option>
                 {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
@@ -151,35 +301,446 @@ export default function AdminWhisky() {
         </div>
       )}
 
+      {/* ── Whisky list with fill column ─────────────────────────────── */}
       <div>
-        {whiskies.map(w => (
-          <div key={w.id} style={{ padding: '16px 0', borderBottom: '1px solid rgba(229,212,194,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 14, color: '#E5D4C2' }}>{w.name}</span>
-                {w.distillery && <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>· {w.distillery}</span>}
-                {w.region && <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', background: 'rgba(229,212,194,0.1)', borderRadius: 4, padding: '2px 8px' }}>{w.region}</span>}
+        {filtered.map(w => {
+          const fill = w.current_fill_pct ?? 100
+          const isEditingFill = fillEditing === w.id
+          const wHistory = historyByWhisky.get(w.id) || []
+          const sparkPoints = wHistory.slice(0, 12).reverse()  // oldest → newest in the spark
+          return (
+            <div key={w.id} style={whiskyRow}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                  <span style={whiskyName}>{w.name}</span>
+                  {w.distillery && <span style={whiskySub}>· {w.distillery}</span>}
+                  {w.region && <span style={regionPill}>{w.region}</span>}
+                </div>
+                {w.last_fill_updated_at && (
+                  <div style={fillAuditLine}>
+                    Last fill: {w.last_fill_updated_email || 'unknown'} · {timeAgo(w.last_fill_updated_at)}
+                  </div>
+                )}
+              </div>
+
+              {/* Fill — inline editable. Click to open slider; saves with note. */}
+              <div style={fillCell}>
+                {isEditingFill ? (
+                  <div style={fillEditor}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input
+                        type="range" min={0} max={100} step={5}
+                        value={draftFill}
+                        onChange={e => setDraftFill(Number(e.target.value))}
+                        style={{ flex: 1 }}
+                      />
+                      <span style={{ ...fillPctText, color: fillColor(draftFill), width: 42, textAlign: 'right' }}>
+                        {draftFill}%
+                      </span>
+                    </div>
+                    <input
+                      value={draftNote}
+                      onChange={e => setDraftNote(e.target.value)}
+                      placeholder="Optional note (e.g. opened new bottle)"
+                      style={{ ...inputStyle, fontSize: 11, padding: '6px 10px' }}
+                    />
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                      <button onClick={cancelFillEdit} style={tinyBtn}>cancel</button>
+                      <button onClick={() => saveFill(w)} disabled={saving === w.id} style={{ ...tinyBtnPrimary, opacity: saving === w.id ? 0.5 : 1 }}>
+                        {saving === w.id ? 'saving…' : 'save'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => startFillEdit(w)} style={fillDisplayBtn} title="Click to update fill %">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ ...fillPctText, color: fillColor(fill) }}>{fill}%</div>
+                      <div style={fillBarTrack}>
+                        <div style={{ ...fillBarFill, width: `${fill}%`, background: fillColor(fill) }} />
+                      </div>
+                      {sparkPoints.length >= 2 && (
+                        <Sparkline points={sparkPoints} width={80} height={24} />
+                      )}
+                    </div>
+                  </button>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexShrink: 0 }}>
+                <button
+                  onClick={() => toggleField(w.id, 'committees_pick', w.committees_pick)}
+                  style={{ ...rowBtn, color: w.committees_pick ? '#E5D4C2' : '#B2AA98', opacity: w.committees_pick ? 1 : 0.4 }}
+                >
+                  ◆ Pick
+                </button>
+                <button
+                  onClick={() => toggleField(w.id, 'in_stock', w.in_stock)}
+                  style={{ ...rowBtn, background: w.in_stock ? 'rgba(94,102,80,0.3)' : 'rgba(229,212,194,0.06)', padding: '2px 10px', borderRadius: 4 }}
+                >
+                  {w.in_stock ? 'In Stock' : 'Out'}
+                </button>
+                <button onClick={() => startEdit(w)} style={{ ...rowBtn, opacity: 0.5 }}>Edit</button>
+                <button onClick={() => handleDelete(w.id)} style={{ ...rowBtn, opacity: 0.5 }}>Delete</button>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <button
-                onClick={() => toggleField(w.id, 'committees_pick', w.committees_pick)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: w.committees_pick ? '#E5D4C2' : '#B2AA98', opacity: w.committees_pick ? 1 : 0.4 }}
-              >
-                ◆ Pick
-              </button>
-              <button
-                onClick={() => toggleField(w.id, 'in_stock', w.in_stock)}
-                style={{ background: w.in_stock ? 'rgba(94,102,80,0.3)' : 'rgba(229,212,194,0.06)', border: 'none', borderRadius: 4, padding: '2px 10px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2' }}
-              >
-                {w.in_stock ? 'In Stock' : 'Out'}
-              </button>
-              <button onClick={() => startEdit(w)} style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.5, cursor: 'pointer' }}>Edit</button>
-              <button onClick={() => handleDelete(w.id)} style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.5, cursor: 'pointer' }}>Delete</button>
-            </div>
-          </div>
-        ))}
+          )
+        })}
+        {filtered.length === 0 && (
+          <div style={emptyText}>No whiskies match this filter.</div>
+        )}
       </div>
     </>
   )
+}
+
+// ─── Trend graph ─────────────────────────────────────────────────────────────
+
+function TrendGraph({ history, whiskies }: { history: FillHistoryRow[]; whiskies: Whisky[] }) {
+  // Per-whisky lines. We only plot whiskies that have ≥2 history points so
+  // the chart isn't a forest of stubs.
+  const whiskyName = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const w of whiskies) m.set(w.id, w.name)
+    return m
+  }, [whiskies])
+
+  const seriesById = useMemo(() => {
+    const m = new Map<string, FillHistoryRow[]>()
+    for (const h of [...history].sort((a, b) => a.created_at.localeCompare(b.created_at))) {
+      if (!m.has(h.whisky_id)) m.set(h.whisky_id, [])
+      m.get(h.whisky_id)!.push(h)
+    }
+    return [...m.entries()]
+      .filter(([, rows]) => rows.length >= 2)
+      .map(([id, rows]) => ({ id, name: whiskyName.get(id) || '(unknown)', rows }))
+  }, [history, whiskyName])
+
+  // SVG canvas — fixed aspect, 30-day window (or whatever the data covers).
+  const W = 880, H = 280, padL = 36, padR = 16, padT = 16, padB = 28
+  const innerW = W - padL - padR
+  const innerH = H - padT - padB
+
+  const allDates = history.map(h => +new Date(h.created_at))
+  if (allDates.length === 0) return <div style={emptyText}>No data.</div>
+  const minT = Math.min(...allDates)
+  const maxT = Math.max(...allDates)
+  const tSpan = Math.max(1, maxT - minT)
+
+  const xAt = (iso: string) => padL + ((+new Date(iso) - minT) / tSpan) * innerW
+  const yAt = (pct: number) => padT + (1 - pct / 100) * innerH
+
+  // Hover state — highlights one series at a time so a 30-line chart stays
+  // readable.
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
+
+  // Stable colour from id hash so a whisky keeps its line colour across
+  // page reloads (gold-family palette to match the brand).
+  const colourOf = (id: string) => {
+    let h = 0
+    for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) & 0xffff
+    const hue = (h % 60) - 30  // -30..30 around gold (~45°)
+    return `hsl(${45 + hue}, 60%, 60%)`
+  }
+
+  return (
+    <div>
+      <div style={{ ...miniLabel, marginBottom: 8 }}>
+        FILL % OVER TIME · {seriesById.length} whisk{seriesById.length === 1 ? 'y' : 'ies'} with ≥2 updates · {history.length} total updates
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}>
+        {/* Y axis grid + labels (0/25/50/75/100) */}
+        {[0, 25, 50, 75, 100].map(pct => (
+          <g key={pct}>
+            <line
+              x1={padL} x2={W - padR}
+              y1={yAt(pct)} y2={yAt(pct)}
+              stroke="rgba(229,212,194,0.08)" strokeWidth={1} strokeDasharray={pct === 0 ? undefined : '2 4'}
+            />
+            <text
+              x={padL - 6} y={yAt(pct) + 3}
+              textAnchor="end"
+              fontFamily="'Google Sans Code', monospace" fontSize={9} fill="#7E7864"
+            >
+              {pct}%
+            </text>
+          </g>
+        ))}
+
+        {/* X axis date ticks (oldest / newest) */}
+        <text x={padL} y={H - 10} fontFamily="'Google Sans Code', monospace" fontSize={9} fill="#7E7864">
+          {new Date(minT).toLocaleDateString()}
+        </text>
+        <text x={W - padR} y={H - 10} fontFamily="'Google Sans Code', monospace" fontSize={9} fill="#7E7864" textAnchor="end">
+          {new Date(maxT).toLocaleDateString()}
+        </text>
+
+        {/* Lines */}
+        {seriesById.map(s => {
+          const colour = colourOf(s.id)
+          const path = s.rows.map((h, i) =>
+            `${i === 0 ? 'M' : 'L'} ${xAt(h.created_at)} ${yAt(h.fill_pct)}`
+          ).join(' ')
+          const isHover = hoveredId === s.id
+          return (
+            <g key={s.id} onMouseEnter={() => setHoveredId(s.id)} onMouseLeave={() => setHoveredId(null)} style={{ cursor: 'pointer' }}>
+              <path
+                d={path}
+                fill="none"
+                stroke={colour}
+                strokeWidth={isHover ? 2.4 : 1.4}
+                opacity={hoveredId == null || isHover ? 0.95 : 0.18}
+              />
+              {s.rows.map(h => (
+                <circle
+                  key={h.id}
+                  cx={xAt(h.created_at)} cy={yAt(h.fill_pct)}
+                  r={isHover ? 3 : 2} fill={colour}
+                  opacity={hoveredId == null || isHover ? 1 : 0.18}
+                >
+                  <title>{`${s.name}\n${h.fill_pct}% · ${new Date(h.created_at).toLocaleString()}${h.updated_by_email ? `\nby ${h.updated_by_email}` : ''}${h.note ? `\n"${h.note}"` : ''}`}</title>
+                </circle>
+              ))}
+            </g>
+          )
+        })}
+      </svg>
+
+      {/* Legend */}
+      <div style={legendWrap}>
+        {seriesById.map(s => {
+          const colour = colourOf(s.id)
+          const dim = hoveredId != null && hoveredId !== s.id
+          return (
+            <button
+              key={s.id}
+              onMouseEnter={() => setHoveredId(s.id)}
+              onMouseLeave={() => setHoveredId(null)}
+              style={{ ...legendItem, opacity: dim ? 0.3 : 1 }}
+            >
+              <span style={{ ...legendSwatch, background: colour }} />
+              {s.name}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── Sparkline ───────────────────────────────────────────────────────────────
+
+function Sparkline({ points, width, height }: {
+  points: FillHistoryRow[]
+  width: number
+  height: number
+}) {
+  if (points.length < 2) return null
+  const minP = 0, maxP = 100
+  const xAt = (i: number) => (i / (points.length - 1)) * (width - 4) + 2
+  const yAt = (pct: number) => height - 2 - ((pct - minP) / (maxP - minP)) * (height - 4)
+  const path = points.map((h, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i)} ${yAt(h.fill_pct)}`).join(' ')
+  const last = points[points.length - 1].fill_pct
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ flexShrink: 0 }}>
+      <path d={path} fill="none" stroke={fillColor(last)} strokeWidth={1.4} strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+// ─── helpers + styles ───────────────────────────────────────────────────────
+
+function fillColor(pct: number): string {
+  if (pct <= 25) return '#C27070'
+  if (pct <= 50) return '#D4B85A'
+  return '#7AB07A'
+}
+
+function timeAgo(iso: string): string {
+  const t = new Date(iso).getTime()
+  const diff = Date.now() - t
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  if (days < 7) return `${days}d ago`
+  const weeks = Math.floor(days / 7)
+  if (weeks < 5) return `${weeks}w ago`
+  return new Date(iso).toLocaleDateString()
+}
+
+const pageTitle: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 24, fontWeight: 500,
+  color: '#E5D4C2', letterSpacing: '0.04em',
+}
+const subline: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', opacity: 0.8, lineHeight: 1.7, marginBottom: 18, maxWidth: 760,
+}
+const statStrip: React.CSSProperties = {
+  display: 'flex', gap: 10, marginBottom: 14, alignItems: 'center', flexWrap: 'wrap',
+}
+const statTile: React.CSSProperties = {
+  background: 'rgba(229,212,194,0.04)',
+  border: '1px solid rgba(229,212,194,0.08)',
+  borderRadius: 6, padding: '10px 14px',
+  minWidth: 120,
+}
+const statLabel: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#B2AA98', letterSpacing: '0.10em', textTransform: 'uppercase',
+}
+const statValue: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 20, fontWeight: 600,
+  marginTop: 2,
+}
+function Stat({ label, value, color }: { label: string; value: number; color?: string }) {
+  return (
+    <div style={statTile}>
+      <div style={statLabel}>{label}</div>
+      <div style={{ ...statValue, color: color || '#E5D4C2' }}>{value}</div>
+    </div>
+  )
+}
+
+const trendBtn: React.CSSProperties = {
+  marginLeft: 'auto',
+  background: 'rgba(212,184,90,0.10)', color: '#D4B85A',
+  border: '1px solid rgba(212,184,90,0.40)', borderRadius: 6,
+  padding: '10px 18px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, letterSpacing: '0.08em',
+  cursor: 'pointer',
+}
+const trendBlock: React.CSSProperties = {
+  marginBottom: 18, padding: 16,
+  background: 'rgba(5,46,32,0.6)',
+  border: '1px solid rgba(212,184,90,0.25)',
+  borderRadius: 8,
+}
+
+const filterRow: React.CSSProperties = {
+  display: 'flex', gap: 8, alignItems: 'center', marginBottom: 14, flexWrap: 'wrap',
+}
+const chip: React.CSSProperties = {
+  background: 'rgba(229,212,194,0.04)', color: '#B2AA98',
+  border: '1px solid rgba(229,212,194,0.10)', borderRadius: 4,
+  padding: '8px 12px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer',
+}
+const chipActive: React.CSSProperties = {
+  background: 'rgba(212,184,90,0.18)', color: '#D4B85A',
+  border: '1px solid rgba(212,184,90,0.40)',
+}
+
+const inputStyle: React.CSSProperties = {
+  background: 'rgba(229,212,194,0.06)', color: '#E5D4C2',
+  border: '1px solid rgba(229,212,194,0.1)', borderRadius: 8,
+  padding: '10px 14px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
+  width: '100%', boxSizing: 'border-box', outline: 'none',
+}
+const labelStyle: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  color: '#B2AA98', letterSpacing: '0.04em', marginBottom: 4, display: 'block',
+}
+const btnStyle: React.CSSProperties = {
+  background: 'rgba(229,212,194,0.1)', color: '#E5D4C2', border: 'none',
+  borderRadius: 6, padding: '10px 24px', cursor: 'pointer',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
+}
+const editBlock: React.CSSProperties = {
+  padding: 24, background: 'rgba(229,212,194,0.03)',
+  borderRadius: 8, marginBottom: 22,
+  display: 'flex', flexDirection: 'column', gap: 16,
+}
+
+const whiskyRow: React.CSSProperties = {
+  padding: '14px 0', borderBottom: '1px solid rgba(229,212,194,0.08)',
+  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+}
+const whiskyName: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 14, color: '#E5D4C2',
+}
+const whiskySub: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98',
+}
+const regionPill: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  color: '#E5D4C2', background: 'rgba(229,212,194,0.1)',
+  borderRadius: 4, padding: '2px 8px',
+}
+const fillAuditLine: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#7E7864', letterSpacing: '0.04em', marginTop: 2,
+}
+
+const fillCell: React.CSSProperties = {
+  flex: '0 0 auto', minWidth: 240,
+}
+const fillDisplayBtn: React.CSSProperties = {
+  background: 'transparent', border: '1px solid rgba(229,212,194,0.10)',
+  borderRadius: 6, padding: '8px 12px', cursor: 'pointer',
+  width: '100%', textAlign: 'left',
+}
+const fillPctText: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 13,
+  letterSpacing: '0.04em', fontWeight: 600,
+}
+const fillBarTrack: React.CSSProperties = {
+  flex: 1, height: 6, borderRadius: 3,
+  background: 'rgba(229,212,194,0.08)', overflow: 'hidden',
+}
+const fillBarFill: React.CSSProperties = {
+  height: '100%', transition: 'width 0.25s ease',
+}
+const fillEditor: React.CSSProperties = {
+  display: 'flex', flexDirection: 'column', gap: 6,
+  padding: 10,
+  background: 'rgba(212,184,90,0.08)',
+  border: '1px solid rgba(212,184,90,0.35)',
+  borderRadius: 6,
+}
+const tinyBtn: React.CSSProperties = {
+  background: 'transparent', color: '#B2AA98',
+  border: '1px solid rgba(229,212,194,0.16)', borderRadius: 4,
+  padding: '4px 10px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  cursor: 'pointer',
+}
+const tinyBtnPrimary: React.CSSProperties = {
+  ...tinyBtn,
+  background: 'rgba(94,102,80,0.55)', color: '#E5D4C2',
+  borderColor: 'rgba(94,102,80,0.7)',
+}
+
+const rowBtn: React.CSSProperties = {
+  background: 'none', border: 'none', cursor: 'pointer',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  color: '#E5D4C2',
+}
+
+const emptyText: React.CSSProperties = {
+  padding: '32px 0', textAlign: 'center',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
+  color: '#B2AA98', opacity: 0.6, fontStyle: 'italic',
+}
+
+const miniLabel: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#D4B85A', letterSpacing: '0.14em', textTransform: 'uppercase',
+}
+const legendWrap: React.CSSProperties = {
+  marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8,
+}
+const legendItem: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 6,
+  background: 'transparent', border: '1px solid rgba(229,212,194,0.08)',
+  borderRadius: 4, padding: '4px 8px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#E5D4C2',
+  cursor: 'pointer',
+}
+const legendSwatch: React.CSSProperties = {
+  display: 'inline-block', width: 10, height: 2, borderRadius: 1,
 }
