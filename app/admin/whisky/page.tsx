@@ -212,10 +212,38 @@ export default function AdminWhisky() {
     setWhiskies(prev => prev.map(w => w.id === id ? { ...w, [field]: !current } : w))
   }
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this whisky?')) return
-    await supabase.from('whiskies').delete().eq('id', id)
-    load()
+  // Delete is a hard CASCADE: removing a whisky also removes its
+  // whisky_fill_history rows (FK has on delete cascade) and any future
+  // tasting-note audit trail. A single window.confirm is too easy to
+  // dismiss-then-regret, so the actual delete requires the user to type
+  // the exact whisky name into a modal — same pattern GitHub uses for
+  // repo deletion.
+  const [deleteTarget, setDeleteTarget] = useState<Whisky | null>(null)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleting, setDeleting] = useState(false)
+
+  const openDelete = (w: Whisky) => {
+    setDeleteTarget(w)
+    setDeleteConfirmText('')
+  }
+  const closeDelete = () => {
+    if (deleting) return
+    setDeleteTarget(null)
+    setDeleteConfirmText('')
+  }
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    if (deleteConfirmText.trim() !== deleteTarget.name) return
+    setDeleting(true)
+    try {
+      const { error } = await supabase.from('whiskies').delete().eq('id', deleteTarget.id)
+      if (error) { alert(`Delete failed: ${error.message}`); return }
+      setDeleteTarget(null)
+      setDeleteConfirmText('')
+      load()
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const startFillEdit = (w: Whisky) => {
@@ -694,7 +722,7 @@ export default function AdminWhisky() {
                   </button>
                 )}
                 <button onClick={() => startEdit(w)} style={{ ...rowBtn, opacity: 0.5 }}>Edit</button>
-                <button onClick={() => handleDelete(w.id)} style={{ ...rowBtn, opacity: 0.5 }}>Delete</button>
+                <button onClick={() => openDelete(w)} style={{ ...rowBtn, opacity: 0.5 }}>Delete</button>
               </div>
             </div>
           )
@@ -703,6 +731,56 @@ export default function AdminWhisky() {
           <div style={emptyText}>No whiskies match this filter.</div>
         )}
       </div>
+
+      {/* ── Delete confirmation modal ──────────────────────────────────
+          Hard-delete cascades to whisky_fill_history, so the user has to
+          type the exact whisky name to enable the Delete button. Same
+          pattern GitHub uses for repository deletion. */}
+      {deleteTarget && (
+        <>
+          <div style={deleteBackdrop} onClick={closeDelete} />
+          <div style={deleteModal} role="dialog" aria-labelledby="delete-title">
+            <div style={{ ...miniLabel, color: '#C27070', marginBottom: 8 }} id="delete-title">⚠ PERMANENT DELETE</div>
+            <div style={deleteWhiskyName}>{deleteTarget.name}</div>
+            {deleteTarget.distillery && (
+              <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#B2AA98', marginBottom: 12 }}>
+                {deleteTarget.distillery}{deleteTarget.region ? ` · ${deleteTarget.region}` : ''}
+              </div>
+            )}
+            <div style={deleteBodyText}>
+              This removes the whisky from the catalogue. It also <strong>cascades</strong>: all of its fill-history audit rows are deleted (every weekly stocktake update, every staff edit). Locker contents that reference this whisky by name will not be touched, but they will no longer link to a real catalogue entry.
+            </div>
+            <div style={deleteBodyText}>
+              To confirm, type the whisky&rsquo;s name exactly:
+            </div>
+            <input
+              autoFocus
+              value={deleteConfirmText}
+              onChange={e => setDeleteConfirmText(e.target.value)}
+              placeholder={deleteTarget.name}
+              style={{ ...inputStyle, fontSize: 12 }}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && deleteConfirmText.trim() === deleteTarget.name) confirmDelete()
+                if (e.key === 'Escape') closeDelete()
+              }}
+            />
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 14 }}>
+              <button onClick={closeDelete} disabled={deleting} style={deleteCancelBtn}>Cancel</button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleteConfirmText.trim() !== deleteTarget.name || deleting}
+                style={{
+                  ...deleteConfirmBtn,
+                  opacity: (deleteConfirmText.trim() === deleteTarget.name && !deleting) ? 1 : 0.35,
+                  cursor: (deleteConfirmText.trim() === deleteTarget.name && !deleting) ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {deleting ? 'Deleting…' : 'Delete permanently'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   )
 }
@@ -1050,6 +1128,47 @@ const whiskyName: React.CSSProperties = {
 const whiskySub: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98',
 }
+// Delete confirmation modal — type-the-name pattern. Same vocabulary
+// the GitHub repo-delete uses; matches user expectation that "this is a
+// big deal, you need to commit".
+const deleteBackdrop: React.CSSProperties = {
+  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300,
+}
+const deleteModal: React.CSSProperties = {
+  position: 'fixed',
+  top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+  width: 'min(520px, 92vw)',
+  background: '#0A3526',
+  border: '1px solid rgba(194,112,112,0.45)',
+  borderLeft: '3px solid #C27070',
+  borderRadius: 8,
+  padding: '22px 24px',
+  zIndex: 301,
+  boxShadow: '0 20px 60px rgba(0,0,0,0.55)',
+}
+const deleteWhiskyName: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 18,
+  color: '#E5D4C2', letterSpacing: '0.02em',
+  marginBottom: 2,
+}
+const deleteBodyText: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', lineHeight: 1.65, marginBottom: 10,
+}
+const deleteCancelBtn: React.CSSProperties = {
+  background: 'transparent', color: '#B2AA98',
+  border: '1px solid rgba(229,212,194,0.20)', borderRadius: 4,
+  padding: '8px 16px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, letterSpacing: '0.06em',
+  cursor: 'pointer',
+}
+const deleteConfirmBtn: React.CSSProperties = {
+  background: '#C27070', color: '#FFFFFF',
+  border: 'none', borderRadius: 4,
+  padding: '8px 18px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
+}
+
 // Stocktake banner + buttons.
 const stocktakeStartBtn: React.CSSProperties = {
   background: 'rgba(122,176,122,0.10)', color: '#7AB07A',
