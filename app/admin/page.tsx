@@ -269,7 +269,7 @@ export default function AdminDashboard() {
           </div>
         </Panel>
 
-        <Panel title="This week" subtitle="Birthdays & anniversaries" href="/admin/mx-daily">
+        <Panel title="This week" subtitle="Birthdays & anniversaries" href="/admin/mx-daily" headerLink>
           {data.thisWeek.length === 0 ? (
             <div style={emptyHint}>Nothing in the next 7 days.</div>
           ) : (
@@ -293,7 +293,7 @@ export default function AdminDashboard() {
           )}
         </Panel>
 
-        <Panel title="Live activity" subtitle="Latest pipeline events" href="/admin/mis/pipeline">
+        <Panel title="Live activity" subtitle="Latest pipeline events" href="/admin/mis/pipeline" headerLink>
           {data.activity.length === 0 ? (
             <div style={emptyHint}>No recent activity.</div>
           ) : (
@@ -444,26 +444,33 @@ function KpiTile({ href, label, value, delta, deltaPositive, spark, tone }: {
   )
 }
 
-function Panel({ title, subtitle, href, children }: {
+function Panel({ title, subtitle, href, headerLink, children }: {
   title: string
   subtitle?: string
   href?: string
+  headerLink?: boolean   // scope the link to the header only — for panels whose
+                         // children contain their own <Link>s (nested <a> is invalid)
   children: React.ReactNode
 }) {
-  const inner = (
-    <>
-      <div style={panelHeader}>
-        <div>
-          <div style={panelTitle}>{title}</div>
-          {subtitle && <div style={panelSubtitle}>{subtitle}</div>}
-        </div>
-        {href && <div style={panelArrow}>→</div>}
+  const header = (
+    <div style={panelHeader}>
+      <div>
+        <div style={panelTitle}>{title}</div>
+        {subtitle && <div style={panelSubtitle}>{subtitle}</div>}
       </div>
-      <div>{children}</div>
-    </>
+      {href && <div style={panelArrow}>→</div>}
+    </div>
   )
-  if (href) return <Link href={href} style={panel}>{inner}</Link>
-  return <div style={panel}>{inner}</div>
+  // Children link to their own destinations → only the header is the link.
+  if (href && headerLink) return (
+    <div style={panel}>
+      <Link href={href} style={{ textDecoration: 'none', display: 'block' }}>{header}</Link>
+      <div>{children}</div>
+    </div>
+  )
+  // Whole panel is one link (charts/stats with no inner links).
+  if (href) return <Link href={href} style={panel}>{header}<div>{children}</div></Link>
+  return <div style={panel}>{header}<div>{children}</div></div>
 }
 
 function formatActivity(a: { event_type: string; from_value: string | null; to_value: string | null }): string {

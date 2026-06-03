@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { ConfirmModal, PromptModal, useToast } from '@/components/admin/dialogs'
 import { createProject, archiveProject } from '@/lib/ops/api'
+import NotificationSettings from '@/components/admin/NotificationSettings'
 import type { Project, TeamMember } from '@/lib/ops/types'
 
 const FAMILY = "'Google Sans Code', monospace"
@@ -144,6 +145,8 @@ export default function OpsHubHome() {
           ))}
         </div>
       )}
+
+      <NotificationSettings />
 
       <PromptModal
         open={newBoardOpen}

@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
+import { dispatchPendingEmails } from '@/lib/ops/notify-dispatch'
+
+// Actions that can generate a notification (Layer-1 trigger). After one of these
+// succeeds we flush pending emails immediately so an assignment/shift emails
+// right then — outside quiet hours. The daily 09:00 VN cron is the backstop, so
+// a flush error here is swallowed (never blocks the write's response).
+const NOTIFYING_ACTIONS = new Set([
+  'ops_create_task', 'ops_assign_task', 'ops_move_task',
+  'ops_create_shift', 'ops_update_shift', 'ops_delete_shift',
+])
+
+function svc() {
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+}
 
 // Ops Hub — the single WRITE gateway. Every mutation that emits an activity
 // event goes through here; reads stay client-side (browser Supabase + select-RLS).
@@ -65,5 +80,13 @@ export async function POST(req: NextRequest) {
     // RLS denials and validation raises surface here — return the message.
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
+
+  // Flush any notification this write generated (the trigger has already run in
+  // the RPC's transaction). Service-role client — dispatch needs auth.users +
+  // RLS-bypassing writes. Errors are swallowed; the daily cron is the backstop.
+  if (NOTIFYING_ACTIONS.has(action)) {
+    try { await dispatchPendingEmails(svc()) } catch { /* daily sweep will catch it */ }
+  }
+
   return NextResponse.json({ ok: true, data })
 }
