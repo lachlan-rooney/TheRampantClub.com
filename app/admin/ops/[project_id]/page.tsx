@@ -8,9 +8,11 @@ import ActivityFeed from '../ActivityFeed'
 import {
   createTask, updateTask, moveTask, reorderColumn, assignTask, deleteTask,
   createColumn, addProjectMember, removeProjectMember,
+  createTemplate, setTemplateActive, materialiseNow,
 } from '@/lib/ops/api'
 import type {
   Project, BoardColumn, Task, TeamMember, ProjectMember, TaskPriority, ProjectRole,
+  TaskTemplate, Recurrence,
 } from '@/lib/ops/types'
 
 const FAMILY = "'Google Sans Code', monospace"
@@ -31,6 +33,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
   const [tasks, setTasks] = useState<Task[]>([])
   const [team, setTeam] = useState<TeamMember[]>([])
   const [members, setMembers] = useState<ProjectMember[]>([])
+  const [templates, setTemplates] = useState<TaskTemplate[]>([])
   const [profiles, setProfiles] = useState<ProfileLite[]>([])
   const [canEdit, setCanEdit] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -43,15 +46,17 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
   const [newColOpen, setNewColOpen] = useState(false)
   const [showMembers, setShowMembers] = useState(false)
   const [showActivity, setShowActivity] = useState(false)
+  const [showRecurring, setShowRecurring] = useState(false)
   const [dragId, setDragId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    const [{ data: pj }, { data: cols }, { data: tk }, { data: tm }, { data: pm }, { data: { user } }] = await Promise.all([
+    const [{ data: pj }, { data: cols }, { data: tk }, { data: tm }, { data: pm }, { data: tpl }, { data: { user } }] = await Promise.all([
       supabase.from('projects').select('*').eq('id', project_id).single(),
       supabase.from('board_columns').select('*').eq('project_id', project_id).order('sort_order'),
       supabase.from('tasks').select('*').eq('project_id', project_id).order('sort_order').order('created_at'),
       supabase.from('team_members').select('*').eq('active', true).order('display_name'),
       supabase.from('project_members').select('*').eq('project_id', project_id),
+      supabase.from('task_templates').select('*').eq('project_id', project_id).order('created_at'),
       supabase.auth.getUser(),
     ])
     if (pj) setProject(pj as Project)
@@ -59,6 +64,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
     if (tk) setTasks(tk as Task[])
     if (tm) setTeam(tm as TeamMember[])
     if (pm) setMembers(pm as ProjectMember[])
+    if (tpl) setTemplates(tpl as TaskTemplate[])
 
     // canEdit = admin OR a project owner/contributor (viewer = read-only).
     let admin = false
@@ -144,12 +150,25 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '8px 0 4px' }}>
         <h1 style={pageTitle}>{project.name}</h1>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setShowRecurring(s => !s)} style={tinyBtn}>{showRecurring ? 'Hide recurring' : 'Recurring'}</button>
           <button onClick={() => setShowActivity(s => !s)} style={tinyBtn}>{showActivity ? 'Hide activity' : 'Activity'}</button>
           <button onClick={() => setShowMembers(s => !s)} style={tinyBtn}>{showMembers ? 'Hide access' : 'Access'}</button>
           {canEdit && <button onClick={() => setNewColOpen(true)} style={tinyBtn}>+ Column</button>}
         </div>
       </div>
       {!canEdit && <div style={{ ...metaText, color: '#D4B85A', marginBottom: 8 }}>View-only — you’re a viewer on this board.</div>}
+
+      {showRecurring && (
+        <RecurringPanel
+          templates={templates} columns={columns} team={team} canEdit={canEdit} busy={busy}
+          onCreate={(t) => wrap(() => createTemplate({ project_id, ...t }))}
+          onToggle={(id, active) => wrap(() => setTemplateActive(id, active))}
+          onMaterialise={() => wrap(async () => {
+            const s = await materialiseNow()
+            showToast(`Materialised ${s.created} · lapsed ${s.lapsed}.`)
+          })}
+        />
+      )}
 
       {showActivity && (
         <div style={{ ...columnStyle, width: 'auto', marginBottom: 16 }}>
@@ -188,13 +207,17 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
                   onDragOver={e => { if (dragId && canEdit) e.preventDefault() }}
                   onDrop={e => { e.stopPropagation(); onDropCard(t) }}
                   onClick={() => openEditor(t)}
-                  style={{ ...cardStyle, borderLeft: `3px solid ${PRIORITY_COLOUR[t.priority]}`, cursor: canEdit ? 'grab' : 'pointer', opacity: dragId === t.id ? 0.4 : 1 }}
+                  style={{ ...cardStyle, borderLeft: `3px solid ${t.status === 'lapsed' ? '#7E7864' : PRIORITY_COLOUR[t.priority]}`, cursor: canEdit ? 'grab' : 'pointer', opacity: dragId === t.id ? 0.4 : t.status === 'lapsed' ? 0.55 : 1 }}
                 >
-                  <div style={{ color: '#E5D4C2', fontFamily: FAMILY, fontSize: 12, lineHeight: 1.4 }}>{t.title}</div>
+                  <div style={{ color: '#E5D4C2', fontFamily: FAMILY, fontSize: 12, lineHeight: 1.4, textDecoration: t.status === 'lapsed' ? 'line-through' : 'none' }}>
+                    {t.template_id && <span title="Recurring" style={{ color: '#9E8FC4', marginRight: 5 }}>↻</span>}
+                    {t.title}
+                  </div>
                   <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
                     {t.assignee && <span style={pill}>{teamName(t.assignee)}</span>}
                     {t.due_date && <span style={{ ...pill, color: '#D4B85A' }}>{new Date(t.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>}
                     {t.completed_at && <span style={{ ...pill, color: '#7AB07A' }}>done</span>}
+                    {t.status === 'lapsed' && <span style={{ ...pill, color: '#C27070' }}>lapsed</span>}
                   </div>
                 </div>
               ))}
@@ -323,6 +346,92 @@ function MembersPanel({ members, profiles, profileName, canEdit, onAdd, onRemove
             <option value="owner" style={{ background: '#052E20' }}>owner</option>
           </select>
           <button disabled={!pick} onClick={() => { onAdd(pick, role); setPick('') }} style={btnPrimary}>Add</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+const WEEKDAYS = [{ n: 1, l: 'Mon' }, { n: 2, l: 'Tue' }, { n: 3, l: 'Wed' }, { n: 4, l: 'Thu' }, { n: 5, l: 'Fri' }, { n: 6, l: 'Sat' }, { n: 7, l: 'Sun' }]
+
+function recurrenceSummary(r: Recurrence): string {
+  if (r.freq === 'daily') return 'Daily'
+  const days = (r.weekdays || []).slice().sort((a, b) => a - b).map(n => WEEKDAYS.find(w => w.n === n)?.l || n).join(', ')
+  return days ? `Weekly · ${days}` : 'Weekly'
+}
+
+function RecurringPanel({ templates, columns, team, canEdit, busy, onCreate, onToggle, onMaterialise }: {
+  templates: TaskTemplate[]
+  columns: BoardColumn[]
+  team: TeamMember[]
+  canEdit: boolean
+  busy: boolean
+  onCreate: (t: { column_id: string; title: string; priority: TaskPriority; default_assignee: string | null; recurrence: Recurrence }) => void
+  onToggle: (id: string, active: boolean) => void
+  onMaterialise: () => void
+}) {
+  const [title, setTitle] = useState('')
+  const [columnId, setColumnId] = useState(columns[0]?.id || '')
+  const [priority, setPriority] = useState<TaskPriority>('normal')
+  const [assignee, setAssignee] = useState('')
+  const [freq, setFreq] = useState<'daily' | 'weekly'>('daily')
+  const [weekdays, setWeekdays] = useState<number[]>([1])
+
+  const toggleDay = (n: number) => setWeekdays(d => d.includes(n) ? d.filter(x => x !== n) : [...d, n].sort((a, b) => a - b))
+  const submit = () => {
+    if (!title.trim() || !columnId) return
+    const recurrence: Recurrence = freq === 'daily' ? { freq: 'daily' } : { freq: 'weekly', weekdays }
+    onCreate({ column_id: columnId, title: title.trim(), priority, default_assignee: assignee || null, recurrence })
+    setTitle('')
+  }
+
+  return (
+    <div style={{ ...columnStyle, width: 'auto', marginBottom: 16 }}>
+      <div style={columnHeader}>
+        <span style={{ color: '#9E8FC4' }}>↻ Recurring templates</span>
+        {canEdit && <button onClick={onMaterialise} disabled={busy} style={tinyBtn}>Materialise now</button>}
+      </div>
+      {templates.length === 0 ? (
+        <div style={{ ...metaText, opacity: 0.6, fontStyle: 'italic', marginBottom: 10 }}>No templates yet — recurring tasks auto-appear once you add one.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+          {templates.map(t => (
+            <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: t.active ? 1 : 0.5 }}>
+              <span style={{ color: '#E5D4C2', fontFamily: FAMILY, fontSize: 12 }}>{t.title}</span>
+              <span style={pill}>{recurrenceSummary(t.recurrence)}</span>
+              {canEdit && <button onClick={() => onToggle(t.id, !t.active)} style={{ ...tinyBtn, marginLeft: 'auto' }}>{t.active ? 'Pause' : 'Resume'}</button>}
+            </div>
+          ))}
+        </div>
+      )}
+      {canEdit && (
+        <div style={{ display: 'grid', gap: 8 }}>
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="New recurring task title" style={input} />
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <select value={columnId} onChange={e => setColumnId(e.target.value)} style={{ ...input, width: 'auto', flex: 1 }}>
+              {columns.map(c => <option key={c.id} value={c.id} style={{ background: '#052E20' }}>{c.name}</option>)}
+            </select>
+            <select value={priority} onChange={e => setPriority(e.target.value as TaskPriority)} style={{ ...input, width: 'auto' }}>
+              {PRIORITIES.map(p => <option key={p} value={p} style={{ background: '#052E20' }}>{p}</option>)}
+            </select>
+            <select value={assignee} onChange={e => setAssignee(e.target.value)} style={{ ...input, width: 'auto' }}>
+              <option value="" style={{ background: '#052E20' }}>— unassigned —</option>
+              {team.map(m => <option key={m.id} value={m.id} style={{ background: '#052E20' }}>{m.display_name}</option>)}
+            </select>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <select value={freq} onChange={e => setFreq(e.target.value as 'daily' | 'weekly')} style={{ ...input, width: 'auto' }}>
+              <option value="daily" style={{ background: '#052E20' }}>Daily</option>
+              <option value="weekly" style={{ background: '#052E20' }}>Weekly</option>
+            </select>
+            {freq === 'weekly' && WEEKDAYS.map(w => (
+              <button key={w.n} onClick={() => toggleDay(w.n)}
+                style={{ ...tinyBtn, background: weekdays.includes(w.n) ? 'rgba(158,143,196,0.25)' : 'rgba(229,212,194,0.06)', color: weekdays.includes(w.n) ? '#E5D4C2' : '#B2AA98' }}>
+                {w.l}
+              </button>
+            ))}
+            <button onClick={submit} disabled={busy || !title.trim()} style={{ ...btnPrimary, marginLeft: 'auto' }}>Add template</button>
+          </div>
         </div>
       )}
     </div>

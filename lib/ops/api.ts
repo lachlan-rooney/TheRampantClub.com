@@ -6,7 +6,7 @@
 // READS do NOT live here — they're plain client-side Supabase selects in the
 // page (select-RLS scopes them), matching the existing admin convention.
 
-import type { ProjectRole, TaskPriority } from './types'
+import type { ProjectRole, TaskPriority, Recurrence } from './types'
 
 async function opsWrite(action: string, args: Record<string, unknown>): Promise<unknown> {
   const r = await fetch('/api/admin/ops', {
@@ -86,3 +86,43 @@ export const addProjectMember = (projectId: string, member: string, role: Projec
 
 export const removeProjectMember = (projectId: string, member: string) =>
   opsWrite('ops_remove_project_member', { p_project_id: projectId, p_member: member })
+
+// ── Recurring templates (Phase 3) ──
+export const createTemplate = (t: {
+  project_id: string; column_id: string; title: string
+  description?: string | null; priority?: TaskPriority
+  default_assignee?: string | null; recurrence: Recurrence
+}) => opsWrite('ops_create_template', {
+  p_project_id: t.project_id,
+  p_column_id: t.column_id,
+  p_title: t.title,
+  p_description: t.description ?? null,
+  p_priority: t.priority ?? 'normal',
+  p_default_assignee: t.default_assignee ?? null,
+  p_recurrence: t.recurrence,
+}) as Promise<string>
+
+export const updateTemplate = (t: {
+  id: string; title: string; description?: string | null; priority: TaskPriority
+  default_assignee?: string | null; recurrence: Recurrence; active: boolean
+}) => opsWrite('ops_update_template', {
+  p_id: t.id,
+  p_title: t.title,
+  p_description: t.description ?? null,
+  p_priority: t.priority,
+  p_default_assignee: t.default_assignee ?? null,
+  p_recurrence: t.recurrence,
+  p_active: t.active,
+})
+
+export const setTemplateActive = (id: string, active: boolean) =>
+  opsWrite('ops_set_template_active', { p_id: id, p_active: active })
+
+// Manual "Materialise now" — hits the cron route (admin-authed), same job the
+// daily schedule runs. Returns the { run_date, created, lapsed } summary.
+export async function materialiseNow(): Promise<{ run_date: string; created: number; lapsed: number }> {
+  const r = await fetch('/api/cron/ops-materialise', { method: 'POST' })
+  const j = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error(j.error || `Request failed (${r.status})`)
+  return j.summary
+}

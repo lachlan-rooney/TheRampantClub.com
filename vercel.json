@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/decay-fit",
       "schedule": "0 4 1 * *"
+    },
+    {
+      "path": "/api/cron/ops-materialise",
+      "schedule": "5 17 * * *"
     }
   ]
 }

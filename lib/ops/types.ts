@@ -59,6 +59,28 @@ export interface Task {
   completed_at: string | null
   linked_object_type: string | null   // Phase 5 (reserved)
   linked_object_id: string | null     // Phase 5 (reserved)
+  template_id: string | null          // Phase 3 — set when materialised from a template
+  materialised_for: string | null     // Phase 3 — the VN day this instance is for
+  created_at: string
+  updated_at: string
+}
+
+// Recurrence rule (Phase 3) — deliberately minimal.
+export type Recurrence =
+  | { freq: 'daily' }
+  | { freq: 'weekly'; weekdays: number[] }   // ISO weekday 1=Mon … 7=Sun
+
+export interface TaskTemplate {
+  id: string
+  project_id: string
+  column_id: string
+  title: string
+  description: string | null
+  priority: TaskPriority
+  default_assignee: string | null
+  recurrence: Recurrence
+  active: boolean
+  last_materialised_at: string | null
   created_at: string
   updated_at: string
 }

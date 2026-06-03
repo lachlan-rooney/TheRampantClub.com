@@ -81,3 +81,7 @@ end$$;
 -- Non-destructive: nothing above is kept. (Swap to COMMIT if you'd rather keep
 -- the board and inspect the events in a direct select.)
 rollback;
+
+-- Visible PASS row (the editor hides RAISE NOTICE). Only reached if the DO block
+-- raised no exception — i.e. every assertion passed. A FAIL aborts before here.
+select '✓ SPINE OK — every action emitted a correct, actor-stamped event (no exception raised). Non-destructive; re-run anytime.' as result;
