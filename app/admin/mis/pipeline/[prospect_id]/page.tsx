@@ -201,7 +201,6 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
   }, [prospect_id, conversionTier, inviteEmail, inviteMobile, load])
 
   const forceConvert = useCallback(async () => {
-    if (!confirm('Force convert without signing? The member will be Active immediately and no agreement will be on file. Admin override only.')) return
     setConverting(true); setError(null)
     try {
       const r = await fetch(`/api/admin/mis/prospects/${prospect_id}/convert`, {
@@ -220,7 +219,6 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
   }, [prospect_id, conversionTier, load])
 
   const revokeInvitation = useCallback(async (invitation_id: string) => {
-    if (!confirm('Revoke this invitation? The signing link will stop working.')) return
     setError(null)
     try {
       const r = await fetch('/api/admin/agreements/revoke', {
@@ -243,10 +241,30 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
   }, [])
 
   const archive = useCallback(async () => {
-    if (!confirm('Archive this prospect? Will be hidden from the pipeline but preserved for audit.')) return
     await fetch(`/api/admin/mis/prospects/${prospect_id}`, { method: 'DELETE' })
     router.push('/admin/mis/pipeline')
   }, [prospect_id, router])
+
+  // Branded confirm modal — one state covers all three destructive paths.
+  type Pending =
+    | { kind: 'force_convert' }
+    | { kind: 'archive' }
+    | { kind: 'revoke'; invitation_id: string }
+  const [pending, setPending] = useState<Pending | null>(null)
+  const [confirmBusy, setConfirmBusy] = useState(false)
+  const closeConfirm = () => { if (!confirmBusy) setPending(null) }
+  const runPending = async () => {
+    if (!pending) return
+    setConfirmBusy(true)
+    try {
+      if (pending.kind === 'force_convert') await forceConvert()
+      else if (pending.kind === 'revoke') await revokeInvitation(pending.invitation_id)
+      else if (pending.kind === 'archive') await archive()
+      setPending(null)
+    } finally {
+      setConfirmBusy(false)
+    }
+  }
 
   const stageIdx = useMemo(() => prospect ? ACTIVE_STAGES.indexOf(prospect.stage as typeof ACTIVE_STAGES[number]) : -1, [prospect])
   const isOfframp = useMemo(() => prospect ? (OFFRAMP_STAGES as readonly string[]).includes(prospect.stage) : false, [prospect])
@@ -466,7 +484,7 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
                       <button onClick={() => copyLink(activeInvitation.token)} style={{ ...btnGhost, padding: '8px 12px' }}>
                         Copy link
                       </button>
-                      <button onClick={() => revokeInvitation(activeInvitation.id)} style={{ ...btnGhost, padding: '8px 12px', color: '#C27070', borderColor: 'rgba(180,70,70,0.30)' }}>
+                      <button onClick={() => setPending({ kind: 'revoke', invitation_id: activeInvitation.id })} style={{ ...btnGhost, padding: '8px 12px', color: '#C27070', borderColor: 'rgba(180,70,70,0.30)' }}>
                         Revoke
                       </button>
                     </div>
@@ -540,7 +558,7 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
                     <select value={conversionTier} onChange={e => setConversionTier(e.target.value)} style={inputStyle}>
                       {TIERS.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
-                    <button onClick={forceConvert} disabled={converting} style={{ ...btnPrimary, marginTop: 8, width: '100%', background: 'rgba(180,70,70,0.30)' }}>
+                    <button onClick={() => setPending({ kind: 'force_convert' })} disabled={converting} style={{ ...btnPrimary, marginTop: 8, width: '100%', background: 'rgba(180,70,70,0.30)' }}>
                       {converting ? 'Converting…' : 'Confirm force convert'}
                     </button>
                   </div>
@@ -548,7 +566,7 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
               </>
             )}
 
-            <button onClick={archive} style={btnDanger}>
+            <button onClick={() => setPending({ kind: 'archive' })} style={btnDanger}>
               Archive prospect
             </button>
           </div>
@@ -574,6 +592,47 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
           </div>
         </div>
       </div>
+
+      {/* ── Confirm modal (branded, replaces native window.confirm) ──── */}
+      {pending && (
+        <>
+          <div style={confirmBackdrop} onClick={closeConfirm} />
+          <div style={confirmModalBox} role="dialog">
+            <div style={confirmEyebrow}>
+              {pending.kind === 'force_convert' ? '⚠ ADMIN OVERRIDE'
+                : pending.kind === 'revoke' ? '⚠ REVOKE INVITATION'
+                : '⚠ ARCHIVE PROSPECT'}
+            </div>
+            <div style={confirmTitle}>
+              {pending.kind === 'force_convert' ? 'Force convert without signing?'
+                : pending.kind === 'revoke' ? 'Revoke this invitation?'
+                : 'Archive this prospect?'}
+            </div>
+            <div style={confirmSubject}>{prospect?.full_name}</div>
+            <p style={confirmBody}>
+              {pending.kind === 'force_convert'
+                ? `The member becomes Active immediately as ${conversionTier}, with no signed agreement on file. Admin override only — use when the agreement is handled outside the system.`
+                : pending.kind === 'revoke'
+                ? 'The signing link stops working immediately. You can send a fresh invitation afterwards if needed.'
+                : 'Hides the prospect from the pipeline. The record and its full activity trail are preserved for audit.'}
+            </p>
+            <div style={confirmActions}>
+              <button onClick={closeConfirm} disabled={confirmBusy} style={confirmCancelBtn}>Cancel</button>
+              <button
+                onClick={runPending}
+                disabled={confirmBusy}
+                style={{ ...confirmGoBtn, opacity: confirmBusy ? 0.5 : 1 }}
+              >
+                {confirmBusy
+                  ? 'Working…'
+                  : pending.kind === 'force_convert' ? 'Force convert'
+                  : pending.kind === 'revoke' ? 'Revoke invitation'
+                  : 'Archive prospect'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   )
 }
@@ -978,4 +1037,55 @@ const emptyText: React.CSSProperties = {
   padding: '32px 0', textAlign: 'center',
   fontFamily: "'Google Sans Code', monospace", fontSize: 12,
   color: '#B2AA98', opacity: 0.6, fontStyle: 'italic',
+}
+
+// ── Confirm modal styles ────────────────────────────────────────────
+const confirmBackdrop: React.CSSProperties = {
+  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300,
+}
+const confirmModalBox: React.CSSProperties = {
+  position: 'fixed',
+  top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+  width: 'min(480px, 92vw)',
+  background: '#0A3526',
+  border: '1px solid rgba(194,112,112,0.45)',
+  borderLeft: '3px solid #C27070',
+  borderRadius: 8,
+  padding: '22px 24px',
+  zIndex: 301,
+  boxShadow: '0 20px 60px rgba(0,0,0,0.55)',
+}
+const confirmEyebrow: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#C27070', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700,
+  marginBottom: 8,
+}
+const confirmTitle: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 18,
+  color: '#E5D4C2', letterSpacing: '0.02em', marginBottom: 6,
+}
+const confirmSubject: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', marginBottom: 12,
+}
+const confirmBody: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', lineHeight: 1.65, marginBottom: 14,
+}
+const confirmActions: React.CSSProperties = {
+  display: 'flex', gap: 10, justifyContent: 'flex-end',
+}
+const confirmCancelBtn: React.CSSProperties = {
+  background: 'transparent', color: '#B2AA98',
+  border: '1px solid rgba(229,212,194,0.20)', borderRadius: 4,
+  padding: '8px 16px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, letterSpacing: '0.06em',
+  cursor: 'pointer',
+}
+const confirmGoBtn: React.CSSProperties = {
+  background: '#C27070', color: '#FFFFFF',
+  border: 'none', borderRadius: 4,
+  padding: '8px 18px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
+  cursor: 'pointer',
 }
