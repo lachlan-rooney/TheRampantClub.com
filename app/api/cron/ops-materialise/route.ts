@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { isAdmin } from '@/lib/admin'
+import { dispatchPendingEmails } from '@/lib/ops/notify-dispatch'
 
 // POST/GET /api/cron/ops-materialise
 //
@@ -37,7 +38,11 @@ async function handle(req: NextRequest) {
   const sb = svc()
   const { data, error } = await sb.rpc('ops_materialise_due')   // defaults to VN today
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ ok: true, summary: data })
+  // Flush emails for any recurring-task assignments just materialised. At 00:05 VN
+  // this is quiet hours → dispatch defers them (the daily 09:00 cron sweeps them).
+  let flush
+  try { flush = await dispatchPendingEmails(sb) } catch { /* daily sweep backstop */ }
+  return NextResponse.json({ ok: true, summary: data, flush })
 }
 
 export async function POST(req: NextRequest) { return handle(req) }
