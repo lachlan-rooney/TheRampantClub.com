@@ -2,6 +2,28 @@
 
 import { useEffect, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
+import { ConfirmModal, useToast, type ConfirmTone } from '@/components/admin/dialogs'
+
+// Per-kind copy for the destructive-action confirm modal.
+const AGREEMENT_CONFIRM: Record<'invitation_delete' | 'agreement_delete' | 'invitation_revoke', {
+  tone: ConfirmTone; eyebrow: string; title: string; body: string; confirm: string
+}> = {
+  invitation_delete: {
+    tone: 'info', eyebrow: 'CONFIRM', title: 'Delete invitation?',
+    body: "Removes the signing record. If the recipient hasn't signed yet, their link will no longer resolve.",
+    confirm: 'Delete invitation',
+  },
+  agreement_delete: {
+    tone: 'danger', eyebrow: '⚠ PERMANENT', title: 'Delete signed agreement?',
+    body: 'Destroys the signed legal record AND the originating invitation. The signed PDF in storage is NOT touched, but its index entry is gone. Cannot be undone.',
+    confirm: 'Delete legal record',
+  },
+  invitation_revoke: {
+    tone: 'danger', eyebrow: '⚠ PERMANENT', title: 'Revoke signing link?',
+    body: "The existing URL stops working immediately and CANNOT be un-revoked. You'll need to generate a new link if the prospect still wants to sign.",
+    confirm: 'Revoke',
+  },
+}
 
 interface Invitation {
   id: string
@@ -133,11 +155,7 @@ export default function AgreementsPage() {
   }
 
   // Toast for non-blocking notices (replaces alert()).
-  const [toast, setToast] = useState<{ message: string; tone: 'info' | 'error' } | null>(null)
-  const showToast = (message: string, tone: 'info' | 'error' = 'info') => {
-    setToast({ message, tone })
-    setTimeout(() => setToast(null), 4200)
-  }
+  const { showToast, toastNode } = useToast()
 
   const generateLink = async () => {
     if (!name || !email) return
@@ -474,135 +492,20 @@ export default function AgreementsPage() {
         </div>
       )}
 
-      {/* ── Confirm modal (branded, replaces native window.confirm) ──── */}
-      {confirmModal && (() => {
-        const config = (() => {
-          if (confirmModal.kind === 'invitation_delete') return {
-            title:    'Delete invitation?',
-            severity: 'amber' as const,
-            body:     'Removes the signing record. If the recipient hasn\'t signed yet, their link will no longer resolve.',
-            confirm:  'Delete invitation',
-          }
-          if (confirmModal.kind === 'agreement_delete') return {
-            title:    'Delete signed agreement?',
-            severity: 'red' as const,
-            body:     'Destroys the signed legal record AND the originating invitation. The signed PDF in storage is NOT touched, but its index entry is gone. Cannot be undone.',
-            confirm:  'Delete legal record',
-          }
-          return {  // invitation_revoke
-            title:    'Revoke signing link?',
-            severity: 'red' as const,
-            body:     'The existing URL stops working immediately and CANNOT be un-revoked. You\'ll need to generate a new link if the prospect still wants to sign.',
-            confirm:  'Revoke',
-          }
-        })()
-        const tone = config.severity === 'red'
-          ? { border: '#C27070', accent: '#C27070', confirmBg: '#C27070', confirmFg: '#FFFFFF', eyebrow: '⚠ PERMANENT' }
-          : { border: '#D4B85A', accent: '#D4B85A', confirmBg: '#D4B85A', confirmFg: '#052E20', eyebrow: 'CONFIRM' }
-        return (
-          <>
-            <div style={confirmBackdrop} onClick={closeConfirm} />
-            <div style={{ ...confirmModalBox, borderColor: tone.border, borderLeft: `3px solid ${tone.accent}` }} role="dialog">
-              <div style={{ ...confirmEyebrow, color: tone.accent }}>{tone.eyebrow}</div>
-              <div style={confirmTitle}>{config.title}</div>
-              <div style={confirmSubject}>{confirmModal.label}</div>
-              <p style={confirmBody}>{config.body}</p>
-              <div style={confirmActions}>
-                <button onClick={closeConfirm} disabled={confirmBusy} style={confirmCancelBtn}>Cancel</button>
-                <button
-                  onClick={runConfirm}
-                  disabled={confirmBusy}
-                  style={{ ...confirmGoBtn, background: tone.confirmBg, color: tone.confirmFg, opacity: confirmBusy ? 0.5 : 1 }}
-                >
-                  {confirmBusy ? 'Working…' : config.confirm}
-                </button>
-              </div>
-            </div>
-          </>
-        )
-      })()}
+      <ConfirmModal
+        open={!!confirmModal}
+        tone={confirmModal ? AGREEMENT_CONFIRM[confirmModal.kind].tone : 'danger'}
+        eyebrow={confirmModal ? AGREEMENT_CONFIRM[confirmModal.kind].eyebrow : ''}
+        title={confirmModal ? AGREEMENT_CONFIRM[confirmModal.kind].title : ''}
+        subject={confirmModal?.label}
+        body={confirmModal ? AGREEMENT_CONFIRM[confirmModal.kind].body : ''}
+        confirmLabel={confirmModal ? AGREEMENT_CONFIRM[confirmModal.kind].confirm : ''}
+        busy={confirmBusy}
+        onCancel={closeConfirm}
+        onConfirm={runConfirm}
+      />
 
-      {/* ── Toast (non-blocking notice) ─────────────────────────────── */}
-      {toast && (
-        <div
-          style={toast.tone === 'error' ? toastErrorBox : toastInfoBox}
-          role="status"
-        >
-          <span style={{ marginRight: 8, color: toast.tone === 'error' ? '#C27070' : '#7AB07A' }}>
-            {toast.tone === 'error' ? '✕' : '✓'}
-          </span>
-          {toast.message}
-        </div>
-      )}
+      {toastNode}
     </>
   )
-}
-
-// ── Confirm + toast styles ──────────────────────────────────────────
-const confirmBackdrop: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300,
-}
-const confirmModalBox: React.CSSProperties = {
-  position: 'fixed',
-  top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-  width: 'min(480px, 92vw)',
-  background: '#0A3526',
-  border: '1px solid rgba(212,184,90,0.45)',
-  borderRadius: 8,
-  padding: '22px 24px',
-  zIndex: 301,
-  boxShadow: '0 20px 60px rgba(0,0,0,0.55)',
-}
-const confirmEyebrow: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
-  letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700,
-  marginBottom: 8,
-}
-const confirmTitle: React.CSSProperties = {
-  fontFamily: "'Rampant Sans', serif", fontSize: 18,
-  color: '#E5D4C2', letterSpacing: '0.02em', marginBottom: 6,
-}
-const confirmSubject: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
-  color: '#B2AA98', marginBottom: 12,
-}
-const confirmBody: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
-  color: '#B2AA98', lineHeight: 1.65, marginBottom: 14,
-}
-const confirmActions: React.CSSProperties = {
-  display: 'flex', gap: 10, justifyContent: 'flex-end',
-}
-const confirmCancelBtn: React.CSSProperties = {
-  background: 'transparent', color: '#B2AA98',
-  border: '1px solid rgba(229,212,194,0.20)', borderRadius: 4,
-  padding: '8px 16px',
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11, letterSpacing: '0.06em',
-  cursor: 'pointer',
-}
-const confirmGoBtn: React.CSSProperties = {
-  border: 'none', borderRadius: 4,
-  padding: '8px 18px',
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
-  cursor: 'pointer',
-}
-const toastBase: React.CSSProperties = {
-  position: 'fixed', bottom: 24, right: 24, zIndex: 400,
-  padding: '12px 18px',
-  background: '#0A3526',
-  borderRadius: 8,
-  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
-  color: '#E5D4C2', letterSpacing: '0.02em',
-  display: 'flex', alignItems: 'center',
-  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-}
-const toastInfoBox: React.CSSProperties = {
-  ...toastBase,
-  border: '1px solid rgba(122,176,122,0.45)',
-  borderLeft: '3px solid #7AB07A',
-}
-const toastErrorBox: React.CSSProperties = {
-  ...toastBase,
-  border: '1px solid rgba(194,112,112,0.45)',
-  borderLeft: '3px solid #C27070',
 }
