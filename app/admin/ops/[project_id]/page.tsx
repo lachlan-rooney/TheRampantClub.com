@@ -4,6 +4,7 @@ import { use, useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { ConfirmModal, PromptModal, useToast } from '@/components/admin/dialogs'
+import ActivityFeed from '../ActivityFeed'
 import {
   createTask, updateTask, moveTask, reorderColumn, assignTask, deleteTask,
   createColumn, addProjectMember, removeProjectMember,
@@ -41,6 +42,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
   const [newCardCol, setNewCardCol] = useState<string | null>(null)
   const [newColOpen, setNewColOpen] = useState(false)
   const [showMembers, setShowMembers] = useState(false)
+  const [showActivity, setShowActivity] = useState(false)
   const [dragId, setDragId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -142,11 +144,19 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '8px 0 4px' }}>
         <h1 style={pageTitle}>{project.name}</h1>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setShowActivity(s => !s)} style={tinyBtn}>{showActivity ? 'Hide activity' : 'Activity'}</button>
           <button onClick={() => setShowMembers(s => !s)} style={tinyBtn}>{showMembers ? 'Hide access' : 'Access'}</button>
           {canEdit && <button onClick={() => setNewColOpen(true)} style={tinyBtn}>+ Column</button>}
         </div>
       </div>
       {!canEdit && <div style={{ ...metaText, color: '#D4B85A', marginBottom: 8 }}>View-only — you’re a viewer on this board.</div>}
+
+      {showActivity && (
+        <div style={{ ...columnStyle, width: 'auto', marginBottom: 16 }}>
+          <div style={columnHeader}><span style={{ color: '#E5D4C2' }}>Activity</span></div>
+          <ActivityFeed projectId={project_id} />
+        </div>
+      )}
 
       {showMembers && (
         <MembersPanel
