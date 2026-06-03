@@ -8,7 +8,8 @@ const FAMILY = "'Google Sans Code', monospace"
 const LABEL_W = 190       // sticky task-name column (also the MOVE handle)
 const ROW_H = 34
 const EDGE = 8            // resize grab-zone width
-const PAD = 3             // days of padding around the axis
+const PAST_PAD = 14       // days of headroom before the earliest known date
+const FUTURE_PAD = 60     // days of empty future to drag tasks into (the timeline isn't capped at the last item)
 
 // Scale-aware: one px-per-day per zoom. All geometry is expressed in dayWidth,
 // and the drag math is Δdays = round(Δpx / dayWidth) — so the same code is crisp
@@ -64,14 +65,16 @@ export default function GanttView({ tasks, project, canEdit, onOpenCard, onResch
 
   const todayN = toDays(vnDateString())
   const { axisStart, totalDays } = useMemo(() => {
-    let lo: number, hi: number
-    if (project?.start_date && project?.target_date) { lo = toDays(project.start_date); hi = toDays(project.target_date) }
-    else if (placed.length) {
-      const ds = placed.flatMap(p => [p.start, p.due].filter((x): x is number => x != null))
-      lo = Math.min(...ds); hi = Math.max(...ds)
-    } else { lo = todayN - 7; hi = todayN + 28 }
-    lo = Math.min(lo, todayN); hi = Math.max(hi, todayN)
-    return { axisStart: lo - PAD, totalDays: (hi - lo) + 1 + PAD * 2 }
+    // Gather every known date (board window + task starts/dues + today), then pad
+    // GENEROUSLY — especially into the future — so the timeline always has empty
+    // room to drag a task forward into, not just up to the last existing item.
+    const cand: number[] = [todayN]
+    if (project?.start_date) cand.push(toDays(project.start_date))
+    if (project?.target_date) cand.push(toDays(project.target_date))
+    for (const p of placed) { if (p.start != null) cand.push(p.start); if (p.due != null) cand.push(p.due) }
+    const lo = Math.min(...cand) - PAST_PAD
+    const hi = Math.max(...cand) + FUTURE_PAD
+    return { axisStart: lo, totalDays: (hi - lo) + 1 }
   }, [project, placed, todayN])
 
   const xOf = (dayN: number) => (dayN - axisStart) * dayWidth
