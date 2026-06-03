@@ -9,14 +9,14 @@
 -- If a renamed task's old event still reads the old name, enrich-at-write worked.
 -- If it updates, the feed is re-joining live tables somewhere and history is lying.
 --
--- ►► BEFORE RUNNING: replace 00000000-0000-0000-0000-000000000000 with a real
---    admin profiles.id  (select id from profiles where is_admin limit 1;)
+-- Pre-filled with the admin profiles.id below — just run it. (A profiles.id is a
+-- row id, not a credential; harmless in-repo. Re-point it if the admin changes.)
 
 begin;
 
 select set_config(
   'request.jwt.claims',
-  json_build_object('sub', '00000000-0000-0000-0000-000000000000', 'role', 'authenticated')::text,
+  json_build_object('sub', '3e1583db-b881-42ec-aadb-6f69a22fad80', 'role', 'authenticated')::text,
   true
 );
 set local role authenticated;

@@ -7,15 +7,15 @@
 -- (the SQL editor has no JWT, so we set the claim by hand) and ROLLS BACK at the
 -- end, so it leaves no test data behind.
 --
--- ►► BEFORE RUNNING: replace 00000000-0000-0000-0000-000000000000 below with a
---    real admin profiles.id  (run:  select id from profiles where is_admin limit 1;)
+-- Pre-filled with the admin profiles.id below — just run it. (A profiles.id is a
+-- row id, not a credential; harmless in-repo. Re-point it if the admin changes.)
 
 begin;
 
 -- Simulate that admin as the authenticated caller (auth.uid() reads this claim).
 select set_config(
   'request.jwt.claims',
-  json_build_object('sub', '00000000-0000-0000-0000-000000000000', 'role', 'authenticated')::text,
+  json_build_object('sub', '3e1583db-b881-42ec-aadb-6f69a22fad80', 'role', 'authenticated')::text,
   true
 );
 set local role authenticated;
@@ -44,6 +44,7 @@ begin
   perform ops_move_task(v_task, v_done, 0);
 
   -- 5. archive the project (→ 'archived')
+
   perform ops_archive_project(v_project);
 
   -- ── ASSERTIONS ──────────────────────────────────────────────────────
