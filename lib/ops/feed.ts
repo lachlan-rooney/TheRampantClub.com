@@ -40,6 +40,9 @@ export function describeEvent(ev: ActivityEvent): string {
     case 'task:lapsed':            return `${q(title)} lapsed${m.due_date ? ` — was due ${fmtDate(m.due_date)}` : ''}`
     case 'template:created':       return `created recurring template ${q(title)}`
     case 'template:updated':       return `updated recurring template ${q(title)}`
+    case 'shift:assigned':         return `assigned ${str(m.member_name)} to the ${fmtDate(m.shift_date)} ${str(m.shift_name, 'shift')} shift`
+    case 'shift:updated':          return `updated the ${fmtDate(m.shift_date)} ${str(m.shift_name, 'shift')} shift → ${str(m.member_name)}`
+    case 'shift:removed':          return `removed ${str(m.member_name)} from the ${fmtDate(m.shift_date)} ${str(m.shift_name, 'shift')} shift`
     default:                       return `${ev.verb} ${ev.object_type}`
   }
 }

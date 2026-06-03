@@ -93,6 +93,27 @@ export interface TaskChecklistItem {
   sort_order: number
 }
 
+// Rota (Phase 4) — club-wide weekly staff schedule.
+export interface RotaShiftType {
+  name: string
+  sort_order: number
+}
+
+export interface RotaShift {
+  id: string
+  member: string            // team_members.id
+  shift_date: string        // YYYY-MM-DD
+  shift_name: string        // varchar snapshot (not enum)
+  start_time: string | null
+  end_time: string | null
+  role: string | null
+  project_id: string | null // null = club-wide rota
+  notes: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface ActivityEvent {
   id: string
   actor: string | null
