@@ -48,6 +48,15 @@ export default function RotaPage() {
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
   const weekEnd = addDays(weekStart, 6)
 
+  // Rows = current shift-type names PLUS any snapshotted shift_name still present
+  // in the week's shifts. So a shift assigned as "Mid" stays visible even after
+  // the "Mid" type is renamed/removed — the snapshot is shown, never hidden.
+  const typeNames = types.map(t => t.name)
+  const rowNames = [
+    ...typeNames,
+    ...[...new Set(shifts.map(s => s.shift_name))].filter(n => !typeNames.includes(n)),
+  ]
+
   const load = useCallback(async () => {
     const [{ data: ty }, { data: sh }, { data: tm }] = await Promise.all([
       supabase.from('rota_shift_types').select('*').order('sort_order'),
@@ -141,26 +150,31 @@ export default function RotaPage() {
               </tr>
             </thead>
             <tbody>
-              {types.length === 0 ? (
+              {rowNames.length === 0 ? (
                 <tr><td colSpan={8} style={{ ...td, ...metaText, opacity: 0.6, fontStyle: 'italic' }}>No shift names yet — add one below.</td></tr>
-              ) : types.map(ty => (
-                <tr key={ty.name}>
-                  <td style={{ ...td, fontFamily: FAMILY, fontSize: 12, color: '#E5D4C2' }}>{ty.name}</td>
+              ) : rowNames.map(name => {
+                const isType = typeNames.includes(name)
+                return (
+                <tr key={name}>
+                  <td style={{ ...td, fontFamily: FAMILY, fontSize: 12, color: isType ? '#E5D4C2' : '#7E7864' }}>
+                    {name}{!isType && <span title="retired shift name — kept on existing shifts" style={{ ...metaText, opacity: 0.5 }}> · retired</span>}
+                  </td>
                   {days.map(d => (
                     <td key={d} style={{ ...td, verticalAlign: 'top', background: d === vnDateString() ? 'rgba(212,184,90,0.04)' : undefined }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        {inCell(d, ty.name).map(s => (
-                          <button key={s.id} onClick={() => openAssign(d, ty.name, s)} style={chip} title={[s.start_time && `${s.start_time.slice(0,5)}–${s.end_time?.slice(0,5) || ''}`, s.role].filter(Boolean).join(' · ')}>
+                        {inCell(d, name).map(s => (
+                          <button key={s.id} onClick={() => openAssign(d, name, s)} style={chip} title={[s.start_time && `${s.start_time.slice(0,5)}–${s.end_time?.slice(0,5) || ''}`, s.role].filter(Boolean).join(' · ')}>
                             {memberName(s.member)}
                             {s.role ? <span style={{ opacity: 0.6 }}> · {s.role}</span> : null}
                           </button>
                         ))}
-                        <button onClick={() => openAssign(d, ty.name, null)} style={addCellBtn}>+ assign</button>
+                        {isType && <button onClick={() => openAssign(d, name, null)} style={addCellBtn}>+ assign</button>}
                       </div>
                     </td>
                   ))}
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>

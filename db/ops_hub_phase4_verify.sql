@@ -42,6 +42,14 @@ begin
     raise exception 'FAIL: HISTORY REWRITTEN — assigned event now reads "%" after member rename (enrich-at-write not holding)', v_name;
   end if;
 
+  -- ── SHIFT-TYPE rename/remove must NOT rewrite the shift's snapshotted name ──
+  -- (rename = remove + re-add, since the type name is the key). The shift row
+  -- snapshotted 'Close' as plain text — removing the 'Close' type must leave it.
+  delete from rota_shift_types where name = 'Close';
+  if (select shift_name from rota_shifts where id = v_shift) <> 'Close' then
+    raise exception 'FAIL: SHIFT-TYPE SNAPSHOT BROKEN — shift name changed after the type was removed/renamed';
+  end if;
+
   -- ── reassign (update) → 'updated' event reflects the new member ──
   perform ops_update_shift(v_shift, v_m2, 'Close', null, null, 'Bar', null);
   select metadata->>'member_name' into v_name from activity_events where object_id = v_shift and verb = 'updated' order by created_at desc limit 1;
@@ -61,4 +69,4 @@ rollback;
 
 -- Visible PASS row (the editor hides RAISE NOTICE). Only reached if the DO block
 -- raised no exception — a FAIL aborts before here.
-select '✓ ROTA OK — create/reassign/remove all emitted correct events with snapshotted member+shift labels; a member rename did NOT rewrite the old event (enrich-at-write holds). Non-destructive; re-run anytime.' as result;
+select '✓ ROTA OK — create/reassign/remove emitted correct events with snapshotted labels; a member rename did NOT rewrite the old event AND removing a shift type did NOT rewrite an existing shift name (both snapshots hold). Non-destructive; re-run anytime.' as result;
