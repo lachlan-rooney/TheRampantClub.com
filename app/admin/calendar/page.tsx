@@ -59,6 +59,7 @@ export default function CalendarPage() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [starting, setStarting] = useState<string | null>(null)
+  const [hovered, setHovered] = useState<string | null>(null)
   const { showToast, toastNode } = useToast()
 
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart])
@@ -153,7 +154,12 @@ export default function CalendarPage() {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {dayBookings.map(b => (
-                      <div key={b.booking_id} style={{ ...bookingCard, borderLeftColor: statusColor(b.status) }}>
+                      <div
+                        key={b.booking_id}
+                        style={{ ...bookingCard, borderLeftColor: statusColor(b.status), position: 'relative' }}
+                        onMouseEnter={() => setHovered(b.booking_id)}
+                        onMouseLeave={() => setHovered(h => h === b.booking_id ? null : h)}
+                      >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
                           <span style={bookingTime}>{fmtTime(b)}</span>
                           <span style={statusPill(b.status)}>{b.status}</span>
@@ -163,6 +169,18 @@ export default function CalendarPage() {
                           {b.space} · {b.party_size}p
                         </div>
                         {b.notes && <div style={bookingNotes}>{b.notes}</div>}
+
+                        {hovered === b.booking_id && (
+                          <div style={tooltip} onMouseEnter={() => setHovered(b.booking_id)}>
+                            <div style={tipMember}>
+                              {b.member_name}{b.member_nickname ? ` “${b.member_nickname}”` : ''}
+                            </div>
+                            <div style={tipMeta}>{b.member_tier} · {b.member_no}</div>
+                            <div style={tipRow}>{fmtTime(b)} · {b.space} · {b.party_size}p · <span style={{ color: statusColor(b.status) }}>{b.status}</span></div>
+                            <div style={tipNotesLabel}>Comments</div>
+                            <div style={tipNotesBox}>{b.notes && b.notes.trim() ? b.notes : 'No comments on this booking.'}</div>
+                          </div>
+                        )}
                         {b.status === 'arrived' && b.linked_visit_id && (
                           <Link href={`/admin/mis/visits/${b.linked_visit_id}`} style={visitLink}>
                             → open visit
@@ -317,6 +335,34 @@ const bookingNotes: React.CSSProperties = {
   color: '#B2AA98', opacity: 0.7, lineHeight: 1.4,
   overflow: 'hidden', textOverflow: 'ellipsis',
   display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+}
+// Hover tooltip — fuller booking detail with the comments shown clearly.
+const tooltip: React.CSSProperties = {
+  position: 'absolute', top: 'calc(100% + 4px)', left: 0,
+  width: 'max(100%, 240px)', zIndex: 60,
+  background: '#0A3526', border: '1px solid rgba(229,212,194,0.20)',
+  borderLeft: '3px solid #D4B85A', borderRadius: 6,
+  padding: '12px 14px', boxShadow: '0 12px 36px rgba(0,0,0,0.55)',
+  display: 'flex', flexDirection: 'column', gap: 4,
+}
+const tipMember: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 15, color: '#E5D4C2', letterSpacing: '0.02em',
+}
+const tipMeta: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', opacity: 0.75,
+}
+const tipRow: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#D4B85A', marginTop: 2,
+}
+const tipNotesLabel: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9, color: '#B2AA98',
+  letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 8, marginBottom: 2,
+}
+const tipNotesBox: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#E5D4C2',
+  lineHeight: 1.6, whiteSpace: 'pre-wrap',
+  background: 'rgba(229,212,194,0.05)', border: '1px solid rgba(229,212,194,0.10)',
+  borderRadius: 4, padding: '8px 10px', maxHeight: 220, overflowY: 'auto',
 }
 const visitLink: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 9,
