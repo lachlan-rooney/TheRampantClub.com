@@ -52,6 +52,15 @@ export default function AdminWhisky() {
   // Expanded rows — click anywhere on the whisky's title strip to reveal
   // its tasting notes inline. A Set so multiple rows can be open at once.
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  // Deep-link from an Ops Hub card link (?focus=<whisky id>) → expand + scroll + ring.
+  const [focusId, setFocusId] = useState<string | null>(null)
+  useEffect(() => { setFocusId(new URLSearchParams(window.location.search).get('focus')) }, [])
+  useEffect(() => {
+    if (!focusId || whiskies.length === 0) return
+    setExpandedIds(prev => new Set(prev).add(focusId))
+    const el = document.getElementById(`whisky-${focusId}`)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [focusId, whiskies.length])
   const toggleExpanded = (id: string) => {
     setExpandedIds(prev => {
       const next = new Set(prev)
@@ -763,8 +772,9 @@ export default function AdminWhisky() {
           const sparkPoints = wHistory.slice(0, 12).reverse()  // oldest → newest in the spark
           const isReviewed = stocktakeMode && stocktakeReviewed.has(w.id)
           const isSelected = bulkMode && selectedIds.has(w.id)
+          const isFocused = focusId === w.id
           return (
-            <div key={w.id} style={{ ...whiskyRow, ...(isReviewed ? reviewedRow : null), ...(isSelected ? bulkSelectedRow : null) }}>
+            <div key={w.id} id={`whisky-${w.id}`} style={{ ...whiskyRow, ...(isReviewed ? reviewedRow : null), ...(isSelected ? bulkSelectedRow : null), ...(isFocused ? { outline: '2px solid #9E8FC4', outlineOffset: 2, borderRadius: 4 } : null) }}>
               {bulkMode && (
                 <input
                   type="checkbox"

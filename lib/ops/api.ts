@@ -150,6 +150,13 @@ export const updateShift = (s: {
 export const deleteShift = (id: string) =>
   opsWrite('ops_delete_shift', { p_id: id })
 
+// ── Cross-site links (Phase 5) ──
+export const linkTask = (taskId: string, objectType: string, objectId: string, label: string) =>
+  opsWrite('ops_link_task', { p_task_id: taskId, p_object_type: objectType, p_object_id: objectId, p_label: label })
+
+export const unlinkTask = (taskId: string, label: string | null) =>
+  opsWrite('ops_unlink_task', { p_task_id: taskId, p_label: label })
+
 // Manual "Materialise now" — hits the cron route (admin-authed), same job the
 // daily schedule runs. Returns the { run_date, created, lapsed } summary.
 export async function materialiseNow(): Promise<{ run_date: string; created: number; lapsed: number }> {

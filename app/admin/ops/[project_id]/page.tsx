@@ -8,8 +8,12 @@ import ActivityFeed from '../ActivityFeed'
 import {
   createTask, updateTask, moveTask, reorderColumn, assignTask, deleteTask,
   createColumn, addProjectMember, removeProjectMember,
-  createTemplate, setTemplateActive, materialiseNow,
+  createTemplate, setTemplateActive, materialiseNow, linkTask, unlinkTask,
 } from '@/lib/ops/api'
+import {
+  resolveLinks, searchLinkTargets, LINK_TYPE_META, LINK_TYPES,
+  type LinkType, type ResolvedLink,
+} from '@/lib/ops/links'
 import type {
   Project, BoardColumn, Task, TeamMember, ProjectMember, TaskPriority, ProjectRole,
   TaskTemplate, Recurrence,
@@ -34,6 +38,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
   const [team, setTeam] = useState<TeamMember[]>([])
   const [members, setMembers] = useState<ProjectMember[]>([])
   const [templates, setTemplates] = useState<TaskTemplate[]>([])
+  const [linkMap, setLinkMap] = useState<Map<string, ResolvedLink>>(new Map())
   const [profiles, setProfiles] = useState<ProfileLite[]>([])
   const [canEdit, setCanEdit] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -65,6 +70,12 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
     if (tm) setTeam(tm as TeamMember[])
     if (pm) setMembers(pm as ProjectMember[])
     if (tpl) setTemplates(tpl as TaskTemplate[])
+
+    // Resolve cross-site links live (Phase 5) — batch, graceful on missing.
+    const refs = (tk as Task[] | null || [])
+      .filter(t => t.linked_object_type && t.linked_object_id)
+      .map(t => ({ type: t.linked_object_type as string, id: t.linked_object_id as string }))
+    setLinkMap(refs.length ? await resolveLinks(supabase, refs) : new Map())
 
     // canEdit = admin OR a project owner/contributor (viewer = read-only).
     let admin = false
@@ -113,8 +124,14 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
       priority: draft.priority, due_date: draft.due_date || null,
     }), () => setEditing(null))
   }
-  const changeAssignee = (taskId: string, assignee: string) =>
-    wrap(() => assignTask(taskId, assignee || null))
+  const changeAssignee = (assignee: string) => {
+    if (!editing) return
+    const id = editing.id
+    // Reflect immediately in the open drawer (editing is a snapshot — without this
+    // the controlled <select> snaps back to the old value until reopened).
+    setEditing(e => e ? { ...e, assignee: assignee || null } : e)
+    wrap(() => assignTask(id, assignee || null))
+  }
 
   // ── drag and drop ──
   const onDropColumn = (colId: string) => {
@@ -218,6 +235,16 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
                     {t.due_date && <span style={{ ...pill, color: '#D4B85A' }}>{new Date(t.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>}
                     {t.completed_at && <span style={{ ...pill, color: '#7AB07A' }}>done</span>}
                     {t.status === 'lapsed' && <span style={{ ...pill, color: '#C27070' }}>lapsed</span>}
+                    {t.linked_object_type && t.linked_object_id && (() => {
+                      const rl = linkMap.get(`${t.linked_object_type}:${t.linked_object_id}`)
+                      if (!rl) return null
+                      if (rl.missing) return <span style={{ ...pill, color: '#7E7864', fontStyle: 'italic' }} title="linked object deleted">🔗 {rl.label}</span>
+                      return (
+                        <Link href={rl.url} onClick={e => e.stopPropagation()} style={{ ...pill, color: '#9E8FC4', textDecoration: 'none' }} title={`Open ${LINK_TYPE_META[rl.type].label}`}>
+                          {LINK_TYPE_META[rl.type].icon} {rl.label}{rl.type === 'whisky' && rl.fillPct != null ? ` · ${rl.fillPct}%` : ''}
+                        </Link>
+                      )
+                    })()}
                   </div>
                 </div>
               ))}
@@ -256,11 +283,42 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
             <div style={{ marginTop: 10 }}>
               <div style={fieldLabel}>Assignee</div>
               <select style={input} value={editing.assignee || ''} disabled={!canEdit}
-                onChange={e => changeAssignee(editing.id, e.target.value)}>
+                onChange={e => changeAssignee(e.target.value)}>
                 <option value="" style={{ background: '#052E20' }}>— unassigned —</option>
                 {team.map(m => <option key={m.id} value={m.id} style={{ background: '#052E20' }}>{m.display_name}</option>)}
               </select>
             </div>
+
+            {/* Cross-site link (Phase 5) */}
+            <div style={{ marginTop: 10 }}>
+              <div style={fieldLabel}>Linked to</div>
+              {editing.linked_object_type && editing.linked_object_id ? (() => {
+                const rl = linkMap.get(`${editing.linked_object_type}:${editing.linked_object_id}`)
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    {rl && !rl.missing ? (
+                      <Link href={rl.url} style={{ ...pill, color: '#9E8FC4', textDecoration: 'none' }}>
+                        {LINK_TYPE_META[rl.type].icon} {rl.label}{rl.type === 'whisky' && rl.fillPct != null ? ` · ${rl.fillPct}% full` : ''}
+                      </Link>
+                    ) : (
+                      <span style={{ ...pill, color: '#7E7864', fontStyle: 'italic' }}>🔗 {rl?.label || 'linked object no longer exists'}</span>
+                    )}
+                    {canEdit && (
+                      <button
+                        onClick={() => wrap(() => unlinkTask(editing.id, rl?.label || null), () => setEditing(e => e ? { ...e, linked_object_type: null, linked_object_id: null } : e))}
+                        style={{ ...tinyBtn, color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}
+                      >Unlink</button>
+                    )}
+                  </div>
+                )
+              })() : canEdit ? (
+                <LinkPicker onLink={(type, id, label) => wrap(
+                  () => linkTask(editing.id, type, id, label),
+                  () => setEditing(e => e ? { ...e, linked_object_type: type, linked_object_id: id } : e),
+                )} />
+              ) : <span style={metaText}>—</span>}
+            </div>
+
             {canEdit && (
               <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
                 <button onClick={saveEditor} disabled={busy} style={btnPrimary}>{busy ? 'Saving…' : 'Save'}</button>
@@ -348,6 +406,40 @@ function MembersPanel({ members, profiles, profileName, canEdit, onAdd, onRemove
           <button disabled={!pick} onClick={() => { onAdd(pick, role); setPick('') }} style={btnPrimary}>Add</button>
         </div>
       )}
+    </div>
+  )
+}
+
+// Cross-site link picker (Phase 5): choose a type, search the real objects, link one.
+function LinkPicker({ onLink }: { onLink: (type: LinkType, id: string, label: string) => void }) {
+  const supabase = createBrowserSupabaseClient()
+  const [type, setType] = useState<LinkType>('member')
+  const [q, setQ] = useState('')
+  const [results, setResults] = useState<{ id: string; label: string }[]>([])
+  useEffect(() => {
+    let cancelled = false
+    searchLinkTargets(supabase, type, q).then(r => { if (!cancelled) setResults(r) }).catch(() => {})
+    return () => { cancelled = true }
+  }, [type, q])  // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div style={{ display: 'grid', gap: 6 }}>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <select value={type} onChange={e => { setType(e.target.value as LinkType); setQ('') }} style={{ ...input, width: 'auto' }}>
+          {LINK_TYPES.map(t => <option key={t} value={t} style={{ background: '#052E20' }}>{LINK_TYPE_META[t].icon} {LINK_TYPE_META[t].label}</option>)}
+        </select>
+        {type !== 'checklist' && (
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder={`Search ${LINK_TYPE_META[type].label.toLowerCase()}…`} style={input} />
+        )}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 160, overflowY: 'auto' }}>
+        {results.length === 0 ? (
+          <span style={{ ...metaText, opacity: 0.5, fontStyle: 'italic' }}>No matches.</span>
+        ) : results.map(r => (
+          <button key={r.id} onClick={() => onLink(type, r.id, r.label)} style={{ ...tinyBtn, textAlign: 'left' }}>
+            {LINK_TYPE_META[type].icon} {r.label}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
