@@ -174,7 +174,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
   return (
     <>
       <Link href="/admin/ops" style={backLink}>← Boards</Link>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '8px 0 4px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '8px 0 20px' }}>
         <h1 style={pageTitle}>{project.name}</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           <div style={{ display: 'flex', border: '1px solid rgba(229,212,194,0.15)', borderRadius: 6, overflow: 'hidden' }}>
