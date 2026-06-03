@@ -36,6 +36,8 @@ export default function NewBookingPage() {
   const [sendConfirmation, setSendConfirmation] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Toast for non-blocking notices (replaces alert()).
+  const [toast, setToast] = useState<{ message: string; tone: 'info' | 'error' } | null>(null)
 
   useEffect(() => {
     fetch('/api/admin/mis/members', { cache: 'no-store' })
@@ -77,8 +79,11 @@ export default function NewBookingPage() {
       const j = await r.json()
       if (!r.ok) throw new Error(j.error || 'Save failed')
       if (sendConfirmation && j.email_error) {
-        // Booking still saved — surface email failure but proceed to calendar.
-        alert(`Booking saved, but confirmation email failed: ${j.email_error}`)
+        // Booking still saved — surface the email failure as a toast, then
+        // give it a beat to be read before moving on to the calendar.
+        setToast({ message: `Booking saved, but confirmation email failed: ${j.email_error}`, tone: 'error' })
+        setTimeout(() => router.push('/admin/calendar'), 2600)
+        return
       }
       router.push('/admin/calendar')
     } catch (e) {
@@ -214,8 +219,39 @@ export default function NewBookingPage() {
         </button>
         <Link href="/admin/calendar" style={btnGhost}>Cancel</Link>
       </div>
+
+      {/* ── Toast ────────────────────────────────────────────────────── */}
+      {toast && (
+        <div style={toast.tone === 'error' ? toastErrorBox : toastInfoBox} role="status">
+          <span style={{ marginRight: 8, color: toast.tone === 'error' ? '#C27070' : '#7AB07A' }}>
+            {toast.tone === 'error' ? '✕' : '✓'}
+          </span>
+          {toast.message}
+        </div>
+      )}
     </>
   )
+}
+
+const toastBase: React.CSSProperties = {
+  position: 'fixed', bottom: 24, right: 24, zIndex: 400,
+  padding: '12px 18px', maxWidth: 'min(420px, 92vw)',
+  background: '#0A3526',
+  borderRadius: 8,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
+  color: '#E5D4C2', letterSpacing: '0.02em',
+  display: 'flex', alignItems: 'center',
+  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+}
+const toastInfoBox: React.CSSProperties = {
+  ...toastBase,
+  border: '1px solid rgba(122,176,122,0.45)',
+  borderLeft: '3px solid #7AB07A',
+}
+const toastErrorBox: React.CSSProperties = {
+  ...toastBase,
+  border: '1px solid rgba(194,112,112,0.45)',
+  borderLeft: '3px solid #C27070',
 }
 
 const backLink: React.CSSProperties = {
