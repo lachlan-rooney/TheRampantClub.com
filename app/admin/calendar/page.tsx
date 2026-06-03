@@ -58,6 +58,12 @@ export default function CalendarPage() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [starting, setStarting] = useState<string | null>(null)
+  // Toast for non-blocking notices (replaces alert()).
+  const [toast, setToast] = useState<{ message: string; tone: 'info' | 'error' } | null>(null)
+  const showToast = (message: string, tone: 'info' | 'error' = 'info') => {
+    setToast({ message, tone })
+    setTimeout(() => setToast(null), 4200)
+  }
 
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart])
   const from = isoDate(days[0])
@@ -96,7 +102,7 @@ export default function CalendarPage() {
       if (!r.ok) throw new Error(j.error || 'Could not start visit')
       router.push(`/admin/mis/visits/${j.visit_id}`)
     } catch (e) {
-      alert((e as Error).message)
+      showToast((e as Error).message, 'error')
       setStarting(null)
     }
   }
@@ -184,8 +190,39 @@ export default function CalendarPage() {
           })}
         </div>
       )}
+
+      {/* ── Toast ────────────────────────────────────────────────────── */}
+      {toast && (
+        <div style={toast.tone === 'error' ? toastErrorBox : toastInfoBox} role="status">
+          <span style={{ marginRight: 8, color: toast.tone === 'error' ? '#C27070' : '#7AB07A' }}>
+            {toast.tone === 'error' ? '✕' : '✓'}
+          </span>
+          {toast.message}
+        </div>
+      )}
     </>
   )
+}
+
+const toastBase: React.CSSProperties = {
+  position: 'fixed', bottom: 24, right: 24, zIndex: 400,
+  padding: '12px 18px', maxWidth: 'min(420px, 92vw)',
+  background: '#0A3526',
+  borderRadius: 8,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
+  color: '#E5D4C2', letterSpacing: '0.02em',
+  display: 'flex', alignItems: 'center',
+  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+}
+const toastInfoBox: React.CSSProperties = {
+  ...toastBase,
+  border: '1px solid rgba(122,176,122,0.45)',
+  borderLeft: '3px solid #7AB07A',
+}
+const toastErrorBox: React.CSSProperties = {
+  ...toastBase,
+  border: '1px solid rgba(194,112,112,0.45)',
+  borderLeft: '3px solid #C27070',
 }
 
 function fmtTime(b: Booking): string {
