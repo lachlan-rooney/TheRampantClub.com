@@ -168,6 +168,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '8px 0 4px' }}>
         <h1 style={pageTitle}>{project.name}</h1>
         <div style={{ display: 'flex', gap: 8 }}>
+          <Link href={`/admin/ops/${project.id}/progress`} style={{ ...tinyBtn, textDecoration: 'none' }}>Progress</Link>
           <button onClick={() => setShowRecurring(s => !s)} style={tinyBtn}>{showRecurring ? 'Hide recurring' : 'Recurring'}</button>
           <button onClick={() => setShowActivity(s => !s)} style={tinyBtn}>{showActivity ? 'Hide activity' : 'Activity'}</button>
           <button onClick={() => setShowMembers(s => !s)} style={tinyBtn}>{showMembers ? 'Hide access' : 'Access'}</button>
