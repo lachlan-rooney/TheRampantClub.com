@@ -18,11 +18,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <AdminNav />
       <NotificationBell />
       <main style={{
-        marginLeft: 240, flex: 1, minHeight: '100vh', background: '#052E20',
+        marginLeft: 240, flex: 1, minWidth: 0, minHeight: '100vh', background: '#052E20',
         padding: '48px 40px',
         display: 'flex', flexDirection: 'column',
       }}>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           {children}
         </div>
         <div style={{

@@ -36,6 +36,9 @@ export function describeEvent(ev: ActivityEvent): string {
     case 'task:moved':             return `moved ${q(title)} from ${str(m.from_column_name, '—')} to ${str(m.to_column_name, '—')}`
     case 'task:assigned':          return m.assignee_name ? `assigned ${q(title)} to ${str(m.assignee_name)}` : `unassigned ${q(title)}`
     case 'task:completed':         return `completed ${q(title)}`
+    case 'task:rescheduled':       return m.start_date
+                                            ? `rescheduled ${q(title)} → ${fmtDate(m.start_date)}–${fmtDate(m.due_date)}`
+                                            : `rescheduled ${q(title)} → due ${fmtDate(m.due_date)}`
     case 'task:deleted':           return `deleted ${q(title)}`
     case 'task:lapsed':            return `${q(title)} lapsed${m.due_date ? ` — was due ${fmtDate(m.due_date)}` : ''}`
     case 'template:created':       return `created recurring template ${q(title)}`

@@ -53,6 +53,7 @@ export interface Task {
   assignee: string | null   // team_members.id
   priority: TaskPriority
   due_date: string | null
+  start_date: string | null            // Gantt — optional; with due → bar, without → milestone
   sort_order: number
   status: string
   created_by: string | null
