@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
+import { ConfirmModal, useToast } from '@/components/admin/dialogs'
 import type { Notice } from '@/lib/types'
 
 const CATEGORIES = ['committee', 'fixture', 'general', 'whisky'] as const
@@ -34,12 +35,7 @@ export default function AdminNotices() {
 
   const supabase = createBrowserSupabaseClient()
 
-  // Toast for non-blocking notices (replaces alert()).
-  const [toast, setToast] = useState<{ message: string; tone: 'info' | 'error' } | null>(null)
-  const showToast = (message: string, tone: 'info' | 'error' = 'info') => {
-    setToast({ message, tone })
-    setTimeout(() => setToast(null), 4200)
-  }
+  const { showToast, toastNode } = useToast()
   // Confirm modal — single destructive path (delete notice).
   const [confirmNotice, setConfirmNotice] = useState<Notice | null>(null)
   const [confirmBusy, setConfirmBusy] = useState(false)
@@ -153,111 +149,20 @@ export default function AdminNotices() {
         ))}
       </div>
 
-      {/* ── Confirm modal (branded, replaces native window.confirm) ──── */}
-      {confirmNotice && (
-        <>
-          <div style={confirmBackdrop} onClick={closeConfirm} />
-          <div style={confirmModalBox} role="dialog">
-            <div style={confirmEyebrow}>⚠ PERMANENT</div>
-            <div style={confirmTitle}>Delete notice?</div>
-            <div style={confirmSubject}>{confirmNotice.title}</div>
-            <p style={confirmBody}>
-              Removes the notice permanently. Members can no longer see it on the board. Cannot be undone.
-            </p>
-            <div style={confirmActions}>
-              <button onClick={closeConfirm} disabled={confirmBusy} style={confirmCancelBtn}>Cancel</button>
-              <button
-                onClick={runRemove}
-                disabled={confirmBusy}
-                style={{ ...confirmGoBtn, opacity: confirmBusy ? 0.5 : 1 }}
-              >
-                {confirmBusy ? 'Deleting…' : 'Delete notice'}
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+      <ConfirmModal
+        open={!!confirmNotice}
+        eyebrow="⚠ PERMANENT"
+        title="Delete notice?"
+        subject={confirmNotice?.title}
+        body="Removes the notice permanently. Members can no longer see it on the board. Cannot be undone."
+        confirmLabel="Delete notice"
+        busyLabel="Deleting…"
+        busy={confirmBusy}
+        onCancel={closeConfirm}
+        onConfirm={runRemove}
+      />
 
-      {/* ── Toast ────────────────────────────────────────────────────── */}
-      {toast && (
-        <div style={toast.tone === 'error' ? toastErrorBox : toastInfoBox} role="status">
-          <span style={{ marginRight: 8, color: toast.tone === 'error' ? '#C27070' : '#7AB07A' }}>
-            {toast.tone === 'error' ? '✕' : '✓'}
-          </span>
-          {toast.message}
-        </div>
-      )}
+      {toastNode}
     </>
   )
-}
-
-// ── Confirm + toast styles ──────────────────────────────────────────
-const confirmBackdrop: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300,
-}
-const confirmModalBox: React.CSSProperties = {
-  position: 'fixed',
-  top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-  width: 'min(480px, 92vw)',
-  background: '#0A3526',
-  border: '1px solid rgba(194,112,112,0.45)',
-  borderLeft: '3px solid #C27070',
-  borderRadius: 8,
-  padding: '22px 24px',
-  zIndex: 301,
-  boxShadow: '0 20px 60px rgba(0,0,0,0.55)',
-}
-const confirmEyebrow: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
-  color: '#C27070', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700,
-  marginBottom: 8,
-}
-const confirmTitle: React.CSSProperties = {
-  fontFamily: "'Rampant Sans', serif", fontSize: 18,
-  color: '#E5D4C2', letterSpacing: '0.02em', marginBottom: 6,
-}
-const confirmSubject: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
-  color: '#B2AA98', marginBottom: 12,
-}
-const confirmBody: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
-  color: '#B2AA98', lineHeight: 1.65, marginBottom: 14,
-}
-const confirmActions: React.CSSProperties = {
-  display: 'flex', gap: 10, justifyContent: 'flex-end',
-}
-const confirmCancelBtn: React.CSSProperties = {
-  background: 'transparent', color: '#B2AA98',
-  border: '1px solid rgba(229,212,194,0.20)', borderRadius: 4,
-  padding: '8px 16px',
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11, letterSpacing: '0.06em',
-  cursor: 'pointer',
-}
-const confirmGoBtn: React.CSSProperties = {
-  background: '#C27070', color: '#FFFFFF',
-  border: 'none', borderRadius: 4,
-  padding: '8px 18px',
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
-  cursor: 'pointer',
-}
-const toastBase: React.CSSProperties = {
-  position: 'fixed', bottom: 24, right: 24, zIndex: 400,
-  padding: '12px 18px',
-  background: '#0A3526',
-  borderRadius: 8,
-  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
-  color: '#E5D4C2', letterSpacing: '0.02em',
-  display: 'flex', alignItems: 'center',
-  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-}
-const toastInfoBox: React.CSSProperties = {
-  ...toastBase,
-  border: '1px solid rgba(122,176,122,0.45)',
-  borderLeft: '3px solid #7AB07A',
-}
-const toastErrorBox: React.CSSProperties = {
-  ...toastBase,
-  border: '1px solid rgba(194,112,112,0.45)',
-  borderLeft: '3px solid #C27070',
 }
