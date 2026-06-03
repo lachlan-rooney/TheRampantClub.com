@@ -112,6 +112,12 @@ export default function LockersPage() {
   // stay un-dimmed. Surfaces "which member lockers need a refill check"
   // at a glance without having to scroll/eyeball each tile's fill bar.
   const [showLowFillOnly, setShowLowFillOnly] = useState(false)
+  // Toast for non-blocking notices (replaces alert()).
+  const [toast, setToast] = useState<{ message: string; tone: 'info' | 'error' } | null>(null)
+  const showToast = (message: string, tone: 'info' | 'error' = 'info') => {
+    setToast({ message, tone })
+    setTimeout(() => setToast(null), 4200)
+  }
   // Per-locker low-fill count, computed from the contents array we
   // already loaded. Map locker_no → number of bottles ≤25%.
   const lowFillByLocker = useMemo(() => {
@@ -215,7 +221,7 @@ export default function LockersPage() {
       body: JSON.stringify({ rows: seedRows, cols: seedCols, prefix: seedPrefix || undefined }),
     })
     const j = await r.json()
-    if (!r.ok) { alert(j.error || 'Seed failed'); return }
+    if (!r.ok) { showToast(j.error || 'Seed failed', 'error'); return }
     setSeedOpen(false)
     load()
   }
@@ -368,6 +374,16 @@ export default function LockersPage() {
              everything else). The wall tile updates in place. */
           onChange={() => load(true)}
         />
+      )}
+
+      {/* ── Toast ────────────────────────────────────────────────────── */}
+      {toast && (
+        <div style={toast.tone === 'error' ? toastErrorBox : toastInfoBox} role="status">
+          <span style={{ marginRight: 8, color: toast.tone === 'error' ? '#C27070' : '#7AB07A' }}>
+            {toast.tone === 'error' ? '✕' : '✓'}
+          </span>
+          {toast.message}
+        </div>
       )}
     </>
   )
@@ -658,11 +674,21 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
     onChange()
   }
 
-  const removeBottle = async (id: string) => {
-    if (!confirm('Remove this bottle from the locker?')) return
-    await fetch(`/api/admin/lockers/${locker_no}/contents?id=${id}`, { method: 'DELETE' })
-    load(true)
-    onChange()
+  const [confirmBottle, setConfirmBottle] = useState<BottleContent | null>(null)
+  const [removeBusy, setRemoveBusy] = useState(false)
+  const requestRemoveBottle = (c: BottleContent) => setConfirmBottle(c)
+  const closeRemoveBottle   = () => { if (!removeBusy) setConfirmBottle(null) }
+  const runRemoveBottle = async () => {
+    if (!confirmBottle) return
+    setRemoveBusy(true)
+    try {
+      await fetch(`/api/admin/lockers/${locker_no}/contents?id=${confirmBottle.id}`, { method: 'DELETE' })
+      setConfirmBottle(null)
+      load(true)
+      onChange()
+    } finally {
+      setRemoveBusy(false)
+    }
   }
 
   const filteredMembers = useMemo(() => {
@@ -808,7 +834,7 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
                       </span>
                     </div>
                   </div>
-                  <button onClick={() => removeBottle(c.id)} style={{ ...tinyBtn, color: '#C27070', borderColor: 'rgba(180,70,70,0.30)' }}>Remove</button>
+                  <button onClick={() => requestRemoveBottle(c)} style={{ ...tinyBtn, color: '#C27070', borderColor: 'rgba(180,70,70,0.30)' }}>Remove</button>
                 </div>
               ))}
 
@@ -934,6 +960,31 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
           </>
         )}
       </div>
+
+      {/* ── Confirm modal (branded, replaces native window.confirm) ──── */}
+      {confirmBottle && (
+        <>
+          <div style={confirmBackdrop} onClick={closeRemoveBottle} />
+          <div style={confirmModalBox} role="dialog">
+            <div style={confirmEyebrow}>⚠ REMOVE BOTTLE</div>
+            <div style={confirmTitle}>Remove this bottle?</div>
+            <div style={confirmSubject}>{confirmBottle.bottle_name} · locker {locker_no}</div>
+            <p style={confirmBody}>
+              Takes the bottle off this locker&apos;s contents. The locker activity timeline keeps a record of the removal. Cannot be undone.
+            </p>
+            <div style={confirmActions}>
+              <button onClick={closeRemoveBottle} disabled={removeBusy} style={confirmCancelBtn}>Cancel</button>
+              <button
+                onClick={runRemoveBottle}
+                disabled={removeBusy}
+                style={{ ...confirmGoBtn, opacity: removeBusy ? 0.5 : 1 }}
+              >
+                {removeBusy ? 'Removing…' : 'Remove bottle'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   )
 }
@@ -1317,4 +1368,75 @@ const doorColumnLabel: React.CSSProperties = {
   display: 'flex', flexDirection: 'column', alignItems: 'center',
   lineHeight: 1.15,
   textAlign: 'center',
+}
+
+// ── Confirm + toast styles ──────────────────────────────────────────
+const confirmBackdrop: React.CSSProperties = {
+  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 600,
+}
+const confirmModalBox: React.CSSProperties = {
+  position: 'fixed',
+  top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+  width: 'min(480px, 92vw)',
+  background: '#0A3526',
+  border: '1px solid rgba(194,112,112,0.45)',
+  borderLeft: '3px solid #C27070',
+  borderRadius: 8,
+  padding: '22px 24px',
+  zIndex: 601,
+  boxShadow: '0 20px 60px rgba(0,0,0,0.55)',
+}
+const confirmEyebrow: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#C27070', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700,
+  marginBottom: 8,
+}
+const confirmTitle: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 18,
+  color: '#E5D4C2', letterSpacing: '0.02em', marginBottom: 6,
+}
+const confirmSubject: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', marginBottom: 12,
+}
+const confirmBody: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', lineHeight: 1.65, marginBottom: 14,
+}
+const confirmActions: React.CSSProperties = {
+  display: 'flex', gap: 10, justifyContent: 'flex-end',
+}
+const confirmCancelBtn: React.CSSProperties = {
+  background: 'transparent', color: '#B2AA98',
+  border: '1px solid rgba(229,212,194,0.20)', borderRadius: 4,
+  padding: '8px 16px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, letterSpacing: '0.06em',
+  cursor: 'pointer',
+}
+const confirmGoBtn: React.CSSProperties = {
+  background: '#C27070', color: '#FFFFFF',
+  border: 'none', borderRadius: 4,
+  padding: '8px 18px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
+  cursor: 'pointer',
+}
+const toastBase: React.CSSProperties = {
+  position: 'fixed', bottom: 24, right: 24, zIndex: 700,
+  padding: '12px 18px',
+  background: '#0A3526',
+  borderRadius: 8,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
+  color: '#E5D4C2', letterSpacing: '0.02em',
+  display: 'flex', alignItems: 'center',
+  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+}
+const toastInfoBox: React.CSSProperties = {
+  ...toastBase,
+  border: '1px solid rgba(122,176,122,0.45)',
+  borderLeft: '3px solid #7AB07A',
+}
+const toastErrorBox: React.CSSProperties = {
+  ...toastBase,
+  border: '1px solid rgba(194,112,112,0.45)',
+  borderLeft: '3px solid #C27070',
 }
