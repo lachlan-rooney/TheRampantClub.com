@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
+import { useToast } from '@/components/admin/dialogs'
 import type { Whisky } from '@/lib/types'
 
 // Admin / Whisky Library
@@ -95,15 +96,8 @@ export default function AdminWhisky() {
   }
   const dismissCancelStocktake = () => setStocktakeCancelOpen(false)
 
-  // Non-blocking toast for friendly notices (replaces alert()). Auto-
-  // dismisses after a few seconds so it never blocks the flow.
-  const [toast, setToast] = useState<{ message: string; tone: 'info' | 'warn' } | null>(null)
-  useEffect(() => {
-    if (!toast) return
-    const id = setTimeout(() => setToast(null), 3800)
-    return () => clearTimeout(id)
-  }, [toast])
-  const showToast = (message: string, tone: 'info' | 'warn' = 'info') => setToast({ message, tone })
+  // Non-blocking toast for friendly notices (replaces alert()).
+  const { showToast, toastNode } = useToast()
 
   // Auto-marks a whisky as reviewed during stocktake. Called from the
   // fill-save flow and from the explicit "no change" button.
@@ -937,15 +931,7 @@ export default function AdminWhisky() {
         </>
       )}
 
-      {/* ── Toast notice ─────────────────────────────────────────────── */}
-      {toast && (
-        <div style={toast.tone === 'warn' ? toastWarn : toastInfo} role="status">
-          <span style={{ marginRight: 8, color: toast.tone === 'warn' ? '#D4B85A' : '#7AB07A' }}>
-            {toast.tone === 'warn' ? '!' : '✓'}
-          </span>
-          {toast.message}
-        </div>
-      )}
+      {toastNode}
 
       {/* ── Delete confirmation modal ──────────────────────────────────
           Hard-delete cascades to whisky_fill_history, so the user has to
@@ -1464,30 +1450,6 @@ const cancelConfirmBtn: React.CSSProperties = {
   padding: '8px 18px',
   fontFamily: "'Google Sans Code', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
   cursor: 'pointer',
-}
-
-// Toast — bottom-right pill, auto-dismisses. Two tones: info (green) for
-// success/confirmation, warn (gold) for non-blocking validation notices.
-const toastBase: React.CSSProperties = {
-  position: 'fixed', bottom: 24, right: 24, zIndex: 400,
-  padding: '12px 18px',
-  background: '#0A3526',
-  borderRadius: 8,
-  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
-  color: '#E5D4C2', letterSpacing: '0.02em',
-  display: 'flex', alignItems: 'center',
-  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-  animation: 'rc-toast-in 0.22s ease-out',
-}
-const toastInfo: React.CSSProperties = {
-  ...toastBase,
-  border: '1px solid rgba(122,176,122,0.45)',
-  borderLeft: '3px solid #7AB07A',
-}
-const toastWarn: React.CSSProperties = {
-  ...toastBase,
-  border: '1px solid rgba(212,184,90,0.45)',
-  borderLeft: '3px solid #D4B85A',
 }
 
 const deleteCancelBtn: React.CSSProperties = {

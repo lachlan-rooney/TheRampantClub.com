@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState, useMemo } from 'react'
+import { useToast } from '@/components/admin/dialogs'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { vnDateString } from '@/lib/datetime'
@@ -36,8 +37,7 @@ export default function NewBookingPage() {
   const [sendConfirmation, setSendConfirmation] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // Toast for non-blocking notices (replaces alert()).
-  const [toast, setToast] = useState<{ message: string; tone: 'info' | 'error' } | null>(null)
+  const { showToast, toastNode } = useToast()
 
   useEffect(() => {
     fetch('/api/admin/mis/members', { cache: 'no-store' })
@@ -81,7 +81,7 @@ export default function NewBookingPage() {
       if (sendConfirmation && j.email_error) {
         // Booking still saved — surface the email failure as a toast, then
         // give it a beat to be read before moving on to the calendar.
-        setToast({ message: `Booking saved, but confirmation email failed: ${j.email_error}`, tone: 'error' })
+        showToast(`Booking saved, but confirmation email failed: ${j.email_error}`, 'error')
         setTimeout(() => router.push('/admin/calendar'), 2600)
         return
       }
@@ -220,38 +220,9 @@ export default function NewBookingPage() {
         <Link href="/admin/calendar" style={btnGhost}>Cancel</Link>
       </div>
 
-      {/* ── Toast ────────────────────────────────────────────────────── */}
-      {toast && (
-        <div style={toast.tone === 'error' ? toastErrorBox : toastInfoBox} role="status">
-          <span style={{ marginRight: 8, color: toast.tone === 'error' ? '#C27070' : '#7AB07A' }}>
-            {toast.tone === 'error' ? '✕' : '✓'}
-          </span>
-          {toast.message}
-        </div>
-      )}
+      {toastNode}
     </>
   )
-}
-
-const toastBase: React.CSSProperties = {
-  position: 'fixed', bottom: 24, right: 24, zIndex: 400,
-  padding: '12px 18px', maxWidth: 'min(420px, 92vw)',
-  background: '#0A3526',
-  borderRadius: 8,
-  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
-  color: '#E5D4C2', letterSpacing: '0.02em',
-  display: 'flex', alignItems: 'center',
-  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-}
-const toastInfoBox: React.CSSProperties = {
-  ...toastBase,
-  border: '1px solid rgba(122,176,122,0.45)',
-  borderLeft: '3px solid #7AB07A',
-}
-const toastErrorBox: React.CSSProperties = {
-  ...toastBase,
-  border: '1px solid rgba(194,112,112,0.45)',
-  borderLeft: '3px solid #C27070',
 }
 
 const backLink: React.CSSProperties = {
