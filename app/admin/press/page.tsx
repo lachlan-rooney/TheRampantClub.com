@@ -55,6 +55,16 @@ export default function AdminPress() {
   const [busy, setBusy] = useState(false)
   const supabase = createBrowserSupabaseClient()
 
+  // Toast for non-blocking notices (replaces alert()).
+  const [toast, setToast] = useState<{ message: string; tone: 'info' | 'error' } | null>(null)
+  const showToast = (message: string, tone: 'info' | 'error' = 'info') => {
+    setToast({ message, tone })
+    setTimeout(() => setToast(null), 4200)
+  }
+  // Confirm modal — single destructive path (delete press item).
+  const [confirmItem, setConfirmItem] = useState<PressItem | null>(null)
+  const [confirmBusy, setConfirmBusy] = useState(false)
+
   const load = async () => {
     const { data } = await supabase.from('press_items')
       .select('*')
@@ -82,7 +92,7 @@ export default function AdminPress() {
   }
 
   const save = async () => {
-    if (!form.title.trim()) { alert('Title required'); return }
+    if (!form.title.trim()) { showToast('Title is required.', 'error'); return }
     setBusy(true)
     const payload = {
       type: form.type,
@@ -111,10 +121,19 @@ export default function AdminPress() {
     load()
   }
 
-  const remove = async (i: PressItem) => {
-    if (!confirm(`Delete "${i.title}"?`)) return
-    await supabase.from('press_items').delete().eq('id', i.id)
-    load()
+  const requestRemove = (i: PressItem) => setConfirmItem(i)
+  const closeConfirm  = () => { if (!confirmBusy) setConfirmItem(null) }
+  const runRemove = async () => {
+    if (!confirmItem) return
+    setConfirmBusy(true)
+    try {
+      const { error } = await supabase.from('press_items').delete().eq('id', confirmItem.id)
+      if (error) { showToast(`Delete failed: ${error.message}`, 'error'); return }
+      setConfirmItem(null)
+      load()
+    } finally {
+      setConfirmBusy(false)
+    }
   }
 
   const groups: Record<PressType, PressItem[]> = { kit: [], release: [], mention: [] }
@@ -248,12 +267,118 @@ export default function AdminPress() {
                   {i.is_published ? 'Unpublish' : 'Publish'}
                 </button>
                 <button onClick={() => startEdit(i)} style={btn}>Edit</button>
-                <button onClick={() => remove(i)} style={btnDanger}>Delete</button>
+                <button onClick={() => requestRemove(i)} style={btnDanger}>Delete</button>
               </div>
             </div>
           ))}
         </section>
       ))}
+
+      {/* ── Confirm modal (branded, replaces native window.confirm) ──── */}
+      {confirmItem && (
+        <>
+          <div style={confirmBackdrop} onClick={closeConfirm} />
+          <div style={confirmModalBox} role="dialog">
+            <div style={confirmEyebrow}>⚠ PERMANENT</div>
+            <div style={confirmTitle}>Delete press item?</div>
+            <div style={confirmSubject}>{confirmItem.title}</div>
+            <p style={confirmBody}>
+              Removes this {TYPE_LABEL[confirmItem.type].toLowerCase()} permanently from the press page. Cannot be undone.
+            </p>
+            <div style={confirmActions}>
+              <button onClick={closeConfirm} disabled={confirmBusy} style={confirmCancelBtn}>Cancel</button>
+              <button
+                onClick={runRemove}
+                disabled={confirmBusy}
+                style={{ ...confirmGoBtn, opacity: confirmBusy ? 0.5 : 1 }}
+              >
+                {confirmBusy ? 'Deleting…' : 'Delete item'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Toast ────────────────────────────────────────────────────── */}
+      {toast && (
+        <div style={toast.tone === 'error' ? toastErrorBox : toastInfoBox} role="status">
+          <span style={{ marginRight: 8, color: toast.tone === 'error' ? '#C27070' : '#7AB07A' }}>
+            {toast.tone === 'error' ? '✕' : '✓'}
+          </span>
+          {toast.message}
+        </div>
+      )}
     </>
   )
+}
+
+// ── Confirm + toast styles ──────────────────────────────────────────
+const confirmBackdrop: React.CSSProperties = {
+  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300,
+}
+const confirmModalBox: React.CSSProperties = {
+  position: 'fixed',
+  top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+  width: 'min(480px, 92vw)',
+  background: '#0A3526',
+  border: '1px solid rgba(194,112,112,0.45)',
+  borderLeft: '3px solid #C27070',
+  borderRadius: 8,
+  padding: '22px 24px',
+  zIndex: 301,
+  boxShadow: '0 20px 60px rgba(0,0,0,0.55)',
+}
+const confirmEyebrow: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#C27070', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700,
+  marginBottom: 8,
+}
+const confirmTitle: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 18,
+  color: '#E5D4C2', letterSpacing: '0.02em', marginBottom: 6,
+}
+const confirmSubject: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', marginBottom: 12,
+}
+const confirmBody: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', lineHeight: 1.65, marginBottom: 14,
+}
+const confirmActions: React.CSSProperties = {
+  display: 'flex', gap: 10, justifyContent: 'flex-end',
+}
+const confirmCancelBtn: React.CSSProperties = {
+  background: 'transparent', color: '#B2AA98',
+  border: '1px solid rgba(229,212,194,0.20)', borderRadius: 4,
+  padding: '8px 16px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, letterSpacing: '0.06em',
+  cursor: 'pointer',
+}
+const confirmGoBtn: React.CSSProperties = {
+  background: '#C27070', color: '#FFFFFF',
+  border: 'none', borderRadius: 4,
+  padding: '8px 18px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
+  cursor: 'pointer',
+}
+const toastBase: React.CSSProperties = {
+  position: 'fixed', bottom: 24, right: 24, zIndex: 400,
+  padding: '12px 18px',
+  background: '#0A3526',
+  borderRadius: 8,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
+  color: '#E5D4C2', letterSpacing: '0.02em',
+  display: 'flex', alignItems: 'center',
+  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+}
+const toastInfoBox: React.CSSProperties = {
+  ...toastBase,
+  border: '1px solid rgba(122,176,122,0.45)',
+  borderLeft: '3px solid #7AB07A',
+}
+const toastErrorBox: React.CSSProperties = {
+  ...toastBase,
+  border: '1px solid rgba(194,112,112,0.45)',
+  borderLeft: '3px solid #C27070',
 }
