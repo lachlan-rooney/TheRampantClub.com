@@ -295,6 +295,24 @@ begin
   end if;
 end$$;
 
+-- Reorder all cards within one column in a single transaction → ONE 'reordered'
+-- event (not one per card, which would spam the spine). Cross-column moves use
+-- ops_move_task; this is the within-column case.
+create or replace function ops_reorder_column(p_column_id uuid, p_ordered_ids uuid[])
+  returns void language plpgsql security invoker set search_path = public as $$
+declare v_project uuid; i int;
+begin
+  select project_id into v_project from board_columns where id = p_column_id;
+  if v_project is null then raise exception 'column not found'; end if;
+  if not is_project_editor(v_project, auth.uid()) then raise exception 'reorder not permitted'; end if;
+  for i in 1 .. coalesce(array_length(p_ordered_ids, 1), 0) loop
+    update tasks set sort_order = i - 1, updated_at = now()
+     where id = p_ordered_ids[i] and column_id = p_column_id;
+  end loop;
+  perform ops_emit_event('reordered', 'column', p_column_id, v_project,
+    jsonb_build_object('count', coalesce(array_length(p_ordered_ids, 1), 0)));
+end$$;
+
 create or replace function ops_assign_task(p_task_id uuid, p_assignee uuid)
   returns void language plpgsql security invoker set search_path = public as $$
 declare v_project uuid;
@@ -447,6 +465,7 @@ grant execute on function ops_rename_column(uuid, text)                       to
 grant execute on function ops_create_task(uuid, uuid, text, text, uuid, text, date) to authenticated;
 grant execute on function ops_update_task(uuid, text, text, text, date)       to authenticated;
 grant execute on function ops_move_task(uuid, uuid, integer)                  to authenticated;
+grant execute on function ops_reorder_column(uuid, uuid[])                    to authenticated;
 grant execute on function ops_assign_task(uuid, uuid)                         to authenticated;
 grant execute on function ops_delete_task(uuid)                               to authenticated;
 grant execute on function ops_add_project_member(uuid, uuid, text)            to authenticated;

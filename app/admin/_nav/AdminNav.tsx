@@ -14,6 +14,13 @@ const DASHBOARD: Item = { href: '/admin', label: 'Dashboard' }
 
 const GROUPS: Group[] = [
   {
+    id: 'operations',
+    label: 'Operations',
+    items: [
+      { href: '/admin/ops', label: 'Boards' },
+    ],
+  },
+  {
     id: 'floor',
     label: 'Floor',
     items: [

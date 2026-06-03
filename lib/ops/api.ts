@@ -70,6 +70,10 @@ export const updateTask = (t: {
 export const moveTask = (taskId: string, toColumnId: string, toSort: number) =>
   opsWrite('ops_move_task', { p_task_id: taskId, p_to_column_id: toColumnId, p_to_sort: toSort })
 
+// Within-column reorder — persists the whole column's order in one event.
+export const reorderColumn = (columnId: string, orderedIds: string[]) =>
+  opsWrite('ops_reorder_column', { p_column_id: columnId, p_ordered_ids: orderedIds })
+
 export const assignTask = (taskId: string, assignee: string | null) =>
   opsWrite('ops_assign_task', { p_task_id: taskId, p_assignee: assignee })
 
