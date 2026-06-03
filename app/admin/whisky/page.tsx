@@ -321,7 +321,7 @@ export default function AdminWhisky() {
     try {
       const ids = [...selectedIds]
       const { error } = await supabase.from('whiskies').update(patch).in('id', ids)
-      if (error) { alert(`Bulk update failed: ${error.message}`); return }
+      if (error) { showToast(`Bulk update failed: ${error.message}`, 'warn'); return }
       // Optimistic local merge so the UI reflects it immediately.
       setWhiskies(prev => prev.map(w => selectedIds.has(w.id) ? { ...w, ...patch } as Whisky : w))
       clearSelection()
@@ -355,7 +355,7 @@ export default function AdminWhisky() {
     setDeleting(true)
     try {
       const { error } = await supabase.from('whiskies').delete().eq('id', deleteTarget.id)
-      if (error) { alert(`Delete failed: ${error.message}`); return }
+      if (error) { showToast(`Delete failed: ${error.message}`, 'warn'); return }
       setDeleteTarget(null)
       setDeleteConfirmText('')
       load()
@@ -383,7 +383,7 @@ export default function AdminWhisky() {
         body: JSON.stringify({ fill_pct: draftFill, note: draftNote || undefined }),
       })
       const j = await r.json()
-      if (!r.ok) { alert(j.error || 'Failed to save fill'); return }
+      if (!r.ok) { showToast(j.error || 'Failed to save fill', 'warn'); return }
       // Optimistic merge — the API echo gives us the canonical timestamp
       // and admin email so the audit attribution updates immediately.
       setWhiskies(prev => prev.map(x => x.id === w.id ? {
@@ -430,7 +430,7 @@ export default function AdminWhisky() {
       } : x))
     }
     const { error } = await supabase.from('whiskies').update(payload).eq('id', id)
-    if (error) { alert(`Save failed: ${error.message}`); load() }
+    if (error) { showToast(`Save failed: ${error.message}`, 'warn'); load() }
   }
 
   const loadHistory = useCallback(async () => {
