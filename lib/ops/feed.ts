@@ -10,6 +10,11 @@ import type { ActivityEvent } from './types'
 
 const q = (s: unknown) => (s == null || s === '' ? '—' : `“${s}”`)
 const str = (s: unknown, fallback = 'someone') => (typeof s === 'string' && s ? s : fallback)
+const fmtDate = (s: unknown) => {
+  if (typeof s !== 'string' || !s) return ''
+  const d = new Date(s)
+  return isNaN(d.getTime()) ? String(s) : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+}
 
 // The predicate — what the actor did. The actor name is rendered separately
 // (also from the snapshot: metadata.actor_name).
@@ -24,12 +29,17 @@ export function describeEvent(ev: ActivityEvent): string {
     case 'column:created':         return `added column ${q(m.name)}`
     case 'column:updated':         return m.old_name ? `renamed column ${q(m.old_name)} → ${q(m.name)}` : `renamed a column to ${q(m.name)}`
     case 'column:reordered':       return `reordered ${str(m.column_name, 'a column')}`
-    case 'task:created':           return `created ${q(title)}${m.column_name ? ` in ${m.column_name}` : ''}`
+    case 'task:created':           return m.from_template
+                                            ? `materialised ${q(title)}${m.column_name ? ` in ${m.column_name}` : ''}`
+                                            : `created ${q(title)}${m.column_name ? ` in ${m.column_name}` : ''}`
     case 'task:updated':           return `edited ${q(title)}`
     case 'task:moved':             return `moved ${q(title)} from ${str(m.from_column_name, '—')} to ${str(m.to_column_name, '—')}`
     case 'task:assigned':          return m.assignee_name ? `assigned ${q(title)} to ${str(m.assignee_name)}` : `unassigned ${q(title)}`
     case 'task:completed':         return `completed ${q(title)}`
     case 'task:deleted':           return `deleted ${q(title)}`
+    case 'task:lapsed':            return `${q(title)} lapsed${m.due_date ? ` — was due ${fmtDate(m.due_date)}` : ''}`
+    case 'template:created':       return `created recurring template ${q(title)}`
+    case 'template:updated':       return `updated recurring template ${q(title)}`
     default:                       return `${ev.verb} ${ev.object_type}`
   }
 }
