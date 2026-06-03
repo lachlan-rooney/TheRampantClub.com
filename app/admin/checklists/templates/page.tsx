@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { ConfirmModal, PromptModal } from '@/components/admin/dialogs'
 import type { ChecklistTemplateItem } from '@/lib/checklist-templates'
 
 // Admin / Floor / Checklist Templates
@@ -126,14 +127,15 @@ function Editor({ template, kindColor, onItems, onSave, saving, savedAt, error }
 }) {
   const items = template.items
 
-  // Toast for non-blocking notices (replaces alert()).
-  const [toast, setToast] = useState<{ message: string; tone: 'info' | 'error' } | null>(null)
-  const showToast = (message: string, tone: 'info' | 'error' = 'info') => {
-    setToast({ message, tone })
-    setTimeout(() => setToast(null), 4200)
-  }
   // Confirm modal — single destructive path (remove item from template).
   const [confirmRemove, setConfirmRemove] = useState<ChecklistTemplateItem | null>(null)
+  // Prompt modal — text-entry paths (new item id, rename zone, new zone).
+  const [promptState, setPromptState] = useState<
+    | { kind: 'add_item'; zone: string }
+    | { kind: 'rename_zone'; oldZone: string }
+    | { kind: 'new_zone' }
+    | null
+  >(null)
 
   // Group by zone for the editor too (matches what staff see at runtime).
   // Use the editor-side ordering by sort_order; staff sort the same way.
@@ -160,10 +162,7 @@ function Editor({ template, kindColor, onItems, onSave, saving, savedAt, error }
     onItems(items.filter(it => it.id !== confirmRemove.id))
     setConfirmRemove(null)
   }
-  const addItem = (zone: string) => {
-    const id = prompt('New item id (lowercase, hyphens, must be unique):')?.trim()
-    if (!id) return
-    if (items.some(it => it.id === id)) { showToast(`An item with id "${id}" already exists.`, 'error'); return }
+  const addItemWithId = (id: string, zone: string) => {
     const maxSort = items.length === 0 ? 0 : Math.max(...items.map(it => it.sort_order))
     onItems([...items, {
       id,
@@ -175,10 +174,21 @@ function Editor({ template, kindColor, onItems, onSave, saving, savedAt, error }
       sort_order: maxSort + 10,
     }])
   }
-  const renameZone = (oldZone: string) => {
-    const fresh = prompt(`Rename zone "${oldZone}" to:`, oldZone)?.trim()
-    if (!fresh || fresh === oldZone) return
-    onItems(items.map(it => it.zone === oldZone ? { ...it, zone: fresh } : it))
+  // PromptModal dispatch — each text-entry path resolves here. The new-zone
+  // path chains into the add-item prompt so a fresh zone gets its first item.
+  const handlePromptConfirm = (value: string) => {
+    if (!promptState) return
+    if (promptState.kind === 'add_item') {
+      addItemWithId(value, promptState.zone)
+      setPromptState(null)
+    } else if (promptState.kind === 'rename_zone') {
+      if (value !== promptState.oldZone) {
+        onItems(items.map(it => it.zone === promptState.oldZone ? { ...it, zone: value } : it))
+      }
+      setPromptState(null)
+    } else {  // new_zone → open the add-item prompt for the freshly-named zone
+      setPromptState({ kind: 'add_item', zone: value })
+    }
   }
 
   // Existing zones, in display order.
@@ -223,8 +233,8 @@ function Editor({ template, kindColor, onItems, onSave, saving, savedAt, error }
           <div key={zone} style={zoneBlock}>
             <div style={zoneHeaderRow}>
               <div style={{ ...zoneTitle, color: kindColor }}>{zone}</div>
-              <button onClick={() => renameZone(zone)} style={tinyBtn}>rename</button>
-              <button onClick={() => addItem(zone)} style={tinyBtn}>＋ add item</button>
+              <button onClick={() => setPromptState({ kind: 'rename_zone', oldZone: zone })} style={tinyBtn}>rename</button>
+              <button onClick={() => setPromptState({ kind: 'add_item', zone })} style={tinyBtn}>＋ add item</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {ordered.filter(it => it.zone === zone).map(it => (
@@ -243,42 +253,41 @@ function Editor({ template, kindColor, onItems, onSave, saving, savedAt, error }
         ))}
 
         <div style={addZoneRow}>
-          <button onClick={() => {
-            const zone = prompt('New zone name:')?.trim()
-            if (!zone) return
-            addItem(zone)
-          }} style={tinyBtn}>＋ add zone</button>
+          <button onClick={() => setPromptState({ kind: 'new_zone' })} style={tinyBtn}>＋ add zone</button>
         </div>
       </div>
 
-      {/* ── Confirm modal (branded, replaces native window.confirm) ──── */}
-      {confirmRemove && (
-        <>
-          <div style={confirmBackdrop} onClick={() => setConfirmRemove(null)} />
-          <div style={confirmModalBox} role="dialog">
-            <div style={confirmEyebrow}>⚠ TEMPLATE CHANGE</div>
-            <div style={confirmTitle}>Remove this item?</div>
-            <div style={confirmSubject}>{confirmRemove.label_en} · {confirmRemove.zone}</div>
-            <p style={confirmBody}>
-              Future sheets won&apos;t include it. Already-sealed sheets keep their snapshot and are unaffected. The change only takes effect once you save the template.
-            </p>
-            <div style={confirmActions}>
-              <button onClick={() => setConfirmRemove(null)} style={confirmCancelBtn}>Cancel</button>
-              <button onClick={runRemove} style={confirmGoBtn}>Remove item</button>
-            </div>
-          </div>
-        </>
-      )}
+      <ConfirmModal
+        open={!!confirmRemove}
+        eyebrow="⚠ TEMPLATE CHANGE"
+        title="Remove this item?"
+        subject={confirmRemove ? `${confirmRemove.label_en} · ${confirmRemove.zone}` : undefined}
+        body="Future sheets won't include it. Already-sealed sheets keep their snapshot and are unaffected. The change only takes effect once you save the template."
+        confirmLabel="Remove item"
+        onCancel={() => setConfirmRemove(null)}
+        onConfirm={runRemove}
+      />
 
-      {/* ── Toast ────────────────────────────────────────────────────── */}
-      {toast && (
-        <div style={toast.tone === 'error' ? toastErrorBox : toastInfoBox} role="status">
-          <span style={{ marginRight: 8, color: toast.tone === 'error' ? '#C27070' : '#7AB07A' }}>
-            {toast.tone === 'error' ? '✕' : '✓'}
-          </span>
-          {toast.message}
-        </div>
-      )}
+      <PromptModal
+        key={promptState?.kind ?? 'closed'}
+        open={!!promptState}
+        eyebrow={promptState?.kind === 'rename_zone' ? '✎ RENAME ZONE'
+          : promptState?.kind === 'new_zone' ? '✎ NEW ZONE' : '✎ NEW ITEM'}
+        title={promptState?.kind === 'rename_zone' ? 'Rename zone'
+          : promptState?.kind === 'new_zone' ? 'New zone' : 'New item'}
+        label={promptState?.kind === 'rename_zone' ? `Rename "${promptState.oldZone}" to`
+          : promptState?.kind === 'new_zone' ? 'Zone name'
+          : 'Item id — lowercase, hyphens, must be unique'}
+        placeholder={promptState?.kind === 'add_item' ? 'e.g. wipe-down-bar' : undefined}
+        defaultValue={promptState?.kind === 'rename_zone' ? promptState.oldZone : ''}
+        confirmLabel={promptState?.kind === 'rename_zone' ? 'Rename'
+          : promptState?.kind === 'new_zone' ? 'Next: add item' : 'Add item'}
+        validate={promptState?.kind === 'add_item'
+          ? (v) => !v ? 'An id is required.' : items.some(it => it.id === v) ? `An item with id "${v}" already exists.` : null
+          : undefined}
+        onCancel={() => setPromptState(null)}
+        onConfirm={handlePromptConfirm}
+      />
     </div>
   )
 }
@@ -493,75 +502,4 @@ const errorBox: React.CSSProperties = {
   background: 'rgba(180,70,70,0.15)', border: '1px solid rgba(180,70,70,0.30)',
   borderRadius: 6, color: '#E5D4C2',
   fontFamily: "'Google Sans Code', monospace", fontSize: 11,
-}
-
-// ── Confirm + toast styles ──────────────────────────────────────────
-const confirmBackdrop: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300,
-}
-const confirmModalBox: React.CSSProperties = {
-  position: 'fixed',
-  top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-  width: 'min(480px, 92vw)',
-  background: '#0A3526',
-  border: '1px solid rgba(194,112,112,0.45)',
-  borderLeft: '3px solid #C27070',
-  borderRadius: 8,
-  padding: '22px 24px',
-  zIndex: 301,
-  boxShadow: '0 20px 60px rgba(0,0,0,0.55)',
-}
-const confirmEyebrow: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
-  color: '#C27070', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700,
-  marginBottom: 8,
-}
-const confirmTitle: React.CSSProperties = {
-  fontFamily: "'Rampant Sans', serif", fontSize: 18,
-  color: '#E5D4C2', letterSpacing: '0.02em', marginBottom: 6,
-}
-const confirmSubject: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
-  color: '#B2AA98', marginBottom: 12,
-}
-const confirmBody: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
-  color: '#B2AA98', lineHeight: 1.65, marginBottom: 14,
-}
-const confirmActions: React.CSSProperties = {
-  display: 'flex', gap: 10, justifyContent: 'flex-end',
-}
-const confirmCancelBtn: React.CSSProperties = {
-  background: 'transparent', color: '#B2AA98',
-  border: '1px solid rgba(229,212,194,0.20)', borderRadius: 4,
-  padding: '8px 16px',
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11, letterSpacing: '0.06em',
-  cursor: 'pointer',
-}
-const confirmGoBtn: React.CSSProperties = {
-  background: '#C27070', color: '#FFFFFF',
-  border: 'none', borderRadius: 4,
-  padding: '8px 18px',
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
-  cursor: 'pointer',
-}
-const toastBase: React.CSSProperties = {
-  position: 'fixed', bottom: 24, right: 24, zIndex: 400,
-  padding: '12px 18px',
-  background: '#0A3526',
-  borderRadius: 8,
-  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
-  color: '#E5D4C2', letterSpacing: '0.02em',
-  display: 'flex', alignItems: 'center',
-  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-}
-const toastInfoBox: React.CSSProperties = {
-  ...toastBase,
-  border: '1px solid rgba(122,176,122,0.45)',
-  borderLeft: '3px solid #7AB07A',
-}
-const toastErrorBox: React.CSSProperties = {
-  ...toastBase,
-  border: '1px solid rgba(194,112,112,0.45)',
-  borderLeft: '3px solid #C27070',
 }
