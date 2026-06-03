@@ -165,7 +165,7 @@ export default function RotaPage() {
                         {inCell(d, name).map(s => (
                           <button key={s.id} onClick={() => openAssign(d, name, s)} style={chip} title={[s.start_time && `${s.start_time.slice(0,5)}–${s.end_time?.slice(0,5) || ''}`, s.role].filter(Boolean).join(' · ')}>
                             {memberName(s.member)}
-                            {s.role ? <span style={{ opacity: 0.6 }}> · {s.role}</span> : null}
+                            {s.start_time ? <span style={{ opacity: 0.6 }}> · {s.start_time.slice(0, 5)}</span> : null}
                           </button>
                         ))}
                         {isType && <button onClick={() => openAssign(d, name, null)} style={addCellBtn}>+ assign</button>}
