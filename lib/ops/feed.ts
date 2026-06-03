@@ -43,6 +43,8 @@ export function describeEvent(ev: ActivityEvent): string {
     case 'shift:assigned':         return `assigned ${str(m.member_name)} to the ${fmtDate(m.shift_date)} ${str(m.shift_name, 'shift')} shift`
     case 'shift:updated':          return `updated the ${fmtDate(m.shift_date)} ${str(m.shift_name, 'shift')} shift → ${str(m.member_name)}`
     case 'shift:removed':          return `removed ${str(m.member_name)} from the ${fmtDate(m.shift_date)} ${str(m.shift_name, 'shift')} shift`
+    case 'task:linked':            return `linked ${q(m.linked_label)} to a card`
+    case 'task:unlinked':          return `unlinked ${q(m.linked_label)} from a card`
     default:                       return `${ev.verb} ${ev.object_type}`
   }
 }

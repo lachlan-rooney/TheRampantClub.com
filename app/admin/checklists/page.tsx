@@ -41,6 +41,11 @@ const CLOSING_LABEL = 'Closing · shift closed, handover recorded'
 export default function ChecklistsPage() {
   const today = vnDateString()
   const [date, setDate] = useState(today)
+  // Deep-link from an Ops Hub card link (?date=YYYY-MM-DD) → open that day.
+  useEffect(() => {
+    const d = new URLSearchParams(window.location.search).get('date')
+    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setDate(d)
+  }, [])
   const [opening, setOpening] = useState<Sheet | null>(null)
   const [closing, setClosing] = useState<Sheet | null>(null)
   const [loading, setLoading] = useState(true)
