@@ -3,6 +3,7 @@
 import { use, useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
+import { vnDateString } from '@/lib/datetime'
 import { ConfirmModal, PromptModal, useToast } from '@/components/admin/dialogs'
 import ActivityFeed from '../ActivityFeed'
 import {
@@ -232,7 +233,14 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
                   </div>
                   <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
                     {t.assignee && <span style={pill}>{teamName(t.assignee)}</span>}
-                    {t.due_date && <span style={{ ...pill, color: '#D4B85A' }}>{new Date(t.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>}
+                    {t.due_date && (() => {
+                      const overdue = t.due_date < vnDateString() && !t.completed_at && t.status !== 'lapsed'
+                      return (
+                        <span style={{ ...pill, color: overdue ? '#C27070' : '#D4B85A', fontWeight: overdue ? 600 : 400 }} title={overdue ? 'Overdue' : 'Due'}>
+                          {overdue ? '⚠ ' : ''}{new Date(t.due_date + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })}
+                        </span>
+                      )
+                    })()}
                     {t.completed_at && <span style={{ ...pill, color: '#7AB07A' }}>done</span>}
                     {t.status === 'lapsed' && <span style={{ ...pill, color: '#C27070' }}>lapsed</span>}
                     {t.linked_object_type && t.linked_object_id && (() => {
