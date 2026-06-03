@@ -93,3 +93,7 @@ begin
 end$$;
 
 rollback;
+
+-- Visible PASS row (the editor hides RAISE NOTICE). Only reached if the DO block
+-- raised no exception — i.e. every assertion passed. A FAIL aborts before here.
+select '✓ HISTORY OK — enrich-at-write held; rename/delete did not rewrite the log (no exception raised). Non-destructive; re-run anytime.' as result;

@@ -104,3 +104,8 @@ begin
 end$$;
 
 rollback;
+
+-- Visible PASS row (the editor hides RAISE NOTICE). This line is only reached if
+-- the DO block above raised NO exception — i.e. every assertion passed. A FAIL
+-- aborts the script before here, so you see the red error instead.
+select '✓ RECURRENCE OK — decoupling + idempotency + carry-over/lapse + weekly-weekday all passed (no exception raised). Non-destructive; re-run anytime.' as result;
