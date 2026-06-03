@@ -41,6 +41,7 @@ const ALLOWED_ACTIONS = new Set([
   'ops_create_task',
   'ops_update_task',
   'ops_move_task',
+  'ops_reschedule_task',
   'ops_reorder_column',
   'ops_assign_task',
   'ops_delete_task',

@@ -58,14 +58,20 @@ export const createTask = (t: {
 
 export const updateTask = (t: {
   id: string; title: string; description?: string | null
-  priority: TaskPriority; due_date?: string | null
+  priority: TaskPriority; due_date?: string | null; start_date?: string | null
 }) => opsWrite('ops_update_task', {
   p_task_id: t.id,
   p_title: t.title,
   p_description: t.description ?? null,
   p_priority: t.priority,
   p_due_date: t.due_date ?? null,
+  p_start_date: t.start_date ?? null,
 })
+
+// Gantt drag-to-adjust — writes both dates through the dedicated reschedule RPC,
+// which emits a 'rescheduled' event on the spine (one event per drop).
+export const rescheduleTask = (taskId: string, startDate: string | null, dueDate: string | null) =>
+  opsWrite('ops_reschedule_task', { p_task_id: taskId, p_start_date: startDate, p_due_date: dueDate })
 
 export const moveTask = (taskId: string, toColumnId: string, toSort: number) =>
   opsWrite('ops_move_task', { p_task_id: taskId, p_to_column_id: toColumnId, p_to_sort: toSort })

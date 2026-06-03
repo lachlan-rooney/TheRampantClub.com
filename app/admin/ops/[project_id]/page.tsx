@@ -6,10 +6,11 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { vnDateString } from '@/lib/datetime'
 import { ConfirmModal, PromptModal, useToast } from '@/components/admin/dialogs'
 import ActivityFeed from '../ActivityFeed'
+import GanttView from './GanttView'
 import {
   createTask, updateTask, moveTask, reorderColumn, assignTask, deleteTask,
   createColumn, addProjectMember, removeProjectMember,
-  createTemplate, setTemplateActive, materialiseNow, linkTask, unlinkTask,
+  createTemplate, setTemplateActive, materialiseNow, linkTask, unlinkTask, rescheduleTask,
 } from '@/lib/ops/api'
 import {
   resolveLinks, searchLinkTargets, LINK_TYPE_META, LINK_TYPES,
@@ -45,7 +46,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
   const [loading, setLoading] = useState(true)
 
   const [editing, setEditing] = useState<Task | null>(null)
-  const [draft, setDraft] = useState<{ title: string; description: string; priority: TaskPriority; due_date: string }>({ title: '', description: '', priority: 'normal', due_date: '' })
+  const [draft, setDraft] = useState<{ title: string; description: string; priority: TaskPriority; due_date: string; start_date: string }>({ title: '', description: '', priority: 'normal', due_date: '', start_date: '' })
   const [busy, setBusy] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<Task | null>(null)
   const [newCardCol, setNewCardCol] = useState<string | null>(null)
@@ -54,6 +55,14 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
   const [showActivity, setShowActivity] = useState(false)
   const [showRecurring, setShowRecurring] = useState(false)
   const [dragId, setDragId] = useState<string | null>(null)
+  const [view, setView] = useState<'board' | 'gantt'>('board')
+
+  // Gantt drag-to-adjust: optimistic local update, then one reschedule write
+  // (which emits a 'rescheduled' event). Reload on settle to re-sync the spine.
+  const onReschedule = (taskId: string, start: string | null, due: string | null) => {
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, start_date: start, due_date: due } : t))
+    wrap(() => rescheduleTask(taskId, start, due))
+  }
 
   const load = useCallback(async () => {
     const [{ data: pj }, { data: cols }, { data: tk }, { data: tm }, { data: pm }, { data: tpl }, { data: { user } }] = await Promise.all([
@@ -116,13 +125,13 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
 
   const openEditor = (t: Task) => {
     setEditing(t)
-    setDraft({ title: t.title, description: t.description || '', priority: t.priority, due_date: t.due_date || '' })
+    setDraft({ title: t.title, description: t.description || '', priority: t.priority, due_date: t.due_date || '', start_date: t.start_date || '' })
   }
   const saveEditor = () => {
     if (!editing) return
     wrap(() => updateTask({
       id: editing.id, title: draft.title.trim(), description: draft.description.trim() || null,
-      priority: draft.priority, due_date: draft.due_date || null,
+      priority: draft.priority, due_date: draft.due_date || null, start_date: draft.start_date || null,
     }), () => setEditing(null))
   }
   const changeAssignee = (assignee: string) => {
@@ -168,6 +177,10 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '8px 0 4px' }}>
         <h1 style={pageTitle}>{project.name}</h1>
         <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', border: '1px solid rgba(229,212,194,0.15)', borderRadius: 6, overflow: 'hidden' }}>
+            <button onClick={() => setView('board')} style={{ ...toggleBtn, background: view === 'board' ? 'rgba(212,184,90,0.18)' : 'transparent', color: view === 'board' ? '#D4B85A' : '#B2AA98' }}>Board</button>
+            <button onClick={() => setView('gantt')} style={{ ...toggleBtn, background: view === 'gantt' ? 'rgba(212,184,90,0.18)' : 'transparent', color: view === 'gantt' ? '#D4B85A' : '#B2AA98' }}>Gantt</button>
+          </div>
           <Link href={`/admin/ops/${project.id}/progress`} style={{ ...tinyBtn, textDecoration: 'none' }}>Progress</Link>
           <button onClick={() => setShowRecurring(s => !s)} style={tinyBtn}>{showRecurring ? 'Hide recurring' : 'Recurring'}</button>
           <button onClick={() => setShowActivity(s => !s)} style={tinyBtn}>{showActivity ? 'Hide activity' : 'Activity'}</button>
@@ -204,7 +217,13 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
         />
       )}
 
+      {/* Gantt view — bars (start→due) + milestones (due-only), drag-to-adjust */}
+      {view === 'gantt' && (
+        <GanttView tasks={tasks} project={project} canEdit={canEdit} onOpenCard={openEditor} onReschedule={onReschedule} />
+      )}
+
       {/* Board */}
+      {view === 'board' && (
       <div style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 16, alignItems: 'flex-start' }}>
         {columns.map(col => (
           <div
@@ -264,6 +283,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
           </div>
         ))}
       </div>
+      )}
 
       {/* Card editor drawer */}
       {editing && (
@@ -284,10 +304,20 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
                 </select>
               </div>
               <div style={{ flex: 1 }}>
+                <div style={fieldLabel}>Start date <span style={{ opacity: 0.5 }}>· optional</span></div>
+                <input type="date" style={input} value={draft.start_date} disabled={!canEdit}
+                  max={draft.due_date || undefined}
+                  onChange={e => setDraft(d => ({ ...d, start_date: e.target.value }))} />
+              </div>
+              <div style={{ flex: 1 }}>
                 <div style={fieldLabel}>Due date</div>
                 <input type="date" style={input} value={draft.due_date} disabled={!canEdit}
+                  min={draft.start_date || undefined}
                   onChange={e => setDraft(d => ({ ...d, due_date: e.target.value }))} />
               </div>
+            </div>
+            <div style={{ ...fieldLabel, marginTop: 6, opacity: 0.6 }}>
+              Both dates → a bar on the Gantt. Due only → a milestone. Leave both blank → unscheduled.
             </div>
             <div style={{ marginTop: 10 }}>
               <div style={fieldLabel}>Assignee</div>
@@ -551,6 +581,7 @@ const pill: React.CSSProperties = { fontFamily: FAMILY, fontSize: 9, color: '#B2
 const input: React.CSSProperties = { background: 'rgba(229,212,194,0.06)', color: '#E5D4C2', border: '1px solid rgba(229,212,194,0.18)', borderRadius: 6, padding: '8px 10px', fontFamily: FAMILY, fontSize: 12, width: '100%', boxSizing: 'border-box', outline: 'none' }
 const btnPrimary: React.CSSProperties = { background: '#5E6650', color: '#E5D4C2', border: 'none', borderRadius: 6, padding: '8px 18px', cursor: 'pointer', fontFamily: FAMILY, fontSize: 11, letterSpacing: '0.06em' }
 const tinyBtn: React.CSSProperties = { background: 'rgba(229,212,194,0.06)', color: '#B2AA98', border: '1px solid rgba(229,212,194,0.18)', borderRadius: 4, padding: '5px 10px', fontFamily: FAMILY, fontSize: 10, letterSpacing: '0.04em', cursor: 'pointer', textDecoration: 'none' }
+const toggleBtn: React.CSSProperties = { background: 'transparent', border: 'none', padding: '5px 12px', fontFamily: FAMILY, fontSize: 10, letterSpacing: '0.04em', cursor: 'pointer' }
 const emptyText: React.CSSProperties = { padding: '24px 0', fontFamily: FAMILY, fontSize: 12, color: '#B2AA98', opacity: 0.6, fontStyle: 'italic' }
 const drawerBackdrop: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 500 }
 const drawer: React.CSSProperties = { position: 'fixed', top: 0, right: 0, height: '100vh', width: 'min(420px, 92vw)', background: '#0A3526', borderLeft: '1px solid rgba(229,212,194,0.12)', boxShadow: '-12px 0 40px rgba(0,0,0,0.5)', zIndex: 501, padding: '28px 24px', overflowY: 'auto' }
