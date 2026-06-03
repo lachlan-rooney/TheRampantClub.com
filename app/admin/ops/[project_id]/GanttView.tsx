@@ -8,8 +8,8 @@ const FAMILY = "'Google Sans Code', monospace"
 const LABEL_W = 190       // sticky task-name column (also the MOVE handle)
 const ROW_H = 34
 const EDGE = 8            // resize grab-zone width
-const PAST_PAD = 14       // days of headroom before the earliest known date
-const FUTURE_PAD = 60     // days of empty future to drag tasks into (the timeline isn't capped at the last item)
+const PAST_PAD = 21       // days of headroom before the earliest known date
+const FUTURE_PAD = 150    // days of empty future to scroll/drag into (the timeline isn't capped at the last item)
 
 // Scale-aware: one px-per-day per zoom. All geometry is expressed in dayWidth,
 // and the drag math is Δdays = round(Δpx / dayWidth) — so the same code is crisp
@@ -46,8 +46,8 @@ export default function GanttView({ tasks, project, canEdit, onOpenCard, onResch
   const [zoom, setZoom] = useState<Zoom>('day')
   const dayWidth = DAY_W[zoom]
   const dragRef = useRef<DragState | null>(null)
-  const barRefs = useRef<Map<string, HTMLElement>>(new Map())
-  const setBarRef = (id: string) => (el: HTMLElement | null) => { if (el) barRefs.current.set(id, el); else barRefs.current.delete(id) }
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const scrollByCols = (dir: -1 | 1) => scrollRef.current?.scrollBy({ left: dir * Math.round(scrollRef.current.clientWidth * 0.7), behavior: 'smooth' })
 
   const { placed, unscheduled } = useMemo(() => {
     const placed: Placed[] = []
@@ -121,13 +121,8 @@ export default function GanttView({ tasks, project, canEdit, onOpenCard, onResch
     el.style.willChange = 'transform, width, left'
     el.style.zIndex = '5'
   }
-  // move handle is the NAME label; the moved element is the row's bar/diamond.
-  const onDownName = (e: React.PointerEvent, p: Placed) => {
-    if (!canEdit) { onOpenCard(p.task); return }
-    const el = barRefs.current.get(p.task.id); if (!el) { onOpenCard(p.task); return }
-    e.stopPropagation()
-    beginDrag(e, p, p.kind === 'bar' ? 'move' : 'move-ms', el)
-  }
+  // Reschedule is done ONLY on the bar / diamond / edges — the name is just a
+  // label (click to open). It never slides the dates horizontally.
   const onDownEl = (e: React.PointerEvent, p: Placed, mode: DragMode) => {
     if (!canEdit) { onOpenCard(p.task); return }
     e.stopPropagation()
@@ -184,6 +179,11 @@ export default function GanttView({ tasks, project, canEdit, onOpenCard, onResch
         <p style={{ fontFamily: FAMILY, fontSize: 11, color: '#B2AA98', margin: 0, flex: 1, minWidth: 240 }}>
           {canEdit ? 'Drag a task name to reschedule (slides both dates); drag a bar edge to resize; drag a diamond to move its date.' : 'Read-only.'}
         </p>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button onClick={() => scrollByCols(-1)} style={navBtn} title="Scroll back">‹</button>
+          <button onClick={() => scrollRef.current?.scrollTo({ left: LABEL_W + xOf(todayN) - scrollRef.current.clientWidth / 2, behavior: 'smooth' })} style={navBtn} title="Jump to today">Today</button>
+          <button onClick={() => scrollByCols(1)} style={navBtn} title="Scroll forward">›</button>
+        </div>
         <div style={{ display: 'flex', border: '1px solid rgba(229,212,194,0.15)', borderRadius: 6, overflow: 'hidden' }}>
           {ZOOMS.map(z => (
             <button key={z} onClick={() => setZoom(z)} style={{ ...zoomBtn, background: zoom === z ? 'rgba(212,184,90,0.18)' : 'transparent', color: zoom === z ? '#D4B85A' : '#B2AA98' }}>
@@ -193,7 +193,7 @@ export default function GanttView({ tasks, project, canEdit, onOpenCard, onResch
         </div>
       </div>
 
-      <div style={{ overflowX: 'auto', border: '1px solid rgba(229,212,194,0.10)', borderRadius: 8 }}>
+      <div ref={scrollRef} style={{ overflowX: 'auto', border: '1px solid rgba(229,212,194,0.10)', borderRadius: 8 }}>
         <div style={{ width: LABEL_W + trackW, minWidth: '100%' }}>
           {/* header */}
           <div style={{ display: 'flex', borderBottom: '1px solid rgba(229,212,194,0.12)', height: 30 }}>
@@ -213,13 +213,12 @@ export default function GanttView({ tasks, project, canEdit, onOpenCard, onResch
             <div style={{ padding: '20px 14px', fontFamily: FAMILY, fontSize: 12, color: '#B2AA98', opacity: 0.6, fontStyle: 'italic' }}>No dated tasks yet — add a start/due date to a card to place it here.</div>
           ) : placed.map(p => (
             <div key={p.task.id} style={{ display: 'flex', height: ROW_H, borderBottom: '1px solid rgba(229,212,194,0.05)' }}>
-              {/* NAME = move handle (slides the dates; does NOT reorder) */}
+              {/* NAME = plain label · click to open (NOT a drag handle) */}
               <div
-                onPointerDown={e => onDownName(e, p)} onPointerMove={onMove} onPointerUp={e => onUp(e, p)}
-                style={{ ...stickyLabel, height: ROW_H, display: 'flex', alignItems: 'center', gap: 6, cursor: canEdit ? 'grab' : 'pointer', touchAction: 'none', userSelect: 'none' }}
-                title={canEdit ? 'Drag to reschedule · click to open' : p.task.title}
+                onClick={() => onOpenCard(p.task)}
+                style={{ ...stickyLabel, height: ROW_H, display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+                title={p.task.title}
               >
-                {canEdit && <span style={{ color: '#5E5848', fontSize: 11 }}>⠿</span>}
                 <span style={{ fontFamily: FAMILY, fontSize: 11, color: '#E5D4C2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.task.title}</span>
               </div>
               <div style={{ position: 'relative', width: trackW, height: ROW_H }}>
@@ -228,7 +227,7 @@ export default function GanttView({ tasks, project, canEdit, onOpenCard, onResch
                 {p.kind === 'bar' && p.start != null && p.due != null ? (() => {
                   const left = xOf(p.start); const w = Math.max(dayWidth, (p.due - p.start + 1) * dayWidth); const wide = w >= 2 * EDGE + 12
                   return (
-                    <div ref={setBarRef(p.task.id)} onPointerDown={e => onDownEl(e, p, 'move')} onPointerMove={onMove} onPointerUp={e => onUp(e, p)} style={{ position: 'absolute', left, top: (ROW_H - 18) / 2, width: w, height: 18, background: '#D4B85A', borderRadius: 5, boxShadow: '0 1px 3px rgba(0,0,0,0.3)', overflow: 'hidden', cursor: canEdit ? 'grab' : 'pointer', touchAction: 'none' }} title={`${fmtDay(p.start)} – ${fmtDay(p.due)}`}>
+                    <div onPointerDown={e => onDownEl(e, p, 'move')} onPointerMove={onMove} onPointerUp={e => onUp(e, p)} style={{ position: 'absolute', left, top: (ROW_H - 18) / 2, width: w, height: 18, background: '#D4B85A', borderRadius: 5, boxShadow: '0 1px 3px rgba(0,0,0,0.3)', overflow: 'hidden', cursor: canEdit ? 'grab' : 'pointer', touchAction: 'none' }} title={`${fmtDay(p.start)} – ${fmtDay(p.due)}`}>
                       {wide && canEdit && <div onPointerDown={e => onDownEl(e, p, 'resize-start')} onPointerMove={onMove} onPointerUp={e => onUp(e, p)} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: EDGE, cursor: 'col-resize', background: 'rgba(5,46,32,0.30)', touchAction: 'none' }} title="Drag to change start" />}
                       <span style={{ display: 'block', padding: '0 12px', fontFamily: FAMILY, fontSize: 10, color: '#052E20', lineHeight: '18px', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{zoom === 'day' ? p.task.title : ''}</span>
                       {wide && canEdit && <div onPointerDown={e => onDownEl(e, p, 'resize-due')} onPointerMove={onMove} onPointerUp={e => onUp(e, p)} style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: EDGE, cursor: 'col-resize', background: 'rgba(5,46,32,0.30)', touchAction: 'none' }} title="Drag to change due" />}
@@ -237,7 +236,7 @@ export default function GanttView({ tasks, project, canEdit, onOpenCard, onResch
                 })() : (() => {
                   const dayN = (p.kind === 'ms-due' ? p.due : p.start)!; const cx = xOf(dayN) + dayWidth / 2
                   return (
-                    <div ref={setBarRef(p.task.id)} onPointerDown={e => onDownEl(e, p, 'move-ms')} onPointerMove={onMove} onPointerUp={e => onUp(e, p)} style={{ position: 'absolute', left: cx - 9, top: (ROW_H - 16) / 2, width: 16, height: 16, background: '#7AB07A', transform: 'rotate(45deg)', borderRadius: 3, cursor: canEdit ? 'grab' : 'pointer', touchAction: 'none' }} title={`${p.task.title} — ${fmtDay(dayN)}${p.kind === 'ms-start' ? ' (start)' : ''}`} />
+                    <div onPointerDown={e => onDownEl(e, p, 'move-ms')} onPointerMove={onMove} onPointerUp={e => onUp(e, p)} style={{ position: 'absolute', left: cx - 9, top: (ROW_H - 16) / 2, width: 16, height: 16, background: '#7AB07A', transform: 'rotate(45deg)', borderRadius: 3, cursor: canEdit ? 'grab' : 'pointer', touchAction: 'none' }} title={`${p.task.title} — ${fmtDay(dayN)}${p.kind === 'ms-start' ? ' (start)' : ''}`} />
                   )
                 })()}
               </div>
@@ -266,3 +265,4 @@ const stickyLabel: React.CSSProperties = {
   background: '#052E20', borderRight: '1px solid rgba(229,212,194,0.12)', padding: '0 12px', boxSizing: 'border-box',
 }
 const zoomBtn: React.CSSProperties = { background: 'transparent', border: 'none', padding: '5px 12px', fontFamily: FAMILY, fontSize: 10, letterSpacing: '0.04em', cursor: 'pointer' }
+const navBtn: React.CSSProperties = { background: 'rgba(229,212,194,0.06)', border: '1px solid rgba(229,212,194,0.15)', borderRadius: 6, color: '#B2AA98', fontFamily: FAMILY, fontSize: 11, padding: '5px 11px', cursor: 'pointer' }
