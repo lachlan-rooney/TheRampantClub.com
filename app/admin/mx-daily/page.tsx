@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import { PromptModal } from '@/components/admin/dialogs'
 
 // Admin / Floor / MX Daily
 //
@@ -153,6 +154,8 @@ export default function MXDailyPage() {
     })
     load()
   }
+  // Prompt modal — resolution note when resolving a complaint.
+  const [resolveId, setResolveId] = useState<string | null>(null)
 
   if (loading || !data) return <div style={emptyText}>Loading MX Daily…</div>
 
@@ -455,10 +458,7 @@ export default function MXDailyPage() {
                           <button onClick={() => setComplaintStatus(c.id, 'acknowledged')} style={tinyBtn}>Acknowledge</button>
                         )}
                         {c.status !== 'resolved' && (
-                          <button onClick={() => {
-                            const r = prompt('Resolution note (what was done):')
-                            if (r != null) setComplaintStatus(c.id, 'resolved', r)
-                          }} style={{ ...tinyBtn, color: '#7AB07A', borderColor: 'rgba(122,176,122,0.30)' }}>Resolve</button>
+                          <button onClick={() => setResolveId(c.id)} style={{ ...tinyBtn, color: '#7AB07A', borderColor: 'rgba(122,176,122,0.30)' }}>Resolve</button>
                         )}
                         {c.status !== 'dismissed' && (
                           <button onClick={() => setComplaintStatus(c.id, 'dismissed')} style={{ ...tinyBtn, color: '#7E7864' }}>Dismiss</button>
@@ -472,6 +472,19 @@ export default function MXDailyPage() {
           </Panel>
         </div>
       </div>
+
+      <PromptModal
+        open={!!resolveId}
+        eyebrow="✓ RESOLVE COMPLAINT"
+        title="Resolve this complaint?"
+        label="Resolution note — what was done (optional)"
+        placeholder="e.g. Spoke with member, comped the round, flagged to F&B."
+        confirmLabel="Mark resolved"
+        multiline
+        validate={() => null}
+        onCancel={() => setResolveId(null)}
+        onConfirm={(note) => { if (resolveId) setComplaintStatus(resolveId, 'resolved', note); setResolveId(null) }}
+      />
     </>
   )
 }
