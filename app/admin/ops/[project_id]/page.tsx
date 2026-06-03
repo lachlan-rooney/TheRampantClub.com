@@ -124,8 +124,14 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
       priority: draft.priority, due_date: draft.due_date || null,
     }), () => setEditing(null))
   }
-  const changeAssignee = (taskId: string, assignee: string) =>
-    wrap(() => assignTask(taskId, assignee || null))
+  const changeAssignee = (assignee: string) => {
+    if (!editing) return
+    const id = editing.id
+    // Reflect immediately in the open drawer (editing is a snapshot — without this
+    // the controlled <select> snaps back to the old value until reopened).
+    setEditing(e => e ? { ...e, assignee: assignee || null } : e)
+    wrap(() => assignTask(id, assignee || null))
+  }
 
   // ── drag and drop ──
   const onDropColumn = (colId: string) => {
@@ -277,7 +283,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
             <div style={{ marginTop: 10 }}>
               <div style={fieldLabel}>Assignee</div>
               <select style={input} value={editing.assignee || ''} disabled={!canEdit}
-                onChange={e => changeAssignee(editing.id, e.target.value)}>
+                onChange={e => changeAssignee(e.target.value)}>
                 <option value="" style={{ background: '#052E20' }}>— unassigned —</option>
                 {team.map(m => <option key={m.id} value={m.id} style={{ background: '#052E20' }}>{m.display_name}</option>)}
               </select>
