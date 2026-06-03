@@ -67,6 +67,8 @@ export default function DecayFitPage() {
   const [running, setRunning] = useState(false)
   const [runResult, setRunResult] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  // Confirm modal — accept (promote λ) / reject a proposal.
+  const [pending, setPending] = useState<{ id: string; action: 'accept' | 'reject'; lambda: number; category: string } | null>(null)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -94,9 +96,10 @@ export default function DecayFitPage() {
     }
   }
 
-  const decide = async (rowId: string, action: 'accept' | 'reject') => {
-    if (action === 'accept' && !confirm('Promote this λ to active? It becomes the live category baseline for new preference extractions.')) return
-    if (action === 'reject' && !confirm('Reject this proposal? It will not be promoted.')) return
+  const closeConfirm = () => { if (!busyId) setPending(null) }
+  const runDecision = async () => {
+    if (!pending) return
+    const { id: rowId, action } = pending
     setBusyId(rowId); setError(null)
     try {
       const r = await fetch(`/api/admin/mis/decay-fit/${rowId}/decide`, {
@@ -106,6 +109,7 @@ export default function DecayFitPage() {
       })
       const j = await r.json()
       if (!r.ok) throw new Error(j.error || 'Decision failed')
+      setPending(null)
       load()
     } catch (e) {
       setError((e as Error).message)
@@ -226,14 +230,14 @@ export default function DecayFitPage() {
                   {proposal.status === 'proposed' && (
                     <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
                       <button
-                        onClick={() => decide(proposal.id, 'accept')}
+                        onClick={() => setPending({ id: proposal.id, action: 'accept', lambda: proposal.learned_lambda, category: c.category })}
                         disabled={busyId === proposal.id}
                         style={btnAccept}
                       >
                         {busyId === proposal.id ? '…' : `Accept · promote ${proposal.learned_lambda.toFixed(4)}`}
                       </button>
                       <button
-                        onClick={() => decide(proposal.id, 'reject')}
+                        onClick={() => setPending({ id: proposal.id, action: 'reject', lambda: proposal.learned_lambda, category: c.category })}
                         disabled={busyId === proposal.id}
                         style={btnReject}
                       >
@@ -294,6 +298,43 @@ export default function DecayFitPage() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* ── Confirm modal (branded, replaces native window.confirm) ──── */}
+      {pending && (
+        <>
+          <div style={confirmBackdrop} onClick={closeConfirm} />
+          <div style={{ ...confirmModalBox, ...(pending.action === 'accept' ? confirmModalBoxAccept : null) }} role="dialog">
+            <div style={{ ...confirmEyebrow, ...(pending.action === 'accept' ? { color: '#7AB07A' } : null) }}>
+              {pending.action === 'accept' ? '✓ PROMOTE λ' : '⚠ REJECT PROPOSAL'}
+            </div>
+            <div style={confirmTitle}>
+              {pending.action === 'accept' ? 'Promote this λ to active?' : 'Reject this proposal?'}
+            </div>
+            <div style={confirmSubject}>{pending.category} · λ {pending.lambda.toFixed(4)}</div>
+            <p style={confirmBody}>
+              {pending.action === 'accept'
+                ? 'This becomes the live category baseline for all new preference extractions. Existing scores are unaffected; only future extractions inherit the learned λ.'
+                : 'The proposal will not be promoted. The live decay constant stays as it is, and the row is marked rejected in the audit trail.'}
+            </p>
+            <div style={confirmActions}>
+              <button onClick={closeConfirm} disabled={!!busyId} style={confirmCancelBtn}>Cancel</button>
+              <button
+                onClick={runDecision}
+                disabled={!!busyId}
+                style={{
+                  ...confirmGoBtn,
+                  ...(pending.action === 'accept' ? { background: '#5E8A5E' } : null),
+                  opacity: busyId ? 0.5 : 1,
+                }}
+              >
+                {busyId
+                  ? 'Working…'
+                  : pending.action === 'accept' ? `Promote ${pending.lambda.toFixed(4)}` : 'Reject proposal'}
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </>
   )
@@ -475,4 +516,59 @@ const infoBox: React.CSSProperties = {
   background: 'rgba(122,176,122,0.10)', border: '1px solid rgba(122,176,122,0.30)',
   borderRadius: 6, color: '#E5D4C2',
   fontFamily: monoFamily, fontSize: 11,
+}
+
+// ── Confirm modal styles ────────────────────────────────────────────
+const confirmBackdrop: React.CSSProperties = {
+  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300,
+}
+const confirmModalBox: React.CSSProperties = {
+  position: 'fixed',
+  top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+  width: 'min(480px, 92vw)',
+  background: '#0A3526',
+  border: '1px solid rgba(194,112,112,0.45)',
+  borderLeft: '3px solid #C27070',
+  borderRadius: 8,
+  padding: '22px 24px',
+  zIndex: 301,
+  boxShadow: '0 20px 60px rgba(0,0,0,0.55)',
+}
+const confirmModalBoxAccept: React.CSSProperties = {
+  border: '1px solid rgba(122,176,122,0.45)',
+  borderLeft: '3px solid #7AB07A',
+}
+const confirmEyebrow: React.CSSProperties = {
+  fontFamily: monoFamily, fontSize: 9,
+  color: '#C27070', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700,
+  marginBottom: 8,
+}
+const confirmTitle: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 18,
+  color: '#E5D4C2', letterSpacing: '0.02em', marginBottom: 6,
+}
+const confirmSubject: React.CSSProperties = {
+  fontFamily: monoFamily, fontSize: 11,
+  color: '#B2AA98', marginBottom: 12,
+}
+const confirmBody: React.CSSProperties = {
+  fontFamily: monoFamily, fontSize: 11,
+  color: '#B2AA98', lineHeight: 1.65, marginBottom: 14,
+}
+const confirmActions: React.CSSProperties = {
+  display: 'flex', gap: 10, justifyContent: 'flex-end',
+}
+const confirmCancelBtn: React.CSSProperties = {
+  background: 'transparent', color: '#B2AA98',
+  border: '1px solid rgba(229,212,194,0.20)', borderRadius: 4,
+  padding: '8px 16px',
+  fontFamily: monoFamily, fontSize: 11, letterSpacing: '0.06em',
+  cursor: 'pointer',
+}
+const confirmGoBtn: React.CSSProperties = {
+  background: '#C27070', color: '#FFFFFF',
+  border: 'none', borderRadius: 4,
+  padding: '8px 18px',
+  fontFamily: monoFamily, fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
+  cursor: 'pointer',
 }
