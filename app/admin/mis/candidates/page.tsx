@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { ConfirmModal } from '@/components/admin/dialogs'
 import Link from 'next/link'
 
 // Admin / Intelligence / Members / Preference Candidates
@@ -326,30 +327,18 @@ export default function CandidatesPage() {
         </div>
       )}
 
-      {/* ── Confirm modal (branded, replaces native window.confirm) ──── */}
-      {confirmReject && (
-        <>
-          <div style={confirmBackdrop} onClick={closeReject} />
-          <div style={confirmModalBox} role="dialog">
-            <div style={confirmEyebrow}>⚠ REJECT CANDIDATE</div>
-            <div style={confirmTitle}>Reject this candidate?</div>
-            <div style={confirmSubject}>{confirmReject.suggested_name || 'Unnamed candidate'}</div>
-            <p style={confirmBody}>
-              No preference will be created. The candidate is marked rejected and drops out of the pending queue. The record is kept for the audit trail.
-            </p>
-            <div style={confirmActions}>
-              <button onClick={closeReject} disabled={busyId === confirmReject.candidate_id} style={confirmCancelBtn}>Cancel</button>
-              <button
-                onClick={runReject}
-                disabled={busyId === confirmReject.candidate_id}
-                style={{ ...confirmGoBtn, opacity: busyId === confirmReject.candidate_id ? 0.5 : 1 }}
-              >
-                {busyId === confirmReject.candidate_id ? 'Rejecting…' : 'Reject candidate'}
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+      <ConfirmModal
+        open={!!confirmReject}
+        eyebrow="⚠ REJECT CANDIDATE"
+        title="Reject this candidate?"
+        subject={confirmReject?.suggested_name || (confirmReject ? 'Unnamed candidate' : undefined)}
+        body="No preference will be created. The candidate is marked rejected and drops out of the pending queue. The record is kept for the audit trail."
+        confirmLabel="Reject candidate"
+        busyLabel="Rejecting…"
+        busy={!!confirmReject && busyId === confirmReject.candidate_id}
+        onCancel={closeReject}
+        onConfirm={runReject}
+      />
     </>
   )
 }
@@ -513,55 +502,4 @@ const errorBox: React.CSSProperties = {
   background: 'rgba(180,70,70,0.15)', border: '1px solid rgba(180,70,70,0.30)',
   borderRadius: 6, color: '#E5D4C2',
   fontFamily: "'Google Sans Code', monospace", fontSize: 11,
-}
-
-// ── Confirm modal styles ────────────────────────────────────────────
-const confirmBackdrop: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300,
-}
-const confirmModalBox: React.CSSProperties = {
-  position: 'fixed',
-  top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-  width: 'min(480px, 92vw)',
-  background: '#0A3526',
-  border: '1px solid rgba(194,112,112,0.45)',
-  borderLeft: '3px solid #C27070',
-  borderRadius: 8,
-  padding: '22px 24px',
-  zIndex: 301,
-  boxShadow: '0 20px 60px rgba(0,0,0,0.55)',
-}
-const confirmEyebrow: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
-  color: '#C27070', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700,
-  marginBottom: 8,
-}
-const confirmTitle: React.CSSProperties = {
-  fontFamily: "'Rampant Sans', serif", fontSize: 18,
-  color: '#E5D4C2', letterSpacing: '0.02em', marginBottom: 6,
-}
-const confirmSubject: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
-  color: '#B2AA98', marginBottom: 12,
-}
-const confirmBody: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
-  color: '#B2AA98', lineHeight: 1.65, marginBottom: 14,
-}
-const confirmActions: React.CSSProperties = {
-  display: 'flex', gap: 10, justifyContent: 'flex-end',
-}
-const confirmCancelBtn: React.CSSProperties = {
-  background: 'transparent', color: '#B2AA98',
-  border: '1px solid rgba(229,212,194,0.20)', borderRadius: 4,
-  padding: '8px 16px',
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11, letterSpacing: '0.06em',
-  cursor: 'pointer',
-}
-const confirmGoBtn: React.CSSProperties = {
-  background: '#C27070', color: '#FFFFFF',
-  border: 'none', borderRadius: 4,
-  padding: '8px 18px',
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
-  cursor: 'pointer',
 }

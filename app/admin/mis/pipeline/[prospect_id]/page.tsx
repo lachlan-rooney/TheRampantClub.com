@@ -1,6 +1,7 @@
 'use client'
 
 import { use, useEffect, useState, useCallback, useMemo } from 'react'
+import { ConfirmModal } from '@/components/admin/dialogs'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
@@ -593,46 +594,28 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
         </div>
       </div>
 
-      {/* ── Confirm modal (branded, replaces native window.confirm) ──── */}
-      {pending && (
-        <>
-          <div style={confirmBackdrop} onClick={closeConfirm} />
-          <div style={confirmModalBox} role="dialog">
-            <div style={confirmEyebrow}>
-              {pending.kind === 'force_convert' ? '⚠ ADMIN OVERRIDE'
-                : pending.kind === 'revoke' ? '⚠ REVOKE INVITATION'
-                : '⚠ ARCHIVE PROSPECT'}
-            </div>
-            <div style={confirmTitle}>
-              {pending.kind === 'force_convert' ? 'Force convert without signing?'
-                : pending.kind === 'revoke' ? 'Revoke this invitation?'
-                : 'Archive this prospect?'}
-            </div>
-            <div style={confirmSubject}>{prospect?.full_name}</div>
-            <p style={confirmBody}>
-              {pending.kind === 'force_convert'
-                ? `The member becomes Active immediately as ${conversionTier}, with no signed agreement on file. Admin override only — use when the agreement is handled outside the system.`
-                : pending.kind === 'revoke'
-                ? 'The signing link stops working immediately. You can send a fresh invitation afterwards if needed.'
-                : 'Hides the prospect from the pipeline. The record and its full activity trail are preserved for audit.'}
-            </p>
-            <div style={confirmActions}>
-              <button onClick={closeConfirm} disabled={confirmBusy} style={confirmCancelBtn}>Cancel</button>
-              <button
-                onClick={runPending}
-                disabled={confirmBusy}
-                style={{ ...confirmGoBtn, opacity: confirmBusy ? 0.5 : 1 }}
-              >
-                {confirmBusy
-                  ? 'Working…'
-                  : pending.kind === 'force_convert' ? 'Force convert'
-                  : pending.kind === 'revoke' ? 'Revoke invitation'
-                  : 'Archive prospect'}
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+      <ConfirmModal
+        open={!!pending}
+        eyebrow={pending?.kind === 'force_convert' ? '⚠ ADMIN OVERRIDE'
+          : pending?.kind === 'revoke' ? '⚠ REVOKE INVITATION'
+          : '⚠ ARCHIVE PROSPECT'}
+        title={pending?.kind === 'force_convert' ? 'Force convert without signing?'
+          : pending?.kind === 'revoke' ? 'Revoke this invitation?'
+          : 'Archive this prospect?'}
+        subject={prospect?.full_name}
+        body={pending?.kind === 'force_convert'
+          ? `The member becomes Active immediately as ${conversionTier}, with no signed agreement on file. Admin override only — use when the agreement is handled outside the system.`
+          : pending?.kind === 'revoke'
+          ? 'The signing link stops working immediately. You can send a fresh invitation afterwards if needed.'
+          : 'Hides the prospect from the pipeline. The record and its full activity trail are preserved for audit.'}
+        confirmLabel={pending?.kind === 'force_convert' ? 'Force convert'
+          : pending?.kind === 'revoke' ? 'Revoke invitation'
+          : 'Archive prospect'}
+        busyLabel="Working…"
+        busy={confirmBusy}
+        onCancel={closeConfirm}
+        onConfirm={runPending}
+      />
     </>
   )
 }
@@ -1037,55 +1020,4 @@ const emptyText: React.CSSProperties = {
   padding: '32px 0', textAlign: 'center',
   fontFamily: "'Google Sans Code', monospace", fontSize: 12,
   color: '#B2AA98', opacity: 0.6, fontStyle: 'italic',
-}
-
-// ── Confirm modal styles ────────────────────────────────────────────
-const confirmBackdrop: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300,
-}
-const confirmModalBox: React.CSSProperties = {
-  position: 'fixed',
-  top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-  width: 'min(480px, 92vw)',
-  background: '#0A3526',
-  border: '1px solid rgba(194,112,112,0.45)',
-  borderLeft: '3px solid #C27070',
-  borderRadius: 8,
-  padding: '22px 24px',
-  zIndex: 301,
-  boxShadow: '0 20px 60px rgba(0,0,0,0.55)',
-}
-const confirmEyebrow: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
-  color: '#C27070', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700,
-  marginBottom: 8,
-}
-const confirmTitle: React.CSSProperties = {
-  fontFamily: "'Rampant Sans', serif", fontSize: 18,
-  color: '#E5D4C2', letterSpacing: '0.02em', marginBottom: 6,
-}
-const confirmSubject: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
-  color: '#B2AA98', marginBottom: 12,
-}
-const confirmBody: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
-  color: '#B2AA98', lineHeight: 1.65, marginBottom: 14,
-}
-const confirmActions: React.CSSProperties = {
-  display: 'flex', gap: 10, justifyContent: 'flex-end',
-}
-const confirmCancelBtn: React.CSSProperties = {
-  background: 'transparent', color: '#B2AA98',
-  border: '1px solid rgba(229,212,194,0.20)', borderRadius: 4,
-  padding: '8px 16px',
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11, letterSpacing: '0.06em',
-  cursor: 'pointer',
-}
-const confirmGoBtn: React.CSSProperties = {
-  background: '#C27070', color: '#FFFFFF',
-  border: 'none', borderRadius: 4,
-  padding: '8px 18px',
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
-  cursor: 'pointer',
 }

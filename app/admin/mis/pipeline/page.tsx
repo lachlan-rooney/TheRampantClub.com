@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
+import { ConfirmModal } from '@/components/admin/dialogs'
 import Link from 'next/link'
 
 // MIS Pipeline — list view.
@@ -443,24 +444,16 @@ function ProspectCard({ p, onChange }: { p: Prospect; onChange: () => void }) {
       </div>
     </Link>
 
-    {/* ── Confirm modal (branded, replaces native window.confirm) ──── */}
-    {confirmArchive && (
-      <div onClick={e => { e.preventDefault(); e.stopPropagation() }}>
-        <div style={confirmBackdrop} onClick={() => setConfirmArchive(false)} />
-        <div style={confirmModalBox} role="dialog">
-          <div style={confirmEyebrow}>⚠ ARCHIVE PROSPECT</div>
-          <div style={confirmTitle}>Archive this prospect?</div>
-          <div style={confirmSubject}>{p.full_name}</div>
-          <p style={confirmBody}>
-            Hides the prospect from the pipeline. The record and its full activity trail are preserved for audit.
-          </p>
-          <div style={confirmActions}>
-            <button onClick={() => setConfirmArchive(false)} style={confirmCancelBtn}>Cancel</button>
-            <button onClick={runArchive} style={confirmGoBtn}>Archive prospect</button>
-          </div>
-        </div>
-      </div>
-    )}
+    <ConfirmModal
+      open={confirmArchive}
+      eyebrow="⚠ ARCHIVE PROSPECT"
+      title="Archive this prospect?"
+      subject={p.full_name}
+      body="Hides the prospect from the pipeline. The record and its full activity trail are preserved for audit."
+      confirmLabel="Archive prospect"
+      onCancel={() => setConfirmArchive(false)}
+      onConfirm={runArchive}
+    />
     </>
   )
 }
@@ -699,55 +692,4 @@ const emptyText: React.CSSProperties = {
   padding: '60px 0', textAlign: 'center',
   fontFamily: "'Google Sans Code', monospace", fontSize: 12,
   color: '#B2AA98', opacity: 0.6, fontStyle: 'italic',
-}
-
-// ── Confirm modal styles ────────────────────────────────────────────
-const confirmBackdrop: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300,
-}
-const confirmModalBox: React.CSSProperties = {
-  position: 'fixed',
-  top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-  width: 'min(480px, 92vw)',
-  background: '#0A3526',
-  border: '1px solid rgba(194,112,112,0.45)',
-  borderLeft: '3px solid #C27070',
-  borderRadius: 8,
-  padding: '22px 24px',
-  zIndex: 301,
-  boxShadow: '0 20px 60px rgba(0,0,0,0.55)',
-}
-const confirmEyebrow: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
-  color: '#C27070', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700,
-  marginBottom: 8,
-}
-const confirmTitle: React.CSSProperties = {
-  fontFamily: "'Rampant Sans', serif", fontSize: 18,
-  color: '#E5D4C2', letterSpacing: '0.02em', marginBottom: 6,
-}
-const confirmSubject: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
-  color: '#B2AA98', marginBottom: 12,
-}
-const confirmBody: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
-  color: '#B2AA98', lineHeight: 1.65, marginBottom: 14,
-}
-const confirmActions: React.CSSProperties = {
-  display: 'flex', gap: 10, justifyContent: 'flex-end',
-}
-const confirmCancelBtn: React.CSSProperties = {
-  background: 'transparent', color: '#B2AA98',
-  border: '1px solid rgba(229,212,194,0.20)', borderRadius: 4,
-  padding: '8px 16px',
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11, letterSpacing: '0.06em',
-  cursor: 'pointer',
-}
-const confirmGoBtn: React.CSSProperties = {
-  background: '#C27070', color: '#FFFFFF',
-  border: 'none', borderRadius: 4,
-  padding: '8px 18px',
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
-  cursor: 'pointer',
 }

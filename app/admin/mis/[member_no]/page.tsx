@@ -1,6 +1,7 @@
 'use client'
 
 import { use, useEffect, useState, useMemo, useCallback } from 'react'
+import { ConfirmModal, useToast } from '@/components/admin/dialogs'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import FormulaExplainer from '../FormulaExplainer'
@@ -130,12 +131,7 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
   const [saving, setSaving] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [startingVisit, setStartingVisit] = useState(false)
-  // Toast for non-blocking notices (replaces alert()).
-  const [toast, setToast] = useState<{ message: string; tone: 'info' | 'error' } | null>(null)
-  const showToast = (message: string, tone: 'info' | 'error' = 'info') => {
-    setToast({ message, tone })
-    setTimeout(() => setToast(null), 4200)
-  }
+  const { showToast, toastNode } = useToast()
   // Confirm modal — invalidate a preference.
   const [confirmInvalidate, setConfirmInvalidate] = useState<Preference | null>(null)
 
@@ -503,44 +499,20 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
         })}
       </div>
 
-      {/* ── Confirm modal (branded, replaces native window.confirm) ──── */}
-      {confirmInvalidate && (
-        <>
-          <div style={confirmBackdrop} onClick={() => { if (saving !== confirmInvalidate.preference_id) setConfirmInvalidate(null) }} />
-          <div style={confirmModalBox} role="dialog">
-            <div style={confirmEyebrow}>⚠ INVALIDATE PREFERENCE</div>
-            <div style={confirmTitle}>Invalidate this preference?</div>
-            <div style={confirmSubject}>{confirmInvalidate.preference_name} · {confirmInvalidate.category}</div>
-            <p style={confirmBody}>
-              Hides it from the live PS(t) view and stops it scoring. The row stays for history and the validation event is logged. Cannot be confirmed back from here — re-add via interview if needed.
-            </p>
-            <div style={confirmActions}>
-              <button
-                onClick={() => setConfirmInvalidate(null)}
-                disabled={saving === confirmInvalidate.preference_id}
-                style={confirmCancelBtn}
-              >Cancel</button>
-              <button
-                onClick={() => { const p = confirmInvalidate; setConfirmInvalidate(null); submit(p, 'invalidated') }}
-                disabled={saving === confirmInvalidate.preference_id}
-                style={{ ...confirmGoBtn, opacity: saving === confirmInvalidate.preference_id ? 0.5 : 1 }}
-              >
-                {saving === confirmInvalidate.preference_id ? 'Invalidating…' : 'Invalidate'}
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+      <ConfirmModal
+        open={!!confirmInvalidate}
+        eyebrow="⚠ INVALIDATE PREFERENCE"
+        title="Invalidate this preference?"
+        subject={confirmInvalidate ? `${confirmInvalidate.preference_name} · ${confirmInvalidate.category}` : undefined}
+        body="Hides it from the live PS(t) view and stops it scoring. The row stays for history and the validation event is logged. Cannot be confirmed back from here — re-add via interview if needed."
+        confirmLabel="Invalidate"
+        busyLabel="Invalidating…"
+        busy={!!confirmInvalidate && saving === confirmInvalidate.preference_id}
+        onCancel={() => setConfirmInvalidate(null)}
+        onConfirm={() => { const p = confirmInvalidate; if (p) { setConfirmInvalidate(null); submit(p, 'invalidated') } }}
+      />
 
-      {/* ── Toast ────────────────────────────────────────────────────── */}
-      {toast && (
-        <div style={toast.tone === 'error' ? toastErrorBox : toastInfoBox} role="status">
-          <span style={{ marginRight: 8, color: toast.tone === 'error' ? '#C27070' : '#7AB07A' }}>
-            {toast.tone === 'error' ? '✕' : '✓'}
-          </span>
-          {toast.message}
-        </div>
-      )}
+      {toastNode}
     </>
   )
 }
@@ -764,75 +736,4 @@ const previewDelta: React.CSSProperties = {
   marginLeft: 'auto',
   fontFamily: "'Google Sans Code', monospace", fontSize: 12, fontWeight: 600,
   letterSpacing: '0.04em',
-}
-
-// ── Confirm + toast styles ──────────────────────────────────────────
-const confirmBackdrop: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300,
-}
-const confirmModalBox: React.CSSProperties = {
-  position: 'fixed',
-  top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-  width: 'min(480px, 92vw)',
-  background: '#0A3526',
-  border: '1px solid rgba(194,112,112,0.45)',
-  borderLeft: '3px solid #C27070',
-  borderRadius: 8,
-  padding: '22px 24px',
-  zIndex: 301,
-  boxShadow: '0 20px 60px rgba(0,0,0,0.55)',
-}
-const confirmEyebrow: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
-  color: '#C27070', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700,
-  marginBottom: 8,
-}
-const confirmTitle: React.CSSProperties = {
-  fontFamily: "'Rampant Sans', serif", fontSize: 18,
-  color: '#E5D4C2', letterSpacing: '0.02em', marginBottom: 6,
-}
-const confirmSubject: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
-  color: '#B2AA98', marginBottom: 12,
-}
-const confirmBody: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
-  color: '#B2AA98', lineHeight: 1.65, marginBottom: 14,
-}
-const confirmActions: React.CSSProperties = {
-  display: 'flex', gap: 10, justifyContent: 'flex-end',
-}
-const confirmCancelBtn: React.CSSProperties = {
-  background: 'transparent', color: '#B2AA98',
-  border: '1px solid rgba(229,212,194,0.20)', borderRadius: 4,
-  padding: '8px 16px',
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11, letterSpacing: '0.06em',
-  cursor: 'pointer',
-}
-const confirmGoBtn: React.CSSProperties = {
-  background: '#C27070', color: '#FFFFFF',
-  border: 'none', borderRadius: 4,
-  padding: '8px 18px',
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
-  cursor: 'pointer',
-}
-const toastBase: React.CSSProperties = {
-  position: 'fixed', bottom: 24, right: 24, zIndex: 400,
-  padding: '12px 18px',
-  background: '#0A3526',
-  borderRadius: 8,
-  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
-  color: '#E5D4C2', letterSpacing: '0.02em',
-  display: 'flex', alignItems: 'center',
-  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-}
-const toastInfoBox: React.CSSProperties = {
-  ...toastBase,
-  border: '1px solid rgba(122,176,122,0.45)',
-  borderLeft: '3px solid #7AB07A',
-}
-const toastErrorBox: React.CSSProperties = {
-  ...toastBase,
-  border: '1px solid rgba(194,112,112,0.45)',
-  borderLeft: '3px solid #C27070',
 }
