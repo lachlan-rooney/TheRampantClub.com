@@ -81,7 +81,7 @@ begin
       and booking_date = current_date
       and status in ('confirmed','pending');
   if v_booking_count = 1 then
-    select booking_id into v_booking_id
+    select bookings.booking_id into v_booking_id
       from bookings
       where member_no = p_member_no
         and booking_date = current_date
@@ -100,7 +100,7 @@ begin
     now(),
     now(),
     p_actor
-  ) returning visit_id into v_visit_id;
+  ) returning visits.visit_id into v_visit_id;
 
   if v_booking_id is not null then
     update bookings
@@ -108,7 +108,7 @@ begin
           arrived_at      = now(),
           linked_visit_id = v_visit_id,
           updated_at      = now()
-      where booking_id = v_booking_id;
+      where bookings.booking_id = v_booking_id;
   end if;
 
   return query select v_visit_id, v_booking_id;
