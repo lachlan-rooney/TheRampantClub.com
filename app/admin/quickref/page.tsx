@@ -51,6 +51,7 @@ export default function QuickRefPage() {
   const [txNote, setTxNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [confirmUnlink, setConfirmUnlink] = useState(false)
   const linkBufferRef = useRef('')
   const linkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -132,9 +133,10 @@ export default function QuickRefPage() {
     }
   }, [linkMode, selected])
 
-  const unlinkCard = async () => {
+  const requestUnlink = () => { if (selected && card?.card_uid) setConfirmUnlink(true) }
+  const closeUnlink   = () => { if (!busy) setConfirmUnlink(false) }
+  const runUnlink = async () => {
     if (!selected || !card?.card_uid) return
-    if (!confirm('Unlink this card from the member?')) return
     setBusy(true)
     const r = await fetch('/api/admin/cards/link', {
       method: 'DELETE',
@@ -142,9 +144,13 @@ export default function QuickRefPage() {
       body: JSON.stringify({ member_number: selected['Member No.'] }),
     })
     setBusy(false)
+    setConfirmUnlink(false)
     if (r.ok) {
       showToast('Card unlinked')
       setCard(null); setRecentTxs([])
+    } else {
+      const d = await r.json().catch(() => ({}))
+      showToast(`Unlink failed: ${d.error || r.statusText}`)
     }
   }
 
@@ -473,7 +479,7 @@ export default function QuickRefPage() {
 
                     {card.card_uid && (
                       <button
-                        onClick={unlinkCard} disabled={busy}
+                        onClick={requestUnlink} disabled={busy}
                         style={{ background: 'rgba(180, 70, 70, 0.2)', color: '#E5D4C2', border: 'none', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10 }}
                       >Unlink card</button>
                     )}
@@ -524,6 +530,31 @@ export default function QuickRefPage() {
         </>
       )}
 
+      {/* ── Confirm modal (branded, replaces native window.confirm) ──── */}
+      {confirmUnlink && card?.card_uid && (
+        <>
+          <div style={confirmBackdrop} onClick={closeUnlink} />
+          <div style={confirmModalBox} role="dialog">
+            <div style={confirmEyebrow}>⚠ UNLINK CARD</div>
+            <div style={confirmTitle}>Unlink this card?</div>
+            <div style={confirmSubject}>{card.card_uid} · {selected?.['Full Name']}</div>
+            <p style={confirmBody}>
+              Detaches the physical card from this member. The credit balance is preserved on the account — a new card can be linked later. The card will no longer work at kiosks.
+            </p>
+            <div style={confirmActions}>
+              <button onClick={closeUnlink} disabled={busy} style={confirmCancelBtn}>Cancel</button>
+              <button
+                onClick={runUnlink}
+                disabled={busy}
+                style={{ ...confirmGoBtn, opacity: busy ? 0.5 : 1 }}
+              >
+                {busy ? 'Unlinking…' : 'Unlink card'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       {toast && (
         <div style={{
           position: 'fixed', bottom: 32, right: 32,
@@ -537,4 +568,55 @@ export default function QuickRefPage() {
       )}
     </>
   )
+}
+
+// ── Confirm modal styles ────────────────────────────────────────────
+const confirmBackdrop: React.CSSProperties = {
+  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300,
+}
+const confirmModalBox: React.CSSProperties = {
+  position: 'fixed',
+  top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+  width: 'min(480px, 92vw)',
+  background: '#0A3526',
+  border: '1px solid rgba(194,112,112,0.45)',
+  borderLeft: '3px solid #C27070',
+  borderRadius: 8,
+  padding: '22px 24px',
+  zIndex: 301,
+  boxShadow: '0 20px 60px rgba(0,0,0,0.55)',
+}
+const confirmEyebrow: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#C27070', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700,
+  marginBottom: 8,
+}
+const confirmTitle: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 18,
+  color: '#E5D4C2', letterSpacing: '0.02em', marginBottom: 6,
+}
+const confirmSubject: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', marginBottom: 12,
+}
+const confirmBody: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', lineHeight: 1.65, marginBottom: 14,
+}
+const confirmActions: React.CSSProperties = {
+  display: 'flex', gap: 10, justifyContent: 'flex-end',
+}
+const confirmCancelBtn: React.CSSProperties = {
+  background: 'transparent', color: '#B2AA98',
+  border: '1px solid rgba(229,212,194,0.20)', borderRadius: 4,
+  padding: '8px 16px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, letterSpacing: '0.06em',
+  cursor: 'pointer',
+}
+const confirmGoBtn: React.CSSProperties = {
+  background: '#C27070', color: '#FFFFFF',
+  border: 'none', borderRadius: 4,
+  padding: '8px 18px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
+  cursor: 'pointer',
 }
