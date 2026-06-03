@@ -49,6 +49,29 @@ export default function AdminDashboard() {
   const [data, setData] = useState<Data | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  // Toast for non-blocking notices (replaces alert()).
+  const [toast, setToast] = useState<{ message: string; tone: 'info' | 'error' } | null>(null)
+  const showToast = (message: string, tone: 'info' | 'error' = 'info') => {
+    setToast({ message, tone })
+    setTimeout(() => setToast(null), 4200)
+  }
+  // Confirm modal — send the weekly digest.
+  const [confirmDigest, setConfirmDigest] = useState(false)
+  const [digestBusy, setDigestBusy] = useState(false)
+  const sendDigest = async () => {
+    setDigestBusy(true)
+    try {
+      const r = await fetch('/api/cron/weekly-digest', { method: 'POST' })
+      const j = await r.json()
+      if (!r.ok || !j.ok) throw new Error(j.error || 'Send failed')
+      setConfirmDigest(false)
+      showToast(`Weekly digest sent to ${j.recipients.length} ${j.recipients.length === 1 ? 'recipient' : 'recipients'}.`)
+    } catch (e) {
+      showToast((e as Error).message, 'error')
+    } finally {
+      setDigestBusy(false)
+    }
+  }
 
   const load = useCallback(async () => {
     setRefreshing(true)
@@ -361,17 +384,7 @@ export default function AdminDashboard() {
           <Link href="/admin/training" style={{ ...footerStat, color: '#7AB07A', textDecoration: 'none' }}>Training →</Link>
           <span style={footerStat}>·</span>
           <button
-            onClick={async () => {
-              if (!confirm('Send the weekly digest to everyone on DIGEST_RECIPIENTS right now?')) return
-              try {
-                const r = await fetch('/api/cron/weekly-digest', { method: 'POST' })
-                const j = await r.json()
-                if (!r.ok || !j.ok) throw new Error(j.error || 'Send failed')
-                alert(`Sent to ${j.recipients.length} ${j.recipients.length === 1 ? 'recipient' : 'recipients'}.`)
-              } catch (e) {
-                alert((e as Error).message)
-              }
-            }}
+            onClick={() => setConfirmDigest(true)}
             style={{ ...footerStat, color: '#D4B85A', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "'Google Sans Code', monospace" }}
           >
             ↗ Send weekly digest
@@ -381,6 +394,41 @@ export default function AdminDashboard() {
           Refreshed {refreshedAt} · GMT+7
         </div>
       </div>
+
+      {/* ── Confirm modal (branded, replaces native window.confirm) ──── */}
+      {confirmDigest && (
+        <>
+          <div style={confirmBackdrop} onClick={() => { if (!digestBusy) setConfirmDigest(false) }} />
+          <div style={{ ...confirmModalBox, ...confirmModalBoxInfo }} role="dialog">
+            <div style={{ ...confirmEyebrow, color: '#D4B85A' }}>↗ WEEKLY DIGEST</div>
+            <div style={confirmTitle}>Send the weekly digest now?</div>
+            <div style={confirmSubject}>To everyone on DIGEST_RECIPIENTS</div>
+            <p style={confirmBody}>
+              Sends the weekly digest email immediately, outside the normal Monday schedule. Recipients receive it right away.
+            </p>
+            <div style={confirmActions}>
+              <button onClick={() => setConfirmDigest(false)} disabled={digestBusy} style={confirmCancelBtn}>Cancel</button>
+              <button
+                onClick={sendDigest}
+                disabled={digestBusy}
+                style={{ ...confirmGoBtn, background: '#5E6650', opacity: digestBusy ? 0.5 : 1 }}
+              >
+                {digestBusy ? 'Sending…' : 'Send digest'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Toast ────────────────────────────────────────────────────── */}
+      {toast && (
+        <div style={toast.tone === 'error' ? toastErrorBox : toastInfoBox} role="status">
+          <span style={{ marginRight: 8, color: toast.tone === 'error' ? '#C27070' : '#7AB07A' }}>
+            {toast.tone === 'error' ? '✕' : '✓'}
+          </span>
+          {toast.message}
+        </div>
+      )}
     </>
   )
 }
@@ -607,4 +655,79 @@ const footer: React.CSSProperties = {
 const footerStat: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 11,
   color: '#B2AA98', letterSpacing: '0.04em',
+}
+
+// ── Confirm + toast styles ──────────────────────────────────────────
+const confirmBackdrop: React.CSSProperties = {
+  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300,
+}
+const confirmModalBox: React.CSSProperties = {
+  position: 'fixed',
+  top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+  width: 'min(480px, 92vw)',
+  background: '#0A3526',
+  border: '1px solid rgba(194,112,112,0.45)',
+  borderLeft: '3px solid #C27070',
+  borderRadius: 8,
+  padding: '22px 24px',
+  zIndex: 301,
+  boxShadow: '0 20px 60px rgba(0,0,0,0.55)',
+}
+const confirmModalBoxInfo: React.CSSProperties = {
+  border: '1px solid rgba(212,184,90,0.45)',
+  borderLeft: '3px solid #D4B85A',
+}
+const confirmEyebrow: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#C27070', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700,
+  marginBottom: 8,
+}
+const confirmTitle: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 18,
+  color: '#E5D4C2', letterSpacing: '0.02em', marginBottom: 6,
+}
+const confirmSubject: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', marginBottom: 12,
+}
+const confirmBody: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', lineHeight: 1.65, marginBottom: 14,
+}
+const confirmActions: React.CSSProperties = {
+  display: 'flex', gap: 10, justifyContent: 'flex-end',
+}
+const confirmCancelBtn: React.CSSProperties = {
+  background: 'transparent', color: '#B2AA98',
+  border: '1px solid rgba(229,212,194,0.20)', borderRadius: 4,
+  padding: '8px 16px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, letterSpacing: '0.06em',
+  cursor: 'pointer',
+}
+const confirmGoBtn: React.CSSProperties = {
+  background: '#C27070', color: '#FFFFFF',
+  border: 'none', borderRadius: 4,
+  padding: '8px 18px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
+  cursor: 'pointer',
+}
+const toastBase: React.CSSProperties = {
+  position: 'fixed', bottom: 24, right: 24, zIndex: 400,
+  padding: '12px 18px',
+  background: '#0A3526',
+  borderRadius: 8,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
+  color: '#E5D4C2', letterSpacing: '0.02em',
+  display: 'flex', alignItems: 'center',
+  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+}
+const toastInfoBox: React.CSSProperties = {
+  ...toastBase,
+  border: '1px solid rgba(122,176,122,0.45)',
+  borderLeft: '3px solid #7AB07A',
+}
+const toastErrorBox: React.CSSProperties = {
+  ...toastBase,
+  border: '1px solid rgba(194,112,112,0.45)',
+  borderLeft: '3px solid #C27070',
 }
