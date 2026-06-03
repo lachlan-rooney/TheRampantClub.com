@@ -118,6 +118,38 @@ export const updateTemplate = (t: {
 export const setTemplateActive = (id: string, active: boolean) =>
   opsWrite('ops_set_template_active', { p_id: id, p_active: active })
 
+// ── Rota shifts (Phase 4) ──
+export const createShift = (s: {
+  member: string; shift_date: string; shift_name: string
+  start_time?: string | null; end_time?: string | null
+  role?: string | null; notes?: string | null; project_id?: string | null
+}) => opsWrite('ops_create_shift', {
+  p_member: s.member,
+  p_shift_date: s.shift_date,
+  p_shift_name: s.shift_name,
+  p_start_time: s.start_time ?? null,
+  p_end_time: s.end_time ?? null,
+  p_role: s.role ?? null,
+  p_notes: s.notes ?? null,
+  p_project_id: s.project_id ?? null,
+}) as Promise<string>
+
+export const updateShift = (s: {
+  id: string; member: string; shift_name: string
+  start_time?: string | null; end_time?: string | null; role?: string | null; notes?: string | null
+}) => opsWrite('ops_update_shift', {
+  p_id: s.id,
+  p_member: s.member,
+  p_shift_name: s.shift_name,
+  p_start_time: s.start_time ?? null,
+  p_end_time: s.end_time ?? null,
+  p_role: s.role ?? null,
+  p_notes: s.notes ?? null,
+})
+
+export const deleteShift = (id: string) =>
+  opsWrite('ops_delete_shift', { p_id: id })
+
 // Manual "Materialise now" — hits the cron route (admin-authed), same job the
 // daily schedule runs. Returns the { run_date, created, lapsed } summary.
 export async function materialiseNow(): Promise<{ run_date: string; created: number; lapsed: number }> {

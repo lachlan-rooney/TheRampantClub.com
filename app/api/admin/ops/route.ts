@@ -34,6 +34,9 @@ const ALLOWED_ACTIONS = new Set([
   'ops_create_template',
   'ops_update_template',
   'ops_set_template_active',
+  'ops_create_shift',
+  'ops_update_shift',
+  'ops_delete_shift',
 ])
 
 export async function POST(req: NextRequest) {

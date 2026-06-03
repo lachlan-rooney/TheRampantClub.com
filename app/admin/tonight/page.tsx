@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { vnDateString, vnDateTimeString } from '@/lib/datetime'
+import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 
 // Admin / Floor / Tonight
 //
@@ -104,6 +105,19 @@ export default function AdminTonight() {
   const [toast, setToast] = useState<string | null>(null)
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(null), 2400) }
 
+  // Who's rostered on the selected day (read from the Ops Hub rota — admin RLS).
+  const supabase = createBrowserSupabaseClient()
+  const [onShift, setOnShift] = useState<{ shift_name: string; name: string; start_time: string | null }[]>([])
+  const loadRota = useCallback(async () => {
+    const { data: sh } = await supabase.from('rota_shifts').select('shift_name, member, start_time').eq('shift_date', date)
+    if (!sh || sh.length === 0) { setOnShift([]); return }
+    const ids = [...new Set(sh.map((s: { member: string }) => s.member))]
+    const { data: tm } = await supabase.from('team_members').select('id, display_name').in('id', ids)
+    const nameById = new Map((tm || []).map((m: { id: string; display_name: string }) => [m.id, m.display_name]))
+    setOnShift(sh.map((s: { shift_name: string; member: string; start_time: string | null }) =>
+      ({ shift_name: s.shift_name, name: nameById.get(s.member) || '—', start_time: s.start_time })))
+  }, [date])  // eslint-disable-line react-hooks/exhaustive-deps
+
   const loadBriefs = useCallback(async () => {
     setLoadingBriefs(true)
     const r = await fetch(`/api/admin/tonight/briefs?date=${date}`, { cache: 'no-store' })
@@ -123,7 +137,7 @@ export default function AdminTonight() {
     })
   }, [date])
 
-  useEffect(() => { loadBriefs(); loadPick() }, [loadBriefs, loadPick])
+  useEffect(() => { loadBriefs(); loadPick(); loadRota() }, [loadBriefs, loadPick, loadRota])
 
   const startVisit = async (memberNo: string) => {
     if (starting) return
@@ -201,6 +215,29 @@ export default function AdminTonight() {
         <Stat label="Walk-ins"        value={counts.walkins} />
         <Stat label="Already arrived" value={counts.arrived} color="#7AB07A" />
         <Stat label="Needs attention" value={counts.needs_attention} color={counts.needs_attention > 0 ? '#D4B85A' : '#7AB07A'} />
+      </div>
+
+      {/* On shift today (read from the Ops Hub rota) */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+        padding: '10px 14px', marginBottom: 24, borderRadius: 8,
+        background: 'rgba(229,212,194,0.04)', border: '1px solid rgba(229,212,194,0.08)',
+        fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#B2AA98',
+      }}>
+        <span style={{ color: '#D4B85A', letterSpacing: '0.06em' }}>On shift {isToday ? 'today' : date}:</span>
+        {onShift.length === 0 ? (
+          <span style={{ opacity: 0.6, fontStyle: 'italic' }}>no one rostered</span>
+        ) : (() => {
+          const g: Record<string, typeof onShift> = {}
+          for (const s of onShift) (g[s.shift_name] ||= []).push(s)
+          return Object.entries(g).map(([shiftName, people]) => (
+            <span key={shiftName}>
+              <strong style={{ color: '#E5D4C2', fontWeight: 600 }}>{shiftName}</strong>{' '}
+              {people.map(p => p.name + (p.start_time ? ` (${p.start_time.slice(0, 5)})` : '')).join(', ')}
+            </span>
+          ))
+        })()}
+        <Link href="/admin/ops/rota" style={{ ...linkInline, marginLeft: 'auto' }}>Open rota →</Link>
       </div>
 
       {/* BRIEFS */}

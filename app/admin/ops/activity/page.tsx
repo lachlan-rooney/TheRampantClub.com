@@ -14,7 +14,7 @@ export default function OpsActivityPage() {
         <h1 style={pageTitle}>Activity</h1>
       </div>
       <p style={lede}>
-        Who did what, across every board — newest first. Each line is a record of what was true
+        Who did what across the Hub — boards and the rota — newest first. Each line is a record of what was true
         at the time it happened; renaming or deleting a card later doesn’t rewrite its history.
       </p>
       <div style={{ marginTop: 20 }}>
