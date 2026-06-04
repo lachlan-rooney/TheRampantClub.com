@@ -82,6 +82,18 @@ export default function GiftsPage() {
   const [expandedHistory, setExpandedHistory] = useState<Set<string>>(new Set())
   const [historyByGift, setHistoryByGift] = useState<Record<string, GiftEdit[] | null>>({})
 
+  // "What is Unreasonable Hospitality?" info popover next to the page title.
+  const [infoOpen, setInfoOpen] = useState(false)
+  const infoRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!infoOpen) return
+    const onDown = (e: MouseEvent) => { if (infoRef.current && !infoRef.current.contains(e.target as Node)) setInfoOpen(false) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setInfoOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey) }
+  }, [infoOpen])
+
   // Toast for non-blocking notices.
   const [toast, setToast] = useState<{ message: string; tone: 'info' | 'error' } | null>(null)
   const showToast = (message: string, tone: 'info' | 'error' = 'info') => {
@@ -168,7 +180,29 @@ export default function GiftsPage() {
       <div style={headerRow}>
         <div>
           <div style={eyebrow}>Intelligence · Member Experience</div>
-          <h1 style={pageTitle}>Gifting</h1>
+          <div ref={infoRef} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <h1 style={pageTitle}>Gifting</h1>
+            <button
+              onClick={() => setInfoOpen(o => !o)}
+              style={infoBtn}
+              aria-label="About Unreasonable Hospitality"
+              aria-expanded={infoOpen}
+            >
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#D4B85A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="11" x2="12" y2="16" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+              </svg>
+            </button>
+            {infoOpen && (
+              <div style={infoPopover} role="dialog" aria-label="Unreasonable Hospitality">
+                <div style={infoTitle}>Unreasonable Hospitality</div>
+                <p style={infoPara}>The phrase comes from restaurateur Will Guidara, who built the world&apos;s best restaurant on a simple idea: there&apos;s a difference between service and hospitality. Service is doing your job well. Hospitality is making someone feel genuinely cared for — doing the unexpected, generous thing precisely because no one asked you to.</p>
+                <p style={infoPara}>We hold to it closely because it&apos;s the whole point of The Rampant Club. We don&apos;t reward loyalty with a points card — a free sticker on the tenth visit, a discount on the twentieth. We treat every member like royalty from the first day, because the gestures that cost a little more and surprise a little deeper are the ones people remember for the rest of their lives.</p>
+                <p style={{ ...infoPara, marginBottom: 0 }}>When a member walks through our doors, everything should feel as though it was designed around them — because it was. That&apos;s not extravagance for its own sake. It&apos;s the belief that how you make someone feel is what they carry home. We go further than we have to, on purpose, because that&apos;s what turns a visit into a memory and a member into family.</p>
+              </div>
+            )}
+          </div>
           <p style={lede}>
             Unreasonable Hospitality — the small, thoughtful gestures that make a member feel cared for. The budget is set by tier ({' '}
             <Link href="/admin/tier-budgets" style={linkStyle}>tier budgets →</Link>{' '}
@@ -642,6 +676,27 @@ const lede: React.CSSProperties = {
 }
 const linkStyle: React.CSSProperties = {
   color: '#7AB07A', textDecoration: 'underline', textDecorationStyle: 'dotted',
+}
+// "i" info trigger + its popover — cream card / deep-green text, reads as a
+// card on the dark admin page. Anchored under the Gifting title.
+const infoBtn: React.CSSProperties = {
+  background: 'none', border: 'none', padding: 2, margin: 0, cursor: 'pointer',
+  display: 'inline-flex', alignItems: 'center', lineHeight: 0, borderRadius: '50%',
+}
+const infoPopover: React.CSSProperties = {
+  position: 'absolute', top: 'calc(100% + 10px)', left: 0, zIndex: 60,
+  width: 360, maxWidth: '90vw',
+  background: '#E5D4C2', color: '#052E20',
+  border: '1px solid rgba(5,46,32,0.18)', borderRadius: 12,
+  boxShadow: '0 18px 50px rgba(0,0,0,0.45)', padding: '18px 20px',
+}
+const infoTitle: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 18, fontWeight: 500,
+  letterSpacing: '0.03em', color: '#052E20', margin: '0 0 12px',
+}
+const infoPara: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
+  lineHeight: 1.65, color: '#052E20', margin: '0 0 12px',
 }
 const strip: React.CSSProperties = {
   display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
