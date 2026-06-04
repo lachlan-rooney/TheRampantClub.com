@@ -7,6 +7,7 @@ import { vnDateString } from '@/lib/datetime'
 import { ConfirmModal, PromptModal, useToast } from '@/components/admin/dialogs'
 import ActivityFeed from '../ActivityFeed'
 import GanttView from './GanttView'
+import { OPS_STATUS_COLORS } from '@/lib/ops/status'
 import {
   createTask, updateTask, moveTask, reorderColumn, assignTask, deleteTask,
   createColumn, addProjectMember, removeProjectMember,
@@ -245,7 +246,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
                   onDragOver={e => { if (dragId && canEdit) e.preventDefault() }}
                   onDrop={e => { e.stopPropagation(); onDropCard(t) }}
                   onClick={() => openEditor(t)}
-                  style={{ ...cardStyle, borderLeft: `3px solid ${t.status === 'lapsed' ? '#7E7864' : PRIORITY_COLOUR[t.priority]}`, cursor: canEdit ? 'grab' : 'pointer', opacity: dragId === t.id ? 0.4 : t.status === 'lapsed' ? 0.55 : 1 }}
+                  style={{ ...cardStyle, borderLeft: `3px solid ${t.status === 'lapsed' ? OPS_STATUS_COLORS.lapsed : PRIORITY_COLOUR[t.priority]}`, cursor: canEdit ? 'grab' : 'pointer', opacity: dragId === t.id ? 0.4 : t.status === 'lapsed' ? 0.55 : 1 }}
                 >
                   <div style={{ color: '#E5D4C2', fontFamily: FAMILY, fontSize: 12, lineHeight: 1.4, textDecoration: t.status === 'lapsed' ? 'line-through' : 'none' }}>
                     {t.template_id && <span title="Recurring" style={{ color: '#9E8FC4', marginRight: 5 }}>↻</span>}
@@ -256,12 +257,12 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
                     {t.due_date && (() => {
                       const overdue = t.due_date < vnDateString() && !t.completed_at && t.status !== 'lapsed'
                       return (
-                        <span style={{ ...pill, color: overdue ? '#C27070' : '#D4B85A', fontWeight: overdue ? 600 : 400 }} title={overdue ? 'Overdue' : 'Due'}>
+                        <span style={{ ...pill, color: overdue ? OPS_STATUS_COLORS.overdue : OPS_STATUS_COLORS.upcoming, fontWeight: overdue ? 600 : 400 }} title={overdue ? 'Overdue' : 'Due'}>
                           {overdue ? '⚠ ' : ''}{new Date(t.due_date + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })}
                         </span>
                       )
                     })()}
-                    {t.completed_at && <span style={{ ...pill, color: '#7AB07A' }}>done</span>}
+                    {t.completed_at && <span style={{ ...pill, color: OPS_STATUS_COLORS.done }}>done</span>}
                     {t.status === 'lapsed' && <span style={{ ...pill, color: '#C27070' }}>lapsed</span>}
                     {t.linked_object_type && t.linked_object_id && (() => {
                       const rl = linkMap.get(`${t.linked_object_type}:${t.linked_object_id}`)
