@@ -352,7 +352,7 @@ export default function MembershipSigning({ token, prefill }: Props) {
                 type="checkbox"
                 checked={hasAcceptedTCs}
                 onChange={() => setHasAcceptedTCs(!hasAcceptedTCs)}
-                style={{ marginTop: 4, accentColor: GOLD, width: 18, height: 18, flexShrink: 0, appearance: 'none', WebkitAppearance: 'none', background: 'rgba(45,106,79,0.25)', border: '1px solid rgba(229,212,194,0.15)', borderRadius: 3, cursor: 'pointer', position: 'relative' } as React.CSSProperties}
+                style={{ marginTop: 4, width: 18, height: 18, flexShrink: 0, cursor: 'pointer' }}
               />
               <span style={{
                 fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: MUTED, lineHeight: 1.6,
@@ -391,7 +391,7 @@ export default function MembershipSigning({ token, prefill }: Props) {
                   type="checkbox"
                   checked={declarations[i]}
                   onChange={() => setDeclarations(d => d.map((v, j) => j === i ? !v : v))}
-                  style={{ marginTop: 4, accentColor: GOLD, width: 18, height: 18, flexShrink: 0, appearance: 'none', WebkitAppearance: 'none', background: 'rgba(45,106,79,0.25)', border: '1px solid rgba(229,212,194,0.15)', borderRadius: 3, cursor: 'pointer', position: 'relative' } as React.CSSProperties}
+                  style={{ marginTop: 4, width: 18, height: 18, flexShrink: 0, cursor: 'pointer' }}
                 />
                 <span style={{
                   fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: MUTED, lineHeight: 1.7,
