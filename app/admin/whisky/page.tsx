@@ -457,9 +457,10 @@ export default function AdminWhisky() {
   // sparklines disappear on refresh.
   useEffect(() => { loadHistory() }, [loadHistory])
 
-  const openTrend = () => {
-    setTrendOpen(true)
-    if (history.length === 0 && !loadingHistory) loadHistory()
+  const toggleTrend = () => {
+    // Lazy-load history the first time it's opened; clicking again closes it.
+    if (!trendOpen && history.length === 0 && !loadingHistory) loadHistory()
+    setTrendOpen(o => !o)
   }
 
   const filtered = useMemo(() => {
@@ -592,7 +593,7 @@ export default function AdminWhisky() {
         <button onClick={exportCsv} style={exportBtn} title="Export the currently-filtered list as CSV">
           ⤓ Export CSV
         </button>
-        <button onClick={openTrend} style={trendBtn}>
+        <button onClick={toggleTrend} style={trendBtn}>
           {trendOpen ? '↓' : '↑'} Inventory trend
         </button>
       </div>
