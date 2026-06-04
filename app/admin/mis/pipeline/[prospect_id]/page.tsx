@@ -246,11 +246,29 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
     router.push('/admin/mis/pipeline')
   }, [prospect_id, router])
 
-  // Branded confirm modal — one state covers all three destructive paths.
+  // Un-convert — the atomic inverse: deletes the provisional member, nulls the
+  // link, returns the prospect to Lead. The route + DB guard refuse on a real
+  // Active member, so this can only ever clear a provisional.
+  const unconvert = useCallback(async () => {
+    setConverting(true); setError(null)
+    try {
+      const r = await fetch(`/api/admin/mis/prospects/${prospect_id}/unconvert`, { method: 'POST' })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error || 'Un-convert failed')
+      load()
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setConverting(false)
+    }
+  }, [prospect_id, load])
+
+  // Branded confirm modal — one state covers all destructive paths.
   type Pending =
     | { kind: 'force_convert' }
     | { kind: 'archive' }
     | { kind: 'revoke'; invitation_id: string }
+    | { kind: 'unconvert' }
   const [pending, setPending] = useState<Pending | null>(null)
   const [confirmBusy, setConfirmBusy] = useState(false)
   const closeConfirm = () => { if (!confirmBusy) setPending(null) }
@@ -260,6 +278,7 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
     try {
       if (pending.kind === 'force_convert') await forceConvert()
       else if (pending.kind === 'revoke') await revokeInvitation(pending.invitation_id)
+      else if (pending.kind === 'unconvert') await unconvert()
       else if (pending.kind === 'archive') await archive()
       setPending(null)
     } finally {
@@ -450,6 +469,18 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
                 Allocate provisional member no.
               </button>
             )}
+            {/* Un-convert — the inverse of allocate/convert. Shown only while a
+                provisional member is linked but the prospect isn't yet Onboarded;
+                the route + DB guard refuse on a real Active member. */}
+            {prospect.converted_member_no && prospect.stage !== 'Onboarded' && (
+              <button
+                onClick={() => setPending({ kind: 'unconvert' })}
+                disabled={converting}
+                style={{ ...btnGhost, color: '#C27070', borderColor: 'rgba(180,70,70,0.30)' }}
+              >
+                Un-convert · remove provisional ({prospect.converted_member_no})
+              </button>
+            )}
 
             {/* Signing flow */}
             {prospect.stage !== 'Onboarded' && (
@@ -598,18 +629,23 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
         open={!!pending}
         eyebrow={pending?.kind === 'force_convert' ? '⚠ ADMIN OVERRIDE'
           : pending?.kind === 'revoke' ? '⚠ REVOKE INVITATION'
+          : pending?.kind === 'unconvert' ? '⚠ REMOVE PROVISIONAL MEMBER'
           : '⚠ ARCHIVE PROSPECT'}
         title={pending?.kind === 'force_convert' ? 'Force convert without signing?'
           : pending?.kind === 'revoke' ? 'Revoke this invitation?'
+          : pending?.kind === 'unconvert' ? 'Remove the provisional member?'
           : 'Archive this prospect?'}
         subject={prospect?.full_name}
         body={pending?.kind === 'force_convert'
           ? `The member becomes Active immediately as ${conversionTier}, with no signed agreement on file. Admin override only — use when the agreement is handled outside the system.`
           : pending?.kind === 'revoke'
           ? 'The signing link stops working immediately. You can send a fresh invitation afterwards if needed.'
+          : pending?.kind === 'unconvert'
+          ? `This removes the provisional member record ${prospect?.converted_member_no ? `(${prospect.converted_member_no}) ` : ''}and returns them to Lead. Only for provisional members — real members can't be removed here. The member number is retired, not reused.`
           : 'Hides the prospect from the pipeline. The record and its full activity trail are preserved for audit.'}
         confirmLabel={pending?.kind === 'force_convert' ? 'Force convert'
           : pending?.kind === 'revoke' ? 'Revoke invitation'
+          : pending?.kind === 'unconvert' ? 'Remove & return to Lead'
           : 'Archive prospect'}
         busyLabel="Working…"
         busy={confirmBusy}
