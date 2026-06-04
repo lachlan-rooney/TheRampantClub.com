@@ -34,6 +34,14 @@ export const createProject = (p: {
 export const archiveProject = (projectId: string) =>
   opsWrite('ops_archive_project', { p_project_id: projectId })
 
+export const updateProject = (projectId: string, name: string, description: string | null) =>
+  opsWrite('ops_update_project', { p_project_id: projectId, p_name: name, p_description: description })
+
+// Soft delete (archived boards only) — sets deleted_at; the row + its tasks +
+// activity history are retained and recoverable. Never a hard/cascade delete.
+export const softDeleteProject = (projectId: string) =>
+  opsWrite('ops_soft_delete_project', { p_project_id: projectId })
+
 // ── Columns ──
 export const createColumn = (projectId: string, name: string, isDone = false) =>
   opsWrite('ops_create_column', { p_project_id: projectId, p_name: name, p_is_done: isDone })
