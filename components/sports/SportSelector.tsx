@@ -5,7 +5,7 @@ import SportIcon from './SportIcons'
 
 // Tile strip below the page title. Click a tile → smooth-scroll to that
 // section's anchor on the page. Highlights its sport name and upcoming count.
-export default function SportSelector() {
+export default function SportSelector({ counts }: { counts?: Record<string, number> }) {
   const onClick = (id: string) => (e: React.MouseEvent) => {
     e.preventDefault()
     const el = document.getElementById(id)
@@ -89,16 +89,19 @@ export default function SportSelector() {
       `}</style>
 
       <div className="sport-selector" role="navigation" aria-label="Sport selector">
-        {SPORTS.map(s => (
+        {SPORTS.map(s => {
+          const upcoming = counts?.[s.id] ?? s.upcoming   // live count when provided, else the static fallback
+          return (
           <a key={s.id} href={`#${s.id}`} onClick={onClick(s.id)} className="sport-tile">
             <div className="sport-tile-glyph" aria-hidden><SportIcon id={s.id} size={28} /></div>
             <div className="sport-tile-label">{s.label}</div>
             <div className="sport-tile-vn">{s.vn}</div>
-            {s.upcoming > 0 && (
-              <div className="sport-tile-count">{s.upcoming} upcoming</div>
+            {upcoming > 0 && (
+              <div className="sport-tile-count">{upcoming} upcoming</div>
             )}
           </a>
-        ))}
+          )
+        })}
       </div>
     </>
   )
