@@ -180,31 +180,31 @@ export default function GiftsPage() {
       <div style={headerRow}>
         <div>
           <div style={eyebrow}>Intelligence · Member Experience</div>
-          <div ref={infoRef} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <h1 style={pageTitle}>Gifting</h1>
-            <button
-              onClick={() => setInfoOpen(o => !o)}
-              style={infoBtn}
-              aria-label="About Unreasonable Hospitality"
-              aria-expanded={infoOpen}
-            >
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#D4B85A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="11" x2="12" y2="16" />
-                <line x1="12" y1="8" x2="12.01" y2="8" />
-              </svg>
-            </button>
-            {infoOpen && (
-              <div style={infoPopover} role="dialog" aria-label="Unreasonable Hospitality">
-                <div style={infoTitle}>Unreasonable Hospitality</div>
-                <p style={infoPara}>The phrase comes from restaurateur Will Guidara, who built the world&apos;s best restaurant on a simple idea: there&apos;s a difference between service and hospitality. Service is doing your job well. Hospitality is making someone feel genuinely cared for — doing the unexpected, generous thing precisely because no one asked you to.</p>
-                <p style={infoPara}>We hold to it closely because it&apos;s the whole point of The Rampant Club. We don&apos;t reward loyalty with a points card — a free sticker on the tenth visit, a discount on the twentieth. We treat every member like royalty from the first day, because the gestures that cost a little more and surprise a little deeper are the ones people remember for the rest of their lives.</p>
-                <p style={{ ...infoPara, marginBottom: 0 }}>When a member walks through our doors, everything should feel as though it was designed around them — because it was. That&apos;s not extravagance for its own sake. It&apos;s the belief that how you make someone feel is what they carry home. We go further than we have to, on purpose, because that&apos;s what turns a visit into a memory and a member into family.</p>
-              </div>
-            )}
-          </div>
+          <h1 style={pageTitle}>Gifting</h1>
           <p style={lede}>
-            Unreasonable Hospitality — the small, thoughtful gestures that make a member feel cared for. The budget is set by tier ({' '}
+            <span ref={infoRef} style={{ position: 'relative', display: 'inline-flex', alignItems: 'baseline', gap: 5, whiteSpace: 'nowrap' }}>
+              Unreasonable Hospitality
+              <button
+                onClick={() => setInfoOpen(o => !o)}
+                style={infoBtn}
+                aria-label="About Unreasonable Hospitality"
+                aria-expanded={infoOpen}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D4B85A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: 'translateY(2px)' }}>
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="11" x2="12" y2="16" />
+                  <line x1="12" y1="8" x2="12.01" y2="8" />
+                </svg>
+              </button>
+              {infoOpen && (
+                <div style={infoPopover} role="dialog" aria-label="Unreasonable Hospitality">
+                  <div style={infoTitle}>Unreasonable Hospitality</div>
+                  <p style={infoPara}>The phrase comes from restaurateur Will Guidara, who built the world&apos;s best restaurant on a simple idea: there&apos;s a difference between service and hospitality. Service is doing your job well. Hospitality is making someone feel genuinely cared for — doing the unexpected, generous thing precisely because no one asked you to.</p>
+                  <p style={infoPara}>We hold to it closely because it&apos;s the whole point of The Rampant Club. We don&apos;t reward loyalty with a points card — a free sticker on the tenth visit, a discount on the twentieth. We treat every member like royalty from the first day, because the gestures that cost a little more and surprise a little deeper are the ones people remember for the rest of their lives.</p>
+                  <p style={{ ...infoPara, marginBottom: 0 }}>When a member walks through our doors, everything should feel as though it was designed around them — because it was. That&apos;s not extravagance for its own sake. It&apos;s the belief that how you make someone feel is what they carry home. We go further than we have to, on purpose, because that&apos;s what turns a visit into a memory and a member into family.</p>
+                </div>
+              )}
+            </span>{' '}— the small, thoughtful gestures that make a member feel cared for. The budget is set by tier ({' '}
             <Link href="/admin/tier-budgets" style={linkStyle}>tier budgets →</Link>{' '}
             ) and runs anniversary to anniversary. Each gift carries a cost, a source, and the &quot;why&quot; we did it.
           </p>
