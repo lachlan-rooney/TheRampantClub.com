@@ -143,6 +143,18 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
     setEditing(e => e ? { ...e, assignee: assignee || null } : e)
     wrap(() => assignTask(id, assignee || null))
   }
+  // Move the card to another column from the editor (works from the Gantt popup too).
+  // Picking a done-column = "mark done": ops_move_task stamps completed_at+status
+  // (same path as a drag), leaving a done-column clears them. Optimistically reflect
+  // done-ness so the drawer + the Gantt's status colour update immediately; wrap's
+  // reload then re-syncs from the spine.
+  const changeColumn = (colId: string) => {
+    if (!editing || colId === editing.column_id) return
+    const id = editing.id
+    const isDone = columns.find(c => c.id === colId)?.is_done_column === true
+    setEditing(e => e ? { ...e, column_id: colId, status: isDone ? 'done' : 'open', completed_at: isDone ? (e.completed_at || new Date().toISOString()) : null } : e)
+    wrap(() => moveTask(id, colId, tasksIn(colId).length))
+  }
 
   // ── drag and drop ──
   const onDropColumn = (colId: string) => {
@@ -320,13 +332,22 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
             <div style={{ ...fieldLabel, marginTop: 6, opacity: 0.6 }}>
               Both dates → a bar on the Gantt. Due only → a milestone. Leave both blank → unscheduled.
             </div>
-            <div style={{ marginTop: 10 }}>
-              <div style={fieldLabel}>Assignee</div>
-              <select style={input} value={editing.assignee || ''} disabled={!canEdit}
-                onChange={e => changeAssignee(e.target.value)}>
-                <option value="" style={{ background: '#052E20' }}>— unassigned —</option>
-                {team.map(m => <option key={m.id} value={m.id} style={{ background: '#052E20' }}>{m.display_name}</option>)}
-              </select>
+            <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+              <div style={{ flex: 1 }}>
+                <div style={fieldLabel}>Column / status</div>
+                <select style={input} value={editing.column_id} disabled={!canEdit}
+                  onChange={e => changeColumn(e.target.value)}>
+                  {columns.map(c => <option key={c.id} value={c.id} style={{ background: '#052E20' }}>{c.name}{c.is_done_column ? ' ✓' : ''}</option>)}
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={fieldLabel}>Assignee</div>
+                <select style={input} value={editing.assignee || ''} disabled={!canEdit}
+                  onChange={e => changeAssignee(e.target.value)}>
+                  <option value="" style={{ background: '#052E20' }}>— unassigned —</option>
+                  {team.map(m => <option key={m.id} value={m.id} style={{ background: '#052E20' }}>{m.display_name}</option>)}
+                </select>
+              </div>
             </div>
 
             {/* Cross-site link (Phase 5) */}
