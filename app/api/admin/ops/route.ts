@@ -36,6 +36,8 @@ export const dynamic = 'force-dynamic'
 const ALLOWED_ACTIONS = new Set([
   'ops_create_project',
   'ops_archive_project',
+  'ops_update_project',
+  'ops_soft_delete_project',
   'ops_create_column',
   'ops_rename_column',
   'ops_create_task',

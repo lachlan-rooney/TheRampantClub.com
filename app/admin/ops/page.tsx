@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { ConfirmModal, PromptModal, useToast } from '@/components/admin/dialogs'
-import { createProject, archiveProject } from '@/lib/ops/api'
+import { createProject, archiveProject, updateProject, softDeleteProject } from '@/lib/ops/api'
 import NotificationSettings from '@/components/admin/NotificationSettings'
 import CollapsibleHeader from '@/components/admin/CollapsibleHeader'
 import type { Project, TeamMember } from '@/lib/ops/types'
@@ -25,6 +25,12 @@ export default function OpsHubHome() {
   const [newBoardOpen, setNewBoardOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [confirmArchive, setConfirmArchive] = useState<Project | null>(null)
+  // Edit (name + description) + soft-delete (typed-name gate) modals.
+  const [editing, setEditing] = useState<Project | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editDesc, setEditDesc] = useState('')
+  const [deleting, setDeleting] = useState<Project | null>(null)
+  const [deleteTyped, setDeleteTyped] = useState('')
   const [newMemberOpen, setNewMemberOpen] = useState(false)
   const [rosterOpen, setRosterOpen] = useState(false)
   // per-board done/total/pct — one aggregate RPC (Phase 7), keyed by project_id (active boards only)
@@ -32,7 +38,7 @@ export default function OpsHubHome() {
 
   const load = async () => {
     const [{ data: pj }, { data: tm }, { data: prog }] = await Promise.all([
-      supabase.from('projects').select('*').order('created_at', { ascending: false }),
+      supabase.from('projects').select('*').is('deleted_at', null).order('created_at', { ascending: false }),
       supabase.from('team_members').select('*').order('display_name'),
       supabase.rpc('ops_all_boards_progress'),
     ])
@@ -46,7 +52,38 @@ export default function OpsHubHome() {
   }
   useEffect(() => { load() }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
-  const visible = projects.filter(p => showArchived ? true : p.status === 'active')
+  // Active boards keep the load order (created_at desc); archived go in their
+  // own section, alphabetical by name. Soft-deleted never load (deleted_at filter).
+  const activeBoards = projects.filter(p => p.status === 'active')
+  const archivedBoards = projects
+    .filter(p => p.status === 'archived')
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  const openEdit = (p: Project) => {
+    setEditing(p); setEditName(p.name); setEditDesc(p.description || '')
+  }
+  const saveEdit = async () => {
+    if (!editing || !editName.trim()) return
+    setBusy(true)
+    try {
+      await updateProject(editing.id, editName.trim(), editDesc.trim() || null)
+      setEditing(null); showToast('Board updated.'); load()
+    } catch (e) {
+      showToast((e as Error).message, 'error')
+    } finally { setBusy(false) }
+  }
+
+  const openDelete = (p: Project) => { setDeleting(p); setDeleteTyped('') }
+  const runDelete = async () => {
+    if (!deleting || deleteTyped !== deleting.name) return  // exact-name gate
+    setBusy(true)
+    try {
+      await softDeleteProject(deleting.id)
+      setDeleting(null); showToast('Board deleted (recoverable).'); load()
+    } catch (e) {
+      showToast((e as Error).message, 'error')
+    } finally { setBusy(false) }
+  }
 
   const handleCreate = async (name: string) => {
     setBusy(true)
@@ -87,6 +124,37 @@ export default function OpsHubHome() {
     load()
   }
 
+  const renderCard = (p: Project) => (
+    <div key={p.id} style={{ ...card, borderLeft: `3px solid ${p.colour || '#5E6650'}`, opacity: p.status === 'archived' ? 0.7 : 1 }}>
+      <Link href={`/admin/ops/${p.id}`} style={{ textDecoration: 'none' }}>
+        <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2', marginBottom: 4 }}>{p.name}</div>
+        {p.description && <div style={{ ...metaText, marginBottom: 8 }}>{p.description}</div>}
+        <div style={metaText}>
+          {p.status === 'archived' ? 'Archived' : 'Active'}
+          {p.target_date ? ` · target ${new Date(p.target_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}
+        </div>
+      </Link>
+      {progress[p.id] && (
+        <div style={{ marginTop: 10 }}>
+          <div style={progressOuter}><span style={{ ...progressInner, width: `${progress[p.id].pct}%` }} /></div>
+          <div style={{ ...metaText, fontSize: 9, marginTop: 3, opacity: 0.8 }}>
+            {progress[p.id].total > 0 ? `${progress[p.id].done}/${progress[p.id].total} · ${fmtPct(progress[p.id].pct)}%` : 'no tasks yet'}
+          </div>
+        </div>
+      )}
+      <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <Link href={`/admin/ops/${p.id}`} style={tinyBtn}>Open</Link>
+        <button onClick={() => openEdit(p)} style={tinyBtn}>Edit</button>
+        {p.status === 'active' && (
+          <button onClick={() => setConfirmArchive(p)} style={{ ...tinyBtn, color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}>Archive</button>
+        )}
+        {p.status === 'archived' && (
+          <button onClick={() => openDelete(p)} style={{ ...tinyBtn, color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}>Delete</button>
+        )}
+      </div>
+    </div>
+  )
+
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
@@ -108,37 +176,20 @@ export default function OpsHubHome() {
 
       {loading ? (
         <div style={emptyText}>Loading…</div>
-      ) : visible.length === 0 ? (
+      ) : activeBoards.length === 0 && (!showArchived || archivedBoards.length === 0) ? (
         <div style={emptyText}>No boards yet. Create the first one.</div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14, marginBottom: 40 }}>
-          {visible.map(p => (
-            <div key={p.id} style={{ ...card, borderLeft: `3px solid ${p.colour || '#5E6650'}`, opacity: p.status === 'archived' ? 0.55 : 1 }}>
-              <Link href={`/admin/ops/${p.id}`} style={{ textDecoration: 'none' }}>
-                <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2', marginBottom: 4 }}>{p.name}</div>
-                {p.description && <div style={{ ...metaText, marginBottom: 8 }}>{p.description}</div>}
-                <div style={metaText}>
-                  {p.status === 'archived' ? 'Archived' : 'Active'}
-                  {p.target_date ? ` · target ${new Date(p.target_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}
-                </div>
-              </Link>
-              {progress[p.id] && (
-                <div style={{ marginTop: 10 }}>
-                  <div style={progressOuter}><span style={{ ...progressInner, width: `${progress[p.id].pct}%` }} /></div>
-                  <div style={{ ...metaText, fontSize: 9, marginTop: 3, opacity: 0.8 }}>
-                    {progress[p.id].total > 0 ? `${progress[p.id].done}/${progress[p.id].total} · ${fmtPct(progress[p.id].pct)}%` : 'no tasks yet'}
-                  </div>
-                </div>
-              )}
-              {p.status === 'active' && (
-                <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
-                  <Link href={`/admin/ops/${p.id}`} style={tinyBtn}>Open</Link>
-                  <button onClick={() => setConfirmArchive(p)} style={{ ...tinyBtn, color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}>Archive</button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+        <>
+          {activeBoards.length > 0 && (
+            <div style={boardGrid}>{activeBoards.map(renderCard)}</div>
+          )}
+          {showArchived && archivedBoards.length > 0 && (
+            <>
+              <div style={sectionHeading}>Archived</div>
+              <div style={boardGrid}>{archivedBoards.map(renderCard)}</div>
+            </>
+          )}
+        </>
       )}
 
       {/* Roster (left) + Email notifications (right) — mirrored, identical collapsible
@@ -206,6 +257,71 @@ export default function OpsHubHome() {
         onCancel={() => setConfirmArchive(null)}
         onConfirm={runArchive}
       />
+
+      {/* Edit board — name + description (two fields; the generic PromptModal is single-field) */}
+      {editing && (
+        <>
+          <div style={modalBackdrop} onClick={() => { if (!busy) setEditing(null) }} />
+          <div style={modalBox} role="dialog">
+            <div style={eyebrow}>✎ EDIT BOARD</div>
+            <div style={{ ...metaText, marginBottom: 14 }}>Update the board name and description.</div>
+            <div style={fieldLabel}>Name</div>
+            <input style={modalInput} value={editName} onChange={e => setEditName(e.target.value)} />
+            <div style={{ ...fieldLabel, marginTop: 12 }}>Description</div>
+            <textarea
+              style={{ ...modalInput, minHeight: 96, resize: 'vertical', lineHeight: 1.5 }}
+              value={editDesc}
+              onChange={e => setEditDesc(e.target.value)}
+              placeholder="What this board is for…"
+            />
+            <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+              <button onClick={saveEdit} disabled={busy || !editName.trim()} style={{ ...btnPrimary, opacity: busy || !editName.trim() ? 0.5 : 1 }}>
+                {busy ? 'Saving…' : 'Save'}
+              </button>
+              <button onClick={() => setEditing(null)} style={tinyBtn}>Cancel</button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Soft-delete — typed-name gate. Confirm enables ONLY on an exact name match. */}
+      {deleting && (
+        <>
+          <div style={modalBackdrop} onClick={() => { if (!busy) setDeleting(null) }} />
+          <div style={modalBox} role="dialog">
+            <div style={{ ...eyebrow, color: '#C27070' }}>⚠ DELETE BOARD</div>
+            <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2', margin: '2px 0 8px' }}>
+              Delete “{deleting.name}”?
+            </div>
+            <div style={{ ...metaText, lineHeight: 1.6, marginBottom: 14 }}>
+              Soft delete — the board leaves every view, but its tasks and full activity history are kept
+              and remain recoverable. To confirm, type the board&apos;s exact name below.
+            </div>
+            <div style={fieldLabel}>Type <span style={{ color: '#E5D4C2' }}>{deleting.name}</span> to confirm</div>
+            <input
+              style={modalInput}
+              value={deleteTyped}
+              onChange={e => setDeleteTyped(e.target.value)}
+              placeholder={deleting.name}
+              autoFocus
+            />
+            <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+              <button
+                onClick={runDelete}
+                disabled={busy || deleteTyped !== deleting.name}
+                style={{
+                  ...btnPrimary, background: '#7E3B3B',
+                  opacity: busy || deleteTyped !== deleting.name ? 0.45 : 1,
+                  cursor: deleteTyped !== deleting.name ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {busy ? 'Deleting…' : 'Delete board'}
+              </button>
+              <button onClick={() => setDeleting(null)} style={tinyBtn}>Cancel</button>
+            </div>
+          </div>
+        </>
+      )}
       {toastNode}
     </>
   )
@@ -223,3 +339,9 @@ const fmtPct = (n: number) => (Number(n) % 1 === 0 ? String(Number(n)) : Number(
 const btnPrimary: React.CSSProperties = { background: '#5E6650', color: '#E5D4C2', border: 'none', borderRadius: 6, padding: '8px 18px', cursor: 'pointer', fontFamily: FAMILY, fontSize: 11, letterSpacing: '0.06em' }
 const tinyBtn: React.CSSProperties = { background: 'rgba(229,212,194,0.06)', color: '#B2AA98', border: '1px solid rgba(229,212,194,0.18)', borderRadius: 4, padding: '4px 10px', fontFamily: FAMILY, fontSize: 10, letterSpacing: '0.04em', cursor: 'pointer', textDecoration: 'none' }
 const emptyText: React.CSSProperties = { padding: '24px 0', fontFamily: FAMILY, fontSize: 12, color: '#B2AA98', opacity: 0.6, fontStyle: 'italic' }
+const boardGrid: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14, marginBottom: 24 }
+const sectionHeading: React.CSSProperties = { fontFamily: FAMILY, fontSize: 10, color: '#B2AA98', letterSpacing: '0.16em', textTransform: 'uppercase', margin: '16px 0 12px', paddingBottom: 6, borderBottom: '1px solid rgba(229,212,194,0.10)' }
+const fieldLabel: React.CSSProperties = { fontFamily: FAMILY, fontSize: 9, color: '#B2AA98', letterSpacing: '0.10em', textTransform: 'uppercase', marginBottom: 5 }
+const modalInput: React.CSSProperties = { background: 'rgba(229,212,194,0.06)', color: '#E5D4C2', border: '1px solid rgba(229,212,194,0.18)', borderRadius: 6, padding: '9px 11px', fontFamily: FAMILY, fontSize: 13, width: '100%', boxSizing: 'border-box', outline: 'none' }
+const modalBackdrop: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 500 }
+const modalBox: React.CSSProperties = { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'min(460px, 92vw)', background: '#0A3526', border: '1px solid rgba(229,212,194,0.14)', borderRadius: 8, padding: '22px 24px', zIndex: 501, boxShadow: '0 20px 60px rgba(0,0,0,0.55)' }
