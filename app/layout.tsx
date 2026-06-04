@@ -102,6 +102,27 @@ export default function RootLayout({
           html:hover::-webkit-scrollbar-thumb { background: rgba(94, 102, 80, 0.2); }
           html { scrollbar-width: thin; scrollbar-color: transparent transparent; }
           html:hover { scrollbar-color: rgba(94, 102, 80, 0.2) transparent; }
+
+          /* ─── Checkboxes — site-wide TRC cream (one durable rule; new checkboxes
+                inherit it). Full treatment: cream bg + defining green edge +
+                deep-green tick so the box reads in both states, on dark OR light. */
+          input[type="checkbox"] {
+            appearance: none; -webkit-appearance: none;
+            width: 16px; height: 16px; flex-shrink: 0; vertical-align: middle;
+            background: #E5D4C2;
+            border: 1.5px solid #5E6650;
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+            margin: 0;
+          }
+          input[type="checkbox"]:checked::after {
+            content: ''; position: absolute; left: 4.5px; top: 1px;
+            width: 4px; height: 8px;
+            border: solid #052E20; border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+          }
+          input[type="checkbox"]:disabled { opacity: 0.5; cursor: not-allowed; }
         ` }} />
         <PWARegistrar />
         {children}
