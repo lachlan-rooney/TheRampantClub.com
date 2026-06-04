@@ -685,18 +685,18 @@ const infoBtn: React.CSSProperties = {
 }
 const infoPopover: React.CSSProperties = {
   position: 'absolute', top: 'calc(100% + 10px)', left: 0, zIndex: 60,
-  width: 360, maxWidth: '90vw',
+  width: 560, maxWidth: '92vw',
   background: '#E5D4C2', color: '#052E20',
   border: '1px solid rgba(5,46,32,0.18)', borderRadius: 12,
-  boxShadow: '0 18px 50px rgba(0,0,0,0.45)', padding: '18px 20px',
+  boxShadow: '0 18px 50px rgba(0,0,0,0.45)', padding: '16px 22px',
 }
 const infoTitle: React.CSSProperties = {
-  fontFamily: "'Rampant Sans', serif", fontSize: 18, fontWeight: 500,
-  letterSpacing: '0.03em', color: '#052E20', margin: '0 0 12px',
+  fontFamily: "'Rampant Sans', serif", fontSize: 17, fontWeight: 500,
+  letterSpacing: '0.03em', color: '#052E20', margin: '0 0 8px',
 }
 const infoPara: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
-  lineHeight: 1.65, color: '#052E20', margin: '0 0 12px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11.5,
+  lineHeight: 1.5, color: '#052E20', margin: '0 0 8px',
 }
 const strip: React.CSSProperties = {
   display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
