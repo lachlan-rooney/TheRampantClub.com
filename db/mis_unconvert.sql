@@ -71,7 +71,7 @@ begin
   elsif exists (select 1 from harmony_observations where member_no = v_member_no) then v_blocker := 'harmony_observations';
   elsif exists (select 1 from preference_candidates where member_no = v_member_no) then v_blocker := 'preference_candidates';
   elsif exists (select 1 from bookings            where member_no = v_member_no) then v_blocker := 'bookings';
-  elsif exists (select 1 from gifting             where member_no = v_member_no) then v_blocker := 'gifting';
+  elsif exists (select 1 from gifts               where member_no = v_member_no) then v_blocker := 'gifts';
   end if;
   if v_blocker is not null then
     raise exception 'refused: member % has rows in % — has real data, will not auto-remove', v_member_no, v_blocker;
