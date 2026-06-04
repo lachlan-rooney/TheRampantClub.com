@@ -7,6 +7,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { ConfirmModal, PromptModal, useToast } from '@/components/admin/dialogs'
 import { createProject, archiveProject } from '@/lib/ops/api'
 import NotificationSettings from '@/components/admin/NotificationSettings'
+import CollapsibleHeader from '@/components/admin/CollapsibleHeader'
 import type { Project, TeamMember } from '@/lib/ops/types'
 
 const FAMILY = "'Google Sans Code', monospace"
@@ -140,34 +141,37 @@ export default function OpsHubHome() {
         </div>
       )}
 
-      {/* Team roster — collapsible (like Email notifications below). */}
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
-        <button onClick={() => setRosterOpen(o => !o)} style={collapseHeader}>
-          <h2 style={{ ...pageTitle, fontSize: 18, margin: 0 }}>Team roster</h2>
-          <span style={{ ...metaText, marginLeft: 8 }}>{rosterOpen ? '▾ hide' : `▸ show (${team.length})`}</span>
-        </button>
-        {rosterOpen && <button onClick={() => setNewMemberOpen(true)} style={{ ...tinyBtn, marginLeft: 'auto' }}>+ Add person</button>}
-      </div>
-      {rosterOpen && (
-        team.length === 0 ? (
-          <div style={emptyText}>No team members yet — add people to assign cards to.</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {team.map(m => (
-              <div key={m.id} style={{ ...rosterRow, opacity: m.active ? 1 : 0.5 }}>
-                <span style={{ color: '#E5D4C2', fontFamily: FAMILY, fontSize: 12 }}>{m.display_name}</span>
-                {m.role_title && <span style={metaText}>{m.role_title}</span>}
-                {!m.profile_id && <span style={{ ...metaText, opacity: 0.6 }}>· name-only</span>}
-                <button onClick={() => toggleActive(m)} style={{ ...tinyBtn, marginLeft: 'auto' }}>
-                  {m.active ? 'Deactivate' : 'Reactivate'}
-                </button>
-              </div>
-            ))}
+      {/* Roster (left) + Email notifications (right) — mirrored, identical collapsible
+          headers; stacks to one column when the row gets tight. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 28, marginTop: 40 }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+            <CollapsibleHeader title="Team roster" open={rosterOpen} onToggle={() => setRosterOpen(o => !o)} count={team.length} />
+            {rosterOpen && <button onClick={() => setNewMemberOpen(true)} style={{ ...tinyBtn, marginLeft: 'auto' }}>+ Add person</button>}
           </div>
-        )
-      )}
-
-      <NotificationSettings />
+          {rosterOpen && (
+            team.length === 0 ? (
+              <div style={emptyText}>No team members yet — add people to assign cards to.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {team.map(m => (
+                  <div key={m.id} style={{ ...rosterRow, opacity: m.active ? 1 : 0.5 }}>
+                    <span style={{ color: '#E5D4C2', fontFamily: FAMILY, fontSize: 12 }}>{m.display_name}</span>
+                    {m.role_title && <span style={metaText}>{m.role_title}</span>}
+                    {!m.profile_id && <span style={{ ...metaText, opacity: 0.6 }}>· name-only</span>}
+                    <button onClick={() => toggleActive(m)} style={{ ...tinyBtn, marginLeft: 'auto' }}>
+                      {m.active ? 'Deactivate' : 'Reactivate'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+        </div>
+        <div>
+          <NotificationSettings />
+        </div>
+      </div>
 
       <PromptModal
         open={newBoardOpen}
@@ -213,7 +217,6 @@ const lede: React.CSSProperties = { fontFamily: FAMILY, fontSize: 12, color: '#B
 const metaText: React.CSSProperties = { fontFamily: FAMILY, fontSize: 11, color: '#B2AA98' }
 const card: React.CSSProperties = { padding: 16, background: 'rgba(229,212,194,0.04)', border: '1px solid rgba(229,212,194,0.08)', borderRadius: 8 }
 const rosterRow: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'rgba(229,212,194,0.03)', border: '1px solid rgba(229,212,194,0.06)', borderRadius: 6 }
-const collapseHeader: React.CSSProperties = { display: 'flex', alignItems: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }
 const progressOuter: React.CSSProperties = { width: '100%', height: 4, background: 'rgba(229,212,194,0.10)', borderRadius: 2, overflow: 'hidden' }
 const progressInner: React.CSSProperties = { display: 'block', height: '100%', background: '#7AB07A', borderRadius: 2 }
 const fmtPct = (n: number) => (Number(n) % 1 === 0 ? String(Number(n)) : Number(n).toFixed(1))

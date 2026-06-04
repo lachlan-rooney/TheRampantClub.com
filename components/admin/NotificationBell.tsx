@@ -57,9 +57,12 @@ export default function NotificationBell() {
   }
 
   return (
-    <div ref={ref} style={{ position: 'fixed', top: 16, right: 20, zIndex: 200 }}>
+    <div ref={ref} style={{ position: 'relative', zIndex: 200 }}>
       <button onClick={() => setOpen(o => !o)} style={bellBtn} title="Notifications" aria-label="Notifications">
-        <span style={{ fontSize: 16 }}>🔔</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7AB07A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+          <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+        </svg>
         {unread > 0 && <span style={badge}>{unread > 9 ? '9+' : unread}</span>}
       </button>
 

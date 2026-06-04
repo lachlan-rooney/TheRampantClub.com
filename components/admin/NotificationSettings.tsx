@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
+import CollapsibleHeader from './CollapsibleHeader'
 
 const FAMILY = "'Google Sans Code', monospace"
 
@@ -40,11 +41,8 @@ export default function NotificationSettings() {
   }
 
   return (
-    <div style={{ marginTop: 40 }}>
-      <button onClick={() => setOpen(o => !o)} style={header}>
-        <span style={{ ...pageTitleSm }}>Email notifications</span>
-        <span style={{ ...metaText, marginLeft: 'auto' }}>{open ? '▾ hide' : '▸ show'}</span>
-      </button>
+    <div>
+      <CollapsibleHeader title="Email notifications" open={open} onToggle={() => setOpen(o => !o)} />
       {open && (
         <div style={{ marginTop: 12 }}>
           <p style={{ ...metaText, marginBottom: 12, maxWidth: 520 }}>
@@ -72,7 +70,5 @@ export default function NotificationSettings() {
   )
 }
 
-const header: React.CSSProperties = { display: 'flex', alignItems: 'center', width: '100%', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }
-const pageTitleSm: React.CSSProperties = { fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2' }
 const metaText: React.CSSProperties = { fontFamily: FAMILY, fontSize: 11, color: '#B2AA98' }
 const row: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(229,212,194,0.04)', border: '1px solid rgba(229,212,194,0.08)', borderRadius: 8, cursor: 'pointer' }
