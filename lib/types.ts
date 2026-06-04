@@ -57,6 +57,7 @@ export interface Fixture {
   max_signups: number | null
   signup_deadline: string | null
   results: string | null
+  ops_project_id: string | null   // optional navigable link to an Ops Hub board
   created_at: string
 }
 

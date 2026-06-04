@@ -40,6 +40,8 @@ export default function AdminFixtures() {
   const [maxSignups, setMaxSignups] = useState('')
   const [signupDeadline, setSignupDeadline] = useState('')
   const [results, setResults] = useState('')
+  const [opsProjectId, setOpsProjectId] = useState('')                              // D: optional Ops Hub board link
+  const [projects, setProjects] = useState<{ id: string; name: string }[]>([])
 
   const supabase = createBrowserSupabaseClient()
 
@@ -51,6 +53,8 @@ export default function AdminFixtures() {
   const load = async () => {
     const { data } = await supabase.from('fixtures').select('*').order('date', { ascending: false })
     if (data) setFixtures(data)
+    const { data: pj } = await supabase.from('projects').select('id, name').eq('status', 'active').order('name')
+    if (pj) setProjects(pj)
     const { data: signups } = await supabase.from('fixture_signups').select('fixture_id, user_id')
     if (signups) {
       const counts: Record<string, number> = {}
@@ -78,7 +82,7 @@ export default function AdminFixtures() {
 
   const resetForm = () => {
     setSport('golf'); setTitle(''); setDescription(''); setDate(''); setLocation('')
-    setMaxSignups(''); setSignupDeadline(''); setResults('')
+    setMaxSignups(''); setSignupDeadline(''); setResults(''); setOpsProjectId('')
     setEditing(null); setShowForm(false)
   }
 
@@ -87,7 +91,7 @@ export default function AdminFixtures() {
     setDate(f.date ? new Date(f.date).toISOString().slice(0, 16) : '')
     setLocation(f.location || ''); setMaxSignups(f.max_signups?.toString() || '')
     setSignupDeadline(f.signup_deadline ? new Date(f.signup_deadline).toISOString().slice(0, 16) : '')
-    setResults(f.results || '')
+    setResults(f.results || ''); setOpsProjectId(f.ops_project_id || '')
     setEditing(f); setShowForm(true)
   }
 
@@ -98,6 +102,7 @@ export default function AdminFixtures() {
       max_signups: maxSignups ? parseInt(maxSignups) : null,
       signup_deadline: signupDeadline ? new Date(signupDeadline).toISOString() : null,
       results: results || null,
+      ops_project_id: opsProjectId || null,
     }
     if (editing) {
       await supabase.from('fixtures').update(payload).eq('id', editing.id)
@@ -176,6 +181,13 @@ export default function AdminFixtures() {
               <input type="datetime-local" style={inputStyle} value={signupDeadline} onChange={e => setSignupDeadline(e.target.value)} />
             </div>
           </div>
+          <div>
+            <label style={labelStyle}>Ops Hub board <span style={{ opacity: 0.5 }}>· optional link</span></label>
+            <select style={inputStyle} value={opsProjectId} onChange={e => setOpsProjectId(e.target.value)}>
+              <option value="">— none —</option>
+              {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
           {editing && isPast(editing.date) && (
             <div>
               <label style={labelStyle}>Results</label>
@@ -206,6 +218,9 @@ export default function AdminFixtures() {
                 <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>
                   {signupCounts[f.id] || 0} signed up
                 </span>
+                {f.ops_project_id && (
+                  <a href={`/admin/ops/${f.ops_project_id}`} style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#9E8FC4', textDecoration: 'none' }} title="Open the linked Ops Hub board">⊙ ops board →</a>
+                )}
               </div>
               <div style={{ display: 'flex', gap: 12 }}>
                 <button onClick={() => startEdit(f)} style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.5, cursor: 'pointer' }}>Edit</button>
