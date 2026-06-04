@@ -28,6 +28,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div style={{ flex: 1, minWidth: 0 }}>
           {children}
         </div>
+        {/* TEMP: licence line hidden 2026-06-04, restore 2026-06-05 — flip to `true` */}
+        {false && (
         <div style={{
           marginTop: 48,
           paddingTop: 16,
@@ -38,6 +40,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         }}>
           Licensed from LR Growth Solutions PTE LTD
         </div>
+        )}
       </main>
     </div>
     </>
