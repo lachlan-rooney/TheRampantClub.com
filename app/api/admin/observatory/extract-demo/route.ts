@@ -265,7 +265,7 @@ Return ONLY the JSON Lines (one preference per line, each preference's complete 
         })
 
         send('status', { phase: 'reconciling' })
-        const reconciled = reconcile(assembledRaw, baselines)
+        const reconciled = reconcile(assembledRaw, baselines, transcript)
         send('reconciled', {
           preferences:    reconciled.preferences,
           dropped:        reconciled.dropped,

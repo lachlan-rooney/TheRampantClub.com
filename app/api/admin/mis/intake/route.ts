@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
 
         // ── End-of-stream reconcile — the authoritative pass ────────────
         send('status', { phase: 'reconciling' })
-        const reconciled = reconcile(assembledRaw, baselines)
+        const reconciled = reconcile(assembledRaw, baselines, transcript)
         send('reconciled', {
           preferences:    reconciled.preferences,
           dropped:        reconciled.dropped,

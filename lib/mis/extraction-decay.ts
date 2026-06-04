@@ -91,6 +91,20 @@ export function isMedicalPreference(p: ExtractedPreference): boolean {
   return false;
 }
 
+/** Raw-text variant — the SAME deterministic medical patterns, run over arbitrary
+ *  source text (a transcript sentence). Used by reconcile's transcript sweep so a
+ *  medical signal in the SOURCE locks regardless of whether the model surfaced it
+ *  that run — removing the non-deterministic extraction from the safety path. */
+export function textIsMedical(raw: string): boolean {
+  const text = (raw || "").toLowerCase();
+  for (const s of MEDICAL_STEMS) if (hasStem(text, s)) return true;
+  for (const re of MEDICAL_PHRASES) if (re.test(text)) return true;
+  return false;
+}
+function normForDedup(s: string): string {
+  return (s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
 /* ===========================================================================
  * IDENTITY GUARDRAIL — content-based, NARROW / HIGH-PRECISION, UNDER-CATCH bias.
  *
@@ -163,6 +177,16 @@ const IDENTITY_PHRASES: RegExp[] = [
   //    NARROW: only matches rules about identity-relevant EVENTS.
   //    "I don't drink gin" → no event noun → no match.
   new RegExp(`\\bI\\s+don['’]?t\\s+(?:do|celebrate|observe|mark|believe\\s+in)\\s+(?:my\\s+own\\s+)?(?:birthdays?|anniversary|anniversaries|holidays?|christmas|easter|hanukkah|halloween|new\\s+year)\\b`, 'i'),
+
+  // 7. Declarative birthday / date-of-birth — a member's (or relation's) birthday
+  //    is a permanent identity fact (when it falls doesn't change). Requires a
+  //    temporal/declarative connector right after "birthday" so incidental
+  //    "birthday tasting/party" does NOT lock. Closes the self-birthday gap the
+  //    consistency analyser surfaced — a birthday near Tet was riding on the
+  //    model's λ (0 vs 0.002) instead of locking deterministically.
+  new RegExp(`\\bbirthday['’]?s?\\s+(?:is|was|falls?|on|in|around|near)\\b`, 'i'),
+  new RegExp(`\\bdate\\s+of\\s+birth\\b`, 'i'),
+  new RegExp(`\\bborn\\s+(?:on|in|around|near|during)\\b`, 'i'),
 ];
 
 function identityHaystack(p: ExtractedPreference): string {
@@ -454,7 +478,8 @@ function applyRuleLabels(
  */
 export function reconcile(
   raw: ExtractedPreference[],
-  baselines: Record<string, { baselineLambda: number; source: "learned" | "designed" }>
+  baselines: Record<string, { baselineLambda: number; source: "learned" | "designed" }>,
+  transcript?: string
 ): {
   preferences: ReconciledPreference[];
   dropped: { reason: string; item: ExtractedPreference }[];
@@ -524,6 +549,45 @@ export function reconcile(
       rationale: applyRuleLabels(normaliseRationale(r.rationale), lambda_origin, r.category, lambda),
     });
   }
+  // ── TRANSCRIPT-LEVEL MEDICAL SWEEP (determinism guarantee) ──
+  // The per-row medical lock can only fire on what the MODEL extracted, and the
+  // model surfaces items non-deterministically (the safety_inconsistency defect).
+  // So scan the SOURCE transcript with the same deterministic patterns: any medical
+  // sentence not already covered by a forced_medical row becomes one. This makes the
+  // medical lock a function of the transcript (deterministic), not of model output —
+  // a real allergy in the source locks on EVERY run, even if the model omits it.
+  // Fail-safe by design (over-catch): it will also consistently lock benign "no
+  // allergies" mentions — that's the correct medical trade (miss nothing).
+  if (transcript) {
+    const lockedQuotes = out
+      .filter(o => o.lambda_origin === "forced_medical")
+      .map(o => normForDedup(o.verbatim_quote))
+      .filter(q => q.length >= 8);
+    const sentences = transcript.split(/(?<=[.!?])\s+|\n+/).map(s => s.trim()).filter(Boolean);
+    const injected = new Set<string>();
+    for (const sentence of sentences) {
+      if (!textIsMedical(sentence)) continue;
+      const norm = normForDedup(sentence);
+      if (!norm || injected.has(norm)) continue;
+      // dedupe: a model-surfaced forced_medical row quotes the source, so its quote
+      // is a substring of the sentence — don't double-lock the same content.
+      if (lockedQuotes.some(q => norm.includes(q))) continue;
+      injected.add(norm);
+      out.push({
+        category: "Food & Beverage",
+        subcategory: "Medical / dietary (source sweep)",
+        preference_name: sentence.length > 80 ? sentence.slice(0, 79) + "…" : sentence,
+        detail: "",
+        verbatim_quote: sentence,
+        s0: 5, confidence: 1.0, lambda: 0, frequency: 1.0,
+        source: "Interview",
+        lambda_origin: "forced_medical",
+        rationale: applyRuleLabels(normaliseRationale(undefined), "forced_medical", "Food & Beverage", 0),
+      });
+      medicalForced++;
+    }
+  }
+
   return { preferences: out, dropped, medicalForced, identityForced, aiPermanent };
 }
 
@@ -566,6 +630,6 @@ export async function extractPreferencesFromTranscript(args: {
   if (!Array.isArray(parsed)) throw new Error("Extractor did not return a JSON array.");
 
   const { preferences, dropped, medicalForced, identityForced, aiPermanent } =
-    reconcile(parsed as ExtractedPreference[], baselines);
+    reconcile(parsed as ExtractedPreference[], baselines, args.transcript);
   return { preferences, dropped, medicalForced, identityForced, aiPermanent, baselinesUsed: baselines };
 }
