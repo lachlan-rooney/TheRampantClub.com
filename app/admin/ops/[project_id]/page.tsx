@@ -9,7 +9,7 @@ import ActivityFeed from '../ActivityFeed'
 import GanttView from './GanttView'
 import { OPS_STATUS_COLORS } from '@/lib/ops/status'
 import {
-  createTask, updateTask, moveTask, reorderColumn, assignTask, deleteTask,
+  createTask, updateTask, moveTask, assignTask, deleteTask,
   createColumn, addProjectMember, removeProjectMember,
   createTemplate, setTemplateActive, materialiseNow, linkTask, unlinkTask, rescheduleTask,
 } from '@/lib/ops/api'
@@ -111,7 +111,26 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
 
   const teamName = (id: string | null) => id ? (team.find(t => t.id === id)?.display_name ?? '—') : null
   const profileName = (id: string) => profiles.find(p => p.id === id)?.display_name || id.slice(0, 8)
-  const tasksIn = (colId: string) => tasks.filter(t => t.column_id === colId)
+  // Cards within a column are AUTO-SORTED (no manual order): active columns by
+  // due_date ASC (NULLS LAST) so the soonest/overdue rises to the top; the Done
+  // column by completed_at DESC so the most-recently-finished is on top. Stable
+  // created_at tiebreak so order never flickers. (sort_order is now vestigial.)
+  const tasksIn = (colId: string) => {
+    const isDone = columns.find(c => c.id === colId)?.is_done_column === true
+    const list = tasks.filter(t => t.column_id === colId)
+    if (isDone) {
+      return list.sort((a, b) =>
+        (b.completed_at || '').localeCompare(a.completed_at || '') ||
+        (b.created_at || '').localeCompare(a.created_at || ''))
+    }
+    return list.sort((a, b) => {
+      const ad = a.due_date, bd = b.due_date
+      if (ad && bd) return ad.localeCompare(bd) || a.created_at.localeCompare(b.created_at)
+      if (ad) return -1                       // dated rises above date-less
+      if (bd) return 1
+      return a.created_at.localeCompare(b.created_at)
+    })
+  }
 
   const wrap = async (fn: () => Promise<unknown>, after?: () => void) => {
     setBusy(true)
@@ -169,16 +188,11 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
     const dragged = tasks.find(t => t.id === dragId)
     setDragId(null)
     if (!dragged) return
-    if (dragged.column_id === target.column_id) {
-      // reorder within column: place dragged immediately before target
-      const ids = tasksIn(target.column_id).map(t => t.id).filter(id => id !== dragged.id)
-      const at = ids.indexOf(target.id)
-      ids.splice(at, 0, dragged.id)
-      wrap(() => reorderColumn(target.column_id, ids))
-    } else {
-      // cross-column: append to the target's column (precise slotting is Phase-later)
-      wrap(() => moveTask(dragged.id, target.column_id, tasksIn(target.column_id).length))
-    }
+    // Within-column manual reorder is dropped — order is automatic (the sort rule).
+    // A same-column drop is a no-op; only cross-column moves matter, and the card
+    // lands in its sorted position by its due_date / completed_at.
+    if (dragged.column_id === target.column_id) return
+    wrap(() => moveTask(dragged.id, target.column_id, tasksIn(target.column_id).length))
   }
 
   if (loading) return <div style={emptyText}>Loading board…</div>
