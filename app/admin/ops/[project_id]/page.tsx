@@ -7,8 +7,9 @@ import { vnDateString } from '@/lib/datetime'
 import { ConfirmModal, PromptModal, useToast } from '@/components/admin/dialogs'
 import ActivityFeed from '../ActivityFeed'
 import GanttView from './GanttView'
+import { OPS_STATUS_COLORS } from '@/lib/ops/status'
 import {
-  createTask, updateTask, moveTask, reorderColumn, assignTask, deleteTask,
+  createTask, updateTask, moveTask, assignTask, deleteTask,
   createColumn, addProjectMember, removeProjectMember,
   createTemplate, setTemplateActive, materialiseNow, linkTask, unlinkTask, rescheduleTask,
 } from '@/lib/ops/api'
@@ -110,7 +111,26 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
 
   const teamName = (id: string | null) => id ? (team.find(t => t.id === id)?.display_name ?? '—') : null
   const profileName = (id: string) => profiles.find(p => p.id === id)?.display_name || id.slice(0, 8)
-  const tasksIn = (colId: string) => tasks.filter(t => t.column_id === colId)
+  // Cards within a column are AUTO-SORTED (no manual order): active columns by
+  // due_date ASC (NULLS LAST) so the soonest/overdue rises to the top; the Done
+  // column by completed_at DESC so the most-recently-finished is on top. Stable
+  // created_at tiebreak so order never flickers. (sort_order is now vestigial.)
+  const tasksIn = (colId: string) => {
+    const isDone = columns.find(c => c.id === colId)?.is_done_column === true
+    const list = tasks.filter(t => t.column_id === colId)
+    if (isDone) {
+      return list.sort((a, b) =>
+        (b.completed_at || '').localeCompare(a.completed_at || '') ||
+        (b.created_at || '').localeCompare(a.created_at || ''))
+    }
+    return list.sort((a, b) => {
+      const ad = a.due_date, bd = b.due_date
+      if (ad && bd) return ad.localeCompare(bd) || a.created_at.localeCompare(b.created_at)
+      if (ad) return -1                       // dated rises above date-less
+      if (bd) return 1
+      return a.created_at.localeCompare(b.created_at)
+    })
+  }
 
   const wrap = async (fn: () => Promise<unknown>, after?: () => void) => {
     setBusy(true)
@@ -142,6 +162,18 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
     setEditing(e => e ? { ...e, assignee: assignee || null } : e)
     wrap(() => assignTask(id, assignee || null))
   }
+  // Move the card to another column from the editor (works from the Gantt popup too).
+  // Picking a done-column = "mark done": ops_move_task stamps completed_at+status
+  // (same path as a drag), leaving a done-column clears them. Optimistically reflect
+  // done-ness so the drawer + the Gantt's status colour update immediately; wrap's
+  // reload then re-syncs from the spine.
+  const changeColumn = (colId: string) => {
+    if (!editing || colId === editing.column_id) return
+    const id = editing.id
+    const isDone = columns.find(c => c.id === colId)?.is_done_column === true
+    setEditing(e => e ? { ...e, column_id: colId, status: isDone ? 'done' : 'open', completed_at: isDone ? (e.completed_at || new Date().toISOString()) : null } : e)
+    wrap(() => moveTask(id, colId, tasksIn(colId).length))
+  }
 
   // ── drag and drop ──
   const onDropColumn = (colId: string) => {
@@ -156,16 +188,11 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
     const dragged = tasks.find(t => t.id === dragId)
     setDragId(null)
     if (!dragged) return
-    if (dragged.column_id === target.column_id) {
-      // reorder within column: place dragged immediately before target
-      const ids = tasksIn(target.column_id).map(t => t.id).filter(id => id !== dragged.id)
-      const at = ids.indexOf(target.id)
-      ids.splice(at, 0, dragged.id)
-      wrap(() => reorderColumn(target.column_id, ids))
-    } else {
-      // cross-column: append to the target's column (precise slotting is Phase-later)
-      wrap(() => moveTask(dragged.id, target.column_id, tasksIn(target.column_id).length))
-    }
+    // Within-column manual reorder is dropped — order is automatic (the sort rule).
+    // A same-column drop is a no-op; only cross-column moves matter, and the card
+    // lands in its sorted position by its due_date / completed_at.
+    if (dragged.column_id === target.column_id) return
+    wrap(() => moveTask(dragged.id, target.column_id, tasksIn(target.column_id).length))
   }
 
   if (loading) return <div style={emptyText}>Loading board…</div>
@@ -245,7 +272,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
                   onDragOver={e => { if (dragId && canEdit) e.preventDefault() }}
                   onDrop={e => { e.stopPropagation(); onDropCard(t) }}
                   onClick={() => openEditor(t)}
-                  style={{ ...cardStyle, borderLeft: `3px solid ${t.status === 'lapsed' ? '#7E7864' : PRIORITY_COLOUR[t.priority]}`, cursor: canEdit ? 'grab' : 'pointer', opacity: dragId === t.id ? 0.4 : t.status === 'lapsed' ? 0.55 : 1 }}
+                  style={{ ...cardStyle, borderLeft: `3px solid ${t.status === 'lapsed' ? OPS_STATUS_COLORS.lapsed : PRIORITY_COLOUR[t.priority]}`, cursor: canEdit ? 'grab' : 'pointer', opacity: dragId === t.id ? 0.4 : t.status === 'lapsed' ? 0.55 : 1 }}
                 >
                   <div style={{ color: '#E5D4C2', fontFamily: FAMILY, fontSize: 12, lineHeight: 1.4, textDecoration: t.status === 'lapsed' ? 'line-through' : 'none' }}>
                     {t.template_id && <span title="Recurring" style={{ color: '#9E8FC4', marginRight: 5 }}>↻</span>}
@@ -256,12 +283,12 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
                     {t.due_date && (() => {
                       const overdue = t.due_date < vnDateString() && !t.completed_at && t.status !== 'lapsed'
                       return (
-                        <span style={{ ...pill, color: overdue ? '#C27070' : '#D4B85A', fontWeight: overdue ? 600 : 400 }} title={overdue ? 'Overdue' : 'Due'}>
+                        <span style={{ ...pill, color: overdue ? OPS_STATUS_COLORS.overdue : OPS_STATUS_COLORS.upcoming, fontWeight: overdue ? 600 : 400 }} title={overdue ? 'Overdue' : 'Due'}>
                           {overdue ? '⚠ ' : ''}{new Date(t.due_date + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })}
                         </span>
                       )
                     })()}
-                    {t.completed_at && <span style={{ ...pill, color: '#7AB07A' }}>done</span>}
+                    {t.completed_at && <span style={{ ...pill, color: OPS_STATUS_COLORS.done }}>done</span>}
                     {t.status === 'lapsed' && <span style={{ ...pill, color: '#C27070' }}>lapsed</span>}
                     {t.linked_object_type && t.linked_object_id && (() => {
                       const rl = linkMap.get(`${t.linked_object_type}:${t.linked_object_id}`)
@@ -319,13 +346,22 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
             <div style={{ ...fieldLabel, marginTop: 6, opacity: 0.6 }}>
               Both dates → a bar on the Gantt. Due only → a milestone. Leave both blank → unscheduled.
             </div>
-            <div style={{ marginTop: 10 }}>
-              <div style={fieldLabel}>Assignee</div>
-              <select style={input} value={editing.assignee || ''} disabled={!canEdit}
-                onChange={e => changeAssignee(e.target.value)}>
-                <option value="" style={{ background: '#052E20' }}>— unassigned —</option>
-                {team.map(m => <option key={m.id} value={m.id} style={{ background: '#052E20' }}>{m.display_name}</option>)}
-              </select>
+            <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+              <div style={{ flex: 1 }}>
+                <div style={fieldLabel}>Column / status</div>
+                <select style={input} value={editing.column_id} disabled={!canEdit}
+                  onChange={e => changeColumn(e.target.value)}>
+                  {columns.map(c => <option key={c.id} value={c.id} style={{ background: '#052E20' }}>{c.name}{c.is_done_column ? ' ✓' : ''}</option>)}
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={fieldLabel}>Assignee</div>
+                <select style={input} value={editing.assignee || ''} disabled={!canEdit}
+                  onChange={e => changeAssignee(e.target.value)}>
+                  <option value="" style={{ background: '#052E20' }}>— unassigned —</option>
+                  {team.map(m => <option key={m.id} value={m.id} style={{ background: '#052E20' }}>{m.display_name}</option>)}
+                </select>
+              </div>
             </div>
 
             {/* Cross-site link (Phase 5) */}

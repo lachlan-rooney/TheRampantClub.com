@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from 'react'
 import { vnDateString } from '@/lib/datetime'
+import { OPS_STATUS_COLORS, OPS_STATUS_LABELS, taskVisualState, type OpsVisualState } from '@/lib/ops/status'
 import type { Task, Project } from '@/lib/ops/types'
 
 const FAMILY = "'Google Sans Code', monospace"
@@ -193,6 +194,16 @@ export default function GanttView({ tasks, project, canEdit, onOpenCard, onResch
         </div>
       </div>
 
+      {/* legend — the four status colours (+ lapsed), shared with the board */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 10 }}>
+        {(['done', 'overdue', 'due_soon', 'upcoming', 'lapsed'] as OpsVisualState[]).map(s => (
+          <span key={s} style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: FAMILY, fontSize: 10, color: '#B2AA98' }}>
+            <span style={{ width: 10, height: 10, borderRadius: 2, background: OPS_STATUS_COLORS[s] }} />
+            {OPS_STATUS_LABELS[s]}
+          </span>
+        ))}
+      </div>
+
       <div ref={scrollRef} style={{ overflowX: 'auto', border: '1px solid rgba(229,212,194,0.10)', borderRadius: 8 }}>
         <div style={{ width: LABEL_W + trackW, minWidth: '100%' }}>
           {/* header */}
@@ -211,7 +222,9 @@ export default function GanttView({ tasks, project, canEdit, onOpenCard, onResch
           {/* rows */}
           {placed.length === 0 ? (
             <div style={{ padding: '20px 14px', fontFamily: FAMILY, fontSize: 12, color: '#B2AA98', opacity: 0.6, fontStyle: 'italic' }}>No dated tasks yet — add a start/due date to a card to place it here.</div>
-          ) : placed.map(p => (
+          ) : placed.map(p => {
+            const vColor = OPS_STATUS_COLORS[taskVisualState(p.task)]   // one vocabulary — same as the board
+            return (
             <div key={p.task.id} style={{ display: 'flex', height: ROW_H, borderBottom: '1px solid rgba(229,212,194,0.05)' }}>
               {/* NAME = plain label · click to open (NOT a drag handle) */}
               <div
@@ -227,7 +240,7 @@ export default function GanttView({ tasks, project, canEdit, onOpenCard, onResch
                 {p.kind === 'bar' && p.start != null && p.due != null ? (() => {
                   const left = xOf(p.start); const w = Math.max(dayWidth, (p.due - p.start + 1) * dayWidth); const wide = w >= 2 * EDGE + 12
                   return (
-                    <div onPointerDown={e => onDownEl(e, p, 'move')} onPointerMove={onMove} onPointerUp={e => onUp(e, p)} style={{ position: 'absolute', left, top: (ROW_H - 18) / 2, width: w, height: 18, background: '#D4B85A', borderRadius: 5, boxShadow: '0 1px 3px rgba(0,0,0,0.3)', overflow: 'hidden', cursor: canEdit ? 'grab' : 'pointer', touchAction: 'none' }} title={`${fmtDay(p.start)} – ${fmtDay(p.due)}`}>
+                    <div onPointerDown={e => onDownEl(e, p, 'move')} onPointerMove={onMove} onPointerUp={e => onUp(e, p)} style={{ position: 'absolute', left, top: (ROW_H - 18) / 2, width: w, height: 18, background: vColor, borderRadius: 5, boxShadow: '0 1px 3px rgba(0,0,0,0.3)', overflow: 'hidden', cursor: canEdit ? 'grab' : 'pointer', touchAction: 'none' }} title={`${fmtDay(p.start)} – ${fmtDay(p.due)}`}>
                       {wide && canEdit && <div onPointerDown={e => onDownEl(e, p, 'resize-start')} onPointerMove={onMove} onPointerUp={e => onUp(e, p)} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: EDGE, cursor: 'col-resize', background: 'rgba(5,46,32,0.30)', touchAction: 'none' }} title="Drag to change start" />}
                       <span style={{ display: 'block', padding: '0 12px', fontFamily: FAMILY, fontSize: 10, color: '#052E20', lineHeight: '18px', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{zoom === 'day' ? p.task.title : ''}</span>
                       {wide && canEdit && <div onPointerDown={e => onDownEl(e, p, 'resize-due')} onPointerMove={onMove} onPointerUp={e => onUp(e, p)} style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: EDGE, cursor: 'col-resize', background: 'rgba(5,46,32,0.30)', touchAction: 'none' }} title="Drag to change due" />}
@@ -236,12 +249,13 @@ export default function GanttView({ tasks, project, canEdit, onOpenCard, onResch
                 })() : (() => {
                   const dayN = (p.kind === 'ms-due' ? p.due : p.start)!; const cx = xOf(dayN) + dayWidth / 2
                   return (
-                    <div onPointerDown={e => onDownEl(e, p, 'move-ms')} onPointerMove={onMove} onPointerUp={e => onUp(e, p)} style={{ position: 'absolute', left: cx - 9, top: (ROW_H - 16) / 2, width: 16, height: 16, background: '#7AB07A', transform: 'rotate(45deg)', borderRadius: 3, cursor: canEdit ? 'grab' : 'pointer', touchAction: 'none' }} title={`${p.task.title} — ${fmtDay(dayN)}${p.kind === 'ms-start' ? ' (start)' : ''}`} />
+                    <div onPointerDown={e => onDownEl(e, p, 'move-ms')} onPointerMove={onMove} onPointerUp={e => onUp(e, p)} style={{ position: 'absolute', left: cx - 9, top: (ROW_H - 16) / 2, width: 16, height: 16, background: vColor, transform: 'rotate(45deg)', borderRadius: 3, cursor: canEdit ? 'grab' : 'pointer', touchAction: 'none' }} title={`${p.task.title} — ${fmtDay(dayN)}${p.kind === 'ms-start' ? ' (start)' : ''}`} />
                   )
                 })()}
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 
