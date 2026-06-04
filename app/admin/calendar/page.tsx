@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useToast } from '@/components/admin/dialogs'
+import { useToast, ConfirmModal } from '@/components/admin/dialogs'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { vnDateString } from '@/lib/datetime'
@@ -60,6 +60,8 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true)
   const [starting, setStarting] = useState<string | null>(null)
   const [hovered, setHovered] = useState<string | null>(null)
+  const [confirmCancel, setConfirmCancel] = useState<Booking | null>(null)
+  const [cancelBusy, setCancelBusy] = useState(false)
   const { showToast, toastNode } = useToast()
 
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart])
@@ -102,6 +104,19 @@ export default function CalendarPage() {
       showToast((e as Error).message, 'error')
       setStarting(null)
     }
+  }
+
+  // Soft-cancel a booking (DELETE → status='cancelled'), then refresh.
+  const cancelConfirmed = async () => {
+    if (!confirmCancel) return
+    setCancelBusy(true)
+    const r = await fetch(`/api/admin/bookings/${confirmCancel.booking_id}`, { method: 'DELETE' })
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}))
+      showToast(j.error || 'Cancel failed', 'error'); setCancelBusy(false); return
+    }
+    showToast('Booking cancelled.', 'success')
+    setCancelBusy(false); setConfirmCancel(null); load()
   }
 
   const weekLabel = `${days[0].toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${days[6].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
@@ -195,6 +210,12 @@ export default function CalendarPage() {
                             {starting === b.booking_id ? 'Starting…' : '◉ Start visit'}
                           </button>
                         )}
+                        {b.status !== 'cancelled' && (
+                          <div style={cardActions}>
+                            <Link href={`/admin/bookings/${b.booking_id}/edit`} style={cardActionLink}>Edit</Link>
+                            <button onClick={() => setConfirmCancel(b)} style={cardActionBtn}>Cancel</button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -205,6 +226,19 @@ export default function CalendarPage() {
         </div>
       )}
 
+      <ConfirmModal
+        open={!!confirmCancel}
+        eyebrow="⚠ CANCEL BOOKING"
+        title="Cancel this booking?"
+        subject={confirmCancel ? `${confirmCancel.member_name} · ${confirmCancel.booking_date}` : ''}
+        body="Marks the booking cancelled (soft-cancel) — it leaves the active calendar. Can't be undone from here."
+        confirmLabel="Cancel booking"
+        busyLabel="Cancelling…"
+        busy={cancelBusy}
+        tone="danger"
+        onConfirm={cancelConfirmed}
+        onCancel={() => { if (!cancelBusy) setConfirmCancel(null) }}
+      />
       {toastNode}
     </>
   )
@@ -368,6 +402,19 @@ const visitLink: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 9,
   color: '#7AB07A', textDecoration: 'none', letterSpacing: '0.06em',
   marginTop: 4,
+}
+const cardActions: React.CSSProperties = {
+  display: 'flex', gap: 10, marginTop: 6, paddingTop: 6,
+  borderTop: '1px solid rgba(229,212,194,0.06)',
+}
+const cardActionLink: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#B2AA98', textDecoration: 'none', cursor: 'pointer', letterSpacing: '0.04em',
+}
+const cardActionBtn: React.CSSProperties = {
+  background: 'none', border: 'none', padding: 0,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#C27070', cursor: 'pointer', letterSpacing: '0.04em',
 }
 const startBtn: React.CSSProperties = {
   background: 'rgba(122,176,122,0.18)', color: '#7AB07A',

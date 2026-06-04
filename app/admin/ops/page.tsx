@@ -25,6 +25,7 @@ export default function OpsHubHome() {
   const [busy, setBusy] = useState(false)
   const [confirmArchive, setConfirmArchive] = useState<Project | null>(null)
   const [newMemberOpen, setNewMemberOpen] = useState(false)
+  const [rosterOpen, setRosterOpen] = useState(false)
 
   const load = async () => {
     const [{ data: pj }, { data: tm }] = await Promise.all([
@@ -124,26 +125,31 @@ export default function OpsHubHome() {
         </div>
       )}
 
-      {/* Team roster — the people cards can be assigned to. */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
-        <h2 style={{ ...pageTitle, fontSize: 18 }}>Team roster</h2>
-        <button onClick={() => setNewMemberOpen(true)} style={tinyBtn}>+ Add person</button>
+      {/* Team roster — collapsible (like Email notifications below). */}
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+        <button onClick={() => setRosterOpen(o => !o)} style={collapseHeader}>
+          <h2 style={{ ...pageTitle, fontSize: 18, margin: 0 }}>Team roster</h2>
+          <span style={{ ...metaText, marginLeft: 8 }}>{rosterOpen ? '▾ hide' : `▸ show (${team.length})`}</span>
+        </button>
+        {rosterOpen && <button onClick={() => setNewMemberOpen(true)} style={{ ...tinyBtn, marginLeft: 'auto' }}>+ Add person</button>}
       </div>
-      {team.length === 0 ? (
-        <div style={emptyText}>No team members yet — add people to assign cards to.</div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {team.map(m => (
-            <div key={m.id} style={{ ...rosterRow, opacity: m.active ? 1 : 0.5 }}>
-              <span style={{ color: '#E5D4C2', fontFamily: FAMILY, fontSize: 12 }}>{m.display_name}</span>
-              {m.role_title && <span style={metaText}>{m.role_title}</span>}
-              {!m.profile_id && <span style={{ ...metaText, opacity: 0.6 }}>· name-only</span>}
-              <button onClick={() => toggleActive(m)} style={{ ...tinyBtn, marginLeft: 'auto' }}>
-                {m.active ? 'Deactivate' : 'Reactivate'}
-              </button>
-            </div>
-          ))}
-        </div>
+      {rosterOpen && (
+        team.length === 0 ? (
+          <div style={emptyText}>No team members yet — add people to assign cards to.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {team.map(m => (
+              <div key={m.id} style={{ ...rosterRow, opacity: m.active ? 1 : 0.5 }}>
+                <span style={{ color: '#E5D4C2', fontFamily: FAMILY, fontSize: 12 }}>{m.display_name}</span>
+                {m.role_title && <span style={metaText}>{m.role_title}</span>}
+                {!m.profile_id && <span style={{ ...metaText, opacity: 0.6 }}>· name-only</span>}
+                <button onClick={() => toggleActive(m)} style={{ ...tinyBtn, marginLeft: 'auto' }}>
+                  {m.active ? 'Deactivate' : 'Reactivate'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )
       )}
 
       <NotificationSettings />
@@ -192,6 +198,7 @@ const lede: React.CSSProperties = { fontFamily: FAMILY, fontSize: 12, color: '#B
 const metaText: React.CSSProperties = { fontFamily: FAMILY, fontSize: 11, color: '#B2AA98' }
 const card: React.CSSProperties = { padding: 16, background: 'rgba(229,212,194,0.04)', border: '1px solid rgba(229,212,194,0.08)', borderRadius: 8 }
 const rosterRow: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'rgba(229,212,194,0.03)', border: '1px solid rgba(229,212,194,0.06)', borderRadius: 6 }
+const collapseHeader: React.CSSProperties = { display: 'flex', alignItems: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }
 const btnPrimary: React.CSSProperties = { background: '#5E6650', color: '#E5D4C2', border: 'none', borderRadius: 6, padding: '8px 18px', cursor: 'pointer', fontFamily: FAMILY, fontSize: 11, letterSpacing: '0.06em' }
 const tinyBtn: React.CSSProperties = { background: 'rgba(229,212,194,0.06)', color: '#B2AA98', border: '1px solid rgba(229,212,194,0.18)', borderRadius: 4, padding: '4px 10px', fontFamily: FAMILY, fontSize: 10, letterSpacing: '0.04em', cursor: 'pointer', textDecoration: 'none' }
 const emptyText: React.CSSProperties = { padding: '24px 0', fontFamily: FAMILY, fontSize: 12, color: '#B2AA98', opacity: 0.6, fontStyle: 'italic' }

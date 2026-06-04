@@ -195,6 +195,16 @@ export default function SportsPage() {
   const [visible, setVisible] = useState(false)
   useEffect(() => { setTimeout(() => setVisible(true), 150) }, [])
 
+  // Live "N upcoming" counts (counts only, no PII) — RLS hides fixtures from
+  // anon, so we read them via the server route rather than client-side.
+  const [fixtureCounts, setFixtureCounts] = useState<Record<string, number> | undefined>(undefined)
+  useEffect(() => {
+    fetch('/api/sports/fixture-counts')
+      .then(r => r.json())
+      .then(d => { if (d?.counts) setFixtureCounts(d.counts) })
+      .catch(() => {})
+  }, [])
+
   return (
     <>
       <NavOverlay variant="public" />
@@ -278,7 +288,7 @@ export default function SportsPage() {
             The Rampant Club believes in the cultivation of both mind and body. Mostly mind. But occasionally body.
           </p>
 
-          <SportSelector />
+          <SportSelector counts={fixtureCounts} />
 
           {/* ── Golf ── */}
           <SportSection

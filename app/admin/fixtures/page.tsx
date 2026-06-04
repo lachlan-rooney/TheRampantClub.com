@@ -29,6 +29,7 @@ const btnStyle: React.CSSProperties = {
 export default function AdminFixtures() {
   const [fixtures, setFixtures] = useState<Fixture[]>([])
   const [signupCounts, setSignupCounts] = useState<Record<string, number>>({})
+  const [roster, setRoster] = useState<Record<string, string[]>>({})   // ADMIN-ONLY: fixture_id → member names
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Fixture | null>(null)
   const [sport, setSport] = useState<Fixture['sport']>('golf')
@@ -39,6 +40,8 @@ export default function AdminFixtures() {
   const [maxSignups, setMaxSignups] = useState('')
   const [signupDeadline, setSignupDeadline] = useState('')
   const [results, setResults] = useState('')
+  const [opsProjectId, setOpsProjectId] = useState('')                              // D: optional Ops Hub board link
+  const [projects, setProjects] = useState<{ id: string; name: string }[]>([])
 
   const supabase = createBrowserSupabaseClient()
 
@@ -50,11 +53,28 @@ export default function AdminFixtures() {
   const load = async () => {
     const { data } = await supabase.from('fixtures').select('*').order('date', { ascending: false })
     if (data) setFixtures(data)
-    const { data: signups } = await supabase.from('fixture_signups').select('fixture_id')
+    const { data: pj } = await supabase.from('projects').select('id, name').eq('status', 'active').order('name')
+    if (pj) setProjects(pj)
+    const { data: signups } = await supabase.from('fixture_signups').select('fixture_id, user_id')
     if (signups) {
       const counts: Record<string, number> = {}
-      signups.forEach(s => { counts[s.fixture_id] = (counts[s.fixture_id] || 0) + 1 })
+      const byFixture: Record<string, string[]> = {}
+      signups.forEach((s: { fixture_id: string; user_id: string }) => {
+        counts[s.fixture_id] = (counts[s.fixture_id] || 0) + 1
+        ;(byFixture[s.fixture_id] ||= []).push(s.user_id)
+      })
       setSignupCounts(counts)
+      // Roster (WHO) — admin-only: resolve user_id → member name via profiles
+      // (admin-readable). The member view + public /sports never run this.
+      const ids = [...new Set(signups.map((s: { user_id: string }) => s.user_id))]
+      if (ids.length) {
+        const { data: profs } = await supabase.from('profiles').select('id, display_name').in('id', ids)
+        const nameById: Record<string, string> = {}
+        ;(profs || []).forEach((p: { id: string; display_name: string | null }) => { nameById[p.id] = p.display_name || p.id.slice(0, 8) })
+        const ros: Record<string, string[]> = {}
+        Object.entries(byFixture).forEach(([fid, uids]) => { ros[fid] = uids.map(u => nameById[u] || u.slice(0, 8)) })
+        setRoster(ros)
+      } else setRoster({})
     }
   }
 
@@ -62,7 +82,7 @@ export default function AdminFixtures() {
 
   const resetForm = () => {
     setSport('golf'); setTitle(''); setDescription(''); setDate(''); setLocation('')
-    setMaxSignups(''); setSignupDeadline(''); setResults('')
+    setMaxSignups(''); setSignupDeadline(''); setResults(''); setOpsProjectId('')
     setEditing(null); setShowForm(false)
   }
 
@@ -71,7 +91,7 @@ export default function AdminFixtures() {
     setDate(f.date ? new Date(f.date).toISOString().slice(0, 16) : '')
     setLocation(f.location || ''); setMaxSignups(f.max_signups?.toString() || '')
     setSignupDeadline(f.signup_deadline ? new Date(f.signup_deadline).toISOString().slice(0, 16) : '')
-    setResults(f.results || '')
+    setResults(f.results || ''); setOpsProjectId(f.ops_project_id || '')
     setEditing(f); setShowForm(true)
   }
 
@@ -82,6 +102,7 @@ export default function AdminFixtures() {
       max_signups: maxSignups ? parseInt(maxSignups) : null,
       signup_deadline: signupDeadline ? new Date(signupDeadline).toISOString() : null,
       results: results || null,
+      ops_project_id: opsProjectId || null,
     }
     if (editing) {
       await supabase.from('fixtures').update(payload).eq('id', editing.id)
@@ -160,6 +181,13 @@ export default function AdminFixtures() {
               <input type="datetime-local" style={inputStyle} value={signupDeadline} onChange={e => setSignupDeadline(e.target.value)} />
             </div>
           </div>
+          <div>
+            <label style={labelStyle}>Ops Hub board <span style={{ opacity: 0.5 }}>· optional link</span></label>
+            <select style={inputStyle} value={opsProjectId} onChange={e => setOpsProjectId(e.target.value)}>
+              <option value="">— none —</option>
+              {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
           {editing && isPast(editing.date) && (
             <div>
               <label style={labelStyle}>Results</label>
@@ -175,25 +203,36 @@ export default function AdminFixtures() {
 
       <div>
         {fixtures.map(f => (
-          <div key={f.id} style={{ padding: '16px 0', borderBottom: '1px solid rgba(229,212,194,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{
-                fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10,
-                color: '#E5D4C2', background: SPORT_COLORS[f.sport] || '#5E6650',
-                borderRadius: 4, padding: '2px 10px',
-              }}>{f.sport}</span>
-              <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 14, color: '#E5D4C2' }}>{f.title}</span>
-              <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>
-                {new Date(f.date).toLocaleDateString()} · {f.location || '—'}
-              </span>
-              <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>
-                {signupCounts[f.id] || 0} signed up
-              </span>
+          <div key={f.id} style={{ padding: '16px 0', borderBottom: '1px solid rgba(229,212,194,0.08)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{
+                  fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10,
+                  color: '#E5D4C2', background: SPORT_COLORS[f.sport] || '#5E6650',
+                  borderRadius: 4, padding: '2px 10px',
+                }}>{f.sport}</span>
+                <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 14, color: '#E5D4C2' }}>{f.title}</span>
+                <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>
+                  {new Date(f.date).toLocaleDateString()} · {f.location || '—'}
+                </span>
+                <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>
+                  {signupCounts[f.id] || 0} signed up
+                </span>
+                {f.ops_project_id && (
+                  <a href={`/admin/ops/${f.ops_project_id}`} style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#9E8FC4', textDecoration: 'none' }} title="Open the linked Ops Hub board">⊙ ops board →</a>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button onClick={() => startEdit(f)} style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.5, cursor: 'pointer' }}>Edit</button>
+                <button onClick={() => requestRemove(f)} style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.5, cursor: 'pointer' }}>Delete</button>
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button onClick={() => startEdit(f)} style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.5, cursor: 'pointer' }}>Edit</button>
-              <button onClick={() => requestRemove(f)} style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.5, cursor: 'pointer' }}>Delete</button>
-            </div>
+            {/* ADMIN-ONLY roster — who signed up (member view + public /sports stay counts-only) */}
+            {roster[f.id]?.length > 0 && (
+              <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#8B8576', paddingLeft: 2 }}>
+                ↳ {roster[f.id].join(' · ')}
+              </div>
+            )}
           </div>
         ))}
       </div>

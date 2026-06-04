@@ -57,6 +57,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
   const [showRecurring, setShowRecurring] = useState(false)
   const [dragId, setDragId] = useState<string | null>(null)
   const [view, setView] = useState<'board' | 'gantt'>('board')
+  const [linkedFixtures, setLinkedFixtures] = useState<{ id: string; title: string }[]>([])  // member fixtures pointing at this board
 
   // Gantt drag-to-adjust: optimistic local update, then one reschedule write
   // (which emits a 'rescheduled' event). Reload on settle to re-sync the spine.
@@ -87,6 +88,10 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
       .filter(t => t.linked_object_type && t.linked_object_id)
       .map(t => ({ type: t.linked_object_type as string, id: t.linked_object_id as string }))
     setLinkMap(refs.length ? await resolveLinks(supabase, refs) : new Map())
+
+    // Member fixture(s) linked to this board (Fixtures D) — navigable, read-only.
+    const { data: fx } = await supabase.from('fixtures').select('id, title').eq('ops_project_id', project_id)
+    setLinkedFixtures(fx || [])
 
     // canEdit = admin OR a project owner/contributor (viewer = read-only).
     let admin = false
@@ -216,6 +221,9 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
         </div>
       </div>
       {!canEdit && <div style={{ ...metaText, color: '#D4B85A', marginBottom: 8 }}>View-only — you’re a viewer on this board.</div>}
+      {linkedFixtures.map(fx => (
+        <Link key={fx.id} href="/admin/fixtures" style={{ ...metaText, color: '#9E8FC4', textDecoration: 'none', display: 'inline-block', marginBottom: 8 }} title="Open the linked member fixture">🏌 Member fixture: {fx.title} →</Link>
+      ))}
 
       {showRecurring && (
         <RecurringPanel
