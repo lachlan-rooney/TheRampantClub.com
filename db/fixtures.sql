@@ -58,7 +58,8 @@ begin
   end if;
 
   if not exists (select 1 from pg_policies where tablename='fixture_signups' and policyname='Signups viewable by authenticated') then
-    execute $p$create policy "Signups viewable by authenticated" on fixture_signups for select to authenticated using (true)$p$;
+    -- own rows OR admin (hardened — see db/fixtures_signups_rls.sql)
+    execute $p$create policy "Signups viewable by authenticated" on fixture_signups for select to authenticated using (user_id = auth.uid() or exists (select 1 from profiles where profiles.id = auth.uid() and profiles.is_admin = true))$p$;
   end if;
   if not exists (select 1 from pg_policies where tablename='fixture_signups' and policyname='Users can sign up') then
     execute $p$create policy "Users can sign up" on fixture_signups for insert to authenticated with check (auth.uid() = user_id)$p$;
@@ -67,5 +68,13 @@ begin
     execute $p$create policy "Users can remove own signup" on fixture_signups for delete to authenticated using (auth.uid() = user_id)$p$;
   end if;
 end$$;
+
+-- Counts-only aggregate (members get capacity counts without seeing identities).
+create or replace function fixture_signup_counts()
+returns table (fixture_id uuid, signups bigint)
+language sql security definer set search_path = public stable as $$
+  select fixture_id, count(*) from fixture_signups group by fixture_id;
+$$;
+grant execute on function fixture_signup_counts() to authenticated;
 
 commit;

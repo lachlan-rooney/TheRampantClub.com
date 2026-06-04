@@ -33,7 +33,8 @@ function relativeDate(d: string) {
 
 export default function FixturesPage() {
   const [fixtures, setFixtures] = useState<Fixture[]>([])
-  const [signups, setSignups] = useState<FixtureSignup[]>([])
+  const [signups, setSignups] = useState<FixtureSignup[]>([])         // own rows only (RLS) — for "am I signed up"
+  const [counts, setCounts] = useState<Record<string, number>>({})    // capacity counts via the counts-only RPC
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | Fixture['sport']>('all')
@@ -54,13 +55,15 @@ export default function FixturesPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (cancelled) return
       if (user) setUserId(user.id)
-      const [{ data: f }, { data: s }] = await Promise.all([
+      const [{ data: f }, { data: s }, { data: c }] = await Promise.all([
         supabase.from('fixtures').select('*').order('date', { ascending: false }),
-        supabase.from('fixture_signups').select('*'),
+        supabase.from('fixture_signups').select('*'),          // own rows only under RLS — for isSignedUp
+        supabase.rpc('fixture_signup_counts'),                 // counts only (no identities) — for capacity
       ])
       if (cancelled) return
       if (f) setFixtures(f)
       if (s) setSignups(s)
+      if (c) setCounts(Object.fromEntries((c as { fixture_id: string; signups: number }[]).map(r => [r.fixture_id, Number(r.signups)])))
       setLoading(false)
     }
     load()
@@ -70,7 +73,7 @@ export default function FixturesPage() {
   const upcoming = useMemo(() => fixtures.filter(f => new Date(f.date).getTime() >= nowTs), [fixtures, nowTs])
   const past = useMemo(() => fixtures.filter(f => new Date(f.date).getTime() < nowTs), [fixtures, nowTs])
 
-  const countSignups = (fixtureId: string) => signups.filter(s => s.fixture_id === fixtureId).length
+  const countSignups = (fixtureId: string) => counts[fixtureId] || 0
   const isSignedUp = (fixtureId: string) => signups.some(s => s.fixture_id === fixtureId && s.user_id === userId)
   const deadlinePassed = (f: Fixture) => f.signup_deadline ? new Date(f.signup_deadline).getTime() < nowTs : false
 
@@ -100,11 +103,15 @@ export default function FixturesPage() {
       setBusyId(null)
       return
     }
-    const { data, error: refreshError } = await supabase.from('fixture_signups').select('*')
+    const [{ data, error: refreshError }, { data: c }] = await Promise.all([
+      supabase.from('fixture_signups').select('*'),   // own rows (for isSignedUp)
+      supabase.rpc('fixture_signup_counts'),          // refreshed capacity counts
+    ])
     if (refreshError) {
       setErrorMsg(refreshError.message || 'Signup saved, but the list failed to refresh.')
     } else if (data) {
       setSignups(data)
+      if (c) setCounts(Object.fromEntries((c as { fixture_id: string; signups: number }[]).map(r => [r.fixture_id, Number(r.signups)])))
     }
     setBusyId(null)
   }
