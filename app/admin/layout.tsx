@@ -16,12 +16,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <style dangerouslySetInnerHTML={{ __html: `html, body { background: #052E20 !important; }` }} />
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <AdminNav />
-      <NotificationBell />
       <main style={{
         marginLeft: 240, flex: 1, minWidth: 0, minHeight: '100vh', background: '#052E20',
         padding: '48px 40px',
         display: 'flex', flexDirection: 'column',
       }}>
+        {/* Bell lives in-flow in its own reserved strip — never floats over content */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+          <NotificationBell />
+        </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           {children}
         </div>
