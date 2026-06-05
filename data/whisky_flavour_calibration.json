@@ -7,18 +7,56 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Heather honey, vanilla, ripe pear and a light waxy note. Palate: Smooth and honeyed, with malted cereal, orange marmalade, mild green apple and a touch of toasted oak. Finish: Medium length, gently sweet with honey, soft spice and a clean malty fade.",
     "notes_quality": "rich",
-    "comment": "Confident across honey/orchard/cereal axes; waxy note mapped to old_dignified beeswax at lower confidence.",
-    "tags": [
+    "comment": "Rich, classic honeyed-Highland profile; waxy note is light so old_dignified kept faint.",
+    "categories": [
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "intensity": 3,
+        "confidence": 0.95,
+        "evidence": "Heather honey, vanilla, ripe pear ... Smooth and honeyed"
+      },
+      {
+        "category_slug": "young_spritely",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "malted cereal, orange marmalade, mild green apple"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "intensity": 2,
+        "confidence": 0.8,
+        "evidence": "vanilla ... a touch of toasted oak"
+      },
+      {
+        "category_slug": "light_delicate",
+        "intensity": 2,
+        "confidence": 0.7,
+        "evidence": "Heather honey ... light waxy note"
+      },
+      {
+        "category_slug": "old_dignified",
+        "intensity": 1,
+        "confidence": 0.5,
+        "evidence": "a light waxy note"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "intensity": 1,
+        "confidence": 0.7,
+        "evidence": "gently sweet with honey, soft spice"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "honey",
         "confidence": 0.95,
-        "evidence": "Heather honey"
+        "evidence": "Heather honey ... Smooth and honeyed"
       },
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "vanilla",
-        "confidence": 0.95,
+        "confidence": 0.9,
         "evidence": "vanilla"
       },
       {
@@ -28,22 +66,10 @@
         "evidence": "ripe pear"
       },
       {
-        "category_slug": "old_dignified",
-        "descriptor_slug": "beeswax",
-        "confidence": 0.6,
-        "evidence": "a light waxy note"
-      },
-      {
         "category_slug": "young_spritely",
         "descriptor_slug": "cereal",
-        "confidence": 0.85,
+        "confidence": 0.9,
         "evidence": "malted cereal"
-      },
-      {
-        "category_slug": "young_spritely",
-        "descriptor_slug": "citrus_zest",
-        "confidence": 0.7,
-        "evidence": "orange marmalade"
       },
       {
         "category_slug": "young_spritely",
@@ -52,15 +78,45 @@
         "evidence": "mild green apple"
       },
       {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "citrus_zest",
+        "confidence": 0.75,
+        "evidence": "orange marmalade"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "fresh_malt",
+        "confidence": 0.8,
+        "evidence": "clean malty fade"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "vanilla",
+        "confidence": 0.9,
+        "evidence": "vanilla"
+      },
+      {
         "category_slug": "juicy_oak_vanilla",
         "descriptor_slug": "toasted_oak",
-        "confidence": 0.8,
+        "confidence": 0.85,
         "evidence": "a touch of toasted oak"
+      },
+      {
+        "category_slug": "light_delicate",
+        "descriptor_slug": "light_honey",
+        "confidence": 0.85,
+        "evidence": "Heather honey"
+      },
+      {
+        "category_slug": "old_dignified",
+        "descriptor_slug": "beeswax",
+        "confidence": 0.5,
+        "evidence": "a light waxy note"
       },
       {
         "category_slug": "spicy_sweet",
         "descriptor_slug": "honeyed_spice",
-        "confidence": 0.75,
+        "confidence": 0.7,
         "evidence": "gently sweet with honey, soft spice"
       }
     ],
@@ -74,8 +130,40 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Tarry rope, black pepper, charred oak, blue cheese, and dark chocolate over briny smoke. Palate: Oily and powerful, with creosote, espresso, cracked pepper, smoked meats, and a wave of seaweed and dark berry fruit. Finish: Long, peppery and smoky, with bitter chocolate, salt and lingering ashy peat.",
     "notes_quality": "rich",
-    "comment": "Classic heavily-peated Ardbeg profile; \"dark berry fruit\" is fresh not dried, so dried_fruit tag is weak.",
-    "tags": [
+    "comment": "Rich, classic heavily-peated coastal profile with pepper and dark chocolate accents.",
+    "categories": [
+      {
+        "category_slug": "heavily_peated",
+        "intensity": 4,
+        "confidence": 0.9,
+        "evidence": "creosote, ... briny smoke ... lingering ashy peat"
+      },
+      {
+        "category_slug": "peated",
+        "intensity": 4,
+        "confidence": 0.95,
+        "evidence": "smoked meats ... peppery and smoky ... ashy peat"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "intensity": 3,
+        "confidence": 0.95,
+        "evidence": "Oily and powerful ... wave of seaweed ... briny smoke ... salt"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "intensity": 3,
+        "confidence": 0.9,
+        "evidence": "black pepper, charred oak ... cracked pepper ... peppery"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "intensity": 2,
+        "confidence": 0.8,
+        "evidence": "dark chocolate ... dark berry fruit ... bitter chocolate"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "heavily_peated",
         "descriptor_slug": "creosote",
@@ -85,8 +173,20 @@
       {
         "category_slug": "heavily_peated",
         "descriptor_slug": "intense_smoke",
-        "confidence": 0.85,
-        "evidence": "Long, peppery and smoky"
+        "confidence": 0.8,
+        "evidence": "briny smoke ... long, peppery and smoky"
+      },
+      {
+        "category_slug": "peated",
+        "descriptor_slug": "smoked_meat",
+        "confidence": 0.98,
+        "evidence": "smoked meats"
+      },
+      {
+        "category_slug": "peated",
+        "descriptor_slug": "ash",
+        "confidence": 0.95,
+        "evidence": "lingering ashy peat"
       },
       {
         "category_slug": "peated",
@@ -95,22 +195,22 @@
         "evidence": "Tarry rope"
       },
       {
-        "category_slug": "peated",
-        "descriptor_slug": "smoked_meat",
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "seaweed",
+        "confidence": 0.98,
+        "evidence": "wave of seaweed"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "brine",
         "confidence": 0.95,
-        "evidence": "smoked meats"
-      },
-      {
-        "category_slug": "peated",
-        "descriptor_slug": "ash",
-        "confidence": 0.9,
-        "evidence": "lingering ashy peat"
-      },
-      {
-        "category_slug": "peated",
-        "descriptor_slug": "bonfire_smoke",
-        "confidence": 0.7,
         "evidence": "briny smoke"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "sea_salt",
+        "confidence": 0.9,
+        "evidence": "salt"
       },
       {
         "category_slug": "oily_coastal",
@@ -119,28 +219,10 @@
         "evidence": "Oily and powerful"
       },
       {
-        "category_slug": "oily_coastal",
-        "descriptor_slug": "seaweed",
-        "confidence": 0.95,
-        "evidence": "a wave of seaweed"
-      },
-      {
-        "category_slug": "oily_coastal",
-        "descriptor_slug": "brine",
-        "confidence": 0.9,
-        "evidence": "briny smoke"
-      },
-      {
-        "category_slug": "oily_coastal",
-        "descriptor_slug": "sea_salt",
-        "confidence": 0.85,
-        "evidence": "salt and lingering ashy peat"
-      },
-      {
         "category_slug": "spicy_dry",
         "descriptor_slug": "black_pepper",
         "confidence": 0.98,
-        "evidence": "black pepper"
+        "evidence": "black pepper ... cracked pepper"
       },
       {
         "category_slug": "spicy_dry",
@@ -149,15 +231,21 @@
         "evidence": "charred oak"
       },
       {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "oak_tannin",
+        "confidence": 0.6,
+        "evidence": "charred oak"
+      },
+      {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "dark_chocolate",
         "confidence": 0.95,
-        "evidence": "dark chocolate"
+        "evidence": "dark chocolate ... bitter chocolate"
       },
       {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "dried_fruit",
-        "confidence": 0.55,
+        "confidence": 0.5,
         "evidence": "dark berry fruit"
       }
     ],
@@ -171,8 +259,45 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Tropical fruits, mango and pineapple, with vanilla cream, light orange peel and a wisp of charred oak. Palate: Honeyed barley, banana bread and toffee, building into peppery oak, cinnamon and a savoury smoky edge from the peated component. Finish: Medium length, drying, with lingering sweet smoke, ginger and citrus zest.",
     "notes_quality": "rich",
-    "comment": "Rich notes; tropical fruit (mango/pineapple/orange peel) noted but no clean descriptor slot — closest broad tags applied. Peat is described as a savoury edge / wisp, so lightly_peated rather than peated.",
-    "tags": [
+    "categories": [
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "intensity": 3,
+        "confidence": 0.95,
+        "evidence": "Tropical fruits, mango and pineapple, with vanilla cream... Honeyed barley, banana bread and toffee"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "intensity": 3,
+        "confidence": 0.9,
+        "evidence": "vanilla cream... banana bread and toffee... charred oak"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "intensity": 2,
+        "confidence": 0.9,
+        "evidence": "cinnamon... ginger"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "building into peppery oak... drying"
+      },
+      {
+        "category_slug": "lightly_peated",
+        "intensity": 2,
+        "confidence": 0.9,
+        "evidence": "a wisp of charred oak... savoury smoky edge from the peated component... lingering sweet smoke"
+      },
+      {
+        "category_slug": "young_spritely",
+        "intensity": 1,
+        "confidence": 0.7,
+        "evidence": "light orange peel... citrus zest"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "vanilla",
@@ -192,9 +317,15 @@
         "evidence": "banana bread and toffee"
       },
       {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "orchard_fruit",
+        "confidence": 0.5,
+        "evidence": "Tropical fruits, mango and pineapple"
+      },
+      {
         "category_slug": "juicy_oak_vanilla",
         "descriptor_slug": "vanilla",
-        "confidence": 0.9,
+        "confidence": 0.95,
         "evidence": "vanilla cream"
       },
       {
@@ -206,20 +337,14 @@
       {
         "category_slug": "juicy_oak_vanilla",
         "descriptor_slug": "butterscotch",
-        "confidence": 0.5,
+        "confidence": 0.6,
         "evidence": "toffee"
       },
       {
-        "category_slug": "young_spritely",
-        "descriptor_slug": "citrus_zest",
-        "confidence": 0.95,
-        "evidence": "citrus zest"
-      },
-      {
-        "category_slug": "young_spritely",
-        "descriptor_slug": "cereal",
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "toasted_oak",
         "confidence": 0.7,
-        "evidence": "Honeyed barley"
+        "evidence": "wisp of charred oak"
       },
       {
         "category_slug": "spicy_sweet",
@@ -242,13 +367,13 @@
       {
         "category_slug": "spicy_dry",
         "descriptor_slug": "oak_tannin",
-        "confidence": 0.7,
-        "evidence": "peppery oak ... drying"
+        "confidence": 0.8,
+        "evidence": "peppery oak... drying"
       },
       {
         "category_slug": "spicy_dry",
         "descriptor_slug": "char",
-        "confidence": 0.85,
+        "confidence": 0.7,
         "evidence": "wisp of charred oak"
       },
       {
@@ -260,8 +385,14 @@
       {
         "category_slug": "lightly_peated",
         "descriptor_slug": "soft_peat",
-        "confidence": 0.8,
+        "confidence": 0.85,
         "evidence": "savoury smoky edge from the peated component"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "citrus_zest",
+        "confidence": 0.95,
+        "evidence": "citrus zest"
       }
     ],
     "rejected": []
@@ -274,8 +405,46 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Bonfire smoke, smoked bacon, vanilla and orchard fruit, with a light coastal brine. Palate: Sweet peat, barley sugar, toasted oak and pear, with cracked black pepper and ginger warmth. Finish: Long, dry and ashy, with lingering malt sweetness and a whisper of liquorice.",
     "notes_quality": "rich",
-    "comment": "Clearly peated with sherry/bourbon-cask sweetness and a coastal edge; liquorice has no clean slot so left untagged.",
-    "tags": [
+    "comment": "Confident peated profile with sweet/oak/spice support; coastal note is explicitly light.",
+    "categories": [
+      {
+        "category_slug": "peated",
+        "intensity": 3,
+        "confidence": 0.95,
+        "evidence": "Bonfire smoke, smoked bacon... Sweet peat... Long, dry and ashy"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "intensity": 2,
+        "confidence": 0.9,
+        "evidence": "vanilla and orchard fruit... barley sugar... pear"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "intensity": 2,
+        "confidence": 0.8,
+        "evidence": "vanilla... toasted oak"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "ginger warmth"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "cracked black pepper... Long, dry and ashy"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "intensity": 1,
+        "confidence": 0.7,
+        "evidence": "a light coastal brine"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "peated",
         "descriptor_slug": "bonfire_smoke",
@@ -291,13 +460,13 @@
       {
         "category_slug": "peated",
         "descriptor_slug": "ash",
-        "confidence": 0.9,
+        "confidence": 0.95,
         "evidence": "Long, dry and ashy"
       },
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "vanilla",
-        "confidence": 0.95,
+        "confidence": 0.9,
         "evidence": "vanilla and orchard fruit"
       },
       {
@@ -307,16 +476,22 @@
         "evidence": "vanilla and orchard fruit"
       },
       {
-        "category_slug": "oily_coastal",
-        "descriptor_slug": "brine",
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "vanilla",
         "confidence": 0.85,
-        "evidence": "light coastal brine"
+        "evidence": "vanilla"
       },
       {
         "category_slug": "juicy_oak_vanilla",
         "descriptor_slug": "toasted_oak",
-        "confidence": 0.9,
-        "evidence": "toasted oak and pear"
+        "confidence": 0.95,
+        "evidence": "toasted oak"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "ginger",
+        "confidence": 0.95,
+        "evidence": "ginger warmth"
       },
       {
         "category_slug": "spicy_dry",
@@ -325,10 +500,16 @@
         "evidence": "cracked black pepper"
       },
       {
-        "category_slug": "spicy_sweet",
-        "descriptor_slug": "ginger",
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "dry_spice",
+        "confidence": 0.75,
+        "evidence": "Long, dry and ashy"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "brine",
         "confidence": 0.9,
-        "evidence": "ginger warmth"
+        "evidence": "a light coastal brine"
       }
     ],
     "rejected": []
@@ -341,14 +522,40 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Rich sherried fruit, raisin, dark chocolate and a wisp of coastal salt with faint smoke. Palate: Sweet sticky toffee, fig, walnut and orange peel, layered with brine, leather and gentle peat. Finish: Long, drying oak, dark cocoa, hazelnut and lingering maritime smoke.",
     "notes_quality": "rich",
-    "comment": "Classic sherried Bunna profile; smoke described as faint/gentle so leaned lightly_peated with a low-confidence peated tag for the lingering smoke. No descriptor for orange peel or hazelnut in taxonomy.",
-    "tags": [
+    "comment": "Confident sherry+coastal+light peat profile; orange peel didn't map cleanly to a citrus descriptor under sweet_fruity_mellow so tagged via toffee only.",
+    "categories": [
       {
         "category_slug": "rich_dried_fruits",
-        "descriptor_slug": null,
+        "intensity": 3,
         "confidence": 0.95,
-        "evidence": "Rich sherried fruit, raisin, dark chocolate"
+        "evidence": "Rich sherried fruit, raisin, dark chocolate... fig, walnut... dark cocoa, hazelnut"
       },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "Sweet sticky toffee... orange peel"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "intensity": 2,
+        "confidence": 0.9,
+        "evidence": "wisp of coastal salt... brine... lingering maritime smoke"
+      },
+      {
+        "category_slug": "lightly_peated",
+        "intensity": 1,
+        "confidence": 0.85,
+        "evidence": "faint smoke... gentle peat"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "Long, drying oak... leather"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "raisin",
@@ -364,50 +571,44 @@
       {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "fig",
-        "confidence": 0.95,
+        "confidence": 0.98,
         "evidence": "fig"
       },
       {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "walnut",
-        "confidence": 0.9,
+        "confidence": 0.95,
         "evidence": "walnut"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dried_fruit",
+        "confidence": 0.85,
+        "evidence": "Rich sherried fruit"
       },
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "toffee",
-        "confidence": 0.9,
+        "confidence": 0.95,
         "evidence": "Sweet sticky toffee"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "sea_salt",
+        "confidence": 0.9,
+        "evidence": "wisp of coastal salt"
       },
       {
         "category_slug": "oily_coastal",
         "descriptor_slug": "brine",
         "confidence": 0.95,
-        "evidence": "layered with brine"
+        "evidence": "brine"
       },
       {
         "category_slug": "oily_coastal",
-        "descriptor_slug": "sea_salt",
-        "confidence": 0.85,
-        "evidence": "wisp of coastal salt"
-      },
-      {
-        "category_slug": "oily_coastal",
-        "descriptor_slug": null,
-        "confidence": 0.8,
+        "descriptor_slug": "mineral",
+        "confidence": 0.6,
         "evidence": "lingering maritime smoke"
-      },
-      {
-        "category_slug": "spicy_dry",
-        "descriptor_slug": "leather",
-        "confidence": 0.9,
-        "evidence": "leather"
-      },
-      {
-        "category_slug": "spicy_dry",
-        "descriptor_slug": "oak_tannin",
-        "confidence": 0.85,
-        "evidence": "Long, drying oak"
       },
       {
         "category_slug": "lightly_peated",
@@ -422,10 +623,16 @@
         "evidence": "gentle peat"
       },
       {
-        "category_slug": "peated",
-        "descriptor_slug": null,
-        "confidence": 0.5,
-        "evidence": "lingering maritime smoke"
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "oak_tannin",
+        "confidence": 0.9,
+        "evidence": "Long, drying oak"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "leather",
+        "confidence": 0.95,
+        "evidence": "leather"
       }
     ],
     "rejected": []
@@ -438,8 +645,40 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Beeswax, lemon zest, sea spray and light honey with a waxy mineral edge. Palate: Oily mouthfeel, candle wax, orchard fruits, salted toffee and a touch of pepper. Finish: Medium-long, drying, with citrus peel, brine and lingering waxiness.",
     "notes_quality": "rich",
-    "comment": "Classic waxy/coastal Clynelish profile; \"candle wax\" and \"waxiness\" map to beeswax/old_dignified by closest taxonomy fit.",
-    "tags": [
+    "comment": "Classic waxy/coastal profile clearly described; confident tagging across spokes.",
+    "categories": [
+      {
+        "category_slug": "old_dignified",
+        "intensity": 3,
+        "confidence": 0.9,
+        "evidence": "Beeswax... candle wax... lingering waxiness"
+      },
+      {
+        "category_slug": "light_delicate",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "lemon zest... light honey"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "intensity": 3,
+        "confidence": 0.9,
+        "evidence": "sea spray... waxy mineral edge... Oily mouthfeel... brine"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "orchard fruits, salted toffee"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "intensity": 1,
+        "confidence": 0.7,
+        "evidence": "a touch of pepper... drying"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "old_dignified",
         "descriptor_slug": "beeswax",
@@ -453,6 +692,12 @@
         "evidence": "lemon zest"
       },
       {
+        "category_slug": "light_delicate",
+        "descriptor_slug": "light_honey",
+        "confidence": 0.95,
+        "evidence": "light honey"
+      },
+      {
         "category_slug": "oily_coastal",
         "descriptor_slug": "sea_salt",
         "confidence": 0.85,
@@ -460,9 +705,9 @@
       },
       {
         "category_slug": "oily_coastal",
-        "descriptor_slug": "brine",
-        "confidence": 0.95,
-        "evidence": "brine"
+        "descriptor_slug": "mineral",
+        "confidence": 0.85,
+        "evidence": "waxy mineral edge"
       },
       {
         "category_slug": "oily_coastal",
@@ -472,20 +717,14 @@
       },
       {
         "category_slug": "oily_coastal",
-        "descriptor_slug": "mineral",
-        "confidence": 0.85,
-        "evidence": "waxy mineral edge"
-      },
-      {
-        "category_slug": "light_delicate",
-        "descriptor_slug": "light_honey",
+        "descriptor_slug": "brine",
         "confidence": 0.9,
-        "evidence": "light honey"
+        "evidence": "brine"
       },
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "orchard_fruit",
-        "confidence": 0.95,
+        "confidence": 0.9,
         "evidence": "orchard fruits"
       },
       {
@@ -503,14 +742,8 @@
       {
         "category_slug": "spicy_dry",
         "descriptor_slug": "dry_spice",
-        "confidence": 0.7,
+        "confidence": 0.6,
         "evidence": "Medium-long, drying"
-      },
-      {
-        "category_slug": "young_spritely",
-        "descriptor_slug": "citrus_zest",
-        "confidence": 0.85,
-        "evidence": "citrus peel"
       }
     ],
     "rejected": []
@@ -523,31 +756,63 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Light peat smoke, vanilla, baked apple and a touch of toasted coconut. Palate: Creamy mouthfeel with honeyed barley, soft wood smoke, ginger, citrus peel and brown sugar. Finish: Medium length, drying smoke, oak spice and lingering sweet malt.",
     "notes_quality": "rich",
-    "comment": "Clear lightly-peated profile with bourbon-cask sweetness and a spice kick; confident mapping throughout.",
-    "tags": [
+    "comment": "Clear lightly-peated profile with vanilla/coconut bourbon-cask sweetness, baked apple and honey, plus warming ginger and a drying oak finish.",
+    "categories": [
       {
         "category_slug": "lightly_peated",
-        "descriptor_slug": "gentle_smoke",
-        "confidence": 0.95,
+        "intensity": 2,
+        "confidence": 0.9,
+        "evidence": "Light peat smoke ... soft wood smoke ... drying smoke"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "intensity": 2,
+        "confidence": 0.9,
+        "evidence": "vanilla, baked apple ... honeyed barley ... brown sugar"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "intensity": 2,
+        "confidence": 0.8,
+        "evidence": "vanilla ... a touch of toasted coconut ... Creamy mouthfeel"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "ginger ... brown sugar"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "intensity": 1,
+        "confidence": 0.7,
+        "evidence": "oak spice ... drying smoke"
+      },
+      {
+        "category_slug": "young_spritely",
+        "intensity": 1,
+        "confidence": 0.6,
+        "evidence": "citrus peel"
+      }
+    ],
+    "descriptors": [
+      {
+        "category_slug": "lightly_peated",
+        "descriptor_slug": "soft_peat",
+        "confidence": 0.9,
         "evidence": "Light peat smoke"
       },
       {
         "category_slug": "lightly_peated",
-        "descriptor_slug": "soft_peat",
-        "confidence": 0.85,
+        "descriptor_slug": "gentle_smoke",
+        "confidence": 0.9,
         "evidence": "soft wood smoke"
       },
       {
-        "category_slug": "juicy_oak_vanilla",
+        "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "vanilla",
         "confidence": 0.95,
         "evidence": "vanilla"
-      },
-      {
-        "category_slug": "juicy_oak_vanilla",
-        "descriptor_slug": "coconut",
-        "confidence": 0.9,
-        "evidence": "a touch of toasted coconut"
       },
       {
         "category_slug": "sweet_fruity_mellow",
@@ -562,34 +827,46 @@
         "evidence": "honeyed barley"
       },
       {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "coconut",
+        "confidence": 0.9,
+        "evidence": "a touch of toasted coconut"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "vanilla",
+        "confidence": 0.9,
+        "evidence": "vanilla"
+      },
+      {
         "category_slug": "spicy_sweet",
         "descriptor_slug": "ginger",
         "confidence": 0.95,
         "evidence": "ginger"
       },
       {
-        "category_slug": "young_spritely",
-        "descriptor_slug": "citrus_zest",
-        "confidence": 0.85,
-        "evidence": "citrus peel"
-      },
-      {
-        "category_slug": "sweet_fruity_mellow",
-        "descriptor_slug": "caramel",
-        "confidence": 0.6,
-        "evidence": "brown sugar"
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "honeyed_spice",
+        "confidence": 0.7,
+        "evidence": "honeyed barley ... ginger"
       },
       {
         "category_slug": "spicy_dry",
         "descriptor_slug": "oak_tannin",
-        "confidence": 0.8,
+        "confidence": 0.7,
         "evidence": "oak spice"
       },
       {
         "category_slug": "spicy_dry",
         "descriptor_slug": "dry_spice",
-        "confidence": 0.8,
+        "confidence": 0.75,
         "evidence": "drying smoke, oak spice"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "citrus_zest",
+        "confidence": 0.85,
+        "evidence": "citrus peel"
       }
     ],
     "rejected": []
@@ -602,67 +879,69 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Rich sherry influence, dark chocolate, dried figs, orange peel and a whiff of oak spice. Palate: Full-bodied and oily, malty fruitcake, raisins, toffee, leather and clove, with the high malt content (50%) lending cereal depth. Finish: Long, warming and spicy, with lingering sherried fruit, dark sugar and gentle tannic oak.",
     "notes_quality": "rich",
-    "comment": "Strong sherry-cask profile; orange peel tagged as citrus_zest under young_spritely as no better fit in taxonomy. Cereal note explicit despite age.",
-    "tags": [
+    "comment": "Classic sherried blend; rich_dried_fruits clearly dominant, with supporting oak/spice and a cereal undercurrent from the high malt content.",
+    "categories": [
       {
         "category_slug": "rich_dried_fruits",
-        "descriptor_slug": null,
-        "confidence": 0.95,
-        "evidence": "Rich sherry influence"
+        "intensity": 4,
+        "confidence": 0.98,
+        "evidence": "Rich sherry influence, dark chocolate, dried figs... malty fruitcake, raisins... lingering sherried fruit"
       },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "toffee... dark sugar"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "clove... Long, warming and spicy"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "intensity": 2,
+        "confidence": 0.9,
+        "evidence": "whiff of oak spice... leather... gentle tannic oak"
+      },
+      {
+        "category_slug": "young_spritely",
+        "intensity": 1,
+        "confidence": 0.7,
+        "evidence": "high malt content (50%) lending cereal depth"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "dark_chocolate",
-        "confidence": 0.95,
+        "confidence": 0.98,
         "evidence": "dark chocolate"
       },
       {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "fig",
-        "confidence": 0.95,
+        "confidence": 0.98,
         "evidence": "dried figs"
       },
       {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "raisin",
-        "confidence": 0.95,
+        "confidence": 0.98,
         "evidence": "raisins"
       },
       {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "christmas_cake",
-        "confidence": 0.8,
+        "confidence": 0.85,
         "evidence": "malty fruitcake"
       },
       {
-        "category_slug": "spicy_sweet",
-        "descriptor_slug": "clove",
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dried_fruit",
         "confidence": 0.95,
-        "evidence": "leather and clove"
-      },
-      {
-        "category_slug": "spicy_sweet",
-        "descriptor_slug": null,
-        "confidence": 0.8,
-        "evidence": "Long, warming and spicy"
-      },
-      {
-        "category_slug": "spicy_dry",
-        "descriptor_slug": "oak_tannin",
-        "confidence": 0.9,
-        "evidence": "gentle tannic oak"
-      },
-      {
-        "category_slug": "spicy_dry",
-        "descriptor_slug": "leather",
-        "confidence": 0.95,
-        "evidence": "leather and clove"
-      },
-      {
-        "category_slug": "spicy_dry",
-        "descriptor_slug": "dry_spice",
-        "confidence": 0.7,
-        "evidence": "whiff of oak spice"
+        "evidence": "lingering sherried fruit"
       },
       {
         "category_slug": "sweet_fruity_mellow",
@@ -671,16 +950,40 @@
         "evidence": "toffee"
       },
       {
-        "category_slug": "young_spritely",
-        "descriptor_slug": "cereal",
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "clove",
+        "confidence": 0.95,
+        "evidence": "clove"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "baking_spice",
+        "confidence": 0.75,
+        "evidence": "Long, warming and spicy"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "oak_tannin",
+        "confidence": 0.95,
+        "evidence": "gentle tannic oak"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "leather",
+        "confidence": 0.95,
+        "evidence": "leather"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "dry_spice",
         "confidence": 0.8,
-        "evidence": "high malt content (50%) lending cereal depth"
+        "evidence": "whiff of oak spice"
       },
       {
         "category_slug": "young_spritely",
-        "descriptor_slug": "citrus_zest",
-        "confidence": 0.7,
-        "evidence": "orange peel"
+        "descriptor_slug": "cereal",
+        "confidence": 0.85,
+        "evidence": "cereal depth"
       }
     ],
     "rejected": []
@@ -693,14 +996,46 @@
     "bucket": "rich",
     "tasting_notes": "Nose (Aroma)\nDark Fruits: Rich sherry, raisins, and dried figs.Sweet Pastry: Caramel, orange zest, and citrus sponge cake.Coastal Air: Traditional Islay maritime salinity.\nPalate\n(Taste)Mouthfeel: Oily, full-bodied, and robustly warming.Sweet Spice: Molasses, spiced fruitcake, and dark chocolate.Fruit Balance: Tropical pineapple and crisp green apple.🏁 Finish\nDuration: Long, drying, and elegant.",
     "notes_quality": "rich",
-    "comment": "Rich sherry-led Islay profile; tropical pineapple has no clean home in taxonomy so left untagged.",
-    "tags": [
+    "comment": "Rich sherry-led prose with coastal/oily texture; tropical pineapple noted but no clean taxonomy slot, skipped.",
+    "categories": [
       {
         "category_slug": "rich_dried_fruits",
-        "descriptor_slug": null,
+        "intensity": 3,
         "confidence": 0.95,
         "evidence": "Dark Fruits: Rich sherry, raisins, and dried figs"
       },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "Sweet Pastry: Caramel, orange zest, and citrus sponge cake"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "intensity": 2,
+        "confidence": 0.9,
+        "evidence": "Coastal Air: Traditional Islay maritime salinity; Mouthfeel: Oily, full-bodied"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "Sweet Spice: Molasses, spiced fruitcake, and dark chocolate"
+      },
+      {
+        "category_slug": "young_spritely",
+        "intensity": 1,
+        "confidence": 0.7,
+        "evidence": "crisp green apple"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "intensity": 1,
+        "confidence": 0.6,
+        "evidence": "Long, drying, and elegant"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "raisin",
@@ -715,27 +1050,51 @@
       },
       {
         "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dark_chocolate",
+        "confidence": 0.9,
+        "evidence": "dark chocolate"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
         "descriptor_slug": "christmas_cake",
         "confidence": 0.8,
         "evidence": "spiced fruitcake"
       },
       {
-        "category_slug": "rich_dried_fruits",
-        "descriptor_slug": "dark_chocolate",
-        "confidence": 0.95,
-        "evidence": "dark chocolate"
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "caramel",
+        "confidence": 0.9,
+        "evidence": "Caramel"
       },
       {
         "category_slug": "sweet_fruity_mellow",
-        "descriptor_slug": "caramel",
-        "confidence": 0.95,
-        "evidence": "Caramel, orange zest"
+        "descriptor_slug": "orchard_fruit",
+        "confidence": 0.6,
+        "evidence": "crisp green apple"
       },
       {
-        "category_slug": "young_spritely",
-        "descriptor_slug": "citrus_zest",
-        "confidence": 0.9,
-        "evidence": "orange zest, and citrus sponge cake"
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "sea_salt",
+        "confidence": 0.85,
+        "evidence": "Islay maritime salinity"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "brine",
+        "confidence": 0.7,
+        "evidence": "maritime salinity"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "oily_texture",
+        "confidence": 0.95,
+        "evidence": "Mouthfeel: Oily, full-bodied"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "baking_spice",
+        "confidence": 0.8,
+        "evidence": "spiced fruitcake"
       },
       {
         "category_slug": "young_spritely",
@@ -744,32 +1103,14 @@
         "evidence": "crisp green apple"
       },
       {
-        "category_slug": "oily_coastal",
-        "descriptor_slug": null,
-        "confidence": 0.9,
-        "evidence": "Coastal Air: Traditional Islay maritime salinity"
-      },
-      {
-        "category_slug": "oily_coastal",
-        "descriptor_slug": "sea_salt",
+        "category_slug": "young_spritely",
+        "descriptor_slug": "citrus_zest",
         "confidence": 0.85,
-        "evidence": "maritime salinity"
-      },
-      {
-        "category_slug": "oily_coastal",
-        "descriptor_slug": "oily_texture",
-        "confidence": 0.9,
-        "evidence": "Mouthfeel: Oily, full-bodied"
-      },
-      {
-        "category_slug": "spicy_sweet",
-        "descriptor_slug": "baking_spice",
-        "confidence": 0.8,
-        "evidence": "Sweet Spice: Molasses, spiced fruitcake"
+        "evidence": "orange zest"
       },
       {
         "category_slug": "spicy_dry",
-        "descriptor_slug": "oak_tannin",
+        "descriptor_slug": "dry_spice",
         "confidence": 0.6,
         "evidence": "Long, drying, and elegant"
       }
@@ -784,13 +1125,39 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Rich sherry, dark chocolate, fig roll, toasted almonds and a waft of cinnamon-spiced orange peel. Palate: Thick and oily, dates, treacle, raisin, baked apple, oak tannin and clove with a peppery cask-strength kick. Finish: Long, drying, with bitter chocolate, stewed berries, ginger and lingering oak spice.",
     "notes_quality": "rich",
-    "comment": "Classic sherry-bomb profile; oily_texture tagged though no coastal context — flagging for review. Almonds mapped loosely to walnut as nearest nut descriptor.",
-    "tags": [
+    "comment": "Classic sherry-bomb prose; rich_dried_fruits dominant, strong drying oak spice alongside. Treacle tagged as toffee proxy.",
+    "categories": [
       {
         "category_slug": "rich_dried_fruits",
-        "descriptor_slug": null,
+        "intensity": 4,
+        "confidence": 0.98,
+        "evidence": "Rich sherry, dark chocolate, fig roll... dates, treacle, raisin"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "intensity": 2,
+        "confidence": 0.9,
+        "evidence": "waft of cinnamon-spiced orange peel... ginger"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "intensity": 3,
         "confidence": 0.95,
-        "evidence": "Rich sherry, dark chocolate, fig roll"
+        "evidence": "oak tannin and clove with a peppery cask-strength kick... drying... lingering oak spice"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "intensity": 2,
+        "confidence": 0.8,
+        "evidence": "baked apple... treacle"
+      }
+    ],
+    "descriptors": [
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dark_chocolate",
+        "confidence": 0.98,
+        "evidence": "dark chocolate"
       },
       {
         "category_slug": "rich_dried_fruits",
@@ -800,9 +1167,9 @@
       },
       {
         "category_slug": "rich_dried_fruits",
-        "descriptor_slug": "dark_chocolate",
-        "confidence": 0.95,
-        "evidence": "dark chocolate"
+        "descriptor_slug": "raisin",
+        "confidence": 0.97,
+        "evidence": "raisin"
       },
       {
         "category_slug": "rich_dried_fruits",
@@ -812,32 +1179,20 @@
       },
       {
         "category_slug": "rich_dried_fruits",
-        "descriptor_slug": "raisin",
-        "confidence": 0.95,
-        "evidence": "raisin"
-      },
-      {
-        "category_slug": "rich_dried_fruits",
-        "descriptor_slug": "walnut",
-        "confidence": 0.5,
-        "evidence": "toasted almonds"
+        "descriptor_slug": "dried_fruit",
+        "confidence": 0.85,
+        "evidence": "stewed berries"
       },
       {
         "category_slug": "spicy_sweet",
         "descriptor_slug": "cinnamon",
-        "confidence": 0.9,
+        "confidence": 0.95,
         "evidence": "cinnamon-spiced orange peel"
       },
       {
         "category_slug": "spicy_sweet",
-        "descriptor_slug": "clove",
-        "confidence": 0.9,
-        "evidence": "clove"
-      },
-      {
-        "category_slug": "spicy_sweet",
         "descriptor_slug": "ginger",
-        "confidence": 0.9,
+        "confidence": 0.95,
         "evidence": "ginger"
       },
       {
@@ -856,28 +1211,31 @@
         "category_slug": "spicy_dry",
         "descriptor_slug": "dry_spice",
         "confidence": 0.85,
-        "evidence": "Long, drying, with ... lingering oak spice"
+        "evidence": "lingering oak spice"
       },
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "orchard_fruit",
-        "confidence": 0.8,
+        "confidence": 0.85,
         "evidence": "baked apple"
       },
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "toffee",
-        "confidence": 0.6,
-        "evidence": "treacle"
-      },
-      {
-        "category_slug": "oily_coastal",
-        "descriptor_slug": "oily_texture",
         "confidence": 0.7,
-        "evidence": "Thick and oily"
+        "evidence": "treacle"
       }
     ],
-    "rejected": []
+    "rejected": [
+      {
+        "kind": "descriptor",
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "clove",
+        "confidence": 0.95,
+        "evidence": "oak tannin and clove",
+        "why": "descriptor not in category"
+      }
+    ]
   },
   {
     "id": "d6f09401-aba9-42d6-81be-3c84e0df8dff",
@@ -887,8 +1245,46 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Honeyed barley, apricot jam, beeswax and a light floral note with hints of marzipan. Palate: Creamy mouthfeel, dessert wine sweetness, candied citrus peel, vanilla, ripe pear and a touch of ginger. Finish: Medium length, drying gently with white grape, almond and soft oak spice.",
     "notes_quality": "rich",
-    "comment": "Rich prose; marzipan/almond and white grape have no clean home in taxonomy — left untagged. Beeswax mapped to old_dignified though overall profile is youthful.",
-    "tags": [
+    "comment": "Rich prose; clear sweet/fruity Sauternes character with waxy/floral edge and light spice. Marzipan/almond and white grape don't map to a descriptor slug.",
+    "categories": [
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "intensity": 3,
+        "confidence": 0.95,
+        "evidence": "Honeyed barley, apricot jam... dessert wine sweetness, candied citrus peel, vanilla, ripe pear"
+      },
+      {
+        "category_slug": "light_delicate",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "beeswax and a light floral note"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "intensity": 2,
+        "confidence": 0.8,
+        "evidence": "vanilla... soft oak spice"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "intensity": 1,
+        "confidence": 0.75,
+        "evidence": "a touch of ginger"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "intensity": 1,
+        "confidence": 0.6,
+        "evidence": "drying gently with... soft oak spice"
+      },
+      {
+        "category_slug": "old_dignified",
+        "intensity": 1,
+        "confidence": 0.7,
+        "evidence": "beeswax"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "honey",
@@ -910,8 +1306,20 @@
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "vanilla",
-        "confidence": 0.95,
+        "confidence": 0.9,
         "evidence": "vanilla"
+      },
+      {
+        "category_slug": "light_delicate",
+        "descriptor_slug": "floral",
+        "confidence": 0.85,
+        "evidence": "a light floral note"
+      },
+      {
+        "category_slug": "light_delicate",
+        "descriptor_slug": "light_honey",
+        "confidence": 0.7,
+        "evidence": "Honeyed barley"
       },
       {
         "category_slug": "old_dignified",
@@ -920,22 +1328,16 @@
         "evidence": "beeswax"
       },
       {
-        "category_slug": "light_delicate",
-        "descriptor_slug": "floral",
-        "confidence": 0.85,
-        "evidence": "light floral note"
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "vanilla",
+        "confidence": 0.9,
+        "evidence": "vanilla"
       },
       {
-        "category_slug": "young_spritely",
-        "descriptor_slug": "cereal",
-        "confidence": 0.7,
-        "evidence": "Honeyed barley"
-      },
-      {
-        "category_slug": "young_spritely",
-        "descriptor_slug": "citrus_zest",
-        "confidence": 0.75,
-        "evidence": "candied citrus peel"
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "toasted_oak",
+        "confidence": 0.6,
+        "evidence": "soft oak spice"
       },
       {
         "category_slug": "spicy_sweet",
@@ -945,15 +1347,9 @@
       },
       {
         "category_slug": "spicy_dry",
-        "descriptor_slug": "dry_spice",
-        "confidence": 0.8,
-        "evidence": "drying gently with white grape, almond and soft oak spice"
-      },
-      {
-        "category_slug": "spicy_dry",
         "descriptor_slug": "oak_tannin",
-        "confidence": 0.7,
-        "evidence": "soft oak spice"
+        "confidence": 0.6,
+        "evidence": "drying gently with... soft oak spice"
       }
     ],
     "rejected": []
@@ -966,8 +1362,34 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Heather honey, dark fruits (plums/cherries), sweet malt, and subtle baking spices (cinnamon and nutmeg).\nPalate: A robust, medium-bodied explosion of fruitiness, followed by warm notes of marzipan, leather, and oak.\nFinish: Lingering, sweet, and warmly velvety.",
     "notes_quality": "rich",
-    "comment": "Rich prose; marzipan has no clean home in taxonomy so left untagged.",
-    "tags": [
+    "comment": "Clear nose/palate/finish prose; confident tagging across four spokes.",
+    "categories": [
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "intensity": 3,
+        "confidence": 0.95,
+        "evidence": "Heather honey... sweet malt... A robust, medium-bodied explosion of fruitiness"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "intensity": 3,
+        "confidence": 0.9,
+        "evidence": "dark fruits (plums/cherries)"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "intensity": 2,
+        "confidence": 0.9,
+        "evidence": "subtle baking spices (cinnamon and nutmeg)"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "warm notes of marzipan, leather, and oak"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "honey",
@@ -976,51 +1398,45 @@
       },
       {
         "category_slug": "sweet_fruity_mellow",
-        "descriptor_slug": "stone_fruit",
-        "confidence": 0.9,
-        "evidence": "dark fruits (plums/cherries)"
+        "descriptor_slug": "orchard_fruit",
+        "confidence": 0.8,
+        "evidence": "explosion of fruitiness"
       },
       {
         "category_slug": "rich_dried_fruits",
-        "descriptor_slug": null,
-        "confidence": 0.6,
+        "descriptor_slug": "dried_fruit",
+        "confidence": 0.9,
         "evidence": "dark fruits (plums/cherries)"
-      },
-      {
-        "category_slug": "young_spritely",
-        "descriptor_slug": "fresh_malt",
-        "confidence": 0.6,
-        "evidence": "sweet malt"
-      },
-      {
-        "category_slug": "spicy_sweet",
-        "descriptor_slug": "baking_spice",
-        "confidence": 0.95,
-        "evidence": "subtle baking spices"
       },
       {
         "category_slug": "spicy_sweet",
         "descriptor_slug": "cinnamon",
         "confidence": 0.95,
-        "evidence": "cinnamon and nutmeg"
+        "evidence": "subtle baking spices (cinnamon and nutmeg)"
       },
       {
         "category_slug": "spicy_sweet",
         "descriptor_slug": "nutmeg",
         "confidence": 0.95,
-        "evidence": "cinnamon and nutmeg"
+        "evidence": "subtle baking spices (cinnamon and nutmeg)"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "baking_spice",
+        "confidence": 0.9,
+        "evidence": "subtle baking spices"
       },
       {
         "category_slug": "spicy_dry",
         "descriptor_slug": "leather",
-        "confidence": 0.9,
-        "evidence": "warm notes of marzipan, leather, and oak"
+        "confidence": 0.95,
+        "evidence": "marzipan, leather, and oak"
       },
       {
         "category_slug": "spicy_dry",
         "descriptor_slug": "oak_tannin",
-        "confidence": 0.65,
-        "evidence": "marzipan, leather, and oak"
+        "confidence": 0.75,
+        "evidence": "leather, and oak"
       }
     ],
     "rejected": []
@@ -1033,8 +1449,34 @@
     "bucket": "rich",
     "tasting_notes": "Nose: dark chocolate, orange peel, walnut and a whiff of mint. Palate: rich and silky with chocolate-covered orange, rose Turkish delight, hazelnut and gentle tannic spice from the port pipes. Finish: long, drying, with bittersweet cocoa, cinnamon and lingering citrus oils.",
     "notes_quality": "rich",
-    "comment": "Port-cask profile: chocolate/nut/orange dominant. Citrus mapped to young_spritely citrus_zest as closest taxonomy fit; no dedicated \"nutty\" or \"chocolate-orange\" category.",
-    "tags": [
+    "comment": "Port-pipe finish profile: chocolate/orange/nut leads rich_dried_fruits; tannic dry spice + cinnamon clear; Turkish delight a soft rounded note.",
+    "categories": [
+      {
+        "category_slug": "rich_dried_fruits",
+        "intensity": 3,
+        "confidence": 0.9,
+        "evidence": "dark chocolate, orange peel, walnut... chocolate-covered orange... bittersweet cocoa"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "gentle tannic spice from the port pipes... long, drying"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "intensity": 2,
+        "confidence": 0.8,
+        "evidence": "cinnamon"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "intensity": 2,
+        "confidence": 0.7,
+        "evidence": "rich and silky... rose Turkish delight"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "dark_chocolate",
@@ -1049,9 +1491,9 @@
       },
       {
         "category_slug": "rich_dried_fruits",
-        "descriptor_slug": null,
-        "confidence": 0.8,
-        "evidence": "bittersweet cocoa"
+        "descriptor_slug": "dried_fruit",
+        "confidence": 0.6,
+        "evidence": "chocolate-covered orange"
       },
       {
         "category_slug": "spicy_dry",
@@ -1070,24 +1512,6 @@
         "descriptor_slug": "cinnamon",
         "confidence": 0.95,
         "evidence": "cinnamon"
-      },
-      {
-        "category_slug": "sweet_fruity_mellow",
-        "descriptor_slug": null,
-        "confidence": 0.6,
-        "evidence": "rose Turkish delight"
-      },
-      {
-        "category_slug": "young_spritely",
-        "descriptor_slug": "citrus_zest",
-        "confidence": 0.85,
-        "evidence": "orange peel"
-      },
-      {
-        "category_slug": "young_spritely",
-        "descriptor_slug": null,
-        "confidence": 0.7,
-        "evidence": "lingering citrus oils"
       }
     ],
     "rejected": []
@@ -1100,37 +1524,57 @@
     "bucket": "rich",
     "tasting_notes": "Nose: light vanilla, green apple, soft toffee and a faint cereal note. Palate: smooth and sweet, with honey, pear, vanilla cream and a gentle nutty malt backbone. Finish: short, clean, with lingering toffee, light oak and a whisper of spice.",
     "notes_quality": "rich",
-    "comment": "Clear sweet/mellow profile with young cereal-apple lift; spice mention is faint so split low-confidence between dry and sweet spice categories.",
-    "tags": [
+    "comment": "Clear soft-sweet orchard profile; spice barely present (intensity 1).",
+    "categories": [
       {
         "category_slug": "sweet_fruity_mellow",
-        "descriptor_slug": null,
+        "intensity": 3,
         "confidence": 0.95,
-        "evidence": "smooth and sweet, with honey, pear, vanilla cream"
+        "evidence": "light vanilla, green apple, soft toffee... honey, pear, vanilla cream... lingering toffee"
       },
+      {
+        "category_slug": "young_spritely",
+        "intensity": 2,
+        "confidence": 0.8,
+        "evidence": "green apple... a faint cereal note"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "intensity": 2,
+        "confidence": 0.75,
+        "evidence": "vanilla cream... light oak"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "intensity": 1,
+        "confidence": 0.5,
+        "evidence": "a whisper of spice"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "vanilla",
-        "confidence": 0.95,
+        "confidence": 0.9,
         "evidence": "light vanilla"
-      },
-      {
-        "category_slug": "sweet_fruity_mellow",
-        "descriptor_slug": "honey",
-        "confidence": 0.95,
-        "evidence": "honey"
       },
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "toffee",
         "confidence": 0.95,
-        "evidence": "soft toffee"
+        "evidence": "soft toffee... lingering toffee"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "honey",
+        "confidence": 0.9,
+        "evidence": "honey"
       },
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "orchard_fruit",
         "confidence": 0.9,
-        "evidence": "pear"
+        "evidence": "green apple... pear"
       },
       {
         "category_slug": "young_spritely",
@@ -1142,7 +1586,7 @@
         "category_slug": "young_spritely",
         "descriptor_slug": "cereal",
         "confidence": 0.85,
-        "evidence": "faint cereal note"
+        "evidence": "a faint cereal note"
       },
       {
         "category_slug": "young_spritely",
@@ -1153,26 +1597,26 @@
       {
         "category_slug": "juicy_oak_vanilla",
         "descriptor_slug": "vanilla",
-        "confidence": 0.8,
+        "confidence": 0.85,
         "evidence": "vanilla cream"
       },
       {
         "category_slug": "juicy_oak_vanilla",
         "descriptor_slug": "custard",
-        "confidence": 0.6,
+        "confidence": 0.7,
         "evidence": "vanilla cream"
       },
       {
-        "category_slug": "spicy_dry",
-        "descriptor_slug": "dry_spice",
-        "confidence": 0.5,
-        "evidence": "light oak and a whisper of spice"
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "toasted_oak",
+        "confidence": 0.6,
+        "evidence": "light oak"
       },
       {
         "category_slug": "spicy_sweet",
-        "descriptor_slug": null,
+        "descriptor_slug": "baking_spice",
         "confidence": 0.4,
-        "evidence": "whisper of spice"
+        "evidence": "a whisper of spice"
       }
     ],
     "rejected": []
@@ -1185,14 +1629,46 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Rich sherry, honeyed malt, orange peel, light heather smoke and dark chocolate. Palate: Big and oily; dried figs, treacle, baking spice, cocoa and a salty, peppery heat that needs water. Finish: Long, warming and smoky, with toffee, clove and a faint maritime tang.",
     "notes_quality": "rich",
-    "comment": "Rich, multi-category prose; orange peel mapped to citrus_zest as closest fit (no dedicated orange descriptor). Treacle and cocoa have no direct slot but support rich_dried_fruits broadly.",
-    "tags": [
+    "comment": "Rich sherried profile with clear oily/coastal streak and a light smoke wisp; confident tagging throughout.",
+    "categories": [
       {
         "category_slug": "rich_dried_fruits",
-        "descriptor_slug": null,
+        "intensity": 3,
         "confidence": 0.95,
-        "evidence": "Rich sherry"
+        "evidence": "Rich sherry... dark chocolate... dried figs, treacle... cocoa"
       },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "intensity": 2,
+        "confidence": 0.9,
+        "evidence": "honeyed malt, orange peel... toffee"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "baking spice... clove"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "intensity": 2,
+        "confidence": 0.8,
+        "evidence": "salty, peppery heat that needs water"
+      },
+      {
+        "category_slug": "lightly_peated",
+        "intensity": 1,
+        "confidence": 0.9,
+        "evidence": "light heather smoke... Long, warming and smoky"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "Big and oily... salty, peppery heat... a faint maritime tang"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "fig",
@@ -1202,13 +1678,19 @@
       {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "dark_chocolate",
-        "confidence": 0.9,
+        "confidence": 0.95,
         "evidence": "dark chocolate"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dried_fruit",
+        "confidence": 0.85,
+        "evidence": "Rich sherry... dried figs"
       },
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "honey",
-        "confidence": 0.85,
+        "confidence": 0.9,
         "evidence": "honeyed malt"
       },
       {
@@ -1226,26 +1708,20 @@
       {
         "category_slug": "spicy_sweet",
         "descriptor_slug": "clove",
-        "confidence": 0.9,
+        "confidence": 0.95,
         "evidence": "clove"
       },
       {
         "category_slug": "spicy_dry",
         "descriptor_slug": "black_pepper",
         "confidence": 0.85,
-        "evidence": "salty, peppery heat"
+        "evidence": "peppery heat"
       },
       {
         "category_slug": "lightly_peated",
         "descriptor_slug": "gentle_smoke",
-        "confidence": 0.85,
+        "confidence": 0.9,
         "evidence": "light heather smoke"
-      },
-      {
-        "category_slug": "peated",
-        "descriptor_slug": null,
-        "confidence": 0.6,
-        "evidence": "Long, warming and smoky"
       },
       {
         "category_slug": "oily_coastal",
@@ -1257,19 +1733,13 @@
         "category_slug": "oily_coastal",
         "descriptor_slug": "sea_salt",
         "confidence": 0.8,
-        "evidence": "a salty, peppery heat"
+        "evidence": "salty, peppery heat"
       },
       {
         "category_slug": "oily_coastal",
         "descriptor_slug": "brine",
-        "confidence": 0.7,
-        "evidence": "faint maritime tang"
-      },
-      {
-        "category_slug": "young_spritely",
-        "descriptor_slug": "citrus_zest",
         "confidence": 0.75,
-        "evidence": "orange peel"
+        "evidence": "a faint maritime tang"
       }
     ],
     "rejected": []
@@ -1282,19 +1752,62 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Rich aromas of beeswax, burnt caramel toffee, vanilla, and yellow floral notes, with a subtle, unique hint of maritime salinity from the island sea breeze.\nPalate: Exceptionally smooth and silky. A luscious sweetness of honey and rich, buttery toffee coats the mouth, accompanied by ripe citrus fruits and a delicate hint of old oak spice.\nFinish: Very long and warming, tapering off into buttery toasted pastry and warm baking spices like nutmeg and cinnamon.",
     "notes_quality": "rich",
-    "comment": "Rich prose, multi-category. \"Buttery toasted pastry\" had no clean home; closest hits already covered by toffee/baking spice.",
-    "tags": [
+    "categories": [
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "intensity": 3,
+        "confidence": 0.95,
+        "evidence": "luscious sweetness of honey and rich, buttery toffee coats the mouth"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "burnt caramel toffee, vanilla... buttery toasted pastry"
+      },
       {
         "category_slug": "old_dignified",
-        "descriptor_slug": "beeswax",
+        "intensity": 2,
+        "confidence": 0.8,
+        "evidence": "Rich aromas of beeswax... a delicate hint of old oak spice"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "intensity": 2,
+        "confidence": 0.9,
+        "evidence": "warm baking spices like nutmeg and cinnamon"
+      },
+      {
+        "category_slug": "light_delicate",
+        "intensity": 1,
+        "confidence": 0.7,
+        "evidence": "yellow floral notes"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "intensity": 1,
+        "confidence": 0.75,
+        "evidence": "subtle, unique hint of maritime salinity from the island sea breeze"
+      },
+      {
+        "category_slug": "young_spritely",
+        "intensity": 1,
+        "confidence": 0.6,
+        "evidence": "ripe citrus fruits"
+      }
+    ],
+    "descriptors": [
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "honey",
         "confidence": 0.95,
-        "evidence": "Rich aromas of beeswax"
+        "evidence": "luscious sweetness of honey"
       },
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "toffee",
         "confidence": 0.95,
-        "evidence": "burnt caramel toffee"
+        "evidence": "rich, buttery toffee coats the mouth"
       },
       {
         "category_slug": "sweet_fruity_mellow",
@@ -1305,62 +1818,38 @@
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "vanilla",
-        "confidence": 0.95,
+        "confidence": 0.9,
         "evidence": "vanilla"
       },
       {
-        "category_slug": "young_spritely",
-        "descriptor_slug": "floral",
-        "confidence": 0.8,
-        "evidence": "yellow floral notes"
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "vanilla",
+        "confidence": 0.9,
+        "evidence": "vanilla"
       },
       {
-        "category_slug": "light_delicate",
-        "descriptor_slug": "floral",
-        "confidence": 0.7,
-        "evidence": "yellow floral notes"
-      },
-      {
-        "category_slug": "oily_coastal",
-        "descriptor_slug": "sea_salt",
-        "confidence": 0.75,
-        "evidence": "subtle, unique hint of maritime salinity from the island sea breeze"
-      },
-      {
-        "category_slug": "sweet_fruity_mellow",
-        "descriptor_slug": "honey",
-        "confidence": 0.95,
-        "evidence": "luscious sweetness of honey"
-      },
-      {
-        "category_slug": "young_spritely",
-        "descriptor_slug": "citrus_zest",
-        "confidence": 0.7,
-        "evidence": "ripe citrus fruits"
-      },
-      {
-        "category_slug": "light_delicate",
-        "descriptor_slug": "lemon",
-        "confidence": 0.4,
-        "evidence": "ripe citrus fruits"
-      },
-      {
-        "category_slug": "spicy_dry",
-        "descriptor_slug": "oak_tannin",
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "butterscotch",
         "confidence": 0.6,
-        "evidence": "delicate hint of old oak spice"
+        "evidence": "buttery toffee"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "toasted_oak",
+        "confidence": 0.6,
+        "evidence": "buttery toasted pastry"
+      },
+      {
+        "category_slug": "old_dignified",
+        "descriptor_slug": "beeswax",
+        "confidence": 0.95,
+        "evidence": "Rich aromas of beeswax"
       },
       {
         "category_slug": "old_dignified",
         "descriptor_slug": "polished_oak",
-        "confidence": 0.55,
+        "confidence": 0.7,
         "evidence": "delicate hint of old oak spice"
-      },
-      {
-        "category_slug": "spicy_sweet",
-        "descriptor_slug": "baking_spice",
-        "confidence": 0.95,
-        "evidence": "warm baking spices"
       },
       {
         "category_slug": "spicy_sweet",
@@ -1373,6 +1862,36 @@
         "descriptor_slug": "cinnamon",
         "confidence": 0.95,
         "evidence": "cinnamon"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "baking_spice",
+        "confidence": 0.95,
+        "evidence": "warm baking spices"
+      },
+      {
+        "category_slug": "light_delicate",
+        "descriptor_slug": "floral",
+        "confidence": 0.85,
+        "evidence": "yellow floral notes"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "sea_salt",
+        "confidence": 0.75,
+        "evidence": "maritime salinity from the island sea breeze"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "brine",
+        "confidence": 0.6,
+        "evidence": "maritime salinity"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "citrus_zest",
+        "confidence": 0.65,
+        "evidence": "ripe citrus fruits"
       }
     ],
     "rejected": []
@@ -1385,8 +1904,46 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Sherried orchard fruit, honey, light brine and a whisper of smoke. Palate: Sweet malt, baked apple, almond, milk chocolate and dried fig, with a coastal salinity from the Oloroso finish. Finish: Medium length, gently spiced with nutmeg and oak, lingering sherry sweetness and a faint smoky edge.",
     "notes_quality": "rich",
-    "comment": "Multi-faceted notes; almond and milk chocolate have no exact descriptor — chocolate mapped weakly to dark_chocolate.",
-    "tags": [
+    "comment": "Solid prose; sherry-and-orchard core with faint coastal/smoke accents — both kept at intensity 1 per \"light\"/\"whisper\"/\"faint\".",
+    "categories": [
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "intensity": 3,
+        "confidence": 0.95,
+        "evidence": "Sherried orchard fruit, honey... Sweet malt, baked apple"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "intensity": 2,
+        "confidence": 0.9,
+        "evidence": "milk chocolate and dried fig... lingering sherry sweetness"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "intensity": 1,
+        "confidence": 0.85,
+        "evidence": "light brine... a coastal salinity from the Oloroso finish"
+      },
+      {
+        "category_slug": "lightly_peated",
+        "intensity": 1,
+        "confidence": 0.9,
+        "evidence": "a whisper of smoke... a faint smoky edge"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "gently spiced with nutmeg"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "intensity": 1,
+        "confidence": 0.6,
+        "evidence": "gently spiced with nutmeg and oak"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "orchard_fruit",
@@ -1419,9 +1976,9 @@
       },
       {
         "category_slug": "rich_dried_fruits",
-        "descriptor_slug": null,
-        "confidence": 0.8,
-        "evidence": "lingering sherry sweetness"
+        "descriptor_slug": "dried_fruit",
+        "confidence": 0.9,
+        "evidence": "dried fig... lingering sherry sweetness"
       },
       {
         "category_slug": "oily_coastal",
@@ -1433,7 +1990,7 @@
         "category_slug": "oily_coastal",
         "descriptor_slug": "sea_salt",
         "confidence": 0.85,
-        "evidence": "coastal salinity from the Oloroso finish"
+        "evidence": "coastal salinity"
       },
       {
         "category_slug": "lightly_peated",
@@ -1443,8 +2000,8 @@
       },
       {
         "category_slug": "lightly_peated",
-        "descriptor_slug": "gentle_smoke",
-        "confidence": 0.85,
+        "descriptor_slug": "soft_peat",
+        "confidence": 0.7,
         "evidence": "a faint smoky edge"
       },
       {
@@ -1457,7 +2014,7 @@
         "category_slug": "spicy_dry",
         "descriptor_slug": "oak_tannin",
         "confidence": 0.6,
-        "evidence": "gently spiced with nutmeg and oak"
+        "evidence": "nutmeg and oak"
       }
     ],
     "rejected": []
@@ -1470,12 +2027,44 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Fresh barley, lemon zest, green apple, vanilla cream and a light malty sweetness with subtle oak spice. Palate: Rich and oily, bold malt, honeyed cereal, baked apple, cinnamon, white pepper and toasted oak from first-fill bourbon casks. Finish: Long, warming, drying oak tannins with lingering vanilla, ginger and barley sugar.",
     "notes_quality": "rich",
-    "comment": "Rich prose across nose/palate/finish; clear bourbon-cask profile with young malty character and drying oak spice.",
-    "tags": [
+    "comment": "Clear bourbon-cask Lowland-style profile; multiple overlapping spokes well-supported by the prose.",
+    "categories": [
+      {
+        "category_slug": "young_spritely",
+        "intensity": 2,
+        "confidence": 0.9,
+        "evidence": "Fresh barley, lemon zest, green apple"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "intensity": 3,
+        "confidence": 0.95,
+        "evidence": "vanilla cream and a light malty sweetness... honeyed cereal, baked apple"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "intensity": 3,
+        "confidence": 0.95,
+        "evidence": "toasted oak from first-fill bourbon casks... lingering vanilla"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "intensity": 2,
+        "confidence": 0.9,
+        "evidence": "cinnamon... ginger and barley sugar"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "white pepper... drying oak tannins"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "young_spritely",
         "descriptor_slug": "fresh_malt",
-        "confidence": 0.9,
+        "confidence": 0.95,
         "evidence": "Fresh barley"
       },
       {
@@ -1494,37 +2083,37 @@
         "category_slug": "young_spritely",
         "descriptor_slug": "cereal",
         "confidence": 0.85,
+        "evidence": "bold malt, honeyed cereal"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "vanilla",
+        "confidence": 0.95,
+        "evidence": "vanilla cream"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "honey",
+        "confidence": 0.9,
         "evidence": "honeyed cereal"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "orchard_fruit",
+        "confidence": 0.9,
+        "evidence": "baked apple"
       },
       {
         "category_slug": "juicy_oak_vanilla",
         "descriptor_slug": "vanilla",
         "confidence": 0.95,
-        "evidence": "vanilla cream"
+        "evidence": "lingering vanilla"
       },
       {
         "category_slug": "juicy_oak_vanilla",
         "descriptor_slug": "toasted_oak",
         "confidence": 0.95,
         "evidence": "toasted oak from first-fill bourbon casks"
-      },
-      {
-        "category_slug": "juicy_oak_vanilla",
-        "descriptor_slug": "custard",
-        "confidence": 0.6,
-        "evidence": "vanilla cream"
-      },
-      {
-        "category_slug": "sweet_fruity_mellow",
-        "descriptor_slug": "honey",
-        "confidence": 0.85,
-        "evidence": "honeyed cereal"
-      },
-      {
-        "category_slug": "sweet_fruity_mellow",
-        "descriptor_slug": "orchard_fruit",
-        "confidence": 0.85,
-        "evidence": "baked apple"
       },
       {
         "category_slug": "spicy_sweet",
@@ -1536,12 +2125,18 @@
         "category_slug": "spicy_sweet",
         "descriptor_slug": "ginger",
         "confidence": 0.9,
-        "evidence": "lingering vanilla, ginger and barley sugar"
+        "evidence": "ginger"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "honeyed_spice",
+        "confidence": 0.7,
+        "evidence": "barley sugar"
       },
       {
         "category_slug": "spicy_dry",
         "descriptor_slug": "black_pepper",
-        "confidence": 0.9,
+        "confidence": 0.85,
         "evidence": "white pepper"
       },
       {
@@ -1567,19 +2162,39 @@
     "bucket": "rich",
     "tasting_notes": "Nose: ripe pineapple, mango and pear drops with light icing sugar and a waxy, faintly sulphury edge. Palate: tropical fruit salad, vanilla custard, green apple and white pepper, with a creamy mid-palate and gentle oak spice. Finish: medium length, drying with grapefruit pith, cereal sweetness and a whisper of struck match.",
     "notes_quality": "rich",
-    "comment": "Tropical/vanilla-led profile; \"struck match\" and \"sulphury edge\" have no taxonomy home so left untagged.",
-    "tags": [
+    "comment": "Confident tropical/vanilla profile. The sulphury/struck-match note has no home in the taxonomy — noted as gap.",
+    "categories": [
       {
         "category_slug": "sweet_fruity_mellow",
-        "descriptor_slug": null,
-        "confidence": 0.9,
-        "evidence": "ripe pineapple, mango and pear drops"
+        "intensity": 3,
+        "confidence": 0.95,
+        "evidence": "ripe pineapple, mango and pear drops... tropical fruit salad, vanilla custard"
       },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "intensity": 2,
+        "confidence": 0.9,
+        "evidence": "vanilla custard... gentle oak spice"
+      },
+      {
+        "category_slug": "young_spritely",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "green apple... cereal sweetness"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "intensity": 2,
+        "confidence": 0.8,
+        "evidence": "white pepper... drying with grapefruit pith... gentle oak spice"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "orchard_fruit",
-        "confidence": 0.8,
-        "evidence": "pear drops"
+        "confidence": 0.85,
+        "evidence": "pear drops... green apple"
       },
       {
         "category_slug": "sweet_fruity_mellow",
@@ -1588,9 +2203,15 @@
         "evidence": "vanilla custard"
       },
       {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "stone_fruit",
+        "confidence": 0.6,
+        "evidence": "mango"
+      },
+      {
         "category_slug": "juicy_oak_vanilla",
         "descriptor_slug": "vanilla",
-        "confidence": 0.9,
+        "confidence": 0.95,
         "evidence": "vanilla custard"
       },
       {
@@ -1614,20 +2235,14 @@
       {
         "category_slug": "young_spritely",
         "descriptor_slug": "cereal",
-        "confidence": 0.85,
+        "confidence": 0.9,
         "evidence": "cereal sweetness"
       },
       {
         "category_slug": "young_spritely",
         "descriptor_slug": "citrus_zest",
-        "confidence": 0.6,
+        "confidence": 0.7,
         "evidence": "grapefruit pith"
-      },
-      {
-        "category_slug": "spicy_sweet",
-        "descriptor_slug": "baking_spice",
-        "confidence": 0.6,
-        "evidence": "gentle oak spice"
       },
       {
         "category_slug": "spicy_dry",
@@ -1638,8 +2253,14 @@
       {
         "category_slug": "spicy_dry",
         "descriptor_slug": "oak_tannin",
-        "confidence": 0.6,
+        "confidence": 0.7,
         "evidence": "drying with grapefruit pith"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "dry_spice",
+        "confidence": 0.8,
+        "evidence": "gentle oak spice"
       }
     ],
     "rejected": []
@@ -1652,8 +2273,40 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Coastal brine, damp earth, sherried dried fruit, leather and a whiff of coal smoke. Palate: Oily and full-bodied, raisin and fig, salted dark chocolate, peppery oak, brackish peat and toffee. Finish: Long, drying, with lingering sea salt, tobacco and roasted nuts.",
     "notes_quality": "rich",
-    "comment": "Rich prose, classic Campbeltown profile: coastal + sherry + light peat. \"Damp earth\" and \"roasted nuts\" don't map cleanly; nuts tagged as walnut with low confidence.",
-    "tags": [
+    "comment": "Rich, multi-axis prose: coastal + sherry + dry spice + light coal smoke. Smoke is a \"whiff\" so intensity kept at 2.",
+    "categories": [
+      {
+        "category_slug": "oily_coastal",
+        "intensity": 3,
+        "confidence": 0.95,
+        "evidence": "Coastal brine... Oily and full-bodied... lingering sea salt"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "intensity": 3,
+        "confidence": 0.95,
+        "evidence": "sherried dried fruit... raisin and fig, salted dark chocolate"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "intensity": 2,
+        "confidence": 0.9,
+        "evidence": "leather... peppery oak... drying, with lingering ... tobacco"
+      },
+      {
+        "category_slug": "peated",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "a whiff of coal smoke... brackish peat"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "intensity": 1,
+        "confidence": 0.7,
+        "evidence": "and toffee"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "oily_coastal",
         "descriptor_slug": "brine",
@@ -1669,32 +2322,32 @@
       {
         "category_slug": "oily_coastal",
         "descriptor_slug": "oily_texture",
-        "confidence": 0.9,
+        "confidence": 0.95,
         "evidence": "Oily and full-bodied"
       },
       {
         "category_slug": "rich_dried_fruits",
-        "descriptor_slug": "dried_fruit",
-        "confidence": 0.95,
-        "evidence": "sherried dried fruit"
-      },
-      {
-        "category_slug": "rich_dried_fruits",
         "descriptor_slug": "raisin",
-        "confidence": 0.95,
+        "confidence": 0.98,
         "evidence": "raisin and fig"
       },
       {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "fig",
-        "confidence": 0.95,
+        "confidence": 0.98,
         "evidence": "raisin and fig"
       },
       {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "dark_chocolate",
-        "confidence": 0.9,
+        "confidence": 0.95,
         "evidence": "salted dark chocolate"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dried_fruit",
+        "confidence": 0.9,
+        "evidence": "sherried dried fruit"
       },
       {
         "category_slug": "rich_dried_fruits",
@@ -1705,44 +2358,44 @@
       {
         "category_slug": "spicy_dry",
         "descriptor_slug": "leather",
-        "confidence": 0.9,
+        "confidence": 0.95,
         "evidence": "leather"
       },
       {
         "category_slug": "spicy_dry",
-        "descriptor_slug": "tobacco",
-        "confidence": 0.9,
-        "evidence": "tobacco"
-      },
-      {
-        "category_slug": "spicy_dry",
         "descriptor_slug": "black_pepper",
-        "confidence": 0.85,
+        "confidence": 0.9,
         "evidence": "peppery oak"
       },
       {
         "category_slug": "spicy_dry",
         "descriptor_slug": "oak_tannin",
-        "confidence": 0.7,
-        "evidence": "Long, drying"
+        "confidence": 0.85,
+        "evidence": "peppery oak... Long, drying"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "tobacco",
+        "confidence": 0.95,
+        "evidence": "lingering sea salt, tobacco"
       },
       {
         "category_slug": "peated",
         "descriptor_slug": "bonfire_smoke",
-        "confidence": 0.6,
-        "evidence": "whiff of coal smoke"
+        "confidence": 0.7,
+        "evidence": "a whiff of coal smoke"
       },
       {
         "category_slug": "peated",
-        "descriptor_slug": null,
-        "confidence": 0.8,
-        "evidence": "brackish peat"
+        "descriptor_slug": "soot",
+        "confidence": 0.65,
+        "evidence": "whiff of coal smoke... brackish peat"
       },
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "toffee",
         "confidence": 0.9,
-        "evidence": "toffee"
+        "evidence": "and toffee"
       }
     ],
     "rejected": []
@@ -1755,8 +2408,22 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Christmas cake, candied orange peel, milk chocolate and toasted almond. Palate: rich sherry sweetness, dried figs, dates, cinnamon and clove, with a creamy oloroso weight. Finish: medium-long, warming spice, dark cocoa and lingering raisin.",
     "notes_quality": "rich",
-    "comment": "Classic oloroso sherry profile; orange peel is citrus-candied not really orchard fruit, tagged low-confidence as nearest mellow-sweet anchor. Milk chocolate/toasted almond have no clean home in taxonomy.",
-    "tags": [
+    "comment": "Classic oloroso sherry profile — dried fruits dominant, baking spice clearly present but secondary. Milk chocolate/candied orange/toasted almond noted but no clean taxonomy slot, so left untagged.",
+    "categories": [
+      {
+        "category_slug": "rich_dried_fruits",
+        "intensity": 4,
+        "confidence": 0.98,
+        "evidence": "Christmas cake... rich sherry sweetness, dried figs, dates... creamy oloroso weight... dark cocoa and lingering raisin"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "intensity": 2,
+        "confidence": 0.9,
+        "evidence": "cinnamon and clove... warming spice"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "christmas_cake",
@@ -1791,7 +2458,7 @@
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "dried_fruit",
         "confidence": 0.9,
-        "evidence": "rich sherry sweetness, dried figs, dates"
+        "evidence": "dried figs, dates"
       },
       {
         "category_slug": "spicy_sweet",
@@ -1810,12 +2477,6 @@
         "descriptor_slug": "baking_spice",
         "confidence": 0.8,
         "evidence": "warming spice"
-      },
-      {
-        "category_slug": "sweet_fruity_mellow",
-        "descriptor_slug": "orchard_fruit",
-        "confidence": 0.4,
-        "evidence": "candied orange peel"
       }
     ],
     "rejected": []
@@ -1828,19 +2489,51 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Elegant, bright, and complex. Rich notes of roasted nuts, toasted almond pastry, and orange zest blend with dried fruits and a hint of salted caramel.\nPalate: Unusually weighty and full-bodied for a triple-distilled malt. The 48% ABV retains excellent mouth-coating oils, delivering layers of bitter orange marmalade, rich dark cocoa, dried plums, and a dry, vinous grape skin quality.\nFinish: Long, crisp, and clean. The sweetness gives way to a dry, oaky warmth accented by sharp ginger, white pepper, and a subtle salinity.",
     "notes_quality": "rich",
-    "comment": "Rich sherry-leaning profile with dry oak spice and a coastal hint; orange marmalade doesn't map cleanly — used orchard_fruit weakly.",
-    "tags": [
+    "comment": "Rich prose; sherry/oak-led with citrus and a subtle saline edge.",
+    "categories": [
+      {
+        "category_slug": "rich_dried_fruits",
+        "intensity": 3,
+        "confidence": 0.95,
+        "evidence": "dried fruits... bitter orange marmalade, rich dark cocoa, dried plums"
+      },
       {
         "category_slug": "sweet_fruity_mellow",
-        "descriptor_slug": "caramel",
-        "confidence": 0.9,
-        "evidence": "a hint of salted caramel"
+        "intensity": 2,
+        "confidence": 0.8,
+        "evidence": "a hint of salted caramel... layers of bitter orange marmalade"
       },
+      {
+        "category_slug": "spicy_sweet",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "sharp ginger"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "intensity": 2,
+        "confidence": 0.9,
+        "evidence": "dry, oaky warmth accented by sharp ginger, white pepper"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "intensity": 1,
+        "confidence": 0.7,
+        "evidence": "a subtle salinity"
+      },
+      {
+        "category_slug": "old_dignified",
+        "intensity": 1,
+        "confidence": 0.5,
+        "evidence": "dry, oaky warmth"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "dried_fruit",
         "confidence": 0.95,
-        "evidence": "blend with dried fruits"
+        "evidence": "dried fruits"
       },
       {
         "category_slug": "rich_dried_fruits",
@@ -1850,15 +2543,27 @@
       },
       {
         "category_slug": "rich_dried_fruits",
-        "descriptor_slug": "raisin",
+        "descriptor_slug": "walnut",
         "confidence": 0.6,
-        "evidence": "dried plums"
+        "evidence": "roasted nuts, toasted almond pastry"
       },
       {
         "category_slug": "rich_dried_fruits",
-        "descriptor_slug": "walnut",
-        "confidence": 0.6,
-        "evidence": "Rich notes of roasted nuts"
+        "descriptor_slug": "raisin",
+        "confidence": 0.7,
+        "evidence": "dried plums"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "caramel",
+        "confidence": 0.9,
+        "evidence": "a hint of salted caramel"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "orchard_fruit",
+        "confidence": 0.5,
+        "evidence": "bitter orange marmalade"
       },
       {
         "category_slug": "spicy_sweet",
@@ -1875,32 +2580,32 @@
       {
         "category_slug": "spicy_dry",
         "descriptor_slug": "oak_tannin",
-        "confidence": 0.8,
-        "evidence": "a dry, oaky warmth"
+        "confidence": 0.85,
+        "evidence": "dry, oaky warmth... dry, vinous grape skin quality"
       },
       {
         "category_slug": "spicy_dry",
         "descriptor_slug": "dry_spice",
         "confidence": 0.7,
-        "evidence": "a dry, vinous grape skin quality"
-      },
-      {
-        "category_slug": "oily_coastal",
-        "descriptor_slug": "oily_texture",
-        "confidence": 0.85,
-        "evidence": "excellent mouth-coating oils"
+        "evidence": "dry... white pepper"
       },
       {
         "category_slug": "oily_coastal",
         "descriptor_slug": "sea_salt",
         "confidence": 0.7,
-        "evidence": "a subtle salinity"
+        "evidence": "subtle salinity"
       },
       {
-        "category_slug": "sweet_fruity_mellow",
-        "descriptor_slug": "orchard_fruit",
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "oily_texture",
+        "confidence": 0.75,
+        "evidence": "excellent mouth-coating oils"
+      },
+      {
+        "category_slug": "old_dignified",
+        "descriptor_slug": "polished_oak",
         "confidence": 0.5,
-        "evidence": "bitter orange marmalade"
+        "evidence": "dry, oaky warmth"
       }
     ],
     "rejected": []
@@ -1913,49 +2618,51 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Initially muted, featuring dense toffee, Cadbury’s Eclairs, highlighter pen, and a hint of seaweed. When diluted to 50% ABV, aromas of coffee, charred oak, seared plum, light Soreen loaf, nutmeg, and faintly astringent coriander emerge.\nPalate: Complex and concentrated with molasses, dark coffee liqueur, a balance of dry and sweet notes, charred damson, buttery fig biscuit, and slight saltiness. The flavor is intense and layered, though the whisky is not overly hot despite high ABV.\nFinish: Relatively short, highlighting the tighter, “closed-up” nature of the whisky early on, but opens subtly with water addition.",
     "notes_quality": "rich",
-    "comment": "Rich, layered notes. Molasses/coffee/coffee liqueur don't map cleanly to taxonomy — leaned on dark chocolate proxy at low confidence. Damson/plum mapped to dried_fruit and stone_fruit.",
-    "tags": [
+    "comment": "Rich prose; dark sweet/sherry-ish core with charred oak edge and small coastal hint. Coffee/molasses tagged under dried-fruit family as the closest fit.",
+    "categories": [
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "intensity": 3,
+        "confidence": 0.9,
+        "evidence": "dense toffee, Cadbury's Eclairs... seared plum... charred damson, buttery fig biscuit"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "intensity": 3,
+        "confidence": 0.9,
+        "evidence": "molasses, dark coffee liqueur... buttery fig biscuit... light Soreen loaf"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "intensity": 2,
+        "confidence": 0.7,
+        "evidence": "nutmeg... faintly astringent coriander"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "intensity": 2,
+        "confidence": 0.75,
+        "evidence": "charred oak... balance of dry and sweet notes"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "intensity": 1,
+        "confidence": 0.7,
+        "evidence": "a hint of seaweed... slight saltiness"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "toffee",
         "confidence": 0.95,
-        "evidence": "dense toffee"
+        "evidence": "dense toffee, Cadbury's Eclairs"
       },
       {
         "category_slug": "sweet_fruity_mellow",
-        "descriptor_slug": "caramel",
-        "confidence": 0.7,
-        "evidence": "Cadbury's Eclairs"
-      },
-      {
-        "category_slug": "oily_coastal",
-        "descriptor_slug": "seaweed",
+        "descriptor_slug": "stone_fruit",
         "confidence": 0.85,
-        "evidence": "a hint of seaweed"
-      },
-      {
-        "category_slug": "oily_coastal",
-        "descriptor_slug": "sea_salt",
-        "confidence": 0.75,
-        "evidence": "slight saltiness"
-      },
-      {
-        "category_slug": "spicy_dry",
-        "descriptor_slug": "char",
-        "confidence": 0.9,
-        "evidence": "charred oak"
-      },
-      {
-        "category_slug": "spicy_dry",
-        "descriptor_slug": "oak_tannin",
-        "confidence": 0.6,
-        "evidence": "charred oak"
-      },
-      {
-        "category_slug": "spicy_sweet",
-        "descriptor_slug": "nutmeg",
-        "confidence": 0.9,
-        "evidence": "nutmeg"
+        "evidence": "seared plum... charred damson"
       },
       {
         "category_slug": "rich_dried_fruits",
@@ -1966,20 +2673,44 @@
       {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "dark_chocolate",
-        "confidence": 0.55,
-        "evidence": "dark coffee liqueur"
+        "confidence": 0.6,
+        "evidence": "molasses, dark coffee liqueur"
       },
       {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "dried_fruit",
         "confidence": 0.6,
-        "evidence": "seared plum... charred damson"
+        "evidence": "light Soreen loaf"
       },
       {
-        "category_slug": "sweet_fruity_mellow",
-        "descriptor_slug": "stone_fruit",
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "nutmeg",
+        "confidence": 0.9,
+        "evidence": "nutmeg"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "char",
+        "confidence": 0.9,
+        "evidence": "charred oak"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "dry_spice",
+        "confidence": 0.6,
+        "evidence": "balance of dry and sweet notes"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "seaweed",
+        "confidence": 0.9,
+        "evidence": "a hint of seaweed"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "sea_salt",
         "confidence": 0.7,
-        "evidence": "seared plum"
+        "evidence": "slight saltiness"
       }
     ],
     "rejected": []
@@ -1992,8 +2723,46 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Sultanas, candied orange peel, almond paste and light barley malt with a fortified-wine sweetness. Palate: Soft and rounded; raisin cake, honeyed apple, mild spice and a Marsala-driven nutty grape character over Tomatin's gentle malt. Finish: Medium length, drying lightly with toasted oak, dark fruit and a faint herbal bitterness.",
     "notes_quality": "rich",
-    "comment": "Clear Marsala-cask profile: dried fruit + honeyed orchard + nutty wine character; toasted oak finish. \"Almond paste\" and \"nutty grape\" don't map cleanly to a descriptor — walnut is the closest fit but loose.",
-    "tags": [
+    "comment": "Marsala cask profile: clear dried-fruit/sherry-like core with honeyed apple and gentle malt base; light oak drying on finish.",
+    "categories": [
+      {
+        "category_slug": "rich_dried_fruits",
+        "intensity": 3,
+        "confidence": 0.9,
+        "evidence": "Sultanas... raisin cake... dark fruit"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "honeyed apple... fortified-wine sweetness... Soft and rounded"
+      },
+      {
+        "category_slug": "young_spritely",
+        "intensity": 1,
+        "confidence": 0.7,
+        "evidence": "light barley malt... Tomatin's gentle malt"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "intensity": 1,
+        "confidence": 0.6,
+        "evidence": "mild spice"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "intensity": 1,
+        "confidence": 0.7,
+        "evidence": "drying lightly with toasted oak... faint herbal bitterness"
+      },
+      {
+        "category_slug": "old_dignified",
+        "intensity": 1,
+        "confidence": 0.4,
+        "evidence": "faint herbal bitterness"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "raisin",
@@ -2002,20 +2771,26 @@
       },
       {
         "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "christmas_cake",
+        "confidence": 0.7,
+        "evidence": "raisin cake"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
         "descriptor_slug": "dried_fruit",
-        "confidence": 0.85,
+        "confidence": 0.9,
         "evidence": "dark fruit"
       },
       {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "walnut",
         "confidence": 0.6,
-        "evidence": "Marsala-driven nutty grape character"
+        "evidence": "almond paste... nutty grape character"
       },
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "honey",
-        "confidence": 0.9,
+        "confidence": 0.85,
         "evidence": "honeyed apple"
       },
       {
@@ -2025,21 +2800,15 @@
         "evidence": "honeyed apple"
       },
       {
-        "category_slug": "sweet_fruity_mellow",
-        "descriptor_slug": "vanilla",
-        "confidence": 0.4,
-        "evidence": "fortified-wine sweetness"
-      },
-      {
         "category_slug": "young_spritely",
-        "descriptor_slug": "cereal",
-        "confidence": 0.7,
+        "descriptor_slug": "fresh_malt",
+        "confidence": 0.75,
         "evidence": "light barley malt"
       },
       {
         "category_slug": "young_spritely",
-        "descriptor_slug": "fresh_malt",
-        "confidence": 0.7,
+        "descriptor_slug": "cereal",
+        "confidence": 0.6,
         "evidence": "Tomatin's gentle malt"
       },
       {
@@ -2051,7 +2820,7 @@
       {
         "category_slug": "spicy_sweet",
         "descriptor_slug": "baking_spice",
-        "confidence": 0.7,
+        "confidence": 0.55,
         "evidence": "mild spice"
       },
       {
@@ -2061,16 +2830,10 @@
         "evidence": "drying lightly with toasted oak"
       },
       {
-        "category_slug": "spicy_dry",
-        "descriptor_slug": "dry_spice",
-        "confidence": 0.6,
+        "category_slug": "old_dignified",
+        "descriptor_slug": "dried_herbs",
+        "confidence": 0.5,
         "evidence": "faint herbal bitterness"
-      },
-      {
-        "category_slug": "juicy_oak_vanilla",
-        "descriptor_slug": "toasted_oak",
-        "confidence": 0.9,
-        "evidence": "toasted oak"
       }
     ],
     "rejected": []
@@ -2083,19 +2846,51 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Aromas of red fruits, walnuts, and orange zest, layered with earthy peat smoke and subtle spices.Palate: Rich, juicy, and smooth. Prominent layers of dark fruit—such as raisins, dates, and ripe plums—are underpinned by classic Islay peat and woody cinnamon.Finish: Long, warm, and peppery with lingering smoke and a hint of ginger",
     "notes_quality": "rich",
-    "comment": "Rich sherried + peated Islay profile; orange zest placed under citrus_zest though it could equally read as a marmalade-like note.",
-    "tags": [
+    "comment": "Rich sherried-Islay profile: dark fruits + peat smoke spine, with cinnamon/ginger spice and a peppery finish. Orange zest noted but no citrus_zest descriptor under sweet_fruity_mellow, so mapped via orchard/stone fruit instead.",
+    "categories": [
+      {
+        "category_slug": "rich_dried_fruits",
+        "intensity": 3,
+        "confidence": 0.95,
+        "evidence": "Prominent layers of dark fruit—such as raisins, dates, and ripe plums"
+      },
+      {
+        "category_slug": "peated",
+        "intensity": 3,
+        "confidence": 0.9,
+        "evidence": "earthy peat smoke ... classic Islay peat ... lingering smoke"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "woody cinnamon ... a hint of ginger"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "intensity": 2,
+        "confidence": 0.8,
+        "evidence": "Long, warm, and peppery"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "intensity": 2,
+        "confidence": 0.7,
+        "evidence": "Aromas of red fruits ... orange zest ... ripe plums"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "raisin",
         "confidence": 0.95,
-        "evidence": "dark fruit—such as raisins, dates, and ripe plums"
+        "evidence": "raisins"
       },
       {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "date",
         "confidence": 0.95,
-        "evidence": "raisins, dates, and ripe plums"
+        "evidence": "dates"
       },
       {
         "category_slug": "rich_dried_fruits",
@@ -2107,24 +2902,24 @@
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "walnut",
         "confidence": 0.9,
-        "evidence": "Aromas of red fruits, walnuts"
+        "evidence": "walnuts"
       },
       {
         "category_slug": "peated",
         "descriptor_slug": "bonfire_smoke",
-        "confidence": 0.85,
+        "confidence": 0.7,
         "evidence": "earthy peat smoke"
       },
       {
         "category_slug": "peated",
-        "descriptor_slug": null,
-        "confidence": 0.95,
+        "descriptor_slug": "ash",
+        "confidence": 0.5,
         "evidence": "classic Islay peat"
       },
       {
         "category_slug": "spicy_sweet",
         "descriptor_slug": "cinnamon",
-        "confidence": 0.9,
+        "confidence": 0.95,
         "evidence": "woody cinnamon"
       },
       {
@@ -2134,28 +2929,22 @@
         "evidence": "a hint of ginger"
       },
       {
-        "category_slug": "spicy_sweet",
-        "descriptor_slug": "baking_spice",
-        "confidence": 0.6,
-        "evidence": "subtle spices"
-      },
-      {
         "category_slug": "spicy_dry",
         "descriptor_slug": "black_pepper",
         "confidence": 0.85,
-        "evidence": "Long, warm, and peppery"
+        "evidence": "warm, and peppery"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "stone_fruit",
+        "confidence": 0.8,
+        "evidence": "ripe plums"
       },
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "orchard_fruit",
-        "confidence": 0.6,
-        "evidence": "ripe plums"
-      },
-      {
-        "category_slug": "young_spritely",
-        "descriptor_slug": "citrus_zest",
-        "confidence": 0.7,
-        "evidence": "orange zest"
+        "confidence": 0.5,
+        "evidence": "red fruits"
       }
     ],
     "rejected": []
@@ -2168,19 +2957,68 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Coastal smoke, sea spray, vanilla custard and orchard fruit, with a waxy cereal note. Palate: Oily and warming, peat smoke layered over honey, citrus peel, dark chocolate and brine, with sherry-cask spice building. Finish: Long, salty and smoky, with lingering cocoa, ginger and oak char.",
     "notes_quality": "rich",
-    "comment": "Rich multi-axis profile: coastal/peated core with sherry-cask dried fruit spice and bourbon-cask vanilla. Waxy note tentatively mapped to beeswax (low confidence).",
-    "tags": [
+    "categories": [
+      {
+        "category_slug": "oily_coastal",
+        "intensity": 3,
+        "confidence": 0.95,
+        "evidence": "Coastal smoke, sea spray... Oily and warming... brine... salty"
+      },
+      {
+        "category_slug": "peated",
+        "intensity": 3,
+        "confidence": 0.9,
+        "evidence": "peat smoke layered over honey... Long, salty and smoky"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "vanilla custard"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "intensity": 2,
+        "confidence": 0.8,
+        "evidence": "vanilla custard and orchard fruit... honey"
+      },
+      {
+        "category_slug": "young_spritely",
+        "intensity": 1,
+        "confidence": 0.6,
+        "evidence": "waxy cereal note"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "intensity": 2,
+        "confidence": 0.75,
+        "evidence": "dark chocolate... lingering cocoa"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "intensity": 2,
+        "confidence": 0.8,
+        "evidence": "sherry-cask spice building... ginger"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "intensity": 2,
+        "confidence": 0.75,
+        "evidence": "oak char"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "oily_coastal",
         "descriptor_slug": "sea_salt",
         "confidence": 0.9,
-        "evidence": "sea spray"
+        "evidence": "sea spray... salty"
       },
       {
         "category_slug": "oily_coastal",
         "descriptor_slug": "brine",
         "confidence": 0.95,
-        "evidence": "dark chocolate and brine"
+        "evidence": "brine"
       },
       {
         "category_slug": "oily_coastal",
@@ -2191,20 +3029,14 @@
       {
         "category_slug": "peated",
         "descriptor_slug": "bonfire_smoke",
-        "confidence": 0.85,
-        "evidence": "Coastal smoke"
-      },
-      {
-        "category_slug": "peated",
-        "descriptor_slug": "campfire",
-        "confidence": 0.8,
+        "confidence": 0.7,
         "evidence": "peat smoke layered over honey"
       },
       {
-        "category_slug": "juicy_oak_vanilla",
-        "descriptor_slug": "custard",
-        "confidence": 0.95,
-        "evidence": "vanilla custard"
+        "category_slug": "peated",
+        "descriptor_slug": "ash",
+        "confidence": 0.6,
+        "evidence": "oak char"
       },
       {
         "category_slug": "juicy_oak_vanilla",
@@ -2213,40 +3045,46 @@
         "evidence": "vanilla custard"
       },
       {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "custard",
+        "confidence": 0.95,
+        "evidence": "vanilla custard"
+      },
+      {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "orchard_fruit",
-        "confidence": 0.95,
+        "confidence": 0.9,
         "evidence": "orchard fruit"
       },
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "honey",
         "confidence": 0.9,
-        "evidence": "layered over honey"
+        "evidence": "honey"
       },
       {
         "category_slug": "young_spritely",
         "descriptor_slug": "cereal",
-        "confidence": 0.7,
+        "confidence": 0.8,
         "evidence": "waxy cereal note"
       },
       {
         "category_slug": "young_spritely",
         "descriptor_slug": "citrus_zest",
-        "confidence": 0.8,
+        "confidence": 0.85,
         "evidence": "citrus peel"
       },
       {
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "dark_chocolate",
         "confidence": 0.95,
-        "evidence": "dark chocolate and brine"
+        "evidence": "dark chocolate... lingering cocoa"
       },
       {
         "category_slug": "spicy_sweet",
         "descriptor_slug": "ginger",
-        "confidence": 0.9,
-        "evidence": "lingering cocoa, ginger and oak char"
+        "confidence": 0.95,
+        "evidence": "ginger"
       },
       {
         "category_slug": "spicy_sweet",
@@ -2261,10 +3099,10 @@
         "evidence": "oak char"
       },
       {
-        "category_slug": "old_dignified",
-        "descriptor_slug": "beeswax",
-        "confidence": 0.5,
-        "evidence": "waxy cereal note"
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "oak_tannin",
+        "confidence": 0.6,
+        "evidence": "oak char"
       }
     ],
     "rejected": []
@@ -2277,8 +3115,46 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Honeyed orchard fruit, beeswax, toasted almond, a whisper of sea salt and old oak. Palate: Rich and waxy, poached pear, candied orange peel, vanilla custard, gentle spice and dunnage earthiness. Finish: Long, drying oak, lingering citrus oils and a soft saline note.",
     "notes_quality": "rich",
-    "comment": "Confident overall; \"toasted almond\" had no clean home in taxonomy (no nutty category), so left untagged.",
-    "tags": [
+    "comment": "Confident read: waxy old-oak orchard-fruit profile with light coastal lift and drying oak finish.",
+    "categories": [
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "intensity": 3,
+        "confidence": 0.95,
+        "evidence": "Honeyed orchard fruit... poached pear... vanilla custard"
+      },
+      {
+        "category_slug": "old_dignified",
+        "intensity": 3,
+        "confidence": 0.9,
+        "evidence": "beeswax... old oak... dunnage earthiness"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "intensity": 2,
+        "confidence": 0.8,
+        "evidence": "vanilla custard"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "Long, drying oak... gentle spice"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "intensity": 1,
+        "confidence": 0.85,
+        "evidence": "a whisper of sea salt... soft saline note"
+      },
+      {
+        "category_slug": "light_delicate",
+        "intensity": 2,
+        "confidence": 0.75,
+        "evidence": "candied orange peel... lingering citrus oils"
+      }
+    ],
+    "descriptors": [
       {
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "honey",
@@ -2289,30 +3165,30 @@
         "category_slug": "sweet_fruity_mellow",
         "descriptor_slug": "orchard_fruit",
         "confidence": 0.95,
-        "evidence": "Honeyed orchard fruit"
+        "evidence": "Honeyed orchard fruit, ... poached pear"
       },
       {
         "category_slug": "sweet_fruity_mellow",
-        "descriptor_slug": "stone_fruit",
-        "confidence": 0.6,
-        "evidence": "poached pear"
+        "descriptor_slug": "vanilla",
+        "confidence": 0.9,
+        "evidence": "vanilla custard"
       },
       {
         "category_slug": "old_dignified",
         "descriptor_slug": "beeswax",
-        "confidence": 0.95,
+        "confidence": 0.98,
         "evidence": "beeswax"
       },
       {
         "category_slug": "old_dignified",
         "descriptor_slug": "polished_oak",
-        "confidence": 0.7,
+        "confidence": 0.8,
         "evidence": "old oak"
       },
       {
         "category_slug": "old_dignified",
         "descriptor_slug": "antique_wood",
-        "confidence": 0.55,
+        "confidence": 0.7,
         "evidence": "dunnage earthiness"
       },
       {
@@ -2328,46 +3204,40 @@
         "evidence": "vanilla custard"
       },
       {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "oak_tannin",
+        "confidence": 0.9,
+        "evidence": "Long, drying oak"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "dry_spice",
+        "confidence": 0.7,
+        "evidence": "gentle spice"
+      },
+      {
         "category_slug": "oily_coastal",
         "descriptor_slug": "sea_salt",
-        "confidence": 0.85,
-        "evidence": "whisper of sea salt"
+        "confidence": 0.9,
+        "evidence": "a whisper of sea salt"
       },
       {
         "category_slug": "oily_coastal",
         "descriptor_slug": "brine",
-        "confidence": 0.7,
+        "confidence": 0.8,
         "evidence": "soft saline note"
       },
       {
         "category_slug": "oily_coastal",
         "descriptor_slug": "oily_texture",
-        "confidence": 0.7,
-        "evidence": "Rich and waxy"
-      },
-      {
-        "category_slug": "spicy_sweet",
-        "descriptor_slug": "baking_spice",
-        "confidence": 0.6,
-        "evidence": "gentle spice"
-      },
-      {
-        "category_slug": "spicy_dry",
-        "descriptor_slug": "oak_tannin",
-        "confidence": 0.85,
-        "evidence": "Long, drying oak"
-      },
-      {
-        "category_slug": "young_spritely",
-        "descriptor_slug": "citrus_zest",
-        "confidence": 0.7,
-        "evidence": "candied orange peel"
+        "confidence": 0.75,
+        "evidence": "Rich and waxy... lingering citrus oils"
       },
       {
         "category_slug": "light_delicate",
         "descriptor_slug": "lemon",
-        "confidence": 0.5,
-        "evidence": "lingering citrus oils"
+        "confidence": 0.7,
+        "evidence": "candied orange peel... lingering citrus oils"
       }
     ],
     "rejected": []
@@ -2380,25 +3250,63 @@
     "bucket": "rich",
     "tasting_notes": "Nose: Peat smoke, malt loaf, orange peel and a waxy oiliness. Palate: Oily and chewy, with peat embers, dark honey, cocoa, dried fruit and a faint coastal salinity. Finish: Long, smoky and earthy, with lingering malt sweetness and bitter chocolate.",
     "notes_quality": "rich",
-    "comment": "Confident tagging — rich prose covering peat, sherry-ish dark fruit/chocolate, waxy/oily texture, coastal hint, and citrus peel. \"Malt loaf\" loosely mapped to christmas_cake (low confidence) as taxonomy has no bread/cake descriptor closer.",
-    "tags": [
+    "comment": "Confident multi-spoke profile: clear peat smoke with sherry-ish dried fruit/chocolate, malty sweetness, and an oily-coastal edge.",
+    "categories": [
       {
         "category_slug": "peated",
-        "descriptor_slug": null,
+        "intensity": 3,
         "confidence": 0.95,
+        "evidence": "Peat smoke... peat embers... Long, smoky and earthy"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "malt loaf, orange peel... dark honey... lingering malt sweetness"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "intensity": 2,
+        "confidence": 0.85,
+        "evidence": "cocoa, dried fruit... bitter chocolate"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "intensity": 2,
+        "confidence": 0.8,
+        "evidence": "waxy oiliness... Oily and chewy... faint coastal salinity"
+      }
+    ],
+    "descriptors": [
+      {
+        "category_slug": "peated",
+        "descriptor_slug": "bonfire_smoke",
+        "confidence": 0.9,
         "evidence": "Peat smoke"
       },
       {
         "category_slug": "peated",
         "descriptor_slug": "ash",
-        "confidence": 0.75,
+        "confidence": 0.8,
         "evidence": "peat embers"
       },
       {
         "category_slug": "peated",
         "descriptor_slug": "campfire",
-        "confidence": 0.6,
+        "confidence": 0.75,
         "evidence": "Long, smoky and earthy"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "honey",
+        "confidence": 0.9,
+        "evidence": "dark honey"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "orchard_fruit",
+        "confidence": 0.5,
+        "evidence": "orange peel"
       },
       {
         "category_slug": "rich_dried_fruits",
@@ -2410,43 +3318,25 @@
         "category_slug": "rich_dried_fruits",
         "descriptor_slug": "dark_chocolate",
         "confidence": 0.9,
-        "evidence": "bitter chocolate"
-      },
-      {
-        "category_slug": "rich_dried_fruits",
-        "descriptor_slug": "christmas_cake",
-        "confidence": 0.5,
-        "evidence": "malt loaf"
-      },
-      {
-        "category_slug": "sweet_fruity_mellow",
-        "descriptor_slug": "honey",
-        "confidence": 0.9,
-        "evidence": "dark honey"
-      },
-      {
-        "category_slug": "old_dignified",
-        "descriptor_slug": "beeswax",
-        "confidence": 0.6,
-        "evidence": "waxy oiliness"
+        "evidence": "cocoa... bitter chocolate"
       },
       {
         "category_slug": "oily_coastal",
         "descriptor_slug": "oily_texture",
         "confidence": 0.95,
-        "evidence": "Oily and chewy"
+        "evidence": "waxy oiliness... Oily and chewy"
       },
       {
         "category_slug": "oily_coastal",
         "descriptor_slug": "sea_salt",
-        "confidence": 0.8,
+        "confidence": 0.7,
         "evidence": "faint coastal salinity"
       },
       {
-        "category_slug": "young_spritely",
-        "descriptor_slug": "citrus_zest",
-        "confidence": 0.8,
-        "evidence": "orange peel"
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "brine",
+        "confidence": 0.6,
+        "evidence": "faint coastal salinity"
       }
     ],
     "rejected": []
@@ -2459,8 +3349,9 @@
     "bucket": "thin",
     "tasting_notes": "Ireland",
     "notes_quality": "none",
-    "comment": "Only a country of origin is given; no flavour prose to tag.",
-    "tags": [],
+    "comment": "Notes contain only a country (\"Ireland\") — no flavour information to tag.",
+    "categories": [],
+    "descriptors": [],
     "rejected": []
   },
   {
@@ -2471,8 +3362,9 @@
     "bucket": "thin",
     "tasting_notes": "Ireland",
     "notes_quality": "none",
-    "comment": "Only a country of origin is given; no flavour prose to tag.",
-    "tags": [],
+    "comment": "Notes contain only a country (\"Ireland\") — no flavour information to tag.",
+    "categories": [],
+    "descriptors": [],
     "rejected": []
   },
   {
@@ -2483,8 +3375,9 @@
     "bucket": "thin",
     "tasting_notes": "Ireland. Broken While Sorting - Lachlan and Mr Sy saw it.",
     "notes_quality": "none",
-    "comment": "No flavour prose — only a region and an operational/breakage note.",
-    "tags": [],
+    "comment": "No flavour prose — just origin and an operational breakage note.",
+    "categories": [],
+    "descriptors": [],
     "rejected": []
   },
   {
@@ -2495,8 +3388,9 @@
     "bucket": "thin",
     "tasting_notes": "Ireland",
     "notes_quality": "none",
-    "comment": "Only a region (\"Ireland\") given; no flavour prose to tag from.",
-    "tags": [],
+    "comment": "Notes contain only the country \"Ireland\" — no flavour information to tag.",
+    "categories": [],
+    "descriptors": [],
     "rejected": []
   },
   {
@@ -2507,8 +3401,9 @@
     "bucket": "thin",
     "tasting_notes": "Ireland",
     "notes_quality": "none",
-    "comment": "Only a country of origin given; no flavour prose to tag.",
-    "tags": [],
+    "comment": "Notes contain only a country (\"Ireland\") — no flavour information to tag.",
+    "categories": [],
+    "descriptors": [],
     "rejected": []
   },
   {
@@ -2519,8 +3414,9 @@
     "bucket": "thin",
     "tasting_notes": "Broken While Sorting - Lachlan and Mr Sy saw it.",
     "notes_quality": "none",
-    "comment": "Operational note only (breakage incident); no flavour prose to tag.",
-    "tags": [],
+    "comment": "Operational note only (breakage), no flavour information.",
+    "categories": [],
+    "descriptors": [],
     "rejected": []
   },
   {
@@ -2531,27 +3427,28 @@
     "bucket": "thin",
     "tasting_notes": "Sweet, Sherry, Coastal yet very rye-forwrd",
     "notes_quality": "thin",
-    "comment": "Thin notes; \"rye-forward\" has no taxonomy home so left untagged.",
-    "tags": [
+    "comment": "Very thin prose — three broad family words only, no specific descriptors. \"Rye-forward\" has no home in this whisky taxonomy so it's left untagged.",
+    "categories": [
       {
         "category_slug": "sweet_fruity_mellow",
-        "descriptor_slug": null,
+        "intensity": 2,
         "confidence": 0.7,
         "evidence": "Sweet"
       },
       {
         "category_slug": "rich_dried_fruits",
-        "descriptor_slug": null,
+        "intensity": 2,
         "confidence": 0.75,
         "evidence": "Sherry"
       },
       {
         "category_slug": "oily_coastal",
-        "descriptor_slug": null,
-        "confidence": 0.8,
+        "intensity": 2,
+        "confidence": 0.75,
         "evidence": "Coastal"
       }
     ],
+    "descriptors": [],
     "rejected": []
   },
   {
@@ -2562,8 +3459,9 @@
     "bucket": "thin",
     "tasting_notes": "China",
     "notes_quality": "none",
-    "comment": "Only a country name (\"China\") — no flavour prose to tag.",
-    "tags": [],
+    "comment": "Prose contains only a country (\"China\"); no flavour information to tag.",
+    "categories": [],
+    "descriptors": [],
     "rejected": []
   },
   {
@@ -2575,7 +3473,8 @@
     "tasting_notes": "",
     "notes_quality": "none",
     "comment": "No tasting notes provided; nothing to tag.",
-    "tags": [],
+    "categories": [],
+    "descriptors": [],
     "rejected": []
   },
   {
@@ -2587,7 +3486,8 @@
     "tasting_notes": "",
     "notes_quality": "none",
     "comment": "No tasting notes provided; nothing to tag.",
-    "tags": [],
+    "categories": [],
+    "descriptors": [],
     "rejected": []
   },
   {
@@ -2599,7 +3499,8 @@
     "tasting_notes": "",
     "notes_quality": "none",
     "comment": "No tasting notes provided; nothing to tag.",
-    "tags": [],
+    "categories": [],
+    "descriptors": [],
     "rejected": []
   },
   {
@@ -2610,8 +3511,9 @@
     "bucket": "empty",
     "tasting_notes": "",
     "notes_quality": "none",
-    "comment": "No tasting notes provided; nothing to tag.",
-    "tags": [],
+    "comment": "No tasting notes provided — empty profile is the honest answer.",
+    "categories": [],
+    "descriptors": [],
     "rejected": []
   },
   {
@@ -2623,7 +3525,8 @@
     "tasting_notes": "",
     "notes_quality": "none",
     "comment": "No tasting notes provided; nothing to tag.",
-    "tags": [],
+    "categories": [],
+    "descriptors": [],
     "rejected": []
   },
   {
@@ -2634,8 +3537,9 @@
     "bucket": "empty",
     "tasting_notes": "",
     "notes_quality": "none",
-    "comment": "No tasting notes provided; nothing to tag.",
-    "tags": [],
+    "comment": "No tasting notes provided — nothing to tag.",
+    "categories": [],
+    "descriptors": [],
     "rejected": []
   },
   {
@@ -2646,8 +3550,9 @@
     "bucket": "empty",
     "tasting_notes": "",
     "notes_quality": "none",
-    "comment": "No tasting notes provided; nothing to tag.",
-    "tags": [],
+    "comment": "No tasting notes provided — empty radar is the honest answer.",
+    "categories": [],
+    "descriptors": [],
     "rejected": []
   },
   {
@@ -2658,8 +3563,9 @@
     "bucket": "empty",
     "tasting_notes": "",
     "notes_quality": "none",
-    "comment": "No tasting notes provided; nothing to tag.",
-    "tags": [],
+    "comment": "No tasting notes provided; cannot infer flavour from name/distillery.",
+    "categories": [],
+    "descriptors": [],
     "rejected": []
   }
 ]
