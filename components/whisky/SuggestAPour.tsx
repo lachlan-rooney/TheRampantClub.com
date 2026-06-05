@@ -55,7 +55,7 @@ export default function SuggestAPour({ memberNo }: { memberNo: string }) {
   )
 }
 
-const panel: React.CSSProperties = { marginTop: 16, padding: 16, background: 'rgba(212,184,90,0.05)', border: '1px solid rgba(212,184,90,0.18)', borderRadius: 10 }
+const panel: React.CSSProperties = { marginBottom: 32, padding: 16, background: 'rgba(212,184,90,0.05)', border: '1px solid rgba(212,184,90,0.18)', borderRadius: 10 }
 const headRow: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 8 }
 const label: React.CSSProperties = { fontFamily: FAMILY, fontSize: 10, color: '#D4B85A', letterSpacing: '0.14em', textTransform: 'uppercase' }
 const btn: React.CSSProperties = { background: 'rgba(229,212,194,0.06)', color: '#D4B85A', border: '1px solid rgba(212,184,90,0.35)', borderRadius: 6, padding: '6px 12px', fontFamily: FAMILY, fontSize: 11, cursor: 'pointer' }
