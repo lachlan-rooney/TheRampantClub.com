@@ -23,7 +23,7 @@ export default function ForYouRecs() {
   if (!data || data.profileEmpty || !data.recs?.length) {
     return (
       <div style={empty}>
-        Tell us what you love — try the <a href="/members/whisky/finder" style={{ color: '#D4B85A', textDecoration: 'none' }}>Flavour Finder</a> and we&apos;ll match you a dram.
+        Tell us what you love — try the <a href="/members/whisky/finder" style={{ color: '#D4B85A', textDecoration: 'none' }}>Flavour Finder</a>{' '}and we&apos;ll match you a dram.
       </div>
     )
   }
