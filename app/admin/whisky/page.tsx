@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { useToast } from '@/components/admin/dialogs'
-import FlavourRadar from '@/components/whisky/FlavourRadar'
+import WhiskyFlavourPanel from '@/components/whisky/WhiskyFlavourPanel'
 import type { Whisky } from '@/lib/types'
 
 // Admin / Whisky Library
@@ -846,8 +846,7 @@ export default function AdminWhisky() {
                       </div>
                     </div>
                     <div style={{ marginTop: 16 }}>
-                      <div style={{ ...labelStyle, marginBottom: 6 }}>Flavour radar</div>
-                      <FlavourRadar whiskyId={w.id} />
+                      <WhiskyFlavourPanel whiskyId={w.id} whiskyName={w.name} />
                     </div>
                   </div>
                 )}
