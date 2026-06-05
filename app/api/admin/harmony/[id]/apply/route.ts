@@ -193,6 +193,20 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           updated_at: new Date().toISOString(),
         }).eq('id', candidate.id)
         if (updErr) throw new Error(updErr.message)
+        // Capture the consumption event (the consumed delta is otherwise lost) —
+        // feeds the member taste profile's consumption seam. Append-only,
+        // best-effort: never blocks or alters the locker-fill behaviour above.
+        const consumedPct = Math.max(0, candidate.fill_pct - newFill)
+        const pours = typeof payload.estimated_pours === 'number' && Number.isInteger(payload.estimated_pours) ? payload.estimated_pours : null
+        await sb.from('member_consumption').insert({
+          member_no,
+          bottle_name: candidate.bottle_name,
+          whisky_id: null,                               // locker bottles aren't FK'd to the catalogue
+          consumed_on: log.shift_date,
+          amount_pct: consumedPct,
+          estimated_pours: pours,
+          source_extraction_id: e.id,
+        }).then(({ error }) => { if (error) console.error('member_consumption capture failed (non-fatal):', error.message) })
         target_table = 'locker_contents'
         target_id = candidate.id
 

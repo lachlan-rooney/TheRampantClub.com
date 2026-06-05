@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import FormulaExplainer from '../FormulaExplainer'
 import VisitsPanel from '../VisitsPanel'
+import SuggestAPour from '@/components/whisky/SuggestAPour'
 import GiftingPanel from '../GiftingPanel'
 import ActivityTimeline from '../ActivityTimeline'
 
@@ -284,6 +285,8 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
       )}
 
       <VisitsPanel memberNo={member.member_no} onAfterChange={loadPreferences} />
+
+      <SuggestAPour memberNo={member.member_no} />
 
       <GiftingPanel memberNo={member.member_no} memberName={member.full_name} />
 
