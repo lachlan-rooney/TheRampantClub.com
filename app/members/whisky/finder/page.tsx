@@ -92,7 +92,7 @@ export default function FlavourFinderPage() {
                         <span style={{ ...sw, background: RADAR_GOLD }} /><span style={legTxt}>What you set</span>
                         <span style={{ ...sw, background: RADAR_SAGE, marginLeft: 14 }} /><span style={legTxt}>This whisky</span>
                       </div>
-                      <Link href="/members/whisky" style={libLink}>See it in the library →</Link>
+                      <Link href={`/members/whisky?focus=${m.id}`} style={libLink}>See it in the library →</Link>
                     </div>
                   ))}
                 </div>
