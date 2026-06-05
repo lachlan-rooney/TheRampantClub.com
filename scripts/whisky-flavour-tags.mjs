@@ -25,7 +25,7 @@
 //   node scripts/whisky-flavour-tags.mjs tag
 
 import Anthropic from '@anthropic-ai/sdk'
-import { writeFileSync } from 'node:fs'
+import { writeFileSync, readFileSync, existsSync } from 'node:fs'
 
 const MODEL = 'claude-opus-4-7'  // matches the MIS extraction model
 
@@ -42,7 +42,7 @@ export const TAXONOMY = [
     descriptors: ['cinnamon', 'ginger', 'nutmeg', 'baking_spice', 'clove', 'honeyed_spice'] },
   { slug: 'spicy_dry', name: 'Spicy & Dry', order: 4,
     desc: 'Drying oak spice, pepper, tannin, tobacco/leather.',
-    descriptors: ['black_pepper', 'oak_tannin', 'dry_spice', 'tobacco', 'leather', 'char'] },
+    descriptors: ['black_pepper', 'oak_tannin', 'dry_spice', 'tobacco', 'leather', 'char', 'clove'] },
   { slug: 'rich_dried_fruits', name: 'Deep, Rich & Dried Fruits', order: 5,
     desc: 'Classic sherry cask: raisin, fig, dark chocolate, christmas cake.',
     descriptors: ['raisin', 'fig', 'date', 'dark_chocolate', 'christmas_cake', 'walnut', 'dried_fruit'] },
@@ -67,6 +67,9 @@ export const TAXONOMY = [
   { slug: 'heavily_peated', name: 'Heavily Peated', order: 12,
     desc: 'Intense, medicinal peat: iodine, TCP, creosote, kippers.',
     descriptors: ['medicinal', 'iodine', 'tcp', 'creosote', 'intense_smoke', 'kippers'] },
+  { slug: 'grain_rye', name: 'Grain & Rye', order: 13,
+    desc: 'Grain-whisky and rye character: rye spice, corn, cereal sweetness, raw wood.',
+    descriptors: ['rye_spice', 'corn', 'grain', 'sawdust', 'cereal_sweetness'] },
 ]
 
 const CAT_BY_SLUG = Object.fromEntries(TAXONOMY.map(c => [c.slug, c]))
@@ -320,55 +323,143 @@ async function runTagging() {
     }
     if (!out) { console.log(`  ✗ ${w.name.slice(0,40)} — ${err}`); results.push({ id: w.id, name: w.name, region: w.region, age: w.age, bucket: w.bucket, tasting_notes: w.tasting_notes || '', error: err, categories: [], descriptors: [] }); continue }
 
-    // validate against the controlled vocabulary
-    const cats = [], descs = [], rejected = []
-    for (const c of (out.categories || [])) {
-      if (!CAT_BY_SLUG[c.category_slug]) { rejected.push({ kind: 'category', ...c, why: 'unknown category' }); continue }
-      const intensity = Math.max(1, Math.min(4, Math.round(c.intensity)))
-      cats.push({ category_slug: c.category_slug, intensity,
-                  confidence: clamp01(c.confidence), evidence: c.evidence })
-    }
-    const catSet = new Set(cats.map(c => c.category_slug))
-    for (const d of (out.descriptors || [])) {
-      const cat = CAT_BY_SLUG[d.category_slug]
-      if (!cat) { rejected.push({ kind: 'descriptor', ...d, why: 'unknown category' }); continue }
-      if (!cat.descriptors.includes(d.descriptor_slug)) { rejected.push({ kind: 'descriptor', ...d, why: 'descriptor not in category' }); continue }
-      descs.push({ category_slug: d.category_slug, descriptor_slug: d.descriptor_slug,
-                   confidence: clamp01(d.confidence), evidence: d.evidence })
-    }
+    const v = validate(out, w)
+    for (const d of v.descriptors) d.disposition = disposition(d.confidence)
     results.push({ id: w.id, name: w.name, region: w.region, age: w.age, bucket: w.bucket,
                    tasting_notes: w.tasting_notes || '', notes_quality: out.notes_quality,
-                   comment: out.comment, categories: cats, descriptors: descs, rejected })
-    console.log(`  ✓ ${w.bucket.padEnd(5)} ${w.name.slice(0,40).padEnd(40)} → ${cats.length} cats / ${descs.length} desc (${out.notes_quality})`)
+                   comment: out.comment, ...v })
+    console.log(`  ✓ ${w.bucket.padEnd(5)} ${w.name.slice(0,40).padEnd(40)} → ${v.categories.length} cats / ${v.descriptors.length} desc (${out.notes_quality})`)
   }
 
   writeFileSync('data/whisky_flavour_calibration.json', JSON.stringify(results, null, 2) + '\n')
-  writeCalibrationSql(results)
+  writeTagsSql(results, 'db/whisky_flavour_calibration_tags.sql', false)
   writeReport(results)
   console.log('\nwrote data/whisky_flavour_calibration.json, db/whisky_flavour_calibration_tags.sql, docs/whisky_flavour_calibration_report.md')
 }
 
 const clamp01 = n => Math.round(Math.max(0, Math.min(1, Number(n) || 0)) * 100) / 100
+const sleep = ms => new Promise(r => setTimeout(r, ms))
 
-function writeCalibrationSql(results) {
+// Validate a model response against the controlled vocabulary.
+function validate(out, w) {
+  const cats = [], descs = [], rejected = []
+  for (const c of (out.categories || [])) {
+    if (!CAT_BY_SLUG[c.category_slug]) { rejected.push({ kind: 'category', ...c, why: 'unknown category' }); continue }
+    cats.push({ category_slug: c.category_slug, intensity: Math.max(1, Math.min(4, Math.round(c.intensity))),
+                confidence: clamp01(c.confidence), evidence: c.evidence })
+  }
+  for (const d of (out.descriptors || [])) {
+    const cat = CAT_BY_SLUG[d.category_slug]
+    if (!cat) { rejected.push({ kind: 'descriptor', ...d, why: 'unknown category' }); continue }
+    if (!cat.descriptors.includes(d.descriptor_slug)) { rejected.push({ kind: 'descriptor', ...d, why: 'descriptor not in category' }); continue }
+    descs.push({ category_slug: d.category_slug, descriptor_slug: d.descriptor_slug, confidence: clamp01(d.confidence), evidence: d.evidence })
+  }
+  return { categories: cats, descriptors: descs, rejected }
+}
+
+// Phase-1 density/trust rule (DESCRIPTORS only):
+//   ≥0.70 → trusted (confirmed=true)   0.60-0.70 → review queue (confirmed=false)   <0.60 → dropped
+function disposition(conf) { return conf >= 0.7 ? 'trusted' : conf >= 0.6 ? 'review' : 'dropped' }
+
+// Generic SQL writer. density=false (calibration) → everything confirmed=false,
+// nothing dropped. density=true (full run) → intensities confirmed=true; dropped
+// descriptors skipped; trusted descriptors confirmed=true; review left false.
+function writeTagsSql(results, path, density) {
   const L = []
   let ni = 0, nt = 0
   for (const r of results) {
-    if (!r.categories?.length && !r.descriptors?.length) continue
+    const keep = (r.descriptors || []).filter(d => !density || disposition(d.confidence) !== 'dropped')
+    if (!r.categories?.length && !keep.length) continue
     L.push(`-- ${r.name.replace(/\n/g, ' ')}  [${r.bucket}]`)
     for (const c of (r.categories || [])) {
-      L.push(`insert into whisky_flavour_intensities (whisky_id, category_slug, intensity, confidence, source, model, evidence, confirmed) values (${sqlStr(r.id)}, ${sqlStr(c.category_slug)}, ${c.intensity}, ${c.confidence}, 'llm', ${sqlStr(MODEL)}, ${sqlStr((c.evidence||'').slice(0,300))}, false)\n  on conflict (whisky_id, category_slug) do nothing;`)
+      const confirmed = density ? 'true' : 'false'
+      L.push(`insert into whisky_flavour_intensities (whisky_id, category_slug, intensity, confidence, source, model, evidence, confirmed) values (${sqlStr(r.id)}, ${sqlStr(c.category_slug)}, ${c.intensity}, ${c.confidence}, 'llm', ${sqlStr(MODEL)}, ${sqlStr((c.evidence||'').slice(0,300))}, ${confirmed})\n  on conflict (whisky_id, category_slug) do update set intensity = excluded.intensity, confidence = excluded.confidence, evidence = excluded.evidence, confirmed = excluded.confirmed;`)
       ni++
     }
-    for (const d of (r.descriptors || [])) {
-      L.push(`insert into whisky_flavour_tags (whisky_id, category_slug, descriptor_slug, confidence, source, model, evidence, confirmed) values (${sqlStr(r.id)}, ${sqlStr(d.category_slug)}, ${sqlStr(d.descriptor_slug + '__' + d.category_slug)}, ${d.confidence}, 'llm', ${sqlStr(MODEL)}, ${sqlStr((d.evidence||'').slice(0,300))}, false)\n  on conflict (whisky_id, category_slug, descriptor_slug) do nothing;`)
+    for (const d of keep) {
+      const confirmed = density ? (disposition(d.confidence) === 'trusted' ? 'true' : 'false') : 'false'
+      L.push(`insert into whisky_flavour_tags (whisky_id, category_slug, descriptor_slug, confidence, source, model, evidence, confirmed) values (${sqlStr(r.id)}, ${sqlStr(d.category_slug)}, ${sqlStr(d.descriptor_slug + '__' + d.category_slug)}, ${d.confidence}, 'llm', ${sqlStr(MODEL)}, ${sqlStr((d.evidence||'').slice(0,300))}, ${confirmed})\n  on conflict (whisky_id, category_slug, descriptor_slug) do update set confidence = excluded.confidence, evidence = excluded.evidence, confirmed = excluded.confirmed;`)
       nt++
     }
   }
-  L.unshift(`-- ${ni} intensities (radar spokes) + ${nt} descriptor tags across ${results.filter(r=>r.categories?.length||r.descriptors?.length).length} bottles.`)
-  L.unshift(`-- Calibration-batch flavour data (Phase 0) — confirmed=false, nothing auto-trusted.
+  const tag = density ? 'FULL run (Phase 1)' : 'Calibration (Phase 0)'
+  L.unshift(`-- ${ni} intensity spokes + ${nt} descriptor tags across ${results.filter(r=>r.categories?.length||r.descriptors?.length).length} bottles.`)
+  L.unshift(`-- ${tag} flavour data. ${density ? 'Density rule applied: <0.6 dropped; ≥0.7 confirmed=true (trusted); 0.6-0.7 confirmed=false (review queue). Intensity spokes confirmed=true.' : 'Nothing auto-trusted (confirmed=false).'}
 -- GENERATED by scripts/whisky-flavour-tags.mjs. Run db/whisky_flavour_tags.sql FIRST.`)
-  writeFileSync('db/whisky_flavour_calibration_tags.sql', L.join('\n') + '\n')
+  writeFileSync(path, L.join('\n') + '\n')
+}
+
+// Bounded-concurrency map.
+async function pool(items, n, fn) {
+  const out = new Array(items.length)
+  let i = 0
+  const worker = async () => { while (i < items.length) { const idx = i++; out[idx] = await fn(items[idx], idx) } }
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, worker))
+  return out
+}
+
+// FULL RUN — tag every bottle, apply the density/trust rule on write.
+async function runAll() {
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set')
+  if (!SB_URL || !SB_KEY) throw new Error('Supabase env not set')
+  const anthropic = new Anthropic({ apiKey })
+  const all = await sb('whiskies?select=id,name,region,age,tasting_notes&order=name')
+  const len = w => (w.tasting_notes || '').trim().length
+  const bucketOf = w => len(w) >= 180 ? 'rich' : len(w) > 0 ? 'thin' : 'empty'
+
+  // RESUME: reuse any prior successful (error-free) tag so a re-run after a
+  // quota reset only spends API on the bottles still missing.
+  const prior = existsSync('data/whisky_flavour_full.json')
+    ? JSON.parse(readFileSync('data/whisky_flavour_full.json', 'utf8')) : []
+  const doneById = new Map(prior.filter(r => !r.error).map(r => [r.id, r]))
+  const todo = all.filter(w => !doneById.has(w.id))
+  console.log(`full run: ${all.length} bottles — ${doneById.size} already done, ${todo.length} to tag (concurrency 6)`)
+
+  let done = 0
+  const fresh = await pool(todo, 6, async (w) => {
+    let out, err = null
+    for (let a = 0; a < 3 && !out; a++) {
+      try { out = await tagOne(anthropic, w) }
+      catch (e) { err = e.message; if (/usage limit/i.test(err)) return { id: w.id, name: w.name, region: w.region, age: w.age, bucket: bucketOf(w), tasting_notes: w.tasting_notes || '', error: err, categories: [], descriptors: [] }; await sleep(1200) }
+    }
+    const bucket = bucketOf(w)
+    done++; if (done % 25 === 0) console.log(`  …${done}/${todo.length}`)
+    if (!out) return { id: w.id, name: w.name, region: w.region, age: w.age, bucket, tasting_notes: w.tasting_notes || '', error: err, categories: [], descriptors: [] }
+    const v = validate(out, w)
+    for (const d of v.descriptors) d.disposition = disposition(d.confidence)
+    return { id: w.id, name: w.name, region: w.region, age: w.age, bucket, tasting_notes: w.tasting_notes || '', notes_quality: out.notes_quality, comment: out.comment, ...v }
+  })
+  // merge prior-done + fresh, in catalogue order
+  const merged = new Map([...doneById, ...fresh.map(r => [r.id, r])])
+  const results = all.map(w => merged.get(w.id)).filter(Boolean)
+  writeFileSync('data/whisky_flavour_full.json', JSON.stringify(results, null, 2) + '\n')
+  writeTagsSql(results, 'db/whisky_flavour_full_tags.sql', true)
+  printVerify(results)
+}
+
+// Part-A honesty gate — stats + no-hallucination spot-check, to stdout.
+function printVerify(results) {
+  const by = b => results.filter(r => r.bucket === b)
+  const errs = results.filter(r => r.error)
+  const allCats = results.flatMap(r => r.categories || [])
+  const allDesc = results.flatMap(r => r.descriptors || [])
+  const disp = { trusted: 0, review: 0, dropped: 0 }
+  allDesc.forEach(d => disp[disposition(d.confidence)]++)
+  const intHist = [0,0,0,0,0]; allCats.forEach(c => intHist[c.intensity]++)
+  // VIOLATIONS: empty/thin bottles that got any spoke
+  const halluc = results.filter(r => r.bucket !== 'rich' && (r.categories?.length))
+  const grainHits = results.filter(r => (r.categories||[]).some(c => c.category_slug === 'grain_rye'))
+  const P = console.log
+  P(`\n──────── PART A — full-run verification ────────`)
+  P(`bottles: ${results.length}  (rich ${by('rich').length} / thin ${by('thin').length} / empty ${by('empty').length})  errors ${errs.length}`)
+  P(`rich tagged: ${by('rich').filter(r=>r.categories?.length).length}/${by('rich').length}`)
+  P(`thin tagged: ${by('thin').filter(r=>r.categories?.length).length}/${by('thin').length}   empty tagged: ${by('empty').filter(r=>r.categories?.length).length}/${by('empty').length}  (both should be ~0)`)
+  P(`spokes: ${allCats.length}   intensity 1/2/3/4 = ${intHist[1]}/${intHist[2]}/${intHist[3]}/${intHist[4]}`)
+  P(`descriptors (pre-trim): ${allDesc.length}  → trusted(≥0.7) ${disp.trusted} / review(0.6-0.7) ${disp.review} / dropped(<0.6) ${disp.dropped}`)
+  P(`HALLUCINATION CHECK — empty/thin bottles with spokes: ${halluc.length}${halluc.length?'  ⚠ '+halluc.map(h=>h.name.slice(0,30)).join(', '):'  ✓'}`)
+  P(`GRAIN & RYE hits: ${grainHits.length} bottles — ${grainHits.slice(0,12).map(g=>g.name.slice(0,28)).join(' · ')}`)
+  if (errs.length) P(`ERRORS: ${errs.map(e=>e.name.slice(0,30)+' ('+e.error+')').join(' | ')}`)
 }
 
 // Compact radar print: 12 spokes, intensity 0-4 as a bar.
@@ -435,4 +526,5 @@ function writeReport(results) {
 const cmd = process.argv[2]
 if (cmd === 'emit-sql') emitSchemaAndSeed()
 else if (cmd === 'tag') runTagging().catch(e => { console.error(e); process.exit(1) })
-else { console.error('usage: node scripts/whisky-flavour-tags.mjs [emit-sql|tag]'); process.exit(1) }
+else if (cmd === 'tag-all') runAll().catch(e => { console.error(e); process.exit(1) })
+else { console.error('usage: node scripts/whisky-flavour-tags.mjs [emit-sql|tag|tag-all]'); process.exit(1) }
