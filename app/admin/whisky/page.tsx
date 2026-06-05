@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { useToast } from '@/components/admin/dialogs'
+import FlavourRadar from '@/components/whisky/FlavourRadar'
 import type { Whisky } from '@/lib/types'
 
 // Admin / Whisky Library
@@ -561,9 +562,12 @@ export default function AdminWhisky() {
       ` }} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <h1 style={pageTitle}>Whisky Library</h1>
-        {!showForm && (
-          <button onClick={() => { resetForm(); setShowForm(true) }} style={btnStyle}>+ New Whisky</button>
-        )}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <a href="/admin/whisky/flavour-review" style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#D4B85A', textDecoration: 'none', border: '1px solid rgba(212,184,90,0.35)', borderRadius: 6, padding: '7px 12px' }}>Flavour review →</a>
+          {!showForm && (
+            <button onClick={() => { resetForm(); setShowForm(true) }} style={btnStyle}>+ New Whisky</button>
+          )}
+        </div>
       </div>
 
       <div style={subline}>
@@ -840,6 +844,10 @@ export default function AdminWhisky() {
                               ? null
                               : 'No tasting notes recorded yet — type to add'}
                       </div>
+                    </div>
+                    <div style={{ marginTop: 16 }}>
+                      <div style={{ ...labelStyle, marginBottom: 6 }}>Flavour radar</div>
+                      <FlavourRadar whiskyId={w.id} />
                     </div>
                   </div>
                 )}
