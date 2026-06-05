@@ -11,12 +11,31 @@ export default function WhiskyPage() {
   const [whiskies, setWhiskies] = useState<Whisky[]>([])
   const [filter, setFilter] = useState('All')
   const [loading, setLoading] = useState(true)
+  const [focusId, setFocusId] = useState<string | null>(null)
+  const [highlightId, setHighlightId] = useState<string | null>(null)
 
   useEffect(() => {
     const supabase = createBrowserSupabaseClient()
     supabase.from('whiskies').select('*').order('committees_pick', { ascending: false }).order('name')
       .then(({ data }) => { if (data) setWhiskies(data); setLoading(false) })
+    setFocusId(new URLSearchParams(window.location.search).get('focus'))
   }, [])
+
+  // Deep-link from the Finder (?focus=<id>) → reveal (clear any region/stock
+  // filter that would hide it), scroll to it, brief highlight. Works for an
+  // out-of-stock match too (switches to "Past Drams" so the row isn't hidden).
+  useEffect(() => {
+    if (!focusId || loading) return
+    const w = whiskies.find(x => x.id === focusId)
+    if (!w) return
+    setFilter(w.in_stock ? 'All' : 'Past Drams')
+    const t = setTimeout(() => {
+      document.getElementById(`w-${focusId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setHighlightId(focusId)
+      setTimeout(() => setHighlightId(null), 2400)
+    }, 150)
+    return () => clearTimeout(t)
+  }, [focusId, loading, whiskies])
 
   const inStock = whiskies.filter(w => w.in_stock)
   const pastWhiskies = whiskies.filter(w => !w.in_stock)
@@ -68,7 +87,11 @@ export default function WhiskyPage() {
           <p style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: '#B2AA98', textAlign: 'center', fontStyle: 'italic' }}>No whiskies in this region</p>
         ) : (
           filtered.map(w => (
-            <div key={w.id} style={{ padding: '24px 0', borderBottom: '1px solid rgba(229,212,194,0.1)', opacity: w.in_stock ? 1 : 0.4 }}>
+            <div key={w.id} id={`w-${w.id}`} style={{
+              padding: '24px 0', borderBottom: '1px solid rgba(229,212,194,0.1)', opacity: w.in_stock ? 1 : 0.4,
+              ...(highlightId === w.id ? { background: 'rgba(212,184,90,0.10)', boxShadow: 'inset 0 0 0 1px rgba(212,184,90,0.4)', borderRadius: 8 } : {}),
+              transition: 'background 0.6s ease, box-shadow 0.6s ease', scrollMarginTop: 90,
+            }}>
               <div style={{
                 fontFamily: "'Rampant Sans', serif", fontSize: 16, fontWeight: 600,
                 color: '#E5D4C2', marginBottom: 4,
