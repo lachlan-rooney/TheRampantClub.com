@@ -438,6 +438,53 @@ async function runAll() {
   printVerify(results)
 }
 
+// LOAD — push the verified full-run tags into the DB via PostgREST (upsert),
+// applying the density rule. Reads data/whisky_flavour_full.json.
+async function sbWrite(table, conflict, rows) {
+  for (let i = 0; i < rows.length; i += 500) {
+    const chunk = rows.slice(i, i + 500)
+    const r = await fetch(`${SB_URL}/rest/v1/${table}?on_conflict=${conflict}`, {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json',
+                 Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(chunk),
+    })
+    if (!r.ok) throw new Error(`${table} ${r.status}: ${await r.text()}`)
+  }
+}
+
+async function runLoad() {
+  if (!SB_URL || !SB_KEY) throw new Error('Supabase env not set')
+  const results = JSON.parse(readFileSync('data/whisky_flavour_full.json', 'utf8'))
+  const intensities = [], tags = []
+  for (const r of results) {
+    if (r.error) continue
+    for (const c of (r.categories || [])) {
+      intensities.push({ whisky_id: r.id, category_slug: c.category_slug, intensity: c.intensity,
+        confidence: c.confidence, source: 'llm', model: MODEL, evidence: (c.evidence||'').slice(0,300), confirmed: true })
+    }
+    for (const d of (r.descriptors || [])) {
+      if (disposition(d.confidence) === 'dropped') continue
+      tags.push({ whisky_id: r.id, category_slug: d.category_slug, descriptor_slug: d.descriptor_slug + '__' + d.category_slug,
+        confidence: d.confidence, source: 'llm', model: MODEL, evidence: (d.evidence||'').slice(0,300),
+        confirmed: disposition(d.confidence) === 'trusted' })
+    }
+  }
+  // Dedupe by the conflict key (model can emit a descriptor twice with two
+  // evidence phrases) — keep the highest-confidence instance.
+  const dedupe = (rows, keyFn) => {
+    const m = new Map()
+    for (const r of rows) { const k = keyFn(r); const p = m.get(k); if (!p || r.confidence > p.confidence) m.set(k, r) }
+    return [...m.values()]
+  }
+  const ints = dedupe(intensities, r => `${r.whisky_id}|${r.category_slug}`)
+  const tgs  = dedupe(tags, r => `${r.whisky_id}|${r.category_slug}|${r.descriptor_slug}`)
+  console.log(`loading ${ints.length} intensity spokes + ${tgs.length} descriptor tags (deduped from ${intensities.length}/${tags.length})…`)
+  await sbWrite('whisky_flavour_intensities', 'whisky_id,category_slug', ints)
+  await sbWrite('whisky_flavour_tags', 'whisky_id,category_slug,descriptor_slug', tgs)
+  console.log('done.')
+}
+
 // Part-A honesty gate — stats + no-hallucination spot-check, to stdout.
 function printVerify(results) {
   const by = b => results.filter(r => r.bucket === b)
@@ -527,4 +574,5 @@ const cmd = process.argv[2]
 if (cmd === 'emit-sql') emitSchemaAndSeed()
 else if (cmd === 'tag') runTagging().catch(e => { console.error(e); process.exit(1) })
 else if (cmd === 'tag-all') runAll().catch(e => { console.error(e); process.exit(1) })
-else { console.error('usage: node scripts/whisky-flavour-tags.mjs [emit-sql|tag|tag-all]'); process.exit(1) }
+else if (cmd === 'load') runLoad().catch(e => { console.error(e); process.exit(1) })
+else { console.error('usage: node scripts/whisky-flavour-tags.mjs [emit-sql|tag|tag-all|load]'); process.exit(1) }
