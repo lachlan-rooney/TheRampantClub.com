@@ -12,7 +12,7 @@
   {
     "id": "01570c6e-8844-470d-ae4a-832326b86a11",
     "before": "AUCHROISK - SINGLE MALT - SCOTCH WHISKY",
-    "proposed": "Auchroisk"
+    "proposed": "Auchroisk - Single Malt - Scotch Whisky"
   },
   {
     "id": "4f0161d4-9812-4d14-8925-60dd49661676",
@@ -22,7 +22,7 @@
   {
     "id": "3985254b-90e8-470e-bea6-6673b85bf242",
     "before": "CRAGGANMORE - DISTILLERS EDITION - DOUBLE MATURED IN PORT",
-    "proposed": "Cragganmore - Distillers Edition - Double Matured In Port"
+    "proposed": "Cragganmore - Distillers Edition - Double Matured in Port"
   },
   {
     "id": "ba49f02f-8a72-4067-8963-6caf567d16dc",
@@ -42,12 +42,12 @@
   {
     "id": "336d7f70-a7f1-4920-91f1-08d1f0b5c4cc",
     "before": "GLENFIDDICH - SINGLE MALT - SCOTCH WHISKY - VAT 03",
-    "proposed": "Glenfiddich - Vat 03"
+    "proposed": "Glenfiddich - Single Malt - Scotch Whisky - VAT 03"
   },
   {
     "id": "42e9d8a6-dc22-4c5c-a094-3ed4bf0c477a",
     "before": "HELLYERS ROAD - PEATED 7Y TASMANIAN SINGLE MATL",
-    "proposed": "Hellyers Road - Peated 7Y Tasmanian Single Matl"
+    "proposed": "Hellyers Road - Peated 7Y Tasmanian Single Malt"
   },
   {
     "id": "2bd27e85-e76c-49e4-906b-5e4db7d8a786",
@@ -77,17 +77,17 @@
   {
     "id": "96c92452-3cbd-4c62-bc97-dedf7f56caa4",
     "before": "IMPERIOUS WHISKY RESERVE - STATHCLYDE",
-    "proposed": "Imperious Whisky Reserve - Stathclyde"
+    "proposed": "Imperious Whisky Reserve - Strathclyde"
   },
   {
     "id": "64ae1406-412b-40ab-ae18-82a3c5b92244",
     "before": "IMPERIOUS WHISKY RESERVE ABERLOUR",
-    "proposed": "Imperious Whisky Reserve Aberlour"
+    "proposed": "Imperious Whisky Reserve - Aberlour"
   },
   {
     "id": "f56bbd3b-4a74-4ee8-a1c9-5b5b53c7de94",
     "before": "J&A MITCHELL - SPRINGBANK",
-    "proposed": "J&a Mitchell - Springbank"
+    "proposed": "J&A Mitchell - Springbank"
   },
   {
     "id": "2f5cbdb8-01b7-426b-b58c-3b6350b0e726",
@@ -117,12 +117,12 @@
   {
     "id": "e2dc281b-5a04-4a94-be48-f98669f914af",
     "before": "SPRINGBANK - BRITISH RED CROSS UKRAINE APPECK",
-    "proposed": "Springbank - British Red Cross Ukraine Appeck"
+    "proposed": "Springbank - British Red Cross Ukraine Appeal"
   },
   {
     "id": "bd471378-cee3-450e-9ab4-7f81059733d7",
     "before": "TEANINICH - 12YO - SINGLE MATL SCOTCH WHISKY",
-    "proposed": "Teaninich - 12YO - Single Matl Scotch Whisky"
+    "proposed": "Teaninich - 12YO - Single Malt Scotch Whisky"
   },
   {
     "id": "360841ad-b24e-4ef7-acd8-72092f050c22",
@@ -152,6 +152,6 @@
   {
     "id": "074b2cb6-2dd2-4e1c-976f-b350cd701210",
     "before": "W.L.WELLER FULL PROOF KENTUCKY - STRAIGHT BOURBON",
-    "proposed": "W.l.weller Full Proof Kentucky - Straight Bourbon"
+    "proposed": "W.L. Weller Full Proof Kentucky - Straight Bourbon"
   }
 ]
