@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { Whisky } from '@/lib/types'
 import BottleTile from './BottleTile'
 import WhiskyRow from './WhiskyRow'
@@ -24,6 +25,18 @@ export function letterOf(w: Whisky): string {
 
 export default function AlphabetShelf({ whiskies }: { whiskies: Whisky[] }) {
   const [openLetter, setOpenLetter] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
+  // While the modal is open: scroll-lock the background + Esc closes.
+  useEffect(() => {
+    if (!openLetter) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpenLetter(null) }
+    document.addEventListener('keydown', onKey)
+    return () => { document.body.style.overflow = prev; document.removeEventListener('keydown', onKey) }
+  }, [openLetter])
 
   const byLetter = useMemo(() => {
     const m: Record<string, Whisky[]> = {}
@@ -54,7 +67,10 @@ export default function AlphabetShelf({ whiskies }: { whiskies: Whisky[] }) {
         ))}
       </div>
 
-      {openLetter && (
+      {openLetter && mounted && createPortal(
+        // Portal to <body> so position:fixed is viewport-relative, NOT trapped by
+        // MemberPage's transformed wrapper (which made the modal open off-screen
+        // + the backdrop miss clicks). Backdrop click + Esc both dismiss.
         <div className="shelf-back" onClick={() => setOpenLetter(null)}>
           <div className="shelf-modal" onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
@@ -74,7 +90,8 @@ export default function AlphabetShelf({ whiskies }: { whiskies: Whisky[] }) {
               <div>{list.map(w => <WhiskyRow key={w.id} w={w} />)}</div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
