@@ -7,6 +7,7 @@ import type { Whisky } from '@/lib/types'
 import MemberPage from '@/components/MemberPage'
 import NavOverlay from '@/components/NavOverlay'
 import ForYouRecs from '@/components/whisky/ForYouRecs'
+import FlavourRadar from '@/components/whisky/FlavourRadar'
 
 export default function WhiskyPage() {
   const [whiskies, setWhiskies] = useState<Whisky[]>([])
@@ -14,6 +15,12 @@ export default function WhiskyPage() {
   const [loading, setLoading] = useState(true)
   const [focusId, setFocusId] = useState<string | null>(null)
   const [highlightId, setHighlightId] = useState<string | null>(null)
+  // Tap-to-reveal the flavour radar per bottle — lazy, so only the bottles a
+  // member opens fetch their spokes (not all 105 mapped at once).
+  const [openRadar, setOpenRadar] = useState<Set<string>>(new Set())
+  const toggleRadar = (id: string) => setOpenRadar(s => {
+    const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n
+  })
 
   useEffect(() => {
     const supabase = createBrowserSupabaseClient()
@@ -114,6 +121,23 @@ export default function WhiskyPage() {
                 }}>
                   {w.tasting_notes}
                 </p>
+              )}
+              <button
+                onClick={() => toggleRadar(w.id)}
+                aria-expanded={openRadar.has(w.id)}
+                style={{
+                  marginTop: 12, background: 'transparent', cursor: 'pointer',
+                  border: '1px solid rgba(212,184,90,0.3)', borderRadius: 20, padding: '5px 14px',
+                  fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10,
+                  letterSpacing: '0.06em', color: '#D4B85A',
+                }}
+              >
+                {openRadar.has(w.id) ? '↑ Hide flavour profile' : '↓ Flavour profile'}
+              </button>
+              {openRadar.has(w.id) && (
+                <div style={{ marginTop: 14 }}>
+                  <FlavourRadar whiskyId={w.id} />
+                </div>
               )}
             </div>
           ))
