@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import type { Whisky } from '@/lib/types'
 import MemberPage from '@/components/MemberPage'
@@ -35,6 +36,13 @@ export default function WhiskyPage() {
         icon="/images/whisky-glass-icon-opt.png"
         description={`${whiskies.length} bottle${whiskies.length === 1 ? '' : 's'} and counting`}
       >
+        <Link href="/members/whisky/finder" style={{
+          display: 'block', textAlign: 'center', marginBottom: 24, textDecoration: 'none',
+          fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, letterSpacing: '0.04em',
+          color: '#D4B85A', border: '1px solid rgba(212,184,90,0.35)', borderRadius: 24, padding: '11px 20px',
+        }}>
+          ◆ Find your dram — match by flavour →
+        </Link>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 32, justifyContent: 'center' }}>
           {regions.map(r => (
             <button
