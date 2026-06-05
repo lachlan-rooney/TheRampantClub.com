@@ -1,8 +1,33 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, Fragment } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
+
+// Member nav, grouped (Explore / You / House). YOU holds just My Membership today
+// but is structured to grow — the personal pages (Your Taste / Visits / Gifts)
+// slot in here post-Phase-0 with no restructure. Whisky Library + Flavour Finder
+// are top-level Explore items (one tap — no more Places→Menus→4th-floor).
+const MEMBER_GROUPS: { label: string; links: { href: string; en: string; vn: string }[] }[] = [
+  { label: 'Explore', links: [
+    { href: '/members/whisky',        en: 'Whisky Library',        vn: 'Thư Viện Whisky' },
+    { href: '/members/whisky/finder', en: 'Flavour Finder',        vn: 'Tìm Ly Của Bạn' },
+    { href: '/members/spaces',        en: 'Our Spaces',            vn: 'Không gian' },
+    { href: '/members/events',        en: 'Events',                vn: 'Sự kiện' },
+    { href: '/members/fixtures',      en: 'Sports Fixtures',       vn: 'Lịch Thi Đấu' },
+    { href: '/members/journal',       en: "Cellarmaster's Journal", vn: 'Nhật Ký Cellarmaster' },
+  ] },
+  { label: 'You', links: [
+    { href: '/members/profile',       en: 'My Membership',         vn: 'Tư Cách Thành Viên' },
+  ] },
+  { label: 'House', links: [
+    { href: '/menus',                 en: 'The Menus',             vn: 'Thực Đơn' },
+    { href: '/members/notices',       en: 'Notice Board',          vn: 'Bảng Tin' },
+    { href: '/members/rules',         en: 'House Rules',           vn: 'Nội Quy' },
+    { href: '/members/terms',         en: 'Terms',                 vn: 'Điều Khoản' },
+    { href: '/members/contact',       en: 'Contact',               vn: 'Liên hệ' },
+  ] },
+]
 
 interface NavOverlayProps {
   variant: 'public' | 'members'
@@ -185,6 +210,17 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
           margin-top: 1px;
         }
 
+        .nav-group-label {
+          font-family: 'Google Sans Code', monospace;
+          font-size: 9px;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          color: #5E6650;
+          opacity: 0.7;
+          margin-top: 12px;
+          margin-bottom: -2px;
+        }
+
         .nav-signout {
           font-family: 'Google Sans Code', monospace;
           font-size: 10px;
@@ -229,6 +265,7 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
         .nav-dark .nav-diamond { background: #E5D4C2; }
         .nav-dark .nav-link-en { color: #E5D4C2; }
         .nav-dark .nav-link-vn { color: #B2AA98; }
+        .nav-dark .nav-group-label { color: #D4B85A; opacity: 0.6; }
         .nav-dark .nav-signout { color: #B2AA98; }
         .nav-dark .nav-admin-link { color: #B2AA98; }
         .nav-dark .nav-logo {
@@ -313,23 +350,18 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
               <div className="nav-link-en">Home</div>
               <div className="nav-link-vn">Trang chủ</div>
             </Link>
-            <Link href="/members/events" className="nav-link" onClick={() => setOpen(false)}>
-              <div className="nav-link-en">Events</div>
-              <div className="nav-link-vn">Sự kiện</div>
-            </Link>
-            <Link href="/members/spaces" className="nav-link" onClick={() => setOpen(false)}>
-              <div className="nav-link-en">Our Spaces</div>
-              <div className="nav-link-vn">Không gian</div>
-            </Link>
-            <Link href="/menus" className="nav-link" onClick={() => setOpen(false)}>
-              <div className="nav-link-en">The Menus</div>
-              <div className="nav-link-vn">Thực Đơn</div>
-            </Link>
-            <Link href="/members/contact" className="nav-link" onClick={() => setOpen(false)}>
-              <div className="nav-link-en">Contact</div>
-              <div className="nav-link-vn">Liên hệ</div>
-            </Link>
-            <button className="nav-link" onClick={handleSignOut} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}>
+            {MEMBER_GROUPS.map(g => (
+              <Fragment key={g.label}>
+                <div className="nav-group-label">{g.label}</div>
+                {g.links.map(l => (
+                  <Link key={l.href} href={l.href} className="nav-link" onClick={() => setOpen(false)}>
+                    <div className="nav-link-en">{l.en}</div>
+                    <div className="nav-link-vn">{l.vn}</div>
+                  </Link>
+                ))}
+              </Fragment>
+            ))}
+            <button className="nav-link" onClick={handleSignOut} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', marginTop: 12 }}>
               <div className="nav-link-en">Sign Out</div>
               <div className="nav-link-vn">Đăng xuất</div>
             </button>
