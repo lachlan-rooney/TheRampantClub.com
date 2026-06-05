@@ -6,6 +6,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import type { Whisky } from '@/lib/types'
 import MemberPage from '@/components/MemberPage'
 import NavOverlay from '@/components/NavOverlay'
+import ForYouRecs from '@/components/whisky/ForYouRecs'
 
 export default function WhiskyPage() {
   const [whiskies, setWhiskies] = useState<Whisky[]>([])
@@ -62,6 +63,7 @@ export default function WhiskyPage() {
         }}>
           ◆ Find your dram — match by flavour →
         </Link>
+        <ForYouRecs />
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 32, justifyContent: 'center' }}>
           {regions.map(r => (
             <button
