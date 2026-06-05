@@ -1,0 +1,2665 @@
+[
+  {
+    "id": "c8c211e9-562a-434d-9c3f-8a4bb27d347c",
+    "name": "Aberfeldy Aberfeldy 12yo Single Malt",
+    "region": "Highland",
+    "age": "12yo",
+    "bucket": "rich",
+    "tasting_notes": "Nose: Heather honey, vanilla, ripe pear and a light waxy note. Palate: Smooth and honeyed, with malted cereal, orange marmalade, mild green apple and a touch of toasted oak. Finish: Medium length, gently sweet with honey, soft spice and a clean malty fade.",
+    "notes_quality": "rich",
+    "comment": "Confident across honey/orchard/cereal axes; waxy note mapped to old_dignified beeswax at lower confidence.",
+    "tags": [
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "honey",
+        "confidence": 0.95,
+        "evidence": "Heather honey"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "vanilla",
+        "confidence": 0.95,
+        "evidence": "vanilla"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "orchard_fruit",
+        "confidence": 0.9,
+        "evidence": "ripe pear"
+      },
+      {
+        "category_slug": "old_dignified",
+        "descriptor_slug": "beeswax",
+        "confidence": 0.6,
+        "evidence": "a light waxy note"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "cereal",
+        "confidence": 0.85,
+        "evidence": "malted cereal"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "citrus_zest",
+        "confidence": 0.7,
+        "evidence": "orange marmalade"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "green_apple",
+        "confidence": 0.85,
+        "evidence": "mild green apple"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "toasted_oak",
+        "confidence": 0.8,
+        "evidence": "a touch of toasted oak"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "honeyed_spice",
+        "confidence": 0.75,
+        "evidence": "gently sweet with honey, soft spice"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "21651cab-ecc3-441c-9de4-2fbeedc56293",
+    "name": "Ardbeg Ardbeg Corryvrechan Single Malt",
+    "region": "Islay",
+    "age": null,
+    "bucket": "rich",
+    "tasting_notes": "Nose: Tarry rope, black pepper, charred oak, blue cheese, and dark chocolate over briny smoke. Palate: Oily and powerful, with creosote, espresso, cracked pepper, smoked meats, and a wave of seaweed and dark berry fruit. Finish: Long, peppery and smoky, with bitter chocolate, salt and lingering ashy peat.",
+    "notes_quality": "rich",
+    "comment": "Classic heavily-peated Ardbeg profile; \"dark berry fruit\" is fresh not dried, so dried_fruit tag is weak.",
+    "tags": [
+      {
+        "category_slug": "heavily_peated",
+        "descriptor_slug": "creosote",
+        "confidence": 0.98,
+        "evidence": "creosote"
+      },
+      {
+        "category_slug": "heavily_peated",
+        "descriptor_slug": "intense_smoke",
+        "confidence": 0.85,
+        "evidence": "Long, peppery and smoky"
+      },
+      {
+        "category_slug": "peated",
+        "descriptor_slug": "tar",
+        "confidence": 0.95,
+        "evidence": "Tarry rope"
+      },
+      {
+        "category_slug": "peated",
+        "descriptor_slug": "smoked_meat",
+        "confidence": 0.95,
+        "evidence": "smoked meats"
+      },
+      {
+        "category_slug": "peated",
+        "descriptor_slug": "ash",
+        "confidence": 0.9,
+        "evidence": "lingering ashy peat"
+      },
+      {
+        "category_slug": "peated",
+        "descriptor_slug": "bonfire_smoke",
+        "confidence": 0.7,
+        "evidence": "briny smoke"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "oily_texture",
+        "confidence": 0.95,
+        "evidence": "Oily and powerful"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "seaweed",
+        "confidence": 0.95,
+        "evidence": "a wave of seaweed"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "brine",
+        "confidence": 0.9,
+        "evidence": "briny smoke"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "sea_salt",
+        "confidence": 0.85,
+        "evidence": "salt and lingering ashy peat"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "black_pepper",
+        "confidence": 0.98,
+        "evidence": "black pepper"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "char",
+        "confidence": 0.9,
+        "evidence": "charred oak"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dark_chocolate",
+        "confidence": 0.95,
+        "evidence": "dark chocolate"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dried_fruit",
+        "confidence": 0.55,
+        "evidence": "dark berry fruit"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "433355ea-5534-44c6-bba8-752f5ee748a0",
+    "name": "Arran Signature Series Signature Series Edition 1 Remnant Renegade",
+    "region": "Islands",
+    "age": null,
+    "bucket": "rich",
+    "tasting_notes": "Nose: Tropical fruits, mango and pineapple, with vanilla cream, light orange peel and a wisp of charred oak. Palate: Honeyed barley, banana bread and toffee, building into peppery oak, cinnamon and a savoury smoky edge from the peated component. Finish: Medium length, drying, with lingering sweet smoke, ginger and citrus zest.",
+    "notes_quality": "rich",
+    "comment": "Rich notes; tropical fruit (mango/pineapple/orange peel) noted but no clean descriptor slot — closest broad tags applied. Peat is described as a savoury edge / wisp, so lightly_peated rather than peated.",
+    "tags": [
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "vanilla",
+        "confidence": 0.95,
+        "evidence": "vanilla cream"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "honey",
+        "confidence": 0.9,
+        "evidence": "Honeyed barley"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "toffee",
+        "confidence": 0.95,
+        "evidence": "banana bread and toffee"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "vanilla",
+        "confidence": 0.9,
+        "evidence": "vanilla cream"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "banana",
+        "confidence": 0.9,
+        "evidence": "banana bread"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "butterscotch",
+        "confidence": 0.5,
+        "evidence": "toffee"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "citrus_zest",
+        "confidence": 0.95,
+        "evidence": "citrus zest"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "cereal",
+        "confidence": 0.7,
+        "evidence": "Honeyed barley"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "cinnamon",
+        "confidence": 0.95,
+        "evidence": "cinnamon"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "ginger",
+        "confidence": 0.95,
+        "evidence": "ginger"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "black_pepper",
+        "confidence": 0.9,
+        "evidence": "peppery oak"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "oak_tannin",
+        "confidence": 0.7,
+        "evidence": "peppery oak ... drying"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "char",
+        "confidence": 0.85,
+        "evidence": "wisp of charred oak"
+      },
+      {
+        "category_slug": "lightly_peated",
+        "descriptor_slug": "gentle_smoke",
+        "confidence": 0.9,
+        "evidence": "lingering sweet smoke"
+      },
+      {
+        "category_slug": "lightly_peated",
+        "descriptor_slug": "soft_peat",
+        "confidence": 0.8,
+        "evidence": "savoury smoky edge from the peated component"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "51de8b79-d17a-4716-b25e-8207b36d9823",
+    "name": "Benromach Benromach Contracts Peat Smoke 2014 Single Malt",
+    "region": "Highland",
+    "age": "Vintage 2014",
+    "bucket": "rich",
+    "tasting_notes": "Nose: Bonfire smoke, smoked bacon, vanilla and orchard fruit, with a light coastal brine. Palate: Sweet peat, barley sugar, toasted oak and pear, with cracked black pepper and ginger warmth. Finish: Long, dry and ashy, with lingering malt sweetness and a whisper of liquorice.",
+    "notes_quality": "rich",
+    "comment": "Clearly peated with sherry/bourbon-cask sweetness and a coastal edge; liquorice has no clean slot so left untagged.",
+    "tags": [
+      {
+        "category_slug": "peated",
+        "descriptor_slug": "bonfire_smoke",
+        "confidence": 0.98,
+        "evidence": "Bonfire smoke"
+      },
+      {
+        "category_slug": "peated",
+        "descriptor_slug": "smoked_meat",
+        "confidence": 0.95,
+        "evidence": "smoked bacon"
+      },
+      {
+        "category_slug": "peated",
+        "descriptor_slug": "ash",
+        "confidence": 0.9,
+        "evidence": "Long, dry and ashy"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "vanilla",
+        "confidence": 0.95,
+        "evidence": "vanilla and orchard fruit"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "orchard_fruit",
+        "confidence": 0.95,
+        "evidence": "vanilla and orchard fruit"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "brine",
+        "confidence": 0.85,
+        "evidence": "light coastal brine"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "toasted_oak",
+        "confidence": 0.9,
+        "evidence": "toasted oak and pear"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "black_pepper",
+        "confidence": 0.95,
+        "evidence": "cracked black pepper"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "ginger",
+        "confidence": 0.9,
+        "evidence": "ginger warmth"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "7de358b6-8534-4820-ae3e-41a992f7c31a",
+    "name": "Bunnahabhain Feis IIe 2023 Canasta Cask Matured",
+    "region": "Islay",
+    "age": null,
+    "bucket": "rich",
+    "tasting_notes": "Nose: Rich sherried fruit, raisin, dark chocolate and a wisp of coastal salt with faint smoke. Palate: Sweet sticky toffee, fig, walnut and orange peel, layered with brine, leather and gentle peat. Finish: Long, drying oak, dark cocoa, hazelnut and lingering maritime smoke.",
+    "notes_quality": "rich",
+    "comment": "Classic sherried Bunna profile; smoke described as faint/gentle so leaned lightly_peated with a low-confidence peated tag for the lingering smoke. No descriptor for orange peel or hazelnut in taxonomy.",
+    "tags": [
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": null,
+        "confidence": 0.95,
+        "evidence": "Rich sherried fruit, raisin, dark chocolate"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "raisin",
+        "confidence": 0.98,
+        "evidence": "raisin"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dark_chocolate",
+        "confidence": 0.95,
+        "evidence": "dark chocolate"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "fig",
+        "confidence": 0.95,
+        "evidence": "fig"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "walnut",
+        "confidence": 0.9,
+        "evidence": "walnut"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "toffee",
+        "confidence": 0.9,
+        "evidence": "Sweet sticky toffee"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "brine",
+        "confidence": 0.95,
+        "evidence": "layered with brine"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "sea_salt",
+        "confidence": 0.85,
+        "evidence": "wisp of coastal salt"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": null,
+        "confidence": 0.8,
+        "evidence": "lingering maritime smoke"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "leather",
+        "confidence": 0.9,
+        "evidence": "leather"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "oak_tannin",
+        "confidence": 0.85,
+        "evidence": "Long, drying oak"
+      },
+      {
+        "category_slug": "lightly_peated",
+        "descriptor_slug": "gentle_smoke",
+        "confidence": 0.9,
+        "evidence": "faint smoke"
+      },
+      {
+        "category_slug": "lightly_peated",
+        "descriptor_slug": "soft_peat",
+        "confidence": 0.9,
+        "evidence": "gentle peat"
+      },
+      {
+        "category_slug": "peated",
+        "descriptor_slug": null,
+        "confidence": 0.5,
+        "evidence": "lingering maritime smoke"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "a7e38704-d05b-43e8-a11d-7a1110c5cd6b",
+    "name": "Clynelish Clynelish 14yo Single Malt",
+    "region": "Highland",
+    "age": "14yo",
+    "bucket": "rich",
+    "tasting_notes": "Nose: Beeswax, lemon zest, sea spray and light honey with a waxy mineral edge. Palate: Oily mouthfeel, candle wax, orchard fruits, salted toffee and a touch of pepper. Finish: Medium-long, drying, with citrus peel, brine and lingering waxiness.",
+    "notes_quality": "rich",
+    "comment": "Classic waxy/coastal Clynelish profile; \"candle wax\" and \"waxiness\" map to beeswax/old_dignified by closest taxonomy fit.",
+    "tags": [
+      {
+        "category_slug": "old_dignified",
+        "descriptor_slug": "beeswax",
+        "confidence": 0.95,
+        "evidence": "Beeswax"
+      },
+      {
+        "category_slug": "light_delicate",
+        "descriptor_slug": "lemon",
+        "confidence": 0.9,
+        "evidence": "lemon zest"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "sea_salt",
+        "confidence": 0.85,
+        "evidence": "sea spray"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "brine",
+        "confidence": 0.95,
+        "evidence": "brine"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "oily_texture",
+        "confidence": 0.95,
+        "evidence": "Oily mouthfeel"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "mineral",
+        "confidence": 0.85,
+        "evidence": "waxy mineral edge"
+      },
+      {
+        "category_slug": "light_delicate",
+        "descriptor_slug": "light_honey",
+        "confidence": 0.9,
+        "evidence": "light honey"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "orchard_fruit",
+        "confidence": 0.95,
+        "evidence": "orchard fruits"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "toffee",
+        "confidence": 0.9,
+        "evidence": "salted toffee"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "black_pepper",
+        "confidence": 0.8,
+        "evidence": "a touch of pepper"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "dry_spice",
+        "confidence": 0.7,
+        "evidence": "Medium-long, drying"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "citrus_zest",
+        "confidence": 0.85,
+        "evidence": "citrus peel"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "a4c5f670-6169-40b9-85d7-5bc2e3dac331",
+    "name": "Cu Bocan 15YO",
+    "region": "Highland",
+    "age": null,
+    "bucket": "rich",
+    "tasting_notes": "Nose: Light peat smoke, vanilla, baked apple and a touch of toasted coconut. Palate: Creamy mouthfeel with honeyed barley, soft wood smoke, ginger, citrus peel and brown sugar. Finish: Medium length, drying smoke, oak spice and lingering sweet malt.",
+    "notes_quality": "rich",
+    "comment": "Clear lightly-peated profile with bourbon-cask sweetness and a spice kick; confident mapping throughout.",
+    "tags": [
+      {
+        "category_slug": "lightly_peated",
+        "descriptor_slug": "gentle_smoke",
+        "confidence": 0.95,
+        "evidence": "Light peat smoke"
+      },
+      {
+        "category_slug": "lightly_peated",
+        "descriptor_slug": "soft_peat",
+        "confidence": 0.85,
+        "evidence": "soft wood smoke"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "vanilla",
+        "confidence": 0.95,
+        "evidence": "vanilla"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "coconut",
+        "confidence": 0.9,
+        "evidence": "a touch of toasted coconut"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "orchard_fruit",
+        "confidence": 0.9,
+        "evidence": "baked apple"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "honey",
+        "confidence": 0.9,
+        "evidence": "honeyed barley"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "ginger",
+        "confidence": 0.95,
+        "evidence": "ginger"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "citrus_zest",
+        "confidence": 0.85,
+        "evidence": "citrus peel"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "caramel",
+        "confidence": 0.6,
+        "evidence": "brown sugar"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "oak_tannin",
+        "confidence": 0.8,
+        "evidence": "oak spice"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "dry_spice",
+        "confidence": 0.8,
+        "evidence": "drying smoke, oak spice"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "f8f84b71-bcad-45e3-a53a-137cd46da6b0",
+    "name": "Duncan Taylor Black Bull 21yo Blended Scotch",
+    "region": "Highland",
+    "age": "21yo",
+    "bucket": "rich",
+    "tasting_notes": "Nose: Rich sherry influence, dark chocolate, dried figs, orange peel and a whiff of oak spice. Palate: Full-bodied and oily, malty fruitcake, raisins, toffee, leather and clove, with the high malt content (50%) lending cereal depth. Finish: Long, warming and spicy, with lingering sherried fruit, dark sugar and gentle tannic oak.",
+    "notes_quality": "rich",
+    "comment": "Strong sherry-cask profile; orange peel tagged as citrus_zest under young_spritely as no better fit in taxonomy. Cereal note explicit despite age.",
+    "tags": [
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": null,
+        "confidence": 0.95,
+        "evidence": "Rich sherry influence"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dark_chocolate",
+        "confidence": 0.95,
+        "evidence": "dark chocolate"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "fig",
+        "confidence": 0.95,
+        "evidence": "dried figs"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "raisin",
+        "confidence": 0.95,
+        "evidence": "raisins"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "christmas_cake",
+        "confidence": 0.8,
+        "evidence": "malty fruitcake"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "clove",
+        "confidence": 0.95,
+        "evidence": "leather and clove"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": null,
+        "confidence": 0.8,
+        "evidence": "Long, warming and spicy"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "oak_tannin",
+        "confidence": 0.9,
+        "evidence": "gentle tannic oak"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "leather",
+        "confidence": 0.95,
+        "evidence": "leather and clove"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "dry_spice",
+        "confidence": 0.7,
+        "evidence": "whiff of oak spice"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "toffee",
+        "confidence": 0.95,
+        "evidence": "toffee"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "cereal",
+        "confidence": 0.8,
+        "evidence": "high malt content (50%) lending cereal depth"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "citrus_zest",
+        "confidence": 0.7,
+        "evidence": "orange peel"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "1b3741d7-6f9f-47b8-9492-7842fc0ca419",
+    "name": "Duncan Taylor Bunnahabhain 19 Year Old Single Cask",
+    "region": "Islay",
+    "age": "19 years",
+    "bucket": "rich",
+    "tasting_notes": "Nose (Aroma)\nDark Fruits: Rich sherry, raisins, and dried figs.Sweet Pastry: Caramel, orange zest, and citrus sponge cake.Coastal Air: Traditional Islay maritime salinity.\nPalate\n(Taste)Mouthfeel: Oily, full-bodied, and robustly warming.Sweet Spice: Molasses, spiced fruitcake, and dark chocolate.Fruit Balance: Tropical pineapple and crisp green apple.🏁 Finish\nDuration: Long, drying, and elegant.",
+    "notes_quality": "rich",
+    "comment": "Rich sherry-led Islay profile; tropical pineapple has no clean home in taxonomy so left untagged.",
+    "tags": [
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": null,
+        "confidence": 0.95,
+        "evidence": "Dark Fruits: Rich sherry, raisins, and dried figs"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "raisin",
+        "confidence": 0.95,
+        "evidence": "raisins"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "fig",
+        "confidence": 0.95,
+        "evidence": "dried figs"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "christmas_cake",
+        "confidence": 0.8,
+        "evidence": "spiced fruitcake"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dark_chocolate",
+        "confidence": 0.95,
+        "evidence": "dark chocolate"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "caramel",
+        "confidence": 0.95,
+        "evidence": "Caramel, orange zest"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "citrus_zest",
+        "confidence": 0.9,
+        "evidence": "orange zest, and citrus sponge cake"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "green_apple",
+        "confidence": 0.9,
+        "evidence": "crisp green apple"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": null,
+        "confidence": 0.9,
+        "evidence": "Coastal Air: Traditional Islay maritime salinity"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "sea_salt",
+        "confidence": 0.85,
+        "evidence": "maritime salinity"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "oily_texture",
+        "confidence": 0.9,
+        "evidence": "Mouthfeel: Oily, full-bodied"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "baking_spice",
+        "confidence": 0.8,
+        "evidence": "Sweet Spice: Molasses, spiced fruitcake"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "oak_tannin",
+        "confidence": 0.6,
+        "evidence": "Long, drying, and elegant"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "bc04650d-45a2-4ed1-8cc3-363acd74d5b2",
+    "name": "GlenAllachie GlenAllachie 10yo Cask Strength Batch 12 Single Malt",
+    "region": "Speyside",
+    "age": "10yo",
+    "bucket": "rich",
+    "tasting_notes": "Nose: Rich sherry, dark chocolate, fig roll, toasted almonds and a waft of cinnamon-spiced orange peel. Palate: Thick and oily, dates, treacle, raisin, baked apple, oak tannin and clove with a peppery cask-strength kick. Finish: Long, drying, with bitter chocolate, stewed berries, ginger and lingering oak spice.",
+    "notes_quality": "rich",
+    "comment": "Classic sherry-bomb profile; oily_texture tagged though no coastal context — flagging for review. Almonds mapped loosely to walnut as nearest nut descriptor.",
+    "tags": [
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": null,
+        "confidence": 0.95,
+        "evidence": "Rich sherry, dark chocolate, fig roll"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "fig",
+        "confidence": 0.95,
+        "evidence": "fig roll"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dark_chocolate",
+        "confidence": 0.95,
+        "evidence": "dark chocolate"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "date",
+        "confidence": 0.95,
+        "evidence": "dates"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "raisin",
+        "confidence": 0.95,
+        "evidence": "raisin"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "walnut",
+        "confidence": 0.5,
+        "evidence": "toasted almonds"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "cinnamon",
+        "confidence": 0.9,
+        "evidence": "cinnamon-spiced orange peel"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "clove",
+        "confidence": 0.9,
+        "evidence": "clove"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "ginger",
+        "confidence": 0.9,
+        "evidence": "ginger"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "oak_tannin",
+        "confidence": 0.95,
+        "evidence": "oak tannin"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "black_pepper",
+        "confidence": 0.9,
+        "evidence": "peppery cask-strength kick"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "dry_spice",
+        "confidence": 0.85,
+        "evidence": "Long, drying, with ... lingering oak spice"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "orchard_fruit",
+        "confidence": 0.8,
+        "evidence": "baked apple"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "toffee",
+        "confidence": 0.6,
+        "evidence": "treacle"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "oily_texture",
+        "confidence": 0.7,
+        "evidence": "Thick and oily"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "d6f09401-aba9-42d6-81be-3c84e0df8dff",
+    "name": "Glencadam 13YO Sauternes Cask Finish",
+    "region": "Highland",
+    "age": null,
+    "bucket": "rich",
+    "tasting_notes": "Nose: Honeyed barley, apricot jam, beeswax and a light floral note with hints of marzipan. Palate: Creamy mouthfeel, dessert wine sweetness, candied citrus peel, vanilla, ripe pear and a touch of ginger. Finish: Medium length, drying gently with white grape, almond and soft oak spice.",
+    "notes_quality": "rich",
+    "comment": "Rich prose; marzipan/almond and white grape have no clean home in taxonomy — left untagged. Beeswax mapped to old_dignified though overall profile is youthful.",
+    "tags": [
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "honey",
+        "confidence": 0.95,
+        "evidence": "Honeyed barley"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "stone_fruit",
+        "confidence": 0.95,
+        "evidence": "apricot jam"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "orchard_fruit",
+        "confidence": 0.9,
+        "evidence": "ripe pear"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "vanilla",
+        "confidence": 0.95,
+        "evidence": "vanilla"
+      },
+      {
+        "category_slug": "old_dignified",
+        "descriptor_slug": "beeswax",
+        "confidence": 0.95,
+        "evidence": "beeswax"
+      },
+      {
+        "category_slug": "light_delicate",
+        "descriptor_slug": "floral",
+        "confidence": 0.85,
+        "evidence": "light floral note"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "cereal",
+        "confidence": 0.7,
+        "evidence": "Honeyed barley"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "citrus_zest",
+        "confidence": 0.75,
+        "evidence": "candied citrus peel"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "ginger",
+        "confidence": 0.9,
+        "evidence": "a touch of ginger"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "dry_spice",
+        "confidence": 0.8,
+        "evidence": "drying gently with white grape, almond and soft oak spice"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "oak_tannin",
+        "confidence": 0.7,
+        "evidence": "soft oak spice"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "336d7f70-a7f1-4920-91f1-08d1f0b5c4cc",
+    "name": "GLENFIDDICH - SINGLE MALT - SCOTCH WHISKY  - VAT 03",
+    "region": null,
+    "age": "15",
+    "bucket": "rich",
+    "tasting_notes": "Nose: Heather honey, dark fruits (plums/cherries), sweet malt, and subtle baking spices (cinnamon and nutmeg).\nPalate: A robust, medium-bodied explosion of fruitiness, followed by warm notes of marzipan, leather, and oak.\nFinish: Lingering, sweet, and warmly velvety.",
+    "notes_quality": "rich",
+    "comment": "Rich prose; marzipan has no clean home in taxonomy so left untagged.",
+    "tags": [
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "honey",
+        "confidence": 0.95,
+        "evidence": "Heather honey"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "stone_fruit",
+        "confidence": 0.9,
+        "evidence": "dark fruits (plums/cherries)"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": null,
+        "confidence": 0.6,
+        "evidence": "dark fruits (plums/cherries)"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "fresh_malt",
+        "confidence": 0.6,
+        "evidence": "sweet malt"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "baking_spice",
+        "confidence": 0.95,
+        "evidence": "subtle baking spices"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "cinnamon",
+        "confidence": 0.95,
+        "evidence": "cinnamon and nutmeg"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "nutmeg",
+        "confidence": 0.95,
+        "evidence": "cinnamon and nutmeg"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "leather",
+        "confidence": 0.9,
+        "evidence": "warm notes of marzipan, leather, and oak"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "oak_tannin",
+        "confidence": 0.65,
+        "evidence": "marzipan, leather, and oak"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "c87ed3eb-825f-4e42-ad5a-02f08ef29ab7",
+    "name": "Glenmorangie Glenmorangie Quinta Ruban 14yo Single Malt",
+    "region": "Highland",
+    "age": "14yo",
+    "bucket": "rich",
+    "tasting_notes": "Nose: dark chocolate, orange peel, walnut and a whiff of mint. Palate: rich and silky with chocolate-covered orange, rose Turkish delight, hazelnut and gentle tannic spice from the port pipes. Finish: long, drying, with bittersweet cocoa, cinnamon and lingering citrus oils.",
+    "notes_quality": "rich",
+    "comment": "Port-cask profile: chocolate/nut/orange dominant. Citrus mapped to young_spritely citrus_zest as closest taxonomy fit; no dedicated \"nutty\" or \"chocolate-orange\" category.",
+    "tags": [
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dark_chocolate",
+        "confidence": 0.95,
+        "evidence": "dark chocolate"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "walnut",
+        "confidence": 0.9,
+        "evidence": "walnut"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": null,
+        "confidence": 0.8,
+        "evidence": "bittersweet cocoa"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "oak_tannin",
+        "confidence": 0.9,
+        "evidence": "gentle tannic spice from the port pipes"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "dry_spice",
+        "confidence": 0.8,
+        "evidence": "long, drying"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "cinnamon",
+        "confidence": 0.95,
+        "evidence": "cinnamon"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": null,
+        "confidence": 0.6,
+        "evidence": "rose Turkish delight"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "citrus_zest",
+        "confidence": 0.85,
+        "evidence": "orange peel"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": null,
+        "confidence": 0.7,
+        "evidence": "lingering citrus oils"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "df8c063a-1224-423e-9414-6d91ba7d7cbf",
+    "name": "Grant's Grant's Triple Wood Blended Scotch",
+    "region": "Highland",
+    "age": null,
+    "bucket": "rich",
+    "tasting_notes": "Nose: light vanilla, green apple, soft toffee and a faint cereal note. Palate: smooth and sweet, with honey, pear, vanilla cream and a gentle nutty malt backbone. Finish: short, clean, with lingering toffee, light oak and a whisper of spice.",
+    "notes_quality": "rich",
+    "comment": "Clear sweet/mellow profile with young cereal-apple lift; spice mention is faint so split low-confidence between dry and sweet spice categories.",
+    "tags": [
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": null,
+        "confidence": 0.95,
+        "evidence": "smooth and sweet, with honey, pear, vanilla cream"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "vanilla",
+        "confidence": 0.95,
+        "evidence": "light vanilla"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "honey",
+        "confidence": 0.95,
+        "evidence": "honey"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "toffee",
+        "confidence": 0.95,
+        "evidence": "soft toffee"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "orchard_fruit",
+        "confidence": 0.9,
+        "evidence": "pear"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "green_apple",
+        "confidence": 0.95,
+        "evidence": "green apple"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "cereal",
+        "confidence": 0.85,
+        "evidence": "faint cereal note"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "fresh_malt",
+        "confidence": 0.6,
+        "evidence": "gentle nutty malt backbone"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "vanilla",
+        "confidence": 0.8,
+        "evidence": "vanilla cream"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "custard",
+        "confidence": 0.6,
+        "evidence": "vanilla cream"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "dry_spice",
+        "confidence": 0.5,
+        "evidence": "light oak and a whisper of spice"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": null,
+        "confidence": 0.4,
+        "evidence": "whisper of spice"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "e934063d-36fe-4966-8302-0a43a24385fe",
+    "name": "Highland Park Highland Park Cask Strength Batch 3 Single Malt",
+    "region": "Islands",
+    "age": null,
+    "bucket": "rich",
+    "tasting_notes": "Nose: Rich sherry, honeyed malt, orange peel, light heather smoke and dark chocolate. Palate: Big and oily; dried figs, treacle, baking spice, cocoa and a salty, peppery heat that needs water. Finish: Long, warming and smoky, with toffee, clove and a faint maritime tang.",
+    "notes_quality": "rich",
+    "comment": "Rich, multi-category prose; orange peel mapped to citrus_zest as closest fit (no dedicated orange descriptor). Treacle and cocoa have no direct slot but support rich_dried_fruits broadly.",
+    "tags": [
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": null,
+        "confidence": 0.95,
+        "evidence": "Rich sherry"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "fig",
+        "confidence": 0.95,
+        "evidence": "dried figs"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dark_chocolate",
+        "confidence": 0.9,
+        "evidence": "dark chocolate"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "honey",
+        "confidence": 0.85,
+        "evidence": "honeyed malt"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "toffee",
+        "confidence": 0.9,
+        "evidence": "toffee"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "baking_spice",
+        "confidence": 0.95,
+        "evidence": "baking spice"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "clove",
+        "confidence": 0.9,
+        "evidence": "clove"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "black_pepper",
+        "confidence": 0.85,
+        "evidence": "salty, peppery heat"
+      },
+      {
+        "category_slug": "lightly_peated",
+        "descriptor_slug": "gentle_smoke",
+        "confidence": 0.85,
+        "evidence": "light heather smoke"
+      },
+      {
+        "category_slug": "peated",
+        "descriptor_slug": null,
+        "confidence": 0.6,
+        "evidence": "Long, warming and smoky"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "oily_texture",
+        "confidence": 0.9,
+        "evidence": "Big and oily"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "sea_salt",
+        "confidence": 0.8,
+        "evidence": "a salty, peppery heat"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "brine",
+        "confidence": 0.7,
+        "evidence": "faint maritime tang"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "citrus_zest",
+        "confidence": 0.75,
+        "evidence": "orange peel"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "b0490565-2076-438c-ad6c-84a11577db34",
+    "name": "IMPERIOUS WHISKY RESERVE - JURA ",
+    "region": "Islands",
+    "age": "30",
+    "bucket": "rich",
+    "tasting_notes": "Nose: Rich aromas of beeswax, burnt caramel toffee, vanilla, and yellow floral notes, with a subtle, unique hint of maritime salinity from the island sea breeze.\nPalate: Exceptionally smooth and silky. A luscious sweetness of honey and rich, buttery toffee coats the mouth, accompanied by ripe citrus fruits and a delicate hint of old oak spice.\nFinish: Very long and warming, tapering off into buttery toasted pastry and warm baking spices like nutmeg and cinnamon.",
+    "notes_quality": "rich",
+    "comment": "Rich prose, multi-category. \"Buttery toasted pastry\" had no clean home; closest hits already covered by toffee/baking spice.",
+    "tags": [
+      {
+        "category_slug": "old_dignified",
+        "descriptor_slug": "beeswax",
+        "confidence": 0.95,
+        "evidence": "Rich aromas of beeswax"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "toffee",
+        "confidence": 0.95,
+        "evidence": "burnt caramel toffee"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "caramel",
+        "confidence": 0.9,
+        "evidence": "burnt caramel toffee"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "vanilla",
+        "confidence": 0.95,
+        "evidence": "vanilla"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "floral",
+        "confidence": 0.8,
+        "evidence": "yellow floral notes"
+      },
+      {
+        "category_slug": "light_delicate",
+        "descriptor_slug": "floral",
+        "confidence": 0.7,
+        "evidence": "yellow floral notes"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "sea_salt",
+        "confidence": 0.75,
+        "evidence": "subtle, unique hint of maritime salinity from the island sea breeze"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "honey",
+        "confidence": 0.95,
+        "evidence": "luscious sweetness of honey"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "citrus_zest",
+        "confidence": 0.7,
+        "evidence": "ripe citrus fruits"
+      },
+      {
+        "category_slug": "light_delicate",
+        "descriptor_slug": "lemon",
+        "confidence": 0.4,
+        "evidence": "ripe citrus fruits"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "oak_tannin",
+        "confidence": 0.6,
+        "evidence": "delicate hint of old oak spice"
+      },
+      {
+        "category_slug": "old_dignified",
+        "descriptor_slug": "polished_oak",
+        "confidence": 0.55,
+        "evidence": "delicate hint of old oak spice"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "baking_spice",
+        "confidence": 0.95,
+        "evidence": "warm baking spices"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "nutmeg",
+        "confidence": 0.95,
+        "evidence": "nutmeg"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "cinnamon",
+        "confidence": 0.95,
+        "evidence": "cinnamon"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "29fcf7d0-c838-42f7-b8fe-11db5f02e1ee",
+    "name": "Jura Jura 12yo Single Malt",
+    "region": "Islands",
+    "age": "12yo",
+    "bucket": "rich",
+    "tasting_notes": "Nose: Sherried orchard fruit, honey, light brine and a whisper of smoke. Palate: Sweet malt, baked apple, almond, milk chocolate and dried fig, with a coastal salinity from the Oloroso finish. Finish: Medium length, gently spiced with nutmeg and oak, lingering sherry sweetness and a faint smoky edge.",
+    "notes_quality": "rich",
+    "comment": "Multi-faceted notes; almond and milk chocolate have no exact descriptor — chocolate mapped weakly to dark_chocolate.",
+    "tags": [
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "orchard_fruit",
+        "confidence": 0.95,
+        "evidence": "Sherried orchard fruit"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "honey",
+        "confidence": 0.95,
+        "evidence": "honey"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "orchard_fruit",
+        "confidence": 0.9,
+        "evidence": "baked apple"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "fig",
+        "confidence": 0.95,
+        "evidence": "dried fig"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dark_chocolate",
+        "confidence": 0.5,
+        "evidence": "milk chocolate"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": null,
+        "confidence": 0.8,
+        "evidence": "lingering sherry sweetness"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "brine",
+        "confidence": 0.9,
+        "evidence": "light brine"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "sea_salt",
+        "confidence": 0.85,
+        "evidence": "coastal salinity from the Oloroso finish"
+      },
+      {
+        "category_slug": "lightly_peated",
+        "descriptor_slug": "gentle_smoke",
+        "confidence": 0.9,
+        "evidence": "a whisper of smoke"
+      },
+      {
+        "category_slug": "lightly_peated",
+        "descriptor_slug": "gentle_smoke",
+        "confidence": 0.85,
+        "evidence": "a faint smoky edge"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "nutmeg",
+        "confidence": 0.95,
+        "evidence": "gently spiced with nutmeg"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "oak_tannin",
+        "confidence": 0.6,
+        "evidence": "gently spiced with nutmeg and oak"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "22c2d9e6-f87a-40cc-a17c-b2d402cf0568",
+    "name": "Lochlea Cask Strength Bath 1 2023 Cask Strength Bath 1",
+    "region": "Lowland",
+    "age": null,
+    "bucket": "rich",
+    "tasting_notes": "Nose: Fresh barley, lemon zest, green apple, vanilla cream and a light malty sweetness with subtle oak spice. Palate: Rich and oily, bold malt, honeyed cereal, baked apple, cinnamon, white pepper and toasted oak from first-fill bourbon casks. Finish: Long, warming, drying oak tannins with lingering vanilla, ginger and barley sugar.",
+    "notes_quality": "rich",
+    "comment": "Rich prose across nose/palate/finish; clear bourbon-cask profile with young malty character and drying oak spice.",
+    "tags": [
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "fresh_malt",
+        "confidence": 0.9,
+        "evidence": "Fresh barley"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "citrus_zest",
+        "confidence": 0.95,
+        "evidence": "lemon zest"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "green_apple",
+        "confidence": 0.95,
+        "evidence": "green apple"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "cereal",
+        "confidence": 0.85,
+        "evidence": "honeyed cereal"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "vanilla",
+        "confidence": 0.95,
+        "evidence": "vanilla cream"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "toasted_oak",
+        "confidence": 0.95,
+        "evidence": "toasted oak from first-fill bourbon casks"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "custard",
+        "confidence": 0.6,
+        "evidence": "vanilla cream"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "honey",
+        "confidence": 0.85,
+        "evidence": "honeyed cereal"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "orchard_fruit",
+        "confidence": 0.85,
+        "evidence": "baked apple"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "cinnamon",
+        "confidence": 0.95,
+        "evidence": "cinnamon"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "ginger",
+        "confidence": 0.9,
+        "evidence": "lingering vanilla, ginger and barley sugar"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "black_pepper",
+        "confidence": 0.9,
+        "evidence": "white pepper"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "oak_tannin",
+        "confidence": 0.95,
+        "evidence": "drying oak tannins"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "dry_spice",
+        "confidence": 0.7,
+        "evidence": "subtle oak spice"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "3a6aec53-688f-4f09-a692-9143c8f99efd",
+    "name": "Roseisle Roseisle 12yo Special Release 24 Single Malt",
+    "region": "Speyside",
+    "age": "12yo",
+    "bucket": "rich",
+    "tasting_notes": "Nose: ripe pineapple, mango and pear drops with light icing sugar and a waxy, faintly sulphury edge. Palate: tropical fruit salad, vanilla custard, green apple and white pepper, with a creamy mid-palate and gentle oak spice. Finish: medium length, drying with grapefruit pith, cereal sweetness and a whisper of struck match.",
+    "notes_quality": "rich",
+    "comment": "Tropical/vanilla-led profile; \"struck match\" and \"sulphury edge\" have no taxonomy home so left untagged.",
+    "tags": [
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": null,
+        "confidence": 0.9,
+        "evidence": "ripe pineapple, mango and pear drops"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "orchard_fruit",
+        "confidence": 0.8,
+        "evidence": "pear drops"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "vanilla",
+        "confidence": 0.95,
+        "evidence": "vanilla custard"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "vanilla",
+        "confidence": 0.9,
+        "evidence": "vanilla custard"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "custard",
+        "confidence": 0.95,
+        "evidence": "vanilla custard"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "toasted_oak",
+        "confidence": 0.6,
+        "evidence": "gentle oak spice"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "green_apple",
+        "confidence": 0.95,
+        "evidence": "green apple"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "cereal",
+        "confidence": 0.85,
+        "evidence": "cereal sweetness"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "citrus_zest",
+        "confidence": 0.6,
+        "evidence": "grapefruit pith"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "baking_spice",
+        "confidence": 0.6,
+        "evidence": "gentle oak spice"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "black_pepper",
+        "confidence": 0.9,
+        "evidence": "white pepper"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "oak_tannin",
+        "confidence": 0.6,
+        "evidence": "drying with grapefruit pith"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "061ae4d0-46c3-418d-9d2d-9db8a6537fe0",
+    "name": "Springbank Springbank Cask Strength 12yo Campbeltown",
+    "region": "Campbeltown",
+    "age": "12yo",
+    "bucket": "rich",
+    "tasting_notes": "Nose: Coastal brine, damp earth, sherried dried fruit, leather and a whiff of coal smoke. Palate: Oily and full-bodied, raisin and fig, salted dark chocolate, peppery oak, brackish peat and toffee. Finish: Long, drying, with lingering sea salt, tobacco and roasted nuts.",
+    "notes_quality": "rich",
+    "comment": "Rich prose, classic Campbeltown profile: coastal + sherry + light peat. \"Damp earth\" and \"roasted nuts\" don't map cleanly; nuts tagged as walnut with low confidence.",
+    "tags": [
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "brine",
+        "confidence": 0.95,
+        "evidence": "Coastal brine"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "sea_salt",
+        "confidence": 0.95,
+        "evidence": "lingering sea salt"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "oily_texture",
+        "confidence": 0.9,
+        "evidence": "Oily and full-bodied"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dried_fruit",
+        "confidence": 0.95,
+        "evidence": "sherried dried fruit"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "raisin",
+        "confidence": 0.95,
+        "evidence": "raisin and fig"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "fig",
+        "confidence": 0.95,
+        "evidence": "raisin and fig"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dark_chocolate",
+        "confidence": 0.9,
+        "evidence": "salted dark chocolate"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "walnut",
+        "confidence": 0.6,
+        "evidence": "roasted nuts"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "leather",
+        "confidence": 0.9,
+        "evidence": "leather"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "tobacco",
+        "confidence": 0.9,
+        "evidence": "tobacco"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "black_pepper",
+        "confidence": 0.85,
+        "evidence": "peppery oak"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "oak_tannin",
+        "confidence": 0.7,
+        "evidence": "Long, drying"
+      },
+      {
+        "category_slug": "peated",
+        "descriptor_slug": "bonfire_smoke",
+        "confidence": 0.6,
+        "evidence": "whiff of coal smoke"
+      },
+      {
+        "category_slug": "peated",
+        "descriptor_slug": null,
+        "confidence": 0.8,
+        "evidence": "brackish peat"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "toffee",
+        "confidence": 0.9,
+        "evidence": "toffee"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "676db91c-3488-440d-938b-fe967dd59393",
+    "name": "The Lakes Whiskymaker's Editions Nostalgia",
+    "region": "England",
+    "age": null,
+    "bucket": "rich",
+    "tasting_notes": "Nose: Christmas cake, candied orange peel, milk chocolate and toasted almond. Palate: rich sherry sweetness, dried figs, dates, cinnamon and clove, with a creamy oloroso weight. Finish: medium-long, warming spice, dark cocoa and lingering raisin.",
+    "notes_quality": "rich",
+    "comment": "Classic oloroso sherry profile; orange peel is citrus-candied not really orchard fruit, tagged low-confidence as nearest mellow-sweet anchor. Milk chocolate/toasted almond have no clean home in taxonomy.",
+    "tags": [
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "christmas_cake",
+        "confidence": 0.98,
+        "evidence": "Christmas cake"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "fig",
+        "confidence": 0.95,
+        "evidence": "dried figs"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "date",
+        "confidence": 0.95,
+        "evidence": "dates"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "raisin",
+        "confidence": 0.9,
+        "evidence": "lingering raisin"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dark_chocolate",
+        "confidence": 0.85,
+        "evidence": "dark cocoa"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dried_fruit",
+        "confidence": 0.9,
+        "evidence": "rich sherry sweetness, dried figs, dates"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "cinnamon",
+        "confidence": 0.95,
+        "evidence": "cinnamon"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "clove",
+        "confidence": 0.95,
+        "evidence": "clove"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "baking_spice",
+        "confidence": 0.8,
+        "evidence": "warming spice"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "orchard_fruit",
+        "confidence": 0.4,
+        "evidence": "candied orange peel"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "360841ad-b24e-4ef7-acd8-72092f050c22",
+    "name": "THE OCTAVE - AUCHENTOSHAN",
+    "region": "Lowland",
+    "age": "14",
+    "bucket": "rich",
+    "tasting_notes": "Nose: Elegant, bright, and complex. Rich notes of roasted nuts, toasted almond pastry, and orange zest blend with dried fruits and a hint of salted caramel.\nPalate: Unusually weighty and full-bodied for a triple-distilled malt. The 48% ABV retains excellent mouth-coating oils, delivering layers of bitter orange marmalade, rich dark cocoa, dried plums, and a dry, vinous grape skin quality.\nFinish: Long, crisp, and clean. The sweetness gives way to a dry, oaky warmth accented by sharp ginger, white pepper, and a subtle salinity.",
+    "notes_quality": "rich",
+    "comment": "Rich sherry-leaning profile with dry oak spice and a coastal hint; orange marmalade doesn't map cleanly — used orchard_fruit weakly.",
+    "tags": [
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "caramel",
+        "confidence": 0.9,
+        "evidence": "a hint of salted caramel"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dried_fruit",
+        "confidence": 0.95,
+        "evidence": "blend with dried fruits"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dark_chocolate",
+        "confidence": 0.9,
+        "evidence": "rich dark cocoa"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "raisin",
+        "confidence": 0.6,
+        "evidence": "dried plums"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "walnut",
+        "confidence": 0.6,
+        "evidence": "Rich notes of roasted nuts"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "ginger",
+        "confidence": 0.95,
+        "evidence": "sharp ginger"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "black_pepper",
+        "confidence": 0.9,
+        "evidence": "white pepper"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "oak_tannin",
+        "confidence": 0.8,
+        "evidence": "a dry, oaky warmth"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "dry_spice",
+        "confidence": 0.7,
+        "evidence": "a dry, vinous grape skin quality"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "oily_texture",
+        "confidence": 0.85,
+        "evidence": "excellent mouth-coating oils"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "sea_salt",
+        "confidence": 0.7,
+        "evidence": "a subtle salinity"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "orchard_fruit",
+        "confidence": 0.5,
+        "evidence": "bitter orange marmalade"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "90fae33f-8fab-48a8-90a8-569b2b6ed06c",
+    "name": "TOMATIN - THE SPIRITS EMBASSY 2009",
+    "region": "Highland",
+    "age": "15",
+    "bucket": "rich",
+    "tasting_notes": "Nose: Initially muted, featuring dense toffee, Cadbury’s Eclairs, highlighter pen, and a hint of seaweed. When diluted to 50% ABV, aromas of coffee, charred oak, seared plum, light Soreen loaf, nutmeg, and faintly astringent coriander emerge.\nPalate: Complex and concentrated with molasses, dark coffee liqueur, a balance of dry and sweet notes, charred damson, buttery fig biscuit, and slight saltiness. The flavor is intense and layered, though the whisky is not overly hot despite high ABV.\nFinish: Relatively short, highlighting the tighter, “closed-up” nature of the whisky early on, but opens subtly with water addition.",
+    "notes_quality": "rich",
+    "comment": "Rich, layered notes. Molasses/coffee/coffee liqueur don't map cleanly to taxonomy — leaned on dark chocolate proxy at low confidence. Damson/plum mapped to dried_fruit and stone_fruit.",
+    "tags": [
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "toffee",
+        "confidence": 0.95,
+        "evidence": "dense toffee"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "caramel",
+        "confidence": 0.7,
+        "evidence": "Cadbury's Eclairs"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "seaweed",
+        "confidence": 0.85,
+        "evidence": "a hint of seaweed"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "sea_salt",
+        "confidence": 0.75,
+        "evidence": "slight saltiness"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "char",
+        "confidence": 0.9,
+        "evidence": "charred oak"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "oak_tannin",
+        "confidence": 0.6,
+        "evidence": "charred oak"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "nutmeg",
+        "confidence": 0.9,
+        "evidence": "nutmeg"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "fig",
+        "confidence": 0.9,
+        "evidence": "buttery fig biscuit"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dark_chocolate",
+        "confidence": 0.55,
+        "evidence": "dark coffee liqueur"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dried_fruit",
+        "confidence": 0.6,
+        "evidence": "seared plum... charred damson"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "stone_fruit",
+        "confidence": 0.7,
+        "evidence": "seared plum"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "953802b9-2e21-400e-a7af-d198125a5fcc",
+    "name": "Tomatin 12YO The Italian Collection Marsala Italian Collection - Marsala Cask",
+    "region": "Highland",
+    "age": "12 Years",
+    "bucket": "rich",
+    "tasting_notes": "Nose: Sultanas, candied orange peel, almond paste and light barley malt with a fortified-wine sweetness. Palate: Soft and rounded; raisin cake, honeyed apple, mild spice and a Marsala-driven nutty grape character over Tomatin's gentle malt. Finish: Medium length, drying lightly with toasted oak, dark fruit and a faint herbal bitterness.",
+    "notes_quality": "rich",
+    "comment": "Clear Marsala-cask profile: dried fruit + honeyed orchard + nutty wine character; toasted oak finish. \"Almond paste\" and \"nutty grape\" don't map cleanly to a descriptor — walnut is the closest fit but loose.",
+    "tags": [
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "raisin",
+        "confidence": 0.95,
+        "evidence": "Sultanas... raisin cake"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dried_fruit",
+        "confidence": 0.85,
+        "evidence": "dark fruit"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "walnut",
+        "confidence": 0.6,
+        "evidence": "Marsala-driven nutty grape character"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "honey",
+        "confidence": 0.9,
+        "evidence": "honeyed apple"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "orchard_fruit",
+        "confidence": 0.85,
+        "evidence": "honeyed apple"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "vanilla",
+        "confidence": 0.4,
+        "evidence": "fortified-wine sweetness"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "cereal",
+        "confidence": 0.7,
+        "evidence": "light barley malt"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "fresh_malt",
+        "confidence": 0.7,
+        "evidence": "Tomatin's gentle malt"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "citrus_zest",
+        "confidence": 0.7,
+        "evidence": "candied orange peel"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "baking_spice",
+        "confidence": 0.7,
+        "evidence": "mild spice"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "oak_tannin",
+        "confidence": 0.75,
+        "evidence": "drying lightly with toasted oak"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "dry_spice",
+        "confidence": 0.6,
+        "evidence": "faint herbal bitterness"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "toasted_oak",
+        "confidence": 0.9,
+        "evidence": "toasted oak"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "863a7c97-df26-46b1-b616-14c8c679d388",
+    "name": "Ardnahoe Ardnahoe Bholsa Single Malt",
+    "region": "Islay",
+    "age": null,
+    "bucket": "rich",
+    "tasting_notes": "Nose: Aromas of red fruits, walnuts, and orange zest, layered with earthy peat smoke and subtle spices.Palate: Rich, juicy, and smooth. Prominent layers of dark fruit—such as raisins, dates, and ripe plums—are underpinned by classic Islay peat and woody cinnamon.Finish: Long, warm, and peppery with lingering smoke and a hint of ginger",
+    "notes_quality": "rich",
+    "comment": "Rich sherried + peated Islay profile; orange zest placed under citrus_zest though it could equally read as a marmalade-like note.",
+    "tags": [
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "raisin",
+        "confidence": 0.95,
+        "evidence": "dark fruit—such as raisins, dates, and ripe plums"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "date",
+        "confidence": 0.95,
+        "evidence": "raisins, dates, and ripe plums"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dried_fruit",
+        "confidence": 0.9,
+        "evidence": "Prominent layers of dark fruit"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "walnut",
+        "confidence": 0.9,
+        "evidence": "Aromas of red fruits, walnuts"
+      },
+      {
+        "category_slug": "peated",
+        "descriptor_slug": "bonfire_smoke",
+        "confidence": 0.85,
+        "evidence": "earthy peat smoke"
+      },
+      {
+        "category_slug": "peated",
+        "descriptor_slug": null,
+        "confidence": 0.95,
+        "evidence": "classic Islay peat"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "cinnamon",
+        "confidence": 0.9,
+        "evidence": "woody cinnamon"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "ginger",
+        "confidence": 0.9,
+        "evidence": "a hint of ginger"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "baking_spice",
+        "confidence": 0.6,
+        "evidence": "subtle spices"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "black_pepper",
+        "confidence": 0.85,
+        "evidence": "Long, warm, and peppery"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "orchard_fruit",
+        "confidence": 0.6,
+        "evidence": "ripe plums"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "citrus_zest",
+        "confidence": 0.7,
+        "evidence": "orange zest"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "42ea912a-2329-4eb1-b42b-613f97825890",
+    "name": "Ardnamurchan Ardnamurchan Cask Strength Single Malt",
+    "region": "Highland",
+    "age": null,
+    "bucket": "rich",
+    "tasting_notes": "Nose: Coastal smoke, sea spray, vanilla custard and orchard fruit, with a waxy cereal note. Palate: Oily and warming, peat smoke layered over honey, citrus peel, dark chocolate and brine, with sherry-cask spice building. Finish: Long, salty and smoky, with lingering cocoa, ginger and oak char.",
+    "notes_quality": "rich",
+    "comment": "Rich multi-axis profile: coastal/peated core with sherry-cask dried fruit spice and bourbon-cask vanilla. Waxy note tentatively mapped to beeswax (low confidence).",
+    "tags": [
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "sea_salt",
+        "confidence": 0.9,
+        "evidence": "sea spray"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "brine",
+        "confidence": 0.95,
+        "evidence": "dark chocolate and brine"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "oily_texture",
+        "confidence": 0.9,
+        "evidence": "Oily and warming"
+      },
+      {
+        "category_slug": "peated",
+        "descriptor_slug": "bonfire_smoke",
+        "confidence": 0.85,
+        "evidence": "Coastal smoke"
+      },
+      {
+        "category_slug": "peated",
+        "descriptor_slug": "campfire",
+        "confidence": 0.8,
+        "evidence": "peat smoke layered over honey"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "custard",
+        "confidence": 0.95,
+        "evidence": "vanilla custard"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "vanilla",
+        "confidence": 0.95,
+        "evidence": "vanilla custard"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "orchard_fruit",
+        "confidence": 0.95,
+        "evidence": "orchard fruit"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "honey",
+        "confidence": 0.9,
+        "evidence": "layered over honey"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "cereal",
+        "confidence": 0.7,
+        "evidence": "waxy cereal note"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "citrus_zest",
+        "confidence": 0.8,
+        "evidence": "citrus peel"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dark_chocolate",
+        "confidence": 0.95,
+        "evidence": "dark chocolate and brine"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "ginger",
+        "confidence": 0.9,
+        "evidence": "lingering cocoa, ginger and oak char"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "baking_spice",
+        "confidence": 0.7,
+        "evidence": "sherry-cask spice building"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "char",
+        "confidence": 0.9,
+        "evidence": "oak char"
+      },
+      {
+        "category_slug": "old_dignified",
+        "descriptor_slug": "beeswax",
+        "confidence": 0.5,
+        "evidence": "waxy cereal note"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "ee1045d6-0c7d-4248-9fb1-874f636997a8",
+    "name": "Arran Arran 25yo Single Malt",
+    "region": "Islands",
+    "age": "25yo",
+    "bucket": "rich",
+    "tasting_notes": "Nose: Honeyed orchard fruit, beeswax, toasted almond, a whisper of sea salt and old oak. Palate: Rich and waxy, poached pear, candied orange peel, vanilla custard, gentle spice and dunnage earthiness. Finish: Long, drying oak, lingering citrus oils and a soft saline note.",
+    "notes_quality": "rich",
+    "comment": "Confident overall; \"toasted almond\" had no clean home in taxonomy (no nutty category), so left untagged.",
+    "tags": [
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "honey",
+        "confidence": 0.9,
+        "evidence": "Honeyed orchard fruit"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "orchard_fruit",
+        "confidence": 0.95,
+        "evidence": "Honeyed orchard fruit"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "stone_fruit",
+        "confidence": 0.6,
+        "evidence": "poached pear"
+      },
+      {
+        "category_slug": "old_dignified",
+        "descriptor_slug": "beeswax",
+        "confidence": 0.95,
+        "evidence": "beeswax"
+      },
+      {
+        "category_slug": "old_dignified",
+        "descriptor_slug": "polished_oak",
+        "confidence": 0.7,
+        "evidence": "old oak"
+      },
+      {
+        "category_slug": "old_dignified",
+        "descriptor_slug": "antique_wood",
+        "confidence": 0.55,
+        "evidence": "dunnage earthiness"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "custard",
+        "confidence": 0.95,
+        "evidence": "vanilla custard"
+      },
+      {
+        "category_slug": "juicy_oak_vanilla",
+        "descriptor_slug": "vanilla",
+        "confidence": 0.9,
+        "evidence": "vanilla custard"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "sea_salt",
+        "confidence": 0.85,
+        "evidence": "whisper of sea salt"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "brine",
+        "confidence": 0.7,
+        "evidence": "soft saline note"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "oily_texture",
+        "confidence": 0.7,
+        "evidence": "Rich and waxy"
+      },
+      {
+        "category_slug": "spicy_sweet",
+        "descriptor_slug": "baking_spice",
+        "confidence": 0.6,
+        "evidence": "gentle spice"
+      },
+      {
+        "category_slug": "spicy_dry",
+        "descriptor_slug": "oak_tannin",
+        "confidence": 0.85,
+        "evidence": "Long, drying oak"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "citrus_zest",
+        "confidence": 0.7,
+        "evidence": "candied orange peel"
+      },
+      {
+        "category_slug": "light_delicate",
+        "descriptor_slug": "lemon",
+        "confidence": 0.5,
+        "evidence": "lingering citrus oils"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "d0fb1f0a-51db-46c7-befe-c7f50bf6c556",
+    "name": "Ben Nevis Ben Nevis MacDonalds Traditional Single Malt",
+    "region": "Highland",
+    "age": null,
+    "bucket": "rich",
+    "tasting_notes": "Nose: Peat smoke, malt loaf, orange peel and a waxy oiliness. Palate: Oily and chewy, with peat embers, dark honey, cocoa, dried fruit and a faint coastal salinity. Finish: Long, smoky and earthy, with lingering malt sweetness and bitter chocolate.",
+    "notes_quality": "rich",
+    "comment": "Confident tagging — rich prose covering peat, sherry-ish dark fruit/chocolate, waxy/oily texture, coastal hint, and citrus peel. \"Malt loaf\" loosely mapped to christmas_cake (low confidence) as taxonomy has no bread/cake descriptor closer.",
+    "tags": [
+      {
+        "category_slug": "peated",
+        "descriptor_slug": null,
+        "confidence": 0.95,
+        "evidence": "Peat smoke"
+      },
+      {
+        "category_slug": "peated",
+        "descriptor_slug": "ash",
+        "confidence": 0.75,
+        "evidence": "peat embers"
+      },
+      {
+        "category_slug": "peated",
+        "descriptor_slug": "campfire",
+        "confidence": 0.6,
+        "evidence": "Long, smoky and earthy"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dried_fruit",
+        "confidence": 0.95,
+        "evidence": "dried fruit"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "dark_chocolate",
+        "confidence": 0.9,
+        "evidence": "bitter chocolate"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": "christmas_cake",
+        "confidence": 0.5,
+        "evidence": "malt loaf"
+      },
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": "honey",
+        "confidence": 0.9,
+        "evidence": "dark honey"
+      },
+      {
+        "category_slug": "old_dignified",
+        "descriptor_slug": "beeswax",
+        "confidence": 0.6,
+        "evidence": "waxy oiliness"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "oily_texture",
+        "confidence": 0.95,
+        "evidence": "Oily and chewy"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": "sea_salt",
+        "confidence": 0.8,
+        "evidence": "faint coastal salinity"
+      },
+      {
+        "category_slug": "young_spritely",
+        "descriptor_slug": "citrus_zest",
+        "confidence": 0.8,
+        "evidence": "orange peel"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "39f099bf-5738-4017-9266-9046076e6f56",
+    "name": "Currach Atlantic Kombu Apple Ice Wine Cask",
+    "region": "Ireland",
+    "age": null,
+    "bucket": "thin",
+    "tasting_notes": "Ireland",
+    "notes_quality": "none",
+    "comment": "Only a country of origin is given; no flavour prose to tag.",
+    "tags": [],
+    "rejected": []
+  },
+  {
+    "id": "929c5fa6-f3f8-4842-ad07-10408404db61",
+    "name": "Currach Atlantic Kombu Mezcal Cask",
+    "region": "Ireland",
+    "age": null,
+    "bucket": "thin",
+    "tasting_notes": "Ireland",
+    "notes_quality": "none",
+    "comment": "Only a country of origin is given; no flavour prose to tag.",
+    "tags": [],
+    "rejected": []
+  },
+  {
+    "id": "5d225aa1-7f52-4227-bb7b-7f864492cb11",
+    "name": "Currach Atlantic Kombu Pandanus Cask Finsh",
+    "region": "Ireland",
+    "age": null,
+    "bucket": "thin",
+    "tasting_notes": "Ireland. Broken While Sorting - Lachlan and Mr Sy saw it.",
+    "notes_quality": "none",
+    "comment": "No flavour prose — only a region and an operational/breakage note.",
+    "tags": [],
+    "rejected": []
+  },
+  {
+    "id": "e046b8ab-a283-4a46-9be5-a334430f5575",
+    "name": "Currach Atlantic Kombu PX Cask",
+    "region": "Ireland",
+    "age": null,
+    "bucket": "thin",
+    "tasting_notes": "Ireland",
+    "notes_quality": "none",
+    "comment": "Only a region (\"Ireland\") given; no flavour prose to tag from.",
+    "tags": [],
+    "rejected": []
+  },
+  {
+    "id": "97f4f738-ec7d-46f8-9514-52042ffba582",
+    "name": "Currach Atlantic Wakame Sake Cask Finish",
+    "region": "Ireland",
+    "age": null,
+    "bucket": "thin",
+    "tasting_notes": "Ireland",
+    "notes_quality": "none",
+    "comment": "Only a country of origin given; no flavour prose to tag.",
+    "tags": [],
+    "rejected": []
+  },
+  {
+    "id": "2517cf44-e1a1-4758-bbdf-515b3d398aa8",
+    "name": "Ledaig Triple Wood",
+    "region": "Islands",
+    "age": null,
+    "bucket": "thin",
+    "tasting_notes": "Broken While Sorting - Lachlan and Mr Sy saw it.",
+    "notes_quality": "none",
+    "comment": "Operational note only (breakage incident); no flavour prose to tag.",
+    "tags": [],
+    "rejected": []
+  },
+  {
+    "id": "20a94c9b-6f89-4a6e-9d13-b5d91e91213d",
+    "name": "Private bottling",
+    "region": "Other",
+    "age": null,
+    "bucket": "thin",
+    "tasting_notes": "Sweet, Sherry, Coastal yet very rye-forwrd",
+    "notes_quality": "thin",
+    "comment": "Thin notes; \"rye-forward\" has no taxonomy home so left untagged.",
+    "tags": [
+      {
+        "category_slug": "sweet_fruity_mellow",
+        "descriptor_slug": null,
+        "confidence": 0.7,
+        "evidence": "Sweet"
+      },
+      {
+        "category_slug": "rich_dried_fruits",
+        "descriptor_slug": null,
+        "confidence": 0.75,
+        "evidence": "Sherry"
+      },
+      {
+        "category_slug": "oily_coastal",
+        "descriptor_slug": null,
+        "confidence": 0.8,
+        "evidence": "Coastal"
+      }
+    ],
+    "rejected": []
+  },
+  {
+    "id": "d61d5bcf-24db-4675-90cc-d575484a8038",
+    "name": "The Chuan The Chuan Pure Malt Whisky Emeishan",
+    "region": "Japan",
+    "age": null,
+    "bucket": "thin",
+    "tasting_notes": "China",
+    "notes_quality": "none",
+    "comment": "Only a country name (\"China\") — no flavour prose to tag.",
+    "tags": [],
+    "rejected": []
+  },
+  {
+    "id": "a9255372-e5c5-44d5-a8f1-f57c9d1c7e8d",
+    "name": "ABERFELDY",
+    "region": "Highland",
+    "age": "12",
+    "bucket": "empty",
+    "tasting_notes": "",
+    "notes_quality": "none",
+    "comment": "No tasting notes provided; nothing to tag.",
+    "tags": [],
+    "rejected": []
+  },
+  {
+    "id": "91bf0ee1-fdb0-489b-b371-5a5227ada9de",
+    "name": "Bunnahabhain 12YO Cask Strength",
+    "region": "Islay",
+    "age": "12 years",
+    "bucket": "empty",
+    "tasting_notes": "",
+    "notes_quality": "none",
+    "comment": "No tasting notes provided; nothing to tag.",
+    "tags": [],
+    "rejected": []
+  },
+  {
+    "id": "09413d06-824e-4171-95f4-cb87a1036c4f",
+    "name": "Duncan Taylor Battlehill Ben Nevis 12yo Single Malt",
+    "region": "Highland",
+    "age": "12yo",
+    "bucket": "empty",
+    "tasting_notes": "",
+    "notes_quality": "none",
+    "comment": "No tasting notes provided; nothing to tag.",
+    "tags": [],
+    "rejected": []
+  },
+  {
+    "id": "eb504bd2-36f7-4772-9628-2d0fb15b6404",
+    "name": "Duncan Taylor Duncan Taylor 5 Star Special Edition Blended Scotch",
+    "region": "Highland",
+    "age": null,
+    "bucket": "empty",
+    "tasting_notes": "",
+    "notes_quality": "none",
+    "comment": "No tasting notes provided; nothing to tag.",
+    "tags": [],
+    "rejected": []
+  },
+  {
+    "id": "21297d1d-fcba-4ed0-8321-c21695931985",
+    "name": "Duncan Taylor Octave Royal Brackla 2014 10yo Single Malt",
+    "region": "Highland",
+    "age": "10yo / 2014",
+    "bucket": "empty",
+    "tasting_notes": "",
+    "notes_quality": "none",
+    "comment": "No tasting notes provided; nothing to tag.",
+    "tags": [],
+    "rejected": []
+  },
+  {
+    "id": "b6b597db-7886-40af-bd44-407be27d93e2",
+    "name": "Duncan Taylor Whiskies of Scotland Glenlossie 1992 49.6% Single Malt",
+    "region": "Speyside",
+    "age": "Vintage 1992",
+    "bucket": "empty",
+    "tasting_notes": "",
+    "notes_quality": "none",
+    "comment": "No tasting notes provided; nothing to tag.",
+    "tags": [],
+    "rejected": []
+  },
+  {
+    "id": "e4e695cc-f98a-416c-a83f-cb355bb88836",
+    "name": "Glenfiddich Glenfiddich Festival Experiment Single Malt",
+    "region": "Speyside",
+    "age": null,
+    "bucket": "empty",
+    "tasting_notes": "",
+    "notes_quality": "none",
+    "comment": "No tasting notes provided; nothing to tag.",
+    "tags": [],
+    "rejected": []
+  },
+  {
+    "id": "3ce8529b-ec07-4b55-b06c-6fcd53e476ca",
+    "name": "Longrow 100 Proof Batch 1 100 Proof (Batch 1)",
+    "region": "Campbeltown",
+    "age": null,
+    "bucket": "empty",
+    "tasting_notes": "",
+    "notes_quality": "none",
+    "comment": "No tasting notes provided; nothing to tag.",
+    "tags": [],
+    "rejected": []
+  }
+]
