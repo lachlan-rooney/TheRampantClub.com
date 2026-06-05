@@ -1,0 +1,554 @@
+[
+  {
+    "set": {
+      "name": "AnCnoc 12yo Single Malt",
+      "age": "12yo"
+    },
+    "keeper_id": "f35e62ac-f480-4520-8266-00d36f5ef548",
+    "keeper_spokes": 5,
+    "deleted_row": {
+      "id": "e9adb7e7-c8bc-4f79-9f1a-c97be09b8cbe",
+      "name": "AnCnoc 12yo Single Malt",
+      "distillery": "AnCnoc",
+      "age": "12yo",
+      "region": "Highland",
+      "cask_type": null,
+      "abv": "40.00%%",
+      "tasting_notes": "Nose: Fresh lemon zest, green apple, light honey and a touch of vanilla. Palate: Smooth and lightly sweet with barley sugar, citrus, pear and a gentle creamy malt. Finish: Short to medium, clean and crisp with honeyed sweetness and a faint spice.",
+      "in_stock": true,
+      "current_fill_pct": 100,
+      "name_original": "AnCnoc AnCnoc 12yo Single Malt",
+      "added_at": "2026-03-30T05:54:28.231118+00:00"
+    },
+    "deleted_row_spokes": 4,
+    "note": "row was a name+age duplicate of keeper; full pre-delete columns captured from recon snapshot"
+  },
+  {
+    "set": {
+      "name": "Duncan Taylor 12yo Special Edition Blended Scotch",
+      "age": "12yo"
+    },
+    "keeper_id": "b6d2f5a7-9b45-4233-9170-6b9247bdb2d1",
+    "keeper_spokes": 0,
+    "deleted_row": {
+      "id": "c9df79ed-68f8-45b0-8230-c08e0eed5cd0",
+      "name": "Duncan Taylor 12yo Special Edition Blended Scotch",
+      "distillery": "DT Special",
+      "age": "12yo",
+      "region": "Highland",
+      "cask_type": null,
+      "abv": "40.00%%",
+      "tasting_notes": null,
+      "in_stock": true,
+      "current_fill_pct": 100,
+      "name_original": "Duncan Taylor Duncan Taylor 12yo Special Edition Blended Scotch",
+      "added_at": "2026-03-30T05:54:28.231118+00:00"
+    },
+    "deleted_row_spokes": 0,
+    "note": "row was a name+age duplicate of keeper; full pre-delete columns captured from recon snapshot"
+  },
+  {
+    "set": {
+      "name": "Duncan Taylor Aultmore 2008 13yo Single Malt",
+      "age": "13yo / 2008"
+    },
+    "keeper_id": "78157f0f-cafa-4516-be9f-84b5709cc742",
+    "keeper_spokes": 0,
+    "deleted_row": {
+      "id": "d07013be-6681-4002-be5e-d74b306c0eb7",
+      "name": "Duncan Taylor Aultmore 2008 13yo Single Malt",
+      "distillery": "Aultmore",
+      "age": "13yo / 2008",
+      "region": "Speyside",
+      "cask_type": null,
+      "abv": "52.30%%",
+      "tasting_notes": null,
+      "in_stock": true,
+      "current_fill_pct": 100,
+      "name_original": "Duncan Taylor Duncan Taylor Aultmore 2008 13yo Single Malt",
+      "added_at": "2026-03-30T05:54:28.231118+00:00"
+    },
+    "deleted_row_spokes": 0,
+    "note": "row was a name+age duplicate of keeper; full pre-delete columns captured from recon snapshot"
+  },
+  {
+    "set": {
+      "name": "Duncan Taylor Black Bull 14yo Peated Blended Scotch",
+      "age": "14yo"
+    },
+    "keeper_id": "11e6d3aa-dc10-46b8-9030-f36fe34ddec3",
+    "keeper_spokes": 0,
+    "deleted_row": {
+      "id": "e7849732-9c1f-44cc-b56f-76df1ee1ac95",
+      "name": "Duncan Taylor Black Bull 14yo Peated Blended Scotch",
+      "distillery": "Black Bull",
+      "age": "14yo",
+      "region": "Highland",
+      "cask_type": null,
+      "abv": "50.00%%",
+      "tasting_notes": null,
+      "in_stock": true,
+      "current_fill_pct": 100,
+      "name_original": null,
+      "added_at": "2026-03-30T05:54:28.231118+00:00"
+    },
+    "deleted_row_spokes": 0,
+    "note": "row was a name+age duplicate of keeper; full pre-delete columns captured from recon snapshot"
+  },
+  {
+    "set": {
+      "name": "Duncan Taylor Tormore 2010 11yo Single Malt",
+      "age": "11yo / 2010"
+    },
+    "keeper_id": "0f071871-98f4-4c1f-badb-cd720eb74c26",
+    "keeper_spokes": 0,
+    "deleted_row": {
+      "id": "4b612281-7ad2-4ad3-a352-2866d96d9e90",
+      "name": "Duncan Taylor Tormore 2010 11yo Single Malt",
+      "distillery": "Tormore",
+      "age": "11yo / 2010",
+      "region": "Speyside",
+      "cask_type": null,
+      "abv": "40.00%%",
+      "tasting_notes": null,
+      "in_stock": true,
+      "current_fill_pct": 100,
+      "name_original": "Duncan Taylor Duncan Taylor Tormore 2010 11yo Single Malt",
+      "added_at": "2026-03-30T05:54:28.231118+00:00"
+    },
+    "deleted_row_spokes": 0,
+    "note": "row was a name+age duplicate of keeper; full pre-delete columns captured from recon snapshot"
+  },
+  {
+    "set": {
+      "name": "Duncan Taylor Whiskies of Scotland Blair Athol 1989 Single Malt",
+      "age": "Vintage 1989"
+    },
+    "keeper_id": "24b14e52-e54a-4ef4-97f7-b7da5311b693",
+    "keeper_spokes": 0,
+    "deleted_row": {
+      "id": "cbff9c2f-7c14-4128-a3d4-138c769a2e35",
+      "name": "Duncan Taylor Whiskies of Scotland Blair Athol 1989 Single Malt",
+      "distillery": "Blair Athol",
+      "age": "Vintage 1989",
+      "region": "Highland",
+      "cask_type": null,
+      "abv": "47.30%%",
+      "tasting_notes": null,
+      "in_stock": true,
+      "current_fill_pct": 100,
+      "name_original": null,
+      "added_at": "2026-03-30T05:54:28.231118+00:00"
+    },
+    "deleted_row_spokes": 0,
+    "note": "row was a name+age duplicate of keeper; full pre-delete columns captured from recon snapshot"
+  },
+  {
+    "set": {
+      "name": "Duncan Taylor Whiskies of Scotland Bowmore 1998 Single Malt",
+      "age": "Vintage 1998"
+    },
+    "keeper_id": "6c2bfdec-3c04-42f3-8d00-e731aa57a382",
+    "keeper_spokes": 0,
+    "deleted_row": {
+      "id": "e7f04f64-5b16-475c-a2d4-4ed449bf3728",
+      "name": "Duncan Taylor Whiskies of Scotland Bowmore 1998 Single Malt",
+      "distillery": "Bowmore",
+      "age": "Vintage 1998",
+      "region": "Islay",
+      "cask_type": null,
+      "abv": "46.40%%",
+      "tasting_notes": null,
+      "in_stock": true,
+      "current_fill_pct": 100,
+      "name_original": null,
+      "added_at": "2026-03-30T05:54:28.231118+00:00"
+    },
+    "deleted_row_spokes": 0,
+    "note": "row was a name+age duplicate of keeper; full pre-delete columns captured from recon snapshot"
+  },
+  {
+    "set": {
+      "name": "Duncan Taylor Whiskies of Scotland Bruichladdich 1992 Single Malt",
+      "age": "Vintage 1992"
+    },
+    "keeper_id": "03ad3dd5-abe0-4924-baa9-29ba6dcc1f1f",
+    "keeper_spokes": 0,
+    "deleted_row": {
+      "id": "cdf5f7b7-b4d1-409b-acaf-a48b3b42e31c",
+      "name": "Duncan Taylor Whiskies of Scotland Bruichladdich 1992 Single Malt",
+      "distillery": "Bruichladdich",
+      "age": "Vintage 1992",
+      "region": "Islay",
+      "cask_type": null,
+      "abv": "44.40%%",
+      "tasting_notes": null,
+      "in_stock": true,
+      "current_fill_pct": 100,
+      "name_original": null,
+      "added_at": "2026-03-30T05:54:28.231118+00:00"
+    },
+    "deleted_row_spokes": 0,
+    "note": "row was a name+age duplicate of keeper; full pre-delete columns captured from recon snapshot"
+  },
+  {
+    "set": {
+      "name": "Duncan Taylor Whiskies of Scotland Bunnahabhain 1989 Single Malt",
+      "age": "Vintage 1989"
+    },
+    "keeper_id": "12a7e1dd-7430-4494-a664-eaf7eaa71917",
+    "keeper_spokes": 0,
+    "deleted_row": {
+      "id": "e4cbb503-df34-4a76-be68-472091eee155",
+      "name": "Duncan Taylor Whiskies of Scotland Bunnahabhain 1989 Single Malt",
+      "distillery": "Bunnahabhain",
+      "age": "Vintage 1989",
+      "region": "Islay",
+      "cask_type": null,
+      "abv": "47.70%%",
+      "tasting_notes": null,
+      "in_stock": true,
+      "current_fill_pct": 100,
+      "name_original": null,
+      "added_at": "2026-03-30T05:54:28.231118+00:00"
+    },
+    "deleted_row_spokes": 0,
+    "note": "row was a name+age duplicate of keeper; full pre-delete columns captured from recon snapshot"
+  },
+  {
+    "set": {
+      "name": "Duncan Taylor Whiskies of Scotland Bunnahabhain 1991 46.9% Single Malt",
+      "age": "Vintage 1991"
+    },
+    "keeper_id": "8b40a970-7b48-4a18-877a-ab48daae4589",
+    "keeper_spokes": 0,
+    "deleted_row": {
+      "id": "dbf6bdb2-3927-4642-96c1-374bcfb6c35e",
+      "name": "Duncan Taylor Whiskies of Scotland Bunnahabhain 1991 46.9% Single Malt",
+      "distillery": "Bunnahabhain",
+      "age": "Vintage 1991",
+      "region": "Islay",
+      "cask_type": null,
+      "abv": "46.90%%",
+      "tasting_notes": null,
+      "in_stock": true,
+      "current_fill_pct": 100,
+      "name_original": null,
+      "added_at": "2026-03-30T05:54:28.231118+00:00"
+    },
+    "deleted_row_spokes": 0,
+    "note": "row was a name+age duplicate of keeper; full pre-delete columns captured from recon snapshot"
+  },
+  {
+    "set": {
+      "name": "Duncan Taylor Whiskies of Scotland Bunnahabhain 1991 46% Single Malt",
+      "age": "Vintage 1991"
+    },
+    "keeper_id": "5946b4e9-dd87-4ae0-940f-aefdfa733576",
+    "keeper_spokes": 0,
+    "deleted_row": {
+      "id": "a1163b5a-ddd5-4f40-ae5e-cf1ec6d58ed0",
+      "name": "Duncan Taylor Whiskies of Scotland Bunnahabhain 1991 46% Single Malt",
+      "distillery": "Bunnahabhain",
+      "age": "Vintage 1991",
+      "region": "Islay",
+      "cask_type": null,
+      "abv": "46.00%%",
+      "tasting_notes": null,
+      "in_stock": true,
+      "current_fill_pct": 100,
+      "name_original": null,
+      "added_at": "2026-03-30T05:54:28.231118+00:00"
+    },
+    "deleted_row_spokes": 0,
+    "note": "row was a name+age duplicate of keeper; full pre-delete columns captured from recon snapshot"
+  },
+  {
+    "set": {
+      "name": "Duncan Taylor Whiskies of Scotland Glen Grant 1995 Single Malt",
+      "age": "Vintage 1995"
+    },
+    "keeper_id": "06f4219d-e9a7-4b9a-af43-c3746035079d",
+    "keeper_spokes": 0,
+    "deleted_row": {
+      "id": "719d77b2-41a7-4098-89a6-184d6da8af20",
+      "name": "Duncan Taylor Whiskies of Scotland Glen Grant 1995 Single Malt",
+      "distillery": "Glen Grant",
+      "age": "Vintage 1995",
+      "region": "Speyside",
+      "cask_type": null,
+      "abv": "46.00%%",
+      "tasting_notes": null,
+      "in_stock": true,
+      "current_fill_pct": 100,
+      "name_original": null,
+      "added_at": "2026-03-30T05:54:28.231118+00:00"
+    },
+    "deleted_row_spokes": 0,
+    "note": "row was a name+age duplicate of keeper; full pre-delete columns captured from recon snapshot"
+  },
+  {
+    "set": {
+      "name": "Duncan Taylor Whiskies of Scotland Glen Moray 1989 Single Malt",
+      "age": "Vintage 1989"
+    },
+    "keeper_id": "96abe65f-c4fd-4fbe-abcf-9ff87e2938c0",
+    "keeper_spokes": 0,
+    "deleted_row": {
+      "id": "e415e2c4-7af8-453d-ab06-21da2b21f04d",
+      "name": "Duncan Taylor Whiskies of Scotland Glen Moray 1989 Single Malt",
+      "distillery": "Glen Moray",
+      "age": "Vintage 1989",
+      "region": "Speyside",
+      "cask_type": null,
+      "abv": "54.50%%",
+      "tasting_notes": null,
+      "in_stock": true,
+      "current_fill_pct": 100,
+      "name_original": null,
+      "added_at": "2026-03-30T05:54:28.231118+00:00"
+    },
+    "deleted_row_spokes": 0,
+    "note": "row was a name+age duplicate of keeper; full pre-delete columns captured from recon snapshot"
+  },
+  {
+    "set": {
+      "name": "Duncan Taylor Whiskies of Scotland Glen Moray 1991 Single Malt",
+      "age": "Vintage 1991"
+    },
+    "keeper_id": "33014049-94e3-4019-b2fc-f8b1669d7fdd",
+    "keeper_spokes": 0,
+    "deleted_row": {
+      "id": "bfd7c4ef-caac-467d-ac5b-b0bcc8d28665",
+      "name": "Duncan Taylor Whiskies of Scotland Glen Moray 1991 Single Malt",
+      "distillery": "Glen Moray",
+      "age": "Vintage 1991",
+      "region": "Speyside",
+      "cask_type": null,
+      "abv": "55.10%%",
+      "tasting_notes": null,
+      "in_stock": true,
+      "current_fill_pct": 100,
+      "name_original": null,
+      "added_at": "2026-03-30T05:54:28.231118+00:00"
+    },
+    "deleted_row_spokes": 0,
+    "note": "row was a name+age duplicate of keeper; full pre-delete columns captured from recon snapshot"
+  },
+  {
+    "set": {
+      "name": "Duncan Taylor Whiskies of Scotland Glen Moray 1994 Single Malt",
+      "age": "Vintage 1994"
+    },
+    "keeper_id": "2a58788c-d61a-4a70-8553-5a67f4c66cef",
+    "keeper_spokes": 0,
+    "deleted_row": {
+      "id": "6e73aecb-4943-42cb-9bf5-9e3b5d97b92b",
+      "name": "Duncan Taylor Whiskies of Scotland Glen Moray 1994 Single Malt",
+      "distillery": "Glen Moray",
+      "age": "Vintage 1994",
+      "region": "Speyside",
+      "cask_type": null,
+      "abv": "46.00%%",
+      "tasting_notes": null,
+      "in_stock": true,
+      "current_fill_pct": 100,
+      "name_original": null,
+      "added_at": "2026-03-30T05:54:28.231118+00:00"
+    },
+    "deleted_row_spokes": 0,
+    "note": "row was a name+age duplicate of keeper; full pre-delete columns captured from recon snapshot"
+  },
+  {
+    "set": {
+      "name": "Duncan Taylor Whiskies of Scotland Glenlossie 1992 49.6% Single Malt",
+      "age": "Vintage 1992"
+    },
+    "keeper_id": "6ab7931c-7fa9-4b16-ae2b-e24730017abd",
+    "keeper_spokes": 0,
+    "deleted_row": {
+      "id": "b6b597db-7886-40af-bd44-407be27d93e2",
+      "name": "Duncan Taylor Whiskies of Scotland Glenlossie 1992 49.6% Single Malt",
+      "distillery": "Glenlossie",
+      "age": "Vintage 1992",
+      "region": "Speyside",
+      "cask_type": null,
+      "abv": "49.60%%",
+      "tasting_notes": null,
+      "in_stock": true,
+      "current_fill_pct": 100,
+      "name_original": null,
+      "added_at": "2026-03-30T05:54:28.231118+00:00"
+    },
+    "deleted_row_spokes": 0,
+    "note": "row was a name+age duplicate of keeper; full pre-delete columns captured from recon snapshot"
+  },
+  {
+    "set": {
+      "name": "Duncan Taylor Whiskies of Scotland Glenlossie 1992 50.7% Single Malt",
+      "age": "Vintage 1992"
+    },
+    "keeper_id": "0f12a641-8394-442e-991c-3a27d26fb574",
+    "keeper_spokes": 0,
+    "deleted_row": {
+      "id": "717f8fcb-9aa3-4846-9630-637e7bd3c2fb",
+      "name": "Duncan Taylor Whiskies of Scotland Glenlossie 1992 50.7% Single Malt",
+      "distillery": "Glenlossie",
+      "age": "Vintage 1992",
+      "region": "Speyside",
+      "cask_type": null,
+      "abv": "50.70%%",
+      "tasting_notes": null,
+      "in_stock": true,
+      "current_fill_pct": 100,
+      "name_original": null,
+      "added_at": "2026-03-30T05:54:28.231118+00:00"
+    },
+    "deleted_row_spokes": 0,
+    "note": "row was a name+age duplicate of keeper; full pre-delete columns captured from recon snapshot"
+  },
+  {
+    "set": {
+      "name": "Duncan Taylor Whiskies of Scotland Glenlossie 1998 Single Malt",
+      "age": "Vintage 1998"
+    },
+    "keeper_id": "82babb71-c280-4c44-ab3c-13278bcd4233",
+    "keeper_spokes": 0,
+    "deleted_row": {
+      "id": "c956b1ab-2641-4991-a3b3-ae1096493b32",
+      "name": "Duncan Taylor Whiskies of Scotland Glenlossie 1998 Single Malt",
+      "distillery": "Glenlossie",
+      "age": "Vintage 1998",
+      "region": "Speyside",
+      "cask_type": null,
+      "abv": "55.60%%",
+      "tasting_notes": null,
+      "in_stock": true,
+      "current_fill_pct": 100,
+      "name_original": null,
+      "added_at": "2026-03-30T05:54:28.231118+00:00"
+    },
+    "deleted_row_spokes": 0,
+    "note": "row was a name+age duplicate of keeper; full pre-delete columns captured from recon snapshot"
+  },
+  {
+    "set": {
+      "name": "Duncan Taylor Whiskies of Scotland Strathclyde 1990 Single Grain",
+      "age": "Vintage 1990"
+    },
+    "keeper_id": "48cce2d1-a60a-4861-92d0-cec24957ae32",
+    "keeper_spokes": 0,
+    "deleted_row": {
+      "id": "e9de171c-cf21-453b-8465-21d1bdd0e3cc",
+      "name": "Duncan Taylor Whiskies of Scotland Strathclyde 1990 Single Grain",
+      "distillery": "Strathclyde",
+      "age": "Vintage 1990",
+      "region": "Lowland",
+      "cask_type": null,
+      "abv": "46.00%%",
+      "tasting_notes": null,
+      "in_stock": true,
+      "current_fill_pct": 100,
+      "name_original": null,
+      "added_at": "2026-03-30T05:54:28.231118+00:00"
+    },
+    "deleted_row_spokes": 0,
+    "note": "row was a name+age duplicate of keeper; full pre-delete columns captured from recon snapshot"
+  },
+  {
+    "set": {
+      "name": "Duncan Taylor Whiskies of Scotland Strathmill 1990 Single Malt",
+      "age": "Vintage 1990"
+    },
+    "keeper_id": "2c06f371-b675-486e-bd95-9fc74f902f5a",
+    "keeper_spokes": 0,
+    "deleted_row": {
+      "id": "9c53a202-0a16-43fa-9bc2-13f1ea11801e",
+      "name": "Duncan Taylor Whiskies of Scotland Strathmill 1990 Single Malt",
+      "distillery": "Strathmill",
+      "age": "Vintage 1990",
+      "region": "Speyside",
+      "cask_type": null,
+      "abv": "46.00%%",
+      "tasting_notes": null,
+      "in_stock": true,
+      "current_fill_pct": 100,
+      "name_original": null,
+      "added_at": "2026-03-30T05:54:28.231118+00:00"
+    },
+    "deleted_row_spokes": 0,
+    "note": "row was a name+age duplicate of keeper; full pre-delete columns captured from recon snapshot"
+  },
+  {
+    "set": {
+      "name": "GlenAllachie 15yo Single Malt",
+      "age": "15yo"
+    },
+    "keeper_id": "5867d725-0f86-4756-bc4d-b67872040079",
+    "keeper_spokes": 4,
+    "deleted_row": {
+      "id": "e4d31143-f217-4095-91a6-5ad3c645b839",
+      "name": "GlenAllachie 15yo Single Malt",
+      "distillery": "GlenAllachie",
+      "age": "15yo",
+      "region": "Speyside",
+      "cask_type": null,
+      "abv": "46.00%%",
+      "tasting_notes": "Nose: Rich oloroso sherry, dark chocolate, orange peel, dates and toasted almonds. Palate: Full-bodied with raisins, fig, treacle, baking spices, cocoa and a touch of mocha. Finish: Long, warming and dry with lingering dark fruits, cinnamon and oak tannins.",
+      "in_stock": true,
+      "current_fill_pct": 100,
+      "name_original": "GlenAllachie GlenAllachie 15yo Single Malt",
+      "added_at": "2026-03-30T05:54:28.231118+00:00"
+    },
+    "deleted_row_spokes": 3,
+    "note": "row was a name+age duplicate of keeper; full pre-delete columns captured from recon snapshot"
+  },
+  {
+    "set": {
+      "name": "IMPERIOUS WHISKY RESERVE - GLENROTHES",
+      "age": "40"
+    },
+    "keeper_id": "2a5ad5bb-3ccb-42c5-b8a4-0b7c0ee5e754",
+    "keeper_spokes": 5,
+    "deleted_row": {
+      "id": "608842f9-b741-41c8-ac5a-53e7948df662",
+      "name": "IMPERIOUS WHISKY RESERVE - GLENROTHES",
+      "distillery": "GLENTOTHES",
+      "age": "40",
+      "region": "Speyside",
+      "cask_type": "Ex-Bourbon and ex-Sherry casks",
+      "abv": "43,7%",
+      "tasting_notes": "Nose: Highly concentrated and antique. Rich notes of dark resinous sherry, polished old oak wood, beeswax, and dried dark fruits (figs, raisins) mix with an underlying thread of vanilla pod and orange oil.\nPalate: Unbelievably deep and viscous. It opens with luxurious layers of dark chocolate, Christmas cake, espresso beans, and warm rancio, balanced by the classic Glenrothes bright, velvety fruit structure.\nFinish: Immense and everlasting. The finish is beautifully dry and warming, dominated by deep wood spices, nutmeg, leather, and a faint hint of sweet tobacco.",
+      "in_stock": true,
+      "current_fill_pct": null,
+      "name_original": null,
+      "added_at": "2026-06-02T10:51:40.257315+00:00"
+    },
+    "deleted_row_spokes": 4,
+    "note": "row was a name+age duplicate of keeper; full pre-delete columns captured from recon snapshot"
+  },
+  {
+    "set": {
+      "name": "Laphroaig Royal AE Laphroaig 2005 Single Malt",
+      "age": "Vintage 2005"
+    },
+    "keeper_id": "05e57c98-36d3-4518-9b36-72d8761d348f",
+    "keeper_spokes": 0,
+    "deleted_row": {
+      "id": "adfb739f-d2fb-442c-956c-56a90c2cc62d",
+      "name": "Laphroaig Royal AE Laphroaig 2005 Single Malt",
+      "distillery": "Laphroaig",
+      "age": "Vintage 2005",
+      "region": "Highland",
+      "cask_type": null,
+      "abv": "56.40%%",
+      "tasting_notes": null,
+      "in_stock": true,
+      "current_fill_pct": 100,
+      "name_original": null,
+      "added_at": "2026-03-30T05:54:28.231118+00:00"
+    },
+    "deleted_row_spokes": 0,
+    "note": "row was a name+age duplicate of keeper; full pre-delete columns captured from recon snapshot"
+  }
+]
