@@ -29,6 +29,21 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Forced first-login password change: an account flagged must_change_password
+  // (a freshly-created member login on its temp password) cannot reach any gated
+  // page until it sets a new password. Route it to /set-password (which clears
+  // the flag via the service-side route). app_metadata is admin-only, so the
+  // member can't clear it themselves or skip this.
+  if (user && (user.app_metadata as Record<string, unknown> | undefined)?.must_change_password === true) {
+    if (request.nextUrl.pathname !== '/set-password') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/set-password'
+      url.search = ''
+      return NextResponse.redirect(url)
+    }
+    return supabaseResponse
+  }
+
   // Protect /members/* and /admin/* routes — must be signed in.
   if ((request.nextUrl.pathname.startsWith('/members') || request.nextUrl.pathname.startsWith('/admin')) && !user) {
     const url = request.nextUrl.clone()

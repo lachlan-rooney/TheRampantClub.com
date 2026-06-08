@@ -9,6 +9,7 @@ import VisitsPanel from '../VisitsPanel'
 import SuggestAPour from '@/components/whisky/SuggestAPour'
 import GiftingPanel from '../GiftingPanel'
 import ActivityTimeline from '../ActivityTimeline'
+import MemberLoginPanel from '@/components/admin/MemberLoginPanel'
 
 interface Member {
   member_no: string
@@ -283,6 +284,8 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
           </div>
         </div>
       )}
+
+      <MemberLoginPanel memberNo={member.member_no} defaultEmail={member.email} />
 
       <VisitsPanel memberNo={member.member_no} onAfterChange={loadPreferences} />
 
