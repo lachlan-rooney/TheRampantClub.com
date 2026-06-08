@@ -3,10 +3,13 @@
 import { useCallback, useEffect, useState, useMemo } from 'react'
 import { useToast } from '@/components/admin/dialogs'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { vnDateString } from '@/lib/datetime'
 
-// Admin / Floor / Calendar / New booking
+// Admin / Floor / Calendar / New entry — a MEMBER booking (default) OR a
+// free-text HOUSE / non-member entry (toggle): external hires, supplier visits,
+// closures, tastings. House entries carry a visibility (member-visible/staff-only)
+// and can close a room (block bookings). ?entry=<id> edits an existing house entry.
 
 interface MemberLite {
   member_no: string
@@ -19,31 +22,66 @@ interface MemberLite {
 
 const SPACES = ['Library Bar', 'The Studio', 'The Dining Room', 'The Rampant Room', 'Source & Origin Lab', 'Sports Club']
 const SESSIONS = ['', 'early', 'evening', 'late']
+const KINDS: { v: string; label: string }[] = [
+  { v: 'closure', label: 'Closure' }, { v: 'private_hire', label: 'Private hire' },
+  { v: 'supplier', label: 'Supplier / distiller visit' }, { v: 'tasting', label: 'Tasting' }, { v: 'other', label: 'Other' },
+]
 
 export default function NewBookingPage() {
   const router = useRouter()
-  // Vietnam-time today regardless of viewer timezone.
+  const editId = useSearchParams().get('entry')   // present → edit an existing house entry
   const today = vnDateString()
-  const [members, setMembers] = useState<MemberLite[]>([])
-  const [memberQuery, setMemberQuery] = useState('')
-  const [memberNo, setMemberNo] = useState('')
+  const [mode, setMode] = useState<'member' | 'house'>('member')
+
+  // Shared
   const [bookingDate, setBookingDate] = useState(today)
   const [startTime, setStartTime] = useState('')
   const [endTime, setEndTime] = useState('')
   const [sessionLabel, setSessionLabel] = useState('evening')
   const [space, setSpace] = useState(SPACES[0])
-  const [partySize, setPartySize] = useState('2')
-  const [notes, setNotes] = useState('')
-  const [sendConfirmation, setSendConfirmation] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { showToast, toastNode } = useToast()
+
+  // Member-booking fields
+  const [members, setMembers] = useState<MemberLite[]>([])
+  const [memberQuery, setMemberQuery] = useState('')
+  const [memberNo, setMemberNo] = useState('')
+  const [partySize, setPartySize] = useState('2')
+  const [notes, setNotes] = useState('')
+  const [sendConfirmation, setSendConfirmation] = useState(false)
+
+  // House-entry fields
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [kind, setKind] = useState('closure')
+  const [visibility, setVisibility] = useState<'member' | 'staff'>('staff')
+  const [blocksSpace, setBlocksSpace] = useState(true)
 
   useEffect(() => {
     fetch('/api/admin/mis/members', { cache: 'no-store' })
       .then(r => r.json())
       .then(d => { if (d.members) setMembers(d.members) })
   }, [])
+
+  // Edit mode: load the existing house entry, switch to house mode, prefill.
+  useEffect(() => {
+    if (!editId) return
+    fetch(`/api/admin/calendar-entries/${editId}`, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(({ entry }) => {
+        if (!entry) return
+        setMode('house')
+        setTitle(entry.title || ''); setDescription(entry.description || '')
+        setKind(entry.kind || 'other'); setVisibility(entry.visibility || 'staff')
+        setBlocksSpace(!!entry.blocks_space)
+        setBookingDate(entry.entry_date || today)
+        setStartTime(entry.start_time ? entry.start_time.slice(0, 5) : '')
+        setEndTime(entry.end_time ? entry.end_time.slice(0, 5) : '')
+        setSessionLabel(entry.session_label || '')
+        setSpace(entry.space || '')
+      })
+  }, [editId])  // eslint-disable-line react-hooks/exhaustive-deps
 
   const filteredMembers = useMemo(() => {
     const q = memberQuery.trim().toLowerCase()
@@ -57,7 +95,7 @@ export default function NewBookingPage() {
 
   const selectedMember = useMemo(() => members.find(m => m.member_no === memberNo) || null, [members, memberNo])
 
-  const submit = useCallback(async () => {
+  const submitMember = useCallback(async () => {
     if (!memberNo) { setError('Pick a member.'); return }
     if (!sessionLabel && !startTime) { setError('Either a start time or a session is required.'); return }
     setSaving(true); setError(null)
@@ -65,77 +103,111 @@ export default function NewBookingPage() {
       const r = await fetch('/api/admin/bookings', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          member_no: memberNo,
-          booking_date: bookingDate,
-          start_time: startTime || null,
-          end_time: endTime || null,
-          session_label: sessionLabel || null,
-          space,
+          member_no: memberNo, booking_date: bookingDate,
+          start_time: startTime || null, end_time: endTime || null,
+          session_label: sessionLabel || null, space,
           party_size: partySize ? Number(partySize) : 1,
-          notes: notes || null,
-          send_confirmation: sendConfirmation,
+          notes: notes || null, send_confirmation: sendConfirmation,
         }),
       })
       const j = await r.json()
       if (!r.ok) throw new Error(j.error || 'Save failed')
       if (sendConfirmation && j.email_error) {
-        // Booking still saved — surface the email failure as a toast, then
-        // give it a beat to be read before moving on to the calendar.
         showToast(`Booking saved, but confirmation email failed: ${j.email_error}`, 'error')
         setTimeout(() => router.push('/admin/calendar'), 2600)
         return
       }
       router.push('/admin/calendar')
-    } catch (e) {
-      setError((e as Error).message)
-      setSaving(false)
-    }
-  }, [memberNo, bookingDate, startTime, endTime, sessionLabel, space, partySize, notes, sendConfirmation, router])
+    } catch (e) { setError((e as Error).message); setSaving(false) }
+  }, [memberNo, bookingDate, startTime, endTime, sessionLabel, space, partySize, notes, sendConfirmation, router, showToast])
+
+  const submitHouse = useCallback(async () => {
+    if (!title.trim()) { setError('A title is required.'); return }
+    setSaving(true); setError(null)
+    try {
+      const payload = {
+        title: title.trim(), description: description || null, entry_date: bookingDate,
+        start_time: startTime || null, end_time: endTime || null, session_label: sessionLabel || null,
+        space: space || null, kind, visibility, blocks_space: space ? blocksSpace : false,
+      }
+      const r = await fetch(editId ? `/api/admin/calendar-entries/${editId}` : '/api/admin/calendar-entries', {
+        method: editId ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error || 'Save failed')
+      router.push('/admin/calendar')
+    } catch (e) { setError((e as Error).message); setSaving(false) }
+  }, [editId, title, description, bookingDate, startTime, endTime, sessionLabel, space, kind, visibility, blocksSpace, router])
 
   return (
     <>
       <Link href="/admin/calendar" style={backLink}>← Calendar</Link>
 
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 20 }}>
         <div style={eyebrow}>Floor · Calendar</div>
-        <h1 style={pageTitle}>New booking</h1>
+        <h1 style={pageTitle}>{editId ? 'Edit house entry' : mode === 'house' ? 'New house entry' : 'New booking'}</h1>
       </div>
+
+      {/* Mode toggle (hidden in edit mode — an entry is already a house entry) */}
+      {!editId && (
+        <div style={toggleRow}>
+          <button onClick={() => { setMode('member'); setError(null) }} style={mode === 'member' ? toggleOn : toggleOff}>Member booking</button>
+          <button onClick={() => { setMode('house'); setError(null) }} style={mode === 'house' ? toggleOn : toggleOff}>House / non-member entry</button>
+        </div>
+      )}
 
       {error && <div style={errorBox}>{error}</div>}
 
-      {/* Member picker */}
-      <div style={fieldRow}>
-        <div style={editLabel}>Member *</div>
-        {selectedMember ? (
-          <div style={selectedMemberRow}>
-            <div>
-              <strong>{selectedMember.full_name}</strong>
-              <span style={{ marginLeft: 8, color: '#B2AA98', fontSize: 11 }}>{selectedMember.member_no} · {selectedMember.tier}</span>
+      {mode === 'member' ? (
+        <div style={fieldRow}>
+          <div style={editLabel}>Member *</div>
+          {selectedMember ? (
+            <div style={selectedMemberRow}>
+              <div>
+                <strong>{selectedMember.full_name}</strong>
+                <span style={{ marginLeft: 8, color: '#B2AA98', fontSize: 11 }}>{selectedMember.member_no} · {selectedMember.tier}</span>
+              </div>
+              <button onClick={() => { setMemberNo(''); setMemberQuery('') }} style={tinyBtn}>Change</button>
             </div>
-            <button onClick={() => { setMemberNo(''); setMemberQuery('') }} style={tinyBtn}>Change</button>
+          ) : (
+            <>
+              <input value={memberQuery} onChange={e => setMemberQuery(e.target.value)} placeholder="Search member by name or number…" style={inputStyle} />
+              <div style={memberList}>
+                {filteredMembers.map(m => (
+                  <button key={m.member_no} onClick={() => setMemberNo(m.member_no)} style={memberRow}>
+                    <span>{m.full_name}</span>
+                    <span style={{ color: '#B2AA98', fontSize: 11 }}>{m.member_no} · {m.tier}</span>
+                  </button>
+                ))}
+                {filteredMembers.length === 0 && <div style={emptyHint}>No matches.</div>}
+              </div>
+            </>
+          )}
+        </div>
+      ) : (
+        <>
+          <div style={fieldRow}>
+            <div style={editLabel}>Title *</div>
+            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Private hire — Nguyen party · Distiller visit — Fergus · Club closed" style={inputStyle} />
           </div>
-        ) : (
-          <>
-            <input
-              value={memberQuery}
-              onChange={e => setMemberQuery(e.target.value)}
-              placeholder="Search member by name or number…"
-              style={inputStyle}
-            />
-            <div style={memberList}>
-              {filteredMembers.map(m => (
-                <button key={m.member_no} onClick={() => setMemberNo(m.member_no)} style={memberRow}>
-                  <span>{m.full_name}</span>
-                  <span style={{ color: '#B2AA98', fontSize: 11 }}>{m.member_no} · {m.tier}</span>
-                </button>
-              ))}
-              {filteredMembers.length === 0 && (
-                <div style={emptyHint}>No matches.</div>
-              )}
+          <div style={metaGrid}>
+            <div style={fieldRow}>
+              <div style={editLabel}>Kind</div>
+              <select value={kind} onChange={e => setKind(e.target.value)} style={inputStyle}>
+                {KINDS.map(k => <option key={k.v} value={k.v}>{k.label}</option>)}
+              </select>
             </div>
-          </>
-        )}
-      </div>
+            <div style={fieldRow}>
+              <div style={editLabel}>Visibility</div>
+              <select value={visibility} onChange={e => setVisibility(e.target.value as 'member' | 'staff')} style={inputStyle}>
+                <option value="staff">Staff-only (members never see it)</option>
+                <option value="member">Member-visible (shows on member events)</option>
+              </select>
+            </div>
+          </div>
+        </>
+      )}
 
       <div style={metaGrid}>
         <div style={fieldRow}>
@@ -143,15 +215,18 @@ export default function NewBookingPage() {
           <input type="date" value={bookingDate} onChange={e => setBookingDate(e.target.value)} style={inputStyle} />
         </div>
         <div style={fieldRow}>
-          <div style={editLabel}>Space *</div>
+          <div style={editLabel}>{mode === 'house' ? 'Space' : 'Space *'}</div>
           <select value={space} onChange={e => setSpace(e.target.value)} style={inputStyle}>
+            {mode === 'house' && <option value="">— none (no room) —</option>}
             {SPACES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
-        <div style={fieldRow}>
-          <div style={editLabel}>Party size</div>
-          <input type="number" min={1} max={50} value={partySize} onChange={e => setPartySize(e.target.value)} style={inputStyle} />
-        </div>
+        {mode === 'member' && (
+          <div style={fieldRow}>
+            <div style={editLabel}>Party size</div>
+            <input type="number" min={1} max={50} value={partySize} onChange={e => setPartySize(e.target.value)} style={inputStyle} />
+          </div>
+        )}
       </div>
 
       <div style={metaGrid}>
@@ -170,53 +245,63 @@ export default function NewBookingPage() {
           <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} style={inputStyle} />
         </div>
       </div>
-      <div style={{ ...hintText, marginTop: 6 }}>Set either a precise time or a session. Both is fine too.</div>
-
-      <div style={{ ...fieldRow, marginTop: 14 }}>
-        <div style={editLabel}>Notes</div>
-        <textarea
-          value={notes}
-          onChange={e => setNotes(e.target.value)}
-          rows={3}
-          placeholder="Special requests, party context, anything the team should know."
-          style={{ ...inputStyle, resize: 'vertical' }}
-        />
+      <div style={{ ...hintText, marginTop: 6 }}>
+        {mode === 'house' ? 'No time = the whole day. A space + “closes the room” blocks bookings for that window.' : 'Set either a precise time or a session. Both is fine too.'}
       </div>
 
-      <label style={{
-        display: 'flex', alignItems: 'center', gap: 10, marginTop: 18, padding: '12px 14px',
-        background: 'rgba(212,184,90,0.06)', border: '1px solid rgba(212,184,90,0.20)',
-        borderRadius: 6, cursor: selectedMember?.email ? 'pointer' : 'not-allowed',
-        opacity: selectedMember && !selectedMember.email ? 0.5 : 1,
-      }}>
-        <input
-          type="checkbox"
-          checked={sendConfirmation}
-          onChange={e => setSendConfirmation(e.target.checked)}
-          disabled={!selectedMember || !selectedMember.email}
-        />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#E5D4C2' }}>
-            Send confirmation email to the member
+      {mode === 'member' ? (
+        <>
+          <div style={{ ...fieldRow, marginTop: 14 }}>
+            <div style={editLabel}>Notes</div>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Special requests, party context, anything the team should know." style={{ ...inputStyle, resize: 'vertical' }} />
           </div>
-          <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', marginTop: 4 }}>
-            {!selectedMember
-              ? 'Pick a member first.'
-              : selectedMember.email
-                ? `Will go to ${selectedMember.email}`
-                : `No email on file for ${selectedMember.full_name}. Add one to the member record to enable this.`}
+          <label style={{
+            display: 'flex', alignItems: 'center', gap: 10, marginTop: 18, padding: '12px 14px',
+            background: 'rgba(212,184,90,0.06)', border: '1px solid rgba(212,184,90,0.20)', borderRadius: 6,
+            cursor: selectedMember?.email ? 'pointer' : 'not-allowed', opacity: selectedMember && !selectedMember.email ? 0.5 : 1,
+          }}>
+            <input type="checkbox" checked={sendConfirmation} onChange={e => setSendConfirmation(e.target.checked)} disabled={!selectedMember || !selectedMember.email} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#E5D4C2' }}>Send confirmation email to the member</div>
+              <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', marginTop: 4 }}>
+                {!selectedMember ? 'Pick a member first.' : selectedMember.email ? `Will go to ${selectedMember.email}` : `No email on file for ${selectedMember.full_name}. Add one to the member record to enable this.`}
+              </div>
+            </div>
+          </label>
+        </>
+      ) : (
+        <>
+          <div style={{ ...fieldRow, marginTop: 14 }}>
+            <div style={editLabel}>Description</div>
+            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder="Optional detail. For a member-visible entry this is what members read." style={{ ...inputStyle, resize: 'vertical' }} />
           </div>
-        </div>
-      </label>
+          {space && (
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: 10, marginTop: 18, padding: '12px 14px',
+              background: 'rgba(212,184,90,0.06)', border: '1px solid rgba(212,184,90,0.20)', borderRadius: 6, cursor: 'pointer',
+            }}>
+              <input type="checkbox" checked={blocksSpace} onChange={e => setBlocksSpace(e.target.checked)} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#E5D4C2' }}>Closes {space} (blocks bookings)</div>
+                <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', marginTop: 4 }}>
+                  On = the room can&apos;t be booked for this window. Off = informational only (e.g. a visit that doesn&apos;t close the room).
+                </div>
+              </div>
+            </label>
+          )}
+        </>
+      )}
 
       <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
-        <button
-          onClick={submit}
-          disabled={saving || !memberNo}
-          style={{ ...btnPrimary, opacity: !memberNo ? 0.4 : 1 }}
-        >
-          {saving ? 'Saving…' : 'Save booking'}
-        </button>
+        {mode === 'member' ? (
+          <button onClick={submitMember} disabled={saving || !memberNo} style={{ ...btnPrimary, opacity: !memberNo ? 0.4 : 1 }}>
+            {saving ? 'Saving…' : 'Save booking'}
+          </button>
+        ) : (
+          <button onClick={submitHouse} disabled={saving || !title.trim()} style={{ ...btnPrimary, opacity: !title.trim() ? 0.4 : 1 }}>
+            {saving ? 'Saving…' : editId ? 'Save changes' : 'Save house entry'}
+          </button>
+        )}
         <Link href="/admin/calendar" style={btnGhost}>Cancel</Link>
       </div>
 
@@ -224,6 +309,14 @@ export default function NewBookingPage() {
     </>
   )
 }
+
+const toggleRow: React.CSSProperties = { display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }
+const toggleBase: React.CSSProperties = {
+  padding: '8px 16px', borderRadius: 20, cursor: 'pointer',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, letterSpacing: '0.04em',
+}
+const toggleOn: React.CSSProperties = { ...toggleBase, background: 'rgba(212,184,90,0.15)', color: '#D4B85A', border: '1px solid rgba(212,184,90,0.45)' }
+const toggleOff: React.CSSProperties = { ...toggleBase, background: 'transparent', color: '#B2AA98', border: '1px solid rgba(229,212,194,0.18)' }
 
 const backLink: React.CSSProperties = {
   display: 'inline-block', marginBottom: 18, textDecoration: 'none',

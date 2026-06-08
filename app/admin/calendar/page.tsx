@@ -32,8 +32,23 @@ interface Booking {
   created_at: string
 }
 
+interface CalendarEntry {
+  id: string
+  title: string
+  description: string | null
+  entry_date: string
+  start_time: string | null
+  end_time: string | null
+  session_label: string | null
+  space: string | null
+  kind: string
+  visibility: 'member' | 'staff'
+  blocks_space: boolean
+}
+
 const SPACES = ['Library Bar', 'The Studio', 'The Dining Room', 'The Rampant Room', 'Source & Origin Lab', 'Sports Club']
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const KIND_LABEL: Record<string, string> = { closure: 'Closure', private_hire: 'Private hire', supplier: 'Supplier visit', tasting: 'Tasting', other: 'House' }
 
 function startOfWeek(d: Date): Date {
   const day = d.getDay()  // 0=Sun
@@ -62,6 +77,9 @@ export default function CalendarPage() {
   const [hovered, setHovered] = useState<string | null>(null)
   const [confirmCancel, setConfirmCancel] = useState<Booking | null>(null)
   const [cancelBusy, setCancelBusy] = useState(false)
+  const [entries, setEntries] = useState<CalendarEntry[]>([])
+  const [confirmDeleteEntry, setConfirmDeleteEntry] = useState<CalendarEntry | null>(null)
+  const [entryBusy, setEntryBusy] = useState(false)
   const { showToast, toastNode } = useToast()
 
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart])
@@ -72,9 +90,11 @@ export default function CalendarPage() {
     setLoading(true)
     const params = new URLSearchParams({ from, to })
     if (spaceFilter !== 'All spaces') params.set('space', spaceFilter)
-    fetch(`/api/admin/bookings?${params}`, { cache: 'no-store' })
-      .then(r => r.json())
-      .then(d => { setBookings(d.bookings || []); setLoading(false) })
+    Promise.all([
+      fetch(`/api/admin/bookings?${params}`, { cache: 'no-store' }).then(r => r.json()),
+      fetch(`/api/admin/calendar-entries?${params}`, { cache: 'no-store' }).then(r => r.json()),
+    ])
+      .then(([b, e]) => { setBookings(b.bookings || []); setEntries(e.entries || []); setLoading(false) })
       .catch(() => setLoading(false))
   }, [from, to, spaceFilter])
   useEffect(() => { load() }, [load])
@@ -88,6 +108,13 @@ export default function CalendarPage() {
     }
     return m
   }, [bookings, days])
+
+  const byDayEntries = useMemo(() => {
+    const m: Record<string, CalendarEntry[]> = {}
+    for (const d of days) m[isoDate(d)] = []
+    for (const e of entries) { if (m[e.entry_date]) m[e.entry_date].push(e) }
+    return m
+  }, [entries, days])
 
   const startVisit = async (booking: Booking) => {
     if (starting) return
@@ -117,6 +144,15 @@ export default function CalendarPage() {
     }
     showToast('Booking cancelled.', 'success')
     setCancelBusy(false); setConfirmCancel(null); load()
+  }
+
+  const deleteEntryConfirmed = async () => {
+    if (!confirmDeleteEntry) return
+    setEntryBusy(true)
+    const r = await fetch(`/api/admin/calendar-entries/${confirmDeleteEntry.id}`, { method: 'DELETE' })
+    if (!r.ok) { const j = await r.json().catch(() => ({})); showToast(j.error || 'Remove failed', 'error'); setEntryBusy(false); return }
+    showToast('House entry removed.', 'success')
+    setEntryBusy(false); setConfirmDeleteEntry(null); load()
   }
 
   const weekLabel = `${days[0].toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${days[6].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
@@ -158,16 +194,36 @@ export default function CalendarPage() {
             const iso = isoDate(d)
             const isToday = iso === todayIso
             const dayBookings = byDay[iso] || []
+            const dayEntries = byDayEntries[iso] || []
             return (
               <div key={iso} style={{ ...dayCol, ...(isToday ? dayColToday : null) }}>
                 <div style={{ ...dayHeader, ...(isToday ? dayHeaderToday : null) }}>
                   <span style={dayName}>{DAYS[i]}</span>
                   <span style={dayDate}>{d.getDate()}</span>
                 </div>
-                {dayBookings.length === 0 ? (
+                {dayBookings.length === 0 && dayEntries.length === 0 ? (
                   <div style={emptyDay}>—</div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {dayEntries.map(e => (
+                      <div key={e.id} style={houseCard}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
+                          <span style={houseTime}>{fmtEntryTime(e)}</span>
+                          {e.visibility === 'staff'
+                            ? <span style={staffBadge}>STAFF ONLY</span>
+                            : <span style={memberBadge}>MEMBER</span>}
+                        </div>
+                        <div style={houseTitle}>{e.title}</div>
+                        <div style={houseMeta}>
+                          {KIND_LABEL[e.kind] || 'House'}{e.space ? ` · ${e.space}` : ''}{e.space && e.blocks_space ? ' · closed' : ''}
+                        </div>
+                        {e.description && <div style={bookingNotes}>{e.description}</div>}
+                        <div style={cardActions}>
+                          <Link href={`/admin/bookings/new?entry=${e.id}`} style={cardActionLink}>Edit</Link>
+                          <button onClick={() => setConfirmDeleteEntry(e)} style={cardActionBtn}>Remove</button>
+                        </div>
+                      </div>
+                    ))}
                     {dayBookings.map(b => (
                       <div
                         key={b.booking_id}
@@ -239,9 +295,31 @@ export default function CalendarPage() {
         onConfirm={cancelConfirmed}
         onCancel={() => { if (!cancelBusy) setConfirmCancel(null) }}
       />
+      <ConfirmModal
+        open={!!confirmDeleteEntry}
+        eyebrow="⚠ REMOVE HOUSE ENTRY"
+        title="Remove this entry?"
+        subject={confirmDeleteEntry ? `${confirmDeleteEntry.title} · ${confirmDeleteEntry.entry_date}` : ''}
+        body="Removes the house entry from the calendar. If it was closing a room, that room becomes bookable again."
+        confirmLabel="Remove entry"
+        busyLabel="Removing…"
+        busy={entryBusy}
+        tone="danger"
+        onConfirm={deleteEntryConfirmed}
+        onCancel={() => { if (!entryBusy) setConfirmDeleteEntry(null) }}
+      />
       {toastNode}
     </>
   )
+}
+
+function fmtEntryTime(e: CalendarEntry): string {
+  if (e.start_time) {
+    const t = e.start_time.slice(0, 5)
+    return e.end_time ? `${t}–${e.end_time.slice(0, 5)}` : t
+  }
+  if (e.session_label) return e.session_label
+  return 'All day'
 }
 
 function fmtTime(b: Booking): string {
@@ -269,6 +347,32 @@ function statusPill(s: Booking['status']): React.CSSProperties {
     fontFamily: "'Google Sans Code', monospace", fontSize: 8,
     letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 600,
   }
+}
+
+// House entries — gold-tinted, distinct from member bookings (green-ish).
+const houseCard: React.CSSProperties = {
+  background: 'rgba(212,184,90,0.07)',
+  border: '1px solid rgba(212,184,90,0.28)', borderLeft: '3px solid #D4B85A',
+  borderRadius: 4, padding: '7px 8px',
+}
+const houseTime: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#D4B85A', letterSpacing: '0.04em',
+}
+const houseTitle: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 13, color: '#E5D4C2', marginTop: 3, lineHeight: 1.2,
+}
+const houseMeta: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9, color: '#B2AA98', marginTop: 3, letterSpacing: '0.03em',
+}
+const staffBadge: React.CSSProperties = {
+  background: 'rgba(194,112,112,0.14)', color: '#C27070', border: '1px solid rgba(194,112,112,0.45)',
+  borderRadius: 3, padding: '1px 6px', fontFamily: "'Google Sans Code', monospace", fontSize: 7.5,
+  letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, whiteSpace: 'nowrap',
+}
+const memberBadge: React.CSSProperties = {
+  background: 'rgba(122,176,122,0.14)', color: '#7AB07A', border: '1px solid rgba(122,176,122,0.45)',
+  borderRadius: 3, padding: '1px 6px', fontFamily: "'Google Sans Code', monospace", fontSize: 7.5,
+  letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, whiteSpace: 'nowrap',
 }
 
 const headerRow: React.CSSProperties = {
