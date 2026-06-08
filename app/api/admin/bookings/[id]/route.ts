@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
+import { checkBookingAvailability } from '@/lib/booking-availability'
+
+const ACTIVE_STATUS = ['pending', 'confirmed', 'arrived']
 
 // GET    /api/admin/bookings/[id]   — single booking + member context
 // PATCH  /api/admin/bookings/[id]   — edit any field
@@ -25,7 +28,9 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const { data, error } = await sb.from('bookings_with_member').select('*').eq('booking_id', id).maybeSingle()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'not found' }, { status: 404 })
-  return NextResponse.json({ booking: data })
+  // Current table holds, so the edit form can pre-select them.
+  const { data: held } = await sb.from('booking_tables').select('unit_id').eq('booking_id', id)
+  return NextResponse.json({ booking: data, unit_ids: (held || []).map(h => h.unit_id) })
 }
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -36,7 +41,9 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
 
   const sb = svc()
-  const { data: before } = await sb.from('bookings').select('start_time, session_label, status').eq('booking_id', id).maybeSingle()
+  const { data: before } = await sb.from('bookings')
+    .select('booking_date, start_time, end_time, session_label, status, party_size, space')
+    .eq('booking_id', id).maybeSingle()
   if (!before) return NextResponse.json({ error: 'booking not found' }, { status: 404 })
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
@@ -62,8 +69,49 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     return NextResponse.json({ error: 'either start_time or session_label must be set' }, { status: 400 })
   }
 
+  // Availability guard (the hole the recon found — PATCH was unguarded). When
+  // an edit touches scheduling AND the booking is still active, re-check the
+  // MERGED state with the SAME function POST uses, excluding this booking's own
+  // holds so an edit can't conflict with itself.
+  const touchesSchedule = ['booking_date', 'start_time', 'end_time', 'session_label', 'party_size', 'space'].some(k => k in body) || 'unit_ids' in body
+  const mergedStatus = (patch.status as string) ?? before.status
+  const explicitUnits = 'unit_ids' in body && Array.isArray(body.unit_ids)
+  if (touchesSchedule && ACTIVE_STATUS.includes(mergedStatus)) {
+    // Units to check: the edit's explicit set, else the booking's current holds.
+    let unitIds: string[]
+    if (explicitUnits) {
+      unitIds = (body.unit_ids as unknown[]).filter(x => typeof x === 'string') as string[]
+    } else {
+      const { data: held } = await sb.from('booking_tables').select('unit_id').eq('booking_id', id)
+      unitIds = (held || []).map(h => h.unit_id as string)
+    }
+    const avail = await checkBookingAvailability({
+      sb,
+      unit_ids: unitIds,
+      space: (patch.space as string) ?? before.space,
+      booking_date: (patch.booking_date as string) ?? before.booking_date,
+      start_time: (mergedStart as string | null),
+      end_time: 'end_time' in patch ? (patch.end_time as string | null) : before.end_time,
+      session_label: (mergedSession as string | null),
+      party_size: (patch.party_size as number) ?? before.party_size,
+      excludeBookingId: id,
+    })
+    if (!avail.ok) return NextResponse.json({ error: avail.error }, { status: avail.status || 409 })
+    if (unitIds.length > 0 && avail.resolvedSpace) patch.space = avail.resolvedSpace
+  }
+
   const { error } = await sb.from('bookings').update(patch).eq('booking_id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Sync unit holds when the edit explicitly set them (replace the lot).
+  if (explicitUnits) {
+    const unitIds = [...new Set((body.unit_ids as unknown[]).filter(x => typeof x === 'string') as string[])]
+    await sb.from('booking_tables').delete().eq('booking_id', id)
+    if (unitIds.length > 0) {
+      const { error: btErr } = await sb.from('booking_tables').insert(unitIds.map(unit_id => ({ booking_id: id, unit_id })))
+      if (btErr) return NextResponse.json({ error: `Could not update table holds: ${btErr.message}` }, { status: 500 })
+    }
+  }
   return NextResponse.json({ ok: true })
 }
 

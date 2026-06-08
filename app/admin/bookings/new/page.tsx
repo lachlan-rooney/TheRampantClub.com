@@ -5,6 +5,7 @@ import { useToast } from '@/components/admin/dialogs'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { vnDateString } from '@/lib/datetime'
+import UnitPicker from '@/components/admin/UnitPicker'
 
 // Admin / Floor / Calendar / New entry — a MEMBER booking (default) OR a
 // free-text HOUSE / non-member entry (toggle): external hires, supplier visits,
@@ -58,10 +59,19 @@ export default function NewBookingPage() {
   const [visibility, setVisibility] = useState<'member' | 'staff'>('staff')
   const [blocksSpace, setBlocksSpace] = useState(true)
 
+  // Table units (member booking)
+  const [rooms, setRooms] = useState<string[]>([])
+  const [unitIds, setUnitIds] = useState<string[]>([])
+  const [selectedSeats, setSelectedSeats] = useState(0)
+
   useEffect(() => {
     fetch('/api/admin/mis/members', { cache: 'no-store' })
       .then(r => r.json())
       .then(d => { if (d.members) setMembers(d.members) })
+    // Bookable rooms (distinct spaces with units — excludes Sports Club).
+    fetch('/api/admin/bookings/availability', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d.rooms) && d.rooms.length) { setRooms(d.rooms); setSpace(s => d.rooms.includes(s) ? s : d.rooms[0]) } })
   }, [])
 
   // Edit mode: load the existing house entry, switch to house mode, prefill.
@@ -98,6 +108,9 @@ export default function NewBookingPage() {
   const submitMember = useCallback(async () => {
     if (!memberNo) { setError('Pick a member.'); return }
     if (!sessionLabel && !startTime) { setError('Either a start time or a session is required.'); return }
+    if (unitIds.length === 0) { setError('Pick at least one table for this booking.'); return }
+    const party = partySize ? Number(partySize) : 1
+    if (selectedSeats < party) { setError(`The selected table${unitIds.length === 1 ? '' : 's'} seat ${selectedSeats}, but the party is ${party}. Add a table or pick a larger one.`); return }
     setSaving(true); setError(null)
     try {
       const r = await fetch('/api/admin/bookings', {
@@ -106,7 +119,7 @@ export default function NewBookingPage() {
           member_no: memberNo, booking_date: bookingDate,
           start_time: startTime || null, end_time: endTime || null,
           session_label: sessionLabel || null, space,
-          party_size: partySize ? Number(partySize) : 1,
+          party_size: party, unit_ids: unitIds,
           notes: notes || null, send_confirmation: sendConfirmation,
         }),
       })
@@ -119,7 +132,7 @@ export default function NewBookingPage() {
       }
       router.push('/admin/calendar')
     } catch (e) { setError((e as Error).message); setSaving(false) }
-  }, [memberNo, bookingDate, startTime, endTime, sessionLabel, space, partySize, notes, sendConfirmation, router, showToast])
+  }, [memberNo, bookingDate, startTime, endTime, sessionLabel, space, partySize, unitIds, selectedSeats, notes, sendConfirmation, router, showToast])
 
   const submitHouse = useCallback(async () => {
     if (!title.trim()) { setError('A title is required.'); return }
@@ -215,10 +228,16 @@ export default function NewBookingPage() {
           <input type="date" value={bookingDate} onChange={e => setBookingDate(e.target.value)} style={inputStyle} />
         </div>
         <div style={fieldRow}>
-          <div style={editLabel}>{mode === 'house' ? 'Space' : 'Space *'}</div>
-          <select value={space} onChange={e => setSpace(e.target.value)} style={inputStyle}>
-            {mode === 'house' && <option value="">— none (no room) —</option>}
-            {SPACES.map(s => <option key={s} value={s}>{s}</option>)}
+          <div style={editLabel}>{mode === 'house' ? 'Space' : 'Room *'}</div>
+          <select value={space} onChange={e => { setSpace(e.target.value); setUnitIds([]) }} style={inputStyle}>
+            {mode === 'house' ? (
+              <>
+                <option value="">— none (no room) —</option>
+                {SPACES.map(s => <option key={s} value={s}>{s}</option>)}
+              </>
+            ) : (
+              (rooms.length ? rooms : SPACES.filter(s => s !== 'Sports Club')).map(s => <option key={s} value={s}>{s}</option>)
+            )}
           </select>
         </div>
         {mode === 'member' && (
@@ -248,6 +267,16 @@ export default function NewBookingPage() {
       <div style={{ ...hintText, marginTop: 6 }}>
         {mode === 'house' ? 'No time = the whole day. A space + “closes the room” blocks bookings for that window.' : 'Set either a precise time or a session. Both is fine too.'}
       </div>
+
+      {mode === 'member' && (
+        <div style={{ marginTop: 14 }}>
+          <UnitPicker
+            space={space} date={bookingDate} startTime={startTime} endTime={endTime} sessionLabel={sessionLabel}
+            partySize={partySize ? Number(partySize) : 1}
+            selected={unitIds} onChange={setUnitIds} onSeatsChange={setSelectedSeats}
+          />
+        </div>
+      )}
 
       {mode === 'member' ? (
         <>
