@@ -21,9 +21,11 @@ interface Props {
   onChange: (ids: string[]) => void
   onSeatsChange?: (seats: number) => void
   excludeBookingId?: string
+  excludeEntryId?: string
+  mode?: 'booking' | 'house'
 }
 
-export default function UnitPicker({ space, date, startTime, endTime, sessionLabel, partySize, selected, onChange, onSeatsChange, excludeBookingId }: Props) {
+export default function UnitPicker({ space, date, startTime, endTime, sessionLabel, partySize, selected, onChange, onSeatsChange, excludeBookingId, excludeEntryId, mode = 'booking' }: Props) {
   const [units, setUnits] = useState<Unit[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -35,12 +37,13 @@ export default function UnitPicker({ space, date, startTime, endTime, sessionLab
     if (endTime) params.set('end', endTime)
     if (sessionLabel) params.set('session', sessionLabel)
     if (excludeBookingId) params.set('booking', excludeBookingId)
+    if (excludeEntryId) params.set('entry', excludeEntryId)
     setLoading(true)
     fetch(`/api/admin/bookings/availability?${params.toString()}`, { cache: 'no-store' })
       .then(r => r.json())
       .then(d => { setUnits(d.units || []) })
       .finally(() => setLoading(false))
-  }, [space, date, startTime, endTime, sessionLabel, excludeBookingId])
+  }, [space, date, startTime, endTime, sessionLabel, excludeBookingId, excludeEntryId])
 
   // Prune any selected ids that aren't in this room (e.g. after a room change).
   useEffect(() => {
@@ -85,12 +88,16 @@ export default function UnitPicker({ space, date, startTime, endTime, sessionLab
   return (
     <div style={{ marginTop: 6 }}>
       <div style={labelRow}>
-        <div style={editLabel}>Tables</div>
+        <div style={editLabel}>{mode === 'house' ? 'Tables this occupies' : 'Tables'}</div>
         {selected.length > 0 && (
-          <div style={{ ...seatCounter, color: selectedSeats >= partySize ? '#7AB07A' : '#C27070' }}>
-            {selectedSeats} seat{selectedSeats === 1 ? '' : 's'} selected · party {partySize}
-            {selectedSeats < partySize ? ' — too few' : ''}
-          </div>
+          mode === 'house' ? (
+            <div style={{ ...seatCounter, color: '#B2AA98' }}>{selected.length} table{selected.length === 1 ? '' : 's'} selected</div>
+          ) : (
+            <div style={{ ...seatCounter, color: selectedSeats >= partySize ? '#7AB07A' : '#C27070' }}>
+              {selectedSeats} seat{selectedSeats === 1 ? '' : 's'} selected · party {partySize}
+              {selectedSeats < partySize ? ' — too few' : ''}
+            </div>
+          )
         )}
       </div>
 
@@ -129,7 +136,9 @@ export default function UnitPicker({ space, date, startTime, endTime, sessionLab
         </div>
       )}
       <div style={{ ...hint, marginTop: 8 }}>
-        Greyed = taken for this time or blocked by the either-or (booking the whole sofa frees no segments, and vice-versa). Pick one or more tables; their seats must cover the party.
+        {mode === 'house'
+          ? 'Pick the tables this entry occupies — only those are blocked (the rest of the room stays bookable). Pick none to close the whole room. Greyed = already taken for this time.'
+          : 'Greyed = taken for this time or blocked by the either-or (booking the whole sofa frees no segments, and vice-versa). Pick one or more tables; their seats must cover the party.'}
       </div>
     </div>
   )

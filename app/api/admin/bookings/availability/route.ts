@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
   const end = searchParams.get('end')
   const session = searchParams.get('session')
   const booking = searchParams.get('booking')
+  const entry = searchParams.get('entry')
 
   const sb = svc()
   const rooms = await bookableRooms(sb)
@@ -39,6 +40,7 @@ export async function GET(req: NextRequest) {
     end_time: end || null,
     session_label: session || null,
     excludeBookingId: booking || null,
+    excludeEntryId: entry || null,
   })
   return NextResponse.json({ rooms, units })
 }

@@ -102,11 +102,47 @@ export interface AvailabilityResult {
   resolvedSpace?: string              // the room derived from the units (set bookings.space to this)
 }
 
+// House calendar_entries that BLOCK in a room/window. An entry with NO units
+// closes the WHOLE room (the original closure behaviour). An entry WITH units
+// blocks only those specific units (e.g. a private hire of just the sofa) —
+// the rest of the room stays bookable. Returns the whole-room flag (+ its title
+// for the message) and the set of specifically-blocked unit ids.
+async function houseEntryBlocks(sb: SupabaseClient, space: string, booking_date: string, win: TimeWindow, excludeEntryId?: string | null):
+  Promise<{ wholeRoomClosed: boolean; closureTitle: string | null; occupied: Set<string> }> {
+  const occupied = new Set<string>()
+  const { data: entries } = await sb
+    .from('calendar_entries')
+    .select('id, title, start_time, end_time, blocks_space')
+    .eq('space', space).eq('entry_date', booking_date).eq('blocks_space', true)
+  const blocking = (entries || []).filter(e => e.id !== excludeEntryId && timeOverlaps(e as TimeWindow, win))
+  if (blocking.length === 0) return { wholeRoomClosed: false, closureTitle: null, occupied }
+
+  const { data: ets } = await sb
+    .from('calendar_entry_tables')
+    .select('entry_id, unit_id')
+    .in('entry_id', blocking.map(e => e.id as string))
+  const unitsByEntry = new Map<string, string[]>()
+  for (const r of (ets || []) as { entry_id: string; unit_id: string }[]) {
+    const a = unitsByEntry.get(r.entry_id) || []; a.push(r.unit_id); unitsByEntry.set(r.entry_id, a)
+  }
+  let wholeRoomClosed = false, closureTitle: string | null = null
+  for (const e of blocking as { id: string; title: string | null }[]) {
+    const us = unitsByEntry.get(e.id) || []
+    if (us.length === 0) { wholeRoomClosed = true; closureTitle = e.title }   // no units → whole room
+    else us.forEach(u => occupied.add(u))                                     // units → just those
+  }
+  return { wholeRoomClosed, closureTitle, occupied }
+}
+
 export async function checkBookingAvailability(input: AvailabilityInput): Promise<AvailabilityResult> {
   const { sb, booking_date, start_time, end_time, session_label, party_size, excludeBookingId } = input
   const unitIds = [...new Set(input.unit_ids || [])]
   const reqWindow: BookingWindow = { start_time, end_time, session_label }
   let space = input.space
+  let reqUnits: Unit[] = []
+  let byId = new Map<string, Unit>()
+  let conflictSet: (id: string) => Set<string> = () => new Set()
+  const occupied = new Set<string>()   // unit ids taken by overlapping bookings + blocking house entries
 
   // ── Unit-level checks (only when specific units were requested) ──────────
   if (unitIds.length > 0) {
@@ -115,22 +151,21 @@ export async function checkBookingAvailability(input: AvailabilityInput): Promis
       .select('id, space, name, seats, parent_id')
     if (uErr) return { ok: false, status: 500, error: uErr.message }
     const units = (allUnits || []) as Unit[]
-    const byId = new Map(units.map(u => [u.id, u]))
-    const conflictSet = makeConflictSet(units)
+    byId = new Map(units.map(u => [u.id, u]))
+    conflictSet = makeConflictSet(units)
 
     // Every requested unit must exist.
     const requested = unitIds.map(id => byId.get(id))
     const missingIdx = requested.findIndex(u => !u)
     if (missingIdx >= 0) return { ok: false, status: 400, error: `Unknown table (${unitIds[missingIdx]}).` }
-    const reqUnits = requested as Unit[]
+    reqUnits = requested as Unit[]
 
     // A booking lives in ONE room — all units must share a space.
     const spaces = [...new Set(reqUnits.map(u => u.space))]
     if (spaces.length > 1) return { ok: false, status: 400, error: `A booking can't span rooms (${spaces.join(', ')}). Pick tables in one room.` }
     space = spaces[0]
 
-    // (1) Inter-request: no two requested units may conflict with each other
-    //     (e.g. Sofa-whole + a Sofa-segment in one booking).
+    // (1) Inter-request: no two requested units may conflict with each other.
     for (let i = 0; i < reqUnits.length; i++) {
       const ci = conflictSet(reqUnits[i].id)
       for (let j = 0; j < reqUnits.length; j++) {
@@ -140,14 +175,13 @@ export async function checkBookingAvailability(input: AvailabilityInput): Promis
       }
     }
 
-    // (2) Party ≤ seats: party must fit the combined seats of the chosen units.
+    // (2) Party ≤ seats.
     const totalSeats = reqUnits.reduce((sum, u) => sum + u.seats, 0)
     if (party_size > totalSeats) {
       return { ok: false, status: 409, error: `Party of ${party_size} exceeds the ${totalSeats} seat${totalSeats === 1 ? '' : 's'} of the chosen table${reqUnits.length === 1 ? '' : 's'}. Pick a larger table or add one.` }
     }
 
-    // (3) Per-unit availability: an active booking on this date that holds any
-    //     unit in conflict(Tᵢ) AND overlaps this window makes Tᵢ unavailable.
+    // (3) Occupancy from active bookings overlapping this window.
     const blockedIds = [...new Set(reqUnits.flatMap(u => [...conflictSet(u.id)]))]
     const { data: holds, error: hErr } = await sb
       .from('booking_tables')
@@ -156,27 +190,31 @@ export async function checkBookingAvailability(input: AvailabilityInput): Promis
       .eq('bookings.booking_date', booking_date)
       .in('bookings.status', ACTIVE_STATUS)
     if (hErr) return { ok: false, status: 500, error: hErr.message }
-
     for (const h of (holds || []) as unknown as HoldRow[]) {
       const b = oneBooking(h)
       if (!b) continue
-      if (excludeBookingId && b.booking_id === excludeBookingId) continue   // editing a booking can't conflict with itself
-      if (!windowsOverlap(reqWindow, b)) continue
-      const hit = reqUnits.find(u => conflictSet(u.id).has(h.unit_id))
-      const heldName = byId.get(h.unit_id)?.name || 'another table'
-      return { ok: false, status: 409, error: `${hit?.name || 'That table'} is already booked for that time (held as “${heldName}”). Pick another table or time.` }
+      if (excludeBookingId && b.booking_id === excludeBookingId) continue   // an edit can't conflict with itself
+      if (windowsOverlap(reqWindow, b)) occupied.add(h.unit_id)
     }
   }
 
-  // ── Room closure (always — layered atop the unit check). Reuses timeOverlaps. ──
-  const { data: blockers, error: cErr } = await sb
-    .from('calendar_entries')
-    .select('title, start_time, end_time, blocks_space')
-    .eq('space', space).eq('entry_date', booking_date).eq('blocks_space', true)
-  if (cErr) return { ok: false, status: 500, error: cErr.message }
-  const blocked = (blockers || []).find(b => timeOverlaps(b as TimeWindow, { start_time, end_time }))
-  if (blocked) {
-    return { ok: false, status: 409, error: `${space} is closed on ${booking_date}${blocked.title ? ` — ${blocked.title}` : ''}. Pick another space or time.` }
+  // ── House entries (closures / table-scoped hires), layered on top. ───────
+  // Whole-room closure (an entry with no units) blocks any booking in the room;
+  // a table-scoped entry adds its units to the occupied set.
+  const house = await houseEntryBlocks(sb, space, booking_date, { start_time, end_time })
+  if (house.wholeRoomClosed) {
+    return { ok: false, status: 409, error: `${space} is closed on ${booking_date}${house.closureTitle ? ` — ${house.closureTitle}` : ''}. Pick another space or time.` }
+  }
+  for (const u of house.occupied) occupied.add(u)
+
+  // ── Per-unit conflict: a requested unit is taken if anything in conflict(Tᵢ)
+  //    is occupied (by a booking OR a blocking house entry). ──
+  for (const u of reqUnits) {
+    const clash = [...conflictSet(u.id)].find(cid => occupied.has(cid))
+    if (clash) {
+      const heldName = byId.get(clash)?.name || 'another table'
+      return { ok: false, status: 409, error: `${u.name} is unavailable for that time (held as “${heldName}”). Pick another table or time.` }
+    }
   }
 
   return { ok: true, resolvedSpace: space }
@@ -201,6 +239,7 @@ export async function roomUnitAvailability(sb: SupabaseClient, opts: {
   end_time: string | null
   session_label: string | null
   excludeBookingId?: string | null
+  excludeEntryId?: string | null      // editing a house entry: ignore its own table holds
 }): Promise<UnitAvailability[]> {
   const { data: rows } = await sb
     .from('space_tables')
@@ -233,15 +272,11 @@ export async function roomUnitAvailability(sb: SupabaseClient, opts: {
     }
   }
 
-  // A room closure makes the whole room unavailable for the window.
-  let roomClosed = false
-  if (opts.booking_date) {
-    const { data: blockers } = await sb
-      .from('calendar_entries')
-      .select('start_time, end_time, blocks_space')
-      .eq('space', opts.space).eq('entry_date', opts.booking_date).eq('blocks_space', true)
-    roomClosed = (blockers || []).some(b => timeOverlaps(b as TimeWindow, { start_time: opts.start_time, end_time: opts.end_time }))
-  }
+  // House entries: a no-units entry closes the whole room; a table-scoped entry
+  // marks just its units occupied (same model as the booking guard).
+  const house = await houseEntryBlocks(sb, opts.space, opts.booking_date, { start_time: opts.start_time, end_time: opts.end_time }, opts.excludeEntryId)
+  const roomClosed = house.wholeRoomClosed
+  for (const u of house.occupied) occupied.add(u)
 
   return roomUnits.map(u => ({
     id: u.id, name: u.name, seats: u.seats, parent_id: u.parent_id,
