@@ -203,7 +203,9 @@ export default function AdminTonight() {
   }
 
   const counts = {
-    booked: briefs.filter(b => b.booking).length,
+    // "Booked tonight" = member bookings + house entries (private hires, dinners,
+    // tastings, closures) — anything reserving the club for the night counts.
+    booked: briefs.filter(b => b.booking).length + houseEntries.length,
     walkins: briefs.filter(b => !b.booking && b.visit).length,
     arrived: briefs.filter(b => b.visit).length,
     needs_attention: briefs.filter(b => b.brief.revalidate.length > 0 || b.complaints.length > 0).length,
@@ -273,8 +275,12 @@ export default function AdminTonight() {
         <div style={emptyText}>Loading briefs…</div>
       ) : briefs.length === 0 ? (
         <div style={emptyBlock}>
-          No bookings or walk-ins for {isToday ? 'tonight' : date}. Create a booking from{' '}
-          <Link href="/admin/calendar" style={linkInline}>the calendar</Link>.
+          {houseEntries.length > 0 ? (
+            <>No member briefs for {isToday ? 'tonight' : date} — see <strong>House &amp; Events</strong> below for what&apos;s on.</>
+          ) : (
+            <>No bookings or walk-ins for {isToday ? 'tonight' : date}. Create a booking from{' '}
+            <Link href="/admin/calendar" style={linkInline}>the calendar</Link>.</>
+          )}
         </div>
       ) : (
         <div style={briefGrid}>
