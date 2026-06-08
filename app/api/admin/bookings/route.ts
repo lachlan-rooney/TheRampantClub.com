@@ -80,6 +80,17 @@ export async function POST(req: NextRequest) {
     .eq('member_no', member_no).maybeSingle()
   if (!member) return NextResponse.json({ error: 'member not found' }, { status: 404 })
 
+  // Room-blocking: a house calendar_entry that closes this space (space match,
+  // same date, blocks_space, overlapping time) makes it unbookable. The closure
+  // wins — for members and for staff booking on a member's behalf (this path).
+  const { data: blockers } = await sb.from('calendar_entries')
+    .select('title, start_time, end_time, blocks_space')
+    .eq('space', space).eq('entry_date', booking_date).eq('blocks_space', true)
+  const blocked = (blockers || []).find(b => timeOverlaps(b as TimeWindow, { start_time, end_time }))
+  if (blocked) {
+    return NextResponse.json({ error: `${space} is closed on ${booking_date}${blocked.title ? ` — ${blocked.title}` : ''}. Pick another space or time.` }, { status: 409 })
+  }
+
   const sendEmail = !!body.send_confirmation
   if (sendEmail && !member.email) {
     return NextResponse.json({ error: `Cannot send confirmation — ${member.full_name} has no email on file. Add one to the member record or untick send confirmation.` }, { status: 400 })
@@ -128,6 +139,19 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ booking: data, email_sent, email_error })
+}
+
+interface TimeWindow { start_time: string | null; end_time: string | null }
+// Conservative overlap: if EITHER side lacks a precise start, treat as whole-day
+// (a closure with no time closes the space all day; a session-only booking on a
+// closed day conflicts). Both precise → interval overlap on HH:MM.
+function timeOverlaps(closure: TimeWindow, booking: TimeWindow): boolean {
+  const hm = (t: string | null) => (t ? t.slice(0, 5) : null)
+  const cs = hm(closure.start_time), bs = hm(booking.start_time)
+  if (!cs || !bs) return true
+  const ce = hm(closure.end_time) || '23:59'
+  const be = hm(booking.end_time) || bs
+  return cs <= be && bs < ce
 }
 
 function formatBookingDateForSubject(iso: string): string {
