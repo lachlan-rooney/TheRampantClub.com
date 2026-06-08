@@ -117,6 +117,21 @@ export interface RotaShift {
   updated_at: string
 }
 
+export interface CoverageTarget {
+  shift_name: string
+  function: string          // bar / floor / host / gm
+  count: number
+}
+export interface ScalingRule {
+  id: string
+  trigger_type: 'session_covers' | 'event_present' | 'day_covers'
+  threshold: number         // ignored for event_present
+  function: string
+  delta: number
+  active: boolean
+  sort_order: number
+}
+
 export interface ActivityEvent {
   id: string
   actor: string | null
