@@ -6,7 +6,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { ConfirmModal, PromptModal, useToast } from '@/components/admin/dialogs'
 import { vnDateString } from '@/lib/datetime'
 import { createShift, updateShift, deleteShift, moveShift } from '@/lib/ops/api'
-import type { RotaShift, RotaShiftType, TeamMember, CoverageTarget, ScalingRule } from '@/lib/ops/types'
+import type { RotaShift, RotaShiftType, TeamMember, CoverageTarget, ScalingRule, Unavailability } from '@/lib/ops/types'
 
 const FAMILY = "'Google Sans Code', monospace"
 const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -58,6 +58,7 @@ export default function RotaPage() {
   const [entries, setEntries] = useState<DemandEntry[]>([])
   const [targets, setTargets] = useState<CoverageTarget[]>([])
   const [rules, setRules] = useState<ScalingRule[]>([])
+  const [unavail, setUnavail] = useState<Unavailability[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
 
@@ -68,6 +69,7 @@ export default function RotaPage() {
   const [addTypeOpen, setAddTypeOpen] = useState(false)
   const [showTeam, setShowTeam] = useState(false)
   const [showCoverage, setShowCoverage] = useState(false)
+  const [showTimeOff, setShowTimeOff] = useState(false)
 
   // Drag state. dragId = the shift being dragged; didDrag distinguishes a real
   // drag from a click (so click-to-edit still works alongside drag-to-move).
@@ -91,7 +93,7 @@ export default function RotaPage() {
   ]
 
   const load = useCallback(async () => {
-    const [{ data: ty }, { data: sh }, { data: tm }, { data: bk }, { data: en }, { data: ct }, { data: sr }] = await Promise.all([
+    const [{ data: ty }, { data: sh }, { data: tm }, { data: bk }, { data: en }, { data: ct }, { data: sr }, { data: ua }] = await Promise.all([
       supabase.from('rota_shift_types').select('*').order('sort_order'),
       supabase.from('rota_shifts').select('*').gte('shift_date', weekStart).lte('shift_date', weekEnd),
       supabase.from('team_members').select('*').eq('active', true).order('display_name'),
@@ -102,6 +104,7 @@ export default function RotaPage() {
         .gte('entry_date', weekStart).lte('entry_date', weekEnd),
       supabase.from('rota_coverage_targets').select('*'),
       supabase.from('rota_scaling_rules').select('*').order('sort_order'),
+      supabase.from('rota_unavailability').select('*').gte('off_date', weekStart).lte('off_date', weekEnd),
     ])
     if (ty) setTypes(ty as RotaShiftType[])
     if (sh) setShifts(sh as RotaShift[])
@@ -110,6 +113,7 @@ export default function RotaPage() {
     setEntries((en || []) as DemandEntry[])
     setTargets((ct || []) as CoverageTarget[])
     setRules((sr || []) as ScalingRule[])
+    setUnavail((ua || []) as Unavailability[])
     setLoading(false)
   }, [weekStart])  // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -173,6 +177,20 @@ export default function RotaPage() {
 
   const proposedIn = (date: string, name: string) => proposals.filter(p => p.shift_date === date && p.shift_name === name)
 
+  // Availability: is this person marked off on this date?
+  const isOff = (memberId: string, date: string) => unavail.some(u => u.member === memberId && u.off_date === date)
+  const toggleOff = async (memberId: string, date: string) => {
+    const existing = unavail.find(u => u.member === memberId && u.off_date === date)
+    if (existing) {
+      setUnavail(us => us.filter(u => u !== existing))
+      await supabase.from('rota_unavailability').delete().eq('member', memberId).eq('off_date', date)
+    } else {
+      setUnavail(us => [...us, { id: `tmp-${memberId}-${date}`, member: memberId, off_date: date, note: null, created_at: '' }])
+      const { error } = await supabase.from('rota_unavailability').insert({ member: memberId, off_date: date })
+      if (error) { showToast(error.message, 'error'); load() }
+    }
+  }
+
   // ── Autofill (greedy, propose-a-draft) ──
   // For each active shift cell short of its effective target, pick function-
   // capable people — never lacking the function, never twice in a cell, never
@@ -201,7 +219,7 @@ export default function RotaPage() {
                       + proposedHere.filter(p => p.coverFn === fn).length
           while (present < target) {
             const cand = team
-              .filter(m => (m.functions || []).includes(fn) && !cellMembers.has(m.id) && !dayMembers.get(d)?.has(m.id))
+              .filter(m => (m.functions || []).includes(fn) && !cellMembers.has(m.id) && !dayMembers.get(d)?.has(m.id) && !isOff(m.id, d))
               .sort((a, b) => (weekCount.get(a.id) || 0) - (weekCount.get(b.id) || 0) || a.id.localeCompare(b.id))
             if (cand.length === 0) { newGaps.push({ date: d, shift_name: name, function: fn, still_needed: target - present }); break }
             const pick = cand[0]
@@ -295,6 +313,7 @@ export default function RotaPage() {
     const dragged = shifts.find(s => s.id === dragId); setDragId(null)
     if (!dragged || (dragged.shift_date === toDate && dragged.shift_name === toName)) return
     warnIfLost(dragged)
+    if (isOff(dragged.member, toDate)) showToast(`${memberName(dragged.member)} is marked off ${dayLabel(toDate)} — assigned anyway.`, 'error')
     doMove(dragged.id, toDate, toName)
   }
   // Drop onto a chip → swap the two chips' (date, shift_name) slots.
@@ -303,6 +322,8 @@ export default function RotaPage() {
     if (!dragged || dragged.id === target.id) return
     if (dragged.shift_date === target.shift_date && dragged.shift_name === target.shift_name) return
     warnIfLost(dragged)
+    if (isOff(dragged.member, target.shift_date)) showToast(`${memberName(dragged.member)} is marked off ${dayLabel(target.shift_date)} — assigned anyway.`, 'error')
+    if (isOff(target.member, dragged.shift_date)) showToast(`${memberName(target.member)} is marked off ${dayLabel(dragged.shift_date)} — assigned anyway.`, 'error')
     setShifts(ss => ss.map(s =>
       s.id === dragged.id ? { ...s, shift_date: target.shift_date, shift_name: target.shift_name }
       : s.id === target.id ? { ...s, shift_date: dragged.shift_date, shift_name: dragged.shift_name } : s))
@@ -349,7 +370,7 @@ export default function RotaPage() {
         <div style={autofillBanner}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <strong style={{ color: '#D4B85A' }}>Autofill draft: {proposals.length} proposed assignment{proposals.length === 1 ? '' : 's'}</strong>
-            <span style={{ ...metaText, opacity: 0.7 }}>Draft only — doesn&apos;t account for time off. Review &amp; drag off anyone who&apos;s away before accepting.</span>
+            <span style={{ ...metaText, opacity: 0.7 }}>Draft only — fills by role to meet targets, skipping anyone marked off. Review before accepting.</span>
             <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
               <button onClick={acceptAutofill} disabled={busy || proposals.length === 0} style={{ ...btnPrimary, opacity: proposals.length === 0 ? 0.5 : 1 }}>{busy ? 'Saving…' : `Accept all (${proposals.length})`}</button>
               <button onClick={discardAutofill} disabled={busy} style={tinyBtn}>Discard</button>
@@ -598,6 +619,43 @@ export default function RotaPage() {
         )}
       </div>
 
+      {/* Time off — who can't work each day this week (autofill skips; drag warns) */}
+      <div style={{ marginTop: 12 }}>
+        <button onClick={() => setShowTimeOff(v => !v)} style={tinyBtn}>{showTimeOff ? '▾' : '▸'} Time off</button>
+        {showTimeOff && (
+          <div style={teamPanel}>
+            <div style={{ ...metaText, opacity: 0.7, marginBottom: 10 }}>Mark who can&apos;t work each day this week. Autofill won&apos;t roster them that day; dragging someone onto their day off warns (you can still override).</div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={{ ...covTh, textAlign: 'left' }}>Person</th>
+                    {days.map((d, i) => <th key={d} style={covTh}>{DOW[i]}<div style={{ ...metaText, opacity: 0.5, fontSize: 9 }}>{new Date(d + 'T00:00:00Z').getUTCDate()}</div></th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {team.map(m => (
+                    <tr key={m.id}>
+                      <td style={{ ...covTd, textAlign: 'left', color: '#E5D4C2' }}>{m.display_name}</td>
+                      {days.map(d => {
+                        const off = isOff(m.id, d)
+                        return (
+                          <td key={d} style={covTd}>
+                            <button onClick={() => toggleOff(m.id, d)} title={off ? 'Marked off — click to clear' : 'Available — click to mark off'}
+                              style={off ? offBtnOn : offBtnOff}>{off ? 'off' : '·'}</button>
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+                  {team.length === 0 && <tr><td colSpan={8} style={{ ...covTd, ...metaText, opacity: 0.6 }}>No team members.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Assign / edit modal */}
       {cell && (
         <>
@@ -702,6 +760,8 @@ const ruleSelect: React.CSSProperties = { background: 'rgba(5,46,32,0.5)', color
 const ghostChip: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, background: 'rgba(212,184,90,0.06)', color: '#E5D4C2', border: '1px dashed rgba(212,184,90,0.5)', borderRadius: 4, padding: '4px 8px', fontFamily: FAMILY, fontSize: 11, opacity: 0.9 }
 const autofillBanner: React.CSSProperties = { marginTop: 12, padding: '12px 16px', background: 'rgba(212,184,90,0.08)', border: '1px solid rgba(212,184,90,0.3)', borderRadius: 8, fontFamily: FAMILY, fontSize: 12, color: '#E5D4C2' }
 const gapTag: React.CSSProperties = { display: 'inline-block', fontFamily: FAMILY, fontSize: 10, color: '#C27070', border: '1px solid rgba(194,112,112,0.4)', borderRadius: 4, padding: '2px 7px', margin: '0 6px 4px 0' }
+const offBtnOff: React.CSSProperties = { width: 30, background: 'transparent', color: '#7E7864', border: '1px solid rgba(229,212,194,0.14)', borderRadius: 5, padding: '4px 0', fontFamily: FAMILY, fontSize: 11, cursor: 'pointer' }
+const offBtnOn: React.CSSProperties = { width: 30, background: 'rgba(194,112,112,0.25)', color: '#E5D4C2', border: '1px solid rgba(194,112,112,0.55)', borderRadius: 5, padding: '4px 0', fontFamily: FAMILY, fontSize: 10, letterSpacing: '0.04em', cursor: 'pointer' }
 const addCellBtn: React.CSSProperties = { textAlign: 'left', background: 'transparent', color: '#7E7864', border: '1px dashed rgba(229,212,194,0.18)', borderRadius: 4, padding: '3px 8px', fontFamily: FAMILY, fontSize: 10, cursor: 'pointer' }
 const typePill: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(229,212,194,0.06)', border: '1px solid rgba(229,212,194,0.12)', borderRadius: 4, padding: '3px 4px 3px 9px', fontFamily: FAMILY, fontSize: 11, color: '#E5D4C2' }
 const typeRemove: React.CSSProperties = { background: 'transparent', border: 'none', color: '#C27070', cursor: 'pointer', fontFamily: FAMILY, fontSize: 13, lineHeight: 1, padding: '0 2px' }
