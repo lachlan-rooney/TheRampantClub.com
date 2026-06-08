@@ -1,15 +1,20 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { ConfirmModal, PromptModal, useToast } from '@/components/admin/dialogs'
 import { vnDateString } from '@/lib/datetime'
-import { createShift, updateShift, deleteShift } from '@/lib/ops/api'
+import { createShift, updateShift, deleteShift, moveShift } from '@/lib/ops/api'
 import type { RotaShift, RotaShiftType, TeamMember } from '@/lib/ops/types'
 
 const FAMILY = "'Google Sans Code', monospace"
 const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+// Staff functions (confirmed set). A person can cover several.
+const FUNCTIONS = ['bar', 'floor', 'host', 'gm'] as const
+const FN_COLOR: Record<string, string> = { bar: '#D4B85A', floor: '#7AB07A', host: '#8FB3D9', gm: '#C2A0D9' }
+const FN_LABEL: Record<string, string> = { bar: 'Bar', floor: 'Floor', host: 'Host', gm: 'GM' }
 
 // Date-only maths in UTC to avoid local-tz off-by-one; the anchor is the VN day.
 function mondayOf(iso: string): string {
@@ -44,6 +49,12 @@ export default function RotaPage() {
   const [draft, setDraft] = useState<Draft>({ member: '', shift_name: '', start_time: '', end_time: '', role: '', notes: '' })
   const [confirmRemove, setConfirmRemove] = useState<RotaShift | null>(null)
   const [addTypeOpen, setAddTypeOpen] = useState(false)
+  const [showTeam, setShowTeam] = useState(false)
+
+  // Drag state. dragId = the shift being dragged; didDrag distinguishes a real
+  // drag from a click (so click-to-edit still works alongside drag-to-move).
+  const [dragId, setDragId] = useState<string | null>(null)
+  const didDrag = useRef(false)
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
   const weekEnd = addDays(weekStart, 6)
@@ -101,6 +112,60 @@ export default function RotaPage() {
     }
   }
 
+  const memberFns = (id: string) => team.find(t => t.id === id)?.functions || []
+
+  // Toggle a function on a team member (admin-RLS direct write; config, no event).
+  const toggleFunction = async (memberId: string, fn: string) => {
+    const m = team.find(t => t.id === memberId); if (!m) return
+    const has = (m.functions || []).includes(fn)
+    const next = has ? (m.functions || []).filter(f => f !== fn) : [...(m.functions || []), fn]
+    setTeam(ts => ts.map(t => t.id === memberId ? { ...t, functions: next } : t))   // optimistic
+    const { error } = await supabase.from('team_members').update({ functions: next }).eq('id', memberId)
+    if (error) { showToast(error.message, 'error'); load() }
+  }
+
+  // Soft role check: would moving `shift` out of its cell strip the ONLY person
+  // of some function from a cell that still has others? Returns the lost
+  // functions, for a non-blocking heads-up (no formal coverage targets here).
+  const lostOnlyFunctions = (shift: RotaShift): string[] => {
+    const mates = inCell(shift.shift_date, shift.shift_name).filter(s => s.id !== shift.id)
+    if (mates.length === 0) return []
+    const mateFns = new Set(mates.flatMap(s => memberFns(s.member)))
+    return memberFns(shift.member).filter(fn => !mateFns.has(fn))
+  }
+  const warnIfLost = (shift: RotaShift) => {
+    const lost = lostOnlyFunctions(shift)
+    if (lost.length) showToast(`Heads up: that was the only ${lost.map(f => FN_LABEL[f] || f).join(' / ')} on ${shift.shift_name} · ${dayLabel(shift.shift_date)}.`, 'error')
+  }
+
+  // Move (optimistic local update → RPC → reconcile via load() in wrap).
+  const doMove = (id: string, toDate: string, toName: string) => {
+    setShifts(ss => ss.map(s => s.id === id ? { ...s, shift_date: toDate, shift_name: toName } : s))
+    wrap(() => moveShift({ id, shift_date: toDate, shift_name: toName }))
+  }
+  // Drop into a cell (move/join). A cell can hold several people, so this never
+  // "swaps the cell" — dropping onto a specific CHIP swaps those two (onDropChip).
+  const onDropCell = (toDate: string, toName: string) => {
+    const dragged = shifts.find(s => s.id === dragId); setDragId(null)
+    if (!dragged || (dragged.shift_date === toDate && dragged.shift_name === toName)) return
+    warnIfLost(dragged)
+    doMove(dragged.id, toDate, toName)
+  }
+  // Drop onto a chip → swap the two chips' (date, shift_name) slots.
+  const onDropChip = (target: RotaShift) => {
+    const dragged = shifts.find(s => s.id === dragId); setDragId(null)
+    if (!dragged || dragged.id === target.id) return
+    if (dragged.shift_date === target.shift_date && dragged.shift_name === target.shift_name) return
+    warnIfLost(dragged)
+    setShifts(ss => ss.map(s =>
+      s.id === dragged.id ? { ...s, shift_date: target.shift_date, shift_name: target.shift_name }
+      : s.id === target.id ? { ...s, shift_date: dragged.shift_date, shift_name: dragged.shift_name } : s))
+    wrap(async () => {
+      await moveShift({ id: dragged.id, shift_date: target.shift_date, shift_name: target.shift_name })
+      await moveShift({ id: target.id, shift_date: dragged.shift_date, shift_name: dragged.shift_name })
+    })
+  }
+
   // Shift-name list — editable, persistent, shared. Direct client writes (admin RLS); no events (config).
   const addType = async (name: string) => {
     const trimmed = name.trim()
@@ -131,7 +196,7 @@ export default function RotaPage() {
           <button onClick={() => setWeekStart(w => addDays(w, 7))} style={tinyBtn}>Next ›</button>
         </div>
       </div>
-      <p style={lede}>Club-wide weekly rota — who&apos;s on which shift. Week of {dayLabel(weekStart)} – {dayLabel(weekEnd)}.</p>
+      <p style={lede}>Club-wide weekly rota — who&apos;s on which shift. Drag a name to move it across shifts or days; drop onto another name to swap. Week of {dayLabel(weekStart)} – {dayLabel(weekEnd)}.</p>
 
       {loading ? (
         <div style={emptyText}>Loading…</div>
@@ -160,14 +225,37 @@ export default function RotaPage() {
                     {name}{!isType && <span title="retired shift name — kept on existing shifts" style={{ ...metaText, opacity: 0.5 }}> · retired</span>}
                   </td>
                   {days.map(d => (
-                    <td key={d} style={{ ...td, verticalAlign: 'top', background: d === vnDateString() ? 'rgba(212,184,90,0.04)' : undefined }}>
+                    <td
+                      key={d}
+                      onDragOver={e => { if (dragId) e.preventDefault() }}
+                      onDrop={() => onDropCell(d, name)}
+                      style={{ ...td, verticalAlign: 'top', background: d === vnDateString() ? 'rgba(212,184,90,0.04)' : undefined, ...(dragId ? dropHint : null) }}
+                    >
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        {inCell(d, name).map(s => (
-                          <button key={s.id} onClick={() => openAssign(d, name, s)} style={chip} title={[s.start_time && `${s.start_time.slice(0,5)}–${s.end_time?.slice(0,5) || ''}`, s.role].filter(Boolean).join(' · ')}>
-                            {memberName(s.member)}
-                            {s.start_time ? <span style={{ opacity: 0.6 }}> · {s.start_time.slice(0, 5)}</span> : null}
+                        {inCell(d, name).map(s => {
+                          const fns = memberFns(s.member)
+                          return (
+                          <button
+                            key={s.id}
+                            draggable
+                            onDragStart={() => { setDragId(s.id); didDrag.current = false }}
+                            onDrag={() => { didDrag.current = true }}
+                            onDragEnd={() => { setDragId(null); didDrag.current = false }}
+                            onDragOver={e => { if (dragId && dragId !== s.id) e.preventDefault() }}
+                            onDrop={e => { e.stopPropagation(); onDropChip(s) }}
+                            onClick={() => { if (didDrag.current) { didDrag.current = false; return } openAssign(d, name, s) }}
+                            style={{ ...chip, ...(dragId === s.id ? chipDragging : null) }}
+                            title={[s.start_time && `${s.start_time.slice(0, 5)}–${s.end_time?.slice(0, 5) || ''}`, fns.length ? fns.map(f => FN_LABEL[f] || f).join('/') : null].filter(Boolean).join(' · ')}
+                          >
+                            <span>{memberName(s.member)}{s.start_time ? <span style={{ opacity: 0.6 }}> · {s.start_time.slice(0, 5)}</span> : null}</span>
+                            {fns.length > 0 && (
+                              <span style={{ display: 'inline-flex', gap: 3, marginLeft: 6, flexShrink: 0 }}>
+                                {fns.map(f => <span key={f} title={FN_LABEL[f] || f} style={{ ...fnDot, background: FN_COLOR[f] || '#B2AA98' }} />)}
+                              </span>
+                            )}
                           </button>
-                        ))}
+                          )
+                        })}
                         {isType && <button onClick={() => openAssign(d, name, null)} style={addCellBtn}>+ assign</button>}
                       </div>
                     </td>
@@ -190,6 +278,32 @@ export default function RotaPage() {
           </span>
         ))}
         <button onClick={() => setAddTypeOpen(true)} style={tinyBtn}>+ add</button>
+      </div>
+
+      {/* Team & functions — the roles each person can cover (shown as dots on shifts) */}
+      <div style={{ marginTop: 14 }}>
+        <button onClick={() => setShowTeam(v => !v)} style={tinyBtn}>{showTeam ? '▾' : '▸'} Team &amp; functions</button>
+        {showTeam && (
+          <div style={teamPanel}>
+            <div style={{ ...metaText, opacity: 0.7, marginBottom: 10 }}>Tick the roles each person can cover. They show as coloured dots on their shifts; dragging the only person of a role off a shift gives a heads-up.</div>
+            {team.map(m => (
+              <div key={m.id} style={teamRow}>
+                <span style={{ flex: 1, color: '#E5D4C2', fontSize: 12, minWidth: 120 }}>{m.display_name}</span>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {FUNCTIONS.map(f => {
+                    const on = (m.functions || []).includes(f)
+                    return (
+                      <button key={f} onClick={() => toggleFunction(m.id, f)}
+                        style={{ ...fnToggle, ...(on ? { background: FN_COLOR[f], color: '#052E20', borderColor: FN_COLOR[f] } : null) }}>
+                        {FN_LABEL[f]}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Assign / edit modal */}
@@ -275,7 +389,13 @@ const metaText: React.CSSProperties = { fontFamily: FAMILY, fontSize: 11, color:
 const fieldLabel: React.CSSProperties = { fontFamily: FAMILY, fontSize: 9, color: '#B2AA98', letterSpacing: '0.10em', textTransform: 'uppercase', marginBottom: 4 }
 const th: React.CSSProperties = { fontFamily: FAMILY, fontSize: 11, color: '#E5D4C2', fontWeight: 500, padding: '8px 10px', borderBottom: '1px solid rgba(229,212,194,0.12)', textAlign: 'left' }
 const td: React.CSSProperties = { padding: '8px 10px', borderBottom: '1px solid rgba(229,212,194,0.06)', borderLeft: '1px solid rgba(229,212,194,0.04)' }
-const chip: React.CSSProperties = { textAlign: 'left', background: 'rgba(94,102,80,0.35)', color: '#E5D4C2', border: '1px solid rgba(229,212,194,0.12)', borderRadius: 4, padding: '4px 8px', fontFamily: FAMILY, fontSize: 11, cursor: 'pointer' }
+const chip: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, textAlign: 'left', background: 'rgba(94,102,80,0.35)', color: '#E5D4C2', border: '1px solid rgba(229,212,194,0.12)', borderRadius: 4, padding: '4px 8px', fontFamily: FAMILY, fontSize: 11, cursor: 'grab' }
+const chipDragging: React.CSSProperties = { opacity: 0.4 }
+const dropHint: React.CSSProperties = { outline: '1px dashed rgba(212,184,90,0.30)', outlineOffset: -3 }
+const fnDot: React.CSSProperties = { width: 7, height: 7, borderRadius: '50%', display: 'inline-block' }
+const teamPanel: React.CSSProperties = { marginTop: 10, padding: 14, background: 'rgba(229,212,194,0.03)', border: '1px solid rgba(229,212,194,0.08)', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 560 }
+const teamRow: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '5px 0', borderBottom: '1px solid rgba(229,212,194,0.05)' }
+const fnToggle: React.CSSProperties = { background: 'transparent', color: '#B2AA98', border: '1px solid rgba(229,212,194,0.2)', borderRadius: 12, padding: '3px 11px', fontFamily: FAMILY, fontSize: 10, letterSpacing: '0.04em', cursor: 'pointer' }
 const addCellBtn: React.CSSProperties = { textAlign: 'left', background: 'transparent', color: '#7E7864', border: '1px dashed rgba(229,212,194,0.18)', borderRadius: 4, padding: '3px 8px', fontFamily: FAMILY, fontSize: 10, cursor: 'pointer' }
 const typePill: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(229,212,194,0.06)', border: '1px solid rgba(229,212,194,0.12)', borderRadius: 4, padding: '3px 4px 3px 9px', fontFamily: FAMILY, fontSize: 11, color: '#E5D4C2' }
 const typeRemove: React.CSSProperties = { background: 'transparent', border: 'none', color: '#C27070', cursor: 'pointer', fontFamily: FAMILY, fontSize: 13, lineHeight: 1, padding: '0 2px' }

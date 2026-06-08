@@ -164,6 +164,11 @@ export const updateShift = (s: {
 export const deleteShift = (id: string) =>
   opsWrite('ops_delete_shift', { p_id: id })
 
+// Cross-day move (the DnD path): change a shift's date and/or shift_name. One
+// uniform move path — same-day name change is just date unchanged.
+export const moveShift = (s: { id: string; shift_date: string; shift_name: string }) =>
+  opsWrite('ops_move_shift', { p_id: s.id, p_shift_date: s.shift_date, p_shift_name: s.shift_name })
+
 // ── Cross-site links (Phase 5) ──
 export const linkTask = (taskId: string, objectType: string, objectId: string, label: string) =>
   opsWrite('ops_link_task', { p_task_id: taskId, p_object_type: objectType, p_object_id: objectId, p_label: label })
