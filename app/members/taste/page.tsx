@@ -20,6 +20,15 @@ export default function MyTastePage() {
   const [shape, setShape] = useState<ShapeValues | null>(null)
   const [narrative, setNarrative] = useState('')
   const [lovedBottles, setLovedBottles] = useState<string[]>([])
+  // Responsive radar: MemberPage gives ~280px of content width at 360px, so a
+  // fixed 300 would overflow. Cap to the viewport (clamped 240–300).
+  const [radarSize, setRadarSize] = useState(300)
+
+  useEffect(() => {
+    const fit = () => setRadarSize(Math.max(240, Math.min(300, window.innerWidth - 96)))
+    fit(); window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  }, [])
 
   useEffect(() => {
     const supabase = createBrowserSupabaseClient()
@@ -55,7 +64,7 @@ export default function MyTastePage() {
 
           {cats && shape && Object.keys(shape).length > 0 && (
             <div style={radarWrap}>
-              <RadarChart cats={cats} shapes={[{ values: shape, color: RADAR_GOLD, label: '' }]} size={300} />
+              <RadarChart cats={cats} shapes={[{ values: shape, color: RADAR_GOLD, label: '' }]} size={radarSize} />
             </div>
           )}
 
