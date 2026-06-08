@@ -289,6 +289,36 @@ const SECTIONS: SectionDef[] = [
   },
 
   {
+    id: 'member-logins',
+    title: 'Member logins & onboarding',
+    eyebrow: 'Intelligence',
+    intro: 'Give a member their own login to the member portal — temp password, shown once, they set their own.',
+    body: (
+      <>
+        <p>
+          A member needs a login to see the member portal (their palate, visits, gifts, the whisky library). You create it from their member record at <Link href="/admin/mis" style={linkStyle}>/admin/mis</Link> → open the member → the <strong>Member login</strong> panel.
+        </p>
+        <h4 style={h4}>Creating a login</h4>
+        <ol style={olStyle}>
+          <li>On the member&apos;s record, find the <strong>Member login</strong> panel. If they have no login yet it shows <em>No login yet</em> with a <strong>Create member login</strong> button.</li>
+          <li>Click it, enter the member&apos;s <strong>email</strong> (their login), and hit <strong>Create login</strong>.</li>
+          <li>A <strong>temporary password</strong> appears. <strong>Copy it</strong> and relay it to the member (Zalo / WhatsApp / in person). Then hit <strong>Done — I&apos;ve relayed it</strong>.</li>
+          <li>The member signs in at <Link href="/login" style={linkStyle}>/login</Link> with their email + the temp password, and is immediately required to set their own password before they reach anything.</li>
+        </ol>
+        <Callout title="The temp password is shown once">
+          It is generated, shown that one time, and <strong>never stored</strong> — you cannot look it up again. Copy and relay it when it appears. If it&apos;s lost, you&apos;ll need to reset the account rather than retrieve it. Never write it somewhere insecure.
+        </Callout>
+        <Callout title="They must change it on first login">
+          A freshly-created login is forced to <Code>/set-password</Code> on first sign-in — it can&apos;t reach any member page until the member sets their own password. So the temp password is only ever a one-time handoff.
+        </Callout>
+        <Callout title="One login per member">
+          A member record links to a single login. If one already exists the panel shows <strong>✓ Linked</strong> with the email — don&apos;t create a second.
+        </Callout>
+      </>
+    ),
+  },
+
+  {
     id: 'lockers',
     title: 'Lockers',
     eyebrow: 'Whisky Library',
@@ -370,20 +400,34 @@ const SECTIONS: SectionDef[] = [
     id: 'calendar',
     title: 'Calendar & bookings',
     eyebrow: 'Floor',
-    intro: 'Who&apos;s coming in, which room, when. Tap-to-start fires on card scan.',
+    intro: 'Who&apos;s coming in, which room and table, when. Member bookings and house entries both live here.',
     body: (
       <>
         <p>
-          <Link href="/admin/calendar" style={linkStyle}>/admin/calendar</Link> is the weekly grid — day columns, today highlighted. Filter by space (Library Bar / The Studio / Dining Room / etc.). Each booking card shows the member, party size, time or session, and any notes.
+          <Link href="/admin/calendar" style={linkStyle}>/admin/calendar</Link> is the weekly grid — day columns, today highlighted. Filter by space (Library Bar / The Studio / The Rampant Room / The Dining Room / Source &amp; Origin Lab). Each card shows the member, party size, time or session, the booked <strong>table(s)</strong>, and any notes.
         </p>
-        <h4 style={h4}>Creating a booking</h4>
+        <h4 style={h4}>Booking a member in</h4>
         <ol style={olStyle}>
-          <li>Hit <strong>＋ New booking</strong> at top-right of the calendar.</li>
-          <li>Pick the member (autocomplete from the roster), date, space, party size.</li>
-          <li>Set <strong>either</strong> a precise start time <strong>or</strong> a session (early / evening / late). Both is fine. The calendar renders whichever you provided.</li>
-          <li>If the member has an email on file, tick <strong>Send confirmation email to the member</strong> — they get a clean confirmation through Resend. No email on file → the checkbox disables itself and tells you.</li>
-          <li>Save → land on the calendar with the booking visible on the right day.</li>
+          <li>Hit <strong>＋ New booking</strong> at the top-right of the calendar. The form opens on the <strong>Member booking</strong> tab.</li>
+          <li>Pick the member (autocomplete from the roster) and the date. Set <strong>either</strong> a precise start time <strong>or</strong> a session (early / evening / late) — both is fine. Set the party size.</li>
+          <li>Pick the <strong>Room</strong>. The <strong>Tables</strong> picker below then shows every table in that room with its seat count.</li>
+          <li>Tap the table(s) for this party. The running counter reads <Code>N seats selected · party M</Code> — the seats must cover the party. A six-top can&apos;t sit on a single four-seat table; add a second table or pick a bigger one.</li>
+          <li>If the member has an email on file, optionally tick <strong>Send confirmation email to the member</strong> (Resend). No email → the checkbox disables itself and tells you.</li>
+          <li>Save → back to the calendar with the booking on the right day, showing its table(s).</li>
         </ol>
+        <h4 style={h4}>The tables, room by room</h4>
+        <ul style={ulStyle}>
+          <li><strong>Library Bar</strong> — Bookcase Table (4), Window Table (4), the <strong>Sofa</strong> (book it <em>whole</em> for up to 8, or as its three segments — left 3, middle 2, right 3), and six Bar Stools (1 each).</li>
+          <li><strong>The Studio</strong> — book it <em>whole</em> (the big table, seats 6), or as three tables of 2 (A / B / C).</li>
+          <li><strong>The Rampant Room</strong> — four independent tables: Table 1 &amp; 2 (6 each), Table 3 &amp; 4 (4 each).</li>
+          <li><strong>The Dining Room</strong> and <strong>Source &amp; Origin Lab</strong> — one whole-room unit each; booking it takes the whole room (exclusive).</li>
+        </ul>
+        <Callout title="The either-or — Sofa &amp; Studio">
+          Booking the <strong>whole Sofa</strong> blocks its three segments, and booking <strong>any segment</strong> blocks the whole Sofa — but the segments are independent of each other (left, middle and right can be three different parties). Same for the Studio (whole vs A / B / C). The bar stools and the room&apos;s other tables stay free regardless.
+        </Callout>
+        <Callout title="Greyed tables &amp; “unavailable”">
+          A table shows <strong>greyed and unselectable</strong> when it&apos;s already booked for that time, or when it conflicts with what you&apos;ve already picked (the either-or). If a save is refused as <em>unavailable</em>, that table was taken for the window — pick another table or time. The system will not let you double-book a table.
+        </Callout>
         <h4 style={h4}>Tap-to-start</h4>
         <p>
           When a member taps their NFC card at the kiosk, the system: (1) creates a visit at phase=<Code>overture</Code> with arrival_time stamped, (2) if exactly one confirmed booking exists for them today, links it and flips the booking to <em>arrived</em>, (3) routes the host straight into the Guardian Angel detail page. Walk-ins work the same way — no booking link, but the cycle starts cleanly.
@@ -393,6 +437,17 @@ const SECTIONS: SectionDef[] = [
         </p>
         <Callout title="Multiple bookings same day">
           If a member has more than one confirmed booking today (e.g. dinner then drinks), the tap-to-start skips the auto-link — staff resolves which booking the arrival applies to from the calendar.
+        </Callout>
+
+        <h4 style={h4}>House entries — closures, hires &amp; visits</h4>
+        <p>
+          For anything that isn&apos;t a member booking — a closure, a private hire, a supplier or distiller visit, a tasting — use the <strong>House / non-member entry</strong> tab on the same <strong>＋ New booking</strong> form. Give it a title, a kind (closure / private hire / supplier / tasting / other), a date, and optionally a time and room.
+        </p>
+        <Callout title="Member-visible vs staff-only">
+          Every house entry has a <strong>Visibility</strong>. <strong>Member-visible (shows on member events)</strong> means members see it on their events page — e.g. &quot;Club closed tonight&quot;. <strong>Staff-only (members never see it)</strong> is invisible to members — e.g. &quot;Private hire for the Nguyen party&quot;. When in doubt — anything members shouldn&apos;t see — choose staff-only.
+        </Callout>
+        <Callout title="Closing a room vs blocking a table">
+          Tick <strong>Closes the room</strong> and the entry blocks member bookings for that window. With <strong>no tables picked</strong>, the whole room closes. <strong>Pick specific tables</strong> and only those are blocked — a private hire of just the Sofa leaves the rest of the bar bookable. Leave &quot;closes the room&quot; off for something purely informational, like a distiller visit that doesn&apos;t take the space.
         </Callout>
       </>
     ),
@@ -530,6 +585,53 @@ const SECTIONS: SectionDef[] = [
         </ul>
         <Callout title="Invisible love, visible spend">
           The member never sees this page. The point is that the team can track and budget the &quot;random, thoughtful gifting&quot; principle systematically, so it actually happens, evenly, across every member, every year.
+        </Callout>
+      </>
+    ),
+  },
+
+  {
+    id: 'whisky-tools',
+    title: 'Whisky tools',
+    eyebrow: 'Whisky Library',
+    intro: 'Match a member to a dram — Suggest a pour, the Flavour Finder, the flavour radar.',
+    body: (
+      <>
+        <p>
+          A set of tools for putting the right whisky in front of a member, all grounded in the club&apos;s flavour data (the 13-family taxonomy) rather than guesswork.
+        </p>
+        <h4 style={h4}>Suggest a pour</h4>
+        <p>
+          On a member&apos;s record (<Link href="/admin/mis" style={linkStyle}>/admin/mis</Link> → open the member) there&apos;s a <strong>Suggest a pour</strong> panel. Hit <strong>◆ Suggest →</strong> and it recommends bottles from that member&apos;s own taste profile. If their palate isn&apos;t mapped yet, you can tap a flavour shape and suggest from that instead — it always recommends from real bottles in the library, never invents one.
+        </p>
+        <h4 style={h4}>Flavour Finder &amp; the radar</h4>
+        <p>
+          The <Link href="/members/whisky/finder" style={linkStyle}>Flavour Finder</Link> matches a dram to a described taste — members can self-serve it, or you can run it with them. Each bottle in the <Link href="/members/whisky" style={linkStyle}>Whisky Library</Link> has a <strong>flavour radar</strong> showing its profile across the families — a quick visual of whether a bottle is, say, peaty and coastal or sweet and sherried.
+        </p>
+        <Callout title="When to reach for it">
+          A member unsure what to drink, or a guest you don&apos;t know well — open their record and hit Suggest a pour, or run the Finder together. It turns &quot;what do you fancy?&quot; into two or three confident, on-taste options.
+        </Callout>
+      </>
+    ),
+  },
+
+  {
+    id: 'what-members-see',
+    title: 'What members see',
+    eyebrow: 'Reference',
+    intro: 'The member portal — so you can guide a member and know the boundaries.',
+    body: (
+      <>
+        <p>
+          Members with a login (see <strong>Member logins &amp; onboarding</strong>) have their own portal. Knowing what&apos;s there helps you answer their questions.
+        </p>
+        <ul style={ulStyle}>
+          <li>The <strong>Whisky Library</strong> — the bottles as an A–Z shelf, searchable, each with its flavour radar; and the <strong>Flavour Finder</strong>.</li>
+          <li>For an onboarded member, their <strong>own</strong> personal layer: their <strong>palate</strong> (a written taste summary + radar), their <strong>visits</strong>, and <strong>gifts</strong> they&apos;ve received from the club.</li>
+          <li>Events &amp; notices (including member-visible house entries), fixtures, spaces, the menus, house rules.</li>
+        </ul>
+        <Callout title="The boundaries">
+          A member sees <strong>only their own</strong> data — never another member&apos;s taste, visits or gifts. And members <strong>can&apos;t book themselves</strong> — booking is staff-only, so if a member wants a table they ask you, and you book it on the calendar.
         </Callout>
       </>
     ),
