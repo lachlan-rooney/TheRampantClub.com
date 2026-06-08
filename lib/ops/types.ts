@@ -132,6 +132,14 @@ export interface ScalingRule {
   sort_order: number
 }
 
+export interface Unavailability {
+  id: string
+  member: string            // team_members.id
+  off_date: string          // YYYY-MM-DD
+  note: string | null
+  created_at: string
+}
+
 export interface ActivityEvent {
   id: string
   actor: string | null
