@@ -2,7 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Named-table booking availability — the ONE guard used by both the POST
-// (create) and PATCH (edit) booking routes. A silent double-book is the
+// (create) and PATCH (edit) booking routes, AND the read-only availability
+// endpoint that drives the form's live greying. A silent double-book is the
 // failure this exists to prevent, so the logic lives here once, not copied.
 //
 // A booking holds one-or-more UNITS (space_tables rows). The either-or
@@ -65,7 +66,23 @@ function windowsOverlap(a: BookingWindow, b: BookingWindow): boolean {
 
 interface Unit { id: string; space: string; name: string; seats: number; parent_id: string | null }
 
+// conflict(U) = {U} ∪ children(U) ∪ {parent(U)} — derived from parent_id.
+// Single source of the either-or, shared by the guard and the availability read.
+function makeConflictSet(units: Unit[]) {
+  const byId = new Map(units.map(u => [u.id, u]))
+  return (id: string): Set<string> => {
+    const s = new Set<string>([id])
+    const u = byId.get(id)
+    if (u?.parent_id) s.add(u.parent_id)
+    for (const c of units) if (c.parent_id === id) s.add(c.id)
+    return s
+  }
+}
+
 const ACTIVE_STATUS = ['pending', 'confirmed', 'arrived']
+
+interface HoldRow { unit_id: string; bookings: (BookingWindow & { booking_id: string }) | (BookingWindow & { booking_id: string })[] }
+const oneBooking = (h: HoldRow) => (Array.isArray(h.bookings) ? h.bookings[0] : h.bookings)
 
 export interface AvailabilityInput {
   sb: SupabaseClient
@@ -99,7 +116,7 @@ export async function checkBookingAvailability(input: AvailabilityInput): Promis
     if (uErr) return { ok: false, status: 500, error: uErr.message }
     const units = (allUnits || []) as Unit[]
     const byId = new Map(units.map(u => [u.id, u]))
-    const childrenOf = (id: string) => units.filter(u => u.parent_id === id)
+    const conflictSet = makeConflictSet(units)
 
     // Every requested unit must exist.
     const requested = unitIds.map(id => byId.get(id))
@@ -111,15 +128,6 @@ export async function checkBookingAvailability(input: AvailabilityInput): Promis
     const spaces = [...new Set(reqUnits.map(u => u.space))]
     if (spaces.length > 1) return { ok: false, status: 400, error: `A booking can't span rooms (${spaces.join(', ')}). Pick tables in one room.` }
     space = spaces[0]
-
-    // conflict(U) = {U} ∪ children(U) ∪ {parent(U)}  — derived from parent_id.
-    const conflictSet = (id: string): Set<string> => {
-      const s = new Set<string>([id])
-      const u = byId.get(id)
-      if (u?.parent_id) s.add(u.parent_id)
-      for (const c of childrenOf(id)) s.add(c.id)
-      return s
-    }
 
     // (1) Inter-request: no two requested units may conflict with each other
     //     (e.g. Sofa-whole + a Sofa-segment in one booking).
@@ -149,13 +157,11 @@ export async function checkBookingAvailability(input: AvailabilityInput): Promis
       .in('bookings.status', ACTIVE_STATUS)
     if (hErr) return { ok: false, status: 500, error: hErr.message }
 
-    for (const h of (holds || []) as unknown as { unit_id: string; bookings: (BookingWindow & { booking_id: string }) | (BookingWindow & { booking_id: string })[] }[]) {
-      // PostgREST types a to-one embed as an array; it arrives as an object.
-      const b = Array.isArray(h.bookings) ? h.bookings[0] : h.bookings
+    for (const h of (holds || []) as unknown as HoldRow[]) {
+      const b = oneBooking(h)
       if (!b) continue
       if (excludeBookingId && b.booking_id === excludeBookingId) continue   // editing a booking can't conflict with itself
       if (!windowsOverlap(reqWindow, b)) continue
-      // Which requested unit does this existing hold block?
       const hit = reqUnits.find(u => conflictSet(u.id).has(h.unit_id))
       const heldName = byId.get(h.unit_id)?.name || 'another table'
       return { ok: false, status: 409, error: `${hit?.name || 'That table'} is already booked for that time (held as “${heldName}”). Pick another table or time.` }
@@ -174,4 +180,71 @@ export async function checkBookingAvailability(input: AvailabilityInput): Promis
   }
 
   return { ok: true, resolvedSpace: space }
+}
+
+// ── Read-only availability (drives the form's live greying) ────────────────
+// Reuses the SAME conflict()/overlap logic — a unit is available iff nothing in
+// conflict(U) is held by an overlapping active booking. excludeBookingId lets the
+// edit form ignore the booking's own holds (so it isn't greyed as taken-by-self).
+
+export interface UnitAvailability { id: string; name: string; seats: number; parent_id: string | null; available: boolean }
+
+export async function bookableRooms(sb: SupabaseClient): Promise<string[]> {
+  const { data } = await sb.from('space_tables').select('space').eq('bookable', true)
+  return [...new Set((data || []).map(r => r.space as string))].sort()
+}
+
+export async function roomUnitAvailability(sb: SupabaseClient, opts: {
+  space: string
+  booking_date: string | null
+  start_time: string | null
+  end_time: string | null
+  session_label: string | null
+  excludeBookingId?: string | null
+}): Promise<UnitAvailability[]> {
+  const { data: rows } = await sb
+    .from('space_tables')
+    .select('id, space, name, seats, parent_id, bookable, sort')
+    .eq('space', opts.space).order('sort', { ascending: true })
+  const roomUnits = ((rows || []) as (Unit & { bookable: boolean; sort: number })[]).filter(u => u.bookable)
+  const conflictSet = makeConflictSet(roomUnits)
+
+  // No date → can't compute occupancy; list all as available (greying starts
+  // once a date is set).
+  if (!opts.booking_date) {
+    return roomUnits.map(u => ({ id: u.id, name: u.name, seats: u.seats, parent_id: u.parent_id, available: true }))
+  }
+
+  const ids = roomUnits.map(u => u.id)
+  const reqWindow: BookingWindow = { start_time: opts.start_time, end_time: opts.end_time, session_label: opts.session_label }
+  const occupied = new Set<string>()
+  if (ids.length > 0) {
+    const { data: holds } = await sb
+      .from('booking_tables')
+      .select('unit_id, bookings!inner(booking_id, booking_date, start_time, end_time, session_label, status)')
+      .in('unit_id', ids)
+      .eq('bookings.booking_date', opts.booking_date)
+      .in('bookings.status', ACTIVE_STATUS)
+    for (const h of (holds || []) as unknown as HoldRow[]) {
+      const b = oneBooking(h)
+      if (!b) continue
+      if (opts.excludeBookingId && b.booking_id === opts.excludeBookingId) continue
+      if (windowsOverlap(reqWindow, b)) occupied.add(h.unit_id)
+    }
+  }
+
+  // A room closure makes the whole room unavailable for the window.
+  let roomClosed = false
+  if (opts.booking_date) {
+    const { data: blockers } = await sb
+      .from('calendar_entries')
+      .select('start_time, end_time, blocks_space')
+      .eq('space', opts.space).eq('entry_date', opts.booking_date).eq('blocks_space', true)
+    roomClosed = (blockers || []).some(b => timeOverlaps(b as TimeWindow, { start_time: opts.start_time, end_time: opts.end_time }))
+  }
+
+  return roomUnits.map(u => ({
+    id: u.id, name: u.name, seats: u.seats, parent_id: u.parent_id,
+    available: !roomClosed && [...conflictSet(u.id)].every(cid => !occupied.has(cid)),
+  }))
 }

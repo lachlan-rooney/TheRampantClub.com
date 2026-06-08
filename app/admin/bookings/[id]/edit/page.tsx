@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useToast, ConfirmModal } from '@/components/admin/dialogs'
 import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
+import UnitPicker from '@/components/admin/UnitPicker'
 
 // Admin / Floor / Calendar / Edit booking.
 // Loads via GET /api/admin/bookings/[id], saves via PATCH (member is fixed — the
@@ -30,12 +31,18 @@ export default function EditBookingPage() {
   const [partySize, setPartySize] = useState('2')
   const [notes, setNotes] = useState('')
   const [status, setStatus] = useState('confirmed')
+  const [rooms, setRooms] = useState<string[]>([])
+  const [unitIds, setUnitIds] = useState<string[]>([])
+  const [selectedSeats, setSelectedSeats] = useState(0)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [cancelBusy, setCancelBusy] = useState(false)
 
   useEffect(() => {
+    fetch('/api/admin/bookings/availability', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d.rooms)) setRooms(d.rooms) })
     fetch(`/api/admin/bookings/${id}`, { cache: 'no-store' })
       .then(r => r.json())
       .then(d => {
@@ -46,13 +53,17 @@ export default function EditBookingPage() {
         setStartTime((b.start_time || '').slice(0, 5)); setEndTime((b.end_time || '').slice(0, 5))
         setSessionLabel(b.session_label || ''); setSpace(b.space || SPACES[0])
         setPartySize(String(b.party_size ?? 2)); setNotes(b.notes || '')
-        setStatus(b.status || 'confirmed'); setLoading(false)
+        setStatus(b.status || 'confirmed')
+        setUnitIds(Array.isArray(d.unit_ids) ? d.unit_ids : [])
+        setLoading(false)
       })
       .catch(() => { setError('Failed to load booking.'); setLoading(false) })
   }, [id])
 
   const save = useCallback(async () => {
     if (!sessionLabel && !startTime) { setError('Either a start time or a session is required.'); return }
+    const party = partySize ? Number(partySize) : 1
+    if (unitIds.length > 0 && selectedSeats < party) { setError(`The selected table${unitIds.length === 1 ? '' : 's'} seat ${selectedSeats}, but the party is ${party}. Add a table or pick a larger one.`); return }
     setSaving(true); setError(null)
     try {
       const r = await fetch(`/api/admin/bookings/${id}`, {
@@ -63,7 +74,8 @@ export default function EditBookingPage() {
           end_time: endTime || null,
           session_label: sessionLabel || null,
           space,
-          party_size: partySize ? Number(partySize) : 1,
+          party_size: party,
+          unit_ids: unitIds,
           notes: notes || null,
           status,
         }),
@@ -72,7 +84,7 @@ export default function EditBookingPage() {
       if (!r.ok) throw new Error(j.error || 'Save failed')
       router.push('/admin/calendar')
     } catch (e) { setError((e as Error).message); setSaving(false) }
-  }, [id, bookingDate, startTime, endTime, sessionLabel, space, partySize, notes, status, router])
+  }, [id, bookingDate, startTime, endTime, sessionLabel, space, partySize, unitIds, selectedSeats, notes, status, router])
 
   const doCancel = async () => {
     setCancelBusy(true)
@@ -106,7 +118,7 @@ export default function EditBookingPage() {
 
       <div style={metaGrid}>
         <div style={fieldRow}><div style={editLabel}>Date *</div><input type="date" value={bookingDate} onChange={e => setBookingDate(e.target.value)} style={inputStyle} /></div>
-        <div style={fieldRow}><div style={editLabel}>Space *</div><select value={space} onChange={e => setSpace(e.target.value)} style={inputStyle}>{SPACES.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+        <div style={fieldRow}><div style={editLabel}>Room *</div><select value={space} onChange={e => { setSpace(e.target.value); setUnitIds([]) }} style={inputStyle}>{(rooms.length ? rooms : SPACES.filter(s => s !== 'Sports Club')).map(s => <option key={s} value={s}>{s}</option>)}</select></div>
         <div style={fieldRow}><div style={editLabel}>Party size</div><input type="number" min={1} max={50} value={partySize} onChange={e => setPartySize(e.target.value)} style={inputStyle} /></div>
       </div>
 
@@ -116,6 +128,15 @@ export default function EditBookingPage() {
         <div style={fieldRow}><div style={editLabel}>End time</div><input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} style={inputStyle} /></div>
       </div>
       <div style={{ ...hintText, marginTop: 6 }}>Set either a precise time or a session. Both is fine too.</div>
+
+      <div style={{ marginTop: 14 }}>
+        <UnitPicker
+          space={space} date={bookingDate} startTime={startTime} endTime={endTime} sessionLabel={sessionLabel}
+          partySize={partySize ? Number(partySize) : 1}
+          selected={unitIds} onChange={setUnitIds} onSeatsChange={setSelectedSeats}
+          excludeBookingId={id}
+        />
+      </div>
 
       <div style={metaGrid}>
         <div style={fieldRow}><div style={editLabel}>Status</div><select value={status} onChange={e => setStatus(e.target.value)} style={inputStyle}>{STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></div>

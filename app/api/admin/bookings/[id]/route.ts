@@ -28,7 +28,9 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const { data, error } = await sb.from('bookings_with_member').select('*').eq('booking_id', id).maybeSingle()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'not found' }, { status: 404 })
-  return NextResponse.json({ booking: data })
+  // Current table holds, so the edit form can pre-select them.
+  const { data: held } = await sb.from('booking_tables').select('unit_id').eq('booking_id', id)
+  return NextResponse.json({ booking: data, unit_ids: (held || []).map(h => h.unit_id) })
 }
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {

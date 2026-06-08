@@ -30,6 +30,7 @@ interface Booking {
   linked_visit_id: string | null
   arrived_at: string | null
   created_at: string
+  tables?: string[]
 }
 
 interface CalendarEntry {
@@ -239,6 +240,9 @@ export default function CalendarPage() {
                         <div style={bookingMeta}>
                           {b.space} · {b.party_size}p
                         </div>
+                        {b.tables && b.tables.length > 0 && (
+                          <div style={bookingTables}>{b.tables.join(' · ')}</div>
+                        )}
                         {b.notes && <div style={bookingNotes}>{b.notes}</div>}
 
                         {hovered === b.booking_id && (
@@ -248,6 +252,7 @@ export default function CalendarPage() {
                             </div>
                             <div style={tipMeta}>{b.member_tier} · {b.member_no}</div>
                             <div style={tipRow}>{fmtTime(b)} · {b.space} · {b.party_size}p · <span style={{ color: statusColor(b.status) }}>{b.status}</span></div>
+                            {b.tables && b.tables.length > 0 && <div style={tipRow}>Tables: {b.tables.join(', ')}</div>}
                             <div style={tipNotesLabel}>Comments</div>
                             <div style={tipNotesBox}>{b.notes && b.notes.trim() ? b.notes : 'No comments on this booking.'}</div>
                           </div>
@@ -467,6 +472,10 @@ const bookingMember: React.CSSProperties = {
 const bookingMeta: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 9,
   color: '#B2AA98', letterSpacing: '0.04em',
+}
+const bookingTables: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 8.5,
+  color: '#D4B85A', opacity: 0.85, letterSpacing: '0.03em', marginTop: 2, lineHeight: 1.35,
 }
 const bookingNotes: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 9,

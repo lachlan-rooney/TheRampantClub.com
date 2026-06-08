@@ -36,7 +36,28 @@ export async function GET(req: NextRequest) {
   if (status) q = q.eq('status', status)
   const { data, error } = await q
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ bookings: data || [] })
+
+  // Attach the booked table names (Phase 2 units) to each booking for display.
+  const list = (data || []) as Record<string, unknown>[]
+  const ids = list.map(b => b.booking_id as string)
+  if (ids.length) {
+    const { data: bt } = await sb.from('booking_tables')
+      .select('booking_id, space_tables(name, sort)')
+      .in('booking_id', ids)
+    const byBooking = new Map<string, { name: string; sort: number }[]>()
+    for (const row of (bt || []) as { booking_id: string; space_tables: { name: string; sort: number } | { name: string; sort: number }[] | null }[]) {
+      const st = Array.isArray(row.space_tables) ? row.space_tables[0] : row.space_tables
+      if (!st) continue
+      const arr = byBooking.get(row.booking_id) || []
+      arr.push(st)
+      byBooking.set(row.booking_id, arr)
+    }
+    for (const b of list) {
+      const arr = (byBooking.get(b.booking_id as string) || []).sort((x, y) => x.sort - y.sort)
+      b.tables = arr.map(x => x.name)
+    }
+  }
+  return NextResponse.json({ bookings: list })
 }
 
 export async function POST(req: NextRequest) {
