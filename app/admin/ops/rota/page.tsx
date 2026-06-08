@@ -42,6 +42,9 @@ const SPACE_SHORT: Record<string, string> = {
 }
 const shortSpace = (s: string | null) => (s ? (SPACE_SHORT[s] || s) : '—')
 const HOUSE_KIND_SHORT: Record<string, string> = { closure: 'closed', private_hire: 'hire', supplier: 'visit', tasting: 'tasting', other: 'event' }
+// Autofill draft types (proposed assignments + the gaps it couldn't fill).
+interface Proposal { member: string; shift_date: string; shift_name: string; coverFn: string }
+interface Gap { date: string; shift_name: string; function: string; still_needed: number }
 
 export default function RotaPage() {
   const supabase = createBrowserSupabaseClient()
@@ -70,6 +73,10 @@ export default function RotaPage() {
   // drag from a click (so click-to-edit still works alongside drag-to-move).
   const [dragId, setDragId] = useState<string | null>(null)
   const didDrag = useRef(false)
+
+  // Autofill draft (proposed, not saved until Accept).
+  const [proposals, setProposals] = useState<Proposal[]>([])
+  const [gaps, setGaps] = useState<Gap[]>([])
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
   const weekEnd = addDays(weekStart, 6)
@@ -107,6 +114,7 @@ export default function RotaPage() {
   }, [weekStart])  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { load() }, [load])
+  useEffect(() => { setProposals([]); setGaps([]) }, [weekStart])  // a draft is for one week
 
   const memberName = (id: string) => team.find(t => t.id === id)?.display_name ?? '—'
   const inCell = (date: string, name: string) => shifts.filter(s => s.shift_date === date && s.shift_name === name)
@@ -162,6 +170,62 @@ export default function RotaPage() {
     setRules(rs => rs.filter(r => r.id !== id))
     await supabase.from('rota_scaling_rules').delete().eq('id', id)
   }
+
+  const proposedIn = (date: string, name: string) => proposals.filter(p => p.shift_date === date && p.shift_name === name)
+
+  // ── Autofill (greedy, propose-a-draft) ──
+  // For each active shift cell short of its effective target, pick function-
+  // capable people — never lacking the function, never twice in a cell, never
+  // two shifts in one day. Fairness: fewest shifts so far this week (stable by
+  // id). Unfillable gaps are LABELLED, never crammed. Availability isn't known.
+  const runAutofill = () => {
+    const newProps: Proposal[] = []
+    const newGaps: Gap[] = []
+    const weekCount = new Map<string, number>()
+    const dayMembers = new Map<string, Set<string>>()
+    for (const s of shifts) {
+      weekCount.set(s.member, (weekCount.get(s.member) || 0) + 1)
+      if (!dayMembers.has(s.shift_date)) dayMembers.set(s.shift_date, new Set())
+      dayMembers.get(s.shift_date)!.add(s.member)
+    }
+    for (const d of days) {
+      const bumps = dayBumps(d)
+      for (const name of typeNames) {                 // active shift types only
+        const real = inCell(d, name)
+        const cellMembers = new Set(real.map(s => s.member))
+        const proposedHere: Proposal[] = []
+        for (const fn of FUNCTIONS) {
+          const target = baseTarget(name, fn) + (bumps[fn] || 0)
+          if (target <= 0) continue
+          let present = real.filter(s => memberFns(s.member).includes(fn)).length
+                      + proposedHere.filter(p => p.coverFn === fn).length
+          while (present < target) {
+            const cand = team
+              .filter(m => (m.functions || []).includes(fn) && !cellMembers.has(m.id) && !dayMembers.get(d)?.has(m.id))
+              .sort((a, b) => (weekCount.get(a.id) || 0) - (weekCount.get(b.id) || 0) || a.id.localeCompare(b.id))
+            if (cand.length === 0) { newGaps.push({ date: d, shift_name: name, function: fn, still_needed: target - present }); break }
+            const pick = cand[0]
+            const prop: Proposal = { member: pick.id, shift_date: d, shift_name: name, coverFn: fn }
+            proposedHere.push(prop); newProps.push(prop)
+            cellMembers.add(pick.id)
+            if (!dayMembers.has(d)) dayMembers.set(d, new Set())
+            dayMembers.get(d)!.add(pick.id)
+            weekCount.set(pick.id, (weekCount.get(pick.id) || 0) + 1)
+            present++
+          }
+        }
+      }
+    }
+    setProposals(newProps); setGaps(newGaps)
+    if (newProps.length === 0 && newGaps.length === 0) showToast('Every shift already meets its targets.', 'success')
+  }
+  const acceptAutofill = () => {
+    if (proposals.length === 0) return
+    wrap(async () => {
+      for (const p of proposals) await createShift({ member: p.member, shift_name: p.shift_name, shift_date: p.shift_date })
+    }, () => { setProposals([]); setGaps([]) })
+  }
+  const discardAutofill = () => { setProposals([]); setGaps([]) }
 
   // Per-day demand bumps, precomputed once per render.
   const bumpsByDay: Record<string, Record<string, number>> = {}
@@ -276,9 +340,29 @@ export default function RotaPage() {
           <button onClick={() => setWeekStart(w => addDays(w, -7))} style={tinyBtn}>‹ Prev</button>
           <button onClick={() => setWeekStart(mondayOf(vnDateString()))} style={tinyBtn}>This week</button>
           <button onClick={() => setWeekStart(w => addDays(w, 7))} style={tinyBtn}>Next ›</button>
+          <button onClick={runAutofill} disabled={busy} style={{ ...tinyBtn, color: '#D4B85A', borderColor: 'rgba(212,184,90,0.45)' }}>✦ Autofill week</button>
         </div>
       </div>
       <p style={lede}>Club-wide weekly rota — who&apos;s on which shift. Drag a name to move it across shifts or days; drop onto another name to swap. Week of {dayLabel(weekStart)} – {dayLabel(weekEnd)}.</p>
+
+      {(proposals.length > 0 || gaps.length > 0) && (
+        <div style={autofillBanner}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <strong style={{ color: '#D4B85A' }}>Autofill draft: {proposals.length} proposed assignment{proposals.length === 1 ? '' : 's'}</strong>
+            <span style={{ ...metaText, opacity: 0.7 }}>Draft only — doesn&apos;t account for time off. Review &amp; drag off anyone who&apos;s away before accepting.</span>
+            <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+              <button onClick={acceptAutofill} disabled={busy || proposals.length === 0} style={{ ...btnPrimary, opacity: proposals.length === 0 ? 0.5 : 1 }}>{busy ? 'Saving…' : `Accept all (${proposals.length})`}</button>
+              <button onClick={discardAutofill} disabled={busy} style={tinyBtn}>Discard</button>
+            </span>
+          </div>
+          {gaps.length > 0 && (
+            <div style={{ marginTop: 10 }}>
+              <span style={{ ...metaText, color: '#C27070', marginRight: 4 }}>Couldn&apos;t fill (sort by hand):</span>
+              {gaps.map((g, i) => <span key={i} style={gapTag}>{g.shift_name} {dayLabel(g.date)} · +{g.still_needed} {FN_LABEL[g.function] || g.function}</span>)}
+            </div>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <div style={emptyText}>Loading…</div>
@@ -338,10 +422,12 @@ export default function RotaPage() {
                   </td>
                   {days.map(d => {
                     // Under-staffing: required (base + day bumps) vs present (assigned who HAVE the function).
+                    const ghosts = proposedIn(d, name)
                     const cov = isType
                       ? FUNCTIONS.map(fn => {
                           const req = baseTarget(name, fn) + (bumpsByDay[d]?.[fn] || 0)
                           const pres = inCell(d, name).filter(s => memberFns(s.member).includes(fn)).length
+                                     + ghosts.filter(g => g.coverFn === fn).length   // count pending proposals
                           return { fn, req, pres }
                         }).filter(c => c.req > 0)
                       : []
@@ -378,6 +464,15 @@ export default function RotaPage() {
                           </button>
                           )
                         })}
+                        {ghosts.map((g, gi) => (
+                          <div key={`g${gi}`} style={ghostChip} title={`Proposed · ${FN_LABEL[g.coverFn] || g.coverFn}`}>
+                            <span>{memberName(g.member)}</span>
+                            <span style={{ display: 'inline-flex', gap: 3, marginLeft: 6, alignItems: 'center', flexShrink: 0 }}>
+                              <span style={{ ...fnDot, background: FN_COLOR[g.coverFn] || '#B2AA98' }} />
+                              <span style={{ fontSize: 8, opacity: 0.7, letterSpacing: '0.08em' }}>NEW</span>
+                            </span>
+                          </div>
+                        ))}
                         {isType && <button onClick={() => openAssign(d, name, null)} style={addCellBtn}>+ assign</button>}
                         {cov.length > 0 && (
                           <div style={covStrip}>
@@ -604,6 +699,9 @@ const covTd: React.CSSProperties = { padding: '3px 8px', textAlign: 'center', fo
 const covInput: React.CSSProperties = { width: 46, background: 'rgba(5,46,32,0.5)', color: '#E5D4C2', border: '1px solid rgba(229,212,194,0.18)', borderRadius: 5, padding: '5px 6px', fontFamily: FAMILY, fontSize: 12, textAlign: 'center', outline: 'none' }
 const ruleRow: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', padding: '4px 0' }
 const ruleSelect: React.CSSProperties = { background: 'rgba(5,46,32,0.5)', color: '#E5D4C2', border: '1px solid rgba(229,212,194,0.18)', borderRadius: 5, padding: '5px 8px', fontFamily: FAMILY, fontSize: 11, outline: 'none' }
+const ghostChip: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, background: 'rgba(212,184,90,0.06)', color: '#E5D4C2', border: '1px dashed rgba(212,184,90,0.5)', borderRadius: 4, padding: '4px 8px', fontFamily: FAMILY, fontSize: 11, opacity: 0.9 }
+const autofillBanner: React.CSSProperties = { marginTop: 12, padding: '12px 16px', background: 'rgba(212,184,90,0.08)', border: '1px solid rgba(212,184,90,0.3)', borderRadius: 8, fontFamily: FAMILY, fontSize: 12, color: '#E5D4C2' }
+const gapTag: React.CSSProperties = { display: 'inline-block', fontFamily: FAMILY, fontSize: 10, color: '#C27070', border: '1px solid rgba(194,112,112,0.4)', borderRadius: 4, padding: '2px 7px', margin: '0 6px 4px 0' }
 const addCellBtn: React.CSSProperties = { textAlign: 'left', background: 'transparent', color: '#7E7864', border: '1px dashed rgba(229,212,194,0.18)', borderRadius: 4, padding: '3px 8px', fontFamily: FAMILY, fontSize: 10, cursor: 'pointer' }
 const typePill: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(229,212,194,0.06)', border: '1px solid rgba(229,212,194,0.12)', borderRadius: 4, padding: '3px 4px 3px 9px', fontFamily: FAMILY, fontSize: 11, color: '#E5D4C2' }
 const typeRemove: React.CSSProperties = { background: 'transparent', border: 'none', color: '#C27070', cursor: 'pointer', fontFamily: FAMILY, fontSize: 13, lineHeight: 1, padding: '0 2px' }
