@@ -163,6 +163,10 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
           display: flex;
           flex-direction: column;
           gap: 10px;
+          /* Grouped member nav can be ~16 rows — cap to the viewport and scroll
+             rather than clip Sign Out / Admin off the bottom on short screens. */
+          max-height: calc(100vh - 84px);
+          overflow-y: auto;
           opacity: 0;
           transform: translateY(-6px);
           pointer-events: none;
