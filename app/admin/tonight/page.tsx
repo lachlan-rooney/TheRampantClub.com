@@ -84,6 +84,23 @@ interface Brief {
   preference_count: number
 }
 
+interface HouseEntry {
+  id: string
+  title: string
+  description: string | null
+  start_time: string | null
+  end_time: string | null
+  session_label: string | null
+  space: string | null
+  kind: string
+  visibility: 'member' | 'staff'
+  blocks_space: boolean
+  tables?: string[]
+}
+const HOUSE_KIND_LABEL: Record<string, string> = {
+  closure: 'Closure', private_hire: 'Private hire', supplier: 'Distiller / supplier', tasting: 'Tasting', other: 'House',
+}
+
 interface Pick {
   pick_date: string
   dram_label: string | null
@@ -99,6 +116,7 @@ export default function AdminTonight() {
   const [date, setDate] = useState(vnDateString())
   const [briefs, setBriefs] = useState<Brief[]>([])
   const [loadingBriefs, setLoadingBriefs] = useState(true)
+  const [houseEntries, setHouseEntries] = useState<HouseEntry[]>([])
   const [pick, setPick] = useState<Pick | null>(null)
   const [busy, setBusy] = useState(false)
   const [starting, setStarting] = useState<string | null>(null)
@@ -137,7 +155,16 @@ export default function AdminTonight() {
     })
   }, [date])
 
-  useEffect(() => { loadBriefs(); loadPick(); loadRota() }, [loadBriefs, loadPick, loadRota])
+  // House / non-member entries for the day (closures, private hires, supplier
+  // visits, tastings) — these have no member brief, so they'd otherwise leave
+  // the Wall looking empty on a night that's actually busy with a private event.
+  const loadHouse = useCallback(async () => {
+    const r = await fetch(`/api/admin/calendar-entries?from=${date}&to=${date}`, { cache: 'no-store' })
+    const j = await r.json()
+    setHouseEntries((j.entries || []) as HouseEntry[])
+  }, [date])
+
+  useEffect(() => { loadBriefs(); loadPick(); loadRota(); loadHouse() }, [loadBriefs, loadPick, loadRota, loadHouse])
 
   const startVisit = async (memberNo: string) => {
     if (starting) return
@@ -259,6 +286,33 @@ export default function AdminTonight() {
               onStart={() => startVisit(b.member.member_no)}
             />
           ))}
+        </div>
+      )}
+
+      {/* HOUSE & EVENTS — non-member entries (closures, hires, visits, tastings) */}
+      {houseEntries.length > 0 && (
+        <div style={{ marginTop: 28 }}>
+          <div style={sectionLabel}>Tonight · House &amp; Events</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {houseEntries.map(e => {
+              const t = e.start_time
+                ? (e.end_time ? `${e.start_time.slice(0, 5)}–${e.end_time.slice(0, 5)}` : e.start_time.slice(0, 5))
+                : (e.session_label ? e.session_label.charAt(0).toUpperCase() + e.session_label.slice(1) : 'All day')
+              const meta = [e.space, t].filter(Boolean).join(' · ')
+              const block = e.space && e.blocks_space ? (e.tables && e.tables.length ? e.tables.join(', ') : 'room closed') : null
+              return (
+                <div key={e.id} style={houseCard}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={houseKind}>{HOUSE_KIND_LABEL[e.kind] || 'House'}</span>
+                    <span style={e.visibility === 'staff' ? staffBadge : memberBadge}>{e.visibility === 'staff' ? 'STAFF ONLY' : 'MEMBER-VISIBLE'}</span>
+                  </div>
+                  <div style={houseTitle}>{e.title}</div>
+                  <div style={houseMeta}>{meta}{block ? ` · ${block}` : ''}</div>
+                  {e.description && <div style={houseDesc}>{e.description}</div>}
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
@@ -563,6 +617,31 @@ const sectionLede: React.CSSProperties = {
 const briefGrid: React.CSSProperties = {
   display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))',
   gap: 14, marginBottom: 16,
+}
+const houseCard: React.CSSProperties = {
+  background: 'rgba(212,184,90,0.06)', border: '1px solid rgba(212,184,90,0.22)',
+  borderRadius: 8, padding: '14px 16px',
+}
+const houseKind: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9,
+  color: '#D4B85A', letterSpacing: '0.14em', textTransform: 'uppercase',
+}
+const houseTitle: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2', margin: '4px 0 2px',
+}
+const houseMeta: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#B2AA98', letterSpacing: '0.03em',
+}
+const houseDesc: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#B2AA98', opacity: 0.75, lineHeight: 1.5, marginTop: 5,
+}
+const staffBadge: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 7.5, letterSpacing: '0.10em',
+  color: '#C27070', border: '1px solid rgba(194,112,112,0.4)', borderRadius: 3, padding: '1px 6px', whiteSpace: 'nowrap',
+}
+const memberBadge: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 7.5, letterSpacing: '0.10em',
+  color: '#7AB07A', border: '1px solid rgba(122,176,122,0.4)', borderRadius: 3, padding: '1px 6px', whiteSpace: 'nowrap',
 }
 const cardBlock: React.CSSProperties = {
   padding: 18,
