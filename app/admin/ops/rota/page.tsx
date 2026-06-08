@@ -32,6 +32,16 @@ function dayLabel(iso: string): string {
 }
 
 interface Draft { member: string; shift_name: string; start_time: string; end_time: string; role: string; notes: string }
+// Demand signal for the "What's on" line — member bookings + house events.
+interface DemandBooking { booking_date: string; space: string; party_size: number; start_time: string | null; session_label: string | null }
+interface DemandEntry { entry_date: string; title: string; space: string | null; kind: string; blocks_space: boolean }
+// Short space label for the compact demand line.
+const SPACE_SHORT: Record<string, string> = {
+  'Library Bar': 'Library', 'The Studio': 'Studio', 'The Rampant Room': 'Rampant',
+  'The Dining Room': 'Dining', 'Source & Origin Lab': 'Lab', 'Sports Club': 'Sports',
+}
+const shortSpace = (s: string | null) => (s ? (SPACE_SHORT[s] || s) : '—')
+const HOUSE_KIND_SHORT: Record<string, string> = { closure: 'closed', private_hire: 'hire', supplier: 'visit', tasting: 'tasting', other: 'event' }
 
 export default function RotaPage() {
   const supabase = createBrowserSupabaseClient()
@@ -41,6 +51,8 @@ export default function RotaPage() {
   const [types, setTypes] = useState<RotaShiftType[]>([])
   const [shifts, setShifts] = useState<RotaShift[]>([])
   const [team, setTeam] = useState<TeamMember[]>([])
+  const [bookings, setBookings] = useState<DemandBooking[]>([])
+  const [entries, setEntries] = useState<DemandEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
 
@@ -69,14 +81,21 @@ export default function RotaPage() {
   ]
 
   const load = useCallback(async () => {
-    const [{ data: ty }, { data: sh }, { data: tm }] = await Promise.all([
+    const [{ data: ty }, { data: sh }, { data: tm }, { data: bk }, { data: en }] = await Promise.all([
       supabase.from('rota_shift_types').select('*').order('sort_order'),
       supabase.from('rota_shifts').select('*').gte('shift_date', weekStart).lte('shift_date', weekEnd),
       supabase.from('team_members').select('*').eq('active', true).order('display_name'),
+      // Demand signal: member bookings + house events for the week (admin RLS).
+      supabase.from('bookings').select('booking_date, space, party_size, start_time, session_label')
+        .gte('booking_date', weekStart).lte('booking_date', weekEnd).in('status', ['confirmed', 'pending', 'arrived']),
+      supabase.from('calendar_entries').select('entry_date, title, space, kind, blocks_space')
+        .gte('entry_date', weekStart).lte('entry_date', weekEnd),
     ])
     if (ty) setTypes(ty as RotaShiftType[])
     if (sh) setShifts(sh as RotaShift[])
     if (tm) setTeam(tm as TeamMember[])
+    setBookings((bk || []) as DemandBooking[])
+    setEntries((en || []) as DemandEntry[])
     setLoading(false)
   }, [weekStart])  // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -84,6 +103,10 @@ export default function RotaPage() {
 
   const memberName = (id: string) => team.find(t => t.id === id)?.display_name ?? '—'
   const inCell = (date: string, name: string) => shifts.filter(s => s.shift_date === date && s.shift_name === name)
+  const demandFor = (date: string) => ({
+    bookings: bookings.filter(b => b.booking_date === date),
+    entries: entries.filter(e => e.entry_date === date),
+  })
 
   const wrap = async (fn: () => Promise<unknown>, after?: () => void) => {
     setBusy(true)
@@ -215,6 +238,36 @@ export default function RotaPage() {
               </tr>
             </thead>
             <tbody>
+              {/* What's on — the day's demand (member bookings + house events) by space */}
+              <tr>
+                <td style={{ ...td, ...onLabelCell }}>What&apos;s on</td>
+                {days.map(d => {
+                  const dq = demandFor(d)
+                  const bySpace = new Map<string, { n: number; covers: number }>()
+                  for (const b of dq.bookings) {
+                    const cur = bySpace.get(b.space) || { n: 0, covers: 0 }
+                    cur.n += 1; cur.covers += b.party_size || 0
+                    bySpace.set(b.space, cur)
+                  }
+                  const quiet = dq.bookings.length === 0 && dq.entries.length === 0
+                  return (
+                    <td key={d} style={{ ...td, verticalAlign: 'top', background: d === vnDateString() ? 'rgba(212,184,90,0.04)' : undefined }}>
+                      {quiet ? <span style={{ ...metaText, opacity: 0.35 }}>·</span> : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          {dq.entries.map((e, i) => (
+                            <span key={`e${i}`} style={onEvent} title={`${e.title} · ${e.space || 'no room'}`}>
+                              ◆ {shortSpace(e.space)} · {e.title} <span style={{ opacity: 0.65 }}>({HOUSE_KIND_SHORT[e.kind] || 'event'})</span>
+                            </span>
+                          ))}
+                          {[...bySpace.entries()].map(([sp, v]) => (
+                            <span key={sp} style={onBooking}>{shortSpace(sp)} · {v.n} {v.n === 1 ? 'bkg' : 'bkgs'} · {v.covers}p</span>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                  )
+                })}
+              </tr>
               {rowNames.length === 0 ? (
                 <tr><td colSpan={8} style={{ ...td, ...metaText, opacity: 0.6, fontStyle: 'italic' }}>No shift names yet — add one below.</td></tr>
               ) : rowNames.map(name => {
@@ -396,6 +449,9 @@ const fnDot: React.CSSProperties = { width: 7, height: 7, borderRadius: '50%', d
 const teamPanel: React.CSSProperties = { marginTop: 10, padding: 14, background: 'rgba(229,212,194,0.03)', border: '1px solid rgba(229,212,194,0.08)', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 560 }
 const teamRow: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '5px 0', borderBottom: '1px solid rgba(229,212,194,0.05)' }
 const fnToggle: React.CSSProperties = { background: 'transparent', color: '#B2AA98', border: '1px solid rgba(229,212,194,0.2)', borderRadius: 12, padding: '3px 11px', fontFamily: FAMILY, fontSize: 10, letterSpacing: '0.04em', cursor: 'pointer' }
+const onLabelCell: React.CSSProperties = { fontFamily: FAMILY, fontSize: 9, color: '#B2AA98', letterSpacing: '0.10em', textTransform: 'uppercase', verticalAlign: 'top', opacity: 0.7 }
+const onEvent: React.CSSProperties = { fontFamily: FAMILY, fontSize: 9.5, color: '#D4B85A', lineHeight: 1.4, letterSpacing: '0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 150 }
+const onBooking: React.CSSProperties = { fontFamily: FAMILY, fontSize: 9.5, color: '#B2AA98', lineHeight: 1.4, letterSpacing: '0.02em' }
 const addCellBtn: React.CSSProperties = { textAlign: 'left', background: 'transparent', color: '#7E7864', border: '1px dashed rgba(229,212,194,0.18)', borderRadius: 4, padding: '3px 8px', fontFamily: FAMILY, fontSize: 10, cursor: 'pointer' }
 const typePill: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(229,212,194,0.06)', border: '1px solid rgba(229,212,194,0.12)', borderRadius: 4, padding: '3px 4px 3px 9px', fontFamily: FAMILY, fontSize: 11, color: '#E5D4C2' }
 const typeRemove: React.CSSProperties = { background: 'transparent', border: 'none', color: '#C27070', cursor: 'pointer', fontFamily: FAMILY, fontSize: 13, lineHeight: 1, padding: '0 2px' }
