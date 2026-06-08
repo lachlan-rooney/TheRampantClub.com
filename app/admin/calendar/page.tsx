@@ -77,6 +77,7 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true)
   const [starting, setStarting] = useState<string | null>(null)
   const [hovered, setHovered] = useState<string | null>(null)
+  const [hoveredEntry, setHoveredEntry] = useState<string | null>(null)
   const [confirmCancel, setConfirmCancel] = useState<Booking | null>(null)
   const [cancelBusy, setCancelBusy] = useState(false)
   const [entries, setEntries] = useState<CalendarEntry[]>([])
@@ -208,7 +209,12 @@ export default function CalendarPage() {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {dayEntries.map(e => (
-                      <div key={e.id} style={houseCard}>
+                      <div
+                        key={e.id}
+                        style={{ ...houseCard, position: 'relative' }}
+                        onMouseEnter={() => setHoveredEntry(e.id)}
+                        onMouseLeave={() => setHoveredEntry(h => h === e.id ? null : h)}
+                      >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
                           <span style={houseTime}>{fmtEntryTime(e)}</span>
                           {e.visibility === 'staff'
@@ -221,6 +227,20 @@ export default function CalendarPage() {
                           {e.space && e.blocks_space && (e.tables && e.tables.length > 0 ? ` · ${e.tables.join(', ')}` : ' · closed')}
                         </div>
                         {e.description && <div style={bookingNotes}>{e.description}</div>}
+
+                        {hoveredEntry === e.id && (
+                          <div style={tooltip} onMouseEnter={() => setHoveredEntry(e.id)}>
+                            <div style={tipMember}>{e.title}</div>
+                            <div style={tipMeta}>{KIND_LABEL[e.kind] || 'House'} · {e.visibility === 'staff' ? 'Staff-only' : 'Member-visible'}</div>
+                            <div style={tipRow}>
+                              {fmtEntryTime(e)}{e.space ? ` · ${e.space}` : ''}
+                              {e.space && e.blocks_space && (e.tables && e.tables.length > 0 ? ` · ${e.tables.join(', ')}` : ' · room closed')}
+                            </div>
+                            <div style={tipNotesLabel}>Details</div>
+                            <div style={tipNotesBox}>{e.description && e.description.trim() ? e.description : 'No description on this entry.'}</div>
+                          </div>
+                        )}
+
                         <div style={cardActions}>
                           <Link href={`/admin/bookings/new?entry=${e.id}`} style={cardActionLink}>Edit</Link>
                           <button onClick={() => setConfirmDeleteEntry(e)} style={cardActionBtn}>Remove</button>
