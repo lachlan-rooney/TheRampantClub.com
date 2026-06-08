@@ -34,7 +34,7 @@ function dayLabel(iso: string): string {
 interface Draft { member: string; shift_name: string; start_time: string; end_time: string; role: string; notes: string }
 // Demand signal for the "What's on" line — member bookings + house events.
 interface DemandBooking { booking_date: string; space: string; party_size: number; start_time: string | null; session_label: string | null }
-interface DemandEntry { entry_date: string; title: string; space: string | null; kind: string; blocks_space: boolean }
+interface DemandEntry { id: string; entry_date: string; title: string; space: string | null; kind: string; blocks_space: boolean }
 // Short space label for the compact demand line.
 const SPACE_SHORT: Record<string, string> = {
   'Library Bar': 'Library', 'The Studio': 'Studio', 'The Rampant Room': 'Rampant',
@@ -59,6 +59,10 @@ export default function RotaPage() {
   const [targets, setTargets] = useState<CoverageTarget[]>([])
   const [rules, setRules] = useState<ScalingRule[]>([])
   const [unavail, setUnavail] = useState<Unavailability[]>([])
+  const [upcomingOff, setUpcomingOff] = useState<Unavailability[]>([])
+  const [offMember, setOffMember] = useState('')
+  const [offDate, setOffDate] = useState('')
+  const [offNote, setOffNote] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
 
@@ -93,18 +97,20 @@ export default function RotaPage() {
   ]
 
   const load = useCallback(async () => {
-    const [{ data: ty }, { data: sh }, { data: tm }, { data: bk }, { data: en }, { data: ct }, { data: sr }, { data: ua }] = await Promise.all([
+    const [{ data: ty }, { data: sh }, { data: tm }, { data: bk }, { data: en }, { data: ct }, { data: sr }, { data: ua }, { data: up }] = await Promise.all([
       supabase.from('rota_shift_types').select('*').order('sort_order'),
       supabase.from('rota_shifts').select('*').gte('shift_date', weekStart).lte('shift_date', weekEnd),
       supabase.from('team_members').select('*').eq('active', true).order('display_name'),
       // Demand signal: member bookings + house events for the week (admin RLS).
       supabase.from('bookings').select('booking_date, space, party_size, start_time, session_label')
         .gte('booking_date', weekStart).lte('booking_date', weekEnd).in('status', ['confirmed', 'pending', 'arrived']),
-      supabase.from('calendar_entries').select('entry_date, title, space, kind, blocks_space')
+      supabase.from('calendar_entries').select('id, entry_date, title, space, kind, blocks_space')
         .gte('entry_date', weekStart).lte('entry_date', weekEnd),
       supabase.from('rota_coverage_targets').select('*'),
       supabase.from('rota_scaling_rules').select('*').order('sort_order'),
       supabase.from('rota_unavailability').select('*').gte('off_date', weekStart).lte('off_date', weekEnd),
+      // Upcoming time off (any future date) — for the month-ahead view + the picker.
+      supabase.from('rota_unavailability').select('*').gte('off_date', vnDateString()).order('off_date'),
     ])
     if (ty) setTypes(ty as RotaShiftType[])
     if (sh) setShifts(sh as RotaShift[])
@@ -114,6 +120,7 @@ export default function RotaPage() {
     setTargets((ct || []) as CoverageTarget[])
     setRules((sr || []) as ScalingRule[])
     setUnavail((ua || []) as Unavailability[])
+    setUpcomingOff((up || []) as Unavailability[])
     setLoading(false)
   }, [weekStart])  // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -190,6 +197,19 @@ export default function RotaPage() {
       if (error) { showToast(error.message, 'error'); load() }
     }
   }
+  // Mark a future date off via the picker (any date ≥ today). Upsert so re-marking
+  // updates the note; refresh both the week + the upcoming list.
+  const markOffDate = async () => {
+    if (!offMember || !offDate) { showToast('Pick a person and a date.', 'error'); return }
+    const { error } = await supabase.from('rota_unavailability').upsert({ member: offMember, off_date: offDate, note: offNote.trim() || null }, { onConflict: 'member,off_date' })
+    if (error) { showToast(error.message, 'error'); return }
+    setOffNote(''); setOffDate('')
+    load()
+  }
+  const clearOff = async (memberId: string, date: string) => {
+    await supabase.from('rota_unavailability').delete().eq('member', memberId).eq('off_date', date)
+    load()
+  }
 
   // ── Autofill (greedy, propose-a-draft) ──
   // For each active shift cell short of its effective target, pick function-
@@ -201,10 +221,13 @@ export default function RotaPage() {
     const newGaps: Gap[] = []
     const weekCount = new Map<string, number>()
     const dayMembers = new Map<string, Set<string>>()
+    const weekDays = new Map<string, Set<string>>()   // member → distinct dates this week (the 5-day cap)
     for (const s of shifts) {
       weekCount.set(s.member, (weekCount.get(s.member) || 0) + 1)
       if (!dayMembers.has(s.shift_date)) dayMembers.set(s.shift_date, new Set())
       dayMembers.get(s.shift_date)!.add(s.member)
+      if (!weekDays.has(s.member)) weekDays.set(s.member, new Set())
+      weekDays.get(s.member)!.add(s.shift_date)
     }
     for (const d of days) {
       const bumps = dayBumps(d)
@@ -219,7 +242,8 @@ export default function RotaPage() {
                       + proposedHere.filter(p => p.coverFn === fn).length
           while (present < target) {
             const cand = team
-              .filter(m => (m.functions || []).includes(fn) && !cellMembers.has(m.id) && !dayMembers.get(d)?.has(m.id) && !isOff(m.id, d))
+              .filter(m => (m.functions || []).includes(fn) && !cellMembers.has(m.id) && !dayMembers.get(d)?.has(m.id) && !isOff(m.id, d)
+                && ((weekDays.get(m.id)?.has(d)) || (weekDays.get(m.id)?.size ?? 0) < 5))   // ≤5 distinct days/week
               .sort((a, b) => (weekCount.get(a.id) || 0) - (weekCount.get(b.id) || 0) || a.id.localeCompare(b.id))
             if (cand.length === 0) { newGaps.push({ date: d, shift_name: name, function: fn, still_needed: target - present }); break }
             const pick = cand[0]
@@ -228,6 +252,8 @@ export default function RotaPage() {
             cellMembers.add(pick.id)
             if (!dayMembers.has(d)) dayMembers.set(d, new Set())
             dayMembers.get(d)!.add(pick.id)
+            if (!weekDays.has(pick.id)) weekDays.set(pick.id, new Set())
+            weekDays.get(pick.id)!.add(d)
             weekCount.set(pick.id, (weekCount.get(pick.id) || 0) + 1)
             present++
           }
@@ -301,6 +327,12 @@ export default function RotaPage() {
     const lost = lostOnlyFunctions(shift)
     if (lost.length) showToast(`Heads up: that was the only ${lost.map(f => FN_LABEL[f] || f).join(' / ')} on ${shift.shift_name} · ${dayLabel(shift.shift_date)}.`, 'error')
   }
+  // Soft-warn when a drag puts someone onto a 6th distinct day this week (the
+  // autofill hard-caps at 5; a manual drag may override but is flagged).
+  const warn6thDay = (memberId: string, toDate: string) => {
+    const wkDays = new Set(shifts.filter(s => s.member === memberId && days.includes(s.shift_date)).map(s => s.shift_date))
+    if (!wkDays.has(toDate) && wkDays.size >= 5) showToast(`${memberName(memberId)} would be on a 6th day this week.`, 'error')
+  }
 
   // Move (optimistic local update → RPC → reconcile via load() in wrap).
   const doMove = (id: string, toDate: string, toName: string) => {
@@ -314,6 +346,7 @@ export default function RotaPage() {
     if (!dragged || (dragged.shift_date === toDate && dragged.shift_name === toName)) return
     warnIfLost(dragged)
     if (isOff(dragged.member, toDate)) showToast(`${memberName(dragged.member)} is marked off ${dayLabel(toDate)} — assigned anyway.`, 'error')
+    warn6thDay(dragged.member, toDate)
     doMove(dragged.id, toDate, toName)
   }
   // Drop onto a chip → swap the two chips' (date, shift_name) slots.
@@ -324,6 +357,8 @@ export default function RotaPage() {
     warnIfLost(dragged)
     if (isOff(dragged.member, target.shift_date)) showToast(`${memberName(dragged.member)} is marked off ${dayLabel(target.shift_date)} — assigned anyway.`, 'error')
     if (isOff(target.member, dragged.shift_date)) showToast(`${memberName(target.member)} is marked off ${dayLabel(dragged.shift_date)} — assigned anyway.`, 'error')
+    warn6thDay(dragged.member, target.shift_date)
+    warn6thDay(target.member, dragged.shift_date)
     setShifts(ss => ss.map(s =>
       s.id === dragged.id ? { ...s, shift_date: target.shift_date, shift_name: target.shift_name }
       : s.id === target.id ? { ...s, shift_date: dragged.shift_date, shift_name: dragged.shift_name } : s))
@@ -370,10 +405,10 @@ export default function RotaPage() {
         <div style={autofillBanner}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <strong style={{ color: '#D4B85A' }}>Autofill draft: {proposals.length} proposed assignment{proposals.length === 1 ? '' : 's'}</strong>
-            <span style={{ ...metaText, opacity: 0.7 }}>Draft only — fills by role to meet targets, skipping anyone marked off. Review before accepting.</span>
+            <span style={{ ...metaText, opacity: 0.7 }}>Draft only — fills by role to meet targets, skipping anyone marked off. Drop any chip with its × before accepting; review the rest.</span>
             <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-              <button onClick={acceptAutofill} disabled={busy || proposals.length === 0} style={{ ...btnPrimary, opacity: proposals.length === 0 ? 0.5 : 1 }}>{busy ? 'Saving…' : `Accept all (${proposals.length})`}</button>
-              <button onClick={discardAutofill} disabled={busy} style={tinyBtn}>Discard</button>
+              <button onClick={acceptAutofill} disabled={busy || proposals.length === 0} style={{ ...btnPrimary, opacity: proposals.length === 0 ? 0.5 : 1 }}>{busy ? 'Saving…' : `Accept kept (${proposals.length})`}</button>
+              <button onClick={discardAutofill} disabled={busy} style={tinyBtn}>Discard all</button>
             </span>
           </div>
           {gaps.length > 0 && (
@@ -419,9 +454,9 @@ export default function RotaPage() {
                       {quiet ? <span style={{ ...metaText, opacity: 0.35 }}>·</span> : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                           {dq.entries.map((e, i) => (
-                            <span key={`e${i}`} style={onEvent} title={`${e.title} · ${e.space || 'no room'}`}>
+                            <Link key={`e${i}`} href={`/admin/bookings/new?entry=${e.id}`} style={{ ...onEvent, textDecoration: 'none' }} title={`${e.title} · ${e.space || 'no room'} — open entry`}>
                               ◆ {shortSpace(e.space)} · {e.title} <span style={{ opacity: 0.65 }}>({HOUSE_KIND_SHORT[e.kind] || 'event'})</span>
-                            </span>
+                            </Link>
                           ))}
                           {[...bySpace.entries()].map(([sp, v]) => (
                             <span key={sp} style={onBooking}>{shortSpace(sp)} · {v.n} {v.n === 1 ? 'bkg' : 'bkgs'} · {v.covers}p</span>
@@ -488,9 +523,10 @@ export default function RotaPage() {
                         {ghosts.map((g, gi) => (
                           <div key={`g${gi}`} style={ghostChip} title={`Proposed · ${FN_LABEL[g.coverFn] || g.coverFn}`}>
                             <span>{memberName(g.member)}</span>
-                            <span style={{ display: 'inline-flex', gap: 3, marginLeft: 6, alignItems: 'center', flexShrink: 0 }}>
+                            <span style={{ display: 'inline-flex', gap: 4, marginLeft: 6, alignItems: 'center', flexShrink: 0 }}>
                               <span style={{ ...fnDot, background: FN_COLOR[g.coverFn] || '#B2AA98' }} />
                               <span style={{ fontSize: 8, opacity: 0.7, letterSpacing: '0.08em' }}>NEW</span>
+                              <button onClick={() => setProposals(ps => ps.filter(p => p !== g))} title="Drop this proposal" style={ghostDrop}>×</button>
                             </span>
                           </div>
                         ))}
@@ -652,6 +688,34 @@ export default function RotaPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Ahead-of-time: mark any future date off (leave booked weeks out) */}
+            <div style={{ ...fieldLabel, marginTop: 16, marginBottom: 6 }}>Book time off ahead (any future date)</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <select value={offMember} onChange={e => setOffMember(e.target.value)} style={ruleSelect}>
+                <option value="" style={opt}>— person —</option>
+                {team.map(m => <option key={m.id} value={m.id} style={opt}>{m.display_name}</option>)}
+              </select>
+              <input type="date" min={vnDateString()} value={offDate} onChange={e => setOffDate(e.target.value)} style={{ ...ruleSelect, colorScheme: 'dark' }} />
+              <input value={offNote} onChange={e => setOffNote(e.target.value)} placeholder="note (leave / sick…)" style={{ ...ruleSelect, minWidth: 130 }} />
+              <button onClick={markOffDate} style={tinyBtn}>Mark off</button>
+            </div>
+
+            <div style={{ ...fieldLabel, marginTop: 16, marginBottom: 6 }}>Upcoming time off</div>
+            {upcomingOff.length === 0 ? (
+              <div style={{ ...metaText, opacity: 0.55, fontStyle: 'italic' }}>Nothing booked ahead.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {upcomingOff.map(u => (
+                  <div key={`${u.member}-${u.off_date}`} style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: FAMILY, fontSize: 11, color: '#E5D4C2' }}>
+                    <span style={{ minWidth: 120 }}>{memberName(u.member)}</span>
+                    <span style={{ ...metaText }}>{dayLabel(u.off_date)}</span>
+                    {u.note && <span style={{ ...metaText, opacity: 0.6 }}>· {u.note}</span>}
+                    <button onClick={() => clearOff(u.member, u.off_date)} title="Clear" style={{ ...typeRemove, marginLeft: 'auto' }}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -758,6 +822,7 @@ const covInput: React.CSSProperties = { width: 46, background: 'rgba(5,46,32,0.5
 const ruleRow: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', padding: '4px 0' }
 const ruleSelect: React.CSSProperties = { background: 'rgba(5,46,32,0.5)', color: '#E5D4C2', border: '1px solid rgba(229,212,194,0.18)', borderRadius: 5, padding: '5px 8px', fontFamily: FAMILY, fontSize: 11, outline: 'none' }
 const ghostChip: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, background: 'rgba(212,184,90,0.06)', color: '#E5D4C2', border: '1px dashed rgba(212,184,90,0.5)', borderRadius: 4, padding: '4px 8px', fontFamily: FAMILY, fontSize: 11, opacity: 0.9 }
+const ghostDrop: React.CSSProperties = { background: 'transparent', border: 'none', color: '#C27070', cursor: 'pointer', fontFamily: FAMILY, fontSize: 13, lineHeight: 1, padding: '0 1px' }
 const autofillBanner: React.CSSProperties = { marginTop: 12, padding: '12px 16px', background: 'rgba(212,184,90,0.08)', border: '1px solid rgba(212,184,90,0.3)', borderRadius: 8, fontFamily: FAMILY, fontSize: 12, color: '#E5D4C2' }
 const gapTag: React.CSSProperties = { display: 'inline-block', fontFamily: FAMILY, fontSize: 10, color: '#C27070', border: '1px solid rgba(194,112,112,0.4)', borderRadius: 4, padding: '2px 7px', margin: '0 6px 4px 0' }
 const offBtnOff: React.CSSProperties = { width: 30, background: 'transparent', color: '#7E7864', border: '1px solid rgba(229,212,194,0.14)', borderRadius: 5, padding: '4px 0', fontFamily: FAMILY, fontSize: 11, cursor: 'pointer' }
