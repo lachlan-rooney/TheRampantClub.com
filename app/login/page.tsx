@@ -17,7 +17,26 @@ export default function LoginPage() {
 function LoginContent() {
   const [fontsReady, setFontsReady] = useState(false)
   useEffect(() => {
-    document.fonts.ready.then(() => setFontsReady(true))
+    // Explicitly wait for Pinyon Script (the button face, loaded from Google
+    // Fonts) before revealing the card. document.fonts.ready can resolve before
+    // an external-stylesheet font is even registered, so on a cold/uncached load
+    // online the button would flash the serif fallback. Poll-load until the face
+    // is ready (the Google stylesheet may still be loading → check() is false and
+    // load() finds no face yet, so retry), with a hard cap so it never stays hidden.
+    let cancelled = false
+    const reveal = () => { if (!cancelled) setFontsReady(true) }
+    const ensure = async () => {
+      for (let i = 0; i < 20; i++) {                       // ~2s of 100ms retries
+        if (document.fonts.check("24px 'Pinyon Script'")) break
+        try { await document.fonts.load("24px 'Pinyon Script'") } catch { /* ignore */ }
+        if (document.fonts.check("24px 'Pinyon Script'")) break
+        await new Promise(r => setTimeout(r, 100))
+      }
+      reveal()
+    }
+    ensure()
+    const t = setTimeout(reveal, 2500)                     // safety: never stay hidden
+    return () => { cancelled = true; clearTimeout(t) }
   }, [])
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
