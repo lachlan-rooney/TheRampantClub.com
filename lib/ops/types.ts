@@ -33,6 +33,7 @@ export interface TeamMember {
   display_name: string
   role_title: string | null
   division: string | null
+  functions: string[]          // roles this person can cover: bar / floor / host / gm
   active: boolean
   created_at: string
 }
