@@ -161,6 +161,21 @@ export default function MembersPage() {
     },
   ]
 
+  // Mirror the nav's Explore / You / House groups so the two surfaces agree.
+  // Whisky Library is the prominent first Explore tile (it had none before).
+  const byHref = Object.fromEntries(buckets.map(b => [b.href, b])) as Record<string, Bucket>
+  const extra: Record<string, Bucket> = {
+    whisky: { href: '/members/whisky',        en: 'Whisky Library', vn: 'Th\u01b0 Vi\u1ec7n Whisky', glyph: '\u2756', secondary: 'The shelf \u00b7 radar \u00b7 300+ drams' },
+    finder: { href: '/members/whisky/finder', en: 'Flavour Finder', vn: 'T\u00ecm Ly C\u1ee7a B\u1ea1n', glyph: '\u25ce', secondary: 'Match a dram to your taste' },
+    menus:  { href: '/menus',                 en: 'The Menus',      vn: 'Th\u1ef1c \u0110\u01a1n',     glyph: '\u2630', secondary: 'Food & drink lists' },
+    terms:  { href: '/members/terms',         en: 'Terms',          vn: '\u0110i\u1ec1u Kho\u1ea3n',   glyph: '\u00b6', secondary: 'Full terms & conditions' },
+  }
+  const bucketGroups = [
+    { label: 'Explore', tiles: [extra.whisky, extra.finder, byHref['/members/spaces'], byHref['/members/events'], byHref['/members/fixtures'], byHref['/members/journal']] },
+    { label: 'You',     tiles: [byHref['/members/profile']] },
+    { label: 'House',   tiles: [extra.menus, byHref['/members/rules'], extra.terms, byHref['/members/contact']] },
+  ].map(g => ({ ...g, tiles: g.tiles.filter(Boolean) }))
+
   return (
     <>
       <style suppressHydrationWarning dangerouslySetInnerHTML={{ __html: `
@@ -291,6 +306,18 @@ export default function MembersPage() {
           background: #2A1F18;
           transition: opacity 0.3s;
         }
+
+        /* ── Section label (Explore / You / House) — mirrors the nav groups ── */
+        .members-section-label {
+          font-family: 'Google Sans Code', 'DM Mono', monospace;
+          font-size: 10px;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          color: #D4B85A;
+          opacity: 0.7;
+          margin: 28px 0 12px;
+        }
+        .members-section-label:first-of-type { margin-top: 4px; }
 
         /* ── Bucket grid (desktop) / linear stack (mobile) ── */
         .members-bucket-grid {
@@ -503,18 +530,23 @@ export default function MembersPage() {
             )}
           </div>
 
-          <div className="members-bucket-grid">
-            {buckets.map(b => (
-              <Link key={b.href} href={b.href} className="members-bucket">
-                <div className="members-bucket-glyph" aria-hidden>{b.glyph}</div>
-                <div className="members-bucket-en">{b.en}</div>
-                <div className="members-bucket-vn">{b.vn}</div>
-                {b.primary && <div className="members-bucket-primary">{b.primary}</div>}
-                {b.secondary && <div className="members-bucket-secondary">{b.secondary}</div>}
-                <div className="members-bucket-arrow">&rarr;</div>
-              </Link>
-            ))}
-          </div>
+          {bucketGroups.map(group => (
+            <div key={group.label}>
+              <div className="members-section-label">{group.label}</div>
+              <div className="members-bucket-grid">
+                {group.tiles.map(b => (
+                  <Link key={b.href} href={b.href} className="members-bucket">
+                    <div className="members-bucket-glyph" aria-hidden>{b.glyph}</div>
+                    <div className="members-bucket-en">{b.en}</div>
+                    <div className="members-bucket-vn">{b.vn}</div>
+                    {b.primary && <div className="members-bucket-primary">{b.primary}</div>}
+                    {b.secondary && <div className="members-bucket-secondary">{b.secondary}</div>}
+                    <div className="members-bucket-arrow">&rarr;</div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))}
 
           <div className="members-diamond" />
         </div>
