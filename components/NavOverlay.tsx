@@ -19,6 +19,9 @@ const MEMBER_GROUPS: { label: string; links: { href: string; en: string; vn: str
   ] },
   { label: 'You', links: [
     { href: '/members/profile',       en: 'My Membership',         vn: 'Tư Cách Thành Viên' },
+    { href: '/members/taste',         en: 'Your Palate',           vn: 'Khẩu Vị Của Bạn' },
+    { href: '/members/visits',        en: 'Your Visits',           vn: 'Những Lần Ghé Thăm' },
+    { href: '/members/gifts',         en: 'Gifts from the Club',   vn: 'Quà Tặng' },
   ] },
   { label: 'House', links: [
     { href: '/menus',                 en: 'The Menus',             vn: 'Thực Đơn' },
