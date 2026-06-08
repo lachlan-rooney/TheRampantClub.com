@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
+import { checkBookingAvailability } from '@/lib/booking-availability'
 
 // GET  /api/admin/bookings[?from=YYYY-MM-DD&to=YYYY-MM-DD&space=…&status=…]
 // POST /api/admin/bookings   — create a booking
@@ -73,6 +74,12 @@ export async function POST(req: NextRequest) {
 
   const status = typeof body.status === 'string' && ALLOWED_STATUS.includes(body.status) ? body.status : 'confirmed'
 
+  // Specific table units (Phase 2). Optional: when present the availability
+  // guard runs (party≤seats, either-or, per-unit conflicts) and the holds are
+  // recorded in booking_tables. When absent, behaves as before (room-closure
+  // check only) so the legacy space-only form keeps working until Phase 3.
+  const unit_ids = Array.isArray(body.unit_ids) ? (body.unit_ids.filter(x => typeof x === 'string') as string[]) : []
+
   const sb = svc()
   // Pull more than just member_no — the confirmation email needs name + address.
   const { data: member } = await sb.from('members')
@@ -80,16 +87,13 @@ export async function POST(req: NextRequest) {
     .eq('member_no', member_no).maybeSingle()
   if (!member) return NextResponse.json({ error: 'member not found' }, { status: 404 })
 
-  // Room-blocking: a house calendar_entry that closes this space (space match,
-  // same date, blocks_space, overlapping time) makes it unbookable. The closure
-  // wins — for members and for staff booking on a member's behalf (this path).
-  const { data: blockers } = await sb.from('calendar_entries')
-    .select('title, start_time, end_time, blocks_space')
-    .eq('space', space).eq('entry_date', booking_date).eq('blocks_space', true)
-  const blocked = (blockers || []).find(b => timeOverlaps(b as TimeWindow, { start_time, end_time }))
-  if (blocked) {
-    return NextResponse.json({ error: `${space} is closed on ${booking_date}${blocked.title ? ` — ${blocked.title}` : ''}. Pick another space or time.` }, { status: 409 })
-  }
+  // Availability guard (shared with PATCH): either-or table conflicts, per-unit
+  // overlap, party≤seats, and the room-closure block — one function, no drift.
+  const avail = await checkBookingAvailability({
+    sb, unit_ids, space, booking_date, start_time, end_time, session_label, party_size,
+  })
+  if (!avail.ok) return NextResponse.json({ error: avail.error }, { status: avail.status || 409 })
+  const finalSpace = avail.resolvedSpace || space   // when units chosen, the room is derived from them
 
   const sendEmail = !!body.send_confirmation
   if (sendEmail && !member.email) {
@@ -97,7 +101,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { data, error } = await sb.from('bookings').insert({
-    member_no, booking_date, space, party_size, status,
+    member_no, booking_date, space: finalSpace, party_size, status,
     session_label,
     start_time,
     end_time,
@@ -105,6 +109,17 @@ export async function POST(req: NextRequest) {
     created_by: actor,
   }).select('*').single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Record the unit holds. If this fails, roll the booking back (compensating
+  // delete) so we never leave a booking without its table holds.
+  if (unit_ids.length > 0) {
+    const rows = [...new Set(unit_ids)].map(unit_id => ({ booking_id: data.booking_id, unit_id }))
+    const { error: btErr } = await sb.from('booking_tables').insert(rows)
+    if (btErr) {
+      await sb.from('bookings').delete().eq('booking_id', data.booking_id)
+      return NextResponse.json({ error: `Could not record table holds: ${btErr.message}` }, { status: 500 })
+    }
+  }
 
   // Best-effort confirmation email. Failure logs a warning but does not
   // roll back the booking — the staff can resend from the calendar later.
@@ -119,7 +134,7 @@ export async function POST(req: NextRequest) {
         start_time,
         end_time,
         session_label,
-        space,
+        space: finalSpace,
         party_size,
         notes: body.notes ? String(body.notes) : null,
       })
@@ -139,19 +154,6 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ booking: data, email_sent, email_error })
-}
-
-interface TimeWindow { start_time: string | null; end_time: string | null }
-// Conservative overlap: if EITHER side lacks a precise start, treat as whole-day
-// (a closure with no time closes the space all day; a session-only booking on a
-// closed day conflicts). Both precise → interval overlap on HH:MM.
-function timeOverlaps(closure: TimeWindow, booking: TimeWindow): boolean {
-  const hm = (t: string | null) => (t ? t.slice(0, 5) : null)
-  const cs = hm(closure.start_time), bs = hm(booking.start_time)
-  if (!cs || !bs) return true
-  const ce = hm(closure.end_time) || '23:59'
-  const be = hm(booking.end_time) || bs
-  return cs <= be && bs < ce
 }
 
 function formatBookingDateForSubject(iso: string): string {
