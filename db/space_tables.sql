@@ -97,15 +97,12 @@ insert into space_tables (space, name, seats, parent_id, sort)
 select 'The Studio', 'Studio Table C', 2, p.id, 13 from space_tables p where p.space = 'The Studio' and p.name = 'Studio (whole, big table)'
 on conflict (space, name) do nothing;
 
--- ── NOT SEEDED — needs your input ──────────────────────────────────────────
--- The Dining Room and Source & Origin Lab are EXCLUSIVE rooms = a single
--- whole-room unit each. Their seat counts were not given and are NOT invented.
--- Once you confirm the numbers, uncomment + set <SEATS> (one whole-room unit
--- makes the room bookable & exclusive; the seat count only gates party≤seats):
---
--- insert into space_tables (space, name, seats, sort) values
---   ('The Dining Room',      'Dining Room (whole)',       <SEATS>, 10),
---   ('Source & Origin Lab',  'Source & Origin Lab (whole)', <SEATS>, 10)
--- on conflict (space, name) do nothing;
---
+-- Exclusive rooms — a single whole-room unit each (seats confirmed by the club:
+-- Dining 10, Lab 8). One unit makes the room bookable & exclusive; the seat
+-- count only gates the party≤seats check.
+insert into space_tables (space, name, seats, sort) values
+  ('The Dining Room',     'Dining Room (whole)',          10, 10),
+  ('Source & Origin Lab', 'Source & Origin Lab (whole)',   8, 10)
+on conflict (space, name) do nothing;
+
 -- Sports Club is intentionally absent (not bookable → zero units).
