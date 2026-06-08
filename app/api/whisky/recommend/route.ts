@@ -43,9 +43,9 @@ export async function POST(req: NextRequest) {
       const sbCookie = await createServerSupabaseClient()
       const { data: { user } } = await sbCookie.auth.getUser()
       if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-      const { data: prof } = await sb.from('profiles').select('member_number').eq('id', user.id).maybeSingle()
-      if (prof?.member_number == null) return NextResponse.json({ recs: [], bestIsClose: false, profileEmpty: true, reason: 'no_linked_member' })
-      resolvedMember = 'TRC-M' + String(prof.member_number).padStart(3, '0')
+      const { data: prof } = await sb.from('profiles').select('member_no').eq('id', user.id).maybeSingle()
+      if (!prof?.member_no) return NextResponse.json({ recs: [], bestIsClose: false, profileEmpty: true, reason: 'no_linked_member' })
+      resolvedMember = prof.member_no
     }
     const { data: tp } = await sb.from('member_taste_profiles').select('vector, sources').eq('member_no', resolvedMember).maybeSingle()
     if (tp?.vector) for (const [k, v] of Object.entries(tp.vector as Record<string, number>)) if (v > 0) target[k] = v

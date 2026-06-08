@@ -23,9 +23,10 @@ create policy "admins rw member_taste_profiles" on member_taste_profiles for all
   using  (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.is_admin = true))
   with check (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.is_admin = true));
 
--- A member reads their OWN profile (profiles.member_number → 'TRC-M00n'). Dormant
--- until profiles are linked to members (member_number is null today → matches nothing).
+-- A member reads their OWN rows, keyed on the profiles.member_no FK (Phase 0a).
+-- Dormant until profiles are linked (member_no null → `= null` → no rows match;
+-- never matches all). Admins read all via the admin policy above.
 drop policy if exists "members read own taste" on member_taste_profiles;
 create policy "members read own taste" on member_taste_profiles for select using (
-  member_no = 'TRC-M' || lpad((select member_number::text from profiles where id = auth.uid()), 3, '0')
+  member_no = (select member_no from profiles where id = auth.uid())
 );
