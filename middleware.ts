@@ -29,12 +29,28 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Protect /members/* and /admin/* routes
+  // Protect /members/* and /admin/* routes — must be signed in.
   if ((request.nextUrl.pathname.startsWith('/members') || request.nextUrl.pathname.startsWith('/admin')) && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('redirect', request.nextUrl.pathname)
     return NextResponse.redirect(url)
+  }
+
+  // /admin/* additionally requires an ADMIN profile. A logged-in non-admin
+  // (a member, once member logins exist) must NOT render the admin pages —
+  // redirect to /members. (The APIs are separately isAdmin()-gated; this stops
+  // the client pages rendering at all.) The session client reads the user's
+  // OWN profile row under RLS — admins (all accounts today) pass through.
+  if (request.nextUrl.pathname.startsWith('/admin') && user) {
+    const { data: profile } = await supabase
+      .from('profiles').select('is_admin').eq('id', user.id).single()
+    if (!profile?.is_admin) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/members'
+      url.search = ''
+      return NextResponse.redirect(url)
+    }
   }
 
   // Redirect logged-in users away from /login.
