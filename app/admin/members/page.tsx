@@ -44,7 +44,6 @@ export default function AdminMembers() {
     if (expandedId === m.id) { setExpandedId(null); return }
     setExpandedId(m.id)
     setEditValues({
-      member_number: m.member_number,
       admitted_at: m.admitted_at,
       locker_number: m.locker_number,
       is_admin: m.is_admin,
@@ -52,8 +51,10 @@ export default function AdminMembers() {
   }
 
   const save = async (id: string) => {
+    // Note: member↔login linking is no longer done here — it lives in the
+    // "Create member login" flow on the member record (sets profiles.member_no,
+    // the 0a FK). This page no longer writes the legacy member_number int.
     await supabase.from('profiles').update({
-      member_number: editValues.member_number || null,
       admitted_at: editValues.admitted_at || null,
       locker_number: editValues.locker_number || null,
       is_admin: editValues.is_admin ?? false,
@@ -96,15 +97,6 @@ export default function AdminMembers() {
 
             {expandedId === m.id && (
               <div style={{ padding: '0 0 20px', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: 120 }}>
-                  <label style={labelStyle}>Member Number</label>
-                  <input
-                    type="number"
-                    style={inputStyle}
-                    value={editValues.member_number ?? ''}
-                    onChange={e => setEditValues(v => ({ ...v, member_number: e.target.value ? parseInt(e.target.value) : null }))}
-                  />
-                </div>
                 <div style={{ flex: 1, minWidth: 120 }}>
                   <label style={labelStyle}>Admitted</label>
                   <input
