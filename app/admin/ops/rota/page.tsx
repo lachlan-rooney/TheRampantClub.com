@@ -6,7 +6,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { ConfirmModal, PromptModal, useToast } from '@/components/admin/dialogs'
 import { vnDateString } from '@/lib/datetime'
 import { createShift, updateShift, deleteShift, moveShift } from '@/lib/ops/api'
-import type { RotaShift, RotaShiftType, TeamMember } from '@/lib/ops/types'
+import type { RotaShift, RotaShiftType, TeamMember, CoverageTarget, ScalingRule } from '@/lib/ops/types'
 
 const FAMILY = "'Google Sans Code', monospace"
 const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -53,6 +53,8 @@ export default function RotaPage() {
   const [team, setTeam] = useState<TeamMember[]>([])
   const [bookings, setBookings] = useState<DemandBooking[]>([])
   const [entries, setEntries] = useState<DemandEntry[]>([])
+  const [targets, setTargets] = useState<CoverageTarget[]>([])
+  const [rules, setRules] = useState<ScalingRule[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
 
@@ -62,6 +64,7 @@ export default function RotaPage() {
   const [confirmRemove, setConfirmRemove] = useState<RotaShift | null>(null)
   const [addTypeOpen, setAddTypeOpen] = useState(false)
   const [showTeam, setShowTeam] = useState(false)
+  const [showCoverage, setShowCoverage] = useState(false)
 
   // Drag state. dragId = the shift being dragged; didDrag distinguishes a real
   // drag from a click (so click-to-edit still works alongside drag-to-move).
@@ -81,7 +84,7 @@ export default function RotaPage() {
   ]
 
   const load = useCallback(async () => {
-    const [{ data: ty }, { data: sh }, { data: tm }, { data: bk }, { data: en }] = await Promise.all([
+    const [{ data: ty }, { data: sh }, { data: tm }, { data: bk }, { data: en }, { data: ct }, { data: sr }] = await Promise.all([
       supabase.from('rota_shift_types').select('*').order('sort_order'),
       supabase.from('rota_shifts').select('*').gte('shift_date', weekStart).lte('shift_date', weekEnd),
       supabase.from('team_members').select('*').eq('active', true).order('display_name'),
@@ -90,12 +93,16 @@ export default function RotaPage() {
         .gte('booking_date', weekStart).lte('booking_date', weekEnd).in('status', ['confirmed', 'pending', 'arrived']),
       supabase.from('calendar_entries').select('entry_date, title, space, kind, blocks_space')
         .gte('entry_date', weekStart).lte('entry_date', weekEnd),
+      supabase.from('rota_coverage_targets').select('*'),
+      supabase.from('rota_scaling_rules').select('*').order('sort_order'),
     ])
     if (ty) setTypes(ty as RotaShiftType[])
     if (sh) setShifts(sh as RotaShift[])
     if (tm) setTeam(tm as TeamMember[])
     setBookings((bk || []) as DemandBooking[])
     setEntries((en || []) as DemandEntry[])
+    setTargets((ct || []) as CoverageTarget[])
+    setRules((sr || []) as ScalingRule[])
     setLoading(false)
   }, [weekStart])  // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -107,6 +114,58 @@ export default function RotaPage() {
     bookings: bookings.filter(b => b.booking_date === date),
     entries: entries.filter(e => e.entry_date === date),
   })
+
+  // ── Coverage: base target + demand-scaled bumps from the active rules ──
+  const baseTarget = (shiftName: string, fn: string) =>
+    targets.find(t => t.shift_name === shiftName && t.function === fn)?.count ?? 0
+
+  // Which rules fire for a date (from the "What's on" demand) → bump per function.
+  const dayBumps = (date: string): Record<string, number> => {
+    const dq = demandFor(date)
+    const dayCovers = dq.bookings.reduce((s, b) => s + (b.party_size || 0), 0)
+    const sess = new Map<string, number>()
+    for (const b of dq.bookings) { const k = b.session_label || 'unspec'; sess.set(k, (sess.get(k) || 0) + (b.party_size || 0)) }
+    const maxSession = sess.size ? Math.max(...sess.values()) : 0
+    const hasEvent = dq.entries.length > 0
+    const out: Record<string, number> = {}
+    for (const r of rules) {
+      if (!r.active) continue
+      const fires = r.trigger_type === 'day_covers' ? dayCovers >= r.threshold
+        : r.trigger_type === 'session_covers' ? maxSession >= r.threshold
+        : hasEvent  // event_present
+      if (fires) out[r.function] = (out[r.function] || 0) + r.delta
+    }
+    return out
+  }
+
+  // Config writes (admin-RLS direct; config, no spine event — like shift names).
+  const setTarget = async (shiftName: string, fn: string, count: number) => {
+    setTargets(ts => {
+      const others = ts.filter(t => !(t.shift_name === shiftName && t.function === fn))
+      return count > 0 ? [...others, { shift_name: shiftName, function: fn, count }] : others
+    })
+    if (count > 0) await supabase.from('rota_coverage_targets').upsert({ shift_name: shiftName, function: fn, count }, { onConflict: 'shift_name,function' })
+    else await supabase.from('rota_coverage_targets').delete().eq('shift_name', shiftName).eq('function', fn)
+  }
+  const updateRule = async (id: string, patch: Partial<ScalingRule>) => {
+    setRules(rs => rs.map(r => r.id === id ? { ...r, ...patch } : r))
+    const { error } = await supabase.from('rota_scaling_rules').update(patch).eq('id', id)
+    if (error) { showToast(error.message, 'error'); load() }
+  }
+  const addRule = async () => {
+    const { data, error } = await supabase.from('rota_scaling_rules')
+      .insert({ trigger_type: 'day_covers', threshold: 20, function: 'floor', delta: 1, sort_order: rules.length }).select().single()
+    if (error) { showToast(error.message, 'error'); return }
+    if (data) setRules(rs => [...rs, data as ScalingRule])
+  }
+  const removeRule = async (id: string) => {
+    setRules(rs => rs.filter(r => r.id !== id))
+    await supabase.from('rota_scaling_rules').delete().eq('id', id)
+  }
+
+  // Per-day demand bumps, precomputed once per render.
+  const bumpsByDay: Record<string, Record<string, number>> = {}
+  for (const d of days) bumpsByDay[d] = dayBumps(d)
 
   const wrap = async (fn: () => Promise<unknown>, after?: () => void) => {
     setBusy(true)
@@ -277,12 +336,22 @@ export default function RotaPage() {
                   <td style={{ ...td, fontFamily: FAMILY, fontSize: 12, color: isType ? '#E5D4C2' : '#7E7864' }}>
                     {name}{!isType && <span title="retired shift name — kept on existing shifts" style={{ ...metaText, opacity: 0.5 }}> · retired</span>}
                   </td>
-                  {days.map(d => (
+                  {days.map(d => {
+                    // Under-staffing: required (base + day bumps) vs present (assigned who HAVE the function).
+                    const cov = isType
+                      ? FUNCTIONS.map(fn => {
+                          const req = baseTarget(name, fn) + (bumpsByDay[d]?.[fn] || 0)
+                          const pres = inCell(d, name).filter(s => memberFns(s.member).includes(fn)).length
+                          return { fn, req, pres }
+                        }).filter(c => c.req > 0)
+                      : []
+                    const short = cov.some(c => c.pres < c.req)
+                    return (
                     <td
                       key={d}
                       onDragOver={e => { if (dragId) e.preventDefault() }}
                       onDrop={() => onDropCell(d, name)}
-                      style={{ ...td, verticalAlign: 'top', background: d === vnDateString() ? 'rgba(212,184,90,0.04)' : undefined, ...(dragId ? dropHint : null) }}
+                      style={{ ...td, verticalAlign: 'top', background: d === vnDateString() ? 'rgba(212,184,90,0.04)' : undefined, ...(short ? shortCell : null), ...(dragId ? dropHint : null) }}
                     >
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {inCell(d, name).map(s => {
@@ -310,9 +379,20 @@ export default function RotaPage() {
                           )
                         })}
                         {isType && <button onClick={() => openAssign(d, name, null)} style={addCellBtn}>+ assign</button>}
+                        {cov.length > 0 && (
+                          <div style={covStrip}>
+                            {cov.map(c => (
+                              <span key={c.fn} style={{ ...covTag, color: c.pres >= c.req ? '#7AB07A' : '#C27070' }}
+                                title={`${FN_LABEL[c.fn]}: ${c.pres} on, ${c.req} wanted`}>
+                                {FN_LABEL[c.fn]} {c.pres}/{c.req}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </td>
-                  ))}
+                    )
+                  })}
                 </tr>
                 )
               })}
@@ -355,6 +435,70 @@ export default function RotaPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      {/* Coverage — base targets per shift × function + demand-scaling rules (tunable) */}
+      <div style={{ marginTop: 12 }}>
+        <button onClick={() => setShowCoverage(v => !v)} style={tinyBtn}>{showCoverage ? '▾' : '▸'} Coverage targets</button>
+        {showCoverage && (
+          <div style={teamPanel}>
+            <div style={{ ...metaText, opacity: 0.7, marginBottom: 10 }}>How many of each function a shift wants. The grid shows <span style={{ color: '#7AB07A' }}>on/wanted</span> per shift, tinting any that fall short — guidance, not a block.</div>
+
+            <div style={{ ...fieldLabel, marginBottom: 6 }}>Base targets (per shift)</div>
+            <div style={{ overflowX: 'auto', marginBottom: 16 }}>
+              <table style={{ borderCollapse: 'collapse' }}>
+                <thead><tr><th style={{ ...covTh, textAlign: 'left' }}>Shift</th>{FUNCTIONS.map(f => <th key={f} style={covTh}>{FN_LABEL[f]}</th>)}</tr></thead>
+                <tbody>
+                  {types.map(t => (
+                    <tr key={t.name}>
+                      <td style={{ ...covTd, color: '#E5D4C2' }}>{t.name}</td>
+                      {FUNCTIONS.map(f => (
+                        <td key={f} style={covTd}>
+                          <input type="number" min={0} value={baseTarget(t.name, f) || 0}
+                            onChange={e => setTarget(t.name, f, Math.max(0, parseInt(e.target.value) || 0))}
+                            style={covInput} />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                  {types.length === 0 && <tr><td colSpan={FUNCTIONS.length + 1} style={{ ...covTd, ...metaText, opacity: 0.6 }}>Add a shift name first.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ ...fieldLabel, marginBottom: 6 }}>Demand-scaling rules</div>
+            <div style={{ ...metaText, opacity: 0.6, marginBottom: 8, fontSize: 10 }}>When a day&apos;s demand crosses a threshold, add to a function&apos;s target. Tune freely — these are data, not code.</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {rules.map(r => (
+                <div key={r.id} style={ruleRow}>
+                  <button onClick={() => updateRule(r.id, { active: !r.active })} title={r.active ? 'Active — click to disable' : 'Disabled — click to enable'}
+                    style={{ ...fnToggle, ...(r.active ? { background: '#7AB07A', color: '#052E20', borderColor: '#7AB07A' } : { opacity: 0.5 }) }}>
+                    {r.active ? 'on' : 'off'}
+                  </button>
+                  <span style={{ ...metaText, fontSize: 11 }}>When</span>
+                  <select value={r.trigger_type} onChange={e => updateRule(r.id, { trigger_type: e.target.value as ScalingRule['trigger_type'] })} style={ruleSelect}>
+                    <option value="session_covers" style={opt}>covers in a session</option>
+                    <option value="day_covers" style={opt}>covers in the day</option>
+                    <option value="event_present" style={opt}>an event is on</option>
+                  </select>
+                  {r.trigger_type !== 'event_present' && (
+                    <>
+                      <span style={{ ...metaText, fontSize: 11 }}>≥</span>
+                      <input type="number" min={0} value={r.threshold} onChange={e => updateRule(r.id, { threshold: Math.max(0, parseInt(e.target.value) || 0) })} style={{ ...covInput, width: 52 }} />
+                    </>
+                  )}
+                  <span style={{ ...metaText, fontSize: 11 }}>→ +</span>
+                  <input type="number" min={1} value={r.delta} onChange={e => updateRule(r.id, { delta: Math.max(1, parseInt(e.target.value) || 1) })} style={{ ...covInput, width: 44 }} />
+                  <select value={r.function} onChange={e => updateRule(r.id, { function: e.target.value })} style={ruleSelect}>
+                    {FUNCTIONS.map(f => <option key={f} value={f} style={opt}>{FN_LABEL[f]}</option>)}
+                  </select>
+                  <button onClick={() => removeRule(r.id)} title="Remove rule" style={{ ...typeRemove, marginLeft: 'auto' }}>×</button>
+                </div>
+              ))}
+              <button onClick={addRule} style={{ ...tinyBtn, alignSelf: 'flex-start', marginTop: 4 }}>+ add rule</button>
+            </div>
           </div>
         )}
       </div>
@@ -452,6 +596,14 @@ const fnToggle: React.CSSProperties = { background: 'transparent', color: '#B2AA
 const onLabelCell: React.CSSProperties = { fontFamily: FAMILY, fontSize: 9, color: '#B2AA98', letterSpacing: '0.10em', textTransform: 'uppercase', verticalAlign: 'top', opacity: 0.7 }
 const onEvent: React.CSSProperties = { fontFamily: FAMILY, fontSize: 9.5, color: '#D4B85A', lineHeight: 1.4, letterSpacing: '0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 150 }
 const onBooking: React.CSSProperties = { fontFamily: FAMILY, fontSize: 9.5, color: '#B2AA98', lineHeight: 1.4, letterSpacing: '0.02em' }
+const shortCell: React.CSSProperties = { boxShadow: 'inset 3px 0 0 rgba(194,112,112,0.55)' }
+const covStrip: React.CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 3, paddingTop: 4, borderTop: '1px solid rgba(229,212,194,0.06)' }
+const covTag: React.CSSProperties = { fontFamily: FAMILY, fontSize: 9, letterSpacing: '0.02em' }
+const covTh: React.CSSProperties = { fontFamily: FAMILY, fontSize: 10, color: '#B2AA98', fontWeight: 500, padding: '4px 8px', letterSpacing: '0.06em' }
+const covTd: React.CSSProperties = { padding: '3px 8px', textAlign: 'center', fontFamily: FAMILY, fontSize: 11 }
+const covInput: React.CSSProperties = { width: 46, background: 'rgba(5,46,32,0.5)', color: '#E5D4C2', border: '1px solid rgba(229,212,194,0.18)', borderRadius: 5, padding: '5px 6px', fontFamily: FAMILY, fontSize: 12, textAlign: 'center', outline: 'none' }
+const ruleRow: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', padding: '4px 0' }
+const ruleSelect: React.CSSProperties = { background: 'rgba(5,46,32,0.5)', color: '#E5D4C2', border: '1px solid rgba(229,212,194,0.18)', borderRadius: 5, padding: '5px 8px', fontFamily: FAMILY, fontSize: 11, outline: 'none' }
 const addCellBtn: React.CSSProperties = { textAlign: 'left', background: 'transparent', color: '#7E7864', border: '1px dashed rgba(229,212,194,0.18)', borderRadius: 4, padding: '3px 8px', fontFamily: FAMILY, fontSize: 10, cursor: 'pointer' }
 const typePill: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(229,212,194,0.06)', border: '1px solid rgba(229,212,194,0.12)', borderRadius: 4, padding: '3px 4px 3px 9px', fontFamily: FAMILY, fontSize: 11, color: '#E5D4C2' }
 const typeRemove: React.CSSProperties = { background: 'transparent', border: 'none', color: '#C27070', cursor: 'pointer', fontFamily: FAMILY, fontSize: 13, lineHeight: 1, padding: '0 2px' }
