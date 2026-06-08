@@ -1,7 +1,8 @@
 export interface Profile {
   id: string
   display_name: string | null
-  member_number: number | null
+  member_no: string | null          // FK → members.member_no ('TRC-M001'); null = unlinked (Phase 0a)
+  member_number: number | null      // legacy int link key — retire once the admin setter moves to member_no (0b)
   admitted_at: string | null
   locker_number: string | null
   preferred_dram: string | null

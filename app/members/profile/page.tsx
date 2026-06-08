@@ -84,7 +84,7 @@ export default function ProfilePage() {
 
   const readOnlyFields = [
     { label: 'Email', value: email },
-    { label: 'Member Number', value: profile?.member_number ? `No. ${String(profile.member_number).padStart(3, '0')}` : '—' },
+    { label: 'Member Number', value: profile?.member_no ? `No. ${profile.member_no.replace(/^TRC-M/i, '')}` : '—' },
     { label: 'Admitted', value: formatDate(profile?.admitted_at || null) },
     { label: 'Locker', value: profile?.locker_number || '—' },
   ]
@@ -96,12 +96,12 @@ export default function ProfilePage() {
       ) : (
         <>
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
-            {profile?.member_number ? (
+            {profile?.member_no ? (
               <div style={{
                 fontFamily: "'Rampant Sans', serif", fontSize: 48, fontWeight: 500,
                 color: '#E5D4C2', marginBottom: 8,
               }}>
-                No. {String(profile.member_number).padStart(3, '0')}
+                No. {profile.member_no.replace(/^TRC-M/i, '')}
               </div>
             ) : (
               <p style={{

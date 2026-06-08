@@ -27,7 +27,7 @@ export default function MembersPage() {
   const [firstName, setFirstName] = useState<string | undefined>(undefined)
   const [email, setEmail] = useState('')
   const [summary, setSummary] = useState('')
-  const [memberNumber, setMemberNumber] = useState<number | null>(null)
+  const [memberNo, setMemberNo] = useState<string | null>(null)
   const [lockerNumber, setLockerNumber] = useState<string | null>(null)
   const [preferredDram, setPreferredDram] = useState<string | null>(null)
   const [notices, setNotices] = useState<Notice[]>([])
@@ -60,7 +60,7 @@ export default function MembersPage() {
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) return
       setEmail(data.user.email || '')
-      supabase.from('profiles').select('display_name, member_number, preferred_dram, locker_number').eq('id', data.user.id).single()
+      supabase.from('profiles').select('display_name, member_no, preferred_dram, locker_number').eq('id', data.user.id).single()
         .then(({ data: profile }) => {
           const name = profile?.display_name
           if (name) {
@@ -69,11 +69,11 @@ export default function MembersPage() {
           } else {
             setGreeting(timeGreeting)
           }
-          if (profile?.member_number) setMemberNumber(profile.member_number)
+          if (profile?.member_no) setMemberNo(profile.member_no)
           if (profile?.locker_number) setLockerNumber(profile.locker_number)
           if (profile?.preferred_dram) setPreferredDram(profile.preferred_dram)
           const parts: string[] = []
-          if (profile?.member_number) parts.push(`Member No. ${String(profile.member_number).padStart(3, '0')}`)
+          if (profile?.member_no) parts.push(`Member No. ${profile.member_no.replace(/^TRC-M/i, '')}`)
           if (profile?.locker_number) parts.push(`Locker ${profile.locker_number}`)
           if (profile?.preferred_dram) parts.push(`Dram of choice: ${profile.preferred_dram}`)
           setSummary(parts.join(' · '))
@@ -120,7 +120,7 @@ export default function MembersPage() {
       en: 'My Membership',
       vn: 'T\u01b0 C\u00e1ch Th\u00e0nh Vi\u00ean',
       glyph: '\u2726',
-      primary: memberNumber ? '#' + String(memberNumber).padStart(3, '0') : '\u2014',
+      primary: memberNo ? '#' + memberNo.replace(/^TRC-M/i, '') : '\u2014',
       secondary: lockerNumber ? 'Locker ' + lockerNumber : (preferredDram ? 'Dram: ' + preferredDram : 'Your details'),
     },
     {
