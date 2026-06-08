@@ -79,7 +79,8 @@ export default function NewBookingPage() {
     if (!editId) return
     fetch(`/api/admin/calendar-entries/${editId}`, { cache: 'no-store' })
       .then(r => r.json())
-      .then(({ entry }) => {
+      .then(d => {
+        const entry = d.entry
         if (!entry) return
         setMode('house')
         setTitle(entry.title || ''); setDescription(entry.description || '')
@@ -90,6 +91,7 @@ export default function NewBookingPage() {
         setEndTime(entry.end_time ? entry.end_time.slice(0, 5) : '')
         setSessionLabel(entry.session_label || '')
         setSpace(entry.space || '')
+        setUnitIds(Array.isArray(d.unit_ids) ? d.unit_ids : [])
       })
   }, [editId])  // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -142,6 +144,9 @@ export default function NewBookingPage() {
         title: title.trim(), description: description || null, entry_date: bookingDate,
         start_time: startTime || null, end_time: endTime || null, session_label: sessionLabel || null,
         space: space || null, kind, visibility, blocks_space: space ? blocksSpace : false,
+        // Tables this entry occupies (only meaningful for a blocking, room-scoped
+        // entry). Empty = closes the whole room (or, if not blocking, nothing).
+        unit_ids: space && blocksSpace ? unitIds : [],
       }
       const r = await fetch(editId ? `/api/admin/calendar-entries/${editId}` : '/api/admin/calendar-entries', {
         method: editId ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' },
@@ -151,7 +156,7 @@ export default function NewBookingPage() {
       if (!r.ok) throw new Error(j.error || 'Save failed')
       router.push('/admin/calendar')
     } catch (e) { setError((e as Error).message); setSaving(false) }
-  }, [editId, title, description, bookingDate, startTime, endTime, sessionLabel, space, kind, visibility, blocksSpace, router])
+  }, [editId, title, description, bookingDate, startTime, endTime, sessionLabel, space, kind, visibility, blocksSpace, unitIds, router])
 
   return (
     <>
@@ -165,8 +170,8 @@ export default function NewBookingPage() {
       {/* Mode toggle (hidden in edit mode — an entry is already a house entry) */}
       {!editId && (
         <div style={toggleRow}>
-          <button onClick={() => { setMode('member'); setError(null) }} style={mode === 'member' ? toggleOn : toggleOff}>Member booking</button>
-          <button onClick={() => { setMode('house'); setError(null) }} style={mode === 'house' ? toggleOn : toggleOff}>House / non-member entry</button>
+          <button onClick={() => { setMode('member'); setError(null); setUnitIds([]) }} style={mode === 'member' ? toggleOn : toggleOff}>Member booking</button>
+          <button onClick={() => { setMode('house'); setError(null); setUnitIds([]) }} style={mode === 'house' ? toggleOn : toggleOff}>House / non-member entry</button>
         </div>
       )}
 
@@ -317,6 +322,17 @@ export default function NewBookingPage() {
                 </div>
               </div>
             </label>
+          )}
+          {space && blocksSpace && (
+            <div style={{ marginTop: 14 }}>
+              <UnitPicker
+                mode="house"
+                space={space} date={bookingDate} startTime={startTime} endTime={endTime} sessionLabel={sessionLabel}
+                partySize={0}
+                selected={unitIds} onChange={setUnitIds}
+                excludeEntryId={editId || undefined}
+              />
+            </div>
           )}
         </>
       )}

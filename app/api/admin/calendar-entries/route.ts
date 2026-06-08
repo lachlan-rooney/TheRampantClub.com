@@ -23,7 +23,22 @@ export async function GET(req: NextRequest) {
   if (space) q = q.eq('space', space)
   const { data, error } = await q
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ entries: data || [] })
+
+  // Attach occupied table names for display.
+  const list = (data || []) as Record<string, unknown>[]
+  const ids = list.map(e => e.id as string)
+  if (ids.length) {
+    const { data: ets } = await svc().from('calendar_entry_tables')
+      .select('entry_id, space_tables(name, sort)').in('entry_id', ids)
+    const byEntry = new Map<string, { name: string; sort: number }[]>()
+    for (const row of (ets || []) as { entry_id: string; space_tables: { name: string; sort: number } | { name: string; sort: number }[] | null }[]) {
+      const st = Array.isArray(row.space_tables) ? row.space_tables[0] : row.space_tables
+      if (!st) continue
+      const a = byEntry.get(row.entry_id) || []; a.push(st); byEntry.set(row.entry_id, a)
+    }
+    for (const e of list) e.tables = (byEntry.get(e.id as string) || []).sort((x, y) => x.sort - y.sort).map(x => x.name)
+  }
+  return NextResponse.json({ entries: list })
 }
 
 // Shared validation → a clean row patch (used by POST here + PATCH in [id]).
@@ -60,5 +75,15 @@ export async function POST(req: NextRequest) {
     .insert({ kind: 'other', blocks_space: true, ...patch, created_by: actor })
     .select('*').single()
   if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 })
+
+  // Optional table allocation (which tables this entry occupies/blocks).
+  const unit_ids = Array.isArray(body.unit_ids) ? [...new Set((body.unit_ids as unknown[]).filter(x => typeof x === 'string') as string[])] : []
+  if (unit_ids.length) {
+    const { error: tErr } = await svc().from('calendar_entry_tables').insert(unit_ids.map(unit_id => ({ entry_id: data.id, unit_id })))
+    if (tErr) {
+      await svc().from('calendar_entries').delete().eq('id', data.id)   // roll back so we don't leave a half-saved entry
+      return NextResponse.json({ error: `Could not save table allocation: ${tErr.message}` }, { status: 500 })
+    }
+  }
   return NextResponse.json({ entry: data })
 }

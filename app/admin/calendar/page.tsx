@@ -45,6 +45,7 @@ interface CalendarEntry {
   kind: string
   visibility: 'member' | 'staff'
   blocks_space: boolean
+  tables?: string[]
 }
 
 const SPACES = ['Library Bar', 'The Studio', 'The Dining Room', 'The Rampant Room', 'Source & Origin Lab', 'Sports Club']
@@ -216,7 +217,8 @@ export default function CalendarPage() {
                         </div>
                         <div style={houseTitle}>{e.title}</div>
                         <div style={houseMeta}>
-                          {KIND_LABEL[e.kind] || 'House'}{e.space ? ` · ${e.space}` : ''}{e.space && e.blocks_space ? ' · closed' : ''}
+                          {KIND_LABEL[e.kind] || 'House'}{e.space ? ` · ${e.space}` : ''}
+                          {e.space && e.blocks_space && (e.tables && e.tables.length > 0 ? ` · ${e.tables.join(', ')}` : ' · closed')}
                         </div>
                         {e.description && <div style={bookingNotes}>{e.description}</div>}
                         <div style={cardActions}>
