@@ -122,7 +122,7 @@ function userPrompt(w) {
 async function generateFor(w) {
   try {
     const msg = await anthropic.messages.create({
-      model: 'claude-opus-4-7',
+      model: 'claude-opus-4-8',
       max_tokens: 400,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userPrompt(w) }],

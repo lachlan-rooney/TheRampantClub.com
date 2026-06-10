@@ -24,9 +24,13 @@ export default function WhiskyRow({ w }: { w: Whisky }) {
           {[w.cask_type, w.age, w.abv].filter(Boolean).join(' · ')}
         </div>
       )}
-      {w.tasting_notes && (
+      {w.tasting_notes ? (
         <p style={{ fontFamily: MONO, fontSize: 12, color: '#B2AA98', lineHeight: 1.85, fontStyle: 'italic', margin: 0 }}>
           {w.tasting_notes}
+        </p>
+      ) : (
+        <p style={{ fontFamily: MONO, fontSize: 11, color: 'rgba(178,170,152,0.45)', fontStyle: 'italic', margin: 0 }}>
+          Tasting notes coming soon — tap the flavour profile for its shape.
         </p>
       )}
       <button
