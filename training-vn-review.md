@@ -1,13 +1,14 @@
-# Training — Vietnamese review table
+# The Rampant Club — Staff Training · Vietnamese Review
 
-**For Miss Châu.** The Vietnamese below is an AI draft for the staff training page (/admin/training). Please correct the VN column where it reads unnaturally or is wrong — especially the operational steps (booking, member logins). EN is the source of truth.
+**For Miss Châu.** Below is every line of the staff training handbook (the in-app `/admin/training` page), English on the left, the AI Vietnamese draft on the right. Please correct the **VN** column wherever it reads unnaturally or is wrong — especially the step-by-step procedures (booking tables, member logins). English is the source of truth; UI button labels / room names / code are intentionally left in English (staff see them that way on screen).
 
-Generated from app/admin/training/page.tsx — 227 strings across the handbook.
+**19 sections · 227 lines to review.**
 
+---
 
 ## Getting started
 
-| EN | VN (draft — correct me) |
+| English | Tiếng Việt (sửa nếu cần) |
 |---|---|
 | Getting started | Bắt đầu |
 | What the CRM is, who it is for, and how to think about it. | CRM là gì, dành cho ai, và cách hiểu về nó. |
@@ -21,7 +22,7 @@ Generated from app/admin/training/page.tsx — 227 strings across the handbook.
 
 ## Pipeline (prospects)
 
-| EN | VN (draft — correct me) |
+| English | Tiếng Việt (sửa nếu cần) |
 |---|---|
 | Pipeline (prospects) | Pipeline (khách tiềm năng) |
 | How to add a prospect, move them through the stages, and convert them into a member. | Cách thêm khách tiềm năng, đưa họ qua các giai đoạn, và chuyển thành thành viên. |
@@ -37,7 +38,7 @@ Generated from app/admin/training/page.tsx — 227 strings across the handbook.
 
 ## Signing loop
 
-| EN | VN (draft — correct me) |
+| English | Tiếng Việt (sửa nếu cần) |
 |---|---|
 | Signing loop | Vòng ký kết |
 | How a prospect becomes a fully Active member: send the link, they sign, status flips. | Cách một khách tiềm năng trở thành thành viên Active: gửi liên kết, họ ký, trạng thái chuyển. |
@@ -58,7 +59,7 @@ Generated from app/admin/training/page.tsx — 227 strings across the handbook.
 
 ## Guardian Angel cycle (per visit)
 
-| EN | VN (draft — correct me) |
+| English | Tiếng Việt (sửa nếu cần) |
 |---|---|
 | Guardian Angel cycle (per visit) | Chu trình Guardian Angel (mỗi lần ghé) |
 | Each visit moves Overture → Accord → Continuum → Closed. This is what makes PS(t) live. | Mỗi lần ghé đi qua Overture → Accord → Continuum → Closed. Đây là điều giữ cho PS(t) luôn sống. |
@@ -79,7 +80,7 @@ Generated from app/admin/training/page.tsx — 227 strings across the handbook.
 
 ## Preference candidates
 
-| EN | VN (draft — correct me) |
+| English | Tiếng Việt (sửa nếu cần) |
 |---|---|
 | Preference candidates | Ứng viên sở thích |
 | Review queue for new preferences proposed by observations and AI extractions. | Hàng chờ duyệt cho các sở thích mới do quan sát và AI đề xuất. |
@@ -96,7 +97,7 @@ Generated from app/admin/training/page.tsx — 227 strings across the handbook.
 
 ## Members (MIS)
 
-| EN | VN (draft — correct me) |
+| English | Tiếng Việt (sửa nếu cần) |
 |---|---|
 | Members (MIS) | Thành viên (MIS) |
 | The member roster, the PS(t) score, preferences, and revalidation. | Danh sách thành viên, điểm PS(t), sở thích, và revalidation. |
@@ -116,7 +117,7 @@ Generated from app/admin/training/page.tsx — 227 strings across the handbook.
 
 ## Member logins & onboarding
 
-| EN | VN (draft — correct me) |
+| English | Tiếng Việt (sửa nếu cần) |
 |---|---|
 | Member logins & onboarding | Tài khoản thành viên & onboarding |
 | Give a member their own login to the member portal — temp password, shown once, they set their own. | Cấp cho thành viên tài khoản riêng vào cổng thành viên — mật khẩu tạm, hiện một lần, họ tự đặt mật khẩu của mình. |
@@ -132,7 +133,7 @@ Generated from app/admin/training/page.tsx — 227 strings across the handbook.
 
 ## Lockers
 
-| EN | VN (draft — correct me) |
+| English | Tiếng Việt (sửa nếu cần) |
 |---|---|
 | Lockers | Tủ rượu |
 | Visual map of the physical locker wall. Assign members, track bottles and fill levels. | Bản đồ trực quan của tường tủ rượu thật. Gán thành viên, theo dõi chai và mức rượu còn lại. |
@@ -154,7 +155,7 @@ Generated from app/admin/training/page.tsx — 227 strings across the handbook.
 
 ## Member cards (NFC)
 
-| EN | VN (draft — correct me) |
+| English | Tiếng Việt (sửa nếu cần) |
 |---|---|
 | Member cards (NFC) | Thẻ thành viên (NFC) |
 | Linking physical NFC cards to member profiles. | Liên kết thẻ NFC vật lý với hồ sơ thành viên. |
@@ -166,7 +167,7 @@ Generated from app/admin/training/page.tsx — 227 strings across the handbook.
 
 ## Tonight
 
-| EN | VN (draft — correct me) |
+| English | Tiếng Việt (sửa nếu cần) |
 |---|---|
 | Tonight | Tonight |
 | Pre-shift brief: who is coming in, what they prefer, what to remember. | Bản tóm tắt trước ca: ai sẽ đến, họ thích gì, cần nhớ điều gì. |
@@ -178,7 +179,7 @@ Generated from app/admin/training/page.tsx — 227 strings across the handbook.
 
 ## Calendar & bookings
 
-| EN | VN (draft — correct me) |
+| English | Tiếng Việt (sửa nếu cần) |
 |---|---|
 | Calendar & bookings | Lịch & đặt chỗ |
 | Who's coming in, which room and table, when. Member bookings and house entries both live here. | Ai đến, phòng nào và bàn nào, khi nào. Cả đặt chỗ của thành viên lẫn mục nội bộ đều ở đây. |
@@ -208,7 +209,7 @@ Generated from app/admin/training/page.tsx — 227 strings across the handbook.
 
 ## Shift checklists
 
-| EN | VN (draft — correct me) |
+| English | Tiếng Việt (sửa nếu cần) |
 |---|---|
 | Shift checklists | Danh sách kiểm ca |
 | Opening and closing sheets. Tick as you go; sign off at the end. | Phiếu mở ca và đóng ca. Tích khi làm; ký xác nhận khi xong. |
@@ -224,7 +225,7 @@ Generated from app/admin/training/page.tsx — 227 strings across the handbook.
 
 ## Harmony Log
 
-| EN | VN (draft — correct me) |
+| English | Tiếng Việt (sửa nếu cần) |
 |---|---|
 | Harmony Log | Harmony Log |
 | End-of-shift narrative. Type what happened; Claude proposes structured updates. | Bản tường thuật cuối ca. Gõ những gì đã diễn ra; Claude đề xuất các cập nhật có cấu trúc. |
@@ -248,7 +249,7 @@ Generated from app/admin/training/page.tsx — 227 strings across the handbook.
 
 ## MX Daily
 
-| EN | VN (draft — correct me) |
+| English | Tiếng Việt (sửa nếu cần) |
 |---|---|
 | MX Daily | MX Daily |
 | The Member Experience Manager's daily checklist — birthdays, lapsed members, complaints. | Danh sách hằng ngày của Member Experience Manager — sinh nhật, thành viên thưa vắng, khiếu nại. |
@@ -261,7 +262,7 @@ Generated from app/admin/training/page.tsx — 227 strings across the handbook.
 
 ## Journal & house notes
 
-| EN | VN (draft — correct me) |
+| English | Tiếng Việt (sửa nếu cần) |
 |---|---|
 | Journal & house notes | Nhật ký & ghi chú nội bộ |
 | Where culture, decisions, and stories get written down. | Nơi văn hóa, quyết định và câu chuyện được ghi lại. |
@@ -269,7 +270,7 @@ Generated from app/admin/training/page.tsx — 227 strings across the handbook.
 
 ## Gifting · Unreasonable Hospitality
 
-| EN | VN (draft — correct me) |
+| English | Tiếng Việt (sửa nếu cần) |
 |---|---|
 | Gifting · Unreasonable Hospitality | Quà tặng · Unreasonable Hospitality |
 | 10–15% of each member’s dues earmarked for thoughtful, invisible love. | 10–15% phí của mỗi thành viên được dành riêng cho sự quan tâm chu đáo, thầm lặng. |
@@ -289,7 +290,7 @@ Generated from app/admin/training/page.tsx — 227 strings across the handbook.
 
 ## Whisky tools
 
-| EN | VN (draft — correct me) |
+| English | Tiếng Việt (sửa nếu cần) |
 |---|---|
 | Whisky tools | Công cụ whisky |
 | Match a member to a dram — Suggest a pour, the Flavour Finder, the flavour radar. | Ghép một thành viên với một ly rượu — Suggest a pour, Flavour Finder, biểu đồ radar hương vị. |
@@ -302,7 +303,7 @@ Generated from app/admin/training/page.tsx — 227 strings across the handbook.
 
 ## What members see
 
-| EN | VN (draft — correct me) |
+| English | Tiếng Việt (sửa nếu cần) |
 |---|---|
 | What members see | Thành viên thấy những gì |
 | The member portal — so you can guide a member and know the boundaries. | Cổng thành viên — để bạn hướng dẫn thành viên và biết giới hạn. |
@@ -314,7 +315,7 @@ Generated from app/admin/training/page.tsx — 227 strings across the handbook.
 
 ## Troubleshooting
 
-| EN | VN (draft — correct me) |
+| English | Tiếng Việt (sửa nếu cần) |
 |---|---|
 | Troubleshooting | Xử lý sự cố |
 | Things that look broken but usually are not. | Những thứ trông như hỏng nhưng thường thì không. |
