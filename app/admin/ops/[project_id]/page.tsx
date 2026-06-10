@@ -535,6 +535,24 @@ function recurrenceSummary(r: Recurrence): string {
   return days ? `Weekly · ${days}` : 'Weekly'
 }
 
+// When the first card for a freshly-added template will materialise. The cron
+// runs at 00:05 VN per day, so a template added now first appears on its next
+// due day (daily → tomorrow; weekly → the next matching weekday).
+function firstCardLabel(r: Recurrence): string {
+  const iso = (d: Date) => ((d.getDay() + 6) % 7) + 1
+  const fmt = (d: Date) => d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })
+  if (r.freq === 'daily') {
+    const t = new Date(); t.setDate(t.getDate() + 1)
+    return `tomorrow (${fmt(t)})`
+  }
+  const set = r.weekdays || []
+  for (let i = 1; i <= 7; i++) {
+    const c = new Date(); c.setDate(c.getDate() + i)
+    if (set.includes(iso(c))) return fmt(c)
+  }
+  return 'its next scheduled day'
+}
+
 function RecurringPanel({ templates, columns, team, canEdit, busy, onCreate, onToggle, onMaterialise }: {
   templates: TaskTemplate[]
   columns: BoardColumn[]
@@ -551,12 +569,16 @@ function RecurringPanel({ templates, columns, team, canEdit, busy, onCreate, onT
   const [assignee, setAssignee] = useState('')
   const [freq, setFreq] = useState<'daily' | 'weekly'>('daily')
   const [weekdays, setWeekdays] = useState<number[]>([1])
+  const [confirm, setConfirm] = useState<string | null>(null)
 
   const toggleDay = (n: number) => setWeekdays(d => d.includes(n) ? d.filter(x => x !== n) : [...d, n].sort((a, b) => a - b))
   const submit = () => {
     if (!title.trim() || !columnId) return
+    if (freq === 'weekly' && weekdays.length === 0) return
     const recurrence: Recurrence = freq === 'daily' ? { freq: 'daily' } : { freq: 'weekly', weekdays }
+    const col = columns.find(c => c.id === columnId)?.name || 'the board'
     onCreate({ column_id: columnId, title: title.trim(), priority, default_assignee: assignee || null, recurrence })
+    setConfirm(`“${title.trim()}” is set (${recurrenceSummary(recurrence)}). It isn’t a card yet — its first card appears in ${col} on ${firstCardLabel(recurrence)}, just after midnight. Recurring tasks come online on their due day, not when you add them.`)
     setTitle('')
   }
 
@@ -577,6 +599,12 @@ function RecurringPanel({ templates, columns, team, canEdit, busy, onCreate, onT
               {canEdit && <button onClick={() => onToggle(t.id, !t.active)} style={{ ...tinyBtn, marginLeft: 'auto' }}>{t.active ? 'Pause' : 'Resume'}</button>}
             </div>
           ))}
+        </div>
+      )}
+      {confirm && (
+        <div style={recurringConfirm}>
+          <span style={{ flex: 1, lineHeight: 1.5 }}>✓ {confirm}</span>
+          <button onClick={() => setConfirm(null)} title="Dismiss" style={{ background: 'transparent', border: 'none', color: '#9E8FC4', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: '0 2px' }}>×</button>
         </div>
       )}
       {canEdit && (
@@ -622,6 +650,7 @@ const columnStyle: React.CSSProperties = { width: 260, flex: '0 0 260px', backgr
 const columnHeader: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10, fontFamily: FAMILY, fontSize: 12, letterSpacing: '0.06em' }
 const cardStyle: React.CSSProperties = { background: 'rgba(5,46,32,0.6)', border: '1px solid rgba(229,212,194,0.08)', borderRadius: 6, padding: '10px 12px' }
 const pill: React.CSSProperties = { fontFamily: FAMILY, fontSize: 9, color: '#B2AA98', background: 'rgba(229,212,194,0.08)', borderRadius: 3, padding: '2px 7px', letterSpacing: '0.04em' }
+const recurringConfirm: React.CSSProperties = { display: 'flex', alignItems: 'flex-start', gap: 8, margin: '0 0 12px', padding: '10px 12px', background: 'rgba(158,143,196,0.10)', border: '1px solid rgba(158,143,196,0.35)', borderRadius: 6, fontFamily: FAMILY, fontSize: 11, color: '#E5D4C2' }
 const input: React.CSSProperties = { background: 'rgba(229,212,194,0.06)', color: '#E5D4C2', border: '1px solid rgba(229,212,194,0.18)', borderRadius: 6, padding: '8px 10px', fontFamily: FAMILY, fontSize: 12, width: '100%', boxSizing: 'border-box', outline: 'none' }
 const btnPrimary: React.CSSProperties = { background: '#5E6650', color: '#E5D4C2', border: 'none', borderRadius: 6, padding: '8px 18px', cursor: 'pointer', fontFamily: FAMILY, fontSize: 11, letterSpacing: '0.06em' }
 const tinyBtn: React.CSSProperties = { background: 'rgba(229,212,194,0.06)', color: '#B2AA98', border: '1px solid rgba(229,212,194,0.18)', borderRadius: 4, padding: '5px 10px', fontFamily: FAMILY, fontSize: 10, letterSpacing: '0.04em', cursor: 'pointer', textDecoration: 'none' }
