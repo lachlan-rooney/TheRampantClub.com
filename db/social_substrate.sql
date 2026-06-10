@@ -17,6 +17,12 @@
 -- DEPENDS ON: is_admin_uid(uuid), profile_member_no_uid(uuid)  [already live].
 -- ═══════════════════════════════════════════════════════════════════════════
 
+-- The helpers below forward-reference tables defined further down (and
+-- can_read_thread calls is_blocked_pair, defined just after it). Defer body
+-- validation to runtime so the file runs top-to-bottom — the standard pg_dump
+-- idiom; harmless if the session already has it off.
+set check_function_bodies = off;
+
 -- ── Recursion-safe helpers (SECURITY DEFINER → read past RLS, no policy loops) ──
 
 -- Is `uid` a participant of this thread? (thread_participants RLS can't gate
@@ -26,12 +32,26 @@ create or replace function is_thread_party(p_thread uuid, p_uid uuid)
   select exists (select 1 from thread_participants tp where tp.thread_id = p_thread and tp.participant = p_uid);
 $$;
 
--- Who may READ a thread: any participant, plus admins for CONCIERGE threads only
--- (the staff inbox). Admins are NOT auto-readers of member↔member direct threads.
+-- Who may READ a thread: any participant, plus admins for CONCIERGE threads only.
+-- A block severs read access to a DIRECT thread (retroactive — neither party reads
+-- the shared history once blocked). Concierge threads are never block-affected.
 create or replace function can_read_thread(p_thread uuid, p_uid uuid)
   returns boolean language sql security definer set search_path = public stable as $$
-  select is_thread_party(p_thread, p_uid)
-      or exists (select 1 from threads t where t.id = p_thread and t.kind = 'concierge' and is_admin_uid(p_uid));
+  select
+    exists (select 1 from threads t where t.id = p_thread and t.kind = 'concierge' and is_admin_uid(p_uid))
+    or (
+      is_thread_party(p_thread, p_uid)
+      and not exists (
+        select 1
+        from threads t
+        join thread_participants pa on pa.thread_id = t.id
+        join thread_participants pb on pb.thread_id = t.id and pb.participant <> pa.participant
+        where t.id = p_thread
+          and t.kind = 'direct'
+          and (pa.participant = p_uid or pb.participant = p_uid)
+          and is_blocked_pair(pa.participant, pb.participant)
+      )
+    );
 $$;
 
 -- Has A blocked B (either direction)? Honoured for direct threads + introductions.
@@ -70,7 +90,7 @@ create table if not exists messages (
   id         uuid primary key default gen_random_uuid(),
   thread_id  uuid not null references threads(id) on delete cascade,
   sender     uuid not null references profiles(id),
-  body       text not null,
+  body       text not null check (char_length(body) between 1 and 4000),
   media_path text,                            -- storage object path (member-media bucket); null = text only
   created_at timestamptz not null default now()
 );
@@ -98,6 +118,11 @@ create policy "read messages of own threads" on messages for select to authentic
 drop policy if exists "update own participant row" on thread_participants;
 create policy "update own participant row" on thread_participants for update to authenticated
   using (participant = auth.uid()) with check (participant = auth.uid());
+-- The policy gates which ROWS; this grant gates which COLUMNS. Without it a member
+-- could update their own row and flip role 'member'→'staff' (the 0c-shaped hole:
+-- an update surface wider than its intent). Lock the writable column to last_read_at.
+revoke update on thread_participants from authenticated;
+grant update (last_read_at) on thread_participants to authenticated;
 
 -- ── INTRODUCTIONS (member↔member; the gate to direct threads) ───────────────
 -- A DECLINE IS SILENT: the requester must NEVER read 'declined'. Mechanism:
@@ -109,12 +134,16 @@ create table if not exists introductions (
   id          uuid primary key default gen_random_uuid(),
   requester   uuid not null references profiles(id) on delete cascade,
   recipient   uuid not null references profiles(id) on delete cascade,
-  context     text,
+  context     text check (context is null or char_length(context) <= 280),
   status      text not null default 'pending' check (status in ('pending','accepted','declined')),
   thread_id   uuid references threads(id) on delete set null,   -- set when accepted
   created_at  timestamptz not null default now(),
   decided_at  timestamptz,
-  check (requester <> recipient)
+  check (requester <> recipient),
+  -- One introduction per ordered pair, ever — a declined request silently and
+  -- permanently blocks re-requests (no re-notify, no decline signal). The create
+  -- route catches this violation and returns the same success-pending response.
+  constraint introductions_one_per_pair unique (requester, recipient)
 );
 create index if not exists idx_introductions_recipient on introductions(recipient, status);
 create index if not exists idx_introductions_requester on introductions(requester);
@@ -153,7 +182,7 @@ create table if not exists posts (
   author      uuid references profiles(id) on delete set null,
   author_kind text not null check (author_kind in ('member','house')),
   kind        text not null default 'note' check (kind in ('note','announcement','question','other')),
-  body        text not null,
+  body        text not null check (char_length(body) between 1 and 8000),
   media_path  text,
   published   boolean not null default false,
   hidden      boolean not null default false,    -- admin moderation (soft-hide)
@@ -179,7 +208,7 @@ create table if not exists tasting_notes (
   id           uuid primary key default gen_random_uuid(),
   author       uuid not null references profiles(id) on delete cascade,
   whisky_id    uuid references whiskies(id) on delete set null,
-  note         text not null,
+  note         text not null check (char_length(note) between 1 and 8000),
   flavour_tags jsonb not null default '[]'::jsonb,
   media_path   text,
   visibility   text not null default 'private' check (visibility in ('private','snug')),
