@@ -15,7 +15,22 @@ export default function NotificationBell() {
   const router = useRouter()
   const [items, setItems] = useState<OpsNotification[]>([])
   const [open, setOpen] = useState(false)
+  const [muted, setMuted] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const seenIds = useRef<Set<string>>(new Set())   // ids seen so far — chime only on genuinely new ones
+  const primed = useRef(false)                      // first load shouldn't chime for existing unread
+  const mutedRef = useRef(false)                    // load() reads this (avoids stale-closure deps)
+
+  // Sound preference (persisted; default on).
+  useEffect(() => {
+    const m = typeof window !== 'undefined' && localStorage.getItem('trc-notif-mute') === '1'
+    setMuted(m); mutedRef.current = m
+  }, [])
+  const toggleMute = () => setMuted(m => {
+    const next = !m; mutedRef.current = next
+    try { localStorage.setItem('trc-notif-mute', next ? '1' : '0') } catch { /* ignore */ }
+    return next
+  })
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -23,7 +38,14 @@ export default function NotificationBell() {
       .select('*')
       .order('created_at', { ascending: false })
       .limit(40)
-    if (data) setItems(data as OpsNotification[])
+    if (data) {
+      const rows = data as OpsNotification[]
+      const fresh = rows.filter(n => !n.read && !seenIds.current.has(n.id))
+      if (primed.current && fresh.length > 0 && !mutedRef.current) playChime()
+      rows.forEach(n => seenIds.current.add(n.id))
+      primed.current = true
+      setItems(rows)
+    }
   }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -70,7 +92,10 @@ export default function NotificationBell() {
         <div style={panel}>
           <div style={panelHeader}>
             <span style={{ color: '#E5D4C2' }}>Notifications</span>
-            {unread > 0 && <button onClick={markAll} style={markAllBtn}>Mark all read</button>}
+            <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button onClick={toggleMute} style={muteBtn} title={muted ? 'Sound off — click to enable' : 'Sound on — click to mute'} aria-label={muted ? 'Unmute notifications' : 'Mute notifications'}>{muted ? '🔇' : '🔔'}</button>
+              {unread > 0 && <button onClick={markAll} style={markAllBtn}>Mark all read</button>}
+            </span>
           </div>
           <div style={{ maxHeight: 380, overflowY: 'auto' }}>
             {items.length === 0 ? (
@@ -91,6 +116,25 @@ export default function NotificationBell() {
   )
 }
 
+// A single soft tone (Web Audio, no asset). One ding per new notification batch.
+function playChime() {
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (!Ctx) return
+    const ctx = new Ctx()
+    const o = ctx.createOscillator(), g = ctx.createGain()
+    o.type = 'sine'; o.frequency.value = 880
+    o.connect(g); g.connect(ctx.destination)
+    const now = ctx.currentTime
+    g.gain.setValueAtTime(0.0001, now)
+    g.gain.exponentialRampToValueAtTime(0.14, now + 0.02)
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.3)
+    o.start(now); o.stop(now + 0.32)
+    setTimeout(() => { try { ctx.close() } catch { /* ignore */ } }, 500)
+  } catch { /* audio blocked / unsupported — silently skip */ }
+}
+
+const muteBtn: React.CSSProperties = { background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: 0, opacity: 0.85 }
 const bellBtn: React.CSSProperties = { position: 'relative', background: 'rgba(229,212,194,0.08)', border: '1px solid rgba(229,212,194,0.15)', borderRadius: 8, width: 38, height: 38, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
 const badge: React.CSSProperties = { position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8, background: '#C27070', color: '#fff', fontFamily: FAMILY, fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }
 const panel: React.CSSProperties = { position: 'absolute', top: 46, right: 0, width: 'min(360px, 92vw)', background: '#0A3526', border: '1px solid rgba(229,212,194,0.18)', borderRadius: 10, boxShadow: '0 18px 50px rgba(0,0,0,0.55)', overflow: 'hidden' }
