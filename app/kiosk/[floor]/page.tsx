@@ -417,7 +417,9 @@ export default function KioskPage({ params }: { params: Promise<{ floor: string 
                     <div style={{ fontSize: 11, color: '#B2AA98', letterSpacing: '0.06em', marginBottom: 12 }}>
                       {[featuredWhisky.distillery, featuredWhisky.region, featuredWhisky.age, featuredWhisky.abv].filter(Boolean).join(' · ')}
                     </div>
-                    {featuredWhisky.tasting_notes && <p className="k-card-note">{featuredWhisky.tasting_notes}</p>}
+                    {featuredWhisky.tasting_notes
+                      ? <p className="k-card-note">{featuredWhisky.tasting_notes}</p>
+                      : <p className="k-card-note" style={{ opacity: 0.55, fontStyle: 'italic' }}>Tasting notes coming soon.</p>}
                   </>
                 ) : (
                   <p className="k-card-note" style={{ fontStyle: 'italic' }}>Selecting tonight&rsquo;s pour…</p>
