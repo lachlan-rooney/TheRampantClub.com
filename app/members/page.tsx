@@ -174,12 +174,14 @@ export default function MembersPage() {
     menus:  { href: '/menus',                 en: 'The Menus',      vn: 'Th\u1ef1c \u0110\u01a1n',     glyph: '\u2630', secondary: 'Food & drink lists' },
     terms:  { href: '/members/terms',         en: 'Terms',          vn: '\u0110i\u1ec1u Kho\u1ea3n',   glyph: '\u00b6', secondary: 'Full terms & conditions' },
     taste:  { href: '/members/taste',         en: 'Your Palate',    vn: 'Kh\u1ea9u V\u1ecb C\u1ee7a B\u1ea1n', glyph: '\u25c9', secondary: 'Your taste \u00b7 radar \u00b7 loved drams' },
+    journey: { href: '/members/journey',      en: 'Your Journey',   vn: 'H\u00e0nh Tr\u00ecnh', glyph: '\u2767', secondary: 'Your whisky story over time \u00b7 milestones \u00b7 palate drift' },
+    annual: { href: '/members/annual-dram',   en: 'The Annual Dram', vn: 'Ly R\u01b0\u1ee3u C\u1ee7a N\u0103m', glyph: '\u2742', secondary: 'Your year at the club \u2014 yours to share' },
     visits: { href: '/members/visits',        en: 'Your Visits',    vn: 'Nh\u1eefng L\u1ea7n Gh\u00e9 Th\u0103m', glyph: '\u2741', secondary: 'Your record at the club' },
     gifts:  { href: '/members/gifts',         en: 'Gifts',          vn: 'Qu\u00e0 T\u1eb7ng',          glyph: '\u2766', secondary: 'Gifts from the club' },
   }
   const bucketGroups = [
     { label: 'Explore', tiles: [extra.snug, extra.whisky, extra.finder, byHref['/members/spaces'], byHref['/members/events'], byHref['/members/fixtures'], byHref['/members/journal']] },
-    { label: 'You',     tiles: [extra.concierge, byHref['/members/profile'], extra.taste, extra.visits, extra.gifts] },
+    { label: 'You',     tiles: [extra.concierge, byHref['/members/profile'], extra.taste, extra.journey, extra.annual, extra.visits, extra.gifts] },
     { label: 'House',   tiles: [extra.menus, byHref['/members/rules'], extra.terms, byHref['/members/contact']] },
   ].map(g => ({ ...g, tiles: g.tiles.filter(Boolean) }))
 
