@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import TonightPanel from '@/components/TonightPanel'
 import WelcomeTour from '@/components/WelcomeTour'
+import AnticipationCard from '@/components/members/AnticipationCard'
 
 interface Notice {
   id: string
@@ -465,6 +466,8 @@ export default function MembersPage() {
           <h1 className="members-greeting">{greeting}</h1>
           {summary && <p className="members-email">{summary}</p>}
           {!summary && <p className="members-email">{email}</p>}
+
+          <AnticipationCard />
 
           <div className="members-top-row">
             <div className="members-top-cell">
