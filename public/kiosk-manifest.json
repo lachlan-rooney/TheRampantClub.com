@@ -1,0 +1,16 @@
+{
+  "name": "Rampant Kiosk",
+  "short_name": "Kiosk",
+  "description": "The Rampant Club — staff floor kiosk",
+  "start_url": "/kiosk/staff",
+  "scope": "/kiosk",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#052E20",
+  "theme_color": "#052E20",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
