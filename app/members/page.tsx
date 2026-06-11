@@ -167,6 +167,7 @@ export default function MembersPage() {
   // Whisky Library is the prominent first Explore tile (it had none before).
   const byHref = Object.fromEntries(buckets.map(b => [b.href, b])) as Record<string, Bucket>
   const extra: Record<string, Bucket> = {
+    snug:   { href: '/members/snug',          en: 'The Snug',       vn: 'Ph\u00f2ng Kh\u00e1ch',       glyph: '\u2615', secondary: 'The club in conversation \u2014 drams, moments, a word between members' },
     concierge: { href: '/members/concierge', en: 'The Concierge',  vn: 'Qu\u1ea3n Gia',          glyph: '\u2709', secondary: 'A line to the Club \u2014 requests, bottles, a word about the evening' },
     whisky: { href: '/members/whisky',        en: 'Whisky Library', vn: 'Th\u01b0 Vi\u1ec7n Whisky', glyph: '\u2756', secondary: 'The shelf \u00b7 radar \u00b7 300+ drams' },
     finder: { href: '/members/whisky/finder', en: 'Flavour Finder', vn: 'T\u00ecm Ly C\u1ee7a B\u1ea1n', glyph: '\u25ce', secondary: 'Match a dram to your taste' },
@@ -177,7 +178,7 @@ export default function MembersPage() {
     gifts:  { href: '/members/gifts',         en: 'Gifts',          vn: 'Qu\u00e0 T\u1eb7ng',          glyph: '\u2766', secondary: 'Gifts from the club' },
   }
   const bucketGroups = [
-    { label: 'Explore', tiles: [extra.whisky, extra.finder, byHref['/members/spaces'], byHref['/members/events'], byHref['/members/fixtures'], byHref['/members/journal']] },
+    { label: 'Explore', tiles: [extra.snug, extra.whisky, extra.finder, byHref['/members/spaces'], byHref['/members/events'], byHref['/members/fixtures'], byHref['/members/journal']] },
     { label: 'You',     tiles: [extra.concierge, byHref['/members/profile'], extra.taste, extra.visits, extra.gifts] },
     { label: 'House',   tiles: [extra.menus, byHref['/members/rules'], extra.terms, byHref['/members/contact']] },
   ].map(g => ({ ...g, tiles: g.tiles.filter(Boolean) }))
