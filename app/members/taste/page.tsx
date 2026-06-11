@@ -20,6 +20,7 @@ export default function MyTastePage() {
   const [shape, setShape] = useState<ShapeValues | null>(null)
   const [narrative, setNarrative] = useState('')
   const [lovedBottles, setLovedBottles] = useState<string[]>([])
+  const [notedCount, setNotedCount] = useState(0)
   // Responsive radar: MemberPage gives ~280px of content width at 360px, so a
   // fixed 300 would overflow. Cap to the viewport (clamped 240–300).
   const [radarSize, setRadarSize] = useState(300)
@@ -43,6 +44,7 @@ export default function MyTastePage() {
         setNarrative(buildTasteNarrative(vector, sources))
         setShape(vectorToShape(vector))
         setLovedBottles(sources.loved_bottles || [])
+        setNotedCount(sources.noted_count || 0)
       }
       setLoading(false)
     })
@@ -61,6 +63,12 @@ export default function MyTastePage() {
       ) : (
         <>
           {narrative && <p style={narrativeText}>{narrative}</p>}
+
+          {notedCount > 0 && (
+            <p style={shapedLine}>
+              ✒ Shaped by your {notedCount} tasting note{notedCount === 1 ? '' : 's'} — keep logging and your palate sharpens.
+            </p>
+          )}
 
           {cats && shape && Object.keys(shape).length > 0 && (
             <div style={radarWrap}>
@@ -86,6 +94,7 @@ export default function MyTastePage() {
 const muted: React.CSSProperties = { fontFamily: FAMILY, fontSize: 13, color: '#B2AA98', lineHeight: 1.7, textAlign: 'center' }
 const emptyWrap: React.CSSProperties = { maxWidth: 460, margin: '24px auto', textAlign: 'center' }
 const narrativeText: React.CSSProperties = { fontFamily: "'Rampant Sans', serif", fontSize: 21, lineHeight: 1.55, color: '#E5D4C2', textAlign: 'center', maxWidth: 520, margin: '4px auto 8px' }
+const shapedLine: React.CSSProperties = { fontFamily: FAMILY, fontSize: 11, color: '#D4B85A', textAlign: 'center', letterSpacing: '0.04em', opacity: 0.85, margin: '0 auto 10px' }
 const radarWrap: React.CSSProperties = { display: 'flex', justifyContent: 'center', margin: '12px 0 24px' }
 const sectionLabel: React.CSSProperties = { fontFamily: FAMILY, fontSize: 10, color: '#D4B85A', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 12, textAlign: 'center' }
 const bottleList: React.CSSProperties = { listStyle: 'none', padding: 0, margin: '0 auto 14px', maxWidth: 460 }

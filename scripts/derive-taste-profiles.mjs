@@ -12,12 +12,24 @@ const STOP = new Set(['single','malt','scotch','whisky','whiskey','blended','gra
 const toks = (s) => (s || '').toLowerCase().match(/[a-z0-9]+/g) || []
 const distinctive = (t) => t.length >= 5 && !STOP.has(t)
 
-function deriveTasteVector(prefNames, mapped, categories, consumption = []) {
+// notes = [{ whisky_id, flavour_tags }] — the flywheel: a self-tagged note is a
+// contributor at weight 2 (vs 1 for loved/consumption); tagged families floored at
+// 2. Blended, never an overwrite. Mirrors lib/whisky/derive-taste.ts (live path).
+const NOTE_WEIGHT = 2, TAG_FLOOR = 2
+function deriveTasteVector(prefNames, mapped, categories, consumption = [], notes = []) {
   const prefToks = new Set()
   for (const p of prefNames) for (const t of toks(p)) if (distinctive(t)) prefToks.add(t)
   const loved = mapped.filter(w => toks(w.distillery).some(t => prefToks.has(t)))
   const byId = new Map(mapped.map(w => [w.id, w]))
-  const contributors = [...loved.map(w => ({ w, weight: 1 })), ...consumption.map(c => ({ w: byId.get(c.whisky_id), weight: c.weight })).filter(x => x.w)]
+  const notedFamilies = new Set()
+  const noteContribs = []
+  for (const n of notes) {
+    const base = byId.get(n.whisky_id); if (!base) continue
+    const spokes = { ...base.spokes }
+    for (const t of (n.flavour_tags || [])) if (categories.includes(t)) { spokes[t] = Math.max(spokes[t] || 0, TAG_FLOOR); notedFamilies.add(t) }
+    noteContribs.push({ w: { spokes }, weight: NOTE_WEIGHT })
+  }
+  const contributors = [...loved.map(w => ({ w, weight: 1 })), ...consumption.map(c => ({ w: byId.get(c.whisky_id), weight: c.weight })).filter(x => x.w), ...noteContribs]
   const vector = {}
   if (contributors.length) {
     const totalW = contributors.reduce((s, c) => s + c.weight, 0)
@@ -27,7 +39,7 @@ function deriveTasteVector(prefNames, mapped, categories, consumption = []) {
       if (v > 0) vector[cat] = Math.round(v * 100) / 100
     }
   }
-  return { vector, sources: { loved_distilleries: [...new Set(loved.map(w => w.distillery).filter(Boolean))], loved_bottles: loved.map(w => w.name), consumption_rows: consumption.length }, source_count: loved.length + consumption.length }
+  return { vector, sources: { loved_distilleries: [...new Set(loved.map(w => w.distillery).filter(Boolean))], loved_bottles: loved.map(w => w.name), consumption_rows: consumption.length, noted_count: noteContribs.length, noted_families: [...notedFamilies] }, source_count: loved.length + consumption.length + noteContribs.length }
 }
 
 const persist = process.argv.includes('--persist')
@@ -47,11 +59,18 @@ const persist = process.argv.includes('--persist')
   // consumption seam — read when the table exists (empty today)
   let consumptionByMember = {}
   try { const con = await get('member_consumption?select=member_no,whisky_id'); for (const c of con) if (c.whisky_id) (consumptionByMember[c.member_no] = consumptionByMember[c.member_no] || []).push({ whisky_id: c.whisky_id, weight: 1 }) } catch { /* table not yet created */ }
+  // tasting notes seam — the flywheel. author (profiles.id) → member_no via profiles.
+  let notesByMember = {}
+  try {
+    const [profs, notes] = await Promise.all([get('profiles?select=id,member_no'), get('tasting_notes?select=author,whisky_id,flavour_tags')])
+    const memberOfAuthor = {}; for (const p of profs) if (p.member_no) memberOfAuthor[p.id] = p.member_no
+    for (const n of notes) { const mno = memberOfAuthor[n.author]; if (mno && n.whisky_id) (notesByMember[mno] = notesByMember[mno] || []).push({ whisky_id: n.whisky_id, flavour_tags: n.flavour_tags || [] }) }
+  } catch { /* table not yet created */ }
 
   console.log(`mapped pool: ${mapped.length} whiskies · members: ${members.length}\n`)
   const rows = []
   for (const m of members) {
-    const d = deriveTasteVector(prefsByMember[m.member_no] || [], mapped, categories, consumptionByMember[m.member_no] || [])
+    const d = deriveTasteVector(prefsByMember[m.member_no] || [], mapped, categories, consumptionByMember[m.member_no] || [], notesByMember[m.member_no] || [])
     rows.push({ member_no: m.member_no, vector: d.vector, sources: d.sources, source_count: d.source_count })
     console.log(`── ${m.member_no} — ${d.source_count} loved bottle(s) from ${d.sources.loved_distilleries.join(', ') || '(none)'}`)
     if (d.source_count === 0) console.log('   EMPTY profile (no mapped loved bottles) → engine will need an expressed Finder shape.')

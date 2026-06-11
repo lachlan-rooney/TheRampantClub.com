@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import sharp from 'sharp'
 import { getActor, svc, socialEmit } from '@/lib/social/server'
+import { rederiveAndPersist } from '@/lib/whisky/derive-taste'
 
 // Member tasting notes — a member's own notes on a whisky (private), optionally
 // shared to the Snug, with an optional photo. Writes route-only (no member INSERT
@@ -99,5 +100,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Could not save.' }, { status: 500 })
   }
   await socialEmit(actor.sb, 'note.logged', 'tasting_note', ins.data.id, { whisky_id: whiskyId, visibility, has_photo: !!media_path })
+  // The flywheel: the note's flavour data enriches the member's palate on the spot.
+  try { await rederiveAndPersist(a, actor.memberNo) } catch { /* best-effort; the note still saved */ }
   return NextResponse.json({ id: ins.data.id })
 }

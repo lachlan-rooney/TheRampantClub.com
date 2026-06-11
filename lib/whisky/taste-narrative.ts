@@ -22,7 +22,7 @@ const FAMILY_PHRASE: Record<string, string> = {
 }
 
 export interface TasteVector { [slug: string]: number }
-export interface TasteSources { loved_distilleries?: string[]; loved_bottles?: string[]; consumption_rows?: number }
+export interface TasteSources { loved_distilleries?: string[]; loved_bottles?: string[]; consumption_rows?: number; noted_count?: number; noted_families?: string[] }
 
 // Join a list with Oxford-ish "a, b and c".
 function joinNatural(items: string[]): string {
