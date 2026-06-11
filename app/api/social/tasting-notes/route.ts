@@ -20,14 +20,28 @@ export async function GET(req: Request) {
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
   if (!actor.memberNo) return NextResponse.json({ notes: [] })
   const whiskyId = new URL(req.url).searchParams.get('whisky_id')
-  if (!whiskyId) return NextResponse.json({ error: 'Which whisky?' }, { status: 400 })
+  const a = svc()
+
+  // No whisky_id → the member's OWN collection (all their notes, any visibility),
+  // each with its whisky name + a signed photo URL. Their personal journal.
+  if (!whiskyId) {
+    const { data: mine } = await actor.sb.from('tasting_notes')
+      .select('id, note, flavour_tags, visibility, media_path, created_at, whisky_id, whiskies(name)')
+      .eq('author', actor.id).order('created_at', { ascending: false })
+    const out = []
+    for (const n of mine || []) {
+      let photo_url: string | null = null
+      if (n.media_path) { const { data: sig } = await a.storage.from(BUCKET).createSignedUrl(n.media_path, 3600); photo_url = sig?.signedUrl ?? null }
+      const wname = Array.isArray(n.whiskies) ? n.whiskies[0]?.name : (n.whiskies as { name?: string } | null)?.name
+      out.push({ id: n.id, note: n.note, flavour_tags: n.flavour_tags || [], visibility: n.visibility, created_at: n.created_at, whisky_id: n.whisky_id, whisky_name: wname || 'A whisky', photo_url })
+    }
+    return NextResponse.json({ notes: out })
+  }
 
   // RLS-filtered to own (any visibility) + others' snug.
   const { data: notes } = await actor.sb.from('tasting_notes')
     .select('id, author, note, flavour_tags, visibility, media_path, created_at')
     .eq('whisky_id', whiskyId).order('created_at', { ascending: false })
-
-  const a = svc()
   const authorIds = [...new Set((notes || []).map(n => n.author))].filter(id => id !== actor.id)
   const nameOf: Record<string, string> = {}
   if (authorIds.length) {
