@@ -28,6 +28,7 @@ const GROUPS: Group[] = [
     label: 'Floor',
     items: [
       { href: '/admin/concierge', label: 'Concierge' },
+      { href: '/admin/snug', label: 'The Snug' },
       { href: '/admin/mx-daily', label: 'MX Daily' },
       { href: '/admin/tonight', label: 'Tonight' },
       { href: '/admin/calendar', label: 'Calendar' },

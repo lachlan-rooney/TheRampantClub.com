@@ -117,7 +117,7 @@ export default function Snug() {
             </div>
           ) : (
             <div>
-              {items.map(it => <FeedCard key={`${it.item_type}:${it.id}`} it={it} />)}
+              {items.map(it => <FeedCard key={`${it.item_type}:${it.id}`} it={it} onChanged={load} />)}
               {next && <button onClick={loadMore} disabled={loadingMore} style={moreBtn}>{loadingMore ? 'Pouring…' : 'Earlier in the Snug'}</button>}
             </div>
           )}
@@ -149,10 +149,24 @@ export default function Snug() {
   )
 }
 
-function FeedCard({ it }: { it: Item }) {
+function FeedCard({ it, onChanged }: { it: Item; onChanged: () => void }) {
   const house = it.kind === 'house_post'
   const [mine, setMine] = useState<string[]>(it.my_reactions || [])
   const [summary, setSummary] = useState(it.reaction_summary)
+  const [editing, setEditing] = useState(false)
+  const [editDraft, setEditDraft] = useState(it.body || '')
+  const canManage = it.is_own && it.kind === 'member_post'
+
+  const saveEdit = async () => {
+    const body = editDraft.trim(); if (!body) return
+    const r = await fetch(`/api/social/posts/${it.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ body }) })
+    if (r.ok) { setEditing(false); onChanged() }
+  }
+  const del = async () => {
+    if (!window.confirm('Delete this post?')) return
+    const r = await fetch(`/api/social/posts/${it.id}`, { method: 'DELETE' })
+    if (r.ok) onChanged()
+  }
 
   const toggle = async (reaction: string) => {
     const had = mine.includes(reaction)
@@ -212,6 +226,21 @@ function FeedCard({ it }: { it: Item }) {
           {RX.filter(r => summary[r.key as keyof typeof summary] > 0).map(r => `${r.emoji} ${summary[r.key as keyof typeof summary]}`).join('  ·  ')}
         </div>
       )}
+
+      {canManage && (
+        <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
+          <button onClick={() => { setEditDraft(it.body || ''); setEditing(true) }} style={manageBtn}>Edit</button>
+          <button onClick={del} style={{ ...manageBtn, color: '#C27070' }}>Delete</button>
+        </div>
+      )}
+
+      <MemberModal open={editing} onClose={() => setEditing(false)} title="Edit your post">
+        <textarea value={editDraft} onChange={e => setEditDraft(e.target.value.slice(0, 8000))} rows={4} style={textarea} />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 14 }}>
+          <button onClick={() => setEditing(false)} style={cancelBtn}>Cancel</button>
+          <button onClick={saveEdit} disabled={!editDraft.trim()} style={{ ...postBtn, opacity: editDraft.trim() ? 1 : 0.4 }}>Save</button>
+        </div>
+      </MemberModal>
     </div>
   )
 }
@@ -228,6 +257,7 @@ const moreBtn: React.CSSProperties = { display: 'block', margin: '6px auto 0', b
 const rxBtn: React.CSSProperties = { background: 'transparent', border: '1px solid rgba(178,170,152,0.22)', borderRadius: 16, padding: '4px 11px', fontFamily: MONO, fontSize: 10, color: '#B2AA98', cursor: 'pointer', letterSpacing: '0.02em' }
 const rxOn: React.CSSProperties = { border: '1px solid #D4B85A', color: '#D4B85A', background: 'rgba(212,184,90,0.12)' }
 const ownTally: React.CSSProperties = { fontFamily: MONO, fontSize: 10, color: '#7E7864', marginTop: 8, letterSpacing: '0.04em' }
+const manageBtn: React.CSSProperties = { background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: MONO, fontSize: 11, color: '#B2AA98', textDecoration: 'underline' }
 const gateWrap: React.CSSProperties = { border: '1px solid rgba(212,184,90,0.20)', borderRadius: 14, background: 'rgba(229,212,194,0.03)', padding: '40px 28px', textAlign: 'center', fontFamily: MONO, fontSize: 13, color: '#B2AA98', lineHeight: 1.8 }
 const gateLink: React.CSSProperties = { color: '#D4B85A', textDecoration: 'none', borderBottom: '1px solid rgba(212,184,90,0.4)' }
 const textarea: React.CSSProperties = { width: '100%', resize: 'vertical', background: 'rgba(229,212,194,0.06)', border: '1px solid rgba(229,212,194,0.16)', borderRadius: 8, color: '#E5D4C2', fontFamily: MONO, fontSize: 13, lineHeight: 1.6, padding: '10px 12px', outline: 'none', boxSizing: 'border-box' }
