@@ -10,7 +10,7 @@ import MemberModal from '@/components/MemberModal'
 
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
 
-interface Note { id: string; note: string; flavour_tags: string[]; visibility: string; created_at: string; is_own: boolean; author_name: string }
+interface Note { id: string; note: string; flavour_tags: string[]; visibility: string; created_at: string; is_own: boolean; author_name: string; photo_url: string | null }
 interface Family { slug: string; name: string }
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -24,6 +24,7 @@ export default function WhiskyNotes({ whiskyId }: { whiskyId: string }) {
   const [draft, setDraft] = useState('')
   const [visibility, setVisibility] = useState<'private' | 'snug'>('private')
   const [tags, setTags] = useState<string[]>([])
+  const [photo, setPhoto] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -47,14 +48,17 @@ export default function WhiskyNotes({ whiskyId }: { whiskyId: string }) {
     if (!note || saving) return
     setSaving(true); setError('')
     try {
-      const r = await fetch('/api/social/tasting-notes', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ whisky_id: whiskyId, note, visibility, flavour_tags: tags }),
-      })
-      if (r.ok) { setComposer(false); setDraft(''); setTags([]); setVisibility('private'); await load() }
+      const fd = new FormData()
+      fd.set('whisky_id', whiskyId)
+      fd.set('note', note)
+      fd.set('visibility', visibility)
+      fd.set('flavour_tags', JSON.stringify(tags))
+      if (photo) fd.set('photo', photo)
+      const r = await fetch('/api/social/tasting-notes', { method: 'POST', body: fd })
+      if (r.ok) { setComposer(false); setDraft(''); setTags([]); setVisibility('private'); setPhoto(null); await load() }
       else setError((await r.json().catch(() => ({})))?.error || 'Could not save.')
     } finally { setSaving(false) }
-  }, [draft, saving, whiskyId, visibility, tags, load])
+  }, [draft, saving, whiskyId, visibility, tags, photo, load])
 
   const nameOf = (slug: string) => families.find(f => f.slug === slug)?.name || slug
 
@@ -81,6 +85,10 @@ export default function WhiskyNotes({ whiskyId }: { whiskyId: string }) {
                 <span style={{ fontFamily: MONO, fontSize: 9, color: '#7E7864' }}>{fmtDate(n.created_at)}</span>
               </div>
               <div style={{ fontFamily: MONO, fontSize: 12, color: '#B2AA98', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{n.note}</div>
+              {n.photo_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={n.photo_url} alt="" style={{ display: 'block', maxWidth: '100%', maxHeight: 280, borderRadius: 8, marginTop: 10, objectFit: 'cover' }} />
+              )}
               {n.flavour_tags.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 7 }}>
                   {n.flavour_tags.map(t => <span key={t} style={tagChip}>{nameOf(t)}</span>)}
@@ -117,8 +125,24 @@ export default function WhiskyNotes({ whiskyId }: { whiskyId: string }) {
           </div>
         )}
 
+        <div style={{ marginTop: 14 }}>
+          <div style={fieldLabel}>Photo <span style={{ opacity: 0.5 }}>(optional — location data is stripped)</span></div>
+          {photo ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontFamily: MONO, fontSize: 11, color: '#E5D4C2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>{photo.name}</span>
+              <button onClick={() => setPhoto(null)} style={{ ...chip, color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}>Remove</button>
+            </div>
+          ) : (
+            <label style={{ ...chip, cursor: 'pointer', display: 'inline-block' }}>
+              ＋ Add a photo
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" style={{ display: 'none' }}
+                onChange={e => { const f = e.target.files?.[0]; if (f) setPhoto(f) }} />
+            </label>
+          )}
+        </div>
+
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
-          <button onClick={() => setComposer(false)} style={cancelBtn}>Cancel</button>
+          <button onClick={() => { setComposer(false); setPhoto(null) }} style={cancelBtn}>Cancel</button>
           <button onClick={save} disabled={saving || !draft.trim()} style={{ ...saveBtn, opacity: saving || !draft.trim() ? 0.4 : 1 }}>{saving ? 'Saving…' : 'Save note'}</button>
         </div>
       </MemberModal>
