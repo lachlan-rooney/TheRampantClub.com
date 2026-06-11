@@ -18,6 +18,7 @@ const MEMBER_GROUPS: { label: string; links: { href: string; en: string; vn: str
     { href: '/members/journal',       en: "Cellarmaster's Journal", vn: 'Nhật Ký Cellarmaster' },
   ] },
   { label: 'You', links: [
+    { href: '/members/concierge',     en: 'The Concierge',         vn: 'Quản Gia' },
     { href: '/members/profile',       en: 'My Membership',         vn: 'Tư Cách Thành Viên' },
     { href: '/members/taste',         en: 'Your Palate',           vn: 'Khẩu Vị Của Bạn' },
     { href: '/members/visits',        en: 'Your Visits',           vn: 'Những Lần Ghé Thăm' },
@@ -41,6 +42,7 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
   const [open, setOpen] = useState(false)
   const [logoInverted, setLogoInverted] = useState(dark)
   const [isAdminUser, setIsAdminUser] = useState(false)
+  const [conciergeUnread, setConciergeUnread] = useState(0)
   const navRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const logoRef = useRef<HTMLImageElement>(null)
@@ -62,6 +64,10 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
         .then(({ data: profile }) => {
           if (profile?.is_admin) setIsAdminUser(true)
         })
+      // Concierge unread badge — count of unread Club replies (RLS: own only).
+      supabase.from('notifications').select('id', { count: 'exact', head: true })
+        .eq('recipient', data.user.id).eq('type', 'concierge_reply').eq('read', false)
+        .then(({ count }) => setConciergeUnread(count || 0))
     })
   }, [variant])
 
@@ -217,6 +223,22 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
           margin-top: 1px;
         }
 
+        .nav-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 16px;
+          height: 16px;
+          padding: 0 5px;
+          border-radius: 8px;
+          background: #D4B85A;
+          color: #052E20;
+          font-family: 'Google Sans Code', monospace;
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0;
+        }
+
         .nav-group-label {
           font-family: 'Google Sans Code', monospace;
           font-size: 9px;
@@ -362,7 +384,12 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
                 <div className="nav-group-label">{g.label}</div>
                 {g.links.map(l => (
                   <Link key={l.href} href={l.href} className="nav-link" onClick={() => setOpen(false)}>
-                    <div className="nav-link-en">{l.en}</div>
+                    <div className="nav-link-en" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {l.en}
+                      {l.href === '/members/concierge' && conciergeUnread > 0 && (
+                        <span className="nav-badge">{conciergeUnread > 9 ? '9+' : conciergeUnread}</span>
+                      )}
+                    </div>
                     <div className="nav-link-vn">{l.vn}</div>
                   </Link>
                 ))}
