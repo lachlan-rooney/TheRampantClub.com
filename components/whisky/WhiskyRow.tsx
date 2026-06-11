@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { Whisky } from '@/lib/types'
 import FlavourRadar from './FlavourRadar'
+import WhiskyNotes from './WhiskyNotes'
 
 // One whisky's display + a self-contained tap-to-reveal flavour radar. Reused by
 // the alphabet-shelf letter modal AND the search results — same row everywhere.
@@ -45,6 +46,7 @@ export default function WhiskyRow({ w }: { w: Whisky }) {
         {open ? '↑ Hide flavour profile' : '↓ Flavour profile'}
       </button>
       {open && <div style={{ marginTop: 14 }}><FlavourRadar whiskyId={w.id} /></div>}
+      <WhiskyNotes whiskyId={w.id} />
     </div>
   )
 }
