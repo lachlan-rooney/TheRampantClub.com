@@ -25,6 +25,22 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  // ── KIOSK BOUNDARY: /kiosk/staff/* shows member PII, so it is gated on a valid
+  // enrolled, non-revoked DEVICE SESSION (the tablet's device-token cookie) — NOT
+  // a personal login. No valid device → bounced to pairing. The public display
+  // /kiosk/[floor] is unaffected (not in the matcher).
+  if (request.nextUrl.pathname.startsWith('/kiosk/staff')) {
+    const token = request.cookies.get('trc_kiosk_device')?.value
+    let active = false
+    if (token) { const { data } = await supabase.rpc('kiosk_device_active', { p_token: token }); active = data === true }
+    if (!active) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/kiosk/pair'; url.search = ''
+      return NextResponse.redirect(url)
+    }
+    return supabaseResponse   // device valid → allow; the staff picker is app-side (attribution)
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -59,10 +75,20 @@ export async function middleware(request: NextRequest) {
   // OWN profile row under RLS — admins (all accounts today) pass through.
   if (request.nextUrl.pathname.startsWith('/admin') && user) {
     const { data: profile } = await supabase
-      .from('profiles').select('is_admin').eq('id', user.id).single()
+      .from('profiles').select('is_admin, requires_staff_pick').eq('id', user.id).single()
     if (!profile?.is_admin) {
       const url = request.nextUrl.clone()
       url.pathname = '/members'
+      url.search = ''
+      return NextResponse.redirect(url)
+    }
+    // Shared staff login: must "click who you are" (attribution) before the portal.
+    // Personal admins (requires_staff_pick=false) pass straight through.
+    if (profile.requires_staff_pick
+        && request.nextUrl.pathname !== '/admin/who'
+        && !request.cookies.get('trc_admin_staff')) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/admin/who'
       url.search = ''
       return NextResponse.redirect(url)
     }
@@ -83,5 +109,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/members/:path*', '/admin/:path*', '/login'],
+  matcher: ['/members/:path*', '/admin/:path*', '/login', '/kiosk/staff/:path*'],
 }

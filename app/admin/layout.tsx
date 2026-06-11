@@ -3,6 +3,7 @@ import { isAdmin } from '@/lib/admin'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import AdminNav from './_nav/AdminNav'
 import NotificationBell from '@/components/admin/NotificationBell'
+import ActingChip from '@/components/admin/ActingChip'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerSupabaseClient()
@@ -22,7 +23,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         display: 'flex', flexDirection: 'column',
       }}>
         {/* Bell lives in-flow in its own reserved strip — never floats over content */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+          <ActingChip />
           <NotificationBell />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
