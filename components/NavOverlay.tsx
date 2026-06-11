@@ -26,6 +26,11 @@ const MEMBER_GROUPS: { label: string; links: { href: string; en: string; vn: str
     { href: '/members/visits',        en: 'Your Visits',           vn: 'Những Lần Ghé Thăm' },
     { href: '/members/gifts',         en: 'Gifts from the Club',   vn: 'Quà Tặng' },
   ] },
+  { label: 'Connect', links: [
+    { href: '/members/members',       en: 'The Members',           vn: 'Thành Viên' },
+    { href: '/members/introductions', en: 'Introductions',         vn: 'Lời Giới Thiệu' },
+    { href: '/members/messages',      en: 'Messages',              vn: 'Tin Nhắn' },
+  ] },
   { label: 'House', links: [
     { href: '/menus',                 en: 'The Menus',             vn: 'Thực Đơn' },
     { href: '/members/notices',       en: 'Notice Board',          vn: 'Bảng Tin' },
