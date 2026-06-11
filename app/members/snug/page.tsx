@@ -16,7 +16,14 @@ interface Item {
   kind: 'house_post' | 'member_post' | 'tasting_note'
   item_type: string; id: string; created_at: string; author_name: string; is_own: boolean
   body?: string; note?: string; flavour_tags?: string[]; whisky_id?: string; whisky_name?: string; photo_url: string | null
+  my_reactions: string[]; reaction_summary?: { raise_glass: number; noted: number; join_me: number }
 }
+
+const RX = [
+  { key: 'raise_glass', emoji: '🥃', label: 'raise a glass' },
+  { key: 'noted', emoji: '🔖', label: 'noted' },
+  { key: 'join_me', emoji: '🤝', label: 'join me' },
+] as const
 
 const when = (iso: string) => {
   const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000))
@@ -144,6 +151,21 @@ export default function Snug() {
 
 function FeedCard({ it }: { it: Item }) {
   const house = it.kind === 'house_post'
+  const [mine, setMine] = useState<string[]>(it.my_reactions || [])
+  const [summary, setSummary] = useState(it.reaction_summary)
+
+  const toggle = async (reaction: string) => {
+    const had = mine.includes(reaction)
+    const optimistic = had ? mine.filter(r => r !== reaction) : [...mine, reaction]
+    setMine(optimistic)
+    if (it.is_own && summary) setSummary({ ...summary, [reaction]: Math.max(0, summary[reaction as keyof typeof summary] + (had ? -1 : 1)) })
+    const r = await fetch('/api/social/reactions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ item_type: it.item_type, item_id: it.id, reaction }),
+    })
+    if (!r.ok) { setMine(mine); setSummary(it.reaction_summary) }   // revert
+  }
+
   return (
     <div style={{ ...card, ...(house ? houseCard : null) }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
@@ -173,7 +195,23 @@ function FeedCard({ it }: { it: Item }) {
         // eslint-disable-next-line @next/next/no-img-element
         <img src={it.photo_url} alt="" style={{ display: 'block', maxWidth: '100%', maxHeight: 320, borderRadius: 8, marginTop: 10, objectFit: 'cover' }} />
       )}
-      {/* reactions row lands in S2b.4 (after the reactions table is applied) */}
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+        {RX.map(r => {
+          const on = mine.includes(r.key)
+          return (
+            <button key={r.key} onClick={() => toggle(r.key)} title={r.label} style={{ ...rxBtn, ...(on ? rxOn : null) }}>
+              <span aria-hidden>{r.emoji}</span> {r.label}
+            </button>
+          )
+        })}
+      </div>
+      {/* QUIET: only the poster sees the tally on their own item. */}
+      {it.is_own && summary && (summary.raise_glass + summary.noted + summary.join_me > 0) && (
+        <div style={ownTally}>
+          {RX.filter(r => summary[r.key as keyof typeof summary] > 0).map(r => `${r.emoji} ${summary[r.key as keyof typeof summary]}`).join('  ·  ')}
+        </div>
+      )}
     </div>
   )
 }
@@ -187,6 +225,9 @@ const bodyText: React.CSSProperties = { fontFamily: MONO, fontSize: 13, color: '
 const whiskyLink: React.CSSProperties = { color: '#D4B85A', textDecoration: 'none', borderBottom: '1px solid rgba(212,184,90,0.35)' }
 const tagChip: React.CSSProperties = { fontFamily: MONO, fontSize: 9, color: '#D4B85A', border: '1px solid rgba(212,184,90,0.3)', borderRadius: 8, padding: '2px 8px' }
 const moreBtn: React.CSSProperties = { display: 'block', margin: '6px auto 0', background: 'transparent', border: '1px solid rgba(178,170,152,0.3)', borderRadius: 20, padding: '8px 20px', fontFamily: MONO, fontSize: 11, color: '#B2AA98', cursor: 'pointer' }
+const rxBtn: React.CSSProperties = { background: 'transparent', border: '1px solid rgba(178,170,152,0.22)', borderRadius: 16, padding: '4px 11px', fontFamily: MONO, fontSize: 10, color: '#B2AA98', cursor: 'pointer', letterSpacing: '0.02em' }
+const rxOn: React.CSSProperties = { border: '1px solid #D4B85A', color: '#D4B85A', background: 'rgba(212,184,90,0.12)' }
+const ownTally: React.CSSProperties = { fontFamily: MONO, fontSize: 10, color: '#7E7864', marginTop: 8, letterSpacing: '0.04em' }
 const gateWrap: React.CSSProperties = { border: '1px solid rgba(212,184,90,0.20)', borderRadius: 14, background: 'rgba(229,212,194,0.03)', padding: '40px 28px', textAlign: 'center', fontFamily: MONO, fontSize: 13, color: '#B2AA98', lineHeight: 1.8 }
 const gateLink: React.CSSProperties = { color: '#D4B85A', textDecoration: 'none', borderBottom: '1px solid rgba(212,184,90,0.4)' }
 const textarea: React.CSSProperties = { width: '100%', resize: 'vertical', background: 'rgba(229,212,194,0.06)', border: '1px solid rgba(229,212,194,0.16)', borderRadius: 8, color: '#E5D4C2', fontFamily: MONO, fontSize: 13, lineHeight: 1.6, padding: '10px 12px', outline: 'none', boxSizing: 'border-box' }

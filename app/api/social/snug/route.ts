@@ -10,6 +10,13 @@ export const dynamic = 'force-dynamic'
 const BUCKET = 'member-media'
 const PAGE = 30
 
+interface FeedItem {
+  kind: string; item_type: string; id: string; created_at: string; author_name: string; is_own: boolean
+  body?: string; note?: string; flavour_tags?: string[]; whisky_id?: string | null; whisky_name?: string
+  photo_url: string | null
+  my_reactions: string[]; reaction_summary?: { raise_glass: number; noted: number; join_me: number }
+}
+
 export async function GET(req: Request) {
   const actor = await getActor()
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
@@ -37,12 +44,12 @@ export async function GET(req: Request) {
     return data?.signedUrl ?? null
   }
 
-  const items = []
+  const items: FeedItem[] = []
   for (const p of posts || []) {
     items.push({
       kind: p.author_kind === 'house' ? 'house_post' : 'member_post', item_type: 'post', id: p.id, created_at: p.created_at,
       author_name: p.author_kind === 'house' ? 'The Club' : (nameOf[p.author] || 'A member'),
-      is_own: p.author === actor.id, body: p.body, photo_url: await sign(p.media_path),
+      is_own: p.author === actor.id, body: p.body, photo_url: await sign(p.media_path), my_reactions: [],
     })
   }
   for (const n of notes || []) {
@@ -51,11 +58,27 @@ export async function GET(req: Request) {
       kind: 'tasting_note', item_type: 'tasting_note', id: n.id, created_at: n.created_at,
       author_name: nameOf[n.author] || 'A member', is_own: n.author === actor.id,
       note: n.note, flavour_tags: n.flavour_tags || [], whisky_id: n.whisky_id, whisky_name: wname || 'a whisky',
-      photo_url: await sign(n.media_path),
+      photo_url: await sign(n.media_path), my_reactions: [],
     })
   }
   items.sort((x, y) => new Date(y.created_at).getTime() - new Date(x.created_at).getTime())
   const page = items.slice(0, PAGE)
+
+  // Reactions for this page — quiet: my OWN state on every item; the count summary
+  // only on items I own (never a public tally to others).
+  const pageIds = page.map(i => i.id)
+  if (pageIds.length) {
+    const { data: rx } = await a.from('reactions').select('member, item_type, item_id, reaction').in('item_id', pageIds)
+    for (const it of page) {
+      const forItem = (rx || []).filter(r => r.item_type === it.item_type && r.item_id === it.id)
+      it.my_reactions = forItem.filter(r => r.member === actor.id).map(r => r.reaction)
+      if (it.is_own) {
+        const sum = { raise_glass: 0, noted: 0, join_me: 0 }
+        for (const r of forItem) if (r.reaction in sum) sum[r.reaction as keyof typeof sum]++
+        it.reaction_summary = sum
+      }
+    }
+  }
   const next = page.length === PAGE ? page[page.length - 1].created_at : null
   return NextResponse.json({ items: page, next })
 }
