@@ -29,6 +29,11 @@ export function describeNotification(n: OpsNotification): string {
     case 'shift_assigned': return `You're on the ${fmtDate(m.shift_date)} ${m.shift_name || ''} shift`.trim()
     case 'shift_updated':  return `Your ${fmtDate(m.shift_date)} ${m.shift_name || ''} shift changed`.trim()
     case 'shift_removed':  return `Your ${fmtDate(m.shift_date)} ${m.shift_name || ''} shift was removed`.trim()
+    // Social (S1 concierge + S2 reserve). Generic labels — never the message body.
+    case 'concierge_message':     return 'A member wrote in to The Club'
+    case 'concierge_reply':       return 'The Club replied'
+    case 'introduction_request':  return 'A member would like an introduction'
+    case 'introduction_accepted': return 'An introduction was accepted'
     default:               return n.type.replace(/_/g, ' ')
   }
 }
