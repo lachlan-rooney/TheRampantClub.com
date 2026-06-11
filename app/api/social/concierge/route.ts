@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   const actor = await getActor()
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
-  if (!actor.memberNo) return NextResponse.json({ error: 'Members only.' }, { status: 403 })
+  if (!actor.memberNo) return NextResponse.json({ error: 'Members only.', reason: actor.isAdmin ? 'staff' : 'unlinked' }, { status: 403 })
 
   // Read via the SESSION client so RLS (can_read_thread) enforces own-only — a
   // member can never pull another member's thread, even through this route.
@@ -29,7 +29,7 @@ export async function GET() {
 export async function POST() {
   const actor = await getActor()
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
-  if (!actor.memberNo) return NextResponse.json({ error: 'Members only.' }, { status: 403 })
+  if (!actor.memberNo) return NextResponse.json({ error: 'Members only.', reason: actor.isAdmin ? 'staff' : 'unlinked' }, { status: 403 })
   const a = svc()
 
   // Already have one? Return it (idempotent).

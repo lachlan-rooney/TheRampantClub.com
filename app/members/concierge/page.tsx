@@ -1,6 +1,7 @@
 'use client'
 
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import MemberPage from '@/components/MemberPage'
@@ -32,6 +33,7 @@ function Concierge() {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [loaded, setLoaded] = useState(false)
+  const [gate, setGate] = useState<'staff' | 'unlinked' | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const prefillDone = useRef(false)
 
@@ -53,7 +55,9 @@ function Concierge() {
   const load = useCallback(async () => {
     try {
       const r = await fetch('/api/social/concierge')
-      if (!r.ok) { setLoaded(true); return }
+      if (r.status === 403) { const j = await r.json().catch(() => ({})); setGate(j.reason === 'staff' ? 'staff' : 'unlinked'); return }
+      if (!r.ok) { return }
+      setGate(null)
       const { thread, messages } = await r.json()
       setThreadId(thread?.id ?? null)
       setMessages(messages || [])
@@ -84,6 +88,11 @@ function Concierge() {
       if (!tid) {
         const cr = await fetch('/api/social/concierge', { method: 'POST' })
         if (cr.ok) { tid = (await cr.json()).thread_id; setThreadId(tid) }
+        else {
+          const j = await cr.json().catch(() => ({}))
+          if (cr.status === 403) { setGate(j.reason === 'staff' ? 'staff' : 'unlinked'); return }
+          setError(j.error || 'Could not open the thread.'); return
+        }
       }
       if (!tid) { setError('Could not open the thread.'); return }
       const res = await fetch('/api/social/messages', {
@@ -108,6 +117,22 @@ function Concierge() {
       subtitle="A LINE TO THE CLUB"
       description="Anything at all — a request before you arrive, a bottle you're after, a word about the evening. The Club is listening."
     >
+      {gate ? (
+        <div style={gateWrap}>
+          {gate === 'staff' ? (
+            <>
+              <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2', marginBottom: 10 }}>This is the members’ line to the Club.</div>
+              <div style={muted}>You’re signed in as staff — members’ messages reach you in the inbox.</div>
+              <Link href="/admin/concierge" style={gateLink}>Open the Concierge inbox →</Link>
+            </>
+          ) : (
+            <>
+              <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2', marginBottom: 10 }}>Not yet available on this account.</div>
+              <div style={muted}>Your login isn’t linked to a membership yet. A word with the Club will set it right.</div>
+            </>
+          )}
+        </div>
+      ) : (
       <div style={panel}>
         <div ref={scrollRef} style={scroll}>
           {!loaded ? (
@@ -156,6 +181,7 @@ function Concierge() {
           </div>
         </div>
       </div>
+      )}
     </MemberPage>
   )
 }
@@ -176,4 +202,6 @@ const stamp: React.CSSProperties = { fontFamily: MONO, fontSize: 9, color: '#B2A
 const daySep: React.CSSProperties = { textAlign: 'center', fontFamily: MONO, fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#B2AA98', opacity: 0.55, margin: '14px 0 12px' }
 const muted: React.CSSProperties = { fontFamily: MONO, fontSize: 12, color: '#B2AA98', opacity: 0.6, fontStyle: 'italic', textAlign: 'center', padding: '20px 0' }
 const emptyWrap: React.CSSProperties = { textAlign: 'center', padding: '36px 12px' }
+const gateWrap: React.CSSProperties = { border: '1px solid rgba(212,184,90,0.20)', borderRadius: 14, background: 'rgba(229,212,194,0.03)', padding: '40px 28px', textAlign: 'center' }
+const gateLink: React.CSSProperties = { display: 'inline-block', marginTop: 16, fontFamily: MONO, fontSize: 12, color: '#D4B85A', textDecoration: 'none', letterSpacing: '0.04em', borderBottom: '1px solid rgba(212,184,90,0.4)', paddingBottom: 2 }
 const errStyle: React.CSSProperties = { fontFamily: MONO, fontSize: 11, color: '#C27070', marginBottom: 8 }
