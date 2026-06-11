@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getActor, svc, socialEmit, notify } from '@/lib/social/server'
 import { paletteSignature } from '@/lib/whisky/palate-signature'
+import { cosineSimilarity, sharedNote, pct } from '@/lib/whisky/palate-twins'
 
 // Introductions — introduction-first, gracious.
 //   POST → request an introduction. ALWAYS returns the neutral { status: 'pending' }
@@ -56,27 +57,48 @@ export async function GET() {
   const a = svc()
 
   // INCOMING via the SESSION client → recipient RLS (pending, addressed to me, not blocked).
-  const { data: inc } = await actor.sb.from('introductions').select('id, requester, context, created_at')
+  const { data: inc } = await actor.sb.from('introductions').select('id, requester, context, created_at, via')
   // SENT via the masking fn (declined → pending; never a base-table read as requester).
   const { data: sentRaw } = await actor.sb.rpc('introductions_for_me')
   const sent = (sentRaw || []) as Array<{ id: string; recipient: string; context: string | null; status: string; created_at: string }>
-
 
   const ids = new Set<string>()
   for (const r of inc || []) ids.add(r.requester)
   for (const s of sent) ids.add(s.recipient)
   const who: Record<string, { name: string; sig: string }> = {}
+  const vecById: Record<string, Record<string, number>> = {}
   if (ids.size) {
     const { data: profs } = await a.from('profiles').select('id, display_name, member_no').in('id', [...ids])
     const memberNos = (profs || []).map(p => p.member_no).filter(Boolean)
     const { data: tps } = await a.from('member_taste_profiles').select('member_no, vector').in('member_no', memberNos.length ? memberNos : ['_'])
     const vecOf: Record<string, Record<string, number>> = {}
     for (const t of tps || []) vecOf[t.member_no] = (t.vector || {}) as Record<string, number>
-    for (const pr of profs || []) who[pr.id] = { name: pr.display_name || 'A member', sig: paletteSignature(pr.member_no ? vecOf[pr.member_no] : {}) }
+    for (const pr of profs || []) { who[pr.id] = { name: pr.display_name || 'A member', sig: paletteSignature(pr.member_no ? vecOf[pr.member_no] : {}) }; vecById[pr.id] = pr.member_no ? (vecOf[pr.member_no] || {}) : {} }
   }
+  // my own vector — for the palate-match %, computed against the (still-hidden) requester
+  const { data: myTp } = await a.from('member_taste_profiles').select('vector').eq('member_no', actor.memberNo).maybeSingle()
+  const myVec = (myTp?.vector || {}) as Record<string, number>
+
+  // via for my SENT rows (the fn doesn't carry it) — so a pending palate match
+  // masks the recipient too (the requester is also blind until B accepts).
+  const sentIds = sent.map(s => s.id)
+  const { data: sentVia } = await a.from('introductions').select('id, via').in('id', sentIds.length ? sentIds : ['_'])
+  const viaOf: Record<string, string> = {}
+  for (const v of sentVia || []) viaOf[v.id] = v.via
 
   return NextResponse.json({
-    incoming: (inc || []).map(r => ({ id: r.id, context: r.context, created_at: r.created_at, from_name: who[r.requester]?.name || 'A member', from_sig: who[r.requester]?.sig || '' })),
-    sent: sent.map(s => ({ id: s.id, context: s.context, created_at: s.created_at, to_name: who[s.recipient]?.name || 'A member', status: s.status })),
+    incoming: (inc || []).map(r => {
+      if (r.via === 'palate_match') {
+        // DOUBLE-BLIND: the requester is NEVER named here — only the match framing.
+        const theirVec = vecById[r.requester] || {}
+        return { id: r.id, via: 'palate_match', created_at: r.created_at, match_pct: pct(cosineSimilarity(myVec, theirVec)), shared_note: sharedNote(myVec, theirVec) }
+      }
+      return { id: r.id, via: 'directory', context: r.context, created_at: r.created_at, from_name: who[r.requester]?.name || 'A member', from_sig: who[r.requester]?.sig || '' }
+    }),
+    sent: sent.map(s => {
+      const palate = viaOf[s.id] === 'palate_match'
+      const masked = palate && s.status !== 'accepted'   // reveal the name only once connected
+      return { id: s.id, via: palate ? 'palate_match' : 'directory', context: palate ? null : s.context, created_at: s.created_at, status: s.status, to_name: masked ? null : (who[s.recipient]?.name || 'A member') }
+    }),
   })
 }

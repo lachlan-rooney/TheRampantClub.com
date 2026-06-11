@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react'
 
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
 
-interface Intro { id: string; from_name: string; to_name: string; status: string; context: string | null; created_at: string }
+interface Intro { id: string; via: string; from_name: string; to_name: string; status: string; context: string | null; created_at: string }
 const fmt = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 const STATUS: Record<string, { label: string; color: string }> = {
   pending: { label: 'Pending', color: '#B2AA98' },
@@ -34,7 +34,10 @@ export default function AdminIntroductions() {
           <div key={i.id} style={row}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
               <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 14, color: '#E5D4C2' }}>{i.from_name} <span style={{ color: '#7E7864' }}>→</span> {i.to_name}</span>
-              <span style={{ fontFamily: MONO, fontSize: 9, color: s.color, border: `1px solid ${s.color}55`, borderRadius: 8, padding: '2px 8px', letterSpacing: '0.04em' }}>{s.label}</span>
+              <span style={{ display: 'flex', gap: 6 }}>
+                {i.via === 'palate_match' && <span style={{ fontFamily: MONO, fontSize: 9, color: '#9E8FC4', border: '1px solid #9E8FC455', borderRadius: 8, padding: '2px 8px' }}>palate</span>}
+                <span style={{ fontFamily: MONO, fontSize: 9, color: s.color, border: `1px solid ${s.color}55`, borderRadius: 8, padding: '2px 8px', letterSpacing: '0.04em' }}>{s.label}</span>
+              </span>
             </div>
             {i.context && <div style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98', fontStyle: 'italic', margin: '5px 0' }}>“{i.context}”</div>}
             <div style={{ fontFamily: MONO, fontSize: 9, color: '#7E7864', marginTop: 4 }}>{fmt(i.created_at)}</div>
