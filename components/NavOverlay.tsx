@@ -28,6 +28,7 @@ const MEMBER_GROUPS: { label: string; links: { href: string; en: string; vn: str
   ] },
   { label: 'Connect', links: [
     { href: '/members/members',       en: 'The Members',           vn: 'Thành Viên' },
+    { href: '/members/palate-twins',  en: 'Palate Twins',          vn: 'Khẩu Vị Đồng Điệu' },
     { href: '/members/introductions', en: 'Introductions',         vn: 'Lời Giới Thiệu' },
     { href: '/members/messages',      en: 'Messages',              vn: 'Tin Nhắn' },
   ] },

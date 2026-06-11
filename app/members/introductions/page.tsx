@@ -11,8 +11,8 @@ import MemberPage from '@/components/MemberPage'
 
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
 
-interface Incoming { id: string; from_name: string; from_sig: string; context: string | null; created_at: string }
-interface Sent { id: string; to_name: string; status: string; context: string | null; created_at: string }
+interface Incoming { id: string; via: string; from_name?: string; from_sig?: string; context?: string | null; match_pct?: number; shared_note?: string; created_at: string }
+interface Sent { id: string; via: string; to_name: string | null; status: string; context?: string | null; created_at: string }
 
 export default function Introductions() {
   const [incoming, setIncoming] = useState<Incoming[]>([])
@@ -46,14 +46,28 @@ export default function Introductions() {
             <p style={{ ...muted, marginBottom: 28 }}>No introductions awaiting you just now.</p>
           ) : incoming.map(i => (
             <div key={i.id} style={card}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: i.context ? 8 : 10 }}>
-                <div style={sigil}>{i.from_name.charAt(0).toUpperCase()}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2' }}>{i.from_name}</div>
-                  <div style={{ fontFamily: MONO, fontSize: 11, color: '#D4B85A', opacity: 0.85, marginTop: 2 }}>{i.from_sig}</div>
+              {i.via === 'palate_match' ? (
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 26, fontWeight: 600, color: '#D4B85A' }}>{i.match_pct}%</span>
+                    <span style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98' }}>palate match</span>
+                  </div>
+                  <div style={{ fontFamily: MONO, fontSize: 12, color: '#E5D4C2', lineHeight: 1.6, marginTop: 6 }}>
+                    A member whose palate is {i.match_pct}% yours would like to meet — you share {i.shared_note}. Accept to see who.
+                  </div>
                 </div>
-              </div>
-              {i.context && <div style={contextLine}>“{i.context}”</div>}
+              ) : (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: i.context ? 8 : 10 }}>
+                    <div style={sigil}>{(i.from_name || '?').charAt(0).toUpperCase()}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2' }}>{i.from_name}</div>
+                      <div style={{ fontFamily: MONO, fontSize: 11, color: '#D4B85A', opacity: 0.85, marginTop: 2 }}>{i.from_sig}</div>
+                    </div>
+                  </div>
+                  {i.context && <div style={contextLine}>“{i.context}”</div>}
+                </>
+              )}
               <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
                 <button onClick={() => act(i.id, 'accept')} disabled={busy === i.id} style={acceptBtn}>Accept · open a thread</button>
                 <button onClick={() => act(i.id, 'decline')} disabled={busy === i.id} style={declineBtn}>Not now</button>
@@ -67,7 +81,9 @@ export default function Introductions() {
           ) : sent.map(s => (
             <div key={s.id} style={{ ...card, opacity: 0.92 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 15, color: '#E5D4C2' }}>{s.to_name}</span>
+                <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 15, color: '#E5D4C2' }}>
+                  {s.to_name || (s.via === 'palate_match' ? 'A palate match' : 'A member')}
+                </span>
                 {s.status === 'accepted'
                   ? <Link href="/members/messages" style={connectedPill}>Connected — open messages →</Link>
                   : <span style={pendingPill}>Pending</span>}
