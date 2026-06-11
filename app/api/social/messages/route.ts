@@ -36,6 +36,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Not your thread.' }, { status: 403 })
   }
 
+  // Block severance, defence in depth: RLS already blinds a blocked direct thread's
+  // reads (S0 proven); the send route must also REFUSE writes into one.
+  if (thread.kind === 'direct') {
+    const other = (parts || []).map(p => p.participant).find(id => id !== actor.id)
+    if (other) {
+      const { data: blk } = await a.from('member_blocks').select('blocker')
+        .or(`and(blocker.eq.${actor.id},blocked.eq.${other}),and(blocker.eq.${other},blocked.eq.${actor.id})`).maybeSingle()
+      if (blk) return NextResponse.json({ error: 'This conversation is closed.' }, { status: 403 })
+    }
+  }
+
   if (!(await rateLimitOk(a, actor.id))) {
     return NextResponse.json({ error: 'You’re moving quickly — give the last note a moment to land.' }, { status: 429 })
   }
