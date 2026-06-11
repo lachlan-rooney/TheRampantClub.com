@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import type { Whisky } from '@/lib/types'
 import FlavourRadar from './FlavourRadar'
 import WhiskyNotes from './WhiskyNotes'
@@ -45,6 +46,9 @@ export default function WhiskyRow({ w }: { w: Whisky }) {
       >
         {open ? '↑ Hide flavour profile' : '↓ Flavour profile'}
       </button>
+      <Link href={`/members/whisky/${w.id}`} style={{ marginLeft: 8, fontFamily: MONO, fontSize: 10, letterSpacing: '0.06em', color: '#B2AA98', textDecoration: 'none', borderBottom: '1px solid rgba(178,170,152,0.3)' }}>
+        ↗ Bottle story
+      </Link>
       {open && <div style={{ marginTop: 14 }}><FlavourRadar whiskyId={w.id} /></div>}
       <WhiskyNotes whiskyId={w.id} />
     </div>
