@@ -10,6 +10,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 // are top-level Explore items (one tap — no more Places→Menus→4th-floor).
 const MEMBER_GROUPS: { label: string; links: { href: string; en: string; vn: string }[] }[] = [
   { label: 'Explore', links: [
+    { href: '/members/snug',          en: 'The Snug',              vn: 'Phòng Khách' },
     { href: '/members/whisky',        en: 'Whisky Library',        vn: 'Thư Viện Whisky' },
     { href: '/members/whisky/finder', en: 'Flavour Finder',        vn: 'Tìm Ly Của Bạn' },
     { href: '/members/spaces',        en: 'Our Spaces',            vn: 'Không gian' },
