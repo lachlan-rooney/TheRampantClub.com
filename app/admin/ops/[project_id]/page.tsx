@@ -63,7 +63,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
   // (which emits a 'rescheduled' event). Reload on settle to re-sync the spine.
   const onReschedule = (taskId: string, start: string | null, due: string | null) => {
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, start_date: start, due_date: due } : t))
-    wrap(() => rescheduleTask(taskId, start, due))
+    wrap(() => rescheduleTask(taskId, start, due), undefined, reloadTasks)
   }
 
   const load = useCallback(async () => {
@@ -104,6 +104,14 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
     setLoading(false)
   }, [project_id])  // eslint-disable-line react-hooks/exhaustive-deps
 
+  // A move/reschedule/assign only changes the `tasks` table — reconcile with ONE
+  // query instead of the full board reload (columns/team/links/fixtures/profile
+  // are unchanged). Keeps the post-action settle cheap so rapid moves stay snappy.
+  const reloadTasks = useCallback(async () => {
+    const { data: tk } = await supabase.from('tasks').select('*').eq('project_id', project_id).order('sort_order').order('created_at')
+    if (tk) setTasks(tk as Task[])
+  }, [project_id])  // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => { load() }, [load])
 
   // Access picker needs the auth-user roster — admin-only service route.
@@ -137,9 +145,11 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
     })
   }
 
-  const wrap = async (fn: () => Promise<unknown>, after?: () => void) => {
+  // `reload` defaults to the full board load; quick task-only ops (move, reschedule,
+  // assign) pass reloadTasks to skip the heavy refetch.
+  const wrap = async (fn: () => Promise<unknown>, after?: () => void, reload: () => Promise<void> = load) => {
     setBusy(true)
-    try { await fn(); after?.(); load() }
+    try { await fn(); after?.(); reload() }
     catch (e) { showToast((e as Error).message, 'error') }
     finally { setBusy(false) }
   }
@@ -165,7 +175,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
     // Reflect immediately in the open drawer (editing is a snapshot — without this
     // the controlled <select> snaps back to the old value until reopened).
     setEditing(e => e ? { ...e, assignee: assignee || null } : e)
-    wrap(() => assignTask(id, assignee || null))
+    wrap(() => assignTask(id, assignee || null), undefined, reloadTasks)
   }
   // Move the card to another column from the editor (works from the Gantt popup too).
   // Picking a done-column = "mark done": ops_move_task stamps completed_at+status
@@ -177,7 +187,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
     const id = editing.id
     const isDone = columns.find(c => c.id === colId)?.is_done_column === true
     setEditing(e => e ? { ...e, column_id: colId, status: isDone ? 'done' : 'open', completed_at: isDone ? (e.completed_at || new Date().toISOString()) : null } : e)
-    wrap(() => moveTask(id, colId, tasksIn(colId).length))
+    wrap(() => moveTask(id, colId, tasksIn(colId).length), undefined, reloadTasks)
   }
 
   // ── drag and drop ──
@@ -199,7 +209,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
     if (!dragged || dragged.column_id === colId) return  // same-column handled by card drop
     const pos = tasksIn(colId).length
     optimisticMove(dragged.id, colId)
-    wrap(() => moveTask(dragged.id, colId, pos))
+    wrap(() => moveTask(dragged.id, colId, pos), undefined, reloadTasks)
   }
   const onDropCard = (target: Task) => {
     if (!dragId || !canEdit || dragId === target.id) { setDragId(null); return }
@@ -212,7 +222,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
     if (dragged.column_id === target.column_id) return
     const pos = tasksIn(target.column_id).length
     optimisticMove(dragged.id, target.column_id)
-    wrap(() => moveTask(dragged.id, target.column_id, pos))
+    wrap(() => moveTask(dragged.id, target.column_id, pos), undefined, reloadTasks)
   }
 
   if (loading) return <div style={emptyText}>Loading board…</div>
