@@ -181,12 +181,25 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
   }
 
   // ── drag and drop ──
+  // Move the card in local state IMMEDIATELY (optimistic), then persist — the same
+  // pattern the Gantt + editor use. Without this the card only jumps after the
+  // server move AND a full board reload, which reads as a long lag on the floor.
+  const optimisticMove = (taskId: string, colId: string) => {
+    const isDone = columns.find(c => c.id === colId)?.is_done_column === true
+    setTasks(prev => prev.map(t => t.id === taskId ? {
+      ...t, column_id: colId,
+      status: isDone ? 'done' : 'open',
+      completed_at: isDone ? (t.completed_at || new Date().toISOString()) : null,
+    } : t))
+  }
   const onDropColumn = (colId: string) => {
     if (!dragId || !canEdit) return
     const dragged = tasks.find(t => t.id === dragId)
     setDragId(null)
     if (!dragged || dragged.column_id === colId) return  // same-column handled by card drop
-    wrap(() => moveTask(dragged.id, colId, tasksIn(colId).length))
+    const pos = tasksIn(colId).length
+    optimisticMove(dragged.id, colId)
+    wrap(() => moveTask(dragged.id, colId, pos))
   }
   const onDropCard = (target: Task) => {
     if (!dragId || !canEdit || dragId === target.id) { setDragId(null); return }
@@ -197,7 +210,9 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
     // A same-column drop is a no-op; only cross-column moves matter, and the card
     // lands in its sorted position by its due_date / completed_at.
     if (dragged.column_id === target.column_id) return
-    wrap(() => moveTask(dragged.id, target.column_id, tasksIn(target.column_id).length))
+    const pos = tasksIn(target.column_id).length
+    optimisticMove(dragged.id, target.column_id)
+    wrap(() => moveTask(dragged.id, target.column_id, pos))
   }
 
   if (loading) return <div style={emptyText}>Loading board…</div>
