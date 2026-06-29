@@ -30,7 +30,7 @@ export default function FlavourRadar({ whiskyId, size = 300 }: { whiskyId: strin
   if (Object.keys(values).length === 0) return (
     <div style={stateBox}>
       <div style={{ color: '#B2AA98' }}>Flavour profile not yet mapped</div>
-      <div style={{ fontSize: 10, opacity: 0.55, marginTop: 4 }}>No tasting notes to derive from</div>
+      <div style={{ fontSize: 10, opacity: 0.55, marginTop: 4 }}>Not yet tagged for the flavour map</div>
     </div>
   )
 
