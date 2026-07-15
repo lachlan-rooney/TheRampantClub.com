@@ -10,6 +10,9 @@ export interface DemoMember {
 
 export const DEMO_MEMBERS: DemoMember[] = [
   { member_number: 'DEMO-001', full_name: 'Shawn Smith', tier: 'Demo' },
+  // Temp roster entry so a card can be linked before he's added to the Sheet.
+  // Auto-skipped once TRC-M004 appears in the Sheet (dedup by member_number).
+  { member_number: 'TRC-M004', full_name: 'Nguyen Van Binh', tier: 'Legacy' },
 ]
 
 export const DEMO_MEMBERS_BY_NUMBER: Record<string, DemoMember> =
