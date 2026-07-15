@@ -290,35 +290,57 @@ export default function SportsPage() {
 
           <SportSelector counts={fixtureCounts} />
 
-          {/* ── Golf ── */}
+          {/* ── The Rampant Cup — hero ── */}
+          <Reveal delay={0.05}>
+            <div style={{ margin: '4px 0 44px', borderRadius: 12, overflow: 'hidden', boxShadow: '0 24px 60px rgba(5,46,32,0.22)' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/cup/poster.webp" alt="The Rampant Cup — The Bluffs, Ho Tram" style={{ display: 'block', width: '100%', height: 'auto' }} />
+            </div>
+          </Reveal>
+
+          {/* ── Golf — The Rampant Cup ── */}
           <SportSection
             id="golf"
             sportId="golf"
-            title="The Rampant Cup"
-            vn="Giải Golf Rampant"
+            title="The Inaugural Rampant Cup"
+            vn="Giải Golf Rampant · 14 & 15 August 2026"
             delay={0.1}
             copy={[
-              "The Club's annual invitational golf tournament, held each June at a course the Committee declines to name in advance. Thirty-six holes. Match play. One trophy. Incredible prizes. No mulligans.",
-              "The Rampant Cup is contested Ryder Cup–style between two teams — Team Vu and Team Lân — selected by the respective Captains, not by handicap, and certainly not by request. Team composition has, on occasion, been described as \u201Cpolitical\u201D. The Captain considers this a compliment.",
-              "Format: Four-ball, foursomes, and singles across two days. Black tie dinner on the eve. Dress code on-course: smart. Dress code at dinner: smarter.",
-              "Past venues have included The Bluffs, courses in Đà Lạt and Phan Thiết, and one memorable occasion in Hội An during which the second-day tee time was delayed by forty-five minutes due to an internal dispute over whether the team ball should be the Pro V1 or the Pro V1x. The matter remains unresolved.",
+              "A weekend of golf, dining, and charity hosted by The Rampant Club at The Grand Hồ Tràm and The Bluffs, on 14 and 15 August 2026, in aid of Operation Smile Vietnam.",
+              "Friday evening opens with a black tie charity gala at The Grand Hồ Tràm. A welcome reception, a four-course dinner with paired wines, the captains' live draft of the Cup teams, a live charity auction, and a raffle. All proceeds directed to Operation Smile Vietnam's surgical missions for Vietnamese children.",
+              "Saturday brings the Cup itself, played at The Bluffs. A Ryder Cup style match play tournament across two teams of fourteen, seven simultaneous fourball matches from a single shotgun start, on one of Southeast Asia's finest coastal links. Trophy and cheque presentation follow at a late lunch back at The Grand.",
+              "For invitations and enquiries, contact Miss Châu Lê at membership@therampantclub.com.",
             ]}
             details={[
-              { label: 'Entry', value: 'By invitation of the Captain' },
-              { label: 'Format', value: 'Ryder Cup (match play, two days)' },
-              { label: 'Handicap limit', value: '28 (the Committee is generous)' },
-              { label: 'Prize', value: 'The Rampant Cup (silver, engraved, not to leave the dining room)' },
+              { label: 'When', value: '14 & 15 August 2026' },
+              { label: 'Friday', value: 'Charity gala · The Grand Hồ Tràm · black tie' },
+              { label: 'Saturday', value: 'The Cup · The Bluffs · shotgun start 8:00am' },
+              { label: 'Format', value: 'Two teams of fourteen · seven fourball matches · Ryder Cup style' },
+              { label: 'In aid of', value: 'Operation Smile Vietnam' },
+              { label: 'Enquiries', value: 'membership@therampantclub.com' },
             ]}
           />
 
-          <div style={{ width: 140, height: 100, overflow: 'hidden', margin: '48px auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/images/PNG/%5BRAMPANT%5D_Illustration-06.png"
-              alt="Golf lion"
-              style={{ width: 300, height: 'auto', filter: 'brightness(0) opacity(0.15)' }}
-            />
-          </div>
+          {/* ── The world of the Cup ── */}
+          <Reveal delay={0.1}>
+            <div style={{ margin: '40px 0 8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
+                {[
+                  { s: 'poster-2', alt: '2026 Invitational and Charity Gala Dinner' },
+                  { s: 'lady', alt: 'The Rampant Cup' },
+                  { s: 'ferrari-sponsor', alt: 'Your seat and tee time, compliments of Ferrari' },
+                  { s: 'cao-minh', alt: 'Black tie by Cao Minh, Saigon' },
+                  { s: 'tie', alt: 'The house colours' },
+                  { s: 'august-cup', alt: 'The Rampant Cup 2026' },
+                ].map(im => (
+                  <div key={im.s} style={{ borderRadius: 8, overflow: 'hidden', boxShadow: '0 12px 30px rgba(5,46,32,0.14)' }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`/images/cup/${im.s}.webp`} alt={im.alt} style={{ display: 'block', width: '100%', height: 'auto' }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Reveal>
 
           <CaptainsColumn />
 
