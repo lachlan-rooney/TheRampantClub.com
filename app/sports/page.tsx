@@ -290,11 +290,16 @@ export default function SportsPage() {
 
           <SportSelector counts={fixtureCounts} />
 
-          {/* ── The Rampant Cup — hero ── */}
+          {/* ── The Rampant Cup — hero film ── */}
           <Reveal delay={0.05}>
             <div style={{ margin: '4px 0 44px', borderRadius: 12, overflow: 'hidden', boxShadow: '0 24px 60px rgba(5,46,32,0.22)' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/cup/poster.webp" alt="The Rampant Cup — The Bluffs, Ho Tram" style={{ display: 'block', width: '100%', height: 'auto' }} />
+              <video
+                autoPlay muted loop playsInline preload="metadata"
+                poster="/images/cup/poster.webp"
+                style={{ display: 'block', width: '100%', height: 'auto' }}
+              >
+                <source src="/images/cup/cup.mp4" type="video/mp4" />
+              </video>
             </div>
           </Reveal>
 
@@ -321,17 +326,27 @@ export default function SportsPage() {
             ]}
           />
 
+          {/* ── The Cup, in full colour ── */}
+          <Reveal delay={0.1}>
+            <div style={{ margin: '36px 0', borderRadius: 12, overflow: 'hidden', boxShadow: '0 24px 60px rgba(5,46,32,0.2)' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/cup/cup-deco.webp" alt="The Rampant Cup — The Bluffs, Hồ Tràm" style={{ display: 'block', width: '100%', height: 'auto' }} />
+            </div>
+          </Reveal>
+
           {/* ── The world of the Cup ── */}
           <Reveal delay={0.1}>
             <div style={{ margin: '40px 0 8px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
                 {[
+                  { s: 'cup-course', alt: 'The Rampant Cup at The Bluffs' },
                   { s: 'poster-2', alt: '2026 Invitational and Charity Gala Dinner' },
                   { s: 'lady', alt: 'The Rampant Cup' },
                   { s: 'ferrari-sponsor', alt: 'Your seat and tee time, compliments of Ferrari' },
                   { s: 'cao-minh', alt: 'Black tie by Cao Minh, Saigon' },
+                  { s: 'cup-flag', alt: 'The ninth at The Bluffs' },
                   { s: 'tie', alt: 'The house colours' },
-                  { s: 'august-cup', alt: 'The Rampant Cup 2026' },
+                  { s: 'cup-argyle', alt: 'The Rampant Cup 2026' },
                 ].map(im => (
                   <div key={im.s} style={{ borderRadius: 8, overflow: 'hidden', boxShadow: '0 12px 30px rgba(5,46,32,0.14)' }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
