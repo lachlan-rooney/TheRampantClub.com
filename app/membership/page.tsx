@@ -264,6 +264,22 @@ export default function MembershipPage() {
           </a>
         </div>
 
+        {/* ══════ THE CLUB, IN PICTURES ══════ */}
+        <div className="membership-section" style={{ paddingTop: 0 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+            {[
+              { s: 'whisky-lounge', alt: 'The whisky library' },
+              { s: 'gala-table', alt: 'An evening at the Club' },
+              { s: 'ao-dai', alt: 'Vietnamese soul, Scottish heritage' },
+            ].map(im => (
+              <div key={im.s} style={{ borderRadius: 8, overflow: 'hidden', boxShadow: '0 16px 40px rgba(5,46,32,0.16)' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/images/social/${im.s}.webp`} alt={im.alt} style={{ display: 'block', width: '100%', height: 'auto' }} />
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* ══════ BENEFITS ══════ */}
         <div ref={benefits.ref} className="membership-section">
           <div className="membership-diamond" />
