@@ -260,7 +260,7 @@ export default function OriginPage() {
                 {c.body.map((p, j) => <p key={j}>{p}</p>)}
               </div>
               {c.image && (
-                <div style={{ margin: '36px auto 0', maxWidth: 480, borderRadius: 8, overflow: 'hidden', boxShadow: '0 18px 44px rgba(5,46,32,0.18)' }}>
+                <div style={{ margin: '32px auto 0', width: 264, maxWidth: '78%', borderRadius: 8, overflow: 'hidden', boxShadow: '0 14px 36px rgba(5,46,32,0.16)' }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={`/images/social/${c.image}.webp`} alt="" style={{ display: 'block', width: '100%', height: 'auto' }} />
                 </div>

@@ -279,11 +279,11 @@ export default function AtlasPage() {
         </section>
 
         <section style={{ maxWidth: 860, margin: '0 auto', padding: '0 20px 4px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 10 }}>
             {['bottle-collection', 'whisky-library', 'springbank'].map(s => (
-              <div key={s} style={{ borderRadius: 8, overflow: 'hidden', boxShadow: '0 14px 34px rgba(5,46,32,0.14)' }}>
+              <div key={s} style={{ width: 176, borderRadius: 8, overflow: 'hidden', boxShadow: '0 12px 30px rgba(5,46,32,0.14)' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`/images/social/${s}.webp`} alt="" style={{ display: 'block', width: '100%', height: 'auto' }} />
+                <img src={`/images/social/${s}.webp`} alt="" style={{ display: 'block', width: '100%', height: 132, objectFit: 'cover' }} />
               </div>
             ))}
           </div>
