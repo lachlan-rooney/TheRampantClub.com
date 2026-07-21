@@ -9,6 +9,7 @@ import NavOverlay from '@/components/NavOverlay'
 const CHAPTERS = [
   {
     eyebrow: 'I.  The Lion',
+    image: 'lion-crest',
     title: 'A symbol, twice over',
     body: [
       `In Scottish heraldry, a lion rampant stands on its hind legs, forelegs raised, jaws and claws bared.
@@ -21,6 +22,7 @@ const CHAPTERS = [
   },
   {
     eyebrow: 'II.  The Building',
+    image: 'whisky-lounge',
     title: 'A house with five floors and a long memory',
     body: [
       `Number 74A/2 Hai Bà Trưng has stood for the better part of a century. It has been many things —
@@ -34,6 +36,7 @@ const CHAPTERS = [
   },
   {
     eyebrow: 'III.  The Idea',
+    image: 'gala-table',
     title: 'Sustained by its members, not for profit',
     body: [
       `The Rampant Club is a members' club in the strict sense. It exists for the people who belong to it,
@@ -256,6 +259,12 @@ export default function OriginPage() {
               <div className="org-chapter-body">
                 {c.body.map((p, j) => <p key={j}>{p}</p>)}
               </div>
+              {c.image && (
+                <div style={{ margin: '36px auto 0', maxWidth: 480, borderRadius: 8, overflow: 'hidden', boxShadow: '0 18px 44px rgba(5,46,32,0.18)' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`/images/social/${c.image}.webp`} alt="" style={{ display: 'block', width: '100%', height: 'auto' }} />
+                </div>
+              )}
             </div>
           </section>
         ))}
