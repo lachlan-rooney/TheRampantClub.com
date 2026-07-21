@@ -985,13 +985,15 @@ export default function HomePage() {
           )}
 
           {images.map((img, i) => {
-            const baseSize = isMobile ? 86 : 128
-            // Small + medium only (no giant tiles) — an organic pinned board.
-            const FEATURE = new Set(['whisky-lounge', 'porsche', 'whisky-library', 'cup-deco', 'gala-table'])
-            const size = img.id === 'lion-painting' ? baseSize * 3
-              : img.id === 'library-bar' ? baseSize * 2.5
-              : FEATURE.has(img.id) ? baseSize * 1.3
-              : baseSize * 0.82
+            const baseSize = isMobile ? 46 : 64
+            // Three modest sizes (small · medium · large) — small pinned thumbnails.
+            const LARGE = new Set(['whisky-lounge', 'porsche'])
+            const MEDIUM = new Set(['whisky-library', 'gala-table', 'saigon-street', 'cup-deco'])
+            const size = img.id === 'lion-painting' ? baseSize * 1.5      // legacy fallback ids, tamed
+              : img.id === 'library-bar' ? baseSize * 1.35
+              : LARGE.has(img.id) ? baseSize * 1.3                        // ~83px
+              : MEDIUM.has(img.id) ? baseSize * 1.0                       // ~64px
+              : baseSize * 0.72                                           // ~46px
             return (
               <DraggableImage
                 key={img.id}
