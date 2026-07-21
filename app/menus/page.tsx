@@ -186,6 +186,15 @@ export default function MenusIndex() {
           Each floor has its own offering. Cocktails by the Library Bar, bottle-share in the Rampant Room, private dining on the third, experimental work in the Source &amp; Origin Lab.
         </p>
 
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12, margin: '4px 0 36px' }}>
+          {['cocktails', 'gala-table', 'whisky-lounge'].map(s => (
+            <div key={s} style={{ borderRadius: 8, overflow: 'hidden', boxShadow: '0 14px 34px rgba(5,46,32,0.14)' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`/images/social/${s}.webp`} alt="" style={{ display: 'block', width: '100%', height: 'auto' }} />
+            </div>
+          ))}
+        </div>
+
         <div className="menus-grid">
           {MENUS.map(m => {
             const Tag = (m.available ? Link : 'div') as React.ElementType
