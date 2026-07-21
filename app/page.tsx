@@ -983,9 +983,13 @@ export default function HomePage() {
 
           {images.map((img, i) => {
             const baseSize = isMobile ? 110 : 170
+            // Two sizes for an organic, scattered board — feature shots larger,
+            // the rest smaller accents (rather than a uniform grid of one size).
+            const FEATURE = new Set(['whisky-lounge', 'porsche', 'whisky-library', 'cup-deco', 'gala-table'])
             const size = img.id === 'lion-painting' ? baseSize * 3
               : img.id === 'library-bar' ? baseSize * 2.5
-              : baseSize
+              : FEATURE.has(img.id) ? baseSize * (isMobile ? 1.45 : 1.75)
+              : baseSize * (isMobile ? 0.85 : 0.92)
             return (
               <DraggableImage
                 key={img.id}
