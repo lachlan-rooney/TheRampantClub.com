@@ -31,6 +31,7 @@ function seededRandom(seed: number) {
 interface ItemDragState {
   initialAngle: number
   marginTop: number
+  marginLeft: number
   x: number
   y: number
   lastX: number
@@ -109,8 +110,9 @@ function DraggableImage({
 }) {
   const elRef = useRef<HTMLDivElement>(null)
   const stateRef = useRef<ItemDragState>({
-    initialAngle: img.noRotate ? 0 : (seededRandom(index * 17 + 11) - 0.5) * 50,
-    marginTop: (seededRandom(index * 23 + 5) - 0.5) * 280,
+    initialAngle: img.noRotate ? 0 : (seededRandom(index * 17 + 11) - 0.5) * 64,
+    marginTop: (seededRandom(index * 23 + 5) - 0.5) * 260,
+    marginLeft: (seededRandom(index * 41 + 7) - 0.5) * 300,
     x: 0,
     y: 0,
     lastX: 0,
@@ -136,6 +138,7 @@ function DraggableImage({
     const el = elRef.current
     if (!el) return
     el.style.marginTop = `${stateRef.current.marginTop}px`
+    el.style.marginLeft = `${stateRef.current.marginLeft}px`
     applyTransform()
   }, [applyTransform])
 
@@ -982,14 +985,13 @@ export default function HomePage() {
           )}
 
           {images.map((img, i) => {
-            const baseSize = isMobile ? 110 : 170
-            // Two sizes for an organic, scattered board — feature shots larger,
-            // the rest smaller accents (rather than a uniform grid of one size).
+            const baseSize = isMobile ? 86 : 128
+            // Small + medium only (no giant tiles) — an organic pinned board.
             const FEATURE = new Set(['whisky-lounge', 'porsche', 'whisky-library', 'cup-deco', 'gala-table'])
             const size = img.id === 'lion-painting' ? baseSize * 3
               : img.id === 'library-bar' ? baseSize * 2.5
-              : FEATURE.has(img.id) ? baseSize * (isMobile ? 1.45 : 1.75)
-              : baseSize * (isMobile ? 0.85 : 0.92)
+              : FEATURE.has(img.id) ? baseSize * 1.3
+              : baseSize * 0.82
             return (
               <DraggableImage
                 key={img.id}

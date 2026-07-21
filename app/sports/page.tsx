@@ -337,7 +337,7 @@ export default function SportsPage() {
           {/* ── The world of the Cup ── */}
           <Reveal delay={0.1}>
             <div style={{ margin: '40px 0 8px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
                 {[
                   { s: 'cup-course', alt: 'The Rampant Cup at The Bluffs' },
                   { s: 'poster-2', alt: '2026 Invitational and Charity Gala Dinner' },
