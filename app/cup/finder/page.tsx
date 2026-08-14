@@ -53,6 +53,9 @@ export default function CupFinder() {
         }
         .cf-page { touch-action: manipulation; }
         .cf-page button, .cf-page a, .cf-page svg * { outline: none; }
+        /* Instant press feedback (replaces the default tap highlight we removed). */
+        .cf-page button, .cf-page a { transition: transform 0.08s ease, opacity 0.08s ease; }
+        .cf-page button:active, .cf-page a:active { transform: scale(0.96); opacity: 0.9; }
       ` }} />
       <div style={{ width: 'min(560px, 94vw)', margin: '0 auto', textAlign: 'center' }}>
 
