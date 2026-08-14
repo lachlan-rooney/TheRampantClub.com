@@ -326,6 +326,18 @@ export default function SportsPage() {
             ]}
           />
 
+          {/* ── Flavour Finder CTA ── */}
+          <Reveal delay={0.08}>
+            <a href="/cup/finder" style={{
+              display: 'block', textAlign: 'center', maxWidth: 360, margin: '8px auto 8px',
+              background: '#052E20', color: '#E5D4C2', textDecoration: 'none',
+              fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 13, letterSpacing: '0.05em',
+              padding: '16px 26px', borderRadius: 28, boxShadow: '0 16px 40px rgba(5,46,32,0.22)',
+            }}>
+              Find your dram — the Flavour Finder →
+            </a>
+          </Reveal>
+
           {/* ── The Cup, in full colour ── */}
           <Reveal delay={0.1}>
             <div style={{ margin: '36px 0', borderRadius: 12, overflow: 'hidden', boxShadow: '0 24px 60px rgba(5,46,32,0.2)' }}>
