@@ -122,6 +122,8 @@ export default function CupFinder() {
 
         {/* Header */}
         <div style={{ marginBottom: 8 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/cup/rampant-lion.webp" alt="The Rampant Club" style={{ height: 92, width: 'auto', display: 'block', margin: '0 auto 20px' }} />
           <div style={eyebrow}>The Rampant Cup</div>
           <h1 style={title}>The Whisky Finder</h1>
           <div style={sub}>Two taps. One perfect pour, poured tonight.</div>
