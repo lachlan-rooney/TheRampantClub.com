@@ -43,7 +43,17 @@ export default function CupFinder() {
   const reset = () => { setValue({}); setMatches(null) }
 
   return (
-    <div style={wrap}>
+    <div className="cf-page" style={wrap}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        .cf-page, .cf-page * {
+          -webkit-tap-highlight-color: transparent;
+          -webkit-touch-callout: none;
+          -webkit-user-select: none;
+          user-select: none;
+        }
+        .cf-page { touch-action: manipulation; }
+        .cf-page button, .cf-page a, .cf-page svg * { outline: none; }
+      ` }} />
       <div style={{ width: 'min(560px, 94vw)', margin: '0 auto', textAlign: 'center' }}>
 
         {/* eslint-disable-next-line @next/next/no-img-element */}
