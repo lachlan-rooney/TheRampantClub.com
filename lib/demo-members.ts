@@ -15,7 +15,7 @@ export const DEMO_MEMBERS: DemoMember[] = [
   { member_number: 'TRC-M004', full_name: 'Nguyen Van Binh', tier: 'Legacy' },
   { member_number: 'TRC-M005', full_name: 'Minh Tran', tier: 'Legacy' },
   { member_number: 'TRC-M006', full_name: 'Hoang Tran', tier: 'Legacy' },
-  { member_number: 'TRC-M007', full_name: 'Chau Le', tier: 'Legacy' },
+  { member_number: 'TRC-M007', full_name: 'Châu Lê', tier: 'Legacy' },
 ]
 
 export const DEMO_MEMBERS_BY_NUMBER: Record<string, DemoMember> =
