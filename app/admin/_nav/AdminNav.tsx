@@ -20,6 +20,7 @@ const GROUPS: Group[] = [
       { href: '/admin/ops', label: 'Boards' },
       { href: '/admin/ops/rota', label: 'Rota' },
       { href: '/admin/ops/reports', label: 'Reports' },
+      { href: '/admin/reports', label: 'Weekly Report' },
       { href: '/admin/ops/activity', label: 'Activity' },
     ],
   },
