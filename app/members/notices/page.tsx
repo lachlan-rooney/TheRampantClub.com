@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import type { Notice } from '@/lib/types'
 import MemberPage from '@/components/MemberPage'
-import NavOverlay from '@/components/NavOverlay'
+import EmptyState from '@/components/members/EmptyState'
 
 const CATEGORIES = ['all', 'committee', 'fixture', 'general', 'whisky'] as const
 
@@ -36,7 +36,6 @@ export default function NoticesPage() {
 
   return (
     <>
-      <NavOverlay variant="members" dark />
       <MemberPage title="The Notice Board" subtitle="Bảng Thông Báo">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 32, justifyContent: 'center' }}>
           {CATEGORIES.map(c => (
@@ -60,7 +59,13 @@ export default function NoticesPage() {
         {loading ? (
           <p style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: '#B2AA98', textAlign: 'center' }}>Loading...</p>
         ) : filtered.length === 0 ? (
-          <p style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: '#B2AA98', textAlign: 'center', fontStyle: 'italic' }}>No notices</p>
+          <EmptyState
+            glyph="◆"
+            title={filter === 'all' ? 'The board is quiet' : `Nothing under ${filter}`}
+            body={filter === 'all'
+              ? 'No notices posted just now. When the Committee has word — a fixture, a pour, a change to the house — it appears here first.'
+              : 'Nothing in this category yet. Try another, or check back soon.'}
+          />
         ) : (
           filtered.map(n => (
             <div key={n.id} style={{ padding: '24px 0', borderBottom: '1px solid rgba(229,212,194,0.1)' }}>

@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import type { Whisky } from '@/lib/types'
 import MemberPage from '@/components/MemberPage'
-import NavOverlay from '@/components/NavOverlay'
 import ForYouRecs from '@/components/whisky/ForYouRecs'
 import AlphabetShelf from '@/components/whisky/AlphabetShelf'
 import WhiskyRow from '@/components/whisky/WhiskyRow'
@@ -43,7 +42,6 @@ export default function WhiskyPage() {
 
   return (
     <>
-      <NavOverlay variant="members" dark />
       <MemberPage
         title="The Whisky Library"
         subtitle="Thư Viện Whisky"

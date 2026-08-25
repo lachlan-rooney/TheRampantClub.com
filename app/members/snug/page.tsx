@@ -207,7 +207,7 @@ function FeedCard({ it, onChanged }: { it: Item; onChanged: () => void }) {
 
       {it.photo_url && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={it.photo_url} alt="" style={{ display: 'block', maxWidth: '100%', maxHeight: 320, borderRadius: 8, marginTop: 10, objectFit: 'cover' }} />
+        <img src={it.photo_url} alt="Photograph shared in the Snug" loading="lazy" decoding="async" style={{ display: 'block', maxWidth: '100%', maxHeight: 320, borderRadius: 8, marginTop: 10, objectFit: 'cover' }} />
       )}
 
       <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>

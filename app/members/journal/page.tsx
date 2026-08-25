@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import MemberPage from '@/components/MemberPage'
-import NavOverlay from '@/components/NavOverlay'
 
 interface Entry {
   id: string
@@ -37,7 +36,6 @@ export default function MembersJournal() {
 
   return (
     <>
-      <NavOverlay variant="members" dark />
       <style>{`
         .jrnl-empty {
           font-family: 'Google Sans Code', monospace;

@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
-import NavOverlay from '@/components/NavOverlay'
 import MemberPage from '@/components/MemberPage'
 import FinderRadar from '@/components/whisky/FinderRadar'
 import RadarChart from '@/components/whisky/RadarChart'
@@ -44,7 +43,6 @@ export default function FlavourFinderPage() {
 
   return (
     <>
-      <NavOverlay variant="members" dark />
       <MemberPage title="Find Your Dram" subtitle="Tìm Ly Của Bạn" icon="/images/whisky-glass-icon-opt.png" description="Set the flavours you're in the mood for, and we'll find your match">
         <p style={prompt}>
           Tap a flavour to add it, tap again to turn it up (1–4). Set only the notes you care about —

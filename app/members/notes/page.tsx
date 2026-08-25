@@ -84,7 +84,7 @@ export default function MyNotes() {
           <div style={{ fontFamily: MONO, fontSize: 12, color: '#B2AA98', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{n.note}</div>
           {n.photo_url && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={n.photo_url} alt="" style={{ display: 'block', maxWidth: '100%', maxHeight: 260, borderRadius: 8, marginTop: 10, objectFit: 'cover' }} />
+            <img src={n.photo_url} alt="Tasting note photograph" loading="lazy" decoding="async" style={{ display: 'block', maxWidth: '100%', maxHeight: 260, borderRadius: 8, marginTop: 10, objectFit: 'cover' }} />
           )}
           {n.flavour_tags.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>

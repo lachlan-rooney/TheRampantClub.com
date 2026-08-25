@@ -42,7 +42,7 @@ export default function MyGiftsPage() {
             <div key={g.id} style={card}>
               {g.photo_url && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={g.photo_url} alt="" style={photo} />
+                <img src={g.photo_url} alt={g.description || g.occasion || 'A gift from the club'} loading="lazy" decoding="async" style={photo} />
               )}
               <div style={{ flex: 1 }}>
                 <div style={occasionText}>{OCCASION_LABEL[g.occasion] || 'A gift'}</div>
