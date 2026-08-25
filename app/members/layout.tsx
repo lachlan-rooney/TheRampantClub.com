@@ -33,7 +33,7 @@ export default function MembersLayout({ children }: { children: React.ReactNode 
 
         /* Reserve room for the mobile bottom tab bar so it never covers content. */
         @media (max-width: 768px) {
-          body { padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
+          body { padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
         }
       ` }} />
       <NavOverlay variant="members" dark />

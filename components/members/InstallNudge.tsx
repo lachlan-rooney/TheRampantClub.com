@@ -57,7 +57,7 @@ export default function InstallNudge() {
         @keyframes inudge-in { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
         .inudge {
           position: fixed; left: 12px; right: 12px; z-index: 8997;
-          bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+          bottom: calc(80px + env(safe-area-inset-bottom, 0px));
           max-width: 520px; margin: 0 auto;
           display: flex; align-items: center; gap: 12px;
           padding: 12px 14px; border-radius: 12px;
