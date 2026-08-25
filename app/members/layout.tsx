@@ -1,5 +1,6 @@
 import NavOverlay from '@/components/NavOverlay'
 import LoginTicker from '@/components/LoginTicker'
+import BottomTabBar from '@/components/members/BottomTabBar'
 
 export default function MembersLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -28,10 +29,16 @@ export default function MembersLayout({ children }: { children: React.ReactNode 
         }
         /* Kill the blue tap-flash on touch; keep taps feeling instant. */
         a, button { -webkit-tap-highlight-color: transparent; }
+
+        /* Reserve room for the mobile bottom tab bar so it never covers content. */
+        @media (max-width: 768px) {
+          body { padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
+        }
       ` }} />
       <NavOverlay variant="members" dark />
       <LoginTicker />
       {children}
+      <BottomTabBar />
     </>
   )
 }
