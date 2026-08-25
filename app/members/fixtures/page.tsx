@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import type { Fixture, FixtureSignup } from '@/lib/types'
 import MemberPage from '@/components/MemberPage'
-import NavOverlay from '@/components/NavOverlay'
 
 const SPORT_META: Record<string, { label: string; tint: string; ring: string }> = {
   golf:   { label: 'Golf',   tint: 'rgba(94,102,80,0.22)',   ring: 'rgba(94,102,80,0.55)' },
@@ -170,7 +169,6 @@ export default function FixturesPage() {
 
   return (
     <>
-      <NavOverlay variant="members" dark />
       <style>{`
         .fx-stats {
           display: flex; gap: 12px; margin-bottom: 28px; flex-wrap: wrap;

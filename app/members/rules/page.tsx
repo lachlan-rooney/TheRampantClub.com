@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import type { HouseRule } from '@/lib/types'
 import MemberPage from '@/components/MemberPage'
-import NavOverlay from '@/components/NavOverlay'
 
 export default function RulesPage() {
   const [rules, setRules] = useState<HouseRule[]>([])
@@ -19,7 +18,6 @@ export default function RulesPage() {
 
   return (
     <>
-      <NavOverlay variant="members" dark />
       <MemberPage
         title="House Rules"
         subtitle="Nội Quy Câu Lạc Bộ"

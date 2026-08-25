@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import MemberPage from '@/components/MemberPage'
-import NavOverlay from '@/components/NavOverlay'
 
 const articles = [
   {
@@ -368,7 +367,6 @@ export default function TermsPage() {
 
   return (
     <>
-      <NavOverlay variant="members" dark />
       <MemberPage title="Rules of Membership" subtitle="Quy Chế Thành Viên">
         {/* Bilingual note */}
         <p style={{
