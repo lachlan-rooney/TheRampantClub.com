@@ -1,6 +1,7 @@
 import NavOverlay from '@/components/NavOverlay'
 import LoginTicker from '@/components/LoginTicker'
 import BottomTabBar from '@/components/members/BottomTabBar'
+import InstallNudge from '@/components/members/InstallNudge'
 
 export default function MembersLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -39,6 +40,7 @@ export default function MembersLayout({ children }: { children: React.ReactNode 
       <LoginTicker />
       {children}
       <BottomTabBar />
+      <InstallNudge />
     </>
   )
 }
