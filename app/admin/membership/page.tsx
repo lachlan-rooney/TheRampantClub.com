@@ -34,6 +34,11 @@ interface PaymentRow {
   created_at: string
 }
 
+interface Summary {
+  total: number; count: number; year: string; year_total: number; year_count: number
+  by_method: Record<string, { count: number; total: number }>; voided: number
+}
+
 const fmt = (vnd: number) => new Intl.NumberFormat('en-US').format(vnd) + ' ₫'
 const vnToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 const fmtDate = (d: string | null) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
@@ -90,6 +95,12 @@ export default function AdminMembership() {
   const [history, setHistory] = useState<PaymentRow[]>([])
   const [confirmOpen, setConfirmOpen] = useState(false)
 
+  // reconciliation + void
+  const [summary, setSummary] = useState<Summary | null>(null)
+  const [voidFor, setVoidFor] = useState<PaymentRow | null>(null)
+  const [voidReason, setVoidReason] = useState('')
+  const [voidBusy, setVoidBusy] = useState(false)
+
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(null), 3000) }
 
   const loadRoster = async () => {
@@ -98,7 +109,36 @@ export default function AdminMembership() {
     setRoster(d.roster || [])
     setLoading(false)
   }
-  useEffect(() => { loadRoster() }, [])
+  const loadSummary = async () => {
+    const r = await fetch('/api/admin/membership/summary', { cache: 'no-store' })
+    if (r.ok) setSummary(await r.json())
+  }
+  useEffect(() => { loadRoster(); loadSummary() }, [])
+
+  const doResend = async (p: PaymentRow) => {
+    const r = await fetch(`/api/admin/membership/${p.id}/resend`, { method: 'POST' })
+    const d = await r.json().catch(() => ({}))
+    showToast(r.ok ? (d.member_emailed ? `Receipt ${p.receipt_no} re-sent to member + membership@` : `Receipt ${p.receipt_no} sent to membership@ (no member email on file)`) : `Resend failed: ${d.error || r.statusText}`)
+  }
+  const doVoid = async () => {
+    if (!voidFor) return
+    setVoidBusy(true)
+    const r = await fetch(`/api/admin/membership/${voidFor.id}/void`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: voidReason || null }),
+    })
+    setVoidBusy(false)
+    if (r.ok) {
+      showToast(`Voided ${voidFor.receipt_no}`)
+      const mno = historyFor
+      setVoidFor(null); setVoidReason('')
+      loadRoster(); loadSummary()
+      if (mno) openHistory(mno)
+    } else {
+      const d = await r.json().catch(() => ({}))
+      showToast(`Void failed: ${d.error || r.statusText}`)
+    }
+  }
 
   const selected = useMemo(() => roster.find(m => m.member_no === memberNo) || null, [roster, memberNo])
 
@@ -240,6 +280,24 @@ export default function AdminMembership() {
         ))}
       </div>
 
+      {/* Reconciliation */}
+      {summary && (
+        <div style={card}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
+            <div style={sectionLabel}>Reconciliation</div>
+            <a href="/api/admin/membership/export" style={btnGhost}>Download CSV</a>
+          </div>
+          <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
+            <Stat label="Collected · all time" value={fmt(summary.total)} sub={`${summary.count} receipt${summary.count === 1 ? '' : 's'}`} />
+            <Stat label={`Collected · ${summary.year}`} value={fmt(summary.year_total)} sub={`${summary.year_count} receipt${summary.year_count === 1 ? '' : 's'}`} />
+            {Object.entries(summary.by_method).map(([m, v]) => (
+              <Stat key={m} label={METHODS.find(x => x.v === m)?.l || m} value={fmt(v.total)} sub={`${v.count} payment${v.count === 1 ? '' : 's'}`} />
+            ))}
+            {summary.voided > 0 && <Stat label="Voided" value={String(summary.voided)} sub="counter-entries" />}
+          </div>
+        </div>
+      )}
+
       {/* Roster table */}
       <div style={card}>
         <div style={sectionLabel}>Members</div>
@@ -295,7 +353,12 @@ export default function AdminMembership() {
                       <td style={td}>{METHODS.find(m => m.v === p.payment_method)?.l || p.payment_method}</td>
                       <td style={td}>{p.status}</td>
                       <td style={{ ...td, textAlign: 'right' }}>
-                        {p.pdf_path ? <a style={btnGhost} href={`/api/admin/membership/receipt/${p.id}`} target="_blank" rel="noreferrer">Receipt</a> : <span style={hint}>—</span>}
+                        <span style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                          {p.pdf_path && <a style={btnGhost} href={`/api/admin/membership/receipt/${p.id}`} target="_blank" rel="noreferrer">Receipt</a>}
+                          {p.status === 'active' && p.amount_vnd > 0 && <button style={btnGhost} onClick={() => doResend(p)}>Resend</button>}
+                          {p.status === 'active' && p.amount_vnd > 0 && <button style={{ ...btnGhost, color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }} onClick={() => { setVoidFor(p); setVoidReason('') }}>Void</button>}
+                          {!p.pdf_path && !(p.status === 'active' && p.amount_vnd > 0) && <span style={hint}>—</span>}
+                        </span>
                       </td>
                     </tr>
                   ))}
@@ -328,12 +391,43 @@ export default function AdminMembership() {
           </div>
         </>
       )}
+
+      {/* Void modal */}
+      {voidFor && (
+        <>
+          <div style={backdrop} onClick={() => !voidBusy && setVoidFor(null)} />
+          <div style={{ ...modal, borderLeft: '3px solid #C27070', borderColor: '#C27070' }} role="dialog">
+            <div style={{ ...eyebrow, color: '#C27070' }}>⚠ VOID RECEIPT</div>
+            <div style={modalTitle}>Void {voidFor.receipt_no}?</div>
+            <div style={modalSub}>{fmt(voidFor.amount_vnd)} · {fmtDate(voidFor.payment_date)}</div>
+            <p style={modalBody}>
+              This marks the receipt voided and writes a mirroring adjustment counter-entry — nothing is deleted, the audit trail stays intact. The member’s membership period from this payment is voided too.
+            </p>
+            <label style={label}>Reason (optional)</label>
+            <input style={{ ...input, marginBottom: 16 }} placeholder="e.g. Payment reversed — cash not received" value={voidReason} onChange={e => setVoidReason(e.target.value)} />
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button style={btnCancel} disabled={voidBusy} onClick={() => setVoidFor(null)}>Cancel</button>
+              <button style={{ ...btnGo, background: '#C27070', color: '#fff', opacity: voidBusy ? 0.5 : 1 }} disabled={voidBusy} onClick={doVoid}>{voidBusy ? 'Voiding…' : 'Void receipt'}</button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   )
 }
 
 function cryptoUuid(): string {
   try { return crypto.randomUUID() } catch { return `${Date.now()}-${Math.round(Math.random() * 1e9)}` }
+}
+
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div>
+      <div style={{ fontFamily: MONO, fontSize: 9, color: '#7E7864', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 5 }}>{label}</div>
+      <div style={{ fontFamily: SERIF, fontSize: 22, color: '#E5D4C2' }}>{value}</div>
+      {sub && <div style={{ fontFamily: MONO, fontSize: 10, color: '#7E7864', marginTop: 3 }}>{sub}</div>}
+    </div>
+  )
 }
 
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
