@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import type { Profile } from '@/lib/types'
 import MemberPage from '@/components/MemberPage'
+import { SkeletonLines } from '@/components/members/Skeleton'
 
 function formatDate(d: string | null): string {
   if (!d) return '—'
@@ -66,6 +67,8 @@ export default function ProfilePage() {
   const [preferredDram, setPreferredDram] = useState('')
   const [prefs, setPrefs] = useState<Preferences>({})
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveErr, setSaveErr] = useState('')
   const [loading, setLoading] = useState(true)
   const [membership, setMembership] = useState<MembershipData | null>(null)
 
@@ -95,13 +98,16 @@ export default function ProfilePage() {
   }, [])
 
   const handleSave = async () => {
-    if (!profile) return
+    if (!profile || saving) return
+    setSaving(true); setSaveErr('')
     const supabase = createBrowserSupabaseClient()
-    await supabase.from('profiles').update({
+    const { error } = await supabase.from('profiles').update({
       display_name: displayName || null,
       preferred_dram: preferredDram || null,
       preferences: prefs,
     }).eq('id', profile.id)
+    setSaving(false)
+    if (error) { setSaveErr("Couldn't save — please try again."); return }
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -126,7 +132,11 @@ export default function ProfilePage() {
   return (
     <MemberPage title="My Membership" subtitle="Tư Cách Thành Viên">
       {loading ? (
-        <p style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: '#B2AA98', textAlign: 'center' }}>Loading...</p>
+        <div style={{ maxWidth: 400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <SkeletonLines lines={4} />
+          <div style={{ height: 12 }} />
+          <SkeletonLines lines={3} />
+        </div>
       ) : (
         <>
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
@@ -340,17 +350,24 @@ export default function ProfilePage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
               <button
                 onClick={handleSave}
+                disabled={saving}
                 style={{
                   background: 'rgba(229,212,194,0.1)', color: '#E5D4C2', border: 'none', borderRadius: 6,
-                  padding: '10px 24px', cursor: 'pointer',
+                  padding: '10px 24px', cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1,
                   fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12,
+                  transition: 'opacity 0.2s ease',
                 }}
               >
-                Save
+                {saving ? 'Saving…' : 'Save'}
               </button>
               {saved && (
-                <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#B2AA98' }}>
+                <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#7AB07A' }}>
                   Saved
+                </span>
+              )}
+              {saveErr && (
+                <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#C27070' }}>
+                  {saveErr}
                 </span>
               )}
             </div>

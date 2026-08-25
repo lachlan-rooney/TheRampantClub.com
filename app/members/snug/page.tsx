@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import MemberPage from '@/components/MemberPage'
 import MemberModal from '@/components/MemberModal'
+import ConfirmModal from '@/components/members/ConfirmModal'
 
 // The Snug — a salon, not a timeline. A single unhurried column of house posts,
 // member posts and snug tasting-notes (union-at-read), equal visual weight. No
@@ -155,6 +156,8 @@ function FeedCard({ it, onChanged }: { it: Item; onChanged: () => void }) {
   const [summary, setSummary] = useState(it.reaction_summary)
   const [editing, setEditing] = useState(false)
   const [editDraft, setEditDraft] = useState(it.body || '')
+  const [confirmDel, setConfirmDel] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const canManage = it.is_own && it.kind === 'member_post'
 
   const saveEdit = async () => {
@@ -162,10 +165,11 @@ function FeedCard({ it, onChanged }: { it: Item; onChanged: () => void }) {
     const r = await fetch(`/api/social/posts/${it.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ body }) })
     if (r.ok) { setEditing(false); onChanged() }
   }
-  const del = async () => {
-    if (!window.confirm('Delete this post?')) return
+  const doDelete = async () => {
+    setDeleting(true)
     const r = await fetch(`/api/social/posts/${it.id}`, { method: 'DELETE' })
-    if (r.ok) onChanged()
+    setDeleting(false)
+    if (r.ok) { setConfirmDel(false); onChanged() }
   }
 
   const toggle = async (reaction: string) => {
@@ -230,9 +234,20 @@ function FeedCard({ it, onChanged }: { it: Item; onChanged: () => void }) {
       {canManage && (
         <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
           <button onClick={() => { setEditDraft(it.body || ''); setEditing(true) }} style={manageBtn}>Edit</button>
-          <button onClick={del} style={{ ...manageBtn, color: '#C27070' }}>Delete</button>
+          <button onClick={() => setConfirmDel(true)} style={{ ...manageBtn, color: '#C27070' }}>Delete</button>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmDel}
+        onClose={() => setConfirmDel(false)}
+        onConfirm={doDelete}
+        busy={deleting}
+        danger
+        title="Delete this post?"
+        body="This removes your post from the Snug for everyone. This can't be undone."
+        confirmLabel="Delete"
+      />
 
       <MemberModal open={editing} onClose={() => setEditing(false)} title="Edit your post">
         <textarea value={editDraft} onChange={e => setEditDraft(e.target.value.slice(0, 8000))} rows={4} style={textarea} />
