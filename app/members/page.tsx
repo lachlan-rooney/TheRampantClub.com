@@ -105,13 +105,17 @@ export default function MembersPage() {
     en: string
     vn: string
     glyph: string
+    img?: string
     primary?: string
     secondary?: string
   }
 
+  const IMG = (n: string) => `/images/social/${n}.webp`
+
   const buckets: Bucket[] = [
     {
       href: '/members/events',
+      img: IMG('cocktails'),
       en: 'Events',
       vn: 'S\u1ef1 ki\u1ec7n',
       glyph: '\u25c6',
@@ -119,6 +123,7 @@ export default function MembersPage() {
     },
     {
       href: '/members/profile',
+      img: IMG('lion-crest'),
       en: 'My Membership',
       vn: 'T\u01b0 C\u00e1ch Th\u00e0nh Vi\u00ean',
       glyph: '\u2726',
@@ -127,6 +132,7 @@ export default function MembersPage() {
     },
     {
       href: '/members/fixtures',
+      img: IMG('tennis-visor'),
       en: 'Sports Fixtures',
       vn: 'L\u1ecbch Thi \u0110\u1ea5u',
       glyph: '\u29eb',
@@ -135,6 +141,7 @@ export default function MembersPage() {
     },
     {
       href: '/members/journal',
+      img: IMG('springbank'),
       en: "Cellarmaster's Journal",
       vn: 'Nhật Ký Cellarmaster',
       glyph: '✍',
@@ -142,6 +149,7 @@ export default function MembersPage() {
     },
     {
       href: '/members/spaces',
+      img: IMG('gala-table'),
       en: 'Spaces & Menus',
       vn: 'Kh\u00f4ng gian & Th\u1ef1c \u0111\u01a1n',
       glyph: '\u2b22',
@@ -149,6 +157,7 @@ export default function MembersPage() {
     },
     {
       href: '/members/rules',
+      img: IMG('lion-crest'),
       en: 'House Rules',
       vn: 'N\u1ed9i Quy',
       glyph: '\u00a7',
@@ -156,6 +165,7 @@ export default function MembersPage() {
     },
     {
       href: '/members/contact',
+      img: IMG('saigon-street'),
       en: 'Contact',
       vn: 'Li\u00ean h\u1ec7',
       glyph: '\u2709',
@@ -167,17 +177,17 @@ export default function MembersPage() {
   // Whisky Library is the prominent first Explore tile (it had none before).
   const byHref = Object.fromEntries(buckets.map(b => [b.href, b])) as Record<string, Bucket>
   const extra: Record<string, Bucket> = {
-    snug:   { href: '/members/snug',          en: 'The Snug',       vn: 'Ph\u00f2ng Kh\u00e1ch',       glyph: '\u2615', secondary: 'The club in conversation \u2014 drams, moments, a word between members' },
-    concierge: { href: '/members/concierge', en: 'The Concierge',  vn: 'Qu\u1ea3n Gia',          glyph: '\u2709', secondary: 'A line to the Club \u2014 requests, bottles, a word about the evening' },
-    whisky: { href: '/members/whisky',        en: 'Whisky Library', vn: 'Th\u01b0 Vi\u1ec7n Whisky', glyph: '\u2756', secondary: 'The shelf \u00b7 radar \u00b7 300+ drams' },
-    finder: { href: '/members/whisky/finder', en: 'Flavour Finder', vn: 'T\u00ecm Ly C\u1ee7a B\u1ea1n', glyph: '\u25ce', secondary: 'Match a dram to your taste' },
-    menus:  { href: '/menus',                 en: 'The Menus',      vn: 'Th\u1ef1c \u0110\u01a1n',     glyph: '\u2630', secondary: 'Food & drink lists' },
-    terms:  { href: '/members/terms',         en: 'Terms',          vn: '\u0110i\u1ec1u Kho\u1ea3n',   glyph: '\u00b6', secondary: 'Full terms & conditions' },
-    taste:  { href: '/members/taste',         en: 'Your Palate',    vn: 'Kh\u1ea9u V\u1ecb C\u1ee7a B\u1ea1n', glyph: '\u25c9', secondary: 'Your taste \u00b7 radar \u00b7 loved drams' },
-    journey: { href: '/members/journey',      en: 'Your Journey',   vn: 'H\u00e0nh Tr\u00ecnh', glyph: '\u2767', secondary: 'Your whisky story over time \u00b7 milestones \u00b7 palate drift' },
-    annual: { href: '/members/annual-dram',   en: 'The Annual Dram', vn: 'Ly R\u01b0\u1ee3u C\u1ee7a N\u0103m', glyph: '\u2742', secondary: 'Your year at the club \u2014 yours to share' },
-    visits: { href: '/members/visits',        en: 'Your Visits',    vn: 'Nh\u1eefng L\u1ea7n Gh\u00e9 Th\u0103m', glyph: '\u2741', secondary: 'Your record at the club' },
-    gifts:  { href: '/members/gifts',         en: 'Gifts',          vn: 'Qu\u00e0 T\u1eb7ng',          glyph: '\u2766', secondary: 'Gifts from the club' },
+    snug:   { href: '/members/snug', img: IMG('whisky-lounge'),          en: 'The Snug',       vn: 'Ph\u00f2ng Kh\u00e1ch',       glyph: '\u2615', secondary: 'The club in conversation \u2014 drams, moments, a word between members' },
+    concierge: { href: '/members/concierge', img: IMG('ao-dai'), en: 'The Concierge',  vn: 'Qu\u1ea3n Gia',          glyph: '\u2709', secondary: 'A line to the Club \u2014 requests, bottles, a word about the evening' },
+    whisky: { href: '/members/whisky', img: IMG('whisky-library'),        en: 'Whisky Library', vn: 'Th\u01b0 Vi\u1ec7n Whisky', glyph: '\u2756', secondary: 'The shelf \u00b7 radar \u00b7 300+ drams' },
+    finder: { href: '/members/whisky/finder', img: IMG('art-bottles'), en: 'Flavour Finder', vn: 'T\u00ecm Ly C\u1ee7a B\u1ea1n', glyph: '\u25ce', secondary: 'Match a dram to your taste' },
+    menus:  { href: '/menus', img: IMG('gala-table'),                 en: 'The Menus',      vn: 'Th\u1ef1c \u0110\u01a1n',     glyph: '\u2630', secondary: 'Food & drink lists' },
+    terms:  { href: '/members/terms', img: IMG('springbank'),         en: 'Terms',          vn: '\u0110i\u1ec1u Kho\u1ea3n',   glyph: '\u00b6', secondary: 'Full terms & conditions' },
+    taste:  { href: '/members/taste', img: IMG('bottle-collection'),         en: 'Your Palate',    vn: 'Kh\u1ea9u V\u1ecb C\u1ee7a B\u1ea1n', glyph: '\u25c9', secondary: 'Your taste \u00b7 radar \u00b7 loved drams' },
+    journey: { href: '/members/journey', img: IMG('saigon-street'),      en: 'Your Journey',   vn: 'H\u00e0nh Tr\u00ecnh', glyph: '\u2767', secondary: 'Your whisky story over time \u00b7 milestones \u00b7 palate drift' },
+    annual: { href: '/members/annual-dram', img: IMG('porsche'),   en: 'The Annual Dram', vn: 'Ly R\u01b0\u1ee3u C\u1ee7a N\u0103m', glyph: '\u2742', secondary: 'Your year at the club \u2014 yours to share' },
+    visits: { href: '/members/visits', img: IMG('market'),        en: 'Your Visits',    vn: 'Nh\u1eefng L\u1ea7n Gh\u00e9 Th\u0103m', glyph: '\u2741', secondary: 'Your record at the club' },
+    gifts:  { href: '/members/gifts', img: IMG('brass-pin'),         en: 'Gifts',          vn: 'Qu\u00e0 T\u1eb7ng',          glyph: '\u2766', secondary: 'Gifts from the club' },
   }
   const bucketGroups = [
     { label: 'Explore', tiles: [extra.snug, extra.whisky, extra.finder, byHref['/members/spaces'], byHref['/members/events'], byHref['/members/fixtures'], byHref['/members/journal']] },
@@ -370,6 +380,45 @@ export default function MembersPage() {
         }
         .members-bucket:hover::before { opacity: 1; }
 
+        /* Photographic layer + gradient veil that keeps text legible */
+        .members-bucket-img {
+          position: absolute;
+          inset: 0;
+          background-size: cover;
+          background-position: center;
+          opacity: 0.5;
+          transform: scale(1.04);
+          transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
+          z-index: 0;
+        }
+        .members-bucket-veil {
+          position: absolute;
+          inset: 0;
+          z-index: 1;
+          background: linear-gradient(
+            165deg,
+            rgba(5, 46, 32, 0.58) 0%,
+            rgba(5, 46, 32, 0.74) 52%,
+            rgba(5, 46, 32, 0.92) 100%
+          );
+        }
+        .members-bucket:hover .members-bucket-img {
+          transform: scale(1.1);
+          opacity: 0.66;
+        }
+        .members-bucket-body {
+          position: relative;
+          z-index: 2;
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+        .members-bucket-body .members-bucket-glyph { color: #E7C766; opacity: 0.95; text-shadow: 0 2px 10px rgba(0,0,0,0.45); }
+        .members-bucket-body .members-bucket-en { text-shadow: 0 1px 10px rgba(0,0,0,0.55); }
+        .members-bucket-body .members-bucket-vn,
+        .members-bucket-body .members-bucket-secondary { opacity: 0.82; text-shadow: 0 1px 8px rgba(0,0,0,0.5); }
+        .members-bucket-body .members-bucket-primary { text-shadow: 0 1px 10px rgba(0,0,0,0.5); }
+
         .members-bucket-glyph {
           font-family: 'Rampant Sans', serif;
           font-size: 24px;
@@ -548,12 +597,16 @@ export default function MembersPage() {
               <div className="members-bucket-grid">
                 {group.tiles.map(b => (
                   <Link key={b.href} href={b.href} className="members-bucket">
-                    <div className="members-bucket-glyph" aria-hidden>{b.glyph}</div>
-                    <div className="members-bucket-en">{b.en}</div>
-                    <div className="members-bucket-vn">{b.vn}</div>
-                    {b.primary && <div className="members-bucket-primary">{b.primary}</div>}
-                    {b.secondary && <div className="members-bucket-secondary">{b.secondary}</div>}
-                    <div className="members-bucket-arrow">&rarr;</div>
+                    {b.img && <span className="members-bucket-img" style={{ backgroundImage: `url(${b.img})` }} aria-hidden />}
+                    <span className="members-bucket-veil" aria-hidden />
+                    <div className="members-bucket-body">
+                      <div className="members-bucket-glyph" aria-hidden>{b.glyph}</div>
+                      <div className="members-bucket-en">{b.en}</div>
+                      <div className="members-bucket-vn">{b.vn}</div>
+                      {b.primary && <div className="members-bucket-primary">{b.primary}</div>}
+                      {b.secondary && <div className="members-bucket-secondary">{b.secondary}</div>}
+                      <div className="members-bucket-arrow">&rarr;</div>
+                    </div>
                   </Link>
                 ))}
               </div>

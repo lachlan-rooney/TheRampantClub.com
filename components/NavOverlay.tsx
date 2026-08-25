@@ -53,6 +53,22 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
   const [logoInverted, setLogoInverted] = useState(dark)
   const [isAdminUser, setIsAdminUser] = useState(false)
   const [conciergeUnread, setConciergeUnread] = useState(0)
+  // Collapsible member-nav groups — default collapsed so the menu opens compact
+  // (Home + category headers), each header a tap to reveal its links. Persisted.
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(MEMBER_GROUPS.map(g => [g.label, true]))
+  )
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('member_nav_collapsed')
+      if (raw) setCollapsed(c => ({ ...c, ...JSON.parse(raw) }))
+    } catch { /* ignore */ }
+  }, [])
+  const toggleGroup = (label: string) => setCollapsed(c => {
+    const next = { ...c, [label]: !c[label] }
+    try { localStorage.setItem('member_nav_collapsed', JSON.stringify(next)) } catch { /* ignore */ }
+    return next
+  })
   const navRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const logoRef = useRef<HTMLImageElement>(null)
@@ -260,6 +276,42 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
           margin-bottom: -2px;
         }
 
+        /* Collapsible group header (member nav) */
+        .nav-group-toggle {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          width: 100%;
+          background: none;
+          border: none;
+          cursor: pointer;
+          padding: 8px 0 6px;
+          margin-top: 8px;
+          border-top: 1px solid rgba(5, 46, 32, 0.10);
+          font-family: 'Google Sans Code', monospace;
+          font-size: 10px;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          color: #5E6650;
+          transition: color 0.2s ease;
+        }
+        .nav-group-toggle:first-of-type { border-top: none; }
+        .nav-group-toggle:hover { color: #052E20; }
+        .nav-group-toggle .nav-group-left { display: flex; align-items: center; gap: 8px; }
+        .nav-group-caret { font-size: 9px; opacity: 0.6; transition: transform 0.2s ease; }
+        .nav-dark .nav-group-toggle { color: #B2AA98; border-top-color: rgba(229, 212, 194, 0.12); }
+        .nav-dark .nav-group-toggle:hover { color: #E5D4C2; }
+        .nav-group-links {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          padding: 6px 0 4px 10px;
+          border-left: 1px solid rgba(5, 46, 32, 0.10);
+          margin-left: 2px;
+        }
+        .nav-dark .nav-group-links { border-left-color: rgba(229, 212, 194, 0.14); }
+
         .nav-signout {
           font-family: 'Google Sans Code', monospace;
           font-size: 10px;
@@ -389,22 +441,38 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
               <div className="nav-link-en">Home</div>
               <div className="nav-link-vn">Trang chủ</div>
             </Link>
-            {MEMBER_GROUPS.map(g => (
-              <Fragment key={g.label}>
-                <div className="nav-group-label">{g.label}</div>
-                {g.links.map(l => (
-                  <Link key={l.href} href={l.href} className="nav-link" onClick={() => setOpen(false)}>
-                    <div className="nav-link-en" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {l.en}
-                      {l.href === '/members/concierge' && conciergeUnread > 0 && (
+            {MEMBER_GROUPS.map(g => {
+              const isCollapsed = collapsed[g.label] ?? true
+              const groupHasUnread = conciergeUnread > 0 && g.links.some(l => l.href === '/members/concierge')
+              return (
+                <Fragment key={g.label}>
+                  <button type="button" className="nav-group-toggle" onClick={() => toggleGroup(g.label)} aria-expanded={!isCollapsed}>
+                    <span className="nav-group-left">
+                      {g.label}
+                      {isCollapsed && groupHasUnread && (
                         <span className="nav-badge">{conciergeUnread > 9 ? '9+' : conciergeUnread}</span>
                       )}
+                    </span>
+                    <span className="nav-group-caret">{isCollapsed ? '▸' : '▾'}</span>
+                  </button>
+                  {!isCollapsed && (
+                    <div className="nav-group-links">
+                      {g.links.map(l => (
+                        <Link key={l.href} href={l.href} className="nav-link" onClick={() => setOpen(false)}>
+                          <div className="nav-link-en" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {l.en}
+                            {l.href === '/members/concierge' && conciergeUnread > 0 && (
+                              <span className="nav-badge">{conciergeUnread > 9 ? '9+' : conciergeUnread}</span>
+                            )}
+                          </div>
+                          <div className="nav-link-vn">{l.vn}</div>
+                        </Link>
+                      ))}
                     </div>
-                    <div className="nav-link-vn">{l.vn}</div>
-                  </Link>
-                ))}
-              </Fragment>
-            ))}
+                  )}
+                </Fragment>
+              )
+            })}
             <button className="nav-link" onClick={handleSignOut} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', marginTop: 12 }}>
               <div className="nav-link-en">Sign Out</div>
               <div className="nav-link-vn">Đăng xuất</div>
