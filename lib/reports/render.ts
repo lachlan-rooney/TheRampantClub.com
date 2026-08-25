@@ -1,11 +1,13 @@
 import type { AutoData } from './gather'
 import type { Financials } from './financials'
-import { lineChart, sparkline, donut, hbars, funnel, stackedBars } from './charts'
+import { lineChart, donut, funnel, hbars, stackedBars, PALETTE } from './charts'
 
-// Shared report renderer. One section builder drives all three surfaces: the
-// hosted page (inline SVG), the email (PNG charts by URL — Gmail strips SVG),
-// and the PDF export. Dark club theme (green ground, cream text, gold accents)
-// so the chart palette is consistent everywhere.
+// Shared report renderer. Two surfaces from one section builder:
+//  • hosted page  → inline SVG charts (crisp, from charts.ts)
+//  • email        → HTML/CSS bar charts (tables + coloured divs) — 100% email-
+//    safe (Gmail strips inline SVG, and native SVG→PNG isn't reliable on the
+//    host). No image dependency, no sharp.
+// Dark club theme (green ground, cream text, gold accents).
 
 export interface ReportRow {
   id: string
@@ -21,6 +23,7 @@ export interface ReportRow {
   status: string
 }
 
+type Mode = 'svg' | 'email'
 const GREEN = '#052E20', CARD = '#0A3526', CREAM = '#E5D4C2', GOLD = '#D4B85A', MUTED = '#B2AA98', SAGE = '#7AB07A', RED = '#C27070'
 const SERIF = "Georgia, 'Times New Roman', serif"
 const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -34,15 +37,23 @@ function delta(n: number | null | undefined): string {
   return `<span style="color:${MUTED};font-size:12px"> — </span>`
 }
 
-// mode: 'svg' inlines the chart; 'png' references the pre-rendered chart_urls image
-function chart(key: string, svg: string, mode: 'svg' | 'png', urls: Record<string, string>): string {
-  if (mode === 'png') {
-    const url = urls[key]
-    return url ? `<img src="${url}" alt="" style="display:block;max-width:100%;height:auto;margin:8px 0"/>` : ''
-  }
-  return `<div style="margin:8px 0;overflow-x:auto">${svg}</div>`
+// Email-safe horizontal bar chart (table + coloured divs).
+function barsHtml(rows: { label: string; value: number; max?: number | null; suffix?: string }[]): string {
+  if (!rows.length) return ''
+  const max = Math.max(...rows.map(r => r.max || r.value), 1)
+  return `<table role="presentation" style="width:100%;border-collapse:collapse;margin:8px 0">${rows.map((r, i) => {
+    const pct = Math.max(2, Math.round(((r.value) / max) * 100))
+    return `<tr>
+      <td style="font-family:${SERIF};font-size:12px;color:${CREAM};padding:4px 8px 4px 0;white-space:nowrap;width:34%">${esc(r.label)}</td>
+      <td style="padding:4px 0;width:50%"><div style="background:rgba(229,212,194,0.10);border-radius:6px;height:12px"><div style="background:${PALETTE[i % PALETTE.length]};width:${pct}%;height:12px;border-radius:6px;font-size:0;line-height:12px">&nbsp;</div></div></td>
+      <td style="font-family:'Google Sans Code',monospace;font-size:11px;color:${MUTED};padding:4px 0 4px 8px;text-align:right;white-space:nowrap">${r.value}${r.suffix || (r.max ? ' / ' + r.max : '')}</td>
+    </tr>`
+  }).join('')}</table>`
 }
 
+function chartBlock(mode: Mode, svg: string, bars: string): string {
+  return mode === 'email' ? bars : `<div style="margin:8px 0;overflow-x:auto">${svg}</div>`
+}
 function section(title: string, sub: string, inner: string): string {
   return `<div style="margin:0 0 34px">
     <div style="font-family:'Google Sans Code',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:${GOLD};margin-bottom:3px">${esc(title)}</div>
@@ -61,31 +72,28 @@ function callout(title: string, body: string): string {
   return `<div style="border-left:3px solid ${GOLD};background:rgba(212,184,90,0.06);padding:14px 18px;border-radius:0 8px 8px 0;margin:0 0 24px"><div style="font-family:'Google Sans Code',monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:${GOLD};margin-bottom:6px">${esc(title)}</div><div style="font-size:14px;color:${CREAM};line-height:1.7">${body}</div></div>`
 }
 
-export function renderReportBody(r: ReportRow, mode: 'svg' | 'png'): string {
+export function renderReportBody(r: ReportRow, mode: Mode): string {
   const d = r.auto_data
   const n = r.narrative || {}
   const u = d.usage
-  const urls = r.chart_urls || {}
 
-  // Cover
   let html = `<div style="text-align:center;margin:0 0 30px">
     <div style="font-family:'Google Sans Code',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:${GOLD}">The Rampant Club · Weekly Report</div>
     <h1 style="font-family:${SERIF};font-size:30px;color:${CREAM};font-weight:600;margin:10px 0 4px">${esc(r.headline || n.headline || 'The Week at the Club')}</h1>
     <div style="font-size:12px;color:${MUTED}">${esc(d.period.label)}</div>
   </div>`
 
-  // Moment of the week
   if (n.moment_of_week?.trim()) html += callout('Moment of the week', esc(n.moment_of_week))
 
   // Usage
   html += section('Club Usage', 'Members through the doors this week', `
-    <table style="width:100%;border-collapse:collapse"><tr>
+    <table role="presentation" style="width:100%;border-collapse:collapse"><tr>
       ${stat(String(u.visits), 'visits', delta(d.deltas.visits))}
       ${stat(String(u.unique_members), 'unique members', delta(d.deltas.unique_members))}
       ${stat(String(u.footfall_unique), 'footfall (taps)', delta(d.deltas.footfall_unique))}
       ${stat(`${u.avg_minutes}m`, 'avg stay')}
     </tr></table>
-    ${chart('visits', lineChart(u.visits_by_day.map(x => ({ label: x.label, count: x.count })), 'dark'), mode, urls)}
+    ${chartBlock(mode, lineChart(u.visits_by_day.map(x => ({ label: x.label, count: x.count })), 'dark'), barsHtml(u.visits_by_day.map(x => ({ label: x.label, value: x.count }))))}
     ${d.member_of_week ? `<div style="font-size:13px;color:${MUTED};margin-top:6px">Member of the week: <span style="color:${CREAM}">${esc(d.member_of_week.name)}</span> — ${d.member_of_week.visits} visits.</div>` : ''}
     ${u.guest_proxy > 0 ? `<div style="font-size:12px;color:${MUTED};margin-top:4px;font-style:italic">~${u.guest_proxy} guests (estimated from party sizes)${n.guests_note ? ' · ' + esc(n.guests_note) : ''}</div>` : (n.guests_note ? `<div style="font-size:12px;color:${MUTED};margin-top:4px;font-style:italic">${esc(n.guests_note)}</div>` : '')}
   `)
@@ -95,56 +103,53 @@ export function renderReportBody(r: ReportRow, mode: 'svg' | 'png'): string {
   const calKinds = Object.entries(d.events.calendar_by_kind || {})
   if (evF.length || calKinds.length) {
     html += section('Events', 'Fixtures, tastings & house events', `
-      ${evF.length ? chart('events', hbars(evF.map(f => ({ label: `${f.title}`, value: f.signups, max: f.max })), 'dark'), mode, urls) : ''}
+      ${evF.length ? chartBlock(mode, hbars(evF.map(f => ({ label: f.title, value: f.signups, max: f.max })), 'dark'), barsHtml(evF.map(f => ({ label: f.title, value: f.signups, max: f.max })))) : ''}
       ${calKinds.length ? `<div style="font-size:13px;color:${CREAM};margin-top:8px">${calKinds.map(([k, v]) => `${v}× ${esc(k.replace(/_/g, ' '))}`).join(' · ')}</div>` : ''}
       ${!evF.length && !calKinds.length ? `<div style="font-size:13px;color:${MUTED}">A quieter week on the events calendar.</div>` : ''}
     `)
   }
 
   // Membership & pipeline
-  const tierSegs = Object.entries(d.members.by_tier || {}).map(([label, value]) => ({ label, value }))
+  const tierSegs = Object.entries(d.members.by_tier || {}).map(([label, value]) => ({ label, value: value as number }))
   html += section('Membership & Pipeline', 'New members, interviews & applications', `
-    <table style="width:100%;border-collapse:collapse"><tr>
+    <table role="presentation" style="width:100%;border-collapse:collapse"><tr>
       ${stat(String(d.members.new_total), 'new members', delta(d.deltas.new_members))}
       ${stat(String(d.pipeline.signed), 'agreements signed', delta(d.deltas.signed))}
       ${stat(String(d.pipeline.movements.stage_changed || 0), 'pipeline moves')}
       ${stat(`${d.pipeline.conversion_pct}%`, 'lead→member')}
     </tr></table>
-    ${tierSegs.length ? chart('members', donut(tierSegs, 'dark'), mode, urls) : ''}
-    ${chart('funnel', funnel(d.pipeline.funnel, 'dark'), mode, urls)}
+    ${tierSegs.length ? chartBlock(mode, donut(tierSegs, 'dark'), barsHtml(tierSegs.map(t => ({ label: t.label, value: t.value })))) : ''}
+    ${chartBlock(mode, funnel(d.pipeline.funnel, 'dark'), barsHtml(d.pipeline.funnel.map(f => ({ label: f.stage, value: f.count }))))}
     ${(d.pipeline.interviews || []).length ? `<div style="font-size:13px;color:${CREAM};margin-top:8px">Interviews this week: ${d.pipeline.interviews.map(i => `${esc(i.name)}${i.interviewer ? ` (with ${esc(i.interviewer)})` : ''}`).join(' · ')}</div>` : ''}
     ${n.interviews_commentary?.trim() ? `<div style="font-size:14px;line-height:1.7;color:${CREAM};margin-top:10px;white-space:pre-wrap">${esc(n.interviews_commentary)}</div>` : ''}
   `)
 
-  // Narrative sections
   html += narrative('Marketing Initiatives', n.marketing)
   html += narrative('Cost-Cutting', n.cost_cutting)
   html += narrative('Successes', n.successes)
 
-  // Financials (monthly)
+  // Financials
   if (r.include_financials && r.financials && 'total_revenue' in r.financials) {
     const f = r.financials as Financials
     const momGroups = f.mom.map(m => ({ label: m.label, parts: { Membership: m.membership, 'Card top-ups': m.card_topups, Gifting: m.gifting } }))
+    const momBars = f.mom.map(m => ({ label: m.label, value: Math.round((m.membership + m.card_topups) / 1_000_000), suffix: 'M' }))
     html += section(`Financials · ${esc(f.month_label)}`, 'Revenue this month, and the trend', `
-      <table style="width:100%;border-collapse:collapse"><tr>
+      <table role="presentation" style="width:100%;border-collapse:collapse"><tr>
         ${stat(vnd(f.total_revenue), 'total revenue', f.delta_pct != null ? delta(f.delta_pct) : '')}
         ${stat(vnd(f.membership.total), `membership · ${f.membership.count}`)}
         ${stat(vnd(f.card.topups), 'card top-ups')}
         ${stat(vnd(f.gifting.total), 'gifting spend')}
       </tr></table>
-      ${chart('financials', stackedBars(momGroups, ['Membership', 'Card top-ups', 'Gifting'], 'dark'), mode, urls)}
+      ${chartBlock(mode, stackedBars(momGroups, ['Membership', 'Card top-ups', 'Gifting'], 'dark'), barsHtml(momBars))}
     `)
   }
 
-  // Closing
   if (n.closing_note?.trim()) html += `<div style="font-size:14px;line-height:1.75;color:${CREAM};font-style:italic;margin-top:8px;white-space:pre-wrap">${esc(n.closing_note)}</div>`
-
   return html
 }
 
-// Full branded email (dark). Wraps the body + a button to the hosted report.
 export function renderReportEmail(r: ReportRow): string {
-  const body = renderReportBody(r, 'png')
+  const body = renderReportBody(r, 'email')
   const url = `${site()}/reports/${r.share_token}`
   return `<div style="max-width:680px;margin:0 auto;background:${GREEN};font-family:${SERIF}">
     <div style="padding:36px 40px 8px;text-align:center">

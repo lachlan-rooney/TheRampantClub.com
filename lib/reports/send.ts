@@ -1,7 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { renderReportEmail, type ReportRow } from './render'
-import { generateReportChartPngs } from './chart-png'
 import { generateReportPdf } from './pdf'
 
 // Shared report-send logic — used by the manual send route and the Monday
@@ -20,11 +19,9 @@ export async function sendReport(sb: SupabaseClient, reportId: string, opts: { d
   if (!r) return { ok: false, error: 'Not found' }
   if (!opts.dry && r.status !== 'approved') return { ok: false, error: `Can only send an approved report (this is ${r.status}).` }
 
-  // Chart PNGs → chart_urls (frozen for the email).
-  const chartUrls = await generateReportChartPngs(sb, r.id, r.auto_data, r.include_financials ? r.financials : null, r.include_financials)
-  await sb.from('weekly_reports').update({ chart_urls: chartUrls }).eq('id', r.id)
-  const report = { ...r, chart_urls: chartUrls } as ReportRow
-
+  // Charts render as email-safe HTML bars (no image dependency) + SVG on the
+  // hosted page — no rasterisation needed.
+  const report = { ...r } as ReportRow
   const html = renderReportEmail(report)
   if (opts.dry) return { ok: true, html }
 
@@ -40,7 +37,7 @@ export async function sendReport(sb: SupabaseClient, reportId: string, opts: { d
   // PDF attachment.
   let attachments: { filename: string; content: Buffer }[] = []
   try {
-    const pdf = await generateReportPdf(report, chartUrls)
+    const pdf = await generateReportPdf(report)
     attachments = [{ filename: `Rampant_Weekly_Report_${r.period_end}.pdf`, content: Buffer.from(pdf) }]
   } catch (e) { console.error('report pdf failed:', e) }
 
