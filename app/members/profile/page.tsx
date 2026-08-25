@@ -33,6 +33,32 @@ interface Preferences {
   seating?: string
 }
 
+interface MembershipPayment {
+  id: string
+  receipt_no: string
+  amount_vnd: number
+  payment_date: string
+  fee_kind: string
+  receipt_available: boolean
+}
+interface MembershipData {
+  status: { paid_through: string; is_current: boolean; in_grace: boolean; is_expired: boolean } | null
+  payments: MembershipPayment[]
+}
+
+const fmtVnd = (n: number) => new Intl.NumberFormat('en-US').format(n) + ' ₫'
+const FEE_LABEL: Record<string, string> = {
+  membership_fee: 'Annual Membership Fee', renewal: 'Renewal',
+  joining_fee: 'Joining Fee', proration: 'Pro-rata', adjustment: 'Adjustment',
+}
+function membershipBadge(s: MembershipData['status']): { label: string; color: string } {
+  if (!s) return { label: 'No membership on file', color: '#B2AA98' }
+  if (s.is_current) return { label: 'Active', color: '#7AB07A' }
+  if (s.in_grace) return { label: 'Renewal due', color: '#C49555' }
+  if (s.is_expired) return { label: 'Lapsed', color: '#B45656' }
+  return { label: 'Active', color: '#7AB07A' }
+}
+
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [email, setEmail] = useState('')
@@ -41,6 +67,7 @@ export default function ProfilePage() {
   const [prefs, setPrefs] = useState<Preferences>({})
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [membership, setMembership] = useState<MembershipData | null>(null)
 
   useEffect(() => {
     const supabase = createBrowserSupabaseClient()
@@ -58,6 +85,13 @@ export default function ProfilePage() {
           setLoading(false)
         })
     })
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/members/membership', { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setMembership(d) })
+      .catch(() => {})
   }, [])
 
   const handleSave = async () => {
@@ -125,6 +159,75 @@ export default function ProfilePage() {
                 </span>
               </div>
             ))}
+
+            {/* Membership & Receipts */}
+            {membership && (membership.status || membership.payments.length > 0) && (
+              <div style={{ marginTop: 36 }}>
+                <h3 style={{
+                  fontFamily: "'Rampant Sans', serif", fontSize: 20, fontWeight: 500,
+                  color: '#E5D4C2', textAlign: 'center', letterSpacing: '0.04em', marginBottom: 20,
+                }}>
+                  Membership &amp; Receipts
+                </h3>
+
+                {membership.status && (() => {
+                  const badge = membershipBadge(membership.status)
+                  return (
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '14px 16px', marginBottom: 16, borderRadius: 8,
+                      background: 'rgba(229,212,194,0.04)', border: '1px solid rgba(229,212,194,0.1)',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ width: 9, height: 9, borderRadius: '50%', background: badge.color, display: 'inline-block' }} />
+                        <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: '#E5D4C2' }}>{badge.label}</span>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ ...labelStyle, marginBottom: 2 }}>Paid through</div>
+                        <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: '#E5D4C2' }}>
+                          {formatDate(membership.status.paid_through)}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {membership.payments.length > 0 && (
+                  <div>
+                    <div style={{ ...labelStyle, marginBottom: 8 }}>Receipts</div>
+                    {membership.payments.map(p => (
+                      <div key={p.id} style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
+                        padding: '10px 0', borderBottom: '1px solid rgba(229,212,194,0.08)',
+                      }}>
+                        <div>
+                          <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: '#E5D4C2' }}>
+                            {fmtVnd(p.amount_vnd)}
+                          </div>
+                          <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>
+                            {FEE_LABEL[p.fee_kind] || p.fee_kind} · {formatDate(p.payment_date)} · {p.receipt_no}
+                          </div>
+                        </div>
+                        {p.receipt_available ? (
+                          <a
+                            href={`/api/members/receipts/${p.id}`} target="_blank" rel="noreferrer"
+                            style={{
+                              fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11,
+                              color: '#D4B85A', textDecoration: 'none', border: '1px solid rgba(212,184,90,0.35)',
+                              borderRadius: 6, padding: '6px 14px', whiteSpace: 'nowrap',
+                            }}
+                          >
+                            Download PDF
+                          </a>
+                        ) : (
+                          <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#7E7864' }}>Preparing…</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Editable details */}
             <div style={{ marginTop: 32 }}>

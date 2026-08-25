@@ -50,6 +50,7 @@ const GROUPS: Group[] = [
       { href: '/admin/observatory', label: 'Observatory' },
       { href: '/admin/gifts', label: 'Gifting' },
       { href: '/admin/cards', label: 'Member Cards' },
+      { href: '/admin/membership', label: 'Membership Finance' },
       { href: '/admin/agreements', label: 'Agreements' },
     ],
   },
