@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import MemberPage from '@/components/MemberPage'
+import { shareAnnualDram } from '@/lib/annual-dram-share'
 
 // The Annual Dram — the member's year at the club, as a single elegant card built
 // for sharing. TRC restraint (not a loud Wrapped). Real member-own data only;
@@ -19,7 +20,19 @@ interface Annual {
 export default function AnnualDram() {
   const [d, setD] = useState<Annual | null>(null)
   const [loading, setLoading] = useState(true)
+  const [sharing, setSharing] = useState(false)
+  const [shareMsg, setShareMsg] = useState('')
   useEffect(() => { fetch('/api/members/annual-dram').then(r => r.ok ? r.json() : null).then(j => { setD(j); setLoading(false) }) }, [])
+
+  const share = async () => {
+    if (!d || sharing) return
+    setSharing(true); setShareMsg('')
+    try {
+      const how = await shareAnnualDram(d)
+      if (how === 'downloaded') setShareMsg('Saved to your device — share it anywhere.')
+    } catch { setShareMsg("Couldn't prepare the image — try again.") }
+    setSharing(false)
+  }
 
   const title = d?.framing === 'year_end' ? `Your ${d.year}` : 'Your Year So Far'
 
@@ -74,7 +87,13 @@ export default function AnnualDram() {
             </div>
           </div>
 
-          <p style={{ ...muted, fontSize: 11, marginTop: 16 }}>Yours to screenshot and share. <Link href="/members/journey" style={link}>See the whole journey →</Link></p>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, marginTop: 20 }}>
+            <button onClick={share} disabled={sharing} style={shareBtn}>
+              {sharing ? 'Preparing…' : 'Share your dram'}
+            </button>
+            {shareMsg && <span style={{ ...muted, fontSize: 11 }}>{shareMsg}</span>}
+            <p style={{ ...muted, fontSize: 11 }}><Link href="/members/journey" style={link}>See the whole journey →</Link></p>
+          </div>
         </>
       )}
     </MemberPage>
@@ -91,6 +110,7 @@ function Stat({ value, label }: { value: string; label: string }) {
 }
 
 const muted: React.CSSProperties = { fontFamily: MONO, fontSize: 13, color: '#B2AA98', opacity: 0.8, lineHeight: 1.7, textAlign: 'center' }
+const shareBtn: React.CSSProperties = { background: '#C9A84C', color: '#052E20', border: 'none', borderRadius: 24, padding: '12px 30px', fontFamily: MONO, fontSize: 13, fontWeight: 600, letterSpacing: '0.04em', cursor: 'pointer' }
 const link: React.CSSProperties = { color: '#C9A84C', textDecoration: 'none', borderBottom: '1px solid rgba(201,168,76,0.4)' }
 const card: React.CSSProperties = { position: 'relative', borderRadius: 18, padding: '32px 28px 22px', overflow: 'hidden', background: 'linear-gradient(160deg, #0A3A28 0%, #052E20 55%, #04251A 100%)', border: '1px solid rgba(201,168,76,0.35)', boxShadow: '0 24px 60px rgba(0,0,0,0.45)' }
 const cardGrain: React.CSSProperties = { position: 'absolute', inset: 0, opacity: 0.04, pointerEvents: 'none', backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")", backgroundSize: '180px' }
