@@ -114,18 +114,21 @@ export async function POST(req: NextRequest) {
   // 3. Email the receipt (member + club). Never fail the payment on email error.
   if (process.env.RESEND_API_KEY && pdfBytes) {
     try {
-      // Resolve a member email: explicit override → members.email → profiles by member_no.
+      // Resolve the customer email. Primary source of truth = the member's
+      // ACCOUNT/LOGIN email (their linked profile → auth.users), set via the
+      // login panel on the member profile. Then a one-off override, then any
+      // members.email on file.
       let email = email_override
-      if (!email) {
-        const { data: m } = await sb.from('members').select('email').eq('member_no', member_no).maybeSingle()
-        email = m?.email || null
-      }
       if (!email) {
         const { data: p } = await sb.from('profiles').select('id').eq('member_no', member_no).maybeSingle()
         if (p?.id) {
           const { data: au } = await sb.auth.admin.getUserById(p.id)
           email = au?.user?.email || null
         }
+      }
+      if (!email) {
+        const { data: m } = await sb.from('members').select('email').eq('member_no', member_no).maybeSingle()
+        email = m?.email || null
       }
       const resend = new Resend(process.env.RESEND_API_KEY)
       const attachment = { filename: `TRC_Receipt_${row.receipt_no}.pdf`, content: Buffer.from(pdfBytes) }

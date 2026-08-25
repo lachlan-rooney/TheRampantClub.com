@@ -15,6 +15,7 @@ const fmtDate = (s: unknown) => {
   const d = new Date(s)
   return isNaN(d.getTime()) ? String(s) : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
 }
+const vnd = (n: unknown) => `${new Intl.NumberFormat('en-US').format(Number(n) || 0)} ₫`
 
 // The predicate — what the actor did. The actor name is rendered separately
 // (also from the snapshot: metadata.actor_name).
@@ -48,6 +49,11 @@ export function describeEvent(ev: ActivityEvent): string {
     case 'shift:removed':          return `removed ${str(m.member_name)} from the ${fmtDate(m.shift_date)} ${str(m.shift_name, 'shift')} shift`
     case 'task:linked':            return `linked ${q(m.linked_label)} to a card`
     case 'task:unlinked':          return `unlinked ${q(m.linked_label)} from a card`
+    // Membership finance
+    case 'membership:payment_recorded': return `recorded ${vnd(m.amount_vnd)} from ${str(m.member_name)} (${str(m.receipt_no, '—')}) — paid through ${fmtDate(m.end_date)}`
+    case 'membership:payment_voided':   return `voided ${str(m.receipt_no, 'a receipt')} for ${str(m.member_name)}${m.reason ? ` — ${m.reason}` : ''}`
+    case 'membership:activated':        return `activated ${str(m.member_name)}’s membership — through ${fmtDate(m.end_date)}`
+    case 'membership:lapsed':           return `membership for ${str(m.member_no, 'a member')} lapsed`
     default:                       return `${ev.verb} ${ev.object_type}`
   }
 }

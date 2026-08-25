@@ -40,8 +40,8 @@ export async function GET(req: NextRequest) {
 
   // 2. Latest period + latest payment per member.
   const { data: periods } = await sb.from('membership_periods')
-    .select('member_no, start_date, end_date, status').order('end_date', { ascending: false })
-  const latestPeriod = new Map<string, { start_date: string; end_date: string; status: string }>()
+    .select('member_no, start_date, end_date, status, complimentary').order('end_date', { ascending: false })
+  const latestPeriod = new Map<string, { start_date: string; end_date: string; status: string; complimentary: boolean }>()
   for (const p of periods || []) if (!latestPeriod.has(p.member_no)) latestPeriod.set(p.member_no, p)
 
   const { data: pays } = await sb.from('membership_payments')
@@ -61,10 +61,17 @@ export async function GET(req: NextRequest) {
     return dt.toISOString().slice(0, 10)
   }
 
+  // Whole-day difference between two YYYY-MM-DD dates (b - a), calendar days.
+  const daysBetween = (a: string, b: string) =>
+    Math.round((new Date(b + 'T00:00:00').getTime() - new Date(a + 'T00:00:00').getTime()) / 86400000)
+
   const roster = [...identity.values()].map(m => {
     const per = latestPeriod.get(m.member_no)
     const pay = latestPay.get(m.member_no) || null
     let state: 'paid' | 'due_soon' | 'grace' | 'overdue' | 'never' = 'never'
+    // days_to_renewal: >0 = days remaining, 0 = renews today, <0 = days overdue.
+    // Single source of truth = the membership period's end_date.
+    const daysToRenewal = per ? daysBetween(today, per.end_date) : null
     if (per) {
       if (per.end_date >= today) state = per.end_date <= addDays(today, 30) ? 'due_soon' : 'paid'
       else state = per.end_date >= addDays(today, -30) ? 'grace' : 'overdue'
@@ -74,6 +81,8 @@ export async function GET(req: NextRequest) {
       full_name: m.full_name,
       tier: m.tier,
       paid_through: per?.end_date || null,
+      days_to_renewal: daysToRenewal,
+      complimentary: !!per?.complimentary,
       state,
       last_payment: pay,
       default_fee: tier_fees[m.tier] ?? 0,

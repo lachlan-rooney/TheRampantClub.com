@@ -14,6 +14,8 @@ interface RosterRow {
   full_name: string
   tier: string
   paid_through: string | null
+  days_to_renewal: number | null
+  complimentary: boolean
   state: 'paid' | 'due_soon' | 'grace' | 'overdue' | 'never'
   last_payment: { amount_vnd: number; payment_date: string; receipt_no: string } | null
   default_fee: number
@@ -52,9 +54,20 @@ const METHODS = [
 const FEE_KINDS = [
   { v: 'membership_fee', l: 'Annual Membership Fee' },
   { v: 'renewal', l: 'Renewal' },
+  { v: 'honorary', l: 'Honorary / Complimentary — no charge' },
   { v: 'joining_fee', l: 'Joining Fee (no period)' },
   { v: 'proration', l: 'Pro-rata' },
 ]
+
+// days_to_renewal → a short, staff-facing renewal string.
+function renewsIn(row: RosterRow): { text: string; color: string } {
+  if (row.days_to_renewal == null) return { text: '—', color: '#7E7864' }
+  const d = row.days_to_renewal
+  if (d < 0) return { text: `${Math.abs(d)}d overdue`, color: '#B45656' }
+  if (d === 0) return { text: 'today', color: '#C49555' }
+  const color = d <= 30 ? '#D4B85A' : '#B2AA98'
+  return { text: `${d}d`, color }
+}
 
 export default function AdminMembership() {
   const [roster, setRoster] = useState<RosterRow[]>([])
@@ -97,26 +110,29 @@ export default function AdminMembership() {
     }
   }
 
+  const honorary = feeKind === 'honorary'
   const amountNum = Math.round(Number(amount.replace(/[^0-9]/g, '')))
-  const canSubmit = !!memberNo && Number.isFinite(amountNum) && amountNum > 0 && /^\d{4}-\d{2}-\d{2}$/.test(date)
+  const canSubmit = !!memberNo && /^\d{4}-\d{2}-\d{2}$/.test(date) && (honorary || (Number.isFinite(amountNum) && amountNum > 0))
 
   const doRecord = async () => {
     if (!selected || !canSubmit) return
     setBusy(true)
-    const r = await fetch('/api/admin/membership/payments', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        member_no: selected.member_no, member_name: selected.full_name, tier: selected.tier,
-        amount_vnd: amountNum, payment_method: method, payment_date: date,
-        fee_kind: feeKind, note: note || null, email: email || null,
-        idempotency_key: idempotencyRef.current,
-      }),
-    })
+    const endpoint = honorary ? '/api/admin/membership/activate' : '/api/admin/membership/payments'
+    const payload = honorary
+      ? { member_no: selected.member_no, member_name: selected.full_name, tier: selected.tier, start_date: date, note: note || null }
+      : {
+          member_no: selected.member_no, member_name: selected.full_name, tier: selected.tier,
+          amount_vnd: amountNum, payment_method: method, payment_date: date,
+          fee_kind: feeKind, note: note || null, email: email || null,
+          idempotency_key: idempotencyRef.current,
+        }
+    const r = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
     setBusy(false); setConfirmOpen(false)
     if (r.ok) {
       const d = await r.json()
-      showToast(`Recorded ${d.receipt_no}${d.period ? ` · paid through ${fmtDate(d.period.end)}` : ''}`)
-      // reset for the next payment
+      showToast(honorary
+        ? `Activated ${selected.full_name}${d.period ? ` — through ${fmtDate(d.period.end)}` : ''}`
+        : `Recorded ${d.receipt_no}${d.period ? ` · paid through ${fmtDate(d.period.end)}` : ''}`)
       setAmount(''); setNote(''); setEmail(''); idempotencyRef.current = cryptoUuid()
       loadRoster()
       if (historyFor === selected.member_no) openHistory(selected.member_no)
@@ -165,30 +181,38 @@ export default function AdminMembership() {
           <div>
             <label style={label}>Fee type</label>
             <select style={input} value={feeKind} onChange={e => {
-              setFeeKind(e.target.value)
-              if ((e.target.value === 'membership_fee' || e.target.value === 'renewal') && selected?.default_fee) setAmount(String(selected.default_fee))
+              const v = e.target.value
+              setFeeKind(v)
+              if (v === 'honorary') { setAmount(''); setEmail('') }
+              else if ((v === 'membership_fee' || v === 'renewal') && selected?.default_fee) setAmount(String(selected.default_fee))
             }}>
               {FEE_KINDS.map(k => <option key={k.v} value={k.v}>{k.l}</option>)}
             </select>
           </div>
           <div>
-            <label style={label}>Amount (VND){selected && selected.default_fee > 0 ? ` · tier default ${fmt(selected.default_fee)}` : ''}</label>
-            <input style={input} inputMode="numeric" placeholder="e.g. 130000000" value={amount} onChange={e => setAmount(e.target.value)} />
-            {amountNum > 0 && <div style={hint}>{fmt(amountNum)}</div>}
+            <label style={label}>Amount (VND){!honorary && selected && selected.default_fee > 0 ? ` · tier default ${fmt(selected.default_fee)}` : ''}</label>
+            {honorary ? (
+              <div style={{ ...input, opacity: 0.55, display: 'flex', alignItems: 'center' }}>No charge — complimentary</div>
+            ) : (
+              <>
+                <input style={input} inputMode="numeric" placeholder="e.g. 130000000" value={amount} onChange={e => setAmount(e.target.value)} />
+                {amountNum > 0 && <div style={hint}>{fmt(amountNum)}</div>}
+              </>
+            )}
           </div>
           <div>
             <label style={label}>Payment method</label>
-            <select style={input} value={method} onChange={e => setMethod(e.target.value)}>
+            <select style={{ ...input, opacity: honorary ? 0.5 : 1 }} value={method} disabled={honorary} onChange={e => setMethod(e.target.value)}>
               {METHODS.map(m => <option key={m.v} value={m.v}>{m.l}</option>)}
             </select>
           </div>
           <div>
-            <label style={label}>Payment date</label>
+            <label style={label}>{honorary ? 'Start date' : 'Payment date'}</label>
             <input style={input} type="date" value={date} onChange={e => setDate(e.target.value)} />
           </div>
           <div>
-            <label style={label}>Member email (optional override)</label>
-            <input style={input} placeholder="leave blank to use their on-file email" value={email} onChange={e => setEmail(e.target.value)} />
+            <label style={label}>Member email {honorary ? '(not needed)' : '(optional override)'}</label>
+            <input style={{ ...input, opacity: honorary ? 0.5 : 1 }} disabled={honorary} placeholder={honorary ? 'no email required' : 'leave blank to use their on-file email'} value={email} onChange={e => setEmail(e.target.value)} />
           </div>
         </div>
         <div style={{ marginTop: 14 }}>
@@ -197,9 +221,11 @@ export default function AdminMembership() {
         </div>
         <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
           <button style={{ ...btnPrimary, opacity: canSubmit && !busy ? 1 : 0.4 }} disabled={!canSubmit || busy} onClick={() => setConfirmOpen(true)}>
-            Record payment & issue receipt
+            {honorary ? 'Activate membership' : 'Record payment & issue receipt'}
           </button>
-          {selected && <span style={hint}>Receipt will be emailed and appear in {selected.full_name}&rsquo;s My Membership.</span>}
+          {selected && <span style={hint}>{honorary
+            ? `Starts a complimentary one-year membership — no charge, no email, no reminders.`
+            : `Receipt will be emailed and appear in ${selected.full_name}’s My Membership.`}</span>}
         </div>
       </div>
 
@@ -221,21 +247,28 @@ export default function AdminMembership() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 620 }}>
               <thead>
-                <tr>{['Member', 'Tier', 'Status', 'Paid through', 'Last payment', ''].map(h => <th key={h} style={th}>{h}</th>)}</tr>
+                <tr>{['Member', 'Tier', 'Status', 'End date', 'Renews in', 'Last payment', ''].map(h => <th key={h} style={th}>{h}</th>)}</tr>
               </thead>
               <tbody>
-                {roster.map(m => (
+                {roster.map(m => {
+                  const r = renewsIn(m)
+                  return (
                   <tr key={m.member_no} style={{ borderTop: '1px solid rgba(229,212,194,0.06)' }}>
                     <td style={td}><span style={{ color: '#E5D4C2' }}>{m.full_name}</span><span style={{ color: '#7E7864' }}> · {m.member_no}</span></td>
                     <td style={td}>{m.tier || '—'}</td>
-                    <td style={td}><span style={{ color: STATE_META[m.state].color }}>● {STATE_META[m.state].label}</span></td>
-                    <td style={td}>{fmtDate(m.paid_through)}</td>
-                    <td style={td}>{m.last_payment ? `${fmt(m.last_payment.amount_vnd)} · ${fmtDate(m.last_payment.payment_date)}` : '—'}</td>
+                    <td style={td}>
+                      <span style={{ color: STATE_META[m.state].color }}>● {STATE_META[m.state].label}</span>
+                      {m.complimentary && <span style={honTag}>Honorary</span>}
+                    </td>
+                    <td style={{ ...td, color: '#E5D4C2' }}>{fmtDate(m.paid_through)}</td>
+                    <td style={{ ...td, color: r.color }}>{m.complimentary ? `${r.text} · manual` : r.text}</td>
+                    <td style={td}>{m.last_payment ? `${fmt(m.last_payment.amount_vnd)} · ${fmtDate(m.last_payment.payment_date)}` : (m.complimentary ? 'complimentary' : '—')}</td>
                     <td style={{ ...td, textAlign: 'right' }}>
                       <button style={btnGhost} onClick={() => openHistory(m.member_no)}>History</button>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -280,16 +313,17 @@ export default function AdminMembership() {
         <>
           <div style={backdrop} onClick={() => !busy && setConfirmOpen(false)} />
           <div style={modal} role="dialog">
-            <div style={{ ...eyebrow, color: '#D4B85A' }}>CONFIRM PAYMENT</div>
-            <div style={modalTitle}>Record {fmt(amountNum)}?</div>
+            <div style={{ ...eyebrow, color: '#D4B85A' }}>{honorary ? 'CONFIRM ACTIVATION' : 'CONFIRM PAYMENT'}</div>
+            <div style={modalTitle}>{honorary ? `Activate ${selected.full_name}?` : `Record ${fmt(amountNum)}?`}</div>
             <div style={modalSub}>{selected.full_name} ({selected.member_no}) · {FEE_KINDS.find(k => k.v === feeKind)?.l} · {fmtDate(date)}</div>
             <p style={modalBody}>
-              This mints an official receipt, {feeKind === 'joining_fee' ? 'records the payment' : 'starts a one-year membership period'}, emails the member,
-              and posts to the activity log. Corrections are done by voiding, never editing.
+              {honorary
+                ? 'Starts a complimentary one-year membership from this date — no charge, no receipt, no email, and no renewal reminders. You’ll renew manually if appropriate.'
+                : <>This mints an official receipt, {feeKind === 'joining_fee' ? 'records the payment' : 'starts a one-year membership period'}, emails the member, and posts to the activity log. Corrections are done by voiding, never editing.</>}
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button style={btnCancel} disabled={busy} onClick={() => setConfirmOpen(false)}>Cancel</button>
-              <button style={{ ...btnGo, opacity: busy ? 0.5 : 1 }} disabled={busy} onClick={doRecord}>{busy ? 'Recording…' : 'Record payment'}</button>
+              <button style={{ ...btnGo, opacity: busy ? 0.5 : 1 }} disabled={busy} onClick={doRecord}>{busy ? (honorary ? 'Activating…' : 'Recording…') : (honorary ? 'Activate' : 'Record payment')}</button>
             </div>
           </div>
         </>
@@ -316,6 +350,7 @@ const btnGhost: React.CSSProperties = { background: 'transparent', color: '#B2AA
 const pill: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: 'rgba(229,212,194,0.04)', border: '1px solid rgba(229,212,194,0.08)', borderRadius: 20, fontFamily: MONO, fontSize: 11, color: '#B2AA98' }
 const th: React.CSSProperties = { textAlign: 'left', fontFamily: MONO, fontSize: 9, color: '#7E7864', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '6px 10px' }
 const td: React.CSSProperties = { fontFamily: MONO, fontSize: 11, color: '#B2AA98', padding: '9px 10px' }
+const honTag: React.CSSProperties = { marginLeft: 8, fontFamily: MONO, fontSize: 8, color: '#C9A84C', border: '1px solid rgba(201,168,76,0.4)', borderRadius: 10, padding: '1px 7px', letterSpacing: '0.06em', textTransform: 'uppercase' }
 const toastStyle: React.CSSProperties = { position: 'fixed', bottom: 32, right: 32, background: '#28483C', color: '#E5D4C2', padding: '12px 18px', borderRadius: 6, fontFamily: MONO, fontSize: 11, boxShadow: '0 8px 24px rgba(0,0,0,0.3)', maxWidth: 360, zIndex: 400 }
 const backdrop: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300 }
 const modal: React.CSSProperties = { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 'min(520px, 92vw)', background: '#0A3526', border: '1px solid rgba(212,184,90,0.45)', borderLeft: '3px solid #D4B85A', borderRadius: 8, padding: '22px 24px', zIndex: 301, boxShadow: '0 20px 60px rgba(0,0,0,0.55)' }
