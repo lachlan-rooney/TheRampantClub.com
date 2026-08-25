@@ -20,6 +20,14 @@
     {
       "path": "/api/cron/membership-renewals",
       "schedule": "10 17 * * *"
+    },
+    {
+      "path": "/api/cron/report-draft",
+      "schedule": "0 0 * * 1"
+    },
+    {
+      "path": "/api/cron/report-send",
+      "schedule": "0 10 * * 1"
     }
   ]
 }

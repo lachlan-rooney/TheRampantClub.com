@@ -42,6 +42,7 @@ export function describeNotification(n: OpsNotification): string {
       return `Your membership renews in ${d} days (${fmtDate(m.paid_through)})`
     }
     case 'membership_lapsed':      return 'Your membership has lapsed — we’d love to have you back'
+    case 'report_awaiting_approval': return `This week’s report is ready for your approval${m.period_end ? ` (${fmtDate(m.period_end)})` : ''}`
     default:               return n.type.replace(/_/g, ' ')
   }
 }

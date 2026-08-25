@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
+import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 
 // Admin → Weekly Report editor. Narrative + financials toggle + refresh data +
 // preview. Approval/send controls arrive with Phase B.
@@ -35,14 +36,32 @@ export default function ReportEditor() {
   const [fin, setFin] = useState(false)
   const [saving, setSaving] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [acting, setActing] = useState(false)
   const [msg, setMsg] = useState('')
+  const [activity, setActivity] = useState<{ id: string; event_type: string; created_at: string; note: string | null }[]>([])
 
   const load = async () => {
     const res = await fetch(`/api/admin/reports/${id}`, { cache: 'no-store' })
     const d = await res.json()
     if (d.report) { setR(d.report); setNar(d.report.narrative || {}); setFin(d.report.include_financials) }
+    const sb = createBrowserSupabaseClient()
+    const { data: a } = await sb.from('report_activity').select('id, event_type, created_at, note').eq('report_id', id).order('created_at', { ascending: false })
+    setActivity(a || [])
   }
   useEffect(() => { load() }, [id])
+
+  const act = async (path: string, ok: string) => {
+    setActing(true); setMsg('')
+    const r = await fetch(`/api/admin/reports/${id}/${path}`, { method: 'POST' })
+    setActing(false)
+    if (r.ok) { setMsg(ok); load() } else { const d = await r.json().catch(() => ({})); setMsg(d.error || 'Failed') }
+    setTimeout(() => setMsg(''), 3500)
+  }
+  const previewEmail = async () => {
+    const r = await fetch(`/api/admin/reports/${id}/send?dry=1`, { method: 'POST' })
+    const html = await r.text()
+    const w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close() }
+  }
 
   const locked = r ? (r.status !== 'draft' && r.status !== 'pending_approval') : true
 
@@ -99,14 +118,34 @@ export default function ReportEditor() {
             <div style={{ fontFamily: MONO, fontSize: 9, color: '#7E7864', marginTop: 3 }} dangerouslySetInnerHTML={{ __html: f.hint }} />
           </div>
         ))}
-        {!locked && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 6 }}>
-            <button onClick={save} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.5 : 1 }}>{saving ? 'Saving…' : 'Save'}</button>
-            {msg && <span style={{ fontFamily: MONO, fontSize: 11, color: msg.includes('fail') ? '#C27070' : '#7AB07A' }}>{msg}</span>}
-            <span style={{ fontFamily: MONO, fontSize: 10, color: '#7E7864' }}>Submit / approve / send controls arrive with the approval phase.</span>
-          </div>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+          {!locked && <button onClick={save} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.5 : 1 }}>{saving ? 'Saving…' : 'Save'}</button>}
+          <button onClick={previewEmail} style={btnGhost}>Preview email ↗</button>
+          {r.status === 'draft' && <button onClick={() => act('submit', 'Submitted for approval')} disabled={acting} style={btnGold}>Submit for approval →</button>}
+          {r.status === 'pending_approval' && <>
+            <button onClick={() => act('approve', 'Approved')} disabled={acting} style={btnGold}>Approve</button>
+            <button onClick={() => act('revert', 'Reverted to draft')} disabled={acting} style={btnGhost}>Revert to draft</button>
+          </>}
+          {r.status === 'approved' && <button onClick={() => act('send', 'Sent')} disabled={acting} style={btnGold}>Send now →</button>}
+          {r.status === 'sent' && <span style={{ fontFamily: MONO, fontSize: 11, color: '#5B8FA8' }}>✓ Sent</span>}
+          {msg && <span style={{ fontFamily: MONO, fontSize: 11, color: /fail|only|can't|can.t|no permitted/i.test(msg) ? '#C27070' : '#7AB07A' }}>{msg}</span>}
+        </div>
+        <div style={{ fontFamily: MONO, fontSize: 10, color: '#C49555', marginTop: 10 }}>
+          Beta: sends go to you only — Shawn is not emailed until you go live.
+        </div>
       </div>
+
+      {activity.length > 0 && (
+        <div style={{ ...card, marginTop: 16 }}>
+          <div style={{ fontFamily: MONO, fontSize: 10, color: '#D4B85A', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>History</div>
+          {activity.map(a => (
+            <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '6px 0', borderTop: '1px solid rgba(229,212,194,0.06)', fontFamily: MONO, fontSize: 10, color: '#B2AA98' }}>
+              <span>{a.event_type.replace(/_/g, ' ')}{a.note ? ` — ${a.note}` : ''}</span>
+              <span style={{ color: '#7E7864', whiteSpace: 'nowrap' }}>{new Date(a.created_at).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </>
   )
 }
@@ -116,3 +155,4 @@ const label: React.CSSProperties = { fontFamily: MONO, fontSize: 10, color: '#B2
 const input: React.CSSProperties = { background: 'rgba(229,212,194,0.06)', color: '#E5D4C2', border: '1px solid rgba(229,212,194,0.12)', borderRadius: 8, padding: '9px 12px', fontFamily: MONO, fontSize: 12, width: '100%', boxSizing: 'border-box', outline: 'none', lineHeight: 1.6 }
 const btnPrimary: React.CSSProperties = { background: '#5E6650', color: '#E5D4C2', border: 'none', borderRadius: 8, padding: '10px 22px', cursor: 'pointer', fontFamily: MONO, fontSize: 12 }
 const btnGhost: React.CSSProperties = { background: 'transparent', color: '#B2AA98', border: '1px solid rgba(229,212,194,0.18)', borderRadius: 6, padding: '7px 14px', cursor: 'pointer', fontFamily: MONO, fontSize: 11, textDecoration: 'none' }
+const btnGold: React.CSSProperties = { background: '#D4B85A', color: '#052E20', border: 'none', borderRadius: 8, padding: '9px 20px', cursor: 'pointer', fontFamily: MONO, fontSize: 12, fontWeight: 600 }
