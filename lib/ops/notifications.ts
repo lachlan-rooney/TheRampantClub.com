@@ -34,6 +34,14 @@ export function describeNotification(n: OpsNotification): string {
     case 'concierge_reply':       return 'The Club replied'
     case 'introduction_request':  return 'A member would like an introduction'
     case 'introduction_accepted': return 'An introduction was accepted'
+    // Membership renewals
+    case 'membership_renewal_due': {
+      const d = Number(m.days_left)
+      if (d === 0) return 'Your membership renews today'
+      if (d === 1) return 'Your membership renews tomorrow'
+      return `Your membership renews in ${d} days (${fmtDate(m.paid_through)})`
+    }
+    case 'membership_lapsed':      return 'Your membership has lapsed — we’d love to have you back'
     default:               return n.type.replace(/_/g, ' ')
   }
 }
