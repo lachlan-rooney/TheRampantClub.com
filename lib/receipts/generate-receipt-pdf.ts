@@ -166,7 +166,7 @@ export async function generateReceiptPdf(f: ReceiptFields, opts?: { crestUrl?: s
   page.drawText(pdfSafe(`${f.receiptNo} · ${f.integrityHash.slice(0, 16).toUpperCase()}`), {
     x: 50, y: y - 12, size: 8, font, color: LIGHT,
   })
-  page.drawText('This receipt is digitally recorded in the Club register.', { x: 50, y: y - 24, size: 7, font: fontItalic, color: LIGHT })
+  page.drawText('Verify this receipt at therampantclub.com/verify', { x: 50, y: y - 24, size: 7, font: fontItalic, color: LIGHT })
 
   // Footer
   page.drawRectangle({ x: 0, y: 0, width: 595, height: 46, color: GREEN })
