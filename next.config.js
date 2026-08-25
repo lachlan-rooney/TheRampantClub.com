@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // sharp ships a native binary that Next's file tracing can miss in the
+  // serverless bundle — mark it external so it's loaded from node_modules at
+  // runtime (fixes SVG→PNG chart rasterisation for the weekly report email).
+  serverExternalPackages: ['sharp'],
+
   images: {
     remotePatterns: [
       {
