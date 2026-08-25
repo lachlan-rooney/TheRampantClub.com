@@ -1,4 +1,3 @@
-import sharp from 'sharp'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { lineChart, hbars, donut, funnel, stackedBars } from './charts'
 import type { AutoData } from './gather'
@@ -29,6 +28,15 @@ export function reportChartSvgs(auto: AutoData, financials: Financials | null, i
 export async function generateReportChartPngs(
   sb: SupabaseClient, reportId: string, auto: AutoData, financials: Financials | null, includeFinancials: boolean,
 ): Promise<Record<string, string>> {
+  // Dynamic, guarded import: if sharp's native binary is unavailable (e.g. a
+  // platform mismatch on the host), the whole route must NOT crash — we return
+  // no PNGs and the email falls back to numbers + the hosted link (SVG charts).
+  let sharp: typeof import('sharp')
+  try {
+    const m = await import('sharp')
+    sharp = ((m as unknown as { default?: typeof import('sharp') }).default ?? (m as unknown as typeof import('sharp')))
+  } catch (e) { console.error('sharp unavailable — charts will fall back:', e); return {} }
+
   const svgs = reportChartSvgs(auto, financials, includeFinancials)
   const urls: Record<string, string> = {}
   for (const [key, svg] of Object.entries(svgs)) {
