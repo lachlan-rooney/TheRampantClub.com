@@ -23,7 +23,7 @@
     },
     {
       "path": "/api/cron/report-draft",
-      "schedule": "0 0 * * 1"
+      "schedule": "0 2 * * 1"
     },
     {
       "path": "/api/cron/report-send",

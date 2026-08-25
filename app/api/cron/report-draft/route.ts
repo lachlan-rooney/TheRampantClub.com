@@ -5,7 +5,8 @@ import { gatherWeek } from '@/lib/reports/gather'
 import { lastCompleteWeekVN, isMonthEndWeek } from '@/lib/reports/week'
 
 // Auto-draft the weekly report for the last complete Mon–Sun VN week.
-// Scheduled Monday ~07:00 VN (0 0 * * 1 UTC). Idempotent — skips if it exists.
+// Scheduled Monday 09:00 VN (0 2 * * 1 UTC) — ready for the owner's morning
+// review; the send-to-Shawn cron runs 17:00 VN. Idempotent — skips if it exists.
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
