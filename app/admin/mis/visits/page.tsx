@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import Link from 'next/link'
+import { useLang } from '@/lib/admin-lang'
 
 // Global visits log. Read-only browse across all members. Logging new visits
 // happens on the member profile (you almost always know who you're logging
@@ -26,6 +27,7 @@ interface MemberLite {
 }
 
 export default function MisVisitsLog() {
+  const { t } = useLang()
   const [visits, setVisits] = useState<Visit[]>([])
   const [members, setMembers] = useState<MemberLite[]>([])
   const [memberFilter, setMemberFilter] = useState('All members')
@@ -58,47 +60,45 @@ export default function MisVisitsLog() {
 
   return (
     <>
-      <Link href="/admin/mis" style={backLink}>← Members</Link>
+      <Link href="/admin/mis" style={backLink}>← {t('Members', 'Thành viên')}</Link>
 
       <div style={headerRow}>
-        <h1 style={pageTitle}>Visits log</h1>
-        <div style={countText}>{visits.length} {visits.length === 1 ? 'visit' : 'visits'}</div>
+        <h1 style={pageTitle}>{t('Visits log', 'Nhật ký lượt ghé')}</h1>
+        <div style={countText}>{visits.length} {visits.length === 1 ? t('visit', 'lượt ghé') : t('visits', 'lượt ghé')}</div>
       </div>
 
       <p style={lede}>
-        Every visit logged here feeds the <b style={{ color: '#E5D4C2' }}>M</b> term inside PS(t). A
-        member with two or more visits per month starts to amplify their preference scores; a
-        lapsed member floors to 0.8. New visits are logged from each member&rsquo;s profile.
+        {t('Every visit logged here feeds the ', 'Mỗi lượt ghé được ghi ở đây đều nuôi số hạng ')}<b style={{ color: '#E5D4C2' }}>M</b>{t(' term inside PS(t). A member with two or more visits per month starts to amplify their preference scores; a lapsed member floors to 0.8. New visits are logged from each member’s profile.', ' trong PS(t). Một thành viên ghé từ hai lần trở lên mỗi tháng sẽ bắt đầu khuếch đại điểm sở thích của họ; một thành viên đã ngưng lui tới sẽ hạ sàn về 0,8. Lượt ghé mới được ghi từ hồ sơ của từng thành viên.')}
       </p>
 
       <div style={filterRow}>
         <select value={memberFilter} onChange={e => setMemberFilter(e.target.value)} style={inputStyle}>
-          <option value="All members">All members</option>
+          <option value="All members">{t('All members', 'Tất cả thành viên')}</option>
           {members.map(m => (
             <option key={m.member_no} value={m.member_no}>{m.member_no} · {m.full_name}</option>
           ))}
         </select>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#B2AA98', letterSpacing: '0.04em', cursor: 'pointer', userSelect: 'none' }}>
           <input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)} />
-          Show archived
+          {t('Show archived', 'Hiện mục đã lưu trữ')}
         </label>
       </div>
 
       <div>
         <div style={listHeader}>
-          <span style={{ ...colDate, color: '#B2AA98' }}>Date</span>
-          <span style={{ ...colMember, color: '#B2AA98' }}>Member</span>
-          <span style={{ ...colSpace, color: '#B2AA98' }}>Space</span>
-          <span style={{ ...colMeta, color: '#B2AA98' }}>Duration</span>
-          <span style={{ ...colMeta, color: '#B2AA98' }}>State</span>
-          <span style={{ ...colLogged, color: '#B2AA98' }}>Logged by</span>
+          <span style={{ ...colDate, color: '#B2AA98' }}>{t('Date', 'Ngày')}</span>
+          <span style={{ ...colMember, color: '#B2AA98' }}>{t('Member', 'Thành viên')}</span>
+          <span style={{ ...colSpace, color: '#B2AA98' }}>{t('Space', 'Không gian')}</span>
+          <span style={{ ...colMeta, color: '#B2AA98' }}>{t('Duration', 'Thời lượng')}</span>
+          <span style={{ ...colMeta, color: '#B2AA98' }}>{t('State', 'Trạng thái')}</span>
+          <span style={{ ...colLogged, color: '#B2AA98' }}>{t('Logged by', 'Người ghi')}</span>
         </div>
 
         {loading ? (
-          <div style={emptyText}>Loading…</div>
+          <div style={emptyText}>{t('Loading…', 'Đang tải…')}</div>
         ) : visits.length === 0 ? (
           <div style={emptyText}>
-            No visits logged yet. Open a member profile and click &ldquo;Log a visit&rdquo; to begin.
+            {t('No visits logged yet. Open a member profile and click “Log a visit” to begin.', 'Chưa có lượt ghé nào được ghi. Mở hồ sơ một thành viên và nhấn “Ghi một lượt ghé” để bắt đầu.')}
           </div>
         ) : visits.map(v => {
           const isArchived = !!v.archived_at
@@ -113,12 +113,12 @@ export default function MisVisitsLog() {
                   <span style={{ marginLeft: 8, color: '#B2AA98', fontFamily: "'Google Sans Code', monospace", fontSize: 10, opacity: 0.7 }}>{v.member_no}</span>
                   {isArchived && (
                     <span style={{ marginLeft: 8, fontFamily: "'Google Sans Code', monospace", fontSize: 9, color: '#B2AA98', background: 'rgba(229,212,194,0.10)', padding: '1px 6px', borderRadius: 3, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                      archived
+                      {t('archived', 'đã lưu trữ')}
                     </span>
                   )}
                 </span>
                 <span style={colSpace}>{v.space || '—'}</span>
-                <span style={colMeta}>{v.duration_min != null ? `${v.duration_min} min` : '—'}</span>
+                <span style={colMeta}>{v.duration_min != null ? `${v.duration_min} ${t('min', 'phút')}` : '—'}</span>
                 <span style={colMeta}>{v.emotional_state || '—'}</span>
                 <span style={colLogged}>{v.logged_by || '—'}</span>
               </div>

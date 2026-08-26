@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ConfirmModal } from '@/components/admin/dialogs'
 import Link from 'next/link'
+import { useLang } from '@/lib/admin-lang'
 
 // Admin / Intelligence / Members / Preference Candidates
 //
@@ -50,6 +51,7 @@ const ALLOWED_LAMBDA     = [0.000, 0.002, 0.005, 0.010, 0.020]
 const ALLOWED_FREQUENCY  = [0.8, 1.0, 1.2, 1.5]
 
 export default function CandidatesPage() {
+  const { t } = useLang()
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [statusFilter, setStatusFilter] = useState<'pending' | 'accepted' | 'rejected' | 'all'>('pending')
   const [loading, setLoading] = useState(true)
@@ -108,7 +110,7 @@ export default function CandidatesPage() {
         }),
       })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'Accept failed')
+      if (!r.ok) throw new Error(j.error || t('Accept failed', 'Chấp nhận thất bại'))
       load()
     } catch (e) {
       setError((e as Error).message)
@@ -129,7 +131,7 @@ export default function CandidatesPage() {
         body: JSON.stringify({ action: 'reject' }),
       })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'Reject failed')
+      if (!r.ok) throw new Error(j.error || t('Reject failed', 'Từ chối thất bại'))
       setConfirmReject(null)
       load()
     } catch (e) {
@@ -148,10 +150,10 @@ export default function CandidatesPage() {
   return (
     <>
       <div style={{ marginBottom: 24 }}>
-        <div style={eyebrow}>Intelligence · Members</div>
-        <h1 style={pageTitle}>Preference Candidates</h1>
+        <div style={eyebrow}>{t('Intelligence · Members', 'Thông tin · Hội viên')}</div>
+        <h1 style={pageTitle}>{t('Preference Candidates', 'Ứng viên sở thích')}</h1>
         <p style={lede}>
-          New preferences proposed by the on-visit observation log and AI shift-narrative extractions. Accepting one fires write contract B — the preference lands in <code>preferences</code> with <code>validation_count=1</code> and the candidate row marks the moment it was promoted.
+          {t('New preferences proposed by the on-visit observation log and AI shift-narrative extractions. Accepting one fires write contract B — the preference lands in ', 'Các sở thích mới được đề xuất từ nhật ký quan sát tại chỗ và trích xuất tường thuật ca làm của AI. Chấp nhận một mục sẽ kích hoạt hợp đồng ghi B — sở thích được ghi vào ')}<code>preferences</code>{t(' with ', ' với ')}<code>validation_count=1</code>{t(' and the candidate row marks the moment it was promoted.', ' và dòng ứng viên đánh dấu thời điểm nó được thăng cấp.')}
         </p>
       </div>
 
@@ -173,12 +175,12 @@ export default function CandidatesPage() {
       {error && <div style={errorBox}>{error}</div>}
 
       {loading ? (
-        <div style={emptyText}>Loading…</div>
+        <div style={emptyText}>{t('Loading…', 'Đang tải…')}</div>
       ) : candidates.length === 0 ? (
         <div style={emptyBlock}>
           {statusFilter === 'pending'
-            ? 'Queue is clear — no candidates awaiting review.'
-            : `No ${statusFilter === 'all' ? '' : statusFilter + ' '}candidates yet.`}
+            ? t('Queue is clear — no candidates awaiting review.', 'Hàng đợi đã trống — không có ứng viên nào chờ duyệt.')
+            : `${t('No', 'Chưa có')} ${statusFilter === 'all' ? '' : statusFilter + ' '}${t('candidates yet.', 'ứng viên nào.')}`}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -195,7 +197,7 @@ export default function CandidatesPage() {
                       <span style={sourcePill}>{c.source}</span>
                       {c.suggested_category && <span style={categoryPill}>{c.suggested_category}</span>}
                     </div>
-                    <div style={candidateName}>{c.suggested_name || '(unnamed)'}</div>
+                    <div style={candidateName}>{c.suggested_name || t('(unnamed)', '(chưa đặt tên)')}</div>
                     <div style={candidateMember}>
                       {c.member ? (
                         <Link href={`/admin/mis/${c.member_no}`} style={memberLink}>
@@ -210,13 +212,13 @@ export default function CandidatesPage() {
                   {c.status === 'pending' && (
                     <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', flexShrink: 0 }}>
                       <button onClick={() => setExpandedId(isExpanded ? null : c.candidate_id)} style={btnGhost}>
-                        {isExpanded ? 'Hide' : 'Review'}
+                        {isExpanded ? t('Hide', 'Ẩn') : t('Review', 'Duyệt')}
                       </button>
                       <button onClick={() => accept(c)} disabled={busyId === c.candidate_id} style={btnAccept}>
-                        {busyId === c.candidate_id ? '…' : 'Accept'}
+                        {busyId === c.candidate_id ? '…' : t('Accept', 'Chấp nhận')}
                       </button>
                       <button onClick={() => setConfirmReject(c)} disabled={busyId === c.candidate_id} style={btnReject}>
-                        Reject
+                        {t('Reject', 'Từ chối')}
                       </button>
                     </div>
                   )}
@@ -225,10 +227,10 @@ export default function CandidatesPage() {
                 {/* Source observation snippet */}
                 {c.source_observation && (
                   <div style={obsBlock}>
-                    <div style={obsLabel}>From observation:</div>
+                    <div style={obsLabel}>{t('From observation:', 'Từ quan sát:')}</div>
                     <div style={obsText}>&ldquo;{c.source_observation.observation}&rdquo;</div>
                     <Link href={`/admin/mis/visits/${c.source_observation.visit_id}`} style={obsLink}>
-                      open visit →
+                      {t('open visit →', 'mở lượt ghé →')}
                     </Link>
                   </div>
                 )}
@@ -238,7 +240,7 @@ export default function CandidatesPage() {
                   <div style={editBlock}>
                     <div style={editGrid}>
                       <div>
-                        <div style={editLabel}>Preference name *</div>
+                        <div style={editLabel}>{t('Preference name *', 'Tên sở thích *')}</div>
                         <input
                           value={d.suggested_name || ''}
                           onChange={e => setDraft(c.candidate_id, { suggested_name: e.target.value })}
@@ -246,7 +248,7 @@ export default function CandidatesPage() {
                         />
                       </div>
                       <div>
-                        <div style={editLabel}>Category *</div>
+                        <div style={editLabel}>{t('Category *', 'Danh mục *')}</div>
                         <select
                           value={d.suggested_category || ''}
                           onChange={e => setDraft(c.candidate_id, { suggested_category: e.target.value })}
@@ -258,7 +260,7 @@ export default function CandidatesPage() {
                       </div>
                     </div>
                     <div style={{ marginTop: 10 }}>
-                      <div style={editLabel}>Detail</div>
+                      <div style={editLabel}>{t('Detail', 'Chi tiết')}</div>
                       <textarea
                         value={d.detail || ''}
                         onChange={e => setDraft(c.candidate_id, { detail: e.target.value })}
@@ -268,7 +270,7 @@ export default function CandidatesPage() {
                     </div>
                     <div style={{ ...editGrid, marginTop: 10 }}>
                       <div>
-                        <div style={editLabel}>S₀ (1–5)</div>
+                        <div style={editLabel}>{t('S₀ (1–5)', 'S₀ (1–5)')}</div>
                         <select
                           value={d.suggested_s0 ?? 3}
                           onChange={e => setDraft(c.candidate_id, { suggested_s0: Number(e.target.value) })}
@@ -278,7 +280,7 @@ export default function CandidatesPage() {
                         </select>
                       </div>
                       <div>
-                        <div style={editLabel}>Confidence</div>
+                        <div style={editLabel}>{t('Confidence', 'Độ tin cậy')}</div>
                         <select
                           value={d.suggested_confidence ?? 0.75}
                           onChange={e => setDraft(c.candidate_id, { suggested_confidence: Number(e.target.value) })}
@@ -288,7 +290,7 @@ export default function CandidatesPage() {
                         </select>
                       </div>
                       <div>
-                        <div style={editLabel}>λ (decay)</div>
+                        <div style={editLabel}>{t('λ (decay)', 'λ (suy giảm)')}</div>
                         <select
                           value={d.suggested_lambda ?? 0.010}
                           onChange={e => setDraft(c.candidate_id, { suggested_lambda: Number(e.target.value) })}
@@ -298,7 +300,7 @@ export default function CandidatesPage() {
                         </select>
                       </div>
                       <div>
-                        <div style={editLabel}>Frequency</div>
+                        <div style={editLabel}>{t('Frequency', 'Tần suất')}</div>
                         <select
                           value={d.suggested_frequency ?? 1.0}
                           onChange={e => setDraft(c.candidate_id, { suggested_frequency: Number(e.target.value) })}
@@ -315,9 +317,9 @@ export default function CandidatesPage() {
                 {c.status !== 'pending' && (
                   <div style={resolvedMeta}>
                     {c.status === 'accepted' && c.promoted_preference_id && (
-                      <span>→ preference {c.promoted_preference_id.slice(0, 8)}</span>
+                      <span>→ {t('preference', 'sở thích')} {c.promoted_preference_id.slice(0, 8)}</span>
                     )}
-                    {c.reviewed_by && <span>· by {c.reviewed_by}</span>}
+                    {c.reviewed_by && <span>· {t('by', 'bởi')} {c.reviewed_by}</span>}
                     {c.reviewed_at && <span>· {new Date(c.reviewed_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}
                   </div>
                 )}
@@ -329,12 +331,12 @@ export default function CandidatesPage() {
 
       <ConfirmModal
         open={!!confirmReject}
-        eyebrow="⚠ REJECT CANDIDATE"
-        title="Reject this candidate?"
-        subject={confirmReject?.suggested_name || (confirmReject ? 'Unnamed candidate' : undefined)}
-        body="No preference will be created. The candidate is marked rejected and drops out of the pending queue. The record is kept for the audit trail."
-        confirmLabel="Reject candidate"
-        busyLabel="Rejecting…"
+        eyebrow={t('⚠ REJECT CANDIDATE', '⚠ TỪ CHỐI ỨNG VIÊN')}
+        title={t('Reject this candidate?', 'Từ chối ứng viên này?')}
+        subject={confirmReject?.suggested_name || (confirmReject ? t('Unnamed candidate', 'Ứng viên chưa đặt tên') : undefined)}
+        body={t('No preference will be created. The candidate is marked rejected and drops out of the pending queue. The record is kept for the audit trail.', 'Sẽ không có sở thích nào được tạo. Ứng viên được đánh dấu từ chối và rời khỏi hàng đợi chờ duyệt. Bản ghi vẫn được giữ lại cho lịch sử kiểm tra.')}
+        confirmLabel={t('Reject candidate', 'Từ chối ứng viên')}
+        busyLabel={t('Rejecting…', 'Đang từ chối…')}
         busy={!!confirmReject && busyId === confirmReject.candidate_id}
         onCancel={closeReject}
         onConfirm={runReject}

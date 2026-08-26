@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import { useLang } from '@/lib/admin-lang'
 
 // Admin / Floor / Harmony Log
 //
@@ -27,6 +28,7 @@ interface HarmonyLog {
 }
 
 export default function HarmonyListPage() {
+  const { t } = useLang()
   const [logs, setLogs] = useState<HarmonyLog[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -43,21 +45,21 @@ export default function HarmonyListPage() {
     <>
       <div style={headerRow}>
         <div>
-          <div style={eyebrow}>Floor</div>
-          <h1 style={pageTitle}>Harmony Log</h1>
+          <div style={eyebrow}>{t('Floor', 'Sàn')}</div>
+          <h1 style={pageTitle}>{t('Harmony Log', 'Nhật ký ca trực')}</h1>
           <p style={lede}>
-            End-of-shift narrative — type what happened tonight in plain English. Claude reads it back and proposes structured updates (visits, preferences, bottle pours, walk-ins, complaints, card charges). Tick the ones you want, accept, done. Everything fans out to the right place.
+            {t('End-of-shift narrative — type what happened tonight in plain English. Claude reads it back and proposes structured updates (visits, preferences, bottle pours, walk-ins, complaints, card charges). Tick the ones you want, accept, done. Everything fans out to the right place.', 'Tường thuật cuối ca — ghi lại những gì đã diễn ra tối nay bằng lời văn thường. Claude đọc lại và đề xuất các cập nhật có cấu trúc (lượt ghé, sở thích, rượu đã rót, khách vãng lai, phàn nàn, ghi nợ thẻ). Chọn những mục bạn muốn, chấp nhận, xong. Mọi thứ được phân bổ đến đúng nơi.')}
           </p>
         </div>
-        <Link href="/admin/harmony/new" style={btnPrimary}>＋ New shift</Link>
+        <Link href="/admin/harmony/new" style={btnPrimary}>{t('＋ New shift', '＋ Ca mới')}</Link>
       </div>
 
       {loading ? (
-        <div style={emptyText}>Loading…</div>
+        <div style={emptyText}>{t('Loading…', 'Đang tải…')}</div>
       ) : logs.length === 0 ? (
         <div style={emptyBlock}>
-          <div style={{ marginBottom: 16 }}>No shifts logged yet.</div>
-          <Link href="/admin/harmony/new" style={btnPrimary}>＋ Log tonight</Link>
+          <div style={{ marginBottom: 16 }}>{t('No shifts logged yet.', 'Chưa có ca nào được ghi nhận.')}</div>
+          <Link href="/admin/harmony/new" style={btnPrimary}>{t('＋ Log tonight', '＋ Ghi ca tối nay')}</Link>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -79,7 +81,7 @@ export default function HarmonyListPage() {
                     <span style={shiftLabel}>{l.shift_label}</span>
                     <span style={statusPill(l.status)}>{l.status}</span>
                     {l.attendee_count != null && (
-                      <span style={metaPill}>{l.attendee_count} in</span>
+                      <span style={metaPill}>{l.attendee_count} {t('in', 'khách')}</span>
                     )}
                     {l.weather && <span style={metaPill}>{l.weather.slice(0, 24)}</span>}
                     <span style={{ marginLeft: 'auto', fontFamily: "'Google Sans Code', monospace", fontSize: 9, color: '#7E7864' }}>
@@ -89,24 +91,24 @@ export default function HarmonyListPage() {
                   <div style={narrativePreview}>{preview}</div>
                   <div style={statsRow}>
                     <span style={statlet}>
-                      <strong style={{ color: '#E5D4C2' }}>{l.extraction_count}</strong> extracted
+                      <strong style={{ color: '#E5D4C2' }}>{l.extraction_count}</strong> {t('extracted', 'đã trích xuất')}
                     </span>
                     {l.applied_count > 0 && (
                       <span style={statlet}>
-                        <strong style={{ color: '#7AB07A' }}>{l.applied_count}</strong> applied
+                        <strong style={{ color: '#7AB07A' }}>{l.applied_count}</strong> {t('applied', 'đã áp dụng')}
                       </span>
                     )}
                     {totalReviewable > 0 && (
                       <span style={statlet}>
-                        <strong style={{ color: '#D4B85A' }}>{totalReviewable}</strong> awaiting review
+                        <strong style={{ color: '#D4B85A' }}>{totalReviewable}</strong> {t('awaiting review', 'đang chờ duyệt')}
                       </span>
                     )}
                     {l.rejected_count > 0 && (
                       <span style={statlet}>
-                        <strong style={{ color: '#7E7864' }}>{l.rejected_count}</strong> rejected
+                        <strong style={{ color: '#7E7864' }}>{l.rejected_count}</strong> {t('rejected', 'đã từ chối')}
                       </span>
                     )}
-                    <span style={{ ...statlet, marginLeft: 'auto' }}>{l.submitted_by || 'unknown'}</span>
+                    <span style={{ ...statlet, marginLeft: 'auto' }}>{l.submitted_by || t('unknown', 'không rõ')}</span>
                   </div>
                 </div>
               </Link>

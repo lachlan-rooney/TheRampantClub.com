@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { vnDateString } from '@/lib/datetime'
+import { useLang } from '@/lib/admin-lang'
 
 const FAMILY = "'Google Sans Code', monospace"
 
@@ -17,6 +18,7 @@ const fmtHours = (h: number) => (Number(h) % 1 === 0 ? String(Number(h)) : Numbe
 const monthStart = () => vnDateString().slice(0, 8) + '01'
 
 export default function OpsReports() {
+  const { t } = useLang()
   const supabase = createBrowserSupabaseClient()
 
   const [from, setFrom] = useState(monthStart())
@@ -84,30 +86,29 @@ export default function OpsReports() {
 
   return (
     <>
-      <div style={eyebrow}>Operations Hub</div>
-      <h1 style={pageTitle}>Reports</h1>
+      <div style={eyebrow}>{t('Operations Hub', 'Trung tâm Vận hành')}</div>
+      <h1 style={pageTitle}>{t('Reports', 'Báo cáo')}</h1>
       <p style={lede}>
-        Rota hours and board progress over a date range. Hours are counted only for shifts with both
-        a start and end time — untimed shifts are listed separately and never given an assumed length.
+        {t('Rota hours and board progress over a date range. Hours are counted only for shifts with both a start and end time — untimed shifts are listed separately and never given an assumed length.', 'Số giờ trực ca và tiến độ bảng công việc trong một khoảng ngày. Giờ chỉ được tính cho các ca có cả giờ bắt đầu và giờ kết thúc — các ca không ghi giờ được liệt kê riêng và không bao giờ được gán một độ dài giả định.')}
       </p>
 
       {/* date range */}
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', margin: '20px 0 28px', flexWrap: 'wrap' }}>
-        <label style={fieldLabel}>From<input type="date" value={from} max={to} onChange={e => setFrom(e.target.value)} style={dateInput} /></label>
-        <label style={fieldLabel}>To<input type="date" value={to} min={from} max={vnDateString()} onChange={e => setTo(e.target.value)} style={dateInput} /></label>
-        <button onClick={() => { setFrom(monthStart()); setTo(vnDateString()) }} style={tinyBtn}>This month</button>
-        <button onClick={exportRotaCsv} disabled={rota.length === 0} style={{ ...btnPrimary, marginLeft: 'auto', opacity: rota.length === 0 ? 0.5 : 1 }}>↓ Export rota CSV</button>
+        <label style={fieldLabel}>{t('From', 'Từ')}<input type="date" value={from} max={to} onChange={e => setFrom(e.target.value)} style={dateInput} /></label>
+        <label style={fieldLabel}>{t('To', 'Đến')}<input type="date" value={to} min={from} max={vnDateString()} onChange={e => setTo(e.target.value)} style={dateInput} /></label>
+        <button onClick={() => { setFrom(monthStart()); setTo(vnDateString()) }} style={tinyBtn}>{t('This month', 'Tháng này')}</button>
+        <button onClick={exportRotaCsv} disabled={rota.length === 0} style={{ ...btnPrimary, marginLeft: 'auto', opacity: rota.length === 0 ? 0.5 : 1 }}>{t('↓ Export rota CSV', '↓ Xuất CSV lịch trực')}</button>
       </div>
 
       {/* ── rota: per person ── */}
-      <h2 style={sectionTitle}>Rota — by person</h2>
-      {loading ? <div style={emptyText}>Loading…</div> : rota.length === 0 ? (
-        <div style={emptyText}>No shifts in this range.</div>
+      <h2 style={sectionTitle}>{t('Rota — by person', 'Lịch trực — theo người')}</h2>
+      {loading ? <div style={emptyText}>{t('Loading…', 'Đang tải…')}</div> : rota.length === 0 ? (
+        <div style={emptyText}>{t('No shifts in this range.', 'Không có ca nào trong khoảng này.')}</div>
       ) : (
         <table style={table}>
           <thead><tr>
-            <th style={th}>Person</th><th style={thNum}>Timed shifts</th><th style={thNum}>Timed hours</th>
-            <th style={thNum}>Untimed shifts</th><th style={thNum}>Total shifts</th>
+            <th style={th}>{t('Person', 'Người')}</th><th style={thNum}>{t('Timed shifts', 'Ca có giờ')}</th><th style={thNum}>{t('Timed hours', 'Số giờ có tính')}</th>
+            <th style={thNum}>{t('Untimed shifts', 'Ca không giờ')}</th><th style={thNum}>{t('Total shifts', 'Tổng số ca')}</th>
           </tr></thead>
           <tbody>
             {rota.map(r => (
@@ -120,7 +121,7 @@ export default function OpsReports() {
               </tr>
             ))}
             <tr>
-              <td style={{ ...td, fontWeight: 700 }}>Total</td>
+              <td style={{ ...td, fontWeight: 700 }}>{t('Total', 'Tổng')}</td>
               <td style={tdNum}>{rota.reduce((s, r) => s + r.timed_shifts, 0)}</td>
               <td style={{ ...tdNum, fontWeight: 700 }}>{fmtHours(totalTimedHours)}</td>
               <td style={tdNum}>{totalUntimed || '—'}</td>
@@ -131,24 +132,24 @@ export default function OpsReports() {
       )}
       {totalUntimed > 0 && (
         <p style={{ ...metaText, marginTop: 8, color: '#C9A24B' }}>
-          ⚠ {totalUntimed} untimed shift{totalUntimed === 1 ? '' : 's'} in this range — counted, but not included in the hours total (no start/end time recorded).
+          ⚠ {totalUntimed} {t('untimed shift', 'ca không ghi giờ')}{totalUntimed === 1 ? '' : 's'} {t('in this range — counted, but not included in the hours total (no start/end time recorded).', 'trong khoảng này — được tính, nhưng không cộng vào tổng số giờ (không ghi giờ bắt đầu/kết thúc).')}
         </p>
       )}
 
       {/* ── rota: by type ── */}
       {byType.length > 0 && (
         <>
-          <h2 style={sectionTitle}>Rota — by shift type</h2>
+          <h2 style={sectionTitle}>{t('Rota — by shift type', 'Lịch trực — theo loại ca')}</h2>
           <table style={table}>
-            <thead><tr><th style={th}>Shift</th><th style={thNum}>Timed shifts</th><th style={thNum}>Timed hours</th><th style={thNum}>Untimed</th><th style={thNum}>Total</th></tr></thead>
+            <thead><tr><th style={th}>{t('Shift', 'Ca')}</th><th style={thNum}>{t('Timed shifts', 'Ca có giờ')}</th><th style={thNum}>{t('Timed hours', 'Số giờ có tính')}</th><th style={thNum}>{t('Untimed', 'Không giờ')}</th><th style={thNum}>{t('Total', 'Tổng')}</th></tr></thead>
             <tbody>
-              {byType.map(t => (
-                <tr key={t.shift_name}>
-                  <td style={td}>{t.shift_name}</td>
-                  <td style={tdNum}>{t.timed_shifts}</td>
-                  <td style={tdNum}>{fmtHours(t.timed_hours)}</td>
-                  <td style={{ ...tdNum, color: t.untimed_shifts > 0 ? '#C9A24B' : '#7E7864' }}>{t.untimed_shifts || '—'}</td>
-                  <td style={tdNum}>{t.total_shifts}</td>
+              {byType.map(t2 => (
+                <tr key={t2.shift_name}>
+                  <td style={td}>{t2.shift_name}</td>
+                  <td style={tdNum}>{t2.timed_shifts}</td>
+                  <td style={tdNum}>{fmtHours(t2.timed_hours)}</td>
+                  <td style={{ ...tdNum, color: t2.untimed_shifts > 0 ? '#C9A24B' : '#7E7864' }}>{t2.untimed_shifts || '—'}</td>
+                  <td style={tdNum}>{t2.total_shifts}</td>
                 </tr>
               ))}
             </tbody>
@@ -157,9 +158,9 @@ export default function OpsReports() {
       )}
 
       {/* ── coverage / gaps ── */}
-      <h2 style={sectionTitle}>Coverage</h2>
+      <h2 style={sectionTitle}>{t('Coverage', 'Phủ ca')}</h2>
       {days.length === 0 ? (
-        <div style={emptyText}>Pick a valid date range (max ~3 months).</div>
+        <div style={emptyText}>{t('Pick a valid date range (max ~3 months).', 'Chọn một khoảng ngày hợp lệ (tối đa ~3 tháng).')}</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 360, overflowY: 'auto' }}>
           {days.map(day => {
@@ -170,13 +171,13 @@ export default function OpsReports() {
                   {new Date(day + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
                 </span>
                 {list.length === 0 ? (
-                  <span style={{ ...metaText, color: '#C27070', fontStyle: 'italic' }}>— no cover —</span>
+                  <span style={{ ...metaText, color: '#C27070', fontStyle: 'italic' }}>{t('— no cover —', '— không có ai trực —')}</span>
                 ) : (
                   <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {list.map((c, i) => (
                       <span key={i} style={coverChip}>
                         {c.shift_name}: {c.team_members?.display_name || '?'}
-                        {c.start_time && c.end_time ? ` (${c.start_time.slice(0, 5)}–${c.end_time.slice(0, 5)})` : ' (untimed)'}
+                        {c.start_time && c.end_time ? ` (${c.start_time.slice(0, 5)}–${c.end_time.slice(0, 5)})` : t(' (untimed)', ' (không ghi giờ)')}
                       </span>
                     ))}
                   </span>
@@ -188,16 +189,16 @@ export default function OpsReports() {
       )}
 
       {/* ── all boards progress ── */}
-      <h2 style={{ ...sectionTitle, marginTop: 44 }}>Board progress</h2>
+      <h2 style={{ ...sectionTitle, marginTop: 44 }}>{t('Board progress', 'Tiến độ bảng')}</h2>
       {boards.length === 0 ? (
-        <div style={emptyText}>No active boards.</div>
+        <div style={emptyText}>{t('No active boards.', 'Không có bảng đang hoạt động.')}</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {boards.map(b => (
             <Link key={b.project_id} href={`/admin/ops/${b.project_id}/progress`} style={boardRow}>
               <span style={{ flex: 1, color: '#E5D4C2', fontFamily: FAMILY, fontSize: 13 }}>{b.name}</span>
-              <span style={metaText}>{b.done}/{b.total} done</span>
-              {b.overdue > 0 && <span style={{ ...metaText, color: '#C27070' }}>{b.overdue} overdue</span>}
+              <span style={metaText}>{b.done}/{b.total} {t('done', 'hoàn thành')}</span>
+              {b.overdue > 0 && <span style={{ ...metaText, color: '#C27070' }}>{b.overdue} {t('overdue', 'quá hạn')}</span>}
               <span style={{ ...progressBarOuter }}><span style={{ ...progressBarInner, width: `${b.pct_complete}%` }} /></span>
               <span style={{ ...metaText, minWidth: 42, textAlign: 'right', color: '#D4B85A' }}>{fmtHours(b.pct_complete)}%</span>
             </Link>

@@ -2,6 +2,7 @@
 
 import { use, useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useLang } from '@/lib/admin-lang'
 
 // Admin / Intelligence / Members / Visit detail
 //
@@ -108,6 +109,7 @@ const CATEGORIES = [
 const SPACES = ['Lounge', 'Library', 'Bar', 'Cigar Terrace', 'Private Dining']
 
 export default function VisitDetail({ params }: { params: Promise<{ id: string }> }) {
+  const { t } = useLang()
   const { id } = use(params)
   const [visit, setVisit] = useState<Visit | null>(null)
   const [member, setMember] = useState<MemberLite | null>(null)
@@ -157,7 +159,7 @@ export default function VisitDetail({ params }: { params: Promise<{ id: string }
     }
   }, [id, load])
 
-  if (loading || !visit || !member) return <div style={emptyText}>Loading visit…</div>
+  if (loading || !visit || !member) return <div style={emptyText}>{t('Loading visit…', 'Đang tải lượt ghé…')}</div>
 
   return (
     <>
@@ -166,15 +168,15 @@ export default function VisitDetail({ params }: { params: Promise<{ id: string }
       {/* Hero */}
       <div style={hero}>
         <div>
-          <div style={eyebrow}>Visit · {visit.visit_date}</div>
+          <div style={eyebrow}>{t('Visit', 'Lượt ghé')} · {visit.visit_date}</div>
           <h1 style={pageTitle}>{member.full_name}</h1>
           <div style={subtle}>
             {member.member_no} · {member.tier}
             {stats?.days_since_visit != null && (
-              <> · last visit {stats.days_since_visit}d ago</>
+              <> · {t('last visit', 'lần ghé gần nhất')} {stats.days_since_visit}d {t('ago', 'trước')}</>
             )}
             {stats?.total_visits != null && stats.total_visits > 0 && (
-              <> · {stats.total_visits} visits on file</>
+              <> · {stats.total_visits} {t('visits on file', 'lượt ghé đã lưu')}</>
             )}
           </div>
         </div>
@@ -184,30 +186,30 @@ export default function VisitDetail({ params }: { params: Promise<{ id: string }
       {error && <div style={errorBox}>{error}</div>}
 
       {/* OVERTURE */}
-      <Section title="Overture · pre-arrival brief" subtitle="Assembled live from current data — never cached.">
+      <Section title={t('Overture · pre-arrival brief', 'Overture · tóm tắt trước khi đến')} subtitle={t('Assembled live from current data — never cached.', 'Tổng hợp trực tiếp từ dữ liệu hiện tại — không bao giờ lưu đệm.')}>
         {brief && <OvertureBody brief={brief} stats={stats} />}
         {visit.phase === 'overture' && (
           <div style={actionRow}>
             <button onClick={() => patch({ phase: 'accord' })} disabled={busy} style={btnPrimary}>
-              {busy ? 'Saving…' : '◆ Begin Accord →'}
+              {busy ? t('Saving…', 'Đang lưu…') : t('◆ Begin Accord →', '◆ Bắt đầu Accord →')}
             </button>
             <span style={hintText}>
-              Stamps arrival time and opens the live observation log.
+              {t('Stamps arrival time and opens the live observation log.', 'Ghi lại giờ đến và mở nhật ký quan sát trực tiếp.')}
             </span>
           </div>
         )}
         {visit.phase !== 'overture' && (
           <div style={timestampStrip}>
-            {visit.arrival_time && <span style={timestamp}>Arrived {fmtTime(visit.arrival_time)}</span>}
-            {visit.departure_time && <span style={timestamp}>Departed {fmtTime(visit.departure_time)}</span>}
-            {visit.continuum_completed_at && <span style={timestamp}>Closed {fmtTime(visit.continuum_completed_at)}</span>}
+            {visit.arrival_time && <span style={timestamp}>{t('Arrived', 'Đã đến')} {fmtTime(visit.arrival_time)}</span>}
+            {visit.departure_time && <span style={timestamp}>{t('Departed', 'Đã rời')} {fmtTime(visit.departure_time)}</span>}
+            {visit.continuum_completed_at && <span style={timestamp}>{t('Closed', 'Đã đóng')} {fmtTime(visit.continuum_completed_at)}</span>}
           </div>
         )}
       </Section>
 
       {/* ACCORD */}
       {(visit.phase === 'accord' || visit.phase === 'continuum' || visit.phase === 'closed') && (
-        <Section title="Accord · Accord Notes" subtitle="Observations captured during the visit. Each can confirm a preference, contradict it, or spawn a new candidate.">
+        <Section title={t('Accord · Accord Notes', 'Accord · Ghi chú Accord')} subtitle={t('Observations captured during the visit. Each can confirm a preference, contradict it, or spawn a new candidate.', 'Các quan sát ghi nhận trong lượt ghé. Mỗi quan sát có thể xác nhận một sở thích, phủ nhận nó, hoặc tạo ra một ứng viên mới.')}>
           <ObservationList observations={observations} prefs={allPrefs} />
           {visit.phase === 'accord' && (
             <ObservationForm
@@ -220,9 +222,9 @@ export default function VisitDetail({ params }: { params: Promise<{ id: string }
           {visit.phase === 'accord' && (
             <div style={actionRow}>
               <button onClick={() => patch({ phase: 'continuum' })} disabled={busy} style={btnPrimary}>
-                {busy ? 'Saving…' : '◆ Close out & enter Continuum →'}
+                {busy ? t('Saving…', 'Đang lưu…') : t('◆ Close out & enter Continuum →', '◆ Kết thúc & vào Continuum →')}
               </button>
-              <span style={hintText}>Stamps departure time. Observations are locked but can be reviewed.</span>
+              <span style={hintText}>{t('Stamps departure time. Observations are locked but can be reviewed.', 'Ghi lại giờ rời. Các quan sát bị khóa nhưng vẫn có thể xem lại.')}</span>
             </div>
           )}
         </Section>

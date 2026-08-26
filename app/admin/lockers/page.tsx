@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { ConfirmModal, useToast } from '@/components/admin/dialogs'
+import { useLang } from '@/lib/admin-lang'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 
@@ -94,6 +95,7 @@ const WALL_DOOR_AFTER_COL = WALL_LEFT_COLS
 const WALL_LEFT_DIVIDER_AFTER_ROW = 1
 
 export default function LockersPage() {
+  const { t } = useLang()
   const [lockers, setLockers] = useState<Locker[]>([])
   const [contents, setContents] = useState<BottleContent[]>([])
   const [members, setMembers] = useState<MemberLite[]>([])
@@ -217,34 +219,34 @@ export default function LockersPage() {
       body: JSON.stringify({ rows: seedRows, cols: seedCols, prefix: seedPrefix || undefined }),
     })
     const j = await r.json()
-    if (!r.ok) { showToast(j.error || 'Seed failed', 'error'); return }
+    if (!r.ok) { showToast(j.error || t('Seed failed', 'Tạo lưới thất bại'), 'error'); return }
     setSeedOpen(false)
     load()
   }
 
-  if (loading) return <div style={emptyText}>Loading lockers…</div>
+  if (loading) return <div style={emptyText}>{t('Loading lockers…', 'Đang tải tủ khóa…')}</div>
 
   const noGrid = !hasAnyLocker
 
   return (
     <>
       <div style={{ marginBottom: 28 }}>
-        <div style={eyebrow}>Whisky Library</div>
-        <h1 style={pageTitle}>Member lockers</h1>
+        <div style={eyebrow}>{t('Whisky Library', 'Thư viện rượu whisky')}</div>
+        <h1 style={pageTitle}>{t('Member lockers', 'Tủ khóa hội viên')}</h1>
         <p style={lede}>
-          The physical wall — every tile is a locker. Click one to assign a member, edit contents, or move it on the grid. Empty tiles wait to be filled; gold tiles are reserved; red-tinted are retired.
+          {t('The physical wall — every tile is a locker. Click one to assign a member, edit contents, or move it on the grid. Empty tiles wait to be filled; gold tiles are reserved; red-tinted are retired.', 'Bức tường thực tế — mỗi ô là một tủ khóa. Bấm vào một ô để phân bổ hội viên, chỉnh sửa nội dung, hoặc di chuyển ô trên lưới. Ô trống đang chờ được lấp đầy; ô màu vàng là đã đặt trước; ô ánh đỏ là đã ngừng sử dụng.')}
         </p>
       </div>
 
       {/* Stat strip */}
       <div style={statStrip}>
-        <Stat label="Lockers"   value={counts.total} />
-        <Stat label="Occupied"  value={counts.occupied} color="#7AB07A" />
-        <Stat label="Reserved"  value={counts.reserved} color="#D4B85A" />
-        <Stat label="Empty"     value={counts.empty} color="#B2AA98" />
-        <Stat label="Retired"   value={counts.retired} color="#7E7864" />
-        <Stat label="Bottles"   value={counts.bottles} />
-        <Stat label="Low fill (≤25%)" value={counts.lowFill} color="#C27070" />
+        <Stat label={t('Lockers', 'Tủ khóa')}   value={counts.total} />
+        <Stat label={t('Occupied', 'Đang dùng')}  value={counts.occupied} color="#7AB07A" />
+        <Stat label={t('Reserved', 'Đã đặt trước')}  value={counts.reserved} color="#D4B85A" />
+        <Stat label={t('Empty', 'Trống')}     value={counts.empty} color="#B2AA98" />
+        <Stat label={t('Retired', 'Ngừng dùng')}   value={counts.retired} color="#7E7864" />
+        <Stat label={t('Bottles', 'Số chai')}   value={counts.bottles} />
+        <Stat label={t('Low fill (≤25%)', 'Sắp hết (≤25%)')} value={counts.lowFill} color="#C27070" />
       </div>
 
       {/* Filters + seed */}
@@ -252,25 +254,25 @@ export default function LockersPage() {
         <div style={{ display: 'flex', gap: 6 }}>
           {(['all', ...STATUSES] as const).map(s => (
             <button key={s} onClick={() => setFilter(s)} style={{ ...chip, ...(filter === s ? chipActive : null) }}>
-              {s === 'all' ? 'All' : s}
+              {s === 'all' ? t('All', 'Tất cả') : s}
             </button>
           ))}
           <button
             onClick={() => setShowLowFillOnly(v => !v)}
             style={{ ...chip, ...(showLowFillOnly ? chipActive : null), borderLeft: '2px solid #C27070' }}
-            title="Highlight lockers with ≥1 bottle at ≤25%"
+            title={t('Highlight lockers with ≥1 bottle at ≤25%', 'Làm nổi bật tủ có ≥1 chai ở mức ≤25%')}
           >
-            ≤25% only{counts.lowFill > 0 ? ` (${counts.lowFill})` : ''}
+            {t('≤25% only', 'Chỉ ≤25%')}{counts.lowFill > 0 ? ` (${counts.lowFill})` : ''}
           </button>
         </div>
         <input
           value={memberSearch}
           onChange={e => setMemberSearch(e.target.value)}
-          placeholder="Find a member or locker no…"
+          placeholder={t('Find a member or locker no…', 'Tìm hội viên hoặc số tủ khóa…')}
           style={{ ...inputStyle, maxWidth: 260, flex: '0 1 260px' }}
         />
         <button onClick={() => setSeedOpen(s => !s)} style={btnGhost}>
-          {seedOpen ? 'Cancel' : noGrid ? '＋ Seed grid' : '＋ Add more lockers'}
+          {seedOpen ? t('Cancel', 'Hủy') : noGrid ? t('＋ Seed grid', '＋ Khởi tạo lưới') : t('＋ Add more lockers', '＋ Thêm tủ khóa')}
         </button>
       </div>
 
@@ -278,21 +280,21 @@ export default function LockersPage() {
         <div style={seedBlock}>
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div>
-              <div style={editLabel}>Rows</div>
+              <div style={editLabel}>{t('Rows', 'Số hàng')}</div>
               <input type="number" min={1} max={20} value={seedRows} onChange={e => setSeedRows(Math.max(1, Math.min(20, Number(e.target.value) || 1)))} style={{ ...inputStyle, width: 80 }} />
             </div>
             <div>
-              <div style={editLabel}>Columns</div>
+              <div style={editLabel}>{t('Columns', 'Số cột')}</div>
               <input type="number" min={1} max={30} value={seedCols} onChange={e => setSeedCols(Math.max(1, Math.min(30, Number(e.target.value) || 1)))} style={{ ...inputStyle, width: 80 }} />
             </div>
             <div>
-              <div style={editLabel}>Prefix (optional)</div>
-              <input value={seedPrefix} onChange={e => setSeedPrefix(e.target.value.slice(0, 4))} placeholder="e.g. L" style={{ ...inputStyle, width: 100 }} />
+              <div style={editLabel}>{t('Prefix (optional)', 'Tiền tố (tùy chọn)')}</div>
+              <input value={seedPrefix} onChange={e => setSeedPrefix(e.target.value.slice(0, 4))} placeholder={t('e.g. L', 'ví dụ: L')} style={{ ...inputStyle, width: 100 }} />
             </div>
-            <button onClick={seed} style={btnPrimary}>Create {seedRows * seedCols} lockers</button>
+            <button onClick={seed} style={btnPrimary}>{t('Create', 'Tạo')} {seedRows * seedCols} {t('lockers', 'tủ khóa')}</button>
           </div>
           <div style={{ ...inviteMeta, marginTop: 10 }}>
-            Existing lockers at the same locker_no are preserved. Rows are labelled A–T, columns 01..30 zero-padded. The prefix prepends to the locker number (e.g. prefix &quot;L&quot; → L A-01).
+            {t('Existing lockers at the same locker_no are preserved. Rows are labelled A–T, columns 01..30 zero-padded. The prefix prepends to the locker number (e.g. prefix', 'Các tủ khóa hiện có cùng locker_no sẽ được giữ nguyên. Các hàng được đặt tên A–T, các cột 01..30 có số 0 đệm phía trước. Tiền tố được thêm vào đầu số tủ khóa (ví dụ tiền tố')} &quot;L&quot; → L A-01).
           </div>
         </div>
       )}
@@ -300,8 +302,8 @@ export default function LockersPage() {
       {/* The wall */}
       {noGrid ? (
         <div style={emptyBlock}>
-          <div style={{ marginBottom: 12 }}>No lockers yet.</div>
-          <button onClick={() => setSeedOpen(true)} style={btnPrimary}>＋ Seed the grid</button>
+          <div style={{ marginBottom: 12 }}>{t('No lockers yet.', 'Chưa có tủ khóa nào.')}</div>
+          <button onClick={() => setSeedOpen(true)} style={btnPrimary}>{t('＋ Seed the grid', '＋ Khởi tạo lưới')}</button>
         </div>
       ) : (() => {
         // Fixed wall geometry — every position in the rectangle is a real
@@ -334,7 +336,7 @@ export default function LockersPage() {
               <div style={doorColumnHeader}>↕</div>
               <div style={{ ...doorColumnPanel, height: leftWallH }}>
                 <span style={doorColumnLabel}>
-                  {'ENTRANCE'.split('').map((ch, i) => <span key={i}>{ch}</span>)}
+                  {t('ENTRANCE', 'LỐI VÀO').split('').map((ch, i) => <span key={i}>{ch}</span>)}
                 </span>
               </div>
             </div>
@@ -557,6 +559,7 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
   onClose: () => void
   onChange: () => void
 }) {
+  const { t } = useLang()
   const [locker, setLocker] = useState<Locker | null>(null)
   const [contents, setContents] = useState<BottleContent[]>([])
   const [activity, setActivity] = useState<ActivityRow[]>([])
@@ -695,14 +698,14 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
       <div style={drawerPanel}>
         <div style={drawerHeader}>
           <div>
-            <div style={eyebrow}>Locker</div>
+            <div style={eyebrow}>{t('Locker', 'Tủ khóa')}</div>
             <h2 style={drawerTitle}>{locker_no}</h2>
             {locker?.member_name && (
               <div style={{ ...nicknameText, marginTop: 4 }}>
                 {locker.member_name}
                 {locker.member_no && (
                   <Link href={`/admin/mis/${locker.member_no}`} style={{ marginLeft: 8, fontSize: 11, color: '#7AB07A', textDecoration: 'none' }}>
-                    → profile
+                    → {t('profile', 'hồ sơ')}
                   </Link>
                 )}
               </div>
@@ -712,26 +715,26 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
         </div>
 
         {loading || !locker ? (
-          <div style={emptyText}>Loading…</div>
+          <div style={emptyText}>{t('Loading…', 'Đang tải…')}</div>
         ) : (
           <>
             {/* Assignment */}
-            <Section title="Assignment">
-              <div style={editLabel}>Member</div>
+            <Section title={t('Assignment', 'Phân bổ')}>
+              <div style={editLabel}>{t('Member', 'Hội viên')}</div>
               {locker.member_no ? (
                 <div style={memberAssignedRow}>
                   <div>
                     <strong>{locker.member_name}</strong>
                     <span style={{ marginLeft: 8, color: '#B2AA98', fontSize: 11 }}>{locker.member_no}</span>
                   </div>
-                  <button onClick={() => patch({ member_no: null })} style={tinyBtn}>Unassign</button>
+                  <button onClick={() => patch({ member_no: null })} style={tinyBtn}>{t('Unassign', 'Bỏ phân bổ')}</button>
                 </div>
               ) : (
                 <>
                   <input
                     value={memberQuery}
                     onChange={e => setMemberQuery(e.target.value)}
-                    placeholder="Search member by name or number…"
+                    placeholder={t('Search member by name or number…', 'Tìm hội viên theo tên hoặc số…')}
                     style={inputStyle}
                   />
                   <div style={memberList}>
@@ -742,21 +745,21 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
                       </button>
                     ))}
                     {filteredMembers.length === 0 && (
-                      <div style={emptyHint}>No matches.</div>
+                      <div style={emptyHint}>{t('No matches.', 'Không có kết quả.')}</div>
                     )}
                   </div>
                 </>
               )}
 
-              <div style={editLabel}>Display label (optional)</div>
+              <div style={editLabel}>{t('Display label (optional)', 'Nhãn hiển thị (tùy chọn)')}</div>
               <input
                 defaultValue={locker.label || ''}
                 onBlur={e => { if ((e.target.value || null) !== locker.label) patch({ label: e.target.value || null }) }}
-                placeholder="Override the member name on the tile"
+                placeholder={t('Override the member name on the tile', 'Thay tên hội viên hiển thị trên ô')}
                 style={inputStyle}
               />
 
-              <div style={editLabel}>Status</div>
+              <div style={editLabel}>{t('Status', 'Trạng thái')}</div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {STATUSES.map(s => (
                   <button key={s} onClick={() => patch({ status: s })} style={{ ...chip, ...(locker.status === s ? chipActive : null) }}>
@@ -765,7 +768,7 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
                 ))}
               </div>
 
-              <div style={editLabel}>Position (row / col)</div>
+              <div style={editLabel}>{t('Position (row / col)', 'Vị trí (hàng / cột)')}</div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input
                   type="number" min={1} max={20}
@@ -781,20 +784,20 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
                 />
               </div>
 
-              <div style={editLabel}>Notes</div>
+              <div style={editLabel}>{t('Notes', 'Ghi chú')}</div>
               <textarea
                 rows={3}
                 defaultValue={locker.notes || ''}
                 onBlur={e => { if ((e.target.value || null) !== locker.notes) patch({ notes: e.target.value || null }) }}
-                placeholder="Lock combo, fragile bottles, anything for the team."
+                placeholder={t('Lock combo, fragile bottles, anything for the team.', 'Mã khóa, chai dễ vỡ, bất cứ điều gì cho đội ngũ.')}
                 style={{ ...inputStyle, resize: 'vertical' }}
               />
             </Section>
 
             {/* Contents */}
-            <Section title={`Contents · ${contents.length} ${contents.length === 1 ? 'bottle' : 'bottles'}`}>
+            <Section title={`${t('Contents', 'Nội dung')} · ${contents.length} ${contents.length === 1 ? t('bottle', 'chai') : t('bottles', 'chai')}`}>
               {contents.length === 0 && (
-                <div style={emptyHint}>No bottles in this locker yet.</div>
+                <div style={emptyHint}>{t('No bottles in this locker yet.', 'Chưa có chai nào trong tủ khóa này.')}</div>
               )}
               {contents.map(c => (
                 <div key={c.id} style={bottleRow}>
@@ -822,12 +825,12 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
                       </span>
                     </div>
                   </div>
-                  <button onClick={() => requestRemoveBottle(c)} style={{ ...tinyBtn, color: '#C27070', borderColor: 'rgba(180,70,70,0.30)' }}>Remove</button>
+                  <button onClick={() => requestRemoveBottle(c)} style={{ ...tinyBtn, color: '#C27070', borderColor: 'rgba(180,70,70,0.30)' }}>{t('Remove', 'Gỡ bỏ')}</button>
                 </div>
               ))}
 
               <div style={addBottleBlock}>
-                <div style={editLabel}>Add bottle · pick from the whisky catalogue</div>
+                <div style={editLabel}>{t('Add bottle · pick from the whisky catalogue', 'Thêm chai · chọn từ danh mục rượu whisky')}</div>
 
                 {selectedWhisky ? (
                   // Selection state: show the chosen whisky as a chip with its
@@ -844,11 +847,11 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
                           selectedWhisky.age ? `${selectedWhisky.age}y` : null,
                           selectedWhisky.abv ? `${selectedWhisky.abv}%` : null,
                           selectedWhisky.region,
-                          selectedWhisky.in_stock ? null : 'archived',
+                          selectedWhisky.in_stock ? null : t('archived', 'đã lưu trữ'),
                         ].filter(Boolean).join(' · ') || '—'}
                       </div>
                     </div>
-                    <button onClick={() => { setSelectedWhisky(null); setBottleListOpen(true) }} style={tinyBtn}>Change</button>
+                    <button onClick={() => { setSelectedWhisky(null); setBottleListOpen(true) }} style={tinyBtn}>{t('Change', 'Thay đổi')}</button>
                   </div>
                 ) : (
                   // Picker state: search input + filtered popover. The list is
@@ -859,15 +862,15 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
                       onChange={e => { setBottleQuery(e.target.value); setBottleListOpen(true) }}
                       onFocus={() => setBottleListOpen(true)}
                       placeholder={whiskies.length === 0
-                        ? 'No whiskies in the catalogue yet — add one in /admin/whisky'
-                        : `Search ${whiskies.length} whiskies by name, distillery, or region…`}
+                        ? t('No whiskies in the catalogue yet — add one in /admin/whisky', 'Chưa có rượu whisky nào trong danh mục — thêm một chai tại /admin/whisky')
+                        : `${t('Search', 'Tìm')} ${whiskies.length} ${t('whiskies by name, distillery, or region…', 'rượu whisky theo tên, nhà chưng cất, hoặc vùng…')}`}
                       style={inputStyle}
                       disabled={whiskies.length === 0}
                     />
                     {bottleListOpen && whiskies.length > 0 && (
                       <div style={whiskyDropdown}>
                         {filteredWhiskies.length === 0 ? (
-                          <div style={emptyHint}>No matches.</div>
+                          <div style={emptyHint}>{t('No matches.', 'Không có kết quả.')}</div>
                         ) : filteredWhiskies.map(w => (
                           <button
                             key={w.id}
@@ -880,7 +883,7 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
                             </span>
                             <span style={{ color: '#B2AA98', fontSize: 10, marginLeft: 8, flexShrink: 0 }}>
                               {[w.distillery, w.age ? `${w.age}y` : null, w.abv ? `${w.abv}%` : null].filter(Boolean).join(' · ') || '—'}
-                              {!w.in_stock && <span style={{ color: '#7E7864', marginLeft: 6 }}>· archived</span>}
+                              {!w.in_stock && <span style={{ color: '#7E7864', marginLeft: 6 }}>· {t('archived', 'đã lưu trữ')}</span>}
                             </span>
                           </button>
                         ))}
@@ -891,11 +894,11 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
 
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginTop: 4 }}>
                   <div style={{ flex: 1 }}>
-                    <div style={editLabel}>Fill %</div>
+                    <div style={editLabel}>{t('Fill %', 'Mức đầy %')}</div>
                     <input
                       value={fillPct}
                       onChange={e => setFillPct(e.target.value)}
-                      placeholder="Fill %"
+                      placeholder={t('Fill %', 'Mức đầy %')}
                       type="number" min={0} max={100}
                       style={inputStyle}
                     />
@@ -905,7 +908,7 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
                     disabled={!selectedWhisky || adding}
                     style={{ ...btnPrimary, opacity: !selectedWhisky ? 0.4 : 1 }}
                   >
-                    {adding ? 'Adding…' : '＋ Add bottle'}
+                    {adding ? t('Adding…', 'Đang thêm…') : t('＋ Add bottle', '＋ Thêm chai')}
                   </button>
                 </div>
               </div>
@@ -915,16 +918,16 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
                 scannable. Expand to see assignment / status / position
                 history. Bottle additions live in Contents above; this is
                 about the LOCKER itself. */}
-            <Section title={`Activity · ${activity.length} event${activity.length === 1 ? '' : 's'}`}>
+            <Section title={`${t('Activity', 'Hoạt động')} · ${activity.length} ${activity.length === 1 ? t('event', 'sự kiện') : t('events', 'sự kiện')}`}>
               {activity.length === 0 ? (
-                <div style={emptyHint}>No locker activity logged yet. (Migration may not have been applied — see db/locker_activity.sql.)</div>
+                <div style={emptyHint}>{t('No locker activity logged yet. (Migration may not have been applied — see', 'Chưa ghi nhận hoạt động tủ khóa nào. (Có thể migration chưa được áp dụng — xem')} db/locker_activity.sql{'.)'}</div>
               ) : (
                 <>
                   <button
                     onClick={() => setShowActivity(v => !v)}
                     style={{ ...tinyBtn, alignSelf: 'flex-start', marginBottom: 4 }}
                   >
-                    {showActivity ? 'Hide history' : `Show last ${Math.min(activity.length, 50)} event${activity.length === 1 ? '' : 's'}`}
+                    {showActivity ? t('Hide history', 'Ẩn lịch sử') : `${t('Show last', 'Xem')} ${Math.min(activity.length, 50)} ${activity.length === 1 ? t('event', 'sự kiện gần nhất') : t('events', 'sự kiện gần nhất')}`}
                   </button>
                   {showActivity && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -951,12 +954,12 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
 
       <ConfirmModal
         open={!!confirmBottle}
-        eyebrow="⚠ REMOVE BOTTLE"
-        title="Remove this bottle?"
-        subject={confirmBottle ? `${confirmBottle.bottle_name} · locker ${locker_no}` : undefined}
-        body="Takes the bottle off this locker's contents. The locker activity timeline keeps a record of the removal. Cannot be undone."
-        confirmLabel="Remove bottle"
-        busyLabel="Removing…"
+        eyebrow={t('⚠ REMOVE BOTTLE', '⚠ GỠ BỎ CHAI')}
+        title={t('Remove this bottle?', 'Gỡ bỏ chai này?')}
+        subject={confirmBottle ? `${confirmBottle.bottle_name} · ${t('locker', 'tủ khóa')} ${locker_no}` : undefined}
+        body={t("Takes the bottle off this locker's contents. The locker activity timeline keeps a record of the removal. Cannot be undone.", 'Gỡ chai này khỏi nội dung của tủ khóa. Dòng thời gian hoạt động của tủ khóa vẫn lưu lại việc gỡ bỏ. Không thể hoàn tác.')}
+        confirmLabel={t('Remove bottle', 'Gỡ bỏ chai')}
+        busyLabel={t('Removing…', 'Đang gỡ bỏ…')}
         busy={removeBusy}
         onCancel={closeRemoveBottle}
         onConfirm={runRemoveBottle}

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
+import { useLang } from '@/lib/admin-lang'
 
 // Admin → Weekly Report editor. Narrative + financials toggle + refresh data +
 // preview. Approval/send controls arrive with Phase B.
@@ -31,6 +32,7 @@ const FIELDS: { key: string; label: string; hint: string; rows: number }[] = [
 ]
 
 export default function ReportEditor() {
+  const { t } = useLang()
   const { id } = useParams<{ id: string }>()
   const [r, setR] = useState<Report | null>(null)
   const [nar, setNar] = useState<Record<string, string>>({})
@@ -55,7 +57,7 @@ export default function ReportEditor() {
     setActing(true); setMsg('')
     const r = await fetch(`/api/admin/reports/${id}/${path}`, { method: 'POST' })
     setActing(false)
-    if (r.ok) { setMsg(ok); load() } else { const d = await r.json().catch(() => ({})); setMsg(d.error || 'Failed') }
+    if (r.ok) { setMsg(ok); load() } else { const d = await r.json().catch(() => ({})); setMsg(d.error || t('Failed', 'Thất bại')) }
     setTimeout(() => setMsg(''), 3500)
   }
   const previewEmail = async () => {
@@ -73,7 +75,7 @@ export default function ReportEditor() {
     setActing(true); setMsg('')
     const res = await fetch(`/api/admin/reports/${id}/postpone`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hours }) })
     setActing(false)
-    setMsg(res.ok ? (hours > 0 ? 'Send postponed' : 'Hold cleared') : 'Postpone failed')
+    setMsg(res.ok ? (hours > 0 ? t('Send postponed', 'Đã hoãn gửi') : t('Hold cleared', 'Đã bỏ giữ')) : t('Postpone failed', 'Hoãn thất bại'))
     load(); setTimeout(() => setMsg(''), 3500)
   }
 
@@ -84,43 +86,43 @@ export default function ReportEditor() {
       body: JSON.stringify({ ...nar, headline: nar.headline || '', include_financials: fin }),
     })
     setSaving(false)
-    setMsg(res.ok ? 'Saved' : 'Save failed'); setTimeout(() => setMsg(''), 2500)
+    setMsg(res.ok ? t('Saved', 'Đã lưu') : t('Save failed', 'Lưu thất bại')); setTimeout(() => setMsg(''), 2500)
   }
   const refresh = async () => {
     setRefreshing(true); setMsg('')
     const res = await fetch(`/api/admin/reports/${id}/refresh-data`, { method: 'POST' })
     setRefreshing(false)
-    if (res.ok) { load(); setMsg('Data refreshed') } else setMsg('Refresh failed')
+    if (res.ok) { load(); setMsg(t('Data refreshed', 'Đã làm mới dữ liệu')) } else setMsg(t('Refresh failed', 'Làm mới thất bại'))
     setTimeout(() => setMsg(''), 2500)
   }
 
-  if (!r) return <div style={{ fontFamily: MONO, fontSize: 12, color: '#B2AA98' }}>Loading…</div>
+  if (!r) return <div style={{ fontFamily: MONO, fontSize: 12, color: '#B2AA98' }}>{t('Loading…', 'Đang tải…')}</div>
 
   return (
     <>
-      <Link href="/admin/reports" style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98', textDecoration: 'none' }}>← All reports</Link>
+      <Link href="/admin/reports" style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98', textDecoration: 'none' }}>{t('← All reports', '← Tất cả báo cáo')}</Link>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', margin: '10px 0 20px' }}>
         <div>
-          <h1 style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 500, color: '#E5D4C2' }}>{r.headline || 'Weekly Report'}</h1>
+          <h1 style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 500, color: '#E5D4C2' }}>{r.headline || t('Weekly Report', 'Báo cáo tuần')}</h1>
           <div style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98', marginTop: 4 }}>
-            {r.period_start} – {r.period_end} · {r.status.replace('_', ' ')} · {r.auto_data?.usage?.visits ?? 0} visits, {r.auto_data?.usage?.unique_members ?? 0} members
+            {r.period_start} – {r.period_end} · {r.status.replace('_', ' ')} · {r.auto_data?.usage?.visits ?? 0} {t('visits', 'lượt ghé')}, {r.auto_data?.usage?.unique_members ?? 0} {t('members', 'hội viên')}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <a href={`/reports/${r.share_token}`} target="_blank" rel="noreferrer" style={btnGhost}>Preview ↗</a>
-          <button onClick={refresh} disabled={refreshing || locked} style={{ ...btnGhost, opacity: refreshing || locked ? 0.5 : 1 }}>{refreshing ? 'Refreshing…' : 'Refresh data'}</button>
+          <a href={`/reports/${r.share_token}`} target="_blank" rel="noreferrer" style={btnGhost}>{t('Preview ↗', 'Xem trước ↗')}</a>
+          <button onClick={refresh} disabled={refreshing || locked} style={{ ...btnGhost, opacity: refreshing || locked ? 0.5 : 1 }}>{refreshing ? t('Refreshing…', 'Đang làm mới…') : t('Refresh data', 'Làm mới dữ liệu')}</button>
         </div>
       </div>
 
-      {locked && <div style={{ fontFamily: MONO, fontSize: 11, color: '#D4B85A', marginBottom: 16 }}>This report is {r.status} — narrative is locked.</div>}
+      {locked && <div style={{ fontFamily: MONO, fontSize: 11, color: '#D4B85A', marginBottom: 16 }}>{t('This report is', 'Báo cáo này đang ở trạng thái')} {r.status} — {t('narrative is locked.', 'nội dung đã bị khóa.')}</div>}
 
       <div style={card}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
           <input type="checkbox" checked={fin} disabled={locked} onChange={e => setFin(e.target.checked)} id="fin" />
-          <label htmlFor="fin" style={{ fontFamily: MONO, fontSize: 12, color: '#E5D4C2' }}>Include monthly financials</label>
+          <label htmlFor="fin" style={{ fontFamily: MONO, fontSize: 12, color: '#E5D4C2' }}>{t('Include monthly financials', 'Bao gồm tài chính hàng tháng')}</label>
         </div>
         <div style={{ fontFamily: MONO, fontSize: 10, color: '#7E7864', marginBottom: 16 }}>
-          Tip: add a clickable link in any section with <span style={{ color: '#B2AA98' }}>[label](https://…)</span>
+          {t('Tip: add a clickable link in any section with', 'Mẹo: thêm liên kết có thể nhấp trong bất kỳ mục nào bằng')} <span style={{ color: '#B2AA98' }}>[label](https://…)</span>
         </div>
         {FIELDS.map(f => (
           <div key={f.key} style={{ marginBottom: 16 }}>
@@ -134,34 +136,34 @@ export default function ReportEditor() {
           </div>
         ))}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
-          {!locked && <button onClick={save} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.5 : 1 }}>{saving ? 'Saving…' : 'Save'}</button>}
-          <button onClick={previewEmail} style={btnGhost}>Preview email ↗</button>
-          {r.status === 'draft' && <button onClick={() => act('submit', 'Submitted for approval')} disabled={acting} style={btnGold}>Submit for approval →</button>}
+          {!locked && <button onClick={save} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.5 : 1 }}>{saving ? t('Saving…', 'Đang lưu…') : t('Save', 'Lưu')}</button>}
+          <button onClick={previewEmail} style={btnGhost}>{t('Preview email ↗', 'Xem trước email ↗')}</button>
+          {r.status === 'draft' && <button onClick={() => act('submit', t('Submitted for approval', 'Đã gửi để phê duyệt'))} disabled={acting} style={btnGold}>{t('Submit for approval →', 'Gửi để phê duyệt →')}</button>}
           {r.status === 'pending_approval' && <>
-            <button onClick={() => act('approve', 'Approved')} disabled={acting} style={btnGold}>Approve</button>
-            <button onClick={() => act('revert', 'Reverted to draft')} disabled={acting} style={btnGhost}>Revert to draft</button>
+            <button onClick={() => act('approve', t('Approved', 'Đã phê duyệt'))} disabled={acting} style={btnGold}>{t('Approve', 'Phê duyệt')}</button>
+            <button onClick={() => act('revert', t('Reverted to draft', 'Đã chuyển về bản nháp'))} disabled={acting} style={btnGhost}>{t('Revert to draft', 'Chuyển về bản nháp')}</button>
           </>}
-          {r.status === 'approved' && <button onClick={() => act('send', 'Sent')} disabled={acting} style={btnGold}>Send now →</button>}
-          {r.status === 'sent' && <span style={{ fontFamily: MONO, fontSize: 11, color: '#5B8FA8' }}>✓ Sent</span>}
+          {r.status === 'approved' && <button onClick={() => act('send', t('Sent', 'Đã gửi'))} disabled={acting} style={btnGold}>{t('Send now →', 'Gửi ngay →')}</button>}
+          {r.status === 'sent' && <span style={{ fontFamily: MONO, fontSize: 11, color: '#5B8FA8' }}>{t('✓ Sent', '✓ Đã gửi')}</span>}
           {msg && <span style={{ fontFamily: MONO, fontSize: 11, color: /fail|only|can't|can.t|no permitted/i.test(msg) ? '#C27070' : '#7AB07A' }}>{msg}</span>}
         </div>
         {r.status === 'approved' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
             <span style={{ fontFamily: MONO, fontSize: 10, color: '#B2AA98' }}>
-              Auto-sends 17:00 VN Mon.{holdLabel ? ` Held until ${holdLabel} VN — use “Send now” then.` : ''} Emergency postpone holds the auto-send (max 21:00):
+              {t('Auto-sends 17:00 VN Mon.', 'Tự động gửi 17:00 thứ Hai giờ VN.')}{holdLabel ? ` ${t('Held until', 'Giữ đến')} ${holdLabel} ${t('VN — use “Send now” then.', 'giờ VN — sau đó dùng “Gửi ngay”.')}` : ''} {t('Emergency postpone holds the auto-send (max 21:00):', 'Hoãn khẩn cấp sẽ giữ lại việc tự động gửi (tối đa 21:00):')}
             </span>
             {[1, 2, 3, 4].map(h => <button key={h} onClick={() => postpone(h)} disabled={acting} style={btnGhost}>+{h}h</button>)}
-            {r.send_postponed_to && <button onClick={() => postpone(0)} disabled={acting} style={{ ...btnGhost, color: '#C49555' }}>Clear hold</button>}
+            {r.send_postponed_to && <button onClick={() => postpone(0)} disabled={acting} style={{ ...btnGhost, color: '#C49555' }}>{t('Clear hold', 'Bỏ giữ')}</button>}
           </div>
         )}
         <div style={{ fontFamily: MONO, fontSize: 10, color: '#C49555', marginTop: 10 }}>
-          Beta: sends go to you only — Shawn is not emailed until you go live.
+          {t('Beta: sends go to you only — Shawn is not emailed until you go live.', 'Beta: chỉ gửi cho bạn — Shawn sẽ không nhận email cho đến khi bạn chính thức phát hành.')}
         </div>
       </div>
 
       {activity.length > 0 && (
         <div style={{ ...card, marginTop: 16 }}>
-          <div style={{ fontFamily: MONO, fontSize: 10, color: '#D4B85A', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>History</div>
+          <div style={{ fontFamily: MONO, fontSize: 10, color: '#D4B85A', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>{t('History', 'Lịch sử')}</div>
           {activity.map(a => (
             <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '6px 0', borderTop: '1px solid rgba(229,212,194,0.06)', fontFamily: MONO, fontSize: 10, color: '#B2AA98' }}>
               <span>{a.event_type.replace(/_/g, ' ')}{a.note ? ` — ${a.note}` : ''}</span>

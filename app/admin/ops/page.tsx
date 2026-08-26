@@ -8,11 +8,13 @@ import { ConfirmModal, PromptModal, useToast } from '@/components/admin/dialogs'
 import { createProject, archiveProject, updateProject, softDeleteProject } from '@/lib/ops/api'
 import NotificationSettings from '@/components/admin/NotificationSettings'
 import CollapsibleHeader from '@/components/admin/CollapsibleHeader'
+import { useLang } from '@/lib/admin-lang'
 import type { Project, TeamMember } from '@/lib/ops/types'
 
 const FAMILY = "'Google Sans Code', monospace"
 
 export default function OpsHubHome() {
+  const { t } = useLang()
   const router = useRouter()
   const supabase = createBrowserSupabaseClient()
   const { showToast, toastNode } = useToast()
@@ -67,7 +69,7 @@ export default function OpsHubHome() {
     setBusy(true)
     try {
       await updateProject(editing.id, editName.trim(), editDesc.trim() || null)
-      setEditing(null); showToast('Board updated.'); load()
+      setEditing(null); showToast(t('Board updated.', 'Đã cập nhật bảng.')); load()
     } catch (e) {
       showToast((e as Error).message, 'error')
     } finally { setBusy(false) }
@@ -79,7 +81,7 @@ export default function OpsHubHome() {
     setBusy(true)
     try {
       await softDeleteProject(deleting.id)
-      setDeleting(null); showToast('Board deleted (recoverable).'); load()
+      setDeleting(null); showToast(t('Board deleted (recoverable).', 'Đã xóa bảng (có thể khôi phục).')); load()
     } catch (e) {
       showToast((e as Error).message, 'error')
     } finally { setBusy(false) }
@@ -90,7 +92,7 @@ export default function OpsHubHome() {
     try {
       const id = await createProject({ name })
       setNewBoardOpen(false)
-      showToast('Board created.')
+      showToast(t('Board created.', 'Đã tạo bảng.'))
       router.push(`/admin/ops/${id}`)
     } catch (e) {
       showToast((e as Error).message, 'error')
@@ -103,7 +105,7 @@ export default function OpsHubHome() {
     try {
       await archiveProject(confirmArchive.id)
       setConfirmArchive(null)
-      showToast('Board archived.')
+      showToast(t('Board archived.', 'Đã lưu trữ bảng.'))
       load()
     } catch (e) {
       showToast((e as Error).message, 'error')
@@ -116,7 +118,7 @@ export default function OpsHubHome() {
     const { error } = await supabase.from('team_members').insert({ display_name })
     setNewMemberOpen(false)
     if (error) { showToast(error.message, 'error'); return }
-    showToast('Team member added.'); load()
+    showToast(t('Team member added.', 'Đã thêm thành viên nhóm.')); load()
   }
   const toggleActive = async (m: TeamMember) => {
     const { error } = await supabase.from('team_members').update({ active: !m.active }).eq('id', m.id)
@@ -130,26 +132,26 @@ export default function OpsHubHome() {
         <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2', marginBottom: 4 }}>{p.name}</div>
         {p.description && <div style={{ ...metaText, marginBottom: 8 }}>{p.description}</div>}
         <div style={metaText}>
-          {p.status === 'archived' ? 'Archived' : 'Active'}
-          {p.target_date ? ` · target ${new Date(p.target_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}
+          {p.status === 'archived' ? t('Archived', 'Đã lưu trữ') : t('Active', 'Đang hoạt động')}
+          {p.target_date ? ` · ${t('target', 'mục tiêu')} ${new Date(p.target_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}
         </div>
       </Link>
       {progress[p.id] && (
         <div style={{ marginTop: 10 }}>
           <div style={progressOuter}><span style={{ ...progressInner, width: `${progress[p.id].pct}%` }} /></div>
           <div style={{ ...metaText, fontSize: 9, marginTop: 3, opacity: 0.8 }}>
-            {progress[p.id].total > 0 ? `${progress[p.id].done}/${progress[p.id].total} · ${fmtPct(progress[p.id].pct)}%` : 'no tasks yet'}
+            {progress[p.id].total > 0 ? `${progress[p.id].done}/${progress[p.id].total} · ${fmtPct(progress[p.id].pct)}%` : t('no tasks yet', 'chưa có nhiệm vụ')}
           </div>
         </div>
       )}
       <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <Link href={`/admin/ops/${p.id}`} style={tinyBtn}>Open</Link>
-        <button onClick={() => openEdit(p)} style={tinyBtn}>Edit</button>
+        <Link href={`/admin/ops/${p.id}`} style={tinyBtn}>{t('Open', 'Mở')}</Link>
+        <button onClick={() => openEdit(p)} style={tinyBtn}>{t('Edit', 'Sửa')}</button>
         {p.status === 'active' && (
-          <button onClick={() => setConfirmArchive(p)} style={{ ...tinyBtn, color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}>Archive</button>
+          <button onClick={() => setConfirmArchive(p)} style={{ ...tinyBtn, color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}>{t('Archive', 'Lưu trữ')}</button>
         )}
         {p.status === 'archived' && (
-          <button onClick={() => openDelete(p)} style={{ ...tinyBtn, color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}>Delete</button>
+          <button onClick={() => openDelete(p)} style={{ ...tinyBtn, color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}>{t('Delete', 'Xóa')}</button>
         )}
       </div>
     </div>
@@ -159,25 +161,24 @@ export default function OpsHubHome() {
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
         <div>
-          <div style={eyebrow}>Operations Hub</div>
-          <h1 style={pageTitle}>Boards</h1>
+          <div style={eyebrow}>{t('Operations Hub', 'Trung tâm Vận hành')}</div>
+          <h1 style={pageTitle}>{t('Boards', 'Bảng')}</h1>
         </div>
-        <button onClick={() => setNewBoardOpen(true)} style={btnPrimary}>+ New board</button>
+        <button onClick={() => setNewBoardOpen(true)} style={btnPrimary}>{t('+ New board', '+ Bảng mới')}</button>
       </div>
       <p style={lede}>
-        Each board is a project — golf tournaments, the founding-membership drive, the exhibition.
-        Cards move across columns; every move, assignment and completion is recorded.
+        {t('Each board is a project — golf tournaments, the founding-membership drive, the exhibition. Cards move across columns; every move, assignment and completion is recorded.', 'Mỗi bảng là một dự án — giải golf, chiến dịch tuyển hội viên sáng lập, buổi triển lãm. Thẻ di chuyển qua các cột; mọi lần di chuyển, phân công và hoàn thành đều được ghi lại.')}
       </p>
 
       <label style={{ ...metaText, display: 'flex', alignItems: 'center', gap: 8, margin: '8px 0 20px', cursor: 'pointer' }}>
         <input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)} />
-        Show archived
+        {t('Show archived', 'Hiện bảng đã lưu trữ')}
       </label>
 
       {loading ? (
-        <div style={emptyText}>Loading…</div>
+        <div style={emptyText}>{t('Loading…', 'Đang tải…')}</div>
       ) : activeBoards.length === 0 && (!showArchived || archivedBoards.length === 0) ? (
-        <div style={emptyText}>No boards yet. Create the first one.</div>
+        <div style={emptyText}>{t('No boards yet. Create the first one.', 'Chưa có bảng nào. Hãy tạo bảng đầu tiên.')}</div>
       ) : (
         <>
           {activeBoards.length > 0 && (
@@ -185,7 +186,7 @@ export default function OpsHubHome() {
           )}
           {showArchived && archivedBoards.length > 0 && (
             <>
-              <div style={sectionHeading}>Archived</div>
+              <div style={sectionHeading}>{t('Archived', 'Đã lưu trữ')}</div>
               <div style={boardGrid}>{archivedBoards.map(renderCard)}</div>
             </>
           )}
@@ -197,21 +198,21 @@ export default function OpsHubHome() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 28, marginTop: 40 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
-            <CollapsibleHeader title="Team roster" open={rosterOpen} onToggle={() => setRosterOpen(o => !o)} count={team.length} />
-            {rosterOpen && <button onClick={() => setNewMemberOpen(true)} style={{ ...tinyBtn, marginLeft: 'auto' }}>+ Add person</button>}
+            <CollapsibleHeader title={t('Team roster', 'Danh sách nhóm')} open={rosterOpen} onToggle={() => setRosterOpen(o => !o)} count={team.length} />
+            {rosterOpen && <button onClick={() => setNewMemberOpen(true)} style={{ ...tinyBtn, marginLeft: 'auto' }}>{t('+ Add person', '+ Thêm người')}</button>}
           </div>
           {rosterOpen && (
             team.length === 0 ? (
-              <div style={emptyText}>No team members yet — add people to assign cards to.</div>
+              <div style={emptyText}>{t('No team members yet — add people to assign cards to.', 'Chưa có thành viên nào — thêm người để phân công thẻ.')}</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {team.map(m => (
                   <div key={m.id} style={{ ...rosterRow, opacity: m.active ? 1 : 0.5 }}>
                     <span style={{ color: '#E5D4C2', fontFamily: FAMILY, fontSize: 12 }}>{m.display_name}</span>
                     {m.role_title && <span style={metaText}>{m.role_title}</span>}
-                    {!m.profile_id && <span style={{ ...metaText, opacity: 0.6 }}>· name-only</span>}
+                    {!m.profile_id && <span style={{ ...metaText, opacity: 0.6 }}>{t('· name-only', '· chỉ tên')}</span>}
                     <button onClick={() => toggleActive(m)} style={{ ...tinyBtn, marginLeft: 'auto' }}>
-                      {m.active ? 'Deactivate' : 'Reactivate'}
+                      {m.active ? t('Deactivate', 'Ngừng kích hoạt') : t('Reactivate', 'Kích hoạt lại')}
                     </button>
                   </div>
                 ))}
@@ -226,33 +227,33 @@ export default function OpsHubHome() {
 
       <PromptModal
         open={newBoardOpen}
-        eyebrow="＋ NEW BOARD"
-        title="Create a board"
-        label="Board name"
-        placeholder="e.g. Founding-membership drive"
-        confirmLabel="Create board"
+        eyebrow={t('＋ NEW BOARD', '＋ BẢNG MỚI')}
+        title={t('Create a board', 'Tạo bảng')}
+        label={t('Board name', 'Tên bảng')}
+        placeholder={t('e.g. Founding-membership drive', 'vd. Chiến dịch tuyển hội viên sáng lập')}
+        confirmLabel={t('Create board', 'Tạo bảng')}
         busy={busy}
         onCancel={() => setNewBoardOpen(false)}
         onConfirm={handleCreate}
       />
       <PromptModal
         open={newMemberOpen}
-        eyebrow="＋ TEAM MEMBER"
-        title="Add a team member"
-        label="Display name (a name-only person is fine — no login required)"
-        placeholder="e.g. Miss Châu"
-        confirmLabel="Add"
+        eyebrow={t('＋ TEAM MEMBER', '＋ THÀNH VIÊN NHÓM')}
+        title={t('Add a team member', 'Thêm thành viên nhóm')}
+        label={t('Display name (a name-only person is fine — no login required)', 'Tên hiển thị (người chỉ có tên cũng được — không cần đăng nhập)')}
+        placeholder={t('e.g. Miss Châu', 'vd. Cô Châu')}
+        confirmLabel={t('Add', 'Thêm')}
         onCancel={() => setNewMemberOpen(false)}
         onConfirm={addTeamMember}
       />
       <ConfirmModal
         open={!!confirmArchive}
-        eyebrow="⚠ ARCHIVE BOARD"
-        title="Archive this board?"
+        eyebrow={t('⚠ ARCHIVE BOARD', '⚠ LƯU TRỮ BẢNG')}
+        title={t('Archive this board?', 'Lưu trữ bảng này?')}
         subject={confirmArchive?.name}
-        body="The board is hidden from the active list but kept (with its full activity history) for the record. You can show archived boards with the toggle."
-        confirmLabel="Archive board"
-        busyLabel="Archiving…"
+        body={t('The board is hidden from the active list but kept (with its full activity history) for the record. You can show archived boards with the toggle.', 'Bảng được ẩn khỏi danh sách đang hoạt động nhưng vẫn được giữ lại (cùng toàn bộ lịch sử hoạt động) để lưu hồ sơ. Bạn có thể hiện các bảng đã lưu trữ bằng nút gạt.')}
+        confirmLabel={t('Archive board', 'Lưu trữ bảng')}
+        busyLabel={t('Archiving…', 'Đang lưu trữ…')}
         busy={busy}
         onCancel={() => setConfirmArchive(null)}
         onConfirm={runArchive}
@@ -263,22 +264,22 @@ export default function OpsHubHome() {
         <>
           <div style={modalBackdrop} onClick={() => { if (!busy) setEditing(null) }} />
           <div style={modalBox} role="dialog">
-            <div style={eyebrow}>✎ EDIT BOARD</div>
-            <div style={{ ...metaText, marginBottom: 14 }}>Update the board name and description.</div>
-            <div style={fieldLabel}>Name</div>
+            <div style={eyebrow}>{t('✎ EDIT BOARD', '✎ SỬA BẢNG')}</div>
+            <div style={{ ...metaText, marginBottom: 14 }}>{t('Update the board name and description.', 'Cập nhật tên và mô tả bảng.')}</div>
+            <div style={fieldLabel}>{t('Name', 'Tên')}</div>
             <input style={modalInput} value={editName} onChange={e => setEditName(e.target.value)} />
-            <div style={{ ...fieldLabel, marginTop: 12 }}>Description</div>
+            <div style={{ ...fieldLabel, marginTop: 12 }}>{t('Description', 'Mô tả')}</div>
             <textarea
               style={{ ...modalInput, minHeight: 96, resize: 'vertical', lineHeight: 1.5 }}
               value={editDesc}
               onChange={e => setEditDesc(e.target.value)}
-              placeholder="What this board is for…"
+              placeholder={t('What this board is for…', 'Bảng này dùng để làm gì…')}
             />
             <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
               <button onClick={saveEdit} disabled={busy || !editName.trim()} style={{ ...btnPrimary, opacity: busy || !editName.trim() ? 0.5 : 1 }}>
-                {busy ? 'Saving…' : 'Save'}
+                {busy ? t('Saving…', 'Đang lưu…') : t('Save', 'Lưu')}
               </button>
-              <button onClick={() => setEditing(null)} style={tinyBtn}>Cancel</button>
+              <button onClick={() => setEditing(null)} style={tinyBtn}>{t('Cancel', 'Hủy')}</button>
             </div>
           </div>
         </>
@@ -289,15 +290,14 @@ export default function OpsHubHome() {
         <>
           <div style={modalBackdrop} onClick={() => { if (!busy) setDeleting(null) }} />
           <div style={modalBox} role="dialog">
-            <div style={{ ...eyebrow, color: '#C27070' }}>⚠ DELETE BOARD</div>
+            <div style={{ ...eyebrow, color: '#C27070' }}>{t('⚠ DELETE BOARD', '⚠ XÓA BẢNG')}</div>
             <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2', margin: '2px 0 8px' }}>
-              Delete “{deleting.name}”?
+              {t('Delete', 'Xóa')} “{deleting.name}”?
             </div>
             <div style={{ ...metaText, lineHeight: 1.6, marginBottom: 14 }}>
-              Soft delete — the board leaves every view, but its tasks and full activity history are kept
-              and remain recoverable. To confirm, type the board&apos;s exact name below.
+              {t('Soft delete — the board leaves every view, but its tasks and full activity history are kept and remain recoverable. To confirm, type the board\'s exact name below.', 'Xóa mềm — bảng biến mất khỏi mọi màn hình, nhưng các nhiệm vụ và toàn bộ lịch sử hoạt động vẫn được giữ lại và có thể khôi phục. Để xác nhận, hãy gõ chính xác tên bảng bên dưới.')}
             </div>
-            <div style={fieldLabel}>Type <span style={{ color: '#E5D4C2' }}>{deleting.name}</span> to confirm</div>
+            <div style={fieldLabel}>{t('Type', 'Gõ')} <span style={{ color: '#E5D4C2' }}>{deleting.name}</span> {t('to confirm', 'để xác nhận')}</div>
             <input
               style={modalInput}
               value={deleteTyped}
@@ -315,9 +315,9 @@ export default function OpsHubHome() {
                   cursor: deleteTyped !== deleting.name ? 'not-allowed' : 'pointer',
                 }}
               >
-                {busy ? 'Deleting…' : 'Delete board'}
+                {busy ? t('Deleting…', 'Đang xóa…') : t('Delete board', 'Xóa bảng')}
               </button>
-              <button onClick={() => setDeleting(null)} style={tinyBtn}>Cancel</button>
+              <button onClick={() => setDeleting(null)} style={tinyBtn}>{t('Cancel', 'Hủy')}</button>
             </div>
           </div>
         </>

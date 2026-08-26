@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { ConfirmModal, useToast } from '@/components/admin/dialogs'
+import { useLang } from '@/lib/admin-lang'
 import type { Notice } from '@/lib/types'
 
 const CATEGORIES = ['committee', 'fixture', 'general', 'whisky'] as const
@@ -24,6 +25,7 @@ const btnStyle: React.CSSProperties = {
 }
 
 export default function AdminNotices() {
+  const { t } = useLang()
   const [notices, setNotices] = useState<Notice[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Notice | null>(null)
@@ -74,7 +76,7 @@ export default function AdminNotices() {
     setConfirmBusy(true)
     try {
       const { error } = await supabase.from('notices').delete().eq('id', confirmNotice.id)
-      if (error) { showToast(`Delete failed: ${error.message}`, 'error'); return }
+      if (error) { showToast(`${t('Delete failed', 'Xóa thất bại')}: ${error.message}`, 'error'); return }
       setConfirmNotice(null)
       load()
     } finally {
@@ -86,44 +88,44 @@ export default function AdminNotices() {
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 24, fontWeight: 500, color: '#E5D4C2', letterSpacing: '0.04em' }}>
-          Notices
+          {t('Notices', 'Thông báo')}
         </h1>
         {!showForm && (
-          <button onClick={() => { resetForm(); setShowForm(true) }} style={btnStyle}>+ New Notice</button>
+          <button onClick={() => { resetForm(); setShowForm(true) }} style={btnStyle}>{t('+ New Notice', '+ Thông báo mới')}</button>
         )}
       </div>
 
       {showForm && (
         <div style={{ padding: 24, background: 'rgba(229,212,194,0.03)', borderRadius: 8, marginBottom: 32, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2', marginBottom: 4 }}>
-            {editing ? `Editing: ${editing.title}` : 'New Notice'}
+            {editing ? `${t('Editing', 'Đang chỉnh sửa')}: ${editing.title}` : t('New Notice', 'Thông báo mới')}
           </div>
           <div>
-            <label style={labelStyle}>Title</label>
+            <label style={labelStyle}>{t('Title', 'Tiêu đề')}</label>
             <input style={inputStyle} value={title} onChange={e => setTitle(e.target.value)} />
           </div>
           <div>
-            <label style={labelStyle}>Body</label>
+            <label style={labelStyle}>{t('Body', 'Nội dung')}</label>
             <textarea style={{ ...inputStyle, resize: 'vertical' }} rows={6} value={body} onChange={e => setBody(e.target.value)} />
           </div>
           <div style={{ display: 'flex', gap: 16 }}>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Category</label>
+              <label style={labelStyle}>{t('Category', 'Danh mục')}</label>
               <select style={inputStyle} value={category} onChange={e => setCategory(e.target.value as Notice['category'])}>
                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Author</label>
+              <label style={labelStyle}>{t('Author', 'Tác giả')}</label>
               <input style={inputStyle} value={author} onChange={e => setAuthor(e.target.value)} />
             </div>
           </div>
           <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-            <input type="checkbox" checked={pinned} onChange={e => setPinned(e.target.checked)} /> Pinned
+            <input type="checkbox" checked={pinned} onChange={e => setPinned(e.target.checked)} /> {t('Pinned', 'Đã ghim')}
           </label>
           <div style={{ display: 'flex', gap: 12 }}>
-            <button onClick={handleSubmit} style={btnStyle}>{editing ? 'Update' : 'Create'}</button>
-            <button onClick={resetForm} style={{ ...btnStyle, opacity: 0.5 }}>Cancel</button>
+            <button onClick={handleSubmit} style={btnStyle}>{editing ? t('Update', 'Cập nhật') : t('Create', 'Tạo mới')}</button>
+            <button onClick={resetForm} style={{ ...btnStyle, opacity: 0.5 }}>{t('Cancel', 'Hủy')}</button>
           </div>
         </div>
       )}
@@ -135,15 +137,15 @@ export default function AdminNotices() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 14, color: '#E5D4C2' }}>{n.title}</span>
                 <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', background: 'rgba(229,212,194,0.1)', borderRadius: 4, padding: '2px 8px' }}>{n.category}</span>
-                {n.pinned && <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>◆ Pinned</span>}
+                {n.pinned && <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>◆ {t('Pinned', 'Đã ghim')}</span>}
               </div>
               <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>
                 {n.author && `${n.author} · `}{new Date(n.created_at).toLocaleDateString()}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 12 }}>
-              <button onClick={() => startEdit(n)} style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.5, cursor: 'pointer' }}>Edit</button>
-              <button onClick={() => requestRemove(n)} style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.5, cursor: 'pointer' }}>Delete</button>
+              <button onClick={() => startEdit(n)} style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.5, cursor: 'pointer' }}>{t('Edit', 'Sửa')}</button>
+              <button onClick={() => requestRemove(n)} style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.5, cursor: 'pointer' }}>{t('Delete', 'Xóa')}</button>
             </div>
           </div>
         ))}
@@ -151,12 +153,12 @@ export default function AdminNotices() {
 
       <ConfirmModal
         open={!!confirmNotice}
-        eyebrow="⚠ PERMANENT"
-        title="Delete notice?"
+        eyebrow={t('⚠ PERMANENT', '⚠ VĨNH VIỄN')}
+        title={t('Delete notice?', 'Xóa thông báo?')}
         subject={confirmNotice?.title}
-        body="Removes the notice permanently. Members can no longer see it on the board. Cannot be undone."
-        confirmLabel="Delete notice"
-        busyLabel="Deleting…"
+        body={t('Removes the notice permanently. Members can no longer see it on the board. Cannot be undone.', 'Xóa thông báo vĩnh viễn. Hội viên sẽ không còn thấy nó trên bảng tin. Không thể hoàn tác.')}
+        confirmLabel={t('Delete notice', 'Xóa thông báo')}
+        busyLabel={t('Deleting…', 'Đang xóa…')}
         busy={confirmBusy}
         onCancel={closeConfirm}
         onConfirm={runRemove}

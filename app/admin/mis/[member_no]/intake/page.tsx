@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link'
+import { useLang } from '@/lib/admin-lang'
 
 // MIS Pass 4 — Transcript intake UI.
 // The stream still emits per-preference 'preference' events for the live
@@ -93,6 +94,7 @@ function isLockedOrigin(o: LambdaOrigin | null): boolean {
 }
 
 export default function MisIntakePage({ params }: { params: Promise<{ member_no: string }> }) {
+  const { t } = useLang()
   const { member_no } = use(params)
   const [memberName, setMemberName] = useState<string>('')
   const [transcript, setTranscript] = useState<string>('')
@@ -125,7 +127,7 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
 
   const start = useCallback(async () => {
     if (!transcript.trim()) {
-      setErrMsg('Paste a transcript first.')
+      setErrMsg(t('Paste a transcript first.', 'Vui lòng dán bản ghi trước.'))
       return
     }
     setErrMsg(null)
@@ -148,7 +150,7 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
       })
       if (!r.ok || !r.body) {
         const txt = await r.text()
-        throw new Error(txt || `Request failed (${r.status})`)
+        throw new Error(txt || `${t('Request failed', 'Yêu cầu thất bại')} (${r.status})`)
       }
 
       const reader = r.body.getReader()
@@ -231,7 +233,7 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
           setPhase('done')
           break
         case 'error':
-          setErrMsg(String(payload.message || 'Unknown error'))
+          setErrMsg(String(payload.message || t('Unknown error', 'Lỗi không xác định')))
           setPhase('error')
           break
       }
@@ -278,7 +280,7 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
       lambda_origin: p.lambda_origin,
     }))
     if (payload.length === 0) {
-      setErrMsg('Nothing selected to save.')
+      setErrMsg(t('Nothing selected to save.', 'Chưa chọn mục nào để lưu.'))
       return
     }
     setErrMsg(null)
@@ -290,7 +292,7 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
         body: JSON.stringify({ member_no, preferences: payload }),
       })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || `Save failed (${r.status})`)
+      if (!r.ok) throw new Error(j.error || `${t('Save failed', 'Lưu thất bại')} (${r.status})`)
       setSaved({
         inserted: Number(j.inserted) || payload.length,
         medicalReforced: Number(j.medicalReforced) || 0,
@@ -307,57 +309,53 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
   const baselineSummary = useMemo(() => {
     if (!reconciled) return null
     const learned = Object.entries(reconciled.baselines).filter(([, b]) => b.source === 'learned').map(([cat]) => cat)
-    if (learned.length === 0) return 'all baselines designed (no learned λ promoted yet)'
-    return `learned: ${learned.join(', ')}; designed: rest`
+    if (learned.length === 0) return t('all baselines designed (no learned λ promoted yet)', 'tất cả baseline đều thiết kế (chưa có λ học nào được đề bạt)')
+    return `${t('learned', 'đã học')}: ${learned.join(', ')}; ${t('designed: rest', 'thiết kế: phần còn lại')}`
   }, [reconciled])
 
   return (
     <>
-      <Link href={`/admin/mis/${member_no}`} style={backLink}>← Back to profile</Link>
+      <Link href={`/admin/mis/${member_no}`} style={backLink}>← {t('Back to profile', 'Quay lại hồ sơ')}</Link>
 
       <div style={headerRow}>
         <div>
-          <div style={eyebrow}>Interview intake · {member_no}</div>
-          <h1 style={pageTitle}>{memberName || 'Loading…'}</h1>
+          <div style={eyebrow}>{t('Interview intake', 'Tiếp nhận phỏng vấn')} · {member_no}</div>
+          <h1 style={pageTitle}>{memberName || t('Loading…', 'Đang tải…')}</h1>
         </div>
         <div style={{ display: 'flex', gap: 14, alignItems: 'baseline', fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#B2AA98' }}>
-          <span>Extracted: <span style={{ color: '#E5D4C2' }}>{extracted.length}</span></span>
-          <span>Selected: <span style={{ color: '#D4B85A' }}>{acceptedCount}</span></span>
-          {medicalCount > 0   && <span>Medical-locked: <span style={{ color: '#C27070' }}>{medicalCount}</span></span>}
-          {permanentCount > 0 && <span>Permanent-locked: <span style={{ color: '#D4B85A' }}>{permanentCount}</span></span>}
+          <span>{t('Extracted', 'Đã trích xuất')}: <span style={{ color: '#E5D4C2' }}>{extracted.length}</span></span>
+          <span>{t('Selected', 'Đã chọn')}: <span style={{ color: '#D4B85A' }}>{acceptedCount}</span></span>
+          {medicalCount > 0   && <span>{t('Medical-locked', 'Khóa y tế')}: <span style={{ color: '#C27070' }}>{medicalCount}</span></span>}
+          {permanentCount > 0 && <span>{t('Permanent-locked', 'Khóa vĩnh viễn')}: <span style={{ color: '#D4B85A' }}>{permanentCount}</span></span>}
         </div>
       </div>
 
       <p style={lede}>
-        Paste an interview transcript below and Claude Opus 4.7 will extract preferences live,
-        scoring each one against the live category baselines (learned where promoted, designed otherwise).
-        When the stream ends, a reconciliation pass enforces the medical guardrail in code:
-        any allergy or religious-dietary signal is locked to S₀=5 / C=1.00 / λ=0 and surfaces here
-        as <code>MEDICAL — LOCKED</code>. You can edit non-medical rows freely; medical-forced rows
-        cannot be weakened. Review, commit.
+        {t('Paste an interview transcript below and Claude Opus 4.7 will extract preferences live, scoring each one against the live category baselines (learned where promoted, designed otherwise). When the stream ends, a reconciliation pass enforces the medical guardrail in code: any allergy or religious-dietary signal is locked to S₀=5 / C=1.00 / λ=0 and surfaces here as ', 'Dán bản ghi phỏng vấn bên dưới và Claude Opus 4.7 sẽ trích xuất các sở thích trực tiếp, chấm điểm từng mục theo các baseline danh mục hiện hành (đã học nếu được đề bạt, còn lại là thiết kế). Khi luồng kết thúc, một lượt đối chiếu sẽ thực thi rào chắn y tế trong mã: bất kỳ tín hiệu dị ứng hay kiêng khem tôn giáo nào đều bị khóa ở S₀=5 / C=1.00 / λ=0 và hiển thị ở đây dưới dạng ')}
+        <code>MEDICAL — LOCKED</code>{t('. You can edit non-medical rows freely; medical-forced rows cannot be weakened. Review, commit.', '. Bạn có thể chỉnh sửa tự do các dòng không thuộc y tế; các dòng bắt buộc y tế không thể bị làm yếu đi. Xem lại, xác nhận.')}
       </p>
 
       <div style={inputPanel}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <div style={panelLabel}>Transcript</div>
+          <div style={panelLabel}>{t('Transcript', 'Bản ghi')}</div>
           <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', opacity: 0.6 }}>
-            {transcript.length.toLocaleString()} chars · ~{Math.round(transcript.length / 4).toLocaleString()} tokens
+            {transcript.length.toLocaleString()} {t('chars', 'ký tự')} · ~{Math.round(transcript.length / 4).toLocaleString()} {t('tokens', 'token')}
           </div>
         </div>
         <textarea
           value={transcript}
           onChange={e => setTranscript(e.target.value)}
-          placeholder="Paste the transcript here. Stage directions in [brackets] like [Firmly] or [Laughs] are read for the cadence-aware adjustments."
+          placeholder={t('Paste the transcript here. Stage directions in [brackets] like [Firmly] or [Laughs] are read for the cadence-aware adjustments.', 'Dán bản ghi vào đây. Các chỉ dẫn diễn xuất trong [dấu ngoặc] như [Firmly] hay [Laughs] được đọc để điều chỉnh theo ngữ điệu.')}
           rows={10}
           style={textareaStyle}
           disabled={phase === 'streaming' || phase === 'reconciling' || phase === 'saving'}
         />
         <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
           {phase === 'streaming' || phase === 'reasoning' || phase === 'reconciling' ? (
-            <button onClick={cancel} style={btnGhost}>Cancel</button>
+            <button onClick={cancel} style={btnGhost}>{t('Cancel', 'Hủy')}</button>
           ) : (
             <button onClick={start} disabled={!transcript.trim()} style={btnPrimary}>
-              {phase === 'done' || phase === 'saved' || phase === 'error' ? 'Re-process transcript' : 'Process transcript'}
+              {phase === 'done' || phase === 'saved' || phase === 'error' ? t('Re-process transcript', 'Xử lý lại bản ghi') : t('Process transcript', 'Xử lý bản ghi')}
             </button>
           )}
         </div>
@@ -367,14 +365,14 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
         <div style={statusRow}>
           <div style={{ ...statusDot, animation: phase === 'streaming' || phase === 'reconciling' ? 'rc-pulse 1.4s ease-in-out infinite' : 'none' }} />
           <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#D4B85A', letterSpacing: '0.06em' }}>
-            {phase === 'streaming' ? 'Claude is reading the transcript…' :
-              phase === 'reconciling' ? 'Reconciling — applying medical guardrail and baseline inheritance…' :
-              phase === 'done' ? 'Finished.' :
-              phase === 'error' ? 'Error.' : 'Working…'}
+            {phase === 'streaming' ? t('Claude is reading the transcript…', 'Claude đang đọc bản ghi…') :
+              phase === 'reconciling' ? t('Reconciling — applying medical guardrail and baseline inheritance…', 'Đang đối chiếu — áp dụng rào chắn y tế và kế thừa baseline…') :
+              phase === 'done' ? t('Finished.', 'Đã xong.') :
+              phase === 'error' ? t('Error.', 'Lỗi.') : t('Working…', 'Đang xử lý…')}
           </span>
           {thinkingBuffer && (
             <span style={{ marginLeft: 18, fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', opacity: 0.7, fontStyle: 'italic', flex: 1 }} title={thinkingBuffer}>
-              · {reasoningTick} reasoning steps
+              · {reasoningTick} {t('reasoning steps', 'bước suy luận')}
             </span>
           )}
         </div>
@@ -390,19 +388,19 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
       {reconciled && (
         <div style={banner}>
           <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#E5D4C2', lineHeight: 1.7 }}>
-            <strong style={{ color: '#D4B85A' }}>{reconciled.preferences.length}</strong> preference{reconciled.preferences.length === 1 ? '' : 's'}
+            <strong style={{ color: '#D4B85A' }}>{reconciled.preferences.length}</strong> {t('preference', 'sở thích')}{reconciled.preferences.length === 1 ? '' : 's'}
             {' · '}
-            <strong style={{ color: reconciled.medicalForced > 0 ? '#C27070' : '#B2AA98' }}>{reconciled.medicalForced}</strong> medical-forced
+            <strong style={{ color: reconciled.medicalForced > 0 ? '#C27070' : '#B2AA98' }}>{reconciled.medicalForced}</strong> {t('medical-forced', 'bắt buộc y tế')}
             {' · '}
-            <strong style={{ color: (reconciled.identityForced ?? 0) > 0 ? '#D4B85A' : '#B2AA98' }}>{reconciled.identityForced ?? 0}</strong> identity-locked
+            <strong style={{ color: (reconciled.identityForced ?? 0) > 0 ? '#D4B85A' : '#B2AA98' }}>{reconciled.identityForced ?? 0}</strong> {t('identity-locked', 'khóa danh tính')}
             {' · '}
-            <strong style={{ color: (reconciled.aiPermanent ?? 0) > 0 ? '#D4B85A' : '#B2AA98' }}>{reconciled.aiPermanent ?? 0}</strong> permanent-locked
+            <strong style={{ color: (reconciled.aiPermanent ?? 0) > 0 ? '#D4B85A' : '#B2AA98' }}>{reconciled.aiPermanent ?? 0}</strong> {t('permanent-locked', 'khóa vĩnh viễn')}
             {' · '}
-            <strong style={{ color: reconciled.dropped.length > 0 ? '#B2AA98' : '#7AB07A' }}>{reconciled.dropped.length}</strong> dropped
+            <strong style={{ color: reconciled.dropped.length > 0 ? '#B2AA98' : '#7AB07A' }}>{reconciled.dropped.length}</strong> {t('dropped', 'đã loại bỏ')}
             {reconciled.dropped.length > 0 && (
               <span style={{ color: '#B2AA98', opacity: 0.75 }}> ({reconciled.dropped.map(d => d.reason).join(', ')})</span>
             )}
-            <div style={{ marginTop: 4, color: '#B2AA98', opacity: 0.8 }}>baselines: {baselineSummary}</div>
+            <div style={{ marginTop: 4, color: '#B2AA98', opacity: 0.8 }}>{t('baselines', 'baseline')}: {baselineSummary}</div>
           </div>
         </div>
       )}
@@ -450,9 +448,9 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
                         checked={p.accepted}
                         onChange={e => updatePref(p.uid, { accepted: e.target.checked })}
                       />
-                      <span>Keep</span>
+                      <span>{t('Keep', 'Giữ')}</span>
                     </label>
-                    <button onClick={() => removePref(p.uid)} title="Discard" style={discardBtn}>×</button>
+                    <button onClick={() => removePref(p.uid)} title={t('Discard', 'Loại bỏ')} style={discardBtn}>×</button>
                   </div>
                 </div>
 
@@ -464,7 +462,7 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
                         onChange={e => updatePref(p.uid, { detail: e.target.value })}
                         rows={2}
                         style={prefDetailInput}
-                        placeholder="Detail"
+                        placeholder={t('Detail', 'Chi tiết')}
                       />
                     )}
                     {p.verbatim_quote && (
@@ -498,8 +496,8 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
                 {locked && (
                   <div style={isMedical ? lockNote : lockNotePermanent}>
                     {isMedical
-                      ? 'Medical signal detected by content-based guardrail. S₀ / C / λ are locked at this row; the medical lock is re-asserted at the save boundary.'
-                      : 'The AI judged this specific item lifelong (λ=0) — it wasn’t caught by the medical or identity guardrails, so the model’s own call applies here. Same scoring effect as a guardrail lock, reached by judgment rather than rule. S₀ / C / λ are locked and re-asserted at the save boundary.'}
+                      ? t('Medical signal detected by content-based guardrail. S₀ / C / λ are locked at this row; the medical lock is re-asserted at the save boundary.', 'Tín hiệu y tế được phát hiện bởi rào chắn dựa trên nội dung. S₀ / C / λ bị khóa ở dòng này; khóa y tế được tái áp dụng tại thời điểm lưu.')
+                      : t('The AI judged this specific item lifelong (λ=0) — it wasn’t caught by the medical or identity guardrails, so the model’s own call applies here. Same scoring effect as a guardrail lock, reached by judgment rather than rule. S₀ / C / λ are locked and re-asserted at the save boundary.', 'AI đánh giá mục cụ thể này là suốt đời (λ=0) — nó không bị bắt bởi rào chắn y tế hay danh tính, nên phán đoán của chính mô hình được áp dụng ở đây. Cùng hiệu ứng chấm điểm như khóa rào chắn, đạt được bằng phán đoán chứ không phải quy tắc. S₀ / C / λ bị khóa và được tái áp dụng tại thời điểm lưu.')}
                   </div>
                 )}
               </div>
@@ -512,16 +510,16 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
         <div style={footerBar}>
           {usage && (
             <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', opacity: 0.65, letterSpacing: '0.04em' }}>
-              {usage.input_tokens.toLocaleString()} in · {usage.output_tokens.toLocaleString()} out
-              {usage.cache_read_input_tokens > 0 && ` · ${usage.cache_read_input_tokens.toLocaleString()} cached`}
+              {usage.input_tokens.toLocaleString()} {t('in', 'vào')} · {usage.output_tokens.toLocaleString()} {t('out', 'ra')}
+              {usage.cache_read_input_tokens > 0 && ` · ${usage.cache_read_input_tokens.toLocaleString()} ${t('cached', 'đã lưu đệm')}`}
             </div>
           )}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
             {phase === 'saved' && saved && (
               <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#7AB07A' }}>
-                ✓ Saved {saved.inserted} preference{saved.inserted === 1 ? '' : 's'}
-                {saved.medicalReforced   > 0 && ` · ${saved.medicalReforced} medical re-forced at save`}
-                {saved.permanentReforced > 0 && ` · ${saved.permanentReforced} permanent re-locked at save`}
+                ✓ {t('Saved', 'Đã lưu')} {saved.inserted} {t('preference', 'sở thích')}{saved.inserted === 1 ? '' : 's'}
+                {saved.medicalReforced   > 0 && ` · ${saved.medicalReforced} ${t('medical re-forced at save', 'bắt buộc y tế lại khi lưu')}`}
+                {saved.permanentReforced > 0 && ` · ${saved.permanentReforced} ${t('permanent re-locked at save', 'khóa vĩnh viễn lại khi lưu')}`}
               </span>
             )}
             {(phase === 'done' || phase === 'error') && (
@@ -530,15 +528,15 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
                 disabled={acceptedCount === 0 || phase !== 'done'}
                 style={acceptedCount === 0 ? { ...btnPrimary, opacity: 0.4, cursor: 'not-allowed' } : btnPrimary}
               >
-                Save {acceptedCount} preference{acceptedCount === 1 ? '' : 's'}
+                {t('Save', 'Lưu')} {acceptedCount} {t('preference', 'sở thích')}{acceptedCount === 1 ? '' : 's'}
               </button>
             )}
             {phase === 'saving' && (
-              <button disabled style={{ ...btnPrimary, opacity: 0.6 }}>Saving…</button>
+              <button disabled style={{ ...btnPrimary, opacity: 0.6 }}>{t('Saving…', 'Đang lưu…')}</button>
             )}
             {phase === 'saved' && (
               <Link href={`/admin/mis/${member_no}`} style={{ ...btnGhost, textDecoration: 'none', display: 'inline-block' }}>
-                Back to profile →
+                {t('Back to profile', 'Quay lại hồ sơ')} →
               </Link>
             )}
           </div>

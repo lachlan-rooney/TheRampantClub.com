@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useLang } from '@/lib/admin-lang'
 
 // "Click who you are" — the shared staff login picks a team_member (+ PIN) before
 // the portal. Attribution, not access (the login is the boundary). Mirrors the
@@ -10,6 +11,7 @@ const MONO = "'Google Sans Code', 'DM Mono', monospace"
 interface Staff { id: string; display_name: string; role_title?: string | null }
 
 export default function AdminWho() {
+  const { t } = useLang()
   const [roster, setRoster] = useState<Staff[]>([])
   const [picking, setPicking] = useState<Staff | null>(null)
   const [pin, setPin] = useState('')
@@ -24,16 +26,16 @@ export default function AdminWho() {
     if (!picking || pin.length < 4) return
     const r = await fetch('/api/admin/acting', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'pick', team_member_id: picking.id, pin }) })
     if (r.ok) window.location.href = '/admin'
-    else { setErr((await r.json().catch(() => ({})))?.error || 'Wrong PIN.'); setPin('') }
+    else { setErr((await r.json().catch(() => ({})))?.error || t('Wrong PIN.', 'Sai mã PIN.')); setPin('') }
   }
 
   return (
     <div style={wrap}>
       {picking ? (
         <div style={{ textAlign: 'center', width: 'min(360px, 92vw)' }}>
-          <button onClick={() => { setPicking(null); setPin(''); setErr('') }} style={back}>← Not you?</button>
+          <button onClick={() => { setPicking(null); setPin(''); setErr('') }} style={back}>← {t('Not you?', 'Không phải bạn?')}</button>
           <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 24, color: '#E5D4C2', margin: '8px 0 4px' }}>{picking.display_name}</div>
-          <div style={muted}>Enter your PIN</div>
+          <div style={muted}>{t('Enter your PIN', 'Nhập mã PIN của bạn')}</div>
           <div style={dots}>{Array.from({ length: Math.max(4, pin.length) }).map((_, i) => <span key={i} style={{ ...dot, background: i < pin.length ? '#D4B85A' : 'transparent' }} />)}</div>
           {err && <div style={errS}>{err}</div>}
           <div style={pad}>
@@ -45,10 +47,10 @@ export default function AdminWho() {
         </div>
       ) : (
         <div style={{ textAlign: 'center', width: 'min(640px, 94vw)' }}>
-          <div style={kicker}>The Rampant Club · Admin</div>
-          <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 26, color: '#E5D4C2', margin: '10px 0 22px' }}>Who are you?</div>
+          <div style={kicker}>The Rampant Club · {t('Admin', 'Quản trị')}</div>
+          <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 26, color: '#E5D4C2', margin: '10px 0 22px' }}>{t('Who are you?', 'Bạn là ai?')}</div>
           {roster.length === 0 ? (
-            <div style={muted}>No staff PINs set yet — set them in Kiosk → Staff PINs.</div>
+            <div style={muted}>{t('No staff PINs set yet — set them in Kiosk → Staff PINs.', 'Chưa thiết lập mã PIN nhân viên — thiết lập trong Kiosk → Staff PINs.')}</div>
           ) : (
             <div style={grid}>
               {roster.map(s => (

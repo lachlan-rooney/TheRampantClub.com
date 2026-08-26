@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { useToast } from '@/components/admin/dialogs'
+import { useLang } from '@/lib/admin-lang'
 
 // Flavour-tag review queue — the 0.6-0.7 descriptor tail (confirmed=false).
 // Machine proposes, human ratifies (mirrors the MIS preference-candidate queue):
@@ -23,6 +24,7 @@ interface Row {
 }
 
 export default function FlavourReviewPage() {
+  const { t } = useLang()
   const supabase = createBrowserSupabaseClient()
   const { showToast, toastNode } = useToast()
   const [rows, setRows] = useState<Row[]>([])
@@ -47,7 +49,7 @@ export default function FlavourReviewPage() {
     setBusyId(null)
     if (error) { showToast(error.message, 'error'); return }
     setRows(prev => prev.filter(x => x.id !== r.id))
-    showToast('Confirmed — now trusted.')
+    showToast(t('Confirmed — now trusted.', 'Đã xác nhận — nay được tin dùng.'))
   }
   const reject = async (r: Row) => {
     setBusyId(r.id)
@@ -55,12 +57,12 @@ export default function FlavourReviewPage() {
     setBusyId(null)
     if (error) { showToast(error.message, 'error'); return }
     setRows(prev => prev.filter(x => x.id !== r.id))
-    showToast('Rejected — removed.')
+    showToast(t('Rejected — removed.', 'Đã từ chối — đã loại bỏ.'))
   }
 
   // Highlight the evidence phrase inside the prose so the reviewer sees the match.
   const highlight = (prose: string | null, ev: string | null) => {
-    if (!prose) return <span style={{ opacity: 0.5, fontStyle: 'italic' }}>No tasting notes.</span>
+    if (!prose) return <span style={{ opacity: 0.5, fontStyle: 'italic' }}>{t('No tasting notes.', 'Không có ghi chú nếm.')}</span>
     if (!ev) return prose
     const i = prose.toLowerCase().indexOf(ev.toLowerCase().slice(0, 24))
     if (i < 0) return prose
@@ -69,24 +71,22 @@ export default function FlavourReviewPage() {
 
   return (
     <>
-      <Link href="/admin/whisky" style={backLink}>← Whisky library</Link>
+      <Link href="/admin/whisky" style={backLink}>{t('← Whisky library', '← Thư viện whisky')}</Link>
       <div style={{ margin: '8px 0 4px' }}>
-        <div style={eyebrow}>Whisky · Flavour foundation</div>
-        <h1 style={pageTitle}>Flavour-tag review</h1>
+        <div style={eyebrow}>{t('Whisky · Flavour foundation', 'Whisky · Nền tảng hương vị')}</div>
+        <h1 style={pageTitle}>{t('Flavour-tag review', 'Duyệt thẻ hương vị')}</h1>
       </div>
       <p style={lede}>
-        Proposed flavour descriptors in the uncertain band (confidence 0.60–0.70). The radar and the
-        future recommendation engine ignore these until you confirm. Check the tag against its evidence
-        phrase and the original notes, then confirm (trust it) or reject (remove it).
+        {t('Proposed flavour descriptors in the uncertain band (confidence 0.60–0.70). The radar and the future recommendation engine ignore these until you confirm. Check the tag against its evidence phrase and the original notes, then confirm (trust it) or reject (remove it).', 'Các mô tả hương vị được đề xuất trong dải chưa chắc chắn (độ tin cậy 0,60–0,70). Biểu đồ radar và bộ máy gợi ý trong tương lai sẽ bỏ qua chúng cho đến khi bạn xác nhận. Đối chiếu thẻ với cụm bằng chứng và ghi chú gốc, sau đó xác nhận (tin dùng) hoặc từ chối (loại bỏ).')}
       </p>
 
       {loading ? (
-        <div style={emptyText}>Loading…</div>
+        <div style={emptyText}>{t('Loading…', 'Đang tải…')}</div>
       ) : rows.length === 0 ? (
-        <div style={emptyText}>Nothing to review — the queue is clear.</div>
+        <div style={emptyText}>{t('Nothing to review — the queue is clear.', 'Không có gì để duyệt — hàng chờ đã trống.')}</div>
       ) : (
         <>
-          <div style={{ ...metaText, margin: '14px 0' }}>{rows.length} tag{rows.length === 1 ? '' : 's'} awaiting review</div>
+          <div style={{ ...metaText, margin: '14px 0' }}>{rows.length} {t('tag', 'thẻ')}{rows.length === 1 ? '' : 's'} {t('awaiting review', 'đang chờ duyệt')}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {rows.map(r => (
               <div key={r.id} style={card}>
@@ -97,13 +97,13 @@ export default function FlavourReviewPage() {
                       {r.descriptor?.category?.name || '—'} › <span style={{ color: '#D4B85A' }}>{r.descriptor?.name || '—'}</span>
                     </span>
                   </div>
-                  <span style={confPill}>conf {Number(r.confidence).toFixed(2)}</span>
+                  <span style={confPill}>{t('conf', 'độ tin')} {Number(r.confidence).toFixed(2)}</span>
                 </div>
-                <div style={evidenceRow}>evidence: <span style={{ color: '#E5D4C2' }}>“{r.evidence || '—'}”</span></div>
+                <div style={evidenceRow}>{t('evidence', 'bằng chứng')}: <span style={{ color: '#E5D4C2' }}>“{r.evidence || '—'}”</span></div>
                 <div style={proseRow}>{highlight(r.whisky?.tasting_notes || null, r.evidence)}</div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                  <button onClick={() => confirm(r)} disabled={busyId === r.id} style={confirmBtn}>✓ Confirm</button>
-                  <button onClick={() => reject(r)} disabled={busyId === r.id} style={rejectBtn}>✕ Reject</button>
+                  <button onClick={() => confirm(r)} disabled={busyId === r.id} style={confirmBtn}>{t('✓ Confirm', '✓ Xác nhận')}</button>
+                  <button onClick={() => reject(r)} disabled={busyId === r.id} style={rejectBtn}>{t('✕ Reject', '✕ Từ chối')}</button>
                 </div>
               </div>
             ))}

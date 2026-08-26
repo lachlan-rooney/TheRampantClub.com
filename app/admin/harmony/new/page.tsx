@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { vnDateString } from '@/lib/datetime'
+import { useLang } from '@/lib/admin-lang'
 
 // Admin / Floor / Harmony Log / New
 //
@@ -13,6 +14,7 @@ import { vnDateString } from '@/lib/datetime'
 const SHIFTS = ['early', 'evening', 'late', 'all-day']
 
 export default function NewHarmonyLogPage() {
+  const { t } = useLang()
   const router = useRouter()
   const today = vnDateString()
   const [shift_date, setShiftDate] = useState(today)
@@ -25,7 +27,7 @@ export default function NewHarmonyLogPage() {
   const [error, setError] = useState<string | null>(null)
 
   const submit = useCallback(async (then: 'extract' | 'save') => {
-    if (!narrative.trim()) { setError('Narrative required.'); return }
+    if (!narrative.trim()) { setError(t('Narrative required.', 'Cần nhập tường thuật.')); return }
     setSaving(true); setError(null)
     try {
       const r = await fetch('/api/admin/harmony', {
@@ -39,24 +41,24 @@ export default function NewHarmonyLogPage() {
         }),
       })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'Save failed')
+      if (!r.ok) throw new Error(j.error || t('Save failed', 'Lưu thất bại'))
       // Detail page reads ?run=1 and kicks off extraction automatically.
       router.push(`/admin/harmony/${j.log.id}${then === 'extract' ? '?run=1' : ''}`)
     } catch (e) {
       setError((e as Error).message)
       setSaving(false)
     }
-  }, [shift_date, shift_label, attendee_count, weather, room_state, narrative, router])
+  }, [shift_date, shift_label, attendee_count, weather, room_state, narrative, router, t])
 
   return (
     <>
-      <Link href="/admin/harmony" style={backLink}>← Harmony Log</Link>
+      <Link href="/admin/harmony" style={backLink}>← {t('Harmony Log', 'Nhật ký ca trực')}</Link>
 
       <div style={{ marginBottom: 24 }}>
-        <div style={eyebrow}>Floor · Harmony Log</div>
-        <h1 style={pageTitle}>Tonight&apos;s shift</h1>
+        <div style={eyebrow}>{t('Floor · Harmony Log', 'Sảnh · Nhật ký ca trực')}</div>
+        <h1 style={pageTitle}>{t("Tonight's shift", 'Ca trực tối nay')}</h1>
         <p style={lede}>
-          Type what happened tonight in plain English — who came in, what they drank, what they said, anything that mattered. Hit <strong>Process</strong> and Claude reads it back and proposes structured updates. You tick what to keep.
+          {t('Type what happened tonight in plain English — who came in, what they drank, what they said, anything that mattered. Hit', 'Ghi lại những gì đã diễn ra tối nay bằng lời văn tự nhiên — ai đã đến, họ uống gì, họ nói gì, bất cứ điều gì đáng lưu ý. Nhấn')} <strong>{t('Process', 'Xử lý')}</strong> {t('and Claude reads it back and proposes structured updates. You tick what to keep.', 'và Claude sẽ đọc lại rồi đề xuất các cập nhật có cấu trúc. Bạn chọn những gì muốn giữ lại.')}
         </p>
       </div>
 
@@ -65,43 +67,45 @@ export default function NewHarmonyLogPage() {
       {/* Metadata strip */}
       <div style={metaGrid}>
         <div style={fieldRow}>
-          <div style={editLabel}>Shift date</div>
+          <div style={editLabel}>{t('Shift date', 'Ngày ca trực')}</div>
           <input type="date" value={shift_date} onChange={e => setShiftDate(e.target.value)} style={inputStyle} />
         </div>
         <div style={fieldRow}>
-          <div style={editLabel}>Shift</div>
+          <div style={editLabel}>{t('Shift', 'Ca trực')}</div>
           <select value={shift_label} onChange={e => setShiftLabel(e.target.value)} style={inputStyle}>
             {SHIFTS.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <div style={fieldRow}>
-          <div style={editLabel}>Attendees</div>
+          <div style={editLabel}>{t('Attendees', 'Số khách')}</div>
           <input type="number" min="0" value={attendee_count} onChange={e => setAttendeeCount(e.target.value)} placeholder="0" style={inputStyle} />
         </div>
         <div style={fieldRow}>
-          <div style={editLabel}>Weather</div>
-          <input value={weather} onChange={e => setWeather(e.target.value)} placeholder="Heavy rain · Cool · Humid" style={inputStyle} />
+          <div style={editLabel}>{t('Weather', 'Thời tiết')}</div>
+          <input value={weather} onChange={e => setWeather(e.target.value)} placeholder={t('Heavy rain · Cool · Humid', 'Mưa lớn · Mát · Ẩm')} style={inputStyle} />
         </div>
         <div style={{ ...fieldRow, gridColumn: '1 / -1' }}>
-          <div style={editLabel}>Room state · vibe</div>
-          <input value={room_state} onChange={e => setRoomState(e.target.value)} placeholder="Quiet early, lively after 9. Cigar terrace busy." style={inputStyle} />
+          <div style={editLabel}>{t('Room state · vibe', 'Trạng thái phòng · không khí')}</div>
+          <input value={room_state} onChange={e => setRoomState(e.target.value)} placeholder={t('Quiet early, lively after 9. Cigar terrace busy.', 'Đầu giờ vắng, sôi động sau 9 giờ. Sân xì gà đông khách.')} style={inputStyle} />
         </div>
       </div>
 
       {/* Narrative */}
       <div style={{ marginTop: 22 }}>
-        <div style={editLabel}>Narrative *</div>
+        <div style={editLabel}>{t('Narrative', 'Tường thuật')} *</div>
         <textarea
           value={narrative}
           onChange={e => setNarrative(e.target.value)}
           rows={18}
-          placeholder={`Type freely. Names, drinks, conversations, complaints, walk-ins, charges. Example:
+          placeholder={t(`Type freely. Names, drinks, conversations, complaints, walk-ins, charges. Example:
 
-"Mr Smith came in with Tran around 8. They finished Smith's Hibiki 21 — about three pours each. Smith asked about Bowmore 25 next visit. Mentioned a friend Mike who runs a hedge fund, intro'd them by name and asked if we'd consider him for membership. Sarah complained about music volume early — we turned it down and she was happy. Tran picked up the tab, ~4.2M off his card."`}
+"Mr Smith came in with Tran around 8. They finished Smith's Hibiki 21 — about three pours each. Smith asked about Bowmore 25 next visit. Mentioned a friend Mike who runs a hedge fund, intro'd them by name and asked if we'd consider him for membership. Sarah complained about music volume early — we turned it down and she was happy. Tran picked up the tab, ~4.2M off his card."`, `Nhập tự do. Tên khách, đồ uống, trò chuyện, phàn nàn, khách vãng lai, hóa đơn. Ví dụ:
+
+"Ông Smith vào cùng Trần khoảng 8 giờ. Họ uống hết chai Hibiki 21 của Smith — mỗi người khoảng ba ly. Smith hỏi về Bowmore 25 cho lần tới. Có nhắc đến một người bạn tên Mike làm quỹ đầu cơ, giới thiệu tên và hỏi liệu chúng ta có cân nhắc kết nạp hội viên không. Sarah phàn nàn nhạc mở to lúc đầu — chúng ta đã vặn nhỏ và cô ấy hài lòng. Trần thanh toán, ~4.2M từ thẻ của anh ấy."`)}
           style={{ ...inputStyle, resize: 'vertical', minHeight: 280, fontFamily: "'Google Sans Code', monospace", lineHeight: 1.7 }}
         />
         <div style={{ ...lede, marginTop: 6, fontSize: 11 }}>
-          {narrative.length.toLocaleString()} chars · Claude reads the whole thing before proposing anything.
+          {narrative.length.toLocaleString()} {t('chars · Claude reads the whole thing before proposing anything.', 'ký tự · Claude đọc toàn bộ trước khi đề xuất bất kỳ điều gì.')}
         </div>
       </div>
 
@@ -112,16 +116,16 @@ export default function NewHarmonyLogPage() {
           disabled={saving || !narrative.trim()}
           style={{ ...btnPrimary, opacity: !narrative.trim() ? 0.4 : 1, cursor: !narrative.trim() ? 'not-allowed' : 'pointer' }}
         >
-          {saving ? 'Saving…' : '◆ Save & Process →'}
+          {saving ? t('Saving…', 'Đang lưu…') : `◆ ${t('Save & Process', 'Lưu & Xử lý')} →`}
         </button>
         <button
           onClick={() => submit('save')}
           disabled={saving || !narrative.trim()}
           style={{ ...btnGhost, opacity: !narrative.trim() ? 0.4 : 1, cursor: !narrative.trim() ? 'not-allowed' : 'pointer' }}
         >
-          Save as draft
+          {t('Save as draft', 'Lưu nháp')}
         </button>
-        <Link href="/admin/harmony" style={btnGhost}>Cancel</Link>
+        <Link href="/admin/harmony" style={btnGhost}>{t('Cancel', 'Hủy')}</Link>
       </div>
     </>
   )

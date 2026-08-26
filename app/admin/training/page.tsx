@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useLang } from '@/lib/admin-lang'
 
 // Admin / House / Training
 //
@@ -812,6 +813,7 @@ const SECTIONS: SectionDef[] = [
 ]
 
 export default function TrainingPage() {
+  const { t } = useLang()
   const [openIds, setOpenIds] = useState<Set<string>>(new Set([SECTIONS[0].id]))
   const [q, setQ] = useState('')
   const [lang, setLang] = useState<Lang>('en')
@@ -834,9 +836,9 @@ export default function TrainingPage() {
     <>
       <div style={{ marginBottom: 28 }}>
         <div style={eyebrow}>House</div>
-        <h1 style={pageTitle}>Training</h1>
+        <h1 style={pageTitle}>{t('Training', 'Đào tạo')}</h1>
         <p style={lede}>
-          The team handbook for the admin portal. Browse top-to-bottom on your first day, then come back for specific tasks. Sections collapse — open what you need.
+          {t('The team handbook for the admin portal. Browse top-to-bottom on your first day, then come back for specific tasks. Sections collapse — open what you need.', 'Cẩm nang của đội ngũ dành cho cổng quản trị. Đọc từ trên xuống dưới trong ngày đầu, rồi quay lại khi cần làm việc cụ thể. Các mục có thể thu gọn — mở phần bạn cần.')}
         </p>
       </div>
 
@@ -870,18 +872,18 @@ export default function TrainingPage() {
         <input
           value={q}
           onChange={e => setQ(e.target.value)}
-          placeholder="Search sections…"
+          placeholder={t('Search sections…', 'Tìm mục…')}
           style={{ ...inputStyle, maxWidth: 360 }}
         />
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={expandAll} style={btnGhost}>Expand all</button>
-          <button onClick={collapseAll} style={btnGhost}>Collapse all</button>
+          <button onClick={expandAll} style={btnGhost}>{t('Expand all', 'Mở tất cả')}</button>
+          <button onClick={collapseAll} style={btnGhost}>{t('Collapse all', 'Thu gọn tất cả')}</button>
         </div>
       </div>
 
       {/* TOC */}
       <div style={tocBlock}>
-        <div style={tocLabel}>Sections</div>
+        <div style={tocLabel}>{t('Sections', 'Các mục')}</div>
         <div style={tocGrid}>
           {SECTIONS.map(s => (
             <a key={s.id} href={`#${s.id}`} style={tocLink}>
@@ -910,7 +912,7 @@ export default function TrainingPage() {
           )
         })}
         {filtered.length === 0 && (
-          <div style={emptyText}>No sections match &quot;{q}&quot;.</div>
+          <div style={emptyText}>{t('No sections match', 'Không có mục nào khớp')} &quot;{q}&quot;.</div>
         )}
       </div>
     </>

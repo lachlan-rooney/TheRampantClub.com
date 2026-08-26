@@ -5,6 +5,7 @@ import { useToast, ConfirmModal } from '@/components/admin/dialogs'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { vnDateString } from '@/lib/datetime'
+import { useLang } from '@/lib/admin-lang'
 
 // Admin / Floor / Calendar
 //
@@ -70,6 +71,7 @@ function addDays(d: Date, n: number): Date {
 const isoDate = vnDateString
 
 export default function CalendarPage() {
+  const { t } = useLang()
   const router = useRouter()
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()))
   const [spaceFilter, setSpaceFilter] = useState<string>('All spaces')
@@ -128,7 +130,7 @@ export default function CalendarPage() {
         body: JSON.stringify({ member_no: booking.member_no }),
       })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'Could not start visit')
+      if (!r.ok) throw new Error(j.error || t('Could not start visit', 'Không thể bắt đầu lượt ghé'))
       router.push(`/admin/mis/visits/${j.visit_id}`)
     } catch (e) {
       showToast((e as Error).message, 'error')
@@ -143,9 +145,9 @@ export default function CalendarPage() {
     const r = await fetch(`/api/admin/bookings/${confirmCancel.booking_id}`, { method: 'DELETE' })
     if (!r.ok) {
       const j = await r.json().catch(() => ({}))
-      showToast(j.error || 'Cancel failed', 'error'); setCancelBusy(false); return
+      showToast(j.error || t('Cancel failed', 'Huỷ thất bại'), 'error'); setCancelBusy(false); return
     }
-    showToast('Booking cancelled.', 'success')
+    showToast(t('Booking cancelled.', 'Đã huỷ đặt chỗ.'), 'success')
     setCancelBusy(false); setConfirmCancel(null); load()
   }
 
@@ -153,8 +155,8 @@ export default function CalendarPage() {
     if (!confirmDeleteEntry) return
     setEntryBusy(true)
     const r = await fetch(`/api/admin/calendar-entries/${confirmDeleteEntry.id}`, { method: 'DELETE' })
-    if (!r.ok) { const j = await r.json().catch(() => ({})); showToast(j.error || 'Remove failed', 'error'); setEntryBusy(false); return }
-    showToast('House entry removed.', 'success')
+    if (!r.ok) { const j = await r.json().catch(() => ({})); showToast(j.error || t('Remove failed', 'Xoá thất bại'), 'error'); setEntryBusy(false); return }
+    showToast(t('House entry removed.', 'Đã xoá mục nội bộ.'), 'success')
     setEntryBusy(false); setConfirmDeleteEntry(null); load()
   }
 
@@ -165,32 +167,32 @@ export default function CalendarPage() {
     <>
       <div style={headerRow}>
         <div>
-          <div style={eyebrow}>Floor</div>
-          <h1 style={pageTitle}>Calendar</h1>
+          <div style={eyebrow}>{t('Floor', 'Sàn')}</div>
+          <h1 style={pageTitle}>{t('Calendar', 'Lịch')}</h1>
           <p style={lede}>
-            Who&apos;s coming in, which room, when. Tap-to-start auto-links the booking when a member scans their card; from here you can start the visit manually if needed.
+            {t("Who's coming in, which room, when. Tap-to-start auto-links the booking when a member scans their card; from here you can start the visit manually if needed.", 'Ai đang đến, phòng nào, khi nào. Chạm-để-bắt-đầu tự động liên kết đặt chỗ khi hội viên quét thẻ; từ đây bạn có thể bắt đầu lượt ghé thủ công nếu cần.')}
           </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
-          <Link href="/admin/bookings/new" style={btnPrimary}>＋ New booking</Link>
+          <Link href="/admin/bookings/new" style={btnPrimary}>{t('＋ New booking', '＋ Đặt chỗ mới')}</Link>
         </div>
       </div>
 
       <div style={toolbar}>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           <button onClick={() => setWeekStart(addDays(weekStart, -7))} style={navBtn}>←</button>
-          <button onClick={() => setWeekStart(startOfWeek(new Date()))} style={{ ...navBtn, padding: '6px 14px' }}>This week</button>
+          <button onClick={() => setWeekStart(startOfWeek(new Date()))} style={{ ...navBtn, padding: '6px 14px' }}>{t('This week', 'Tuần này')}</button>
           <button onClick={() => setWeekStart(addDays(weekStart, 7))} style={navBtn}>→</button>
           <div style={weekLabelStyle}>{weekLabel}</div>
         </div>
         <select value={spaceFilter} onChange={e => setSpaceFilter(e.target.value)} style={spaceSelect}>
-          <option value="All spaces">All spaces</option>
+          <option value="All spaces">{t('All spaces', 'Tất cả không gian')}</option>
           {SPACES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
 
       {loading ? (
-        <div style={emptyText}>Loading…</div>
+        <div style={emptyText}>{t('Loading…', 'Đang tải…')}</div>
       ) : (
         <div style={weekGrid}>
           {days.map((d, i) => {
@@ -218,12 +220,12 @@ export default function CalendarPage() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
                           <span style={houseTime}>{fmtEntryTime(e)}</span>
                           {e.visibility === 'staff'
-                            ? <span style={staffBadge}>STAFF ONLY</span>
-                            : <span style={memberBadge}>MEMBER</span>}
+                            ? <span style={staffBadge}>{t('STAFF ONLY', 'CHỈ NHÂN VIÊN')}</span>
+                            : <span style={memberBadge}>{t('MEMBER', 'HỘI VIÊN')}</span>}
                         </div>
                         <div style={houseTitle}>{e.title}</div>
                         <div style={houseMeta}>
-                          {KIND_LABEL[e.kind] || 'House'}{e.space ? ` · ${e.space}` : ''}
+                          {KIND_LABEL[e.kind] || t('House', 'Nội bộ')}{e.space ? ` · ${e.space}` : ''}
                           {e.space && e.blocks_space && (e.tables && e.tables.length > 0 ? ` · ${e.tables.join(', ')}` : ' · closed')}
                         </div>
                         {e.description && <div style={bookingNotes}>{e.description}</div>}
@@ -231,19 +233,19 @@ export default function CalendarPage() {
                         {hoveredEntry === e.id && (
                           <div style={tooltip} onMouseEnter={() => setHoveredEntry(e.id)}>
                             <div style={tipMember}>{e.title}</div>
-                            <div style={tipMeta}>{KIND_LABEL[e.kind] || 'House'} · {e.visibility === 'staff' ? 'Staff-only' : 'Member-visible'}</div>
+                            <div style={tipMeta}>{KIND_LABEL[e.kind] || t('House', 'Nội bộ')} · {e.visibility === 'staff' ? t('Staff-only', 'Chỉ nhân viên') : t('Member-visible', 'Hội viên thấy được')}</div>
                             <div style={tipRow}>
                               {fmtEntryTime(e)}{e.space ? ` · ${e.space}` : ''}
                               {e.space && e.blocks_space && (e.tables && e.tables.length > 0 ? ` · ${e.tables.join(', ')}` : ' · room closed')}
                             </div>
-                            <div style={tipNotesLabel}>Details</div>
-                            <div style={tipNotesBox}>{e.description && e.description.trim() ? e.description : 'No description on this entry.'}</div>
+                            <div style={tipNotesLabel}>{t('Details', 'Chi tiết')}</div>
+                            <div style={tipNotesBox}>{e.description && e.description.trim() ? e.description : t('No description on this entry.', 'Không có mô tả cho mục này.')}</div>
                           </div>
                         )}
 
                         <div style={cardActions}>
-                          <Link href={`/admin/bookings/new?entry=${e.id}`} style={cardActionLink}>Edit</Link>
-                          <button onClick={() => setConfirmDeleteEntry(e)} style={cardActionBtn}>Remove</button>
+                          <Link href={`/admin/bookings/new?entry=${e.id}`} style={cardActionLink}>{t('Edit', 'Sửa')}</Link>
+                          <button onClick={() => setConfirmDeleteEntry(e)} style={cardActionBtn}>{t('Remove', 'Xoá')}</button>
                         </div>
                       </div>
                     ))}
@@ -274,14 +276,14 @@ export default function CalendarPage() {
                             </div>
                             <div style={tipMeta}>{b.member_tier} · {b.member_no}</div>
                             <div style={tipRow}>{fmtTime(b)} · {b.space} · {b.party_size}p · <span style={{ color: statusColor(b.status) }}>{b.status}</span></div>
-                            {b.tables && b.tables.length > 0 && <div style={tipRow}>Tables: {b.tables.join(', ')}</div>}
-                            <div style={tipNotesLabel}>Comments</div>
-                            <div style={tipNotesBox}>{b.notes && b.notes.trim() ? b.notes : 'No comments on this booking.'}</div>
+                            {b.tables && b.tables.length > 0 && <div style={tipRow}>{t('Tables', 'Bàn')}: {b.tables.join(', ')}</div>}
+                            <div style={tipNotesLabel}>{t('Comments', 'Ghi chú')}</div>
+                            <div style={tipNotesBox}>{b.notes && b.notes.trim() ? b.notes : t('No comments on this booking.', 'Không có ghi chú cho đặt chỗ này.')}</div>
                           </div>
                         )}
                         {b.status === 'arrived' && b.linked_visit_id && (
                           <Link href={`/admin/mis/visits/${b.linked_visit_id}`} style={visitLink}>
-                            → open visit
+                            {t('→ open visit', '→ mở lượt ghé')}
                           </Link>
                         )}
                         {(b.status === 'confirmed' || b.status === 'pending') && iso === todayIso && (
@@ -290,13 +292,13 @@ export default function CalendarPage() {
                             disabled={starting === b.booking_id}
                             style={startBtn}
                           >
-                            {starting === b.booking_id ? 'Starting…' : '◉ Start visit'}
+                            {starting === b.booking_id ? t('Starting…', 'Đang bắt đầu…') : t('◉ Start visit', '◉ Bắt đầu lượt ghé')}
                           </button>
                         )}
                         {b.status !== 'cancelled' && (
                           <div style={cardActions}>
-                            <Link href={`/admin/bookings/${b.booking_id}/edit`} style={cardActionLink}>Edit</Link>
-                            <button onClick={() => setConfirmCancel(b)} style={cardActionBtn}>Cancel</button>
+                            <Link href={`/admin/bookings/${b.booking_id}/edit`} style={cardActionLink}>{t('Edit', 'Sửa')}</Link>
+                            <button onClick={() => setConfirmCancel(b)} style={cardActionBtn}>{t('Cancel', 'Huỷ')}</button>
                           </div>
                         )}
                       </div>
@@ -311,12 +313,12 @@ export default function CalendarPage() {
 
       <ConfirmModal
         open={!!confirmCancel}
-        eyebrow="⚠ CANCEL BOOKING"
-        title="Cancel this booking?"
+        eyebrow={t('⚠ CANCEL BOOKING', '⚠ HUỶ ĐẶT CHỖ')}
+        title={t('Cancel this booking?', 'Huỷ đặt chỗ này?')}
         subject={confirmCancel ? `${confirmCancel.member_name} · ${confirmCancel.booking_date}` : ''}
-        body="Marks the booking cancelled (soft-cancel) — it leaves the active calendar. Can't be undone from here."
-        confirmLabel="Cancel booking"
-        busyLabel="Cancelling…"
+        body={t("Marks the booking cancelled (soft-cancel) — it leaves the active calendar. Can't be undone from here.", 'Đánh dấu đặt chỗ đã huỷ (huỷ mềm) — nó rời khỏi lịch đang hoạt động. Không thể hoàn tác từ đây.')}
+        confirmLabel={t('Cancel booking', 'Huỷ đặt chỗ')}
+        busyLabel={t('Cancelling…', 'Đang huỷ…')}
         busy={cancelBusy}
         tone="danger"
         onConfirm={cancelConfirmed}
@@ -324,12 +326,12 @@ export default function CalendarPage() {
       />
       <ConfirmModal
         open={!!confirmDeleteEntry}
-        eyebrow="⚠ REMOVE HOUSE ENTRY"
-        title="Remove this entry?"
+        eyebrow={t('⚠ REMOVE HOUSE ENTRY', '⚠ XOÁ MỤC NỘI BỘ')}
+        title={t('Remove this entry?', 'Xoá mục này?')}
         subject={confirmDeleteEntry ? `${confirmDeleteEntry.title} · ${confirmDeleteEntry.entry_date}` : ''}
-        body="Removes the house entry from the calendar. If it was closing a room, that room becomes bookable again."
-        confirmLabel="Remove entry"
-        busyLabel="Removing…"
+        body={t('Removes the house entry from the calendar. If it was closing a room, that room becomes bookable again.', 'Xoá mục nội bộ khỏi lịch. Nếu nó đang đóng một phòng, phòng đó sẽ có thể đặt lại.')}
+        confirmLabel={t('Remove entry', 'Xoá mục')}
+        busyLabel={t('Removing…', 'Đang xoá…')}
         busy={entryBusy}
         tone="danger"
         onConfirm={deleteEntryConfirmed}

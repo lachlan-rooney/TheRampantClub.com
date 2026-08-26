@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { ConfirmModal, useToast } from '@/components/admin/dialogs'
+import { useLang } from '@/lib/admin-lang'
 
 type Member = Record<string, string>
 
@@ -37,6 +38,7 @@ const SECTIONS = [
 ]
 
 export default function QuickRefPage() {
+  const { t } = useLang()
   const [members, setMembers] = useState<Member[]>([])
   const [selected, setSelected] = useState<Member | null>(null)
   const [loading, setLoading] = useState(true)
@@ -101,7 +103,7 @@ export default function QuickRefPage() {
       setBusy(false)
       setLinkMode(false)
       if (r.ok) {
-        showToast(`Card linked: ${uid}`)
+        showToast(`${t('Card linked:', 'Đã liên kết thẻ:')} ${uid}`)
         // Reload card info
         const cr = await fetch(`/api/admin/cards/by-member?member_number=${encodeURIComponent(selected['Member No.'])}`)
         const cd = await cr.json()
@@ -109,7 +111,7 @@ export default function QuickRefPage() {
         setRecentTxs(cd.transactions || [])
       } else {
         const d = await r.json().catch(() => ({}))
-        showToast(`Link failed: ${d.error || r.statusText}`)
+        showToast(`${t('Link failed:', 'Liên kết thất bại:')} ${d.error || r.statusText}`)
       }
     }
     const onKey = (e: KeyboardEvent) => {
@@ -146,11 +148,11 @@ export default function QuickRefPage() {
     setBusy(false)
     setConfirmUnlink(false)
     if (r.ok) {
-      showToast('Card unlinked')
+      showToast(t('Card unlinked', 'Đã hủy liên kết thẻ'))
       setCard(null); setRecentTxs([])
     } else {
       const d = await r.json().catch(() => ({}))
-      showToast(`Unlink failed: ${d.error || r.statusText}`)
+      showToast(`${t('Unlink failed:', 'Hủy liên kết thất bại:')} ${d.error || r.statusText}`)
     }
   }
 
@@ -172,16 +174,16 @@ export default function QuickRefPage() {
       setCard(c => c ? { ...c, expires_at: d.expires_at } : c)
       setEditingExpiry(false)
       setExpiryDraft('')
-      showToast(d.expires_at ? `Expiry set to ${new Date(d.expires_at).toLocaleDateString()}` : 'Expiry cleared')
+      showToast(d.expires_at ? `${t('Expiry set to', 'Đã đặt hết hạn thành')} ${new Date(d.expires_at).toLocaleDateString()}` : t('Expiry cleared', 'Đã xóa ngày hết hạn'))
     } else {
-      showToast('Failed to save expiry')
+      showToast(t('Failed to save expiry', 'Lưu ngày hết hạn thất bại'))
     }
   }
 
   const transact = async (kind: 'topup' | 'charge', amountStr: string) => {
     if (!selected || !card) return
     const amt = parseInt(amountStr.replace(/[^0-9]/g, ''))
-    if (!amt || amt <= 0) { showToast('Enter an amount'); return }
+    if (!amt || amt <= 0) { showToast(t('Enter an amount', 'Nhập số tiền')); return }
     setBusy(true)
     const r = await fetch('/api/admin/cards/transaction', {
       method: 'POST',
@@ -196,7 +198,7 @@ export default function QuickRefPage() {
     setBusy(false)
     if (r.ok) {
       const d = await r.json()
-      showToast(kind === 'topup' ? `Topped up ${fmtVnd(amt)}` : `Charged ${fmtVnd(amt)}`)
+      showToast(kind === 'topup' ? `${t('Topped up', 'Đã nạp')} ${fmtVnd(amt)}` : `${t('Charged', 'Đã trừ')} ${fmtVnd(amt)}`)
       setCard(c => c ? { ...c, credit_vnd: d.balance_vnd } : c)
       setTopup(''); setCharge(''); setTxNote('')
       const cr = await fetch(`/api/admin/cards/by-member?member_number=${encodeURIComponent(selected['Member No.'])}`)
@@ -204,7 +206,7 @@ export default function QuickRefPage() {
       setRecentTxs(cd.transactions || [])
     } else {
       const d = await r.json().catch(() => ({}))
-      showToast(`Failed: ${d.error || r.statusText}`)
+      showToast(`${t('Failed:', 'Thất bại:')} ${d.error || r.statusText}`)
     }
   }
 
@@ -212,12 +214,12 @@ export default function QuickRefPage() {
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 24, fontWeight: 500, color: '#E5D4C2', letterSpacing: '0.04em' }}>
-          Member Quick Reference
+          {t('Member Quick Reference', 'Tra cứu nhanh hội viên')}
         </h1>
       </div>
 
       {loading ? (
-        <p style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: '#B2AA98' }}>Loading...</p>
+        <p style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: '#B2AA98' }}>{t('Loading...', 'Đang tải...')}</p>
       ) : (
         <>
           {/* Member dropdown */}
@@ -236,7 +238,7 @@ export default function QuickRefPage() {
                 outline: 'none', cursor: 'pointer',
               }}
             >
-              <option value="" style={{ background: '#052E20' }}>Select a member...</option>
+              <option value="" style={{ background: '#052E20' }}>{t('Select a member...', 'Chọn hội viên...')}</option>
               {members.map((m, i) => (
                 <option key={`${m['Member No.']}-${i}`} value={m['Full Name']} style={{ background: '#052E20' }}>
                   {m['Full Name']} — {m['Member No.']} ({m['Tier']})
@@ -268,7 +270,7 @@ export default function QuickRefPage() {
                   <span>{selected['Tier']}</span>
                   {selected['Last Updated'] && <>
                     <span>·</span>
-                    <span>Updated: {selected['Last Updated']}</span>
+                    <span>{t('Updated:', 'Cập nhật:')} {selected['Last Updated']}</span>
                   </>}
                 </div>
                 {selected['Score 5 List'] && (
@@ -278,7 +280,7 @@ export default function QuickRefPage() {
                     padding: '8px 12px', background: 'rgba(229,212,194,0.06)', borderRadius: 4,
                     marginTop: 8,
                   }}>
-                    <span style={{ color: '#B2AA98', marginRight: 8 }}>◆ KEY ALERTS:</span>
+                    <span style={{ color: '#B2AA98', marginRight: 8 }}>{t('◆ KEY ALERTS:', '◆ CẢNH BÁO CHÍNH:')}</span>
                     {selected['Score 5 List']}
                   </div>
                 )}
@@ -297,7 +299,7 @@ export default function QuickRefPage() {
                       color: '#B2AA98', letterSpacing: '0.06em', textTransform: 'uppercase',
                       opacity: 0.6, marginBottom: 6,
                     }}>
-                      Member Card
+                      {t('Member Card', 'Thẻ hội viên')}
                     </div>
                     {card?.card_uid ? (
                       <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 14, color: '#E5D4C2', letterSpacing: '0.04em' }}>
@@ -305,11 +307,11 @@ export default function QuickRefPage() {
                       </div>
                     ) : card ? (
                       <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: '#D4B85A', opacity: 0.85 }}>
-                        Unlinked &mdash; credit preserved
+                        {t('Unlinked — credit preserved', 'Đã hủy liên kết — tín dụng được giữ lại')}
                       </div>
                     ) : (
                       <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: '#B2AA98', opacity: 0.7 }}>
-                        No card linked
+                        {t('No card linked', 'Chưa liên kết thẻ')}
                       </div>
                     )}
                   </div>
@@ -319,7 +321,7 @@ export default function QuickRefPage() {
                       color: '#B2AA98', letterSpacing: '0.06em', textTransform: 'uppercase',
                       opacity: 0.6, marginBottom: 6,
                     }}>
-                      Credit Balance
+                      {t('Credit Balance', 'Số dư tín dụng')}
                     </div>
                     {(() => {
                       const expired = !!card?.expires_at && new Date(card.expires_at) < new Date()
@@ -335,7 +337,7 @@ export default function QuickRefPage() {
                           </div>
                           {expired && (
                             <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B45656', letterSpacing: '0.06em' }}>
-                              EXPIRED
+                              {t('EXPIRED', 'ĐÃ HẾT HẠN')}
                             </div>
                           )}
                         </>
@@ -353,13 +355,13 @@ export default function QuickRefPage() {
                     fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11,
                     marginBottom: 16,
                   }}>
-                    <span style={{ color: '#B2AA98', opacity: 0.7 }}>Expires:</span>
+                    <span style={{ color: '#B2AA98', opacity: 0.7 }}>{t('Expires:', 'Hết hạn:')}</span>
                     {!editingExpiry ? (
                       <>
                         <span style={{ color: '#E5D4C2' }}>
                           {card.expires_at
                             ? new Date(card.expires_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-                            : 'Never'}
+                            : t('Never', 'Không bao giờ')}
                         </span>
                         <button
                           onClick={() => {
@@ -367,7 +369,7 @@ export default function QuickRefPage() {
                             setEditingExpiry(true)
                           }}
                           style={{ background: 'transparent', color: '#B2AA98', border: '1px solid rgba(229,212,194,0.15)', borderRadius: 4, padding: '3px 10px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10 }}
-                        >Edit</button>
+                        >{t('Edit', 'Sửa')}</button>
                       </>
                     ) : (
                       <>
@@ -377,13 +379,13 @@ export default function QuickRefPage() {
                           onChange={e => setExpiryDraft(e.target.value)}
                           style={{ background: 'rgba(229,212,194,0.06)', color: '#E5D4C2', border: '1px solid rgba(229,212,194,0.1)', borderRadius: 4, padding: '4px 8px', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11 }}
                         />
-                        <button onClick={() => saveExpiry()} disabled={busy} style={{ background: '#5E6650', color: '#E5D4C2', border: 'none', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10 }}>Save</button>
-                        <button onClick={() => { setEditingExpiry(false); setExpiryDraft('') }} style={{ background: 'transparent', color: '#B2AA98', border: '1px solid rgba(229,212,194,0.15)', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10 }}>Cancel</button>
+                        <button onClick={() => saveExpiry()} disabled={busy} style={{ background: '#5E6650', color: '#E5D4C2', border: 'none', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10 }}>{t('Save', 'Lưu')}</button>
+                        <button onClick={() => { setEditingExpiry(false); setExpiryDraft('') }} style={{ background: 'transparent', color: '#B2AA98', border: '1px solid rgba(229,212,194,0.15)', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10 }}>{t('Cancel', 'Hủy')}</button>
                         {card.expires_at && (
                           <button
                             onClick={() => saveExpiry(null)}
                             style={{ background: 'transparent', color: '#B45656', border: '1px solid rgba(180,86,86,0.4)', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10 }}
-                          >Clear (no expiry)</button>
+                          >{t('Clear (no expiry)', 'Xóa (không hết hạn)')}</button>
                         )}
                       </>
                     )}
@@ -400,19 +402,19 @@ export default function QuickRefPage() {
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
                     }}>
                       <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#E5D4C2' }}>
-                        Listening… tap a card on the reader to link it to this member.
+                        {t('Listening… tap a card on the reader to link it to this member.', 'Đang chờ… chạm thẻ lên đầu đọc để liên kết với hội viên này.')}
                       </span>
                       <button
                         onClick={() => setLinkMode(false)}
                         style={{ background: 'rgba(229,212,194,0.1)', color: '#E5D4C2', border: 'none', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11 }}
-                      >Cancel</button>
+                      >{t('Cancel', 'Hủy')}</button>
                     </div>
                   ) : (
                     <button
                       onClick={() => setLinkMode(true)}
                       disabled={busy}
                       style={{ background: '#5E6650', color: '#E5D4C2', border: 'none', borderRadius: 6, padding: '8px 18px', marginBottom: card ? 16 : 0, cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11 }}
-                    >{card ? 'Tap card to relink' : 'Tap card to link'}</button>
+                    >{card ? t('Tap card to relink', 'Chạm thẻ để liên kết lại') : t('Tap card to link', 'Chạm thẻ để liên kết')}</button>
                   )
                 )}
 
@@ -423,7 +425,7 @@ export default function QuickRefPage() {
                     {/* Top up + charge */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 12 }}>
                       <div>
-                        <label style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98', letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.6, display: 'block', marginBottom: 4 }}>Top up (VND)</label>
+                        <label style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98', letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.6, display: 'block', marginBottom: 4 }}>{t('Top up (VND)', 'Nạp thêm (VND)')}</label>
                         <div style={{ display: 'flex', gap: 8 }}>
                           <input
                             type="text" inputMode="numeric" placeholder="500000"
@@ -434,11 +436,11 @@ export default function QuickRefPage() {
                             onClick={() => transact('topup', topup)}
                             disabled={busy || !topup}
                             style={{ background: '#5E6650', color: '#E5D4C2', border: 'none', borderRadius: 6, padding: '8px 16px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11 }}
-                          >Top up</button>
+                          >{t('Top up', 'Nạp thêm')}</button>
                         </div>
                       </div>
                       <div>
-                        <label style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98', letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.6, display: 'block', marginBottom: 4 }}>Charge (VND)</label>
+                        <label style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98', letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.6, display: 'block', marginBottom: 4 }}>{t('Charge (VND)', 'Trừ tiền (VND)')}</label>
                         <div style={{ display: 'flex', gap: 8 }}>
                           <input
                             type="text" inputMode="numeric" placeholder="120000"
@@ -449,12 +451,12 @@ export default function QuickRefPage() {
                             onClick={() => transact('charge', charge)}
                             disabled={busy || !charge}
                             style={{ background: 'rgba(180, 70, 70, 0.2)', color: '#E5D4C2', border: 'none', borderRadius: 6, padding: '8px 16px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11 }}
-                          >Charge</button>
+                          >{t('Charge', 'Trừ tiền')}</button>
                         </div>
                       </div>
                     </div>
                     <input
-                      placeholder="Note (e.g. 2 drams Lagavulin)"
+                      placeholder={t('Note (e.g. 2 drams Lagavulin)', 'Ghi chú (vd. 2 ly Lagavulin)')}
                       value={txNote} onChange={e => setTxNote(e.target.value)}
                       style={{ background: 'rgba(229,212,194,0.06)', color: '#E5D4C2', border: '1px solid rgba(229,212,194,0.1)', borderRadius: 6, padding: '8px 12px', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, width: '100%', boxSizing: 'border-box', marginBottom: 12 }}
                     />
@@ -481,7 +483,7 @@ export default function QuickRefPage() {
                       <button
                         onClick={requestUnlink} disabled={busy}
                         style={{ background: 'rgba(180, 70, 70, 0.2)', color: '#E5D4C2', border: 'none', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10 }}
-                      >Unlink card</button>
+                      >{t('Unlink card', 'Hủy liên kết thẻ')}</button>
                     )}
                   </>
                 )}
@@ -532,12 +534,12 @@ export default function QuickRefPage() {
 
       <ConfirmModal
         open={confirmUnlink && !!card?.card_uid}
-        eyebrow="⚠ UNLINK CARD"
-        title="Unlink this card?"
+        eyebrow={t('⚠ UNLINK CARD', '⚠ HỦY LIÊN KẾT THẺ')}
+        title={t('Unlink this card?', 'Hủy liên kết thẻ này?')}
         subject={card?.card_uid ? `${card.card_uid} · ${selected?.['Full Name'] ?? ''}` : undefined}
-        body="Detaches the physical card from this member. The credit balance is preserved on the account — a new card can be linked later. The card will no longer work at kiosks."
-        confirmLabel="Unlink card"
-        busyLabel="Unlinking…"
+        body={t('Detaches the physical card from this member. The credit balance is preserved on the account — a new card can be linked later. The card will no longer work at kiosks.', 'Tách thẻ vật lý khỏi hội viên này. Số dư tín dụng được giữ lại trên tài khoản — có thể liên kết thẻ mới sau. Thẻ sẽ không còn hoạt động tại các kiosk.')}
+        confirmLabel={t('Unlink card', 'Hủy liên kết thẻ')}
+        busyLabel={t('Unlinking…', 'Đang hủy liên kết…')}
         busy={busy}
         onCancel={closeUnlink}
         onConfirm={runUnlink}

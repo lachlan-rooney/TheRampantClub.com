@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { ConfirmModal } from '@/components/admin/dialogs'
+import { useLang } from '@/lib/admin-lang'
 
 // Admin / Intelligence / Decay Fit
 //
@@ -61,6 +62,7 @@ interface PageData {
 const EVENT_FLOOR = 20
 
 export default function DecayFitPage() {
+  const { t } = useLang()
   const [data, setData] = useState<PageData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -85,10 +87,10 @@ export default function DecayFitPage() {
     try {
       const r = await fetch(`/api/cron/decay-fit${dry ? '?dry=1' : ''}`, { method: 'POST' })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'Fit failed')
+      if (!r.ok) throw new Error(j.error || t('Fit failed', 'Khớp thất bại'))
       setRunResult(dry
-        ? `Dry run · ${j.results?.length ?? 0} categories evaluated, ${j.rowsToInsert?.length ?? 0} would be written`
-        : `Fit complete · ${j.proposals_written} rows written (${j.propose_count} proposed, ${j.insufficient_count} insufficient)`)
+        ? `${t('Dry run', 'Chạy thử')} · ${j.results?.length ?? 0} ${t('categories evaluated', 'hạng mục được đánh giá')}, ${j.rowsToInsert?.length ?? 0} ${t('would be written', 'sẽ được ghi')}`
+        : `${t('Fit complete', 'Khớp hoàn tất')} · ${j.proposals_written} ${t('rows written', 'dòng đã ghi')} (${j.propose_count} ${t('proposed', 'đề xuất')}, ${j.insufficient_count} ${t('insufficient', 'chưa đủ')})`)
       if (!dry) load()
     } catch (e) {
       setError((e as Error).message)
@@ -109,7 +111,7 @@ export default function DecayFitPage() {
         body: JSON.stringify({ action }),
       })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'Decision failed')
+      if (!r.ok) throw new Error(j.error || t('Decision failed', 'Quyết định thất bại'))
       setPending(null)
       load()
     } catch (e) {
@@ -119,8 +121,8 @@ export default function DecayFitPage() {
     }
   }
 
-  if (loading) return <div style={emptyText}>Loading…</div>
-  if (!data) return <div style={emptyText}>No data.</div>
+  if (loading) return <div style={emptyText}>{t('Loading…', 'Đang tải…')}</div>
+  if (!data) return <div style={emptyText}>{t('No data.', 'Không có dữ liệu.')}</div>
 
   const hasAnyProposal = data.categories.some(c => c.latestProposal)
   const proposable = data.categories.filter(c => c.latestProposal?.status === 'proposed').length
@@ -129,22 +131,22 @@ export default function DecayFitPage() {
   return (
     <>
       <div style={{ marginBottom: 24 }}>
-        <div style={eyebrow}>Intelligence · MIS Pass 3</div>
-        <h1 style={pageTitle}>Decay Fit</h1>
+        <div style={eyebrow}>{t('Intelligence · MIS Pass 3', 'Trí tuệ · MIS Lượt 3')}</div>
+        <h1 style={pageTitle}>{t('Decay Fit', 'Khớp Suy Giảm')}</h1>
         <p style={lede}>
-          Bayesian λ-fit for the preference-decay model. Each month the cron pulls survival spells from <code>v_decay_contradictions</code>, <code>v_decay_confirmations</code> and <code>v_decay_live_exposure</code>, runs a Gamma-conjugate posterior per category, and writes one proposal row per canonical category. A proposal becomes live scoring only after explicit accept here. Medical preferences (λ=0) are excluded row-by-row at the view layer and never reach the fit.
+          {t('Bayesian λ-fit for the preference-decay model. Each month the cron pulls survival spells from', 'Khớp λ Bayes cho mô hình suy giảm sở thích. Mỗi tháng, cron kéo các khoảng sống sót từ')} <code>v_decay_contradictions</code>, <code>v_decay_confirmations</code> {t('and', 'và')} <code>v_decay_live_exposure</code>{t(', runs a Gamma-conjugate posterior per category, and writes one proposal row per canonical category. A proposal becomes live scoring only after explicit accept here. Medical preferences (λ=0) are excluded row-by-row at the view layer and never reach the fit.', ', chạy hậu nghiệm liên hợp Gamma cho mỗi hạng mục, và ghi một dòng đề xuất cho mỗi hạng mục chuẩn. Một đề xuất chỉ được đưa vào chấm điểm trực tiếp sau khi được chấp nhận rõ ràng tại đây. Sở thích y tế (λ=0) bị loại trừ theo từng dòng ở lớp hiển thị và không bao giờ đến bước khớp.')}
         </p>
       </div>
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 18, alignItems: 'center', flexWrap: 'wrap' }}>
         <button onClick={() => runFit(true)} disabled={running} style={btnGhost}>
-          {running ? '…' : 'Dry run'}
+          {running ? '…' : t('Dry run', 'Chạy thử')}
         </button>
         <button onClick={() => runFit(false)} disabled={running} style={btnGhost}>
-          {running ? '…' : 'Run fit now'}
+          {running ? '…' : t('Run fit now', 'Chạy khớp ngay')}
         </button>
         <div style={{ ...metaText, marginLeft: 'auto' }}>
-          {totalEvents} validation event{totalEvents === 1 ? '' : 's'} logged · {proposable} proposal{proposable === 1 ? '' : 's'} awaiting decision
+          {totalEvents} {t('validation event', 'sự kiện xác thực')}{totalEvents === 1 ? '' : t('s', '')} {t('logged', 'đã ghi nhận')} · {proposable} {t('proposal', 'đề xuất')}{proposable === 1 ? '' : t('s', '')} {t('awaiting decision', 'đang chờ quyết định')}
         </div>
       </div>
 
@@ -153,12 +155,12 @@ export default function DecayFitPage() {
 
       {!hasAnyProposal ? (
         <div style={emptyBlock}>
-          <div style={{ fontSize: 14, color: '#E5D4C2', marginBottom: 8 }}>No category has reached the evidence floor yet.</div>
+          <div style={{ fontSize: 14, color: '#E5D4C2', marginBottom: 8 }}>{t('No category has reached the evidence floor yet.', 'Chưa có hạng mục nào đạt ngưỡng bằng chứng.')}</div>
           <div style={{ lineHeight: 1.7 }}>
-            {totalEvents} validation event{totalEvents === 1 ? '' : 's'} on record across {data.categories.length} canonical categories. The fitter needs at least <strong>{EVENT_FLOOR} contradictions</strong> per category before a proposal can clear the gate. Until then the live decay constants are the designed prior centres shown below, and the system is honest about not having learned anything yet.
+            {totalEvents} {t('validation event', 'sự kiện xác thực')}{totalEvents === 1 ? '' : t('s', '')} {t('on record across', 'được ghi nhận trên')} {data.categories.length} {t('canonical categories. The fitter needs at least', 'hạng mục chuẩn. Bộ khớp cần ít nhất')} <strong>{EVENT_FLOOR} {t('contradictions', 'mâu thuẫn')}</strong> {t('per category before a proposal can clear the gate. Until then the live decay constants are the designed prior centres shown below, and the system is honest about not having learned anything yet.', 'cho mỗi hạng mục trước khi một đề xuất có thể vượt cổng. Cho đến lúc đó, các hằng số suy giảm trực tiếp là các tâm tiên nghiệm được thiết kế hiển thị bên dưới, và hệ thống trung thực rằng chưa học được điều gì.')}
           </div>
           <div style={{ marginTop: 14, lineHeight: 1.7 }}>
-            Run the fit anyway to write the heartbeat (one row per category at <code>status=insufficient_data</code>), or wait for the monthly cron on the 1st.
+            {t('Run the fit anyway to write the heartbeat (one row per category at', 'Vẫn chạy khớp để ghi nhịp tim (một dòng cho mỗi hạng mục ở')} <code>status=insufficient_data</code>{t('), or wait for the monthly cron on the 1st.', '), hoặc chờ cron hàng tháng vào ngày mùng 1.')}
           </div>
         </div>
       ) : null}
@@ -176,20 +178,20 @@ export default function DecayFitPage() {
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
                 <div style={categoryTitle}>{c.category}</div>
                 <span style={liveSource === 'active' ? activePill : designedPill}>
-                  {liveSource === 'active' ? 'learned' : 'designed'}
+                  {liveSource === 'active' ? t('learned', 'đã học') : t('designed', 'thiết kế')}
                 </span>
               </div>
 
               <div style={lambdaRow}>
                 <div>
-                  <div style={miniLabel}>Live λ</div>
+                  <div style={miniLabel}>{t('Live λ', 'λ trực tiếp')}</div>
                   <div style={lambdaBig}>{live.toFixed(4)}</div>
-                  <div style={miniMeta}>{halfLifeLive.toFixed(0)}d half-life</div>
+                  <div style={miniMeta}>{halfLifeLive.toFixed(0)}{t('d half-life', ' ngày bán rã')}</div>
                 </div>
                 <div>
-                  <div style={miniLabel}>Designed λ</div>
+                  <div style={miniLabel}>{t('Designed λ', 'λ thiết kế')}</div>
                   <div style={lambdaSmall}>{c.designedLambda.toFixed(4)}</div>
-                  <div style={miniMeta}>{(LN2 / c.designedLambda).toFixed(0)}d half-life</div>
+                  <div style={miniMeta}>{(LN2 / c.designedLambda).toFixed(0)}{t('d half-life', ' ngày bán rã')}</div>
                 </div>
               </div>
 
@@ -198,27 +200,27 @@ export default function DecayFitPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                     <span style={statusPill(proposal.status || 'unknown')}>{proposal.status || 'unknown'}</span>
                     <span style={metaText}>
-                      fit {new Date(proposal.fit_timestamp).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                      {t('fit', 'khớp')} {new Date(proposal.fit_timestamp).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                     </span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
                     <div>
-                      <div style={miniLabel}>Proposed λ</div>
+                      <div style={miniLabel}>{t('Proposed λ', 'λ đề xuất')}</div>
                       <div style={lambdaMid}>{proposal.learned_lambda.toFixed(4)}</div>
                       {proposal.lambda_ci_lower != null && proposal.lambda_ci_upper != null && (
-                        <div style={miniMeta}>95% CI [{proposal.lambda_ci_lower.toFixed(4)}, {proposal.lambda_ci_upper.toFixed(4)}]</div>
+                        <div style={miniMeta}>{t('95% CI', 'KTC 95%')} [{proposal.lambda_ci_lower.toFixed(4)}, {proposal.lambda_ci_upper.toFixed(4)}]</div>
                       )}
                     </div>
                     <div>
-                      <div style={miniLabel}>Evidence</div>
+                      <div style={miniLabel}>{t('Evidence', 'Bằng chứng')}</div>
                       <div style={evidenceRow}>
                         <span style={proposal.meets_event_floor ? gatePass : gateFail}>
-                          {proposal.n_events}/{EVENT_FLOOR} events
+                          {proposal.n_events}/{EVENT_FLOOR} {t('events', 'sự kiện')}
                         </span>
                       </div>
                       <div style={evidenceRow}>
                         <span style={proposal.ci_narrow_enough ? gatePass : gateFail}>
-                          CI rel-w {proposal.ci_relative_width != null ? proposal.ci_relative_width.toFixed(2) : '—'}
+                          {t('CI rel-w', 'độ rộng KTC')} {proposal.ci_relative_width != null ? proposal.ci_relative_width.toFixed(2) : '—'}
                         </span>
                       </div>
                     </div>
@@ -235,21 +237,21 @@ export default function DecayFitPage() {
                         disabled={busyId === proposal.id}
                         style={btnAccept}
                       >
-                        {busyId === proposal.id ? '…' : `Accept · promote ${proposal.learned_lambda.toFixed(4)}`}
+                        {busyId === proposal.id ? '…' : `${t('Accept · promote', 'Chấp nhận · nâng cấp')} ${proposal.learned_lambda.toFixed(4)}`}
                       </button>
                       <button
                         onClick={() => setPending({ id: proposal.id, action: 'reject', lambda: proposal.learned_lambda, category: c.category })}
                         disabled={busyId === proposal.id}
                         style={btnReject}
                       >
-                        Reject
+                        {t('Reject', 'Từ chối')}
                       </button>
                     </div>
                   )}
                 </div>
               ) : (
                 <div style={noProposalBlock}>
-                  No proposal yet — fit will write one on the next run.
+                  {t('No proposal yet — fit will write one on the next run.', 'Chưa có đề xuất — bước khớp sẽ ghi một đề xuất ở lần chạy tới.')}
                 </div>
               )}
 
@@ -259,7 +261,7 @@ export default function DecayFitPage() {
                     onClick={() => setExpandedId(isOpen ? null : c.category)}
                     style={btnGhostSmall}
                   >
-                    {isOpen ? 'Hide history' : `History · ${c.history.length}`}
+                    {isOpen ? t('Hide history', 'Ẩn lịch sử') : `${t('History', 'Lịch sử')} · ${c.history.length}`}
                   </button>
                   {isOpen && (
                     <div style={historyTable}>
@@ -283,7 +285,7 @@ export default function DecayFitPage() {
 
       {data.decisions.length > 0 && (
         <div style={{ marginTop: 32 }}>
-          <h2 style={sectionTitle}>Recent decisions</h2>
+          <h2 style={sectionTitle}>{t('Recent decisions', 'Quyết định gần đây')}</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
             {data.decisions.map(d => (
               <div key={d.decision_id} style={decisionRow}>
@@ -304,14 +306,14 @@ export default function DecayFitPage() {
       <ConfirmModal
         open={!!pending}
         tone={pending?.action === 'accept' ? 'success' : 'danger'}
-        eyebrow={pending?.action === 'accept' ? '✓ PROMOTE λ' : '⚠ REJECT PROPOSAL'}
-        title={pending?.action === 'accept' ? 'Promote this λ to active?' : 'Reject this proposal?'}
+        eyebrow={pending?.action === 'accept' ? t('✓ PROMOTE λ', '✓ NÂNG CẤP λ') : t('⚠ REJECT PROPOSAL', '⚠ TỪ CHỐI ĐỀ XUẤT')}
+        title={pending?.action === 'accept' ? t('Promote this λ to active?', 'Nâng cấp λ này lên trạng thái hoạt động?') : t('Reject this proposal?', 'Từ chối đề xuất này?')}
         subject={pending ? `${pending.category} · λ ${pending.lambda.toFixed(4)}` : undefined}
         body={pending?.action === 'accept'
-          ? 'This becomes the live category baseline for all new preference extractions. Existing scores are unaffected; only future extractions inherit the learned λ.'
-          : 'The proposal will not be promoted. The live decay constant stays as it is, and the row is marked rejected in the audit trail.'}
-        confirmLabel={pending?.action === 'accept' ? `Promote ${pending.lambda.toFixed(4)}` : 'Reject proposal'}
-        busyLabel="Working…"
+          ? t('This becomes the live category baseline for all new preference extractions. Existing scores are unaffected; only future extractions inherit the learned λ.', 'Giá trị này trở thành đường cơ sở trực tiếp của hạng mục cho mọi lần trích xuất sở thích mới. Các điểm số hiện có không bị ảnh hưởng; chỉ các lần trích xuất trong tương lai kế thừa λ đã học.')
+          : t('The proposal will not be promoted. The live decay constant stays as it is, and the row is marked rejected in the audit trail.', 'Đề xuất sẽ không được nâng cấp. Hằng số suy giảm trực tiếp giữ nguyên, và dòng này được đánh dấu từ chối trong nhật ký kiểm toán.')}
+        confirmLabel={pending?.action === 'accept' ? `${t('Promote', 'Nâng cấp')} ${pending.lambda.toFixed(4)}` : t('Reject proposal', 'Từ chối đề xuất')}
+        busyLabel={t('Working…', 'Đang xử lý…')}
         busy={!!busyId}
         onCancel={closeConfirm}
         onConfirm={runDecision}

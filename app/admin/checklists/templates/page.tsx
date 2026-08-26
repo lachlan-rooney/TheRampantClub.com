@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { ConfirmModal, PromptModal } from '@/components/admin/dialogs'
+import { useLang } from '@/lib/admin-lang'
 import type { ChecklistTemplateItem } from '@/lib/checklist-templates'
 
 // Admin / Floor / Checklist Templates
@@ -25,6 +26,7 @@ interface Template {
 }
 
 export default function ChecklistTemplatesPage() {
+  const { t } = useLang()
   const [opening, setOpening] = useState<Template | null>(null)
   const [closing, setClosing] = useState<Template | null>(null)
   const [activeKind, setActiveKind] = useState<Kind>('opening')
@@ -76,13 +78,13 @@ export default function ChecklistTemplatesPage() {
     <>
       <div style={headerRow}>
         <div>
-          <div style={eyebrow}>Floor · Templates</div>
-          <h1 style={pageTitle}>Checklist Templates</h1>
+          <div style={eyebrow}>{t('Floor · Templates', 'Sàn · Mẫu')}</div>
+          <h1 style={pageTitle}>{t('Checklist Templates', 'Mẫu danh sách kiểm tra')}</h1>
           <p style={lede}>
-            Add, reorder, reword, or remove items in the opening and closing checklists. Changes affect <strong>future sheets only</strong>. Every sheet that has already been sealed kept a snapshot of the items at the moment it was started; those records are never re-read against this template, so a wording or item change here cannot rewrite history.
+            {t('Add, reorder, reword, or remove items in the opening and closing checklists. Changes affect ', 'Thêm, sắp xếp lại, chỉnh câu chữ hoặc xóa các mục trong danh sách kiểm tra mở cửa và đóng cửa. Các thay đổi chỉ ảnh hưởng đến ')}<strong>{t('future sheets only', 'các phiếu trong tương lai')}</strong>{t('. Every sheet that has already been sealed kept a snapshot of the items at the moment it was started; those records are never re-read against this template, so a wording or item change here cannot rewrite history.', '. Mỗi phiếu đã được niêm phong đều giữ một bản chụp các mục tại thời điểm bắt đầu; những bản ghi đó không bao giờ được đọc lại theo mẫu này, nên việc thay đổi câu chữ hay mục ở đây không thể viết lại lịch sử.')}
           </p>
         </div>
-        <Link href="/admin/checklists" style={backLink}>← back to sheets</Link>
+        <Link href="/admin/checklists" style={backLink}>{t('← back to sheets', '← quay lại các phiếu')}</Link>
       </div>
 
       <div style={tabRow}>
@@ -92,15 +94,15 @@ export default function ChecklistTemplatesPage() {
             onClick={() => setActiveKind(k)}
             style={{ ...tab, ...(activeKind === k ? { ...tabActive, color: k === 'opening' ? '#D4B85A' : '#7AB07A', borderColor: (k === 'opening' ? '#D4B85A' : '#7AB07A') + '60' } : null) }}
           >
-            {k.toUpperCase()} template
+            {k.toUpperCase()} {t('template', 'mẫu')}
           </button>
         ))}
       </div>
 
       {loading ? (
-        <div style={emptyText}>Loading…</div>
+        <div style={emptyText}>{t('Loading…', 'Đang tải…')}</div>
       ) : !current ? (
-        <div style={errorBox}>Template not loaded.</div>
+        <div style={errorBox}>{t('Template not loaded.', 'Chưa tải được mẫu.')}</div>
       ) : (
         <Editor
           template={current}

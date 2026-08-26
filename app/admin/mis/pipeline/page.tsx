@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { ConfirmModal } from '@/components/admin/dialogs'
 import Link from 'next/link'
+import { useLang } from '@/lib/admin-lang'
 
 // MIS Pipeline — list view.
 // Kanban with one column per stage, cards within. Click a card to drill into
@@ -75,6 +76,7 @@ const STAGE_ACCENT: Record<string, string> = {
 }
 
 export default function PipelinePage() {
+  const { t } = useLang()
   const [prospects, setProspects] = useState<Prospect[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -187,20 +189,20 @@ export default function PipelinePage() {
     <>
       <div style={headerRow}>
         <div>
-          <div style={eyebrow}>Member Intelligence</div>
-          <h1 style={pageTitle}>Pipeline</h1>
+          <div style={eyebrow}>{t('Member Intelligence', 'Thông tin thành viên')}</div>
+          <h1 style={pageTitle}>{t('Pipeline', 'Quy trình tuyển chọn')}</h1>
         </div>
-        <Link href="/admin/mis/pipeline/new" style={addBtn}>+ New prospect</Link>
+        <Link href="/admin/mis/pipeline/new" style={addBtn}>{t('+ New prospect', '+ Ứng viên mới')}</Link>
       </div>
 
       {/* Stats strip */}
       <div style={statsStrip}>
-        <Stat label="In pipeline" value={String(filtered.length)} accent="#E5D4C2" />
-        <Stat label="Onboarded" value={String(totalOnboarded)} accent="#7AB07A" />
-        <Stat label="Stale > 30d" value={String(attention.stale.length)} accent={attention.stale.length > 0 ? '#C49555' : '#B2AA98'} />
-        <Stat label="Actions due" value={String(attention.dueToday.length)} accent={attention.dueToday.length > 0 ? '#D4B85A' : '#B2AA98'} />
-        <Stat label="Interviews · 7d" value={String(attention.upcoming.length)} accent={attention.upcoming.length > 0 ? '#D4B85A' : '#B2AA98'} />
-        <Stat label="Conversion" value={`${conversionPct}%`} accent="#D4B85A" />
+        <Stat label={t('In pipeline', 'Trong quy trình')} value={String(filtered.length)} accent="#E5D4C2" />
+        <Stat label={t('Onboarded', 'Đã gia nhập')} value={String(totalOnboarded)} accent="#7AB07A" />
+        <Stat label={t('Stale > 30d', 'Tồn đọng > 30 ngày')} value={String(attention.stale.length)} accent={attention.stale.length > 0 ? '#C49555' : '#B2AA98'} />
+        <Stat label={t('Actions due', 'Việc đến hạn')} value={String(attention.dueToday.length)} accent={attention.dueToday.length > 0 ? '#D4B85A' : '#B2AA98'} />
+        <Stat label={t('Interviews · 7d', 'Phỏng vấn · 7 ngày')} value={String(attention.upcoming.length)} accent={attention.upcoming.length > 0 ? '#D4B85A' : '#B2AA98'} />
+        <Stat label={t('Conversion', 'Tỷ lệ chuyển đổi')} value={`${conversionPct}%`} accent="#D4B85A" />
       </div>
 
       {/* Needs attention panel — shows up only if there's something to surface */}
@@ -208,28 +210,28 @@ export default function PipelinePage() {
         <div style={attentionPanel}>
           <div style={attentionGrid}>
             <AttentionCol
-              title="Actions due"
+              title={t('Actions due', 'Việc đến hạn')}
               accent="#D4B85A"
-              empty="No actions due today."
+              empty={t('No actions due today.', 'Không có việc nào đến hạn hôm nay.')}
               items={attention.dueToday.slice(0, 5)}
               renderMeta={p => p.next_action_date ? `${p.next_action || '—'} · ${fmtShort(p.next_action_date)}` : (p.next_action || '—')}
-              tail={attention.dueToday.length > 5 ? `+${attention.dueToday.length - 5} more` : null}
+              tail={attention.dueToday.length > 5 ? `+${attention.dueToday.length - 5} ${t('more', 'nữa')}` : null}
             />
             <AttentionCol
-              title="Interviews this week"
+              title={t('Interviews this week', 'Phỏng vấn tuần này')}
               accent="#D4B85A"
-              empty="No interviews scheduled."
+              empty={t('No interviews scheduled.', 'Chưa có lịch phỏng vấn.')}
               items={attention.upcoming.slice(0, 5)}
               renderMeta={p => p.interview_date ? `${fmtShort(p.interview_date)}${p.interviewer ? ` · ${p.interviewer}` : ''}` : ''}
-              tail={attention.upcoming.length > 5 ? `+${attention.upcoming.length - 5} more` : null}
+              tail={attention.upcoming.length > 5 ? `+${attention.upcoming.length - 5} ${t('more', 'nữa')}` : null}
             />
             <AttentionCol
-              title="Stale leads"
+              title={t('Stale leads', 'Ứng viên tồn đọng')}
               accent="#C49555"
-              empty="Nothing stale."
+              empty={t('Nothing stale.', 'Không có ứng viên tồn đọng.')}
               items={attention.stale.slice(0, 5)}
-              renderMeta={p => `${p.days_in_pipeline}d in ${p.stage}`}
-              tail={attention.stale.length > 5 ? `+${attention.stale.length - 5} more` : null}
+              renderMeta={p => `${p.days_in_pipeline}d ${t('in', 'ở')} ${p.stage}`}
+              tail={attention.stale.length > 5 ? `+${attention.stale.length - 5} ${t('more', 'nữa')}` : null}
             />
           </div>
         </div>
@@ -239,7 +241,7 @@ export default function PipelinePage() {
       <div style={filterRow}>
         <input
           type="text"
-          placeholder="Search name, profession, ID…"
+          placeholder={t('Search name, profession, ID…', 'Tìm theo tên, nghề nghiệp, ID…')}
           value={search}
           onChange={e => setSearch(e.target.value)}
           style={{ ...inputStyle, flex: 1, minWidth: 240 }}
@@ -252,20 +254,20 @@ export default function PipelinePage() {
         </select>
         <label style={offrampToggle}>
           <input type="checkbox" checked={showOfframps} onChange={e => setShowOfframps(e.target.checked)} />
-          Show off-ramps
+          {t('Show off-ramps', 'Hiện các nhánh dừng')}
         </label>
       </div>
 
       {/* Kanban — single horizontal scroll with arrow buttons when needed */}
       {loading ? (
-        <div style={emptyText}>Loading prospects…</div>
+        <div style={emptyText}>{t('Loading prospects…', 'Đang tải ứng viên…')}</div>
       ) : (
         <div style={{ position: 'relative' }}>
           {canScrollLeft && (
-            <button onClick={() => scrollBy(-1)} style={{ ...scrollArrow, left: -14 }} aria-label="Scroll left">‹</button>
+            <button onClick={() => scrollBy(-1)} style={{ ...scrollArrow, left: -14 }} aria-label={t('Scroll left', 'Cuộn sang trái')}>‹</button>
           )}
           {canScrollRight && (
-            <button onClick={() => scrollBy(1)} style={{ ...scrollArrow, right: -14 }} aria-label="Scroll right">›</button>
+            <button onClick={() => scrollBy(1)} style={{ ...scrollArrow, right: -14 }} aria-label={t('Scroll right', 'Cuộn sang phải')}>›</button>
           )}
           <div
             ref={scrollerRef}

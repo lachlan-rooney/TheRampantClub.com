@@ -4,6 +4,7 @@ import { use, useEffect, useState, useCallback, useMemo } from 'react'
 import { ConfirmModal } from '@/components/admin/dialogs'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useLang } from '@/lib/admin-lang'
 
 // MIS Pipeline — prospect detail page.
 //
@@ -102,6 +103,7 @@ const SCORE_FIELDS = [
 ] as const
 
 export default function ProspectDetail({ params }: { params: Promise<{ prospect_id: string }> }) {
+  const { t } = useLang()
   const { prospect_id } = use(params)
   const router = useRouter()
   const [prospect, setProspect] = useState<Prospect | null>(null)
@@ -143,7 +145,7 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
         body: JSON.stringify(patchBody),
       })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'Save failed')
+      if (!r.ok) throw new Error(j.error || t('Save failed', 'Lưu thất bại'))
       load()
     } catch (e) {
       setError((e as Error).message)
@@ -157,7 +159,7 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
     try {
       const r = await fetch(`/api/admin/mis/prospects/${prospect_id}/allocate-member`, { method: 'POST' })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'Failed to allocate')
+      if (!r.ok) throw new Error(j.error || t('Failed to allocate', 'Không thể cấp số hội viên'))
       load()
       return j.member_no as string
     } catch (e) {
@@ -172,7 +174,7 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
   }, [allocateMember, router])
 
   const sendInvitation = useCallback(async (opts: { resend?: boolean } = {}) => {
-    if (!inviteEmail.trim()) { setError('Email required for invitation.'); return }
+    if (!inviteEmail.trim()) { setError(t('Email required for invitation.', 'Cần có email để gửi lời mời.')); return }
     setSending(true); setError(null); setSendResult(null)
     try {
       const r = await fetch(`/api/admin/mis/prospects/${prospect_id}/send-invitation`, {
@@ -185,12 +187,12 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
         }),
       })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'Send failed')
+      if (!r.ok) throw new Error(j.error || t('Send failed', 'Gửi thất bại'))
       setSendResult({
         ok: j.email_sent,
         msg: j.email_sent
-          ? `Invitation sent to ${inviteEmail.trim()}. Member ${j.member_no} created with status Pending Signature.`
-          : `Invitation row created but email failed: ${j.email_error}. Link: ${j.link}`,
+          ? `${t('Invitation sent to', 'Đã gửi lời mời đến')} ${inviteEmail.trim()}. ${t('Member', 'Hội viên')} ${j.member_no} ${t('created with status Pending Signature.', 'đã được tạo với trạng thái Chờ ký.')}`
+          : `${t('Invitation row created but email failed:', 'Đã tạo bản ghi lời mời nhưng gửi email thất bại:')} ${j.email_error}. ${t('Link:', 'Liên kết:')} ${j.link}`,
       })
       setShowInvite(false)
       load()
@@ -209,7 +211,7 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
         body: JSON.stringify({ tier: conversionTier }),
       })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'Convert failed')
+      if (!r.ok) throw new Error(j.error || t('Convert failed', 'Chuyển đổi thất bại'))
       setShowOverride(false)
       load()
     } catch (e) {
@@ -228,7 +230,7 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
       })
       if (!r.ok) {
         const j = await r.json().catch(() => ({}))
-        throw new Error(j.error || 'Revoke failed')
+        throw new Error(j.error || t('Revoke failed', 'Thu hồi thất bại'))
       }
       load()
     } catch (e) {
@@ -254,7 +256,7 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
     try {
       const r = await fetch(`/api/admin/mis/prospects/${prospect_id}/unconvert`, { method: 'POST' })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'Un-convert failed')
+      if (!r.ok) throw new Error(j.error || t('Un-convert failed', 'Hoàn tác chuyển đổi thất bại'))
       load()
     } catch (e) {
       setError((e as Error).message)
@@ -304,14 +306,14 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
     if (m) setInviteEmail(m[0])
   }, [prospect, invitations, inviteEmail])
 
-  if (loading) return <div style={emptyText}>Loading…</div>
-  if (!prospect) return <div style={emptyText}>Prospect not found.</div>
+  if (loading) return <div style={emptyText}>{t('Loading…', 'Đang tải…')}</div>
+  if (!prospect) return <div style={emptyText}>{t('Prospect not found.', 'Không tìm thấy ứng viên.')}</div>
 
   const scoreVals = SCORE_FIELDS.map(f => prospect[f.key as keyof Prospect] as number | null).filter(v => v != null) as number[]
 
   return (
     <>
-      <Link href="/admin/mis/pipeline" style={backLink}>← Pipeline</Link>
+      <Link href="/admin/mis/pipeline" style={backLink}>← {t('Pipeline', 'Quy trình')}</Link>
 
       {/* Hero */}
       <div style={heroGrid}>
@@ -323,19 +325,19 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
         <div style={heroStats}>
           {prospect.days_in_pipeline != null && (
             <div style={heroStat}>
-              <div style={heroStatLabel}>Days in pipeline</div>
+              <div style={heroStatLabel}>{t('Days in pipeline', 'Số ngày trong quy trình')}</div>
               <div style={heroStatValue}>{prospect.days_in_pipeline}</div>
             </div>
           )}
           {prospect.overall_score != null && (
             <div style={heroStat}>
-              <div style={heroStatLabel}>Overall score</div>
+              <div style={heroStatLabel}>{t('Overall score', 'Điểm tổng')}</div>
               <div style={{ ...heroStatValue, color: '#D4B85A' }}>{Number(prospect.overall_score).toFixed(2)}</div>
             </div>
           )}
           {prospect.converted_member_no && (
             <Link href={`/admin/mis/${prospect.converted_member_no}`} style={heroStat}>
-              <div style={heroStatLabel}>Member no.</div>
+              <div style={heroStatLabel}>{t('Member no.', 'Số hội viên')}</div>
               <div style={{ ...heroStatValue, color: '#7AB07A' }}>{prospect.converted_member_no}</div>
             </Link>
           )}
@@ -371,21 +373,21 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
         </div>
       ) : (
         <div style={offrampBanner}>
-          ◆ Off-ramp · {prospect.stage} — <button onClick={() => patch({ stage: 'Lead' })} style={inlineBtn}>return to pipeline</button>
+          ◆ {t('Off-ramp', 'Rời quy trình')} · {prospect.stage} — <button onClick={() => patch({ stage: 'Lead' })} style={inlineBtn}>{t('return to pipeline', 'quay lại quy trình')}</button>
         </div>
       )}
 
       {/* Stage transition (also covers off-ramps) */}
       <div style={{ display: 'flex', gap: 10, marginTop: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', letterSpacing: '0.10em', textTransform: 'uppercase' }}>
-          Move to
+          {t('Move to', 'Chuyển đến')}
         </span>
         <select value={prospect.stage} onChange={e => patch({ stage: e.target.value })} style={inputStyle}>
           {ALL_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#B2AA98', marginLeft: 'auto', cursor: 'pointer' }}>
           <input type="checkbox" checked={prospect.letter_sent} onChange={e => patch({ letter_sent: e.target.checked })} />
-          Letter sent
+          {t('Letter sent', 'Đã gửi thư')}
         </label>
       </div>
 
@@ -395,37 +397,37 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
         {/* MAIN COLUMN */}
         <div style={mainCol}>
           {/* Identity & Referral */}
-          <Section title="Identity & referral">
-            <Field label="Profession / sector" value={prospect.profession} onSave={v => patch({ profession: v })} />
-            <Field label="Position / title" value={prospect.nickname} onSave={v => patch({ nickname: v })} />
-            <Field label="Referred by" value={prospect.referred_by_name} onSave={v => patch({ referred_by_name: v })} />
-            <Field label="Relationship" value={prospect.referral_relationship} onSave={v => patch({ referral_relationship: v })} />
-            <SelectField label="Source channel" value={prospect.source_channel} options={['', ...SOURCES]} onSave={v => patch({ source_channel: v })} />
-            <Field label="Contact info" value={prospect.contact_info} onSave={v => patch({ contact_info: v })} textarea />
+          <Section title={t('Identity & referral', 'Thông tin & người giới thiệu')}>
+            <Field label={t('Profession / sector', 'Nghề nghiệp / lĩnh vực')} value={prospect.profession} onSave={v => patch({ profession: v })} />
+            <Field label={t('Position / title', 'Chức vụ / chức danh')} value={prospect.nickname} onSave={v => patch({ nickname: v })} />
+            <Field label={t('Referred by', 'Người giới thiệu')} value={prospect.referred_by_name} onSave={v => patch({ referred_by_name: v })} />
+            <Field label={t('Relationship', 'Mối quan hệ')} value={prospect.referral_relationship} onSave={v => patch({ referral_relationship: v })} />
+            <SelectField label={t('Source channel', 'Kênh nguồn')} value={prospect.source_channel} options={['', ...SOURCES]} onSave={v => patch({ source_channel: v })} />
+            <Field label={t('Contact info', 'Thông tin liên hệ')} value={prospect.contact_info} onSave={v => patch({ contact_info: v })} textarea />
           </Section>
 
           {/* Engagement */}
-          <Section title="Engagement">
-            <DateField label="First contact date" value={prospect.first_contact_date} onSave={v => patch({ first_contact_date: v })} />
-            <DateField label="Last contact date" value={prospect.last_contact_date} onSave={v => patch({ last_contact_date: v })} />
-            <Field label="Next action" value={prospect.next_action} onSave={v => patch({ next_action: v })} />
-            <DateField label="Next action date" value={prospect.next_action_date} onSave={v => patch({ next_action_date: v })} />
-            <Field label="Assigned to" value={prospect.assigned_to} onSave={v => patch({ assigned_to: v })} />
-            <Field label="Notes" value={prospect.notes} onSave={v => patch({ notes: v })} textarea />
+          <Section title={t('Engagement', 'Tương tác')}>
+            <DateField label={t('First contact date', 'Ngày liên hệ đầu tiên')} value={prospect.first_contact_date} onSave={v => patch({ first_contact_date: v })} />
+            <DateField label={t('Last contact date', 'Ngày liên hệ gần nhất')} value={prospect.last_contact_date} onSave={v => patch({ last_contact_date: v })} />
+            <Field label={t('Next action', 'Hành động tiếp theo')} value={prospect.next_action} onSave={v => patch({ next_action: v })} />
+            <DateField label={t('Next action date', 'Ngày hành động tiếp theo')} value={prospect.next_action_date} onSave={v => patch({ next_action_date: v })} />
+            <Field label={t('Assigned to', 'Phụ trách bởi')} value={prospect.assigned_to} onSave={v => patch({ assigned_to: v })} />
+            <Field label={t('Notes', 'Ghi chú')} value={prospect.notes} onSave={v => patch({ notes: v })} textarea />
           </Section>
 
           {/* Interview */}
-          <Section title="Interview">
-            <DateField label="Interview date" value={prospect.interview_date} onSave={v => patch({ interview_date: v })} />
-            <Field label="Interviewer" value={prospect.interviewer} onSave={v => patch({ interviewer: v })} />
-            <Field label="Location" value={prospect.interview_location} onSave={v => patch({ interview_location: v })} />
-            <Field label="Duration" value={prospect.interview_duration} onSave={v => patch({ interview_duration: v })} />
-            <Field label="Interview notes" value={prospect.interview_notes} onSave={v => patch({ interview_notes: v })} textarea />
-            <Field label="Red flags" value={prospect.red_flags} onSave={v => patch({ red_flags: v })} textarea />
+          <Section title={t('Interview', 'Phỏng vấn')}>
+            <DateField label={t('Interview date', 'Ngày phỏng vấn')} value={prospect.interview_date} onSave={v => patch({ interview_date: v })} />
+            <Field label={t('Interviewer', 'Người phỏng vấn')} value={prospect.interviewer} onSave={v => patch({ interviewer: v })} />
+            <Field label={t('Location', 'Địa điểm')} value={prospect.interview_location} onSave={v => patch({ interview_location: v })} />
+            <Field label={t('Duration', 'Thời lượng')} value={prospect.interview_duration} onSave={v => patch({ interview_duration: v })} />
+            <Field label={t('Interview notes', 'Ghi chú phỏng vấn')} value={prospect.interview_notes} onSave={v => patch({ interview_notes: v })} textarea />
+            <Field label={t('Red flags', 'Dấu hiệu cảnh báo')} value={prospect.red_flags} onSave={v => patch({ red_flags: v })} textarea />
           </Section>
 
           {/* Scoring rubric */}
-          <Section title="Scoring rubric" subtitle="1–5 per dimension · overall = mean of populated">
+          <Section title={t('Scoring rubric', 'Thang chấm điểm')} subtitle={t('1–5 per dimension · overall = mean of populated', '1–5 mỗi tiêu chí · tổng = trung bình các mục đã chấm')}>
             <div style={scoreGrid}>
               {SCORE_FIELDS.map(f => (
                 <ScoreDial
@@ -439,34 +441,34 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
             </div>
             {prospect.overall_score != null && (
               <div style={overallBar}>
-                <div style={overallBarLabel}>Overall</div>
+                <div style={overallBarLabel}>{t('Overall', 'Tổng')}</div>
                 <div style={overallBarTrack}>
                   <div style={{ ...overallBarFill, width: `${(Number(prospect.overall_score) / 5) * 100}%` }} />
                 </div>
                 <div style={overallBarValue}>{Number(prospect.overall_score).toFixed(2)}</div>
               </div>
             )}
-            <Field label="Diversity contribution" value={prospect.diversity_contribution} onSave={v => patch({ diversity_contribution: v })} textarea />
+            <Field label={t('Diversity contribution', 'Đóng góp về sự đa dạng')} value={prospect.diversity_contribution} onSave={v => patch({ diversity_contribution: v })} textarea />
           </Section>
 
           {/* Decision */}
-          <Section title="Decision">
-            <SelectField label="Decision" value={prospect.decision} options={['', ...DECISIONS]} onSave={v => patch({ decision: v })} />
-            <DateField label="Decision date" value={prospect.decision_date} onSave={v => patch({ decision_date: v })} />
-            <Field label="Committee notes" value={prospect.committee_notes} onSave={v => patch({ committee_notes: v })} textarea />
+          <Section title={t('Decision', 'Quyết định')}>
+            <SelectField label={t('Decision', 'Quyết định')} value={prospect.decision} options={['', ...DECISIONS]} onSave={v => patch({ decision: v })} />
+            <DateField label={t('Decision date', 'Ngày quyết định')} value={prospect.decision_date} onSave={v => patch({ decision_date: v })} />
+            <Field label={t('Committee notes', 'Ghi chú của hội đồng')} value={prospect.committee_notes} onSave={v => patch({ committee_notes: v })} textarea />
           </Section>
         </div>
 
         {/* SIDEBAR */}
         <div style={sideCol}>
           <div style={actionsPanel}>
-            <div style={panelLabel}>Actions</div>
+            <div style={panelLabel}>{t('Actions', 'Thao tác')}</div>
             <button onClick={processTranscript} style={btnPrimary}>
-              ◆ Process interview transcript →
+              ◆ {t('Process interview transcript', 'Xử lý biên bản phỏng vấn')} →
             </button>
             {!prospect.converted_member_no && (
               <button onClick={async () => { await allocateMember() }} style={btnGhost}>
-                Allocate provisional member no.
+                {t('Allocate provisional member no.', 'Cấp số hội viên tạm thời')}
               </button>
             )}
             {/* Un-convert — the inverse of allocate/convert. Shown only while a
@@ -478,7 +480,7 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
                 disabled={converting}
                 style={{ ...btnGhost, color: '#C27070', borderColor: 'rgba(180,70,70,0.30)' }}
               >
-                Un-convert · remove provisional ({prospect.converted_member_no})
+                {t('Un-convert · remove provisional', 'Hoàn tác · gỡ hội viên tạm thời')} ({prospect.converted_member_no})
               </button>
             )}
 
@@ -487,63 +489,63 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
               <>
                 {activeInvitation ? (
                   <div style={inviteStatusBlock}>
-                    <div style={editLabel}>Invitation status</div>
+                    <div style={editLabel}>{t('Invitation status', 'Trạng thái lời mời')}</div>
                     <div style={inviteStatusPill('pending')}>
-                      ✉ Pending · sent {fmtDate(activeInvitation.created_at)}
+                      ✉ {t('Pending · sent', 'Đang chờ · đã gửi')} {fmtDate(activeInvitation.created_at)}
                     </div>
                     <div style={inviteMeta}>
-                      To: <span style={{ color: '#E5D4C2' }}>{activeInvitation.email}</span>
+                      {t('To:', 'Đến:')} <span style={{ color: '#E5D4C2' }}>{activeInvitation.email}</span>
                     </div>
                     {activeInvitation.viewed_at && (
                       <div style={inviteMeta}>
-                        Viewed: <span style={{ color: '#D4B85A' }}>{fmtDate(activeInvitation.viewed_at)}</span>
+                        {t('Viewed:', 'Đã xem:')} <span style={{ color: '#D4B85A' }}>{fmtDate(activeInvitation.viewed_at)}</span>
                         {activeInvitation.view_count ? ` (${activeInvitation.view_count}×)` : ''}
                       </div>
                     )}
                     {!activeInvitation.viewed_at && (
-                      <div style={{ ...inviteMeta, opacity: 0.5 }}>Not yet opened.</div>
+                      <div style={{ ...inviteMeta, opacity: 0.5 }}>{t('Not yet opened.', 'Chưa mở.')}</div>
                     )}
                     {activeInvitation.reminder_count ? (
                       <div style={inviteMeta}>
-                        Reminders sent: {activeInvitation.reminder_count}
-                        {activeInvitation.last_reminded_at && ` · last ${fmtDate(activeInvitation.last_reminded_at)}`}
+                        {t('Reminders sent:', 'Số lần nhắc đã gửi:')} {activeInvitation.reminder_count}
+                        {activeInvitation.last_reminded_at && ` · ${t('last', 'lần cuối')} ${fmtDate(activeInvitation.last_reminded_at)}`}
                       </div>
                     ) : null}
                     <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
                       <button onClick={() => sendInvitation({ resend: true })} disabled={sending} style={{ ...btnGhost, padding: '8px 12px', flex: 1 }}>
-                        {sending ? 'Sending…' : 'Resend email'}
+                        {sending ? t('Sending…', 'Đang gửi…') : t('Resend email', 'Gửi lại email')}
                       </button>
                       <button onClick={() => copyLink(activeInvitation.token)} style={{ ...btnGhost, padding: '8px 12px' }}>
-                        Copy link
+                        {t('Copy link', 'Sao chép liên kết')}
                       </button>
                       <button onClick={() => setPending({ kind: 'revoke', invitation_id: activeInvitation.id })} style={{ ...btnGhost, padding: '8px 12px', color: '#C27070', borderColor: 'rgba(180,70,70,0.30)' }}>
-                        Revoke
+                        {t('Revoke', 'Thu hồi')}
                       </button>
                     </div>
                   </div>
                 ) : latestInvitation && latestInvitation.status === 'signed' ? (
                   <div style={inviteStatusBlock}>
-                    <div style={editLabel}>Agreement</div>
+                    <div style={editLabel}>{t('Agreement', 'Thỏa thuận')}</div>
                     <div style={inviteStatusPill('signed')}>
-                      ✓ Signed · {fmtDate(latestInvitation.created_at)}
+                      ✓ {t('Signed ·', 'Đã ký ·')} {fmtDate(latestInvitation.created_at)}
                     </div>
                     <div style={inviteMeta}>
-                      Member <span style={{ color: '#7AB07A' }}>{latestInvitation.member_no || prospect.converted_member_no}</span> is Active.
+                      {t('Member', 'Hội viên')} <span style={{ color: '#7AB07A' }}>{latestInvitation.member_no || prospect.converted_member_no}</span> {t('is Active.', 'đang hoạt động.')}
                     </div>
                   </div>
                 ) : (
                   <button onClick={() => setShowInvite(s => !s)} style={btnAccent}>
-                    {showInvite ? 'Cancel invitation' : '✉ Send signing invitation'}
+                    {showInvite ? t('Cancel invitation', 'Hủy lời mời') : `✉ ${t('Send signing invitation', 'Gửi lời mời ký')}`}
                   </button>
                 )}
 
                 {showInvite && !activeInvitation && (
                   <div style={convertBlock}>
-                    <div style={editLabel}>Tier</div>
+                    <div style={editLabel}>{t('Tier', 'Hạng')}</div>
                     <select value={conversionTier} onChange={e => setConversionTier(e.target.value)} style={inputStyle}>
                       {TIERS.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
-                    <div style={editLabel}>Email *</div>
+                    <div style={editLabel}>{t('Email *', 'Email *')}</div>
                     <input
                       type="email"
                       value={inviteEmail}
@@ -551,7 +553,7 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
                       placeholder="name@example.com"
                       style={inputStyle}
                     />
-                    <div style={editLabel}>Mobile (optional)</div>
+                    <div style={editLabel}>{t('Mobile (optional)', 'Số di động (tùy chọn)')}</div>
                     <input
                       value={inviteMobile}
                       onChange={e => setInviteMobile(e.target.value)}
@@ -563,10 +565,10 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
                       disabled={sending || !inviteEmail.trim()}
                       style={{ ...btnPrimary, marginTop: 8, width: '100%', opacity: !inviteEmail.trim() ? 0.4 : 1 }}
                     >
-                      {sending ? 'Sending…' : 'Send invitation'}
+                      {sending ? t('Sending…', 'Đang gửi…') : t('Send invitation', 'Gửi lời mời')}
                     </button>
                     <div style={{ ...inviteMeta, marginTop: 6 }}>
-                      Creates a Pending Signature member, emails the signing link, and flips this prospect to Application Received. They become Active when they sign.
+                      {t('Creates a Pending Signature member, emails the signing link, and flips this prospect to Application Received. They become Active when they sign.', 'Tạo một hội viên ở trạng thái Chờ ký, gửi email liên kết ký, và chuyển ứng viên này sang Đã nhận đơn. Họ trở thành hội viên hoạt động khi ký.')}
                     </div>
                   </div>
                 )}
@@ -579,19 +581,19 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
 
                 {/* Admin override: force-convert without signing */}
                 <button onClick={() => setShowOverride(s => !s)} style={{ ...btnGhost, fontSize: 10, opacity: 0.7 }}>
-                  {showOverride ? '— hide override' : '★ Force convert without signing'}
+                  {showOverride ? t('— hide override', '— ẩn ghi đè') : `★ ${t('Force convert without signing', 'Ép chuyển đổi mà không cần ký')}`}
                 </button>
                 {showOverride && (
                   <div style={convertBlock}>
                     <div style={inviteMeta}>
-                      Skips the signing flow — member becomes Active immediately with no agreement on file. Use only when a paper agreement has been signed offline.
+                      {t('Skips the signing flow — member becomes Active immediately with no agreement on file. Use only when a paper agreement has been signed offline.', 'Bỏ qua quy trình ký — hội viên hoạt động ngay lập tức mà không có thỏa thuận lưu hồ sơ. Chỉ dùng khi đã ký thỏa thuận giấy ngoài hệ thống.')}
                     </div>
-                    <div style={editLabel}>Tier</div>
+                    <div style={editLabel}>{t('Tier', 'Hạng')}</div>
                     <select value={conversionTier} onChange={e => setConversionTier(e.target.value)} style={inputStyle}>
                       {TIERS.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                     <button onClick={() => setPending({ kind: 'force_convert' })} disabled={converting} style={{ ...btnPrimary, marginTop: 8, width: '100%', background: 'rgba(180,70,70,0.30)' }}>
-                      {converting ? 'Converting…' : 'Confirm force convert'}
+                      {converting ? t('Converting…', 'Đang chuyển đổi…') : t('Confirm force convert', 'Xác nhận ép chuyển đổi')}
                     </button>
                   </div>
                 )}
@@ -599,23 +601,23 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
             )}
 
             <button onClick={() => setPending({ kind: 'archive' })} style={btnDanger}>
-              Archive prospect
+              {t('Archive prospect', 'Lưu trữ ứng viên')}
             </button>
           </div>
 
           {/* Activity timeline */}
           <div style={timelinePanel}>
-            <div style={panelLabel}>Activity</div>
+            <div style={panelLabel}>{t('Activity', 'Hoạt động')}</div>
             <div style={timelineList}>
               {activity.length === 0 ? (
-                <div style={timelineEmpty}>No activity yet.</div>
+                <div style={timelineEmpty}>{t('No activity yet.', 'Chưa có hoạt động.')}</div>
               ) : activity.map(a => (
                 <div key={a.id} style={timelineRow}>
                   <div style={timelineDot} />
                   <div style={timelineBody}>
                     <div style={timelineEvent}>{formatEvent(a)}</div>
                     <div style={timelineMeta}>
-                      {a.actor || 'system'} · {new Date(a.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      {a.actor || t('system', 'hệ thống')} · {new Date(a.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
                 </div>
@@ -627,27 +629,27 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
 
       <ConfirmModal
         open={!!pending}
-        eyebrow={pending?.kind === 'force_convert' ? '⚠ ADMIN OVERRIDE'
-          : pending?.kind === 'revoke' ? '⚠ REVOKE INVITATION'
-          : pending?.kind === 'unconvert' ? '⚠ REMOVE PROVISIONAL MEMBER'
-          : '⚠ ARCHIVE PROSPECT'}
-        title={pending?.kind === 'force_convert' ? 'Force convert without signing?'
-          : pending?.kind === 'revoke' ? 'Revoke this invitation?'
-          : pending?.kind === 'unconvert' ? 'Remove the provisional member?'
-          : 'Archive this prospect?'}
+        eyebrow={pending?.kind === 'force_convert' ? t('⚠ ADMIN OVERRIDE', '⚠ QUẢN TRỊ GHI ĐÈ')
+          : pending?.kind === 'revoke' ? t('⚠ REVOKE INVITATION', '⚠ THU HỒI LỜI MỜI')
+          : pending?.kind === 'unconvert' ? t('⚠ REMOVE PROVISIONAL MEMBER', '⚠ GỠ HỘI VIÊN TẠM THỜI')
+          : t('⚠ ARCHIVE PROSPECT', '⚠ LƯU TRỮ ỨNG VIÊN')}
+        title={pending?.kind === 'force_convert' ? t('Force convert without signing?', 'Ép chuyển đổi mà không cần ký?')
+          : pending?.kind === 'revoke' ? t('Revoke this invitation?', 'Thu hồi lời mời này?')
+          : pending?.kind === 'unconvert' ? t('Remove the provisional member?', 'Gỡ hội viên tạm thời?')
+          : t('Archive this prospect?', 'Lưu trữ ứng viên này?')}
         subject={prospect?.full_name}
         body={pending?.kind === 'force_convert'
-          ? `The member becomes Active immediately as ${conversionTier}, with no signed agreement on file. Admin override only — use when the agreement is handled outside the system.`
+          ? `${t('The member becomes Active immediately as', 'Hội viên sẽ hoạt động ngay lập tức với hạng')} ${conversionTier}${t(', with no signed agreement on file. Admin override only — use when the agreement is handled outside the system.', ', không có thỏa thuận đã ký lưu hồ sơ. Chỉ dành cho quản trị ghi đè — dùng khi thỏa thuận được xử lý ngoài hệ thống.')}`
           : pending?.kind === 'revoke'
-          ? 'The signing link stops working immediately. You can send a fresh invitation afterwards if needed.'
+          ? t('The signing link stops working immediately. You can send a fresh invitation afterwards if needed.', 'Liên kết ký sẽ ngừng hoạt động ngay lập tức. Sau đó bạn có thể gửi lời mời mới nếu cần.')
           : pending?.kind === 'unconvert'
-          ? `This removes the provisional member record ${prospect?.converted_member_no ? `(${prospect.converted_member_no}) ` : ''}and returns them to Lead. Only for provisional members — real members can't be removed here. The member number is retired, not reused.`
-          : 'Hides the prospect from the pipeline. The record and its full activity trail are preserved for audit.'}
-        confirmLabel={pending?.kind === 'force_convert' ? 'Force convert'
-          : pending?.kind === 'revoke' ? 'Revoke invitation'
-          : pending?.kind === 'unconvert' ? 'Remove & return to Lead'
-          : 'Archive prospect'}
-        busyLabel="Working…"
+          ? `${t('This removes the provisional member record', 'Thao tác này gỡ hồ sơ hội viên tạm thời')} ${prospect?.converted_member_no ? `(${prospect.converted_member_no}) ` : ''}${t("and returns them to Lead. Only for provisional members — real members can't be removed here. The member number is retired, not reused.", 'và trả họ về Lead. Chỉ dành cho hội viên tạm thời — không thể gỡ hội viên thật ở đây. Số hội viên sẽ ngừng dùng, không tái sử dụng.')}`
+          : t('Hides the prospect from the pipeline. The record and its full activity trail are preserved for audit.', 'Ẩn ứng viên khỏi quy trình. Hồ sơ và toàn bộ lịch sử hoạt động được giữ lại để kiểm toán.')}
+        confirmLabel={pending?.kind === 'force_convert' ? t('Force convert', 'Ép chuyển đổi')
+          : pending?.kind === 'revoke' ? t('Revoke invitation', 'Thu hồi lời mời')
+          : pending?.kind === 'unconvert' ? t('Remove & return to Lead', 'Gỡ & trả về Lead')
+          : t('Archive prospect', 'Lưu trữ ứng viên')}
+        busyLabel={t('Working…', 'Đang xử lý…')}
         busy={confirmBusy}
         onCancel={closeConfirm}
         onConfirm={runPending}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
+import { useLang } from '@/lib/admin-lang'
 import FormulaExplainer from './FormulaExplainer'
 
 interface MemberStats {
@@ -26,6 +27,7 @@ const ALL_TIERS = ['All tiers', 'Founding', 'Legacy', 'Pioneer', 'Corporate', 'H
 const ALL_STATUSES = ['All statuses', 'Active', 'Inactive', 'Suspended']
 
 export default function MisMembersList() {
+  const { t } = useLang()
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -52,13 +54,13 @@ export default function MisMembersList() {
   return (
     <>
       <div style={headerRow}>
-        <h1 style={pageTitle}>Member Intelligence</h1>
+        <h1 style={pageTitle}>{t('Member Intelligence', 'Thông tin thành viên')}</h1>
         <div style={{ display: 'flex', gap: 16, alignItems: 'baseline' }}>
           <Link href="/admin/mis/visits" style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#D4B85A', textDecoration: 'none', letterSpacing: '0.06em', borderBottom: '1px solid rgba(212,184,90,0.35)' }}>
-            Visits log →
+            {t('Visits log', 'Nhật ký lượt ghé')} →
           </Link>
           <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#B2AA98', opacity: 0.7 }}>
-            {filtered.length} of {members.length}
+            {filtered.length} {t('of', 'trên')} {members.length}
           </div>
         </div>
       </div>
@@ -68,7 +70,7 @@ export default function MisMembersList() {
       <div style={filterRow}>
         <input
           type="text"
-          placeholder="Search by name, nickname, or member no…"
+          placeholder={t('Search by name, nickname, or member no…', 'Tìm theo tên, biệt danh hoặc số thành viên…')}
           value={search}
           onChange={e => setSearch(e.target.value)}
           style={{ ...inputStyle, flex: 1, minWidth: 240 }}
@@ -82,19 +84,19 @@ export default function MisMembersList() {
       </div>
 
       {loading ? (
-        <div style={emptyText}>Loading…</div>
+        <div style={emptyText}>{t('Loading…', 'Đang tải…')}</div>
       ) : filtered.length === 0 ? (
-        <div style={emptyText}>No members match these filters.</div>
+        <div style={emptyText}>{t('No members match these filters.', 'Không có thành viên nào khớp với bộ lọc này.')}</div>
       ) : (
         <div>
           <div style={listHeader}>
-            <span style={{ ...colMemberNo, color: '#B2AA98' }}>Member</span>
-            <span style={{ ...colName, color: '#B2AA98' }}>Name</span>
-            <span style={{ ...colTier, color: '#B2AA98' }}>Tier</span>
-            <span style={{ ...colStats, color: '#B2AA98' }}>Prefs</span>
-            <span style={{ ...colStats, color: '#B2AA98' }}>Score 5s</span>
-            <span style={{ ...colStats, color: '#B2AA98' }}>Revalidate</span>
-            <span style={{ ...colStats, color: '#B2AA98' }}>Avg PS</span>
+            <span style={{ ...colMemberNo, color: '#B2AA98' }}>{t('Member', 'Thành viên')}</span>
+            <span style={{ ...colName, color: '#B2AA98' }}>{t('Name', 'Tên')}</span>
+            <span style={{ ...colTier, color: '#B2AA98' }}>{t('Tier', 'Hạng')}</span>
+            <span style={{ ...colStats, color: '#B2AA98' }}>{t('Prefs', 'Sở thích')}</span>
+            <span style={{ ...colStats, color: '#B2AA98' }}>{t('Score 5s', 'Điểm 5')}</span>
+            <span style={{ ...colStats, color: '#B2AA98' }}>{t('Revalidate', 'Xác thực lại')}</span>
+            <span style={{ ...colStats, color: '#B2AA98' }}>{t('Avg PS', 'PS trung bình')}</span>
           </div>
           {filtered.map(m => (
             <Link key={m.member_no} href={`/admin/mis/${m.member_no}`} style={rowLink}>

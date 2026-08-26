@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useLang } from '@/lib/admin-lang'
 
 // Staff Snug — the cadence tool + the safety valve. Compose house posts (member
 // side shows "The Club", never a staff name) to keep the feed alive, and moderate:
@@ -13,6 +14,7 @@ interface Row { item_type: string; id: string; created_at: string; hidden: boole
 const fmt = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
 export default function AdminSnug() {
+  const { t } = useLang()
   const [rows, setRows] = useState<Row[]>([])
   const [body, setBody] = useState('')
   const [photo, setPhoto] = useState<File | null>(null)
@@ -38,48 +40,48 @@ export default function AdminSnug() {
   }, [body, photo, posting, load])
 
   const moderate = useCallback(async (action: string, item: Row) => {
-    const verb = action === 'hide' ? 'Hide this post from the Snug?' : action === 'unhide' ? 'Return this post to the Snug?' : 'Remove this note from the Snug? (it stays the member’s private note)'
+    const verb = action === 'hide' ? t('Hide this post from the Snug?', 'Ẩn bài đăng này khỏi The Snug?') : action === 'unhide' ? t('Return this post to the Snug?', 'Đưa bài đăng này trở lại The Snug?') : t('Remove this note from the Snug? (it stays the member’s private note)', 'Gỡ ghi chú này khỏi The Snug? (vẫn giữ làm ghi chú riêng của hội viên)')
     if (!window.confirm(verb)) return
     const r = await fetch('/api/admin/snug', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, item_type: item.item_type, item_id: item.id }) })
     if (r.ok) await load()
-  }, [load])
+  }, [load, t])
 
   return (
     <div>
       <h1 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 26, color: '#E5D4C2', marginBottom: 4 }}>The Snug</h1>
-      <p style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98', marginBottom: 24, letterSpacing: '0.04em' }}>Keep the room alive · members see house posts as “The Club”</p>
+      <p style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98', marginBottom: 24, letterSpacing: '0.04em' }}>{t('Keep the room alive · members see house posts as “The Club”', 'Giữ không khí sôi động · hội viên thấy bài của nhà dưới tên “The Club”')}</p>
 
       <div style={composer}>
         {err && <div style={{ fontFamily: MONO, fontSize: 11, color: '#C27070', marginBottom: 8 }}>{err}</div>}
-        <textarea value={body} onChange={e => setBody(e.target.value.slice(0, 8000))} rows={3} placeholder="A house moment — a bottle landed, a vignette from last night, a welcome…" style={textarea} />
+        <textarea value={body} onChange={e => setBody(e.target.value.slice(0, 8000))} rows={3} placeholder={t('A house moment — a bottle landed, a vignette from last night, a welcome…', 'Một khoảnh khắc của nhà — một chai vừa về, một mẩu chuyện tối qua, một lời chào mừng…')} style={textarea} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
           <label style={{ ...chip, cursor: 'pointer' }}>
-            {photo ? photo.name.slice(0, 24) : '＋ photo'}
+            {photo ? photo.name.slice(0, 24) : t('＋ photo', '＋ ảnh')}
             <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) setPhoto(f) }} />
           </label>
-          <button onClick={postHouse} disabled={posting || !body.trim()} style={{ ...postBtn, opacity: posting || !body.trim() ? 0.4 : 1 }}>{posting ? 'Posting…' : 'Post as The Club'}</button>
+          <button onClick={postHouse} disabled={posting || !body.trim()} style={{ ...postBtn, opacity: posting || !body.trim() ? 0.4 : 1 }}>{posting ? t('Posting…', 'Đang đăng…') : t('Post as The Club', 'Đăng dưới tên The Club')}</button>
         </div>
       </div>
 
-      <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#7E7864', margin: '24px 0 10px' }}>Recent in the Snug</div>
+      <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#7E7864', margin: '24px 0 10px' }}>{t('Recent in the Snug', 'Gần đây trong The Snug')}</div>
       {rows.map(it => (
         <div key={`${it.item_type}:${it.id}`} style={{ ...rowCard, opacity: it.hidden ? 0.5 : 1 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
             <span style={{ fontFamily: MONO, fontSize: 11, color: it.kind === 'house_post' ? '#D4B85A' : '#E5D4C2' }}>
               {it.author_name}
-              <span style={{ color: '#7E7864', marginLeft: 8 }}>{it.kind === 'tasting_note' ? 'note' : it.kind === 'house_post' ? 'house' : 'member'}{it.hidden ? ' · hidden' : ''}</span>
+              <span style={{ color: '#7E7864', marginLeft: 8 }}>{it.kind === 'tasting_note' ? t('note', 'ghi chú') : it.kind === 'house_post' ? t('house', 'nhà') : t('member', 'hội viên')}{it.hidden ? t(' · hidden', ' · đã ẩn') : ''}</span>
             </span>
             <span style={{ fontFamily: MONO, fontSize: 9, color: '#7E7864' }}>{fmt(it.created_at)}</span>
           </div>
           <div style={{ fontFamily: MONO, fontSize: 12, color: '#B2AA98', lineHeight: 1.6, margin: '5px 0 8px' }}>{it.preview}</div>
           <div style={{ display: 'flex', gap: 10 }}>
             {it.item_type === 'post'
-              ? <button onClick={() => moderate(it.hidden ? 'unhide' : 'hide', it)} style={modBtn}>{it.hidden ? 'Unhide' : 'Hide'}</button>
-              : <button onClick={() => moderate('unsnug', it)} style={modBtn}>Remove from Snug</button>}
+              ? <button onClick={() => moderate(it.hidden ? 'unhide' : 'hide', it)} style={modBtn}>{it.hidden ? t('Unhide', 'Bỏ ẩn') : t('Hide', 'Ẩn')}</button>
+              : <button onClick={() => moderate('unsnug', it)} style={modBtn}>{t('Remove from Snug', 'Gỡ khỏi Snug')}</button>}
           </div>
         </div>
       ))}
-      {rows.length === 0 && <div style={{ fontFamily: MONO, fontSize: 12, color: '#B2AA98', opacity: 0.6, fontStyle: 'italic' }}>Nothing in the Snug yet.</div>}
+      {rows.length === 0 && <div style={{ fontFamily: MONO, fontSize: 12, color: '#B2AA98', opacity: 0.6, fontStyle: 'italic' }}>{t('Nothing in the Snug yet.', 'Chưa có gì trong The Snug.')}</div>}
     </div>
   )
 }

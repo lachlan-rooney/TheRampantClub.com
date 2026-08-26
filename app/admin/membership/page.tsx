@@ -8,6 +8,7 @@
 // the admin-gated /api/admin/membership/payments route (atomic SQL RPC).
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLang } from '@/lib/admin-lang'
 
 interface RosterRow {
   member_no: string
@@ -75,6 +76,7 @@ function renewsIn(row: RosterRow): { text: string; color: string } {
 }
 
 export default function AdminMembership() {
+  const { t } = useLang()
   const [roster, setRoster] = useState<RosterRow[]>([])
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState<string | null>(null)
@@ -118,7 +120,7 @@ export default function AdminMembership() {
   const doResend = async (p: PaymentRow) => {
     const r = await fetch(`/api/admin/membership/${p.id}/resend`, { method: 'POST' })
     const d = await r.json().catch(() => ({}))
-    showToast(r.ok ? (d.member_emailed ? `Receipt ${p.receipt_no} re-sent to member + membership@` : `Receipt ${p.receipt_no} sent to membership@ (no member email on file)`) : `Resend failed: ${d.error || r.statusText}`)
+    showToast(r.ok ? (d.member_emailed ? `${t('Receipt', 'Biên nhận')} ${p.receipt_no} ${t('re-sent to member + membership@', 'đã gửi lại cho hội viên + membership@')}` : `${t('Receipt', 'Biên nhận')} ${p.receipt_no} ${t('sent to membership@ (no member email on file)', 'đã gửi tới membership@ (không có email hội viên trong hồ sơ)')}`) : `${t('Resend failed', 'Gửi lại thất bại')}: ${d.error || r.statusText}`)
   }
   const doVoid = async () => {
     if (!voidFor) return
@@ -129,14 +131,14 @@ export default function AdminMembership() {
     })
     setVoidBusy(false)
     if (r.ok) {
-      showToast(`Voided ${voidFor.receipt_no}`)
+      showToast(`${t('Voided', 'Đã hủy')} ${voidFor.receipt_no}`)
       const mno = historyFor
       setVoidFor(null); setVoidReason('')
       loadRoster(); loadSummary()
       if (mno) openHistory(mno)
     } else {
       const d = await r.json().catch(() => ({}))
-      showToast(`Void failed: ${d.error || r.statusText}`)
+      showToast(`${t('Void failed', 'Hủy thất bại')}: ${d.error || r.statusText}`)
     }
   }
 
@@ -171,14 +173,14 @@ export default function AdminMembership() {
     if (r.ok) {
       const d = await r.json()
       showToast(honorary
-        ? `Activated ${selected.full_name}${d.period ? ` — through ${fmtDate(d.period.end)}` : ''}`
-        : `Recorded ${d.receipt_no}${d.period ? ` · paid through ${fmtDate(d.period.end)}` : ''}`)
+        ? `${t('Activated', 'Đã kích hoạt')} ${selected.full_name}${d.period ? ` — ${t('through', 'đến')} ${fmtDate(d.period.end)}` : ''}`
+        : `${t('Recorded', 'Đã ghi nhận')} ${d.receipt_no}${d.period ? ` · ${t('paid through', 'đã thanh toán đến')} ${fmtDate(d.period.end)}` : ''}`)
       setAmount(''); setNote(''); setEmail(''); idempotencyRef.current = cryptoUuid()
       loadRoster()
       if (historyFor === selected.member_no) openHistory(selected.member_no)
     } else {
       const d = await r.json().catch(() => ({}))
-      showToast(`Failed: ${d.error || r.statusText}`)
+      showToast(`${t('Failed', 'Thất bại')}: ${d.error || r.statusText}`)
     }
   }
 
@@ -197,29 +199,28 @@ export default function AdminMembership() {
 
   return (
     <>
-      <h1 style={h1}>Membership Finance</h1>
+      <h1 style={h1}>{t('Membership Finance', 'Tài chính Hội viên')}</h1>
       <p style={sub}>
-        Record membership fees, issue branded receipts, and track renewals. Recording a fee mints a
-        receipt and starts a one-year membership period from the payment date.
+        {t('Record membership fees, issue branded receipts, and track renewals. Recording a fee mints a receipt and starts a one-year membership period from the payment date.', 'Ghi nhận phí hội viên, xuất biên nhận có thương hiệu và theo dõi việc gia hạn. Ghi nhận một khoản phí sẽ tạo biên nhận và bắt đầu kỳ hội viên một năm tính từ ngày thanh toán.')}
       </p>
 
       {/* Record payment */}
       <div style={card}>
-        <div style={sectionLabel}>Record a payment</div>
+        <div style={sectionLabel}>{t('Record a payment', 'Ghi nhận một khoản thanh toán')}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
           <div>
-            <label style={label}>Member</label>
+            <label style={label}>{t('Member', 'Hội viên')}</label>
             <select style={input} value={memberNo} onChange={e => onPickMember(e.target.value)}>
-              <option value="">— select member —</option>
+              <option value="">{t('— select member —', '— chọn hội viên —')}</option>
               {roster.map(m => (
                 <option key={m.member_no} value={m.member_no}>
-                  {m.member_no} · {m.full_name} ({m.tier || 'No tier'})
+                  {m.member_no} · {m.full_name} ({m.tier || t('No tier', 'Không có hạng')})
                 </option>
               ))}
             </select>
           </div>
           <div>
-            <label style={label}>Fee type</label>
+            <label style={label}>{t('Fee type', 'Loại phí')}</label>
             <select style={input} value={feeKind} onChange={e => {
               const v = e.target.value
               setFeeKind(v)
@@ -230,42 +231,42 @@ export default function AdminMembership() {
             </select>
           </div>
           <div>
-            <label style={label}>Amount (VND){!honorary && selected && selected.default_fee > 0 ? ` · tier default ${fmt(selected.default_fee)}` : ''}</label>
+            <label style={label}>{t('Amount (VND)', 'Số tiền (VND)')}{!honorary && selected && selected.default_fee > 0 ? ` · ${t('tier default', 'mặc định theo hạng')} ${fmt(selected.default_fee)}` : ''}</label>
             {honorary ? (
-              <div style={{ ...input, opacity: 0.55, display: 'flex', alignItems: 'center' }}>No charge — complimentary</div>
+              <div style={{ ...input, opacity: 0.55, display: 'flex', alignItems: 'center' }}>{t('No charge — complimentary', 'Không tính phí — miễn phí')}</div>
             ) : (
               <>
-                <input style={input} inputMode="numeric" placeholder="e.g. 130000000" value={amount} onChange={e => setAmount(e.target.value)} />
+                <input style={input} inputMode="numeric" placeholder={t('e.g. 130000000', 'vd. 130000000')} value={amount} onChange={e => setAmount(e.target.value)} />
                 {amountNum > 0 && <div style={hint}>{fmt(amountNum)}</div>}
               </>
             )}
           </div>
           <div>
-            <label style={label}>Payment method</label>
+            <label style={label}>{t('Payment method', 'Phương thức thanh toán')}</label>
             <select style={{ ...input, opacity: honorary ? 0.5 : 1 }} value={method} disabled={honorary} onChange={e => setMethod(e.target.value)}>
               {METHODS.map(m => <option key={m.v} value={m.v}>{m.l}</option>)}
             </select>
           </div>
           <div>
-            <label style={label}>{honorary ? 'Start date' : 'Payment date'}</label>
+            <label style={label}>{honorary ? t('Start date', 'Ngày bắt đầu') : t('Payment date', 'Ngày thanh toán')}</label>
             <input style={input} type="date" value={date} onChange={e => setDate(e.target.value)} />
           </div>
           <div>
-            <label style={label}>Member email {honorary ? '(not needed)' : '(optional override)'}</label>
-            <input style={{ ...input, opacity: honorary ? 0.5 : 1 }} disabled={honorary} placeholder={honorary ? 'no email required' : 'leave blank to use their on-file email'} value={email} onChange={e => setEmail(e.target.value)} />
+            <label style={label}>{t('Member email', 'Email hội viên')} {honorary ? t('(not needed)', '(không cần)') : t('(optional override)', '(tùy chọn thay thế)')}</label>
+            <input style={{ ...input, opacity: honorary ? 0.5 : 1 }} disabled={honorary} placeholder={honorary ? t('no email required', 'không cần email') : t('leave blank to use their on-file email', 'để trống để dùng email trong hồ sơ của họ')} value={email} onChange={e => setEmail(e.target.value)} />
           </div>
         </div>
         <div style={{ marginTop: 14 }}>
-          <label style={label}>Note (optional)</label>
-          <input style={input} placeholder="e.g. Founding member — negotiated dues" value={note} onChange={e => setNote(e.target.value)} />
+          <label style={label}>{t('Note (optional)', 'Ghi chú (tùy chọn)')}</label>
+          <input style={input} placeholder={t('e.g. Founding member — negotiated dues', 'vd. Hội viên sáng lập — phí đã thương lượng')} value={note} onChange={e => setNote(e.target.value)} />
         </div>
         <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
           <button style={{ ...btnPrimary, opacity: canSubmit && !busy ? 1 : 0.4 }} disabled={!canSubmit || busy} onClick={() => setConfirmOpen(true)}>
-            {honorary ? 'Activate membership' : 'Record payment & issue receipt'}
+            {honorary ? t('Activate membership', 'Kích hoạt hội viên') : t('Record payment & issue receipt', 'Ghi nhận thanh toán & xuất biên nhận')}
           </button>
           {selected && <span style={hint}>{honorary
-            ? `Starts a complimentary one-year membership — no charge, no email, no reminders.`
-            : `Receipt will be emailed and appear in ${selected.full_name}’s My Membership.`}</span>}
+            ? t('Starts a complimentary one-year membership — no charge, no email, no reminders.', 'Bắt đầu kỳ hội viên miễn phí một năm — không tính phí, không email, không nhắc nhở.')
+            : `${t('Receipt will be emailed and appear in', 'Biên nhận sẽ được gửi qua email và hiển thị trong My Membership của')} ${selected.full_name}${t('’s My Membership.', '.')}`}</span>}
         </div>
       </div>
 
@@ -284,28 +285,28 @@ export default function AdminMembership() {
       {summary && (
         <div style={card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
-            <div style={sectionLabel}>Reconciliation</div>
-            <a href="/api/admin/membership/export" style={btnGhost}>Download CSV</a>
+            <div style={sectionLabel}>{t('Reconciliation', 'Đối soát')}</div>
+            <a href="/api/admin/membership/export" style={btnGhost}>{t('Download CSV', 'Tải CSV')}</a>
           </div>
           <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
-            <Stat label="Collected · all time" value={fmt(summary.total)} sub={`${summary.count} receipt${summary.count === 1 ? '' : 's'}`} />
-            <Stat label={`Collected · ${summary.year}`} value={fmt(summary.year_total)} sub={`${summary.year_count} receipt${summary.year_count === 1 ? '' : 's'}`} />
+            <Stat label={t('Collected · all time', 'Đã thu · toàn thời gian')} value={fmt(summary.total)} sub={`${summary.count} ${t('receipt', 'biên nhận')}${summary.count === 1 ? '' : 's'}`} />
+            <Stat label={`${t('Collected', 'Đã thu')} · ${summary.year}`} value={fmt(summary.year_total)} sub={`${summary.year_count} ${t('receipt', 'biên nhận')}${summary.year_count === 1 ? '' : 's'}`} />
             {Object.entries(summary.by_method).map(([m, v]) => (
-              <Stat key={m} label={METHODS.find(x => x.v === m)?.l || m} value={fmt(v.total)} sub={`${v.count} payment${v.count === 1 ? '' : 's'}`} />
+              <Stat key={m} label={METHODS.find(x => x.v === m)?.l || m} value={fmt(v.total)} sub={`${v.count} ${t('payment', 'thanh toán')}${v.count === 1 ? '' : 's'}`} />
             ))}
-            {summary.voided > 0 && <Stat label="Voided" value={String(summary.voided)} sub="counter-entries" />}
+            {summary.voided > 0 && <Stat label={t('Voided', 'Đã hủy')} value={String(summary.voided)} sub={t('counter-entries', 'bút toán đối ứng')} />}
           </div>
         </div>
       )}
 
       {/* Roster table */}
       <div style={card}>
-        <div style={sectionLabel}>Members</div>
-        {loading ? <div style={hint}>Loading…</div> : (
+        <div style={sectionLabel}>{t('Members', 'Hội viên')}</div>
+        {loading ? <div style={hint}>{t('Loading…', 'Đang tải…')}</div> : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 620 }}>
               <thead>
-                <tr>{['Member', 'Tier', 'Status', 'End date', 'Renews in', 'Last payment', ''].map(h => <th key={h} style={th}>{h}</th>)}</tr>
+                <tr>{[t('Member', 'Hội viên'), t('Tier', 'Hạng'), t('Status', 'Trạng thái'), t('End date', 'Ngày kết thúc'), t('Renews in', 'Gia hạn sau'), t('Last payment', 'Thanh toán gần nhất'), ''].map(h => <th key={h} style={th}>{h}</th>)}</tr>
               </thead>
               <tbody>
                 {roster.map(m => {
@@ -316,13 +317,13 @@ export default function AdminMembership() {
                     <td style={td}>{m.tier || '—'}</td>
                     <td style={td}>
                       <span style={{ color: STATE_META[m.state].color }}>● {STATE_META[m.state].label}</span>
-                      {m.complimentary && <span style={honTag}>Honorary</span>}
+                      {m.complimentary && <span style={honTag}>{t('Honorary', 'Danh dự')}</span>}
                     </td>
                     <td style={{ ...td, color: '#E5D4C2' }}>{fmtDate(m.paid_through)}</td>
-                    <td style={{ ...td, color: r.color }}>{m.complimentary ? `${r.text} · manual` : r.text}</td>
-                    <td style={td}>{m.last_payment ? `${fmt(m.last_payment.amount_vnd)} · ${fmtDate(m.last_payment.payment_date)}` : (m.complimentary ? 'complimentary' : '—')}</td>
+                    <td style={{ ...td, color: r.color }}>{m.complimentary ? `${r.text} · ${t('manual', 'thủ công')}` : r.text}</td>
+                    <td style={td}>{m.last_payment ? `${fmt(m.last_payment.amount_vnd)} · ${fmtDate(m.last_payment.payment_date)}` : (m.complimentary ? t('complimentary', 'miễn phí') : '—')}</td>
                     <td style={{ ...td, textAlign: 'right' }}>
-                      <button style={btnGhost} onClick={() => openHistory(m.member_no)}>History</button>
+                      <button style={btnGhost} onClick={() => openHistory(m.member_no)}>{t('History', 'Lịch sử')}</button>
                     </td>
                   </tr>
                   )
@@ -337,13 +338,13 @@ export default function AdminMembership() {
       {historyFor && (
         <div style={card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={sectionLabel}>History — {roster.find(r => r.member_no === historyFor)?.full_name || historyFor}</div>
-            <button style={btnGhost} onClick={() => setHistoryFor(null)}>Close</button>
+            <div style={sectionLabel}>{t('History', 'Lịch sử')} — {roster.find(r => r.member_no === historyFor)?.full_name || historyFor}</div>
+            <button style={btnGhost} onClick={() => setHistoryFor(null)}>{t('Close', 'Đóng')}</button>
           </div>
-          {history.length === 0 ? <div style={hint}>No payments recorded.</div> : (
+          {history.length === 0 ? <div style={hint}>{t('No payments recorded.', 'Chưa có khoản thanh toán nào.')}</div> : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
-                <thead><tr>{['Receipt', 'Date', 'Amount', 'Method', 'Status', ''].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+                <thead><tr>{[t('Receipt', 'Biên nhận'), t('Date', 'Ngày'), t('Amount', 'Số tiền'), t('Method', 'Phương thức'), t('Status', 'Trạng thái'), ''].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
                 <tbody>
                   {history.map(p => (
                     <tr key={p.id} style={{ borderTop: '1px solid rgba(229,212,194,0.06)', opacity: p.status === 'voided' ? 0.5 : 1 }}>
@@ -354,9 +355,9 @@ export default function AdminMembership() {
                       <td style={td}>{p.status}</td>
                       <td style={{ ...td, textAlign: 'right' }}>
                         <span style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                          {p.pdf_path && <a style={btnGhost} href={`/api/admin/membership/receipt/${p.id}`} target="_blank" rel="noreferrer">Receipt</a>}
-                          {p.status === 'active' && p.amount_vnd > 0 && <button style={btnGhost} onClick={() => doResend(p)}>Resend</button>}
-                          {p.status === 'active' && p.amount_vnd > 0 && <button style={{ ...btnGhost, color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }} onClick={() => { setVoidFor(p); setVoidReason('') }}>Void</button>}
+                          {p.pdf_path && <a style={btnGhost} href={`/api/admin/membership/receipt/${p.id}`} target="_blank" rel="noreferrer">{t('Receipt', 'Biên nhận')}</a>}
+                          {p.status === 'active' && p.amount_vnd > 0 && <button style={btnGhost} onClick={() => doResend(p)}>{t('Resend', 'Gửi lại')}</button>}
+                          {p.status === 'active' && p.amount_vnd > 0 && <button style={{ ...btnGhost, color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }} onClick={() => { setVoidFor(p); setVoidReason('') }}>{t('Void', 'Hủy')}</button>}
                           {!p.pdf_path && !(p.status === 'active' && p.amount_vnd > 0) && <span style={hint}>—</span>}
                         </span>
                       </td>
@@ -376,17 +377,17 @@ export default function AdminMembership() {
         <>
           <div style={backdrop} onClick={() => !busy && setConfirmOpen(false)} />
           <div style={modal} role="dialog">
-            <div style={{ ...eyebrow, color: '#D4B85A' }}>{honorary ? 'CONFIRM ACTIVATION' : 'CONFIRM PAYMENT'}</div>
-            <div style={modalTitle}>{honorary ? `Activate ${selected.full_name}?` : `Record ${fmt(amountNum)}?`}</div>
+            <div style={{ ...eyebrow, color: '#D4B85A' }}>{honorary ? t('CONFIRM ACTIVATION', 'XÁC NHẬN KÍCH HOẠT') : t('CONFIRM PAYMENT', 'XÁC NHẬN THANH TOÁN')}</div>
+            <div style={modalTitle}>{honorary ? `${t('Activate', 'Kích hoạt')} ${selected.full_name}?` : `${t('Record', 'Ghi nhận')} ${fmt(amountNum)}?`}</div>
             <div style={modalSub}>{selected.full_name} ({selected.member_no}) · {FEE_KINDS.find(k => k.v === feeKind)?.l} · {fmtDate(date)}</div>
             <p style={modalBody}>
               {honorary
-                ? 'Starts a complimentary one-year membership from this date — no charge, no receipt, no email, and no renewal reminders. You’ll renew manually if appropriate.'
-                : <>This mints an official receipt, {feeKind === 'joining_fee' ? 'records the payment' : 'starts a one-year membership period'}, emails the member, and posts to the activity log. Corrections are done by voiding, never editing.</>}
+                ? t('Starts a complimentary one-year membership from this date — no charge, no receipt, no email, and no renewal reminders. You’ll renew manually if appropriate.', 'Bắt đầu kỳ hội viên miễn phí một năm tính từ ngày này — không tính phí, không biên nhận, không email và không nhắc gia hạn. Bạn sẽ gia hạn thủ công nếu phù hợp.')
+                : <>{t('This mints an official receipt,', 'Thao tác này tạo một biên nhận chính thức,')} {feeKind === 'joining_fee' ? t('records the payment', 'ghi nhận khoản thanh toán') : t('starts a one-year membership period', 'bắt đầu kỳ hội viên một năm')}{t(', emails the member, and posts to the activity log. Corrections are done by voiding, never editing.', ', gửi email cho hội viên và ghi vào nhật ký hoạt động. Việc chỉnh sửa được thực hiện bằng cách hủy, không bao giờ sửa trực tiếp.')}</>}
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button style={btnCancel} disabled={busy} onClick={() => setConfirmOpen(false)}>Cancel</button>
-              <button style={{ ...btnGo, opacity: busy ? 0.5 : 1 }} disabled={busy} onClick={doRecord}>{busy ? (honorary ? 'Activating…' : 'Recording…') : (honorary ? 'Activate' : 'Record payment')}</button>
+              <button style={btnCancel} disabled={busy} onClick={() => setConfirmOpen(false)}>{t('Cancel', 'Hủy bỏ')}</button>
+              <button style={{ ...btnGo, opacity: busy ? 0.5 : 1 }} disabled={busy} onClick={doRecord}>{busy ? (honorary ? t('Activating…', 'Đang kích hoạt…') : t('Recording…', 'Đang ghi nhận…')) : (honorary ? t('Activate', 'Kích hoạt') : t('Record payment', 'Ghi nhận thanh toán'))}</button>
             </div>
           </div>
         </>
@@ -397,17 +398,17 @@ export default function AdminMembership() {
         <>
           <div style={backdrop} onClick={() => !voidBusy && setVoidFor(null)} />
           <div style={{ ...modal, borderLeft: '3px solid #C27070', borderColor: '#C27070' }} role="dialog">
-            <div style={{ ...eyebrow, color: '#C27070' }}>⚠ VOID RECEIPT</div>
-            <div style={modalTitle}>Void {voidFor.receipt_no}?</div>
+            <div style={{ ...eyebrow, color: '#C27070' }}>⚠ {t('VOID RECEIPT', 'HỦY BIÊN NHẬN')}</div>
+            <div style={modalTitle}>{t('Void', 'Hủy')} {voidFor.receipt_no}?</div>
             <div style={modalSub}>{fmt(voidFor.amount_vnd)} · {fmtDate(voidFor.payment_date)}</div>
             <p style={modalBody}>
-              This marks the receipt voided and writes a mirroring adjustment counter-entry — nothing is deleted, the audit trail stays intact. The member’s membership period from this payment is voided too.
+              {t('This marks the receipt voided and writes a mirroring adjustment counter-entry — nothing is deleted, the audit trail stays intact. The member’s membership period from this payment is voided too.', 'Thao tác này đánh dấu biên nhận đã hủy và ghi một bút toán điều chỉnh đối ứng — không có gì bị xóa, dấu vết kiểm toán vẫn nguyên vẹn. Kỳ hội viên phát sinh từ khoản thanh toán này cũng bị hủy theo.')}
             </p>
-            <label style={label}>Reason (optional)</label>
-            <input style={{ ...input, marginBottom: 16 }} placeholder="e.g. Payment reversed — cash not received" value={voidReason} onChange={e => setVoidReason(e.target.value)} />
+            <label style={label}>{t('Reason (optional)', 'Lý do (tùy chọn)')}</label>
+            <input style={{ ...input, marginBottom: 16 }} placeholder={t('e.g. Payment reversed — cash not received', 'vd. Thanh toán bị hoàn — chưa nhận tiền mặt')} value={voidReason} onChange={e => setVoidReason(e.target.value)} />
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button style={btnCancel} disabled={voidBusy} onClick={() => setVoidFor(null)}>Cancel</button>
-              <button style={{ ...btnGo, background: '#C27070', color: '#fff', opacity: voidBusy ? 0.5 : 1 }} disabled={voidBusy} onClick={doVoid}>{voidBusy ? 'Voiding…' : 'Void receipt'}</button>
+              <button style={btnCancel} disabled={voidBusy} onClick={() => setVoidFor(null)}>{t('Cancel', 'Hủy bỏ')}</button>
+              <button style={{ ...btnGo, background: '#C27070', color: '#fff', opacity: voidBusy ? 0.5 : 1 }} disabled={voidBusy} onClick={doVoid}>{voidBusy ? t('Voiding…', 'Đang hủy…') : t('Void receipt', 'Hủy biên nhận')}</button>
             </div>
           </div>
         </>

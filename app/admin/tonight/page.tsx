@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { vnDateString, vnDateTimeString } from '@/lib/datetime'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
+import { useLang } from '@/lib/admin-lang'
 
 // Admin / Floor / Tonight
 //
@@ -112,6 +113,7 @@ interface Pick {
 }
 
 export default function AdminTonight() {
+  const { t } = useLang()
   const router = useRouter()
   const [date, setDate] = useState(vnDateString())
   const [briefs, setBriefs] = useState<Brief[]>([])
@@ -175,7 +177,7 @@ export default function AdminTonight() {
         body: JSON.stringify({ member_no: memberNo }),
       })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'Could not start visit')
+      if (!r.ok) throw new Error(j.error || t('Could not start visit', 'Không thể bắt đầu lượt ghé thăm'))
       router.push(`/admin/mis/visits/${j.visit_id}`)
     } catch (e) {
       showToast((e as Error).message)
@@ -198,8 +200,8 @@ export default function AdminTonight() {
       }),
     })
     setBusy(false)
-    if (r.ok) { showToast('Pick saved'); loadPick() }
-    else showToast('Save failed')
+    if (r.ok) { showToast(t('Pick saved', 'Đã lưu lựa chọn')); loadPick() }
+    else showToast(t('Save failed', 'Lưu thất bại'))
   }
 
   const counts = {
@@ -217,10 +219,10 @@ export default function AdminTonight() {
     <>
       <div style={headerRow}>
         <div>
-          <div style={eyebrow}>Floor</div>
-          <h1 style={pageTitle}>Tonight at The Rampant Club</h1>
+          <div style={eyebrow}>{t('Floor', 'Sảnh')}</div>
+          <h1 style={pageTitle}>{t('Tonight at The Rampant Club', 'Tối nay tại The Rampant Club')}</h1>
           <p style={lede}>
-            Pre-shift briefs for every booked member + walk-ins already on the floor. One-click into the Guardian Angel cycle. Curate the dram, vinyl and member quote for the homepage below.
+            {t('Pre-shift briefs for every booked member + walk-ins already on the floor. One-click into the Guardian Angel cycle. Curate the dram, vinyl and member quote for the homepage below.', 'Bản tóm tắt trước ca cho mọi hội viên đã đặt chỗ + khách vãng lai đã có mặt tại sảnh. Một chạm để vào chu trình Guardian Angel. Chọn ly whisky, đĩa than và câu trích dẫn hội viên cho trang chủ bên dưới.')}
           </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
@@ -232,7 +234,7 @@ export default function AdminTonight() {
               style={{ ...inputStyle, width: 'auto' }}
             />
             {!isToday && (
-              <button onClick={() => setDate(today)} style={smallBtn}>Today</button>
+              <button onClick={() => setDate(today)} style={smallBtn}>{t('Today', 'Hôm nay')}</button>
             )}
           </div>
         </div>
@@ -240,10 +242,10 @@ export default function AdminTonight() {
 
       {/* Stat strip */}
       <div style={strip}>
-        <Stat label="Booked tonight"  value={counts.booked} />
-        <Stat label="Walk-ins"        value={counts.walkins} />
-        <Stat label="Already arrived" value={counts.arrived} color="#7AB07A" />
-        <Stat label="Needs attention" value={counts.needs_attention} color={counts.needs_attention > 0 ? '#D4B85A' : '#7AB07A'} />
+        <Stat label={t('Booked tonight', 'Đặt chỗ tối nay')}  value={counts.booked} />
+        <Stat label={t('Walk-ins', 'Khách vãng lai')}        value={counts.walkins} />
+        <Stat label={t('Already arrived', 'Đã đến')} value={counts.arrived} color="#7AB07A" />
+        <Stat label={t('Needs attention', 'Cần chú ý')} value={counts.needs_attention} color={counts.needs_attention > 0 ? '#D4B85A' : '#7AB07A'} />
       </div>
 
       {/* On shift today (read from the Ops Hub rota) */}
@@ -253,9 +255,9 @@ export default function AdminTonight() {
         background: 'rgba(229,212,194,0.04)', border: '1px solid rgba(229,212,194,0.08)',
         fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#B2AA98',
       }}>
-        <span style={{ color: '#D4B85A', letterSpacing: '0.06em' }}>On shift {isToday ? 'today' : date}:</span>
+        <span style={{ color: '#D4B85A', letterSpacing: '0.06em' }}>{t('On shift', 'Trong ca')} {isToday ? t('today', 'hôm nay') : date}:</span>
         {onShift.length === 0 ? (
-          <span style={{ opacity: 0.6, fontStyle: 'italic' }}>no one rostered</span>
+          <span style={{ opacity: 0.6, fontStyle: 'italic' }}>{t('no one rostered', 'chưa xếp ai vào ca')}</span>
         ) : (() => {
           const g: Record<string, typeof onShift> = {}
           for (const s of onShift) (g[s.shift_name] ||= []).push(s)
@@ -266,20 +268,20 @@ export default function AdminTonight() {
             </span>
           ))
         })()}
-        <Link href="/admin/ops/rota" style={{ ...linkInline, marginLeft: 'auto' }}>Open rota →</Link>
+        <Link href="/admin/ops/rota" style={{ ...linkInline, marginLeft: 'auto' }}>{t('Open rota', 'Mở lịch phân ca')} →</Link>
       </div>
 
       {/* BRIEFS */}
-      <div style={sectionLabel}>The Wall · Tonight&apos;s Briefs</div>
+      <div style={sectionLabel}>{t("The Wall · Tonight's Briefs", 'Bức Tường · Tóm tắt tối nay')}</div>
       {loadingBriefs ? (
-        <div style={emptyText}>Loading briefs…</div>
+        <div style={emptyText}>{t('Loading briefs…', 'Đang tải bản tóm tắt…')}</div>
       ) : briefs.length === 0 ? (
         <div style={emptyBlock}>
           {houseEntries.length > 0 ? (
-            <>No member briefs for {isToday ? 'tonight' : date} — see <strong>House &amp; Events</strong> below for what&apos;s on.</>
+            <>{t('No member briefs for', 'Không có bản tóm tắt hội viên cho')} {isToday ? t('tonight', 'tối nay') : date} — {t('see', 'xem')} <strong>{t('House & Events', 'Nhà & Sự kiện')}</strong> {t("below for what's on.", 'bên dưới để biết có gì diễn ra.')}</>
           ) : (
-            <>No bookings or walk-ins for {isToday ? 'tonight' : date}. Create a booking from{' '}
-            <Link href="/admin/calendar" style={linkInline}>the calendar</Link>.</>
+            <>{t('No bookings or walk-ins for', 'Không có đặt chỗ hoặc khách vãng lai cho')} {isToday ? t('tonight', 'tối nay') : date}. {t('Create a booking from', 'Tạo đặt chỗ từ')}{' '}
+            <Link href="/admin/calendar" style={linkInline}>{t('the calendar', 'lịch')}</Link>.</>
           )}
         </div>
       ) : (
@@ -298,7 +300,7 @@ export default function AdminTonight() {
       {/* HOUSE & EVENTS — non-member entries (closures, hires, visits, tastings) */}
       {houseEntries.length > 0 && (
         <div style={{ marginTop: 28 }}>
-          <div style={sectionLabel}>Tonight · House &amp; Events</div>
+          <div style={sectionLabel}>{t('Tonight · House & Events', 'Tối nay · Nhà & Sự kiện')}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {houseEntries.map(e => {
               const t = e.start_time
@@ -323,30 +325,30 @@ export default function AdminTonight() {
       )}
 
       {/* DAILY PICK */}
-      <div style={{ ...sectionLabel, marginTop: 32 }}>The Daily Pick</div>
+      <div style={{ ...sectionLabel, marginTop: 32 }}>{t('The Daily Pick', 'Lựa chọn trong ngày')}</div>
       <p style={sectionLede}>
-        Curate the dram, the vinyl, and the member quote that show on the homepage and members portal. Leave any field blank and the seed-list fallback rotates in for that day.
+        {t('Curate the dram, the vinyl, and the member quote that show on the homepage and members portal. Leave any field blank and the seed-list fallback rotates in for that day.', 'Chọn ly whisky, đĩa than và câu trích dẫn hội viên hiển thị trên trang chủ và cổng hội viên. Để trống bất kỳ ô nào và danh sách mặc định sẽ tự luân phiên cho ngày đó.')}
       </p>
 
       {pick && (
         <div style={pickBlock}>
-          <PickSection title="Dram of the day">
-            <PickField label="Whisky" value={pick.dram_label} onChange={v => setPick(p => p ? { ...p, dram_label: v } : p)} placeholder="Lagavulin 16" />
-            <PickField label="Note"   value={pick.dram_note}  onChange={v => setPick(p => p ? { ...p, dram_note:  v } : p)} placeholder="Peat, iodine, smoke. The Islay benchmark." />
+          <PickSection title={t('Dram of the day', 'Ly whisky trong ngày')}>
+            <PickField label={t('Whisky', 'Whisky')} value={pick.dram_label} onChange={v => setPick(p => p ? { ...p, dram_label: v } : p)} placeholder="Lagavulin 16" />
+            <PickField label={t('Note', 'Ghi chú')}   value={pick.dram_note}  onChange={v => setPick(p => p ? { ...p, dram_note:  v } : p)} placeholder={t('Peat, iodine, smoke. The Islay benchmark.', 'Than bùn, i-ốt, khói. Chuẩn mực của Islay.')} />
           </PickSection>
-          <PickSection title="On the turntable">
-            <PickField label="Record" value={pick.vinyl_label} onChange={v => setPick(p => p ? { ...p, vinyl_label: v } : p)} placeholder="Bill Evans Trio — Sunday at the Village Vanguard" />
-            <PickField label="Note"   value={pick.vinyl_note}  onChange={v => setPick(p => p ? { ...p, vinyl_note:  v } : p)} placeholder="Live, intimate, 1961." />
+          <PickSection title={t('On the turntable', 'Trên bàn xoay')}>
+            <PickField label={t('Record', 'Đĩa nhạc')} value={pick.vinyl_label} onChange={v => setPick(p => p ? { ...p, vinyl_label: v } : p)} placeholder="Bill Evans Trio — Sunday at the Village Vanguard" />
+            <PickField label={t('Note', 'Ghi chú')}   value={pick.vinyl_note}  onChange={v => setPick(p => p ? { ...p, vinyl_note:  v } : p)} placeholder={t('Live, intimate, 1961.', 'Thu trực tiếp, ấm cúng, 1961.')} />
           </PickSection>
-          <PickSection title="Member quote">
-            <PickField label="Quote" value={pick.member_quote} onChange={v => setPick(p => p ? { ...p, member_quote: v } : p)} placeholder="There are no whisky snobs here. Only enthusiasts." multiline />
+          <PickSection title={t('Member quote', 'Câu trích dẫn hội viên')}>
+            <PickField label={t('Quote', 'Trích dẫn')} value={pick.member_quote} onChange={v => setPick(p => p ? { ...p, member_quote: v } : p)} placeholder={t('There are no whisky snobs here. Only enthusiasts.', 'Ở đây không có kẻ trưởng giả whisky. Chỉ có người đam mê.')} multiline />
           </PickSection>
           <div style={{ display: 'flex', gap: 8, marginTop: 18, alignItems: 'center' }}>
             <button onClick={savePick} disabled={busy} style={btnPrimary}>
-              {busy ? 'Saving…' : 'Save pick'}
+              {busy ? t('Saving…', 'Đang lưu…') : t('Save pick', 'Lưu lựa chọn')}
             </button>
             {pick.updated_at && (
-              <span style={pickMeta}>last saved {vnDateTimeString(pick.updated_at)}</span>
+              <span style={pickMeta}>{t('last saved', 'lưu lần cuối')} {vnDateTimeString(pick.updated_at)}</span>
             )}
           </div>
         </div>

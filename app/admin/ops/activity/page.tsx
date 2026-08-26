@@ -2,20 +2,21 @@
 
 import Link from 'next/link'
 import ActivityFeed from '../ActivityFeed'
+import { useLang } from '@/lib/admin-lang'
 
 const FAMILY = "'Google Sans Code', monospace"
 
 export default function OpsActivityPage() {
+  const { t } = useLang()
   return (
     <>
-      <Link href="/admin/ops" style={backLink}>← Boards</Link>
+      <Link href="/admin/ops" style={backLink}>← {t('Boards', 'Bảng')}</Link>
       <div style={{ margin: '8px 0 4px' }}>
-        <div style={eyebrow}>Operations Hub</div>
-        <h1 style={pageTitle}>Activity</h1>
+        <div style={eyebrow}>{t('Operations Hub', 'Trung tâm Vận hành')}</div>
+        <h1 style={pageTitle}>{t('Activity', 'Hoạt động')}</h1>
       </div>
       <p style={lede}>
-        Who did what across the Hub — boards and the rota — newest first. Each line is a record of what was true
-        at the time it happened; renaming or deleting a card later doesn’t rewrite its history.
+        {t('Who did what across the Hub — boards and the rota — newest first. Each line is a record of what was true at the time it happened; renaming or deleting a card later doesn’t rewrite its history.', 'Ai đã làm gì trên toàn Trung tâm — các bảng và lịch trực — mới nhất trước. Mỗi dòng là bản ghi về những gì đúng tại thời điểm nó xảy ra; đổi tên hay xóa một thẻ sau này không viết lại lịch sử của nó.')}
       </p>
       <div style={{ marginTop: 20 }}>
         <ActivityFeed />

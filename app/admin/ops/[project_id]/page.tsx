@@ -8,6 +8,7 @@ import { ConfirmModal, PromptModal, useToast } from '@/components/admin/dialogs'
 import ActivityFeed from '../ActivityFeed'
 import GanttView from './GanttView'
 import { OPS_STATUS_COLORS } from '@/lib/ops/status'
+import { useLang } from '@/lib/admin-lang'
 import {
   createTask, updateTask, moveTask, assignTask, deleteTask,
   createColumn, addProjectMember, removeProjectMember,
@@ -31,6 +32,7 @@ const PRIORITIES: TaskPriority[] = ['low', 'normal', 'high', 'urgent']
 interface ProfileLite { id: string; display_name: string | null }
 
 export default function OpsBoardPage({ params }: { params: Promise<{ project_id: string }> }) {
+  const { t } = useLang()
   const { project_id } = use(params)
   const supabase = createBrowserSupabaseClient()
   const { showToast, toastNode } = useToast()
@@ -225,29 +227,29 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
     wrap(() => moveTask(dragged.id, target.column_id, pos), undefined, reloadTasks)
   }
 
-  if (loading) return <div style={emptyText}>Loading board…</div>
-  if (!project) return <div style={emptyText}>Board not found, or you don’t have access.</div>
+  if (loading) return <div style={emptyText}>{t('Loading board…', 'Đang tải bảng…')}</div>
+  if (!project) return <div style={emptyText}>{t('Board not found, or you don’t have access.', 'Không tìm thấy bảng, hoặc bạn không có quyền truy cập.')}</div>
 
   return (
     <>
-      <Link href="/admin/ops" style={backLink}>← Boards</Link>
+      <Link href="/admin/ops" style={backLink}>← {t('Boards', 'Bảng')}</Link>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '8px 0 20px' }}>
         <h1 style={pageTitle}>{project.name}</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           <div style={{ display: 'flex', border: '1px solid rgba(229,212,194,0.15)', borderRadius: 6, overflow: 'hidden' }}>
-            <button onClick={() => setView('board')} style={{ ...toggleBtn, background: view === 'board' ? 'rgba(212,184,90,0.18)' : 'transparent', color: view === 'board' ? '#D4B85A' : '#B2AA98' }}>Board</button>
+            <button onClick={() => setView('board')} style={{ ...toggleBtn, background: view === 'board' ? 'rgba(212,184,90,0.18)' : 'transparent', color: view === 'board' ? '#D4B85A' : '#B2AA98' }}>{t('Board', 'Bảng')}</button>
             <button onClick={() => setView('gantt')} style={{ ...toggleBtn, background: view === 'gantt' ? 'rgba(212,184,90,0.18)' : 'transparent', color: view === 'gantt' ? '#D4B85A' : '#B2AA98' }}>Gantt</button>
           </div>
-          <Link href={`/admin/ops/${project.id}/progress`} style={{ ...tinyBtn, textDecoration: 'none' }}>Progress</Link>
-          <button onClick={() => setShowRecurring(s => !s)} style={tinyBtn}>{showRecurring ? 'Hide recurring' : 'Recurring'}</button>
-          <button onClick={() => setShowActivity(s => !s)} style={tinyBtn}>{showActivity ? 'Hide activity' : 'Activity'}</button>
-          <button onClick={() => setShowMembers(s => !s)} style={tinyBtn}>{showMembers ? 'Hide access' : 'Access'}</button>
-          {canEdit && <button onClick={() => setNewColOpen(true)} style={tinyBtn}>+ Column</button>}
+          <Link href={`/admin/ops/${project.id}/progress`} style={{ ...tinyBtn, textDecoration: 'none' }}>{t('Progress', 'Tiến độ')}</Link>
+          <button onClick={() => setShowRecurring(s => !s)} style={tinyBtn}>{showRecurring ? t('Hide recurring', 'Ẩn định kỳ') : t('Recurring', 'Định kỳ')}</button>
+          <button onClick={() => setShowActivity(s => !s)} style={tinyBtn}>{showActivity ? t('Hide activity', 'Ẩn hoạt động') : t('Activity', 'Hoạt động')}</button>
+          <button onClick={() => setShowMembers(s => !s)} style={tinyBtn}>{showMembers ? t('Hide access', 'Ẩn quyền truy cập') : t('Access', 'Quyền truy cập')}</button>
+          {canEdit && <button onClick={() => setNewColOpen(true)} style={tinyBtn}>{t('+ Column', '+ Cột')}</button>}
         </div>
       </div>
-      {!canEdit && <div style={{ ...metaText, color: '#D4B85A', marginBottom: 8 }}>View-only — you’re a viewer on this board.</div>}
+      {!canEdit && <div style={{ ...metaText, color: '#D4B85A', marginBottom: 8 }}>{t('View-only — you’re a viewer on this board.', 'Chỉ xem — bạn là người xem trên bảng này.')}</div>}
       {linkedFixtures.map(fx => (
-        <Link key={fx.id} href="/admin/fixtures" style={{ ...metaText, color: '#9E8FC4', textDecoration: 'none', display: 'inline-block', marginBottom: 8 }} title="Open the linked member fixture">🏌 Member fixture: {fx.title} →</Link>
+        <Link key={fx.id} href="/admin/fixtures" style={{ ...metaText, color: '#9E8FC4', textDecoration: 'none', display: 'inline-block', marginBottom: 8 }} title={t('Open the linked member fixture', 'Mở lịch thi đấu hội viên đã liên kết')}>🏌 {t('Member fixture:', 'Lịch thi đấu hội viên:')} {fx.title} →</Link>
       ))}
 
       {showRecurring && (
@@ -257,14 +259,14 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
           onToggle={(id, active) => wrap(() => setTemplateActive(id, active))}
           onMaterialise={() => wrap(async () => {
             const s = await materialiseNow()
-            showToast(`Materialised ${s.created} · lapsed ${s.lapsed}.`)
+            showToast(`${t('Materialised', 'Đã tạo')} ${s.created} · ${t('lapsed', 'đã hết hạn')} ${s.lapsed}.`)
           })}
         />
       )}
 
       {showActivity && (
         <div style={{ ...columnStyle, width: 'auto', marginBottom: 16 }}>
-          <div style={columnHeader}><span style={{ color: '#E5D4C2' }}>Activity</span></div>
+          <div style={columnHeader}><span style={{ color: '#E5D4C2' }}>{t('Activity', 'Hoạt động')}</span></div>
           <ActivityFeed projectId={project_id} />
         </div>
       )}
@@ -350,48 +352,48 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
         <>
           <div style={drawerBackdrop} onClick={() => { if (!busy) setEditing(null) }} />
           <div style={drawer} role="dialog">
-            <div style={eyebrow}>Card</div>
+            <div style={eyebrow}>{t('Card', 'Thẻ')}</div>
             <input style={input} value={draft.title} disabled={!canEdit}
-              onChange={e => setDraft(d => ({ ...d, title: e.target.value }))} placeholder="Title" />
+              onChange={e => setDraft(d => ({ ...d, title: e.target.value }))} placeholder={t('Title', 'Tiêu đề')} />
             <textarea style={{ ...input, minHeight: 90, resize: 'vertical', marginTop: 10 }} value={draft.description} disabled={!canEdit}
-              onChange={e => setDraft(d => ({ ...d, description: e.target.value }))} placeholder="Description" />
+              onChange={e => setDraft(d => ({ ...d, description: e.target.value }))} placeholder={t('Description', 'Mô tả')} />
             <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
               <div style={{ flex: 1 }}>
-                <div style={fieldLabel}>Priority</div>
+                <div style={fieldLabel}>{t('Priority', 'Ưu tiên')}</div>
                 <select style={input} value={draft.priority} disabled={!canEdit}
                   onChange={e => setDraft(d => ({ ...d, priority: e.target.value as TaskPriority }))}>
                   {PRIORITIES.map(p => <option key={p} value={p} style={{ background: '#052E20' }}>{p}</option>)}
                 </select>
               </div>
               <div style={{ flex: 1 }}>
-                <div style={fieldLabel}>Start date <span style={{ opacity: 0.5 }}>· optional</span></div>
+                <div style={fieldLabel}>{t('Start date', 'Ngày bắt đầu')} <span style={{ opacity: 0.5 }}>{t('· optional', '· tùy chọn')}</span></div>
                 <input type="date" style={input} value={draft.start_date} disabled={!canEdit}
                   max={draft.due_date || undefined}
                   onChange={e => setDraft(d => ({ ...d, start_date: e.target.value }))} />
               </div>
               <div style={{ flex: 1 }}>
-                <div style={fieldLabel}>Due date</div>
+                <div style={fieldLabel}>{t('Due date', 'Ngày đến hạn')}</div>
                 <input type="date" style={input} value={draft.due_date} disabled={!canEdit}
                   min={draft.start_date || undefined}
                   onChange={e => setDraft(d => ({ ...d, due_date: e.target.value }))} />
               </div>
             </div>
             <div style={{ ...fieldLabel, marginTop: 6, opacity: 0.6 }}>
-              Both dates → a bar on the Gantt. Due only → a milestone. Leave both blank → unscheduled.
+              {t('Both dates → a bar on the Gantt. Due only → a milestone. Leave both blank → unscheduled.', 'Cả hai ngày → một thanh trên Gantt. Chỉ ngày đến hạn → một mốc. Để trống cả hai → chưa lên lịch.')}
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
               <div style={{ flex: 1 }}>
-                <div style={fieldLabel}>Column / status</div>
+                <div style={fieldLabel}>{t('Column / status', 'Cột / trạng thái')}</div>
                 <select style={input} value={editing.column_id} disabled={!canEdit}
                   onChange={e => changeColumn(e.target.value)}>
                   {columns.map(c => <option key={c.id} value={c.id} style={{ background: '#052E20' }}>{c.name}{c.is_done_column ? ' ✓' : ''}</option>)}
                 </select>
               </div>
               <div style={{ flex: 1 }}>
-                <div style={fieldLabel}>Assignee</div>
+                <div style={fieldLabel}>{t('Assignee', 'Người phụ trách')}</div>
                 <select style={input} value={editing.assignee || ''} disabled={!canEdit}
                   onChange={e => changeAssignee(e.target.value)}>
-                  <option value="" style={{ background: '#052E20' }}>— unassigned —</option>
+                  <option value="" style={{ background: '#052E20' }}>{t('— unassigned —', '— chưa phân công —')}</option>
                   {team.map(m => <option key={m.id} value={m.id} style={{ background: '#052E20' }}>{m.display_name}</option>)}
                 </select>
               </div>
@@ -399,23 +401,23 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
 
             {/* Cross-site link (Phase 5) */}
             <div style={{ marginTop: 10 }}>
-              <div style={fieldLabel}>Linked to</div>
+              <div style={fieldLabel}>{t('Linked to', 'Liên kết tới')}</div>
               {editing.linked_object_type && editing.linked_object_id ? (() => {
                 const rl = linkMap.get(`${editing.linked_object_type}:${editing.linked_object_id}`)
                 return (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     {rl && !rl.missing ? (
                       <Link href={rl.url} style={{ ...pill, color: '#9E8FC4', textDecoration: 'none' }}>
-                        {LINK_TYPE_META[rl.type].icon} {rl.label}{rl.type === 'whisky' && rl.fillPct != null ? ` · ${rl.fillPct}% full` : ''}
+                        {LINK_TYPE_META[rl.type].icon} {rl.label}{rl.type === 'whisky' && rl.fillPct != null ? ` · ${rl.fillPct}% ${t('full', 'đầy')}` : ''}
                       </Link>
                     ) : (
-                      <span style={{ ...pill, color: '#7E7864', fontStyle: 'italic' }}>🔗 {rl?.label || 'linked object no longer exists'}</span>
+                      <span style={{ ...pill, color: '#7E7864', fontStyle: 'italic' }}>🔗 {rl?.label || t('linked object no longer exists', 'đối tượng liên kết không còn tồn tại')}</span>
                     )}
                     {canEdit && (
                       <button
                         onClick={() => wrap(() => unlinkTask(editing.id, rl?.label || null), () => setEditing(e => e ? { ...e, linked_object_type: null, linked_object_id: null } : e))}
                         style={{ ...tinyBtn, color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}
-                      >Unlink</button>
+                      >{t('Unlink', 'Hủy liên kết')}</button>
                     )}
                   </div>
                 )
@@ -429,9 +431,9 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
 
             {canEdit && (
               <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-                <button onClick={saveEditor} disabled={busy} style={btnPrimary}>{busy ? 'Saving…' : 'Save'}</button>
-                <button onClick={() => setEditing(null)} style={tinyBtn}>Close</button>
-                <button onClick={() => { const t = editing; setEditing(null); setConfirmDelete(t) }} style={{ ...tinyBtn, marginLeft: 'auto', color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}>Delete</button>
+                <button onClick={saveEditor} disabled={busy} style={btnPrimary}>{busy ? t('Saving…', 'Đang lưu…') : t('Save', 'Lưu')}</button>
+                <button onClick={() => setEditing(null)} style={tinyBtn}>{t('Close', 'Đóng')}</button>
+                <button onClick={() => { const t = editing; setEditing(null); setConfirmDelete(t) }} style={{ ...tinyBtn, marginLeft: 'auto', color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}>{t('Delete', 'Xóa')}</button>
               </div>
             )}
           </div>
@@ -440,32 +442,32 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
 
       <PromptModal
         open={!!newCardCol}
-        eyebrow="＋ NEW CARD"
-        title="Add a card"
-        label="Card title"
-        confirmLabel="Add card"
+        eyebrow={t('＋ NEW CARD', '＋ THẺ MỚI')}
+        title={t('Add a card', 'Thêm thẻ')}
+        label={t('Card title', 'Tiêu đề thẻ')}
+        confirmLabel={t('Add card', 'Thêm thẻ')}
         busy={busy}
         onCancel={() => setNewCardCol(null)}
         onConfirm={newCardCol ? handleCreateCard(newCardCol) : () => {}}
       />
       <PromptModal
         open={newColOpen}
-        eyebrow="＋ NEW COLUMN"
-        title="Add a column"
-        label="Column name"
-        confirmLabel="Add column"
+        eyebrow={t('＋ NEW COLUMN', '＋ CỘT MỚI')}
+        title={t('Add a column', 'Thêm cột')}
+        label={t('Column name', 'Tên cột')}
+        confirmLabel={t('Add column', 'Thêm cột')}
         busy={busy}
         onCancel={() => setNewColOpen(false)}
         onConfirm={(name) => wrap(() => createColumn(project_id, name), () => setNewColOpen(false))}
       />
       <ConfirmModal
         open={!!confirmDelete}
-        eyebrow="⚠ DELETE CARD"
-        title="Delete this card?"
+        eyebrow={t('⚠ DELETE CARD', '⚠ XÓA THẺ')}
+        title={t('Delete this card?', 'Xóa thẻ này?')}
         subject={confirmDelete?.title}
-        body="Removes the card permanently. The deletion is recorded in the activity log. Cannot be undone."
-        confirmLabel="Delete card"
-        busyLabel="Deleting…"
+        body={t('Removes the card permanently. The deletion is recorded in the activity log. Cannot be undone.', 'Xóa thẻ vĩnh viễn. Việc xóa được ghi lại trong nhật ký hoạt động. Không thể hoàn tác.')}
+        confirmLabel={t('Delete card', 'Xóa thẻ')}
+        busyLabel={t('Deleting…', 'Đang xóa…')}
         busy={busy}
         onCancel={() => setConfirmDelete(null)}
         onConfirm={() => { const t = confirmDelete; if (t) wrap(() => deleteTask(t.id), () => setConfirmDelete(null)) }}

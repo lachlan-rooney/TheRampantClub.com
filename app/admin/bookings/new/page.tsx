@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { vnDateString } from '@/lib/datetime'
 import UnitPicker from '@/components/admin/UnitPicker'
+import { useLang } from '@/lib/admin-lang'
 
 // Admin / Floor / Calendar / New entry — a MEMBER booking (default) OR a
 // free-text HOUSE / non-member entry (toggle): external hires, supplier visits,
@@ -29,6 +30,7 @@ const KINDS: { v: string; label: string }[] = [
 ]
 
 export default function NewBookingPage() {
+  const { t } = useLang()
   const router = useRouter()
   const editId = useSearchParams().get('entry')   // present → edit an existing house entry
   const today = vnDateString()
@@ -108,11 +110,11 @@ export default function NewBookingPage() {
   const selectedMember = useMemo(() => members.find(m => m.member_no === memberNo) || null, [members, memberNo])
 
   const submitMember = useCallback(async () => {
-    if (!memberNo) { setError('Pick a member.'); return }
-    if (!sessionLabel && !startTime) { setError('Either a start time or a session is required.'); return }
-    if (unitIds.length === 0) { setError('Pick at least one table for this booking.'); return }
+    if (!memberNo) { setError(t('Pick a member.', 'Chọn một thành viên.')); return }
+    if (!sessionLabel && !startTime) { setError(t('Either a start time or a session is required.', 'Cần có giờ bắt đầu hoặc một phiên.')); return }
+    if (unitIds.length === 0) { setError(t('Pick at least one table for this booking.', 'Chọn ít nhất một bàn cho lượt đặt này.')); return }
     const party = partySize ? Number(partySize) : 1
-    if (selectedSeats < party) { setError(`The selected table${unitIds.length === 1 ? '' : 's'} seat ${selectedSeats}, but the party is ${party}. Add a table or pick a larger one.`); return }
+    if (selectedSeats < party) { setError(`${t('The selected table', 'Bàn đã chọn')}${unitIds.length === 1 ? '' : t('s', '')} ${t('seat', 'có sức chứa')} ${selectedSeats}, ${t('but the party is', 'nhưng nhóm có')} ${party}. ${t('Add a table or pick a larger one.', 'Thêm một bàn hoặc chọn bàn lớn hơn.')}`); return }
     setSaving(true); setError(null)
     try {
       const r = await fetch('/api/admin/bookings', {
@@ -126,9 +128,9 @@ export default function NewBookingPage() {
         }),
       })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'Save failed')
+      if (!r.ok) throw new Error(j.error || t('Save failed', 'Lưu thất bại'))
       if (sendConfirmation && j.email_error) {
-        showToast(`Booking saved, but confirmation email failed: ${j.email_error}`, 'error')
+        showToast(`${t('Booking saved, but confirmation email failed', 'Đã lưu đặt chỗ, nhưng gửi email xác nhận thất bại')}: ${j.email_error}`, 'error')
         setTimeout(() => router.push('/admin/calendar'), 2600)
         return
       }
@@ -137,7 +139,7 @@ export default function NewBookingPage() {
   }, [memberNo, bookingDate, startTime, endTime, sessionLabel, space, partySize, unitIds, selectedSeats, notes, sendConfirmation, router, showToast])
 
   const submitHouse = useCallback(async () => {
-    if (!title.trim()) { setError('A title is required.'); return }
+    if (!title.trim()) { setError(t('A title is required.', 'Cần có tiêu đề.')); return }
     setSaving(true); setError(null)
     try {
       const payload = {
@@ -153,25 +155,25 @@ export default function NewBookingPage() {
         body: JSON.stringify(payload),
       })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'Save failed')
+      if (!r.ok) throw new Error(j.error || t('Save failed', 'Lưu thất bại'))
       router.push('/admin/calendar')
     } catch (e) { setError((e as Error).message); setSaving(false) }
   }, [editId, title, description, bookingDate, startTime, endTime, sessionLabel, space, kind, visibility, blocksSpace, unitIds, router])
 
   return (
     <>
-      <Link href="/admin/calendar" style={backLink}>← Calendar</Link>
+      <Link href="/admin/calendar" style={backLink}>← {t('Calendar', 'Lịch')}</Link>
 
       <div style={{ marginBottom: 20 }}>
-        <div style={eyebrow}>Floor · Calendar</div>
-        <h1 style={pageTitle}>{editId ? 'Edit house entry' : mode === 'house' ? 'New house entry' : 'New booking'}</h1>
+        <div style={eyebrow}>{t('Floor · Calendar', 'Sàn · Lịch')}</div>
+        <h1 style={pageTitle}>{editId ? t('Edit house entry', 'Sửa mục nội bộ') : mode === 'house' ? t('New house entry', 'Mục nội bộ mới') : t('New booking', 'Đặt chỗ mới')}</h1>
       </div>
 
       {/* Mode toggle (hidden in edit mode — an entry is already a house entry) */}
       {!editId && (
         <div style={toggleRow}>
-          <button onClick={() => { setMode('member'); setError(null); setUnitIds([]) }} style={mode === 'member' ? toggleOn : toggleOff}>Member booking</button>
-          <button onClick={() => { setMode('house'); setError(null); setUnitIds([]) }} style={mode === 'house' ? toggleOn : toggleOff}>House / non-member entry</button>
+          <button onClick={() => { setMode('member'); setError(null); setUnitIds([]) }} style={mode === 'member' ? toggleOn : toggleOff}>{t('Member booking', 'Đặt chỗ thành viên')}</button>
+          <button onClick={() => { setMode('house'); setError(null); setUnitIds([]) }} style={mode === 'house' ? toggleOn : toggleOff}>{t('House / non-member entry', 'Mục nội bộ / phi thành viên')}</button>
         </div>
       )}
 
@@ -179,18 +181,18 @@ export default function NewBookingPage() {
 
       {mode === 'member' ? (
         <div style={fieldRow}>
-          <div style={editLabel}>Member *</div>
+          <div style={editLabel}>{t('Member *', 'Thành viên *')}</div>
           {selectedMember ? (
             <div style={selectedMemberRow}>
               <div>
                 <strong>{selectedMember.full_name}</strong>
                 <span style={{ marginLeft: 8, color: '#B2AA98', fontSize: 11 }}>{selectedMember.member_no} · {selectedMember.tier}</span>
               </div>
-              <button onClick={() => { setMemberNo(''); setMemberQuery('') }} style={tinyBtn}>Change</button>
+              <button onClick={() => { setMemberNo(''); setMemberQuery('') }} style={tinyBtn}>{t('Change', 'Đổi')}</button>
             </div>
           ) : (
             <>
-              <input value={memberQuery} onChange={e => setMemberQuery(e.target.value)} placeholder="Search member by name or number…" style={inputStyle} />
+              <input value={memberQuery} onChange={e => setMemberQuery(e.target.value)} placeholder={t('Search member by name or number…', 'Tìm thành viên theo tên hoặc số…')} style={inputStyle} />
               <div style={memberList}>
                 {filteredMembers.map(m => (
                   <button key={m.member_no} onClick={() => setMemberNo(m.member_no)} style={memberRow}>
@@ -198,7 +200,7 @@ export default function NewBookingPage() {
                     <span style={{ color: '#B2AA98', fontSize: 11 }}>{m.member_no} · {m.tier}</span>
                   </button>
                 ))}
-                {filteredMembers.length === 0 && <div style={emptyHint}>No matches.</div>}
+                {filteredMembers.length === 0 && <div style={emptyHint}>{t('No matches.', 'Không có kết quả.')}</div>}
               </div>
             </>
           )}
@@ -206,21 +208,21 @@ export default function NewBookingPage() {
       ) : (
         <>
           <div style={fieldRow}>
-            <div style={editLabel}>Title *</div>
-            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Private hire — Nguyen party · Distiller visit — Fergus · Club closed" style={inputStyle} />
+            <div style={editLabel}>{t('Title *', 'Tiêu đề *')}</div>
+            <input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('e.g. Private hire — Nguyen party · Distiller visit — Fergus · Club closed', 'ví dụ: Thuê riêng — nhóm Nguyễn · Nhà chưng cất ghé thăm — Fergus · Câu lạc bộ đóng cửa')} style={inputStyle} />
           </div>
           <div style={metaGrid}>
             <div style={fieldRow}>
-              <div style={editLabel}>Kind</div>
+              <div style={editLabel}>{t('Kind', 'Loại')}</div>
               <select value={kind} onChange={e => setKind(e.target.value)} style={inputStyle}>
                 {KINDS.map(k => <option key={k.v} value={k.v}>{k.label}</option>)}
               </select>
             </div>
             <div style={fieldRow}>
-              <div style={editLabel}>Visibility</div>
+              <div style={editLabel}>{t('Visibility', 'Hiển thị')}</div>
               <select value={visibility} onChange={e => setVisibility(e.target.value as 'member' | 'staff')} style={inputStyle}>
-                <option value="staff">Staff-only (members never see it)</option>
-                <option value="member">Member-visible (shows on member events)</option>
+                <option value="staff">{t('Staff-only (members never see it)', 'Chỉ nhân viên (thành viên không thấy)')}</option>
+                <option value="member">{t('Member-visible (shows on member events)', 'Thành viên thấy được (hiện trong sự kiện thành viên)')}</option>
               </select>
             </div>
           </div>
@@ -229,15 +231,15 @@ export default function NewBookingPage() {
 
       <div style={metaGrid}>
         <div style={fieldRow}>
-          <div style={editLabel}>Date *</div>
+          <div style={editLabel}>{t('Date *', 'Ngày *')}</div>
           <input type="date" value={bookingDate} onChange={e => setBookingDate(e.target.value)} style={inputStyle} />
         </div>
         <div style={fieldRow}>
-          <div style={editLabel}>{mode === 'house' ? 'Space' : 'Room *'}</div>
+          <div style={editLabel}>{mode === 'house' ? t('Space', 'Không gian') : t('Room *', 'Phòng *')}</div>
           <select value={space} onChange={e => { setSpace(e.target.value); setUnitIds([]) }} style={inputStyle}>
             {mode === 'house' ? (
               <>
-                <option value="">— none (no room) —</option>
+                <option value="">{t('— none (no room) —', '— không có (không phòng) —')}</option>
                 {SPACES.map(s => <option key={s} value={s}>{s}</option>)}
               </>
             ) : (
@@ -247,7 +249,7 @@ export default function NewBookingPage() {
         </div>
         {mode === 'member' && (
           <div style={fieldRow}>
-            <div style={editLabel}>Party size</div>
+            <div style={editLabel}>{t('Party size', 'Số khách')}</div>
             <input type="number" min={1} max={50} value={partySize} onChange={e => setPartySize(e.target.value)} style={inputStyle} />
           </div>
         )}
@@ -255,22 +257,22 @@ export default function NewBookingPage() {
 
       <div style={metaGrid}>
         <div style={fieldRow}>
-          <div style={editLabel}>Session</div>
+          <div style={editLabel}>{t('Session', 'Phiên')}</div>
           <select value={sessionLabel} onChange={e => setSessionLabel(e.target.value)} style={inputStyle}>
-            {SESSIONS.map(s => <option key={s} value={s}>{s || '— none —'}</option>)}
+            {SESSIONS.map(s => <option key={s} value={s}>{s || t('— none —', '— không có —')}</option>)}
           </select>
         </div>
         <div style={fieldRow}>
-          <div style={editLabel}>Start time</div>
+          <div style={editLabel}>{t('Start time', 'Giờ bắt đầu')}</div>
           <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} style={inputStyle} />
         </div>
         <div style={fieldRow}>
-          <div style={editLabel}>End time</div>
+          <div style={editLabel}>{t('End time', 'Giờ kết thúc')}</div>
           <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} style={inputStyle} />
         </div>
       </div>
       <div style={{ ...hintText, marginTop: 6 }}>
-        {mode === 'house' ? 'No time = the whole day. A space + “closes the room” blocks bookings for that window.' : 'Set either a precise time or a session. Both is fine too.'}
+        {mode === 'house' ? t('No time = the whole day. A space + “closes the room” blocks bookings for that window.', 'Không đặt giờ = cả ngày. Một không gian + “đóng phòng” sẽ chặn đặt chỗ trong khung giờ đó.') : t('Set either a precise time or a session. Both is fine too.', 'Đặt một giờ cụ thể hoặc một phiên. Cả hai cũng được.')}
       </div>
 
       {mode === 'member' && (
@@ -286,8 +288,8 @@ export default function NewBookingPage() {
       {mode === 'member' ? (
         <>
           <div style={{ ...fieldRow, marginTop: 14 }}>
-            <div style={editLabel}>Notes</div>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Special requests, party context, anything the team should know." style={{ ...inputStyle, resize: 'vertical' }} />
+            <div style={editLabel}>{t('Notes', 'Ghi chú')}</div>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder={t('Special requests, party context, anything the team should know.', 'Yêu cầu đặc biệt, bối cảnh nhóm khách, bất cứ điều gì nhóm cần biết.')} style={{ ...inputStyle, resize: 'vertical' }} />
           </div>
           <label style={{
             display: 'flex', alignItems: 'center', gap: 10, marginTop: 18, padding: '12px 14px',
@@ -296,9 +298,9 @@ export default function NewBookingPage() {
           }}>
             <input type="checkbox" checked={sendConfirmation} onChange={e => setSendConfirmation(e.target.checked)} disabled={!selectedMember || !selectedMember.email} />
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#E5D4C2' }}>Send confirmation email to the member</div>
+              <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#E5D4C2' }}>{t('Send confirmation email to the member', 'Gửi email xác nhận cho thành viên')}</div>
               <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', marginTop: 4 }}>
-                {!selectedMember ? 'Pick a member first.' : selectedMember.email ? `Will go to ${selectedMember.email}` : `No email on file for ${selectedMember.full_name}. Add one to the member record to enable this.`}
+                {!selectedMember ? t('Pick a member first.', 'Chọn thành viên trước.') : selectedMember.email ? `${t('Will go to', 'Sẽ gửi đến')} ${selectedMember.email}` : `${t('No email on file for', 'Không có email cho')} ${selectedMember.full_name}. ${t('Add one to the member record to enable this.', 'Thêm email vào hồ sơ thành viên để bật tính năng này.')}`}
               </div>
             </div>
           </label>
@@ -306,8 +308,8 @@ export default function NewBookingPage() {
       ) : (
         <>
           <div style={{ ...fieldRow, marginTop: 14 }}>
-            <div style={editLabel}>Description</div>
-            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder="Optional detail. For a member-visible entry this is what members read." style={{ ...inputStyle, resize: 'vertical' }} />
+            <div style={editLabel}>{t('Description', 'Mô tả')}</div>
+            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder={t('Optional detail. For a member-visible entry this is what members read.', 'Chi tiết tùy chọn. Với mục thành viên thấy được, đây là nội dung thành viên đọc.')} style={{ ...inputStyle, resize: 'vertical' }} />
           </div>
           {space && (
             <label style={{
@@ -316,9 +318,9 @@ export default function NewBookingPage() {
             }}>
               <input type="checkbox" checked={blocksSpace} onChange={e => setBlocksSpace(e.target.checked)} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#E5D4C2' }}>Closes {space} (blocks bookings)</div>
+                <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#E5D4C2' }}>{t('Closes', 'Đóng')} {space} {t('(blocks bookings)', '(chặn đặt chỗ)')}</div>
                 <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', marginTop: 4 }}>
-                  On = the room can&apos;t be booked for this window. Off = informational only (e.g. a visit that doesn&apos;t close the room).
+                  {t('On = the room can’t be booked for this window. Off = informational only (e.g. a visit that doesn’t close the room).', 'Bật = phòng không thể đặt trong khung giờ này. Tắt = chỉ để thông tin (ví dụ một chuyến thăm không đóng phòng).')}
                 </div>
               </div>
             </label>
@@ -340,14 +342,14 @@ export default function NewBookingPage() {
       <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
         {mode === 'member' ? (
           <button onClick={submitMember} disabled={saving || !memberNo} style={{ ...btnPrimary, opacity: !memberNo ? 0.4 : 1 }}>
-            {saving ? 'Saving…' : 'Save booking'}
+            {saving ? t('Saving…', 'Đang lưu…') : t('Save booking', 'Lưu đặt chỗ')}
           </button>
         ) : (
           <button onClick={submitHouse} disabled={saving || !title.trim()} style={{ ...btnPrimary, opacity: !title.trim() ? 0.4 : 1 }}>
-            {saving ? 'Saving…' : editId ? 'Save changes' : 'Save house entry'}
+            {saving ? t('Saving…', 'Đang lưu…') : editId ? t('Save changes', 'Lưu thay đổi') : t('Save house entry', 'Lưu mục nội bộ')}
           </button>
         )}
-        <Link href="/admin/calendar" style={btnGhost}>Cancel</Link>
+        <Link href="/admin/calendar" style={btnGhost}>{t('Cancel', 'Hủy')}</Link>
       </div>
 
       {toastNode}

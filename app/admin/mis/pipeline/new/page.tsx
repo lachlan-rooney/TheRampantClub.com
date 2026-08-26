@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { vnDateString } from '@/lib/datetime'
+import { useLang } from '@/lib/admin-lang'
 
 // MIS Pipeline — add new prospect form. Captures the upstream essentials;
 // the rest is filled in on the detail page.
@@ -11,6 +12,7 @@ import { vnDateString } from '@/lib/datetime'
 const SOURCES = ['Referral', 'Direct Approach', 'Event']
 
 export default function NewProspectPage() {
+  const { t } = useLang()
   const router = useRouter()
   const [full_name, setFullName] = useState('')
   const [nickname, setNickname] = useState('')
@@ -28,7 +30,7 @@ export default function NewProspectPage() {
   const [error, setError] = useState<string | null>(null)
 
   const submit = useCallback(async () => {
-    if (!full_name.trim()) { setError('Full name required.'); return }
+    if (!full_name.trim()) { setError(t('Full name required.', 'Vui lòng nhập họ và tên.')); return }
     setSaving(true); setError(null)
     try {
       const r = await fetch('/api/admin/mis/prospects', {
@@ -57,13 +59,13 @@ export default function NewProspectPage() {
 
   return (
     <>
-      <Link href="/admin/mis/pipeline" style={backLink}>← Pipeline</Link>
+      <Link href="/admin/mis/pipeline" style={backLink}>← {t('Pipeline', 'Kênh tuyển')}</Link>
 
       <div style={{ marginBottom: 28 }}>
-        <div style={eyebrow}>Pipeline</div>
-        <h1 style={pageTitle}>New prospect</h1>
+        <div style={eyebrow}>{t('Pipeline', 'Kênh tuyển')}</div>
+        <h1 style={pageTitle}>{t('New prospect', 'Ứng viên mới')}</h1>
         <p style={lede}>
-          The minimum needed to start a pipeline card. Everything else — interview, scoring, decision — gets filled in on the detail page as you move them through stages.
+          {t('The minimum needed to start a pipeline card. Everything else — interview, scoring, decision — gets filled in on the detail page as you move them through stages.', 'Thông tin tối thiểu để tạo một thẻ trong kênh tuyển. Mọi thứ còn lại — phỏng vấn, chấm điểm, quyết định — sẽ được điền ở trang chi tiết khi bạn đưa họ qua các giai đoạn.')}
         </p>
       </div>
 
@@ -71,74 +73,74 @@ export default function NewProspectPage() {
 
       <div style={formGrid}>
         <div style={fieldRow}>
-          <div style={editLabel}>Full name *</div>
+          <div style={editLabel}>{t('Full name *', 'Họ và tên *')}</div>
           <input value={full_name} onChange={e => setFullName(e.target.value)} autoFocus style={editInput} placeholder="Jane Doe" />
         </div>
 
         <div style={fieldRow}>
-          <div style={editLabel}>Position / title</div>
+          <div style={editLabel}>{t('Position / title', 'Chức vụ / chức danh')}</div>
           <input value={nickname} onChange={e => setNickname(e.target.value)} style={editInput} placeholder="CEO, Acme Corp" />
         </div>
 
         <div style={fieldRow}>
-          <div style={editLabel}>Profession / sector</div>
+          <div style={editLabel}>{t('Profession / sector', 'Nghề nghiệp / lĩnh vực')}</div>
           <input value={profession} onChange={e => setProfession(e.target.value)} style={editInput} placeholder="Banking · Law · Hospitality" />
         </div>
 
         <div style={fieldRow}>
-          <div style={editLabel}>Source channel</div>
+          <div style={editLabel}>{t('Source channel', 'Kênh nguồn')}</div>
           <select value={source_channel} onChange={e => setSourceChannel(e.target.value)} style={editInput}>
-            <option value="">— select —</option>
+            <option value="">{t('— select —', '— chọn —')}</option>
             {SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
 
         <div style={fieldRow}>
-          <div style={editLabel}>Referred by</div>
+          <div style={editLabel}>{t('Referred by', 'Người giới thiệu')}</div>
           <input value={referred_by_name} onChange={e => setReferredByName(e.target.value)} style={editInput} placeholder="Lachlan's friend · AmCham" />
         </div>
 
         <div style={fieldRow}>
-          <div style={editLabel}>Relationship</div>
+          <div style={editLabel}>{t('Relationship', 'Mối quan hệ')}</div>
           <input value={referral_relationship} onChange={e => setReferralRelationship(e.target.value)} style={editInput} placeholder="Friend · Business associate" />
         </div>
 
         <div style={fieldRow}>
-          <div style={editLabel}>First contact date</div>
+          <div style={editLabel}>{t('First contact date', 'Ngày liên hệ đầu tiên')}</div>
           <input type="date" value={first_contact_date} onChange={e => setFirstContactDate(e.target.value)} style={editInput} />
         </div>
 
         <div style={fieldRow}>
-          <div style={editLabel}>Assigned to</div>
+          <div style={editLabel}>{t('Assigned to', 'Phụ trách')}</div>
           <input value={assigned_to} onChange={e => setAssignedTo(e.target.value)} style={editInput} placeholder="Lachlan · Miss Châu" />
         </div>
 
         <div style={fieldRow}>
-          <div style={editLabel}>Next action</div>
+          <div style={editLabel}>{t('Next action', 'Hành động tiếp theo')}</div>
           <input value={next_action} onChange={e => setNextAction(e.target.value)} style={editInput} placeholder="Offer membership · Schedule interview" />
         </div>
 
         <div style={fieldRow}>
-          <div style={editLabel}>Next action date</div>
+          <div style={editLabel}>{t('Next action date', 'Ngày hành động tiếp theo')}</div>
           <input type="date" value={next_action_date} onChange={e => setNextActionDate(e.target.value)} style={editInput} />
         </div>
 
         <div style={{ ...fieldRow, gridColumn: '1 / -1' }}>
-          <div style={editLabel}>Contact info</div>
-          <input value={contact_info} onChange={e => setContactInfo(e.target.value)} style={editInput} placeholder="Office address, phone, email" />
+          <div style={editLabel}>{t('Contact info', 'Thông tin liên hệ')}</div>
+          <input value={contact_info} onChange={e => setContactInfo(e.target.value)} style={editInput} placeholder={t('Office address, phone, email', 'Địa chỉ văn phòng, số điện thoại, email')} />
         </div>
 
         <div style={{ ...fieldRow, gridColumn: '1 / -1' }}>
-          <div style={editLabel}>Notes</div>
-          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4} style={{ ...editInput, resize: 'vertical' }} placeholder="Why are they interesting? What's the angle?" />
+          <div style={editLabel}>{t('Notes', 'Ghi chú')}</div>
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4} style={{ ...editInput, resize: 'vertical' }} placeholder={t("Why are they interesting? What's the angle?", 'Vì sao họ đáng chú ý? Hướng tiếp cận là gì?')} />
         </div>
       </div>
 
       <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
         <button onClick={submit} disabled={saving || !full_name.trim()} style={{ ...btnPrimary, opacity: !full_name.trim() ? 0.4 : 1, cursor: !full_name.trim() ? 'not-allowed' : 'pointer' }}>
-          {saving ? 'Saving…' : 'Add to pipeline'}
+          {saving ? t('Saving…', 'Đang lưu…') : t('Add to pipeline', 'Thêm vào kênh tuyển')}
         </button>
-        <Link href="/admin/mis/pipeline" style={btnGhost}>Cancel</Link>
+        <Link href="/admin/mis/pipeline" style={btnGhost}>{t('Cancel', 'Hủy')}</Link>
       </div>
     </>
   )

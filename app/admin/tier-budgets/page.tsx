@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { formatVnd } from '@/lib/gifting'
+import { useLang } from '@/lib/admin-lang'
 
 // Admin / House / Tier Budgets
 //
@@ -18,6 +19,7 @@ interface TierBudget {
 }
 
 export default function TierBudgetsPage() {
+  const { t } = useLang()
   const [tiers, setTiers] = useState<TierBudget[]>([])
   const [loading, setLoading] = useState(true)
   const [drafts, setDrafts] = useState<Record<string, Partial<TierBudget>>>({})
@@ -60,64 +62,64 @@ export default function TierBudgetsPage() {
   return (
     <>
       <div style={{ marginBottom: 24 }}>
-        <div style={eyebrow}>House · Settings</div>
-        <h1 style={pageTitle}>Tier Budgets</h1>
+        <div style={eyebrow}>{t('House · Settings', 'Nội bộ · Cài đặt')}</div>
+        <h1 style={pageTitle}>{t('Tier Budgets', 'Ngân sách theo hạng')}</h1>
         <p style={lede}>
-          Annual dues and gifting percentage per membership tier. Each member&apos;s annual gifting budget is computed live as <Code>annual_dues × gifting_pct</Code>. The budget year runs from the member&apos;s previous anniversary to the next.
+          {t('Annual dues and gifting percentage per membership tier. Each member’s annual gifting budget is computed live as', 'Phí thường niên và tỷ lệ phần trăm quà tặng theo từng hạng hội viên. Ngân sách quà tặng thường niên của mỗi hội viên được tính trực tiếp bằng')} <Code>annual_dues × gifting_pct</Code>. {t('The budget year runs from the member’s previous anniversary to the next.', 'Năm ngân sách tính từ ngày kỷ niệm gần nhất của hội viên đến ngày kỷ niệm kế tiếp.')}
         </p>
         <p style={{ ...lede, marginTop: 8 }}>
-          The founder/GM owns this page — change the dues when contracts change, dial the gifting % up or down (10–15% is the recommended band) when calibrating the &quot;invisible love&quot; budget.
+          {t('The founder/GM owns this page — change the dues when contracts change, dial the gifting % up or down (10–15% is the recommended band) when calibrating the', 'Nhà sáng lập/Tổng quản lý phụ trách trang này — thay đổi phí khi hợp đồng thay đổi, tăng hoặc giảm tỷ lệ quà tặng % (mức khuyến nghị là 10–15%) khi hiệu chỉnh ngân sách')} &quot;{t('invisible love', 'yêu thương vô hình')}&quot; {t('budget.', '.')}
         </p>
       </div>
 
       {error && <div style={errorBox}>{error}</div>}
 
       {loading ? (
-        <div style={emptyText}>Loading…</div>
+        <div style={emptyText}>{t('Loading…', 'Đang tải…')}</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {tiers.map(t => {
-            const d = drafts[t.tier] || {}
-            const dues = d.annual_dues_vnd ?? t.annual_dues_vnd
-            const pct  = d.gifting_pct ?? t.gifting_pct
+          {tiers.map(t2 => {
+            const d = drafts[t2.tier] || {}
+            const dues = d.annual_dues_vnd ?? t2.annual_dues_vnd
+            const pct  = d.gifting_pct ?? t2.gifting_pct
             const computed = Math.floor(Number(dues) * Number(pct) / 100)
-            const dirty = drafts[t.tier] != null
+            const dirty = drafts[t2.tier] != null
             return (
-              <div key={t.tier} style={tierCard}>
+              <div key={t2.tier} style={tierCard}>
                 <div style={tierHeader}>
-                  <div style={tierName}>{t.tier}</div>
+                  <div style={tierName}>{t2.tier}</div>
                   <div style={budgetSummary}>
-                    Annual gifting budget · <span style={budgetValue}>{formatVnd(computed)}</span>
+                    {t('Annual gifting budget', 'Ngân sách quà tặng thường niên')} · <span style={budgetValue}>{formatVnd(computed)}</span>
                   </div>
                 </div>
 
                 <div style={tierGrid}>
                   <div>
-                    <div style={editLabel}>Annual dues (VND)</div>
+                    <div style={editLabel}>{t('Annual dues (VND)', 'Phí thường niên (VND)')}</div>
                     <input
                       type="number" min={0} step={100000}
                       value={dues}
-                      onChange={e => setDraft(t.tier, { annual_dues_vnd: Number(e.target.value) })}
+                      onChange={e => setDraft(t2.tier, { annual_dues_vnd: Number(e.target.value) })}
                       style={inputStyle}
                     />
                     <div style={hintText}>{formatVnd(dues)}</div>
                   </div>
                   <div>
-                    <div style={editLabel}>Gifting %</div>
+                    <div style={editLabel}>{t('Gifting %', 'Quà tặng %')}</div>
                     <input
                       type="number" min={0} max={100} step={0.5}
                       value={pct}
-                      onChange={e => setDraft(t.tier, { gifting_pct: Number(e.target.value) })}
+                      onChange={e => setDraft(t2.tier, { gifting_pct: Number(e.target.value) })}
                       style={inputStyle}
                     />
-                    <div style={hintText}>10–15% recommended</div>
+                    <div style={hintText}>{t('10–15% recommended', '10–15% được khuyến nghị')}</div>
                   </div>
                   <div>
-                    <div style={editLabel}>Notes</div>
+                    <div style={editLabel}>{t('Notes', 'Ghi chú')}</div>
                     <input
-                      value={d.notes ?? t.notes ?? ''}
-                      onChange={e => setDraft(t.tier, { notes: e.target.value })}
-                      placeholder="Optional context"
+                      value={d.notes ?? t2.notes ?? ''}
+                      onChange={e => setDraft(t2.tier, { notes: e.target.value })}
+                      placeholder={t('Optional context', 'Bối cảnh tùy chọn')}
                       style={inputStyle}
                     />
                   </div>
@@ -125,14 +127,14 @@ export default function TierBudgetsPage() {
 
                 {dirty && (
                   <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                    <button onClick={() => save(t.tier)} disabled={savingTier === t.tier} style={btnPrimary}>
-                      {savingTier === t.tier ? 'Saving…' : 'Save'}
+                    <button onClick={() => save(t2.tier)} disabled={savingTier === t2.tier} style={btnPrimary}>
+                      {savingTier === t2.tier ? t('Saving…', 'Đang lưu…') : t('Save', 'Lưu')}
                     </button>
                     <button
-                      onClick={() => setDrafts(prev => { const next = { ...prev }; delete next[t.tier]; return next })}
+                      onClick={() => setDrafts(prev => { const next = { ...prev }; delete next[t2.tier]; return next })}
                       style={btnGhost}
                     >
-                      Cancel
+                      {t('Cancel', 'Hủy')}
                     </button>
                   </div>
                 )}
@@ -143,8 +145,8 @@ export default function TierBudgetsPage() {
       )}
 
       <div style={{ ...hintRow, marginTop: 22 }}>
-        Adjusting a tier changes <strong style={{ color: '#E5D4C2' }}>every member&apos;s</strong> live gifting budget for the current cycle.
-        <Link href="/admin/gifts" style={{ ...linkStyle, marginLeft: 8 }}>Open the gifts ledger →</Link>
+        {t('Adjusting a tier changes', 'Điều chỉnh một hạng sẽ thay đổi')} <strong style={{ color: '#E5D4C2' }}>{t('every member’s', 'ngân sách quà tặng trực tiếp của mọi hội viên')}</strong> {t('live gifting budget for the current cycle.', 'trong chu kỳ hiện tại.')}
+        <Link href="/admin/gifts" style={{ ...linkStyle, marginLeft: 8 }}>{t('Open the gifts ledger →', 'Mở sổ quà tặng →')}</Link>
       </div>
     </>
   )

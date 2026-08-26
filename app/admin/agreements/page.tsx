@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { ConfirmModal, useToast, type ConfirmTone } from '@/components/admin/dialogs'
+import { useLang } from '@/lib/admin-lang'
 
 // Per-kind copy for the destructive-action confirm modal.
 const AGREEMENT_CONFIRM: Record<'invitation_delete' | 'agreement_delete' | 'invitation_revoke', {
@@ -74,6 +75,7 @@ const btnStyle: React.CSSProperties = {
 }
 
 export default function AgreementsPage() {
+  const { t } = useLang()
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const [agreements, setAgreements] = useState<SignedAgreement[]>([])
   const [showCreate, setShowCreate] = useState(false)
@@ -144,7 +146,7 @@ export default function AgreementsPage() {
         if (r.ok) load()
         else {
           const d = await r.json().catch(() => ({}))
-          showToast(`Revoke failed: ${d.error || r.statusText}`, 'error')
+          showToast(`${t('Revoke failed', 'Thu hồi thất bại')}: ${d.error || r.statusText}`, 'error')
           return
         }
       }
@@ -184,7 +186,7 @@ export default function AgreementsPage() {
     if (!filename) return
     const { data, error } = await supabase.storage.from('signed_agreements').createSignedUrl(filename, 60)
     if (error || !data?.signedUrl) {
-      showToast('Could not generate download link', 'error')
+      showToast(t('Could not generate download link', 'Không thể tạo liên kết tải xuống'), 'error')
       return
     }
     window.open(data.signedUrl, '_blank')
@@ -211,9 +213,9 @@ export default function AgreementsPage() {
       body: JSON.stringify({ invitation_id: id }),
     })
     setBusyId(null)
-    if (r.ok) { showToast('Reminder sent.', 'info'); load() } else {
+    if (r.ok) { showToast(t('Reminder sent.', 'Đã gửi nhắc.'), 'info'); load() } else {
       const d = await r.json().catch(() => ({}))
-      showToast(`Reminder failed: ${d.error || r.statusText}`, 'error')
+      showToast(`${t('Reminder failed', 'Gửi nhắc thất bại')}: ${d.error || r.statusText}`, 'error')
     }
   }
 
@@ -245,10 +247,10 @@ export default function AgreementsPage() {
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 24, fontWeight: 500, color: '#E5D4C2', letterSpacing: '0.04em' }}>
-          Agreements
+          {t('Agreements', 'Thỏa thuận')}
         </h1>
         {!showCreate && (
-          <button onClick={() => setShowCreate(true)} style={btnStyle}>+ Generate Signing Link</button>
+          <button onClick={() => setShowCreate(true)} style={btnStyle}>{t('+ Generate Signing Link', '+ Tạo liên kết ký')}</button>
         )}
       </div>
 
@@ -256,29 +258,29 @@ export default function AgreementsPage() {
       {showCreate && (
         <div style={{ padding: 24, background: 'rgba(229,212,194,0.03)', borderRadius: 8, marginBottom: 32, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2' }}>
-            Generate Signing Link
+            {t('Generate Signing Link', 'Tạo liên kết ký')}
           </div>
           <div style={{ display: 'flex', gap: 16 }}>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Prospect Name *</label>
-              <input style={inputStyle} value={name} onChange={e => setName(e.target.value)} placeholder="Full name" />
+              <label style={labelStyle}>{t('Prospect Name *', 'Tên khách mời *')}</label>
+              <input style={inputStyle} value={name} onChange={e => setName(e.target.value)} placeholder={t('Full name', 'Họ và tên')} />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Email *</label>
+              <label style={labelStyle}>{t('Email *', 'Email *')}</label>
               <input style={inputStyle} value={email} onChange={e => setEmail(e.target.value)} placeholder="email@example.com" />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Category</label>
+              <label style={labelStyle}>{t('Category', 'Danh mục')}</label>
               <select style={inputStyle} value={category} onChange={e => setCategory(e.target.value)}>
-                <option value="legacy" style={{ background: '#052E20' }}>Legacy</option>
-                <option value="pioneer" style={{ background: '#052E20' }}>Pioneer</option>
-                <option value="corporate" style={{ background: '#052E20' }}>Corporate</option>
+                <option value="legacy" style={{ background: '#052E20' }}>{t('Legacy', 'Di sản')}</option>
+                <option value="pioneer" style={{ background: '#052E20' }}>{t('Pioneer', 'Tiên phong')}</option>
+                <option value="corporate" style={{ background: '#052E20' }}>{t('Corporate', 'Doanh nghiệp')}</option>
               </select>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <button onClick={generateLink} style={btnStyle}>Generate</button>
-            <button onClick={() => { setShowCreate(false); setGeneratedLink('') }} style={{ ...btnStyle, opacity: 0.5 }}>Cancel</button>
+            <button onClick={generateLink} style={btnStyle}>{t('Generate', 'Tạo')}</button>
+            <button onClick={() => { setShowCreate(false); setGeneratedLink('') }} style={{ ...btnStyle, opacity: 0.5 }}>{t('Cancel', 'Hủy')}</button>
           </div>
           {generatedLink && (
             <div style={{
@@ -292,7 +294,7 @@ export default function AgreementsPage() {
                 {generatedLink}
               </code>
               <button onClick={copyLink} style={{ ...btnStyle, padding: '6px 16px', fontSize: 10 }}>
-                {copied ? 'Copied' : 'Copy'}
+                {copied ? t('Copied', 'Đã sao chép') : t('Copy', 'Sao chép')}
               </button>
             </div>
           )}
@@ -304,7 +306,7 @@ export default function AgreementsPage() {
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search name, email, or category…"
+          placeholder={t('Search name, email, or category…', 'Tìm tên, email hoặc danh mục…')}
           style={{ ...inputStyle, flex: 1, minWidth: 240, maxWidth: 380 }}
         />
         <div style={{ display: 'flex', gap: 6 }}>
@@ -335,10 +337,10 @@ export default function AgreementsPage() {
 
       {/* Pending / revoked invitations */}
       <h2 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 20, fontWeight: 500, color: '#E5D4C2', marginBottom: 16 }}>
-        Invitations
+        {t('Invitations', 'Lời mời')}
       </h2>
       {visibleInvitations.length === 0 ? (
-        <p style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#B2AA98', marginBottom: 32 }}>No matching invitations</p>
+        <p style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#B2AA98', marginBottom: 32 }}>{t('No matching invitations', 'Không có lời mời phù hợp')}</p>
       ) : (
         <div style={{ marginBottom: 32 }}>
           {visibleInvitations.map(inv => (
@@ -363,13 +365,13 @@ export default function AgreementsPage() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 {inv.viewed_at && (
-                  <span title={`First viewed ${formatDate(inv.viewed_at)}`} style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#7AB07A' }}>
-                    viewed{(inv.view_count ?? 0) > 1 ? ` ×${inv.view_count}` : ''}
+                  <span title={`${t('First viewed', 'Xem lần đầu')} ${formatDate(inv.viewed_at)}`} style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#7AB07A' }}>
+                    {t('viewed', 'đã xem')}{(inv.view_count ?? 0) > 1 ? ` ×${inv.view_count}` : ''}
                   </span>
                 )}
                 {inv.last_reminded_at && (
-                  <span title={`Last reminded ${formatDate(inv.last_reminded_at)}`} style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#D4B85A', opacity: 0.8 }}>
-                    reminded {relative(inv.last_reminded_at)}
+                  <span title={`${t('Last reminded', 'Nhắc lần cuối')} ${formatDate(inv.last_reminded_at)}`} style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#D4B85A', opacity: 0.8 }}>
+                    {t('reminded', 'đã nhắc')} {relative(inv.last_reminded_at)}
                   </span>
                 )}
                 <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', opacity: 0.5 }}>
@@ -383,23 +385,23 @@ export default function AgreementsPage() {
                         navigator.clipboard.writeText(link)
                       }}
                       style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.6, cursor: 'pointer' }}
-                    >Copy Link</button>
+                    >{t('Copy Link', 'Sao chép liên kết')}</button>
                     <button
                       onClick={() => sendReminder(inv.id)}
                       disabled={busyId === inv.id}
                       style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#D4B85A', cursor: 'pointer' }}
-                    >{busyId === inv.id ? 'Sending…' : 'Send Reminder'}</button>
+                    >{busyId === inv.id ? t('Sending…', 'Đang gửi…') : t('Send Reminder', 'Gửi nhắc')}</button>
                     <button
                       onClick={() => requestRevokeInvitation(inv.id, `${inv.full_name} (${inv.email})`)}
                       disabled={busyId === inv.id}
                       style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B45656', opacity: 0.7, cursor: 'pointer' }}
-                    >Revoke</button>
+                    >{t('Revoke', 'Thu hồi')}</button>
                   </>
                 )}
                 <button
                   onClick={() => requestDeleteInvitation(inv.id, `${inv.full_name} (${inv.email})`)}
                   style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.25, cursor: 'pointer' }}
-                >Delete</button>
+                >{t('Delete', 'Xóa')}</button>
               </div>
             </div>
           ))}
@@ -408,10 +410,10 @@ export default function AgreementsPage() {
 
       {/* Signed agreements */}
       <h2 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 20, fontWeight: 500, color: '#E5D4C2', marginBottom: 16 }}>
-        Signed Agreements
+        {t('Signed Agreements', 'Thỏa thuận đã ký')}
       </h2>
       {visibleAgreements.length === 0 ? (
-        <p style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#B2AA98' }}>No matching agreements</p>
+        <p style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#B2AA98' }}>{t('No matching agreements', 'Không có thỏa thuận phù hợp')}</p>
       ) : (
         <div>
           {visibleAgreements.map(agr => (
@@ -427,7 +429,7 @@ export default function AgreementsPage() {
                   <span style={{
                     fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#E5D4C2',
                     background: 'rgba(94,102,80,0.4)', borderRadius: 4, padding: '2px 8px',
-                  }}>signed</span>
+                  }}>{t('signed', 'đã ký')}</span>
                   <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 14, color: '#E5D4C2' }}>
                     {agr.full_name}
                   </span>
@@ -449,12 +451,12 @@ export default function AgreementsPage() {
                   gap: '10px 24px',
                 }}>
                   {[
-                    ['Mobile', agr.mobile],
-                    ['Date of Birth', agr.date_of_birth],
-                    ['Nationality', agr.nationality],
-                    ['Home Address', agr.home_address],
-                    ['Company', agr.company_name],
-                    ['Profession', agr.profession],
+                    [t('Mobile', 'Điện thoại'), agr.mobile],
+                    [t('Date of Birth', 'Ngày sinh'), agr.date_of_birth],
+                    [t('Nationality', 'Quốc tịch'), agr.nationality],
+                    [t('Home Address', 'Địa chỉ nhà'), agr.home_address],
+                    [t('Company', 'Công ty'), agr.company_name],
+                    [t('Profession', 'Nghề nghiệp'), agr.profession],
                   ].map(([label, value]) => (
                     <div key={label as string}>
                       <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', opacity: 0.5, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
@@ -473,7 +475,7 @@ export default function AgreementsPage() {
                           ...btnStyle, fontSize: 10, padding: '8px 16px',
                         }}
                       >
-                        Download Signed PDF
+                        {t('Download Signed PDF', 'Tải PDF đã ký')}
                       </button>
                     </div>
                   )}
@@ -482,7 +484,7 @@ export default function AgreementsPage() {
                       onClick={() => requestDeleteAgreement(agr.id, agr.invitation_id, agr.full_name || agr.email || agr.id)}
                       style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.3, cursor: 'pointer' }}
                     >
-                      Delete Agreement
+                      {t('Delete Agreement', 'Xóa thỏa thuận')}
                     </button>
                   </div>
                 </div>

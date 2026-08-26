@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
+import { useLang } from '@/lib/admin-lang'
 
 interface Member {
   id: string
@@ -26,6 +27,7 @@ const labelStyle: React.CSSProperties = {
 }
 
 export default function AdminMembers() {
+  const { t } = useLang()
   const [members, setMembers] = useState<Member[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [editValues, setEditValues] = useState<Partial<Member>>({})
@@ -66,7 +68,7 @@ export default function AdminMembers() {
   return (
     <>
       <h1 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 24, fontWeight: 500, color: '#E5D4C2', letterSpacing: '0.04em', marginBottom: 24 }}>
-        User Roster
+        {t('User Roster', 'Danh sách người dùng')}
       </h1>
 
       <div>
@@ -87,7 +89,7 @@ export default function AdminMembers() {
                   <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>{m.email}</span>
                 )}
                 {m.is_admin && (
-                  <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', background: 'rgba(229,212,194,0.1)', borderRadius: 4, padding: '2px 8px' }}>Admin</span>
+                  <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', background: 'rgba(229,212,194,0.1)', borderRadius: 4, padding: '2px 8px' }}>{t('Admin', 'Quản trị viên')}</span>
                 )}
               </div>
               <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>
@@ -98,7 +100,7 @@ export default function AdminMembers() {
             {expandedId === m.id && (
               <div style={{ padding: '0 0 20px', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                 <div style={{ flex: 1, minWidth: 120 }}>
-                  <label style={labelStyle}>Admitted</label>
+                  <label style={labelStyle}>{t('Admitted', 'Ngày kết nạp')}</label>
                   <input
                     type="date"
                     style={inputStyle}
@@ -107,7 +109,7 @@ export default function AdminMembers() {
                   />
                 </div>
                 <div style={{ flex: 1, minWidth: 120 }}>
-                  <label style={labelStyle}>Locker Number</label>
+                  <label style={labelStyle}>{t('Locker Number', 'Số tủ khóa')}</label>
                   <input
                     style={inputStyle}
                     value={editValues.locker_number || ''}
@@ -121,7 +123,7 @@ export default function AdminMembers() {
                       checked={editValues.is_admin ?? false}
                       onChange={e => setEditValues(v => ({ ...v, is_admin: e.target.checked }))}
                     />
-                    Admin
+                    {t('Admin', 'Quản trị viên')}
                   </label>
                 </div>
                 <div style={{ width: '100%' }}>
@@ -133,7 +135,7 @@ export default function AdminMembers() {
                       fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11,
                     }}
                   >
-                    Save
+                    {t('Save', 'Lưu')}
                   </button>
                 </div>
               </div>

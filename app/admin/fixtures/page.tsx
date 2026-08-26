@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { ConfirmModal, useToast } from '@/components/admin/dialogs'
+import { useLang } from '@/lib/admin-lang'
 import type { Fixture } from '@/lib/types'
 
 const SPORTS = ['golf', 'tennis', 'padel', 'hash', 'other'] as const
@@ -27,6 +28,7 @@ const btnStyle: React.CSSProperties = {
 }
 
 export default function AdminFixtures() {
+  const { t } = useLang()
   const [fixtures, setFixtures] = useState<Fixture[]>([])
   const [signupCounts, setSignupCounts] = useState<Record<string, number>>({})
   const [roster, setRoster] = useState<Record<string, string[]>>({})   // ADMIN-ONLY: fixture_id → member names
@@ -119,7 +121,7 @@ export default function AdminFixtures() {
     setConfirmBusy(true)
     try {
       const { error } = await supabase.from('fixtures').delete().eq('id', confirmFixture.id)
-      if (error) { showToast(`Delete failed: ${error.message}`, 'error'); return }
+      if (error) { showToast(`${t('Delete failed:','Xóa thất bại:')} ${error.message}`, 'error'); return }
       setConfirmFixture(null)
       load()
     } finally {
@@ -133,70 +135,70 @@ export default function AdminFixtures() {
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 24, fontWeight: 500, color: '#E5D4C2', letterSpacing: '0.04em' }}>
-          Fixtures
+          {t('Fixtures', 'Lịch thi đấu')}
         </h1>
         {!showForm && (
-          <button onClick={() => { resetForm(); setShowForm(true) }} style={btnStyle}>+ New Fixture</button>
+          <button onClick={() => { resetForm(); setShowForm(true) }} style={btnStyle}>{t('+ New Fixture', '+ Trận đấu mới')}</button>
         )}
       </div>
 
       {showForm && (
         <div style={{ padding: 24, background: 'rgba(229,212,194,0.03)', borderRadius: 8, marginBottom: 32, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2' }}>
-            {editing ? `Editing: ${editing.title}` : 'New Fixture'}
+            {editing ? `${t('Editing:', 'Đang sửa:')} ${editing.title}` : t('New Fixture', 'Trận đấu mới')}
           </div>
           <div style={{ display: 'flex', gap: 16 }}>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Sport</label>
+              <label style={labelStyle}>{t('Sport', 'Môn thể thao')}</label>
               <select style={inputStyle} value={sport} onChange={e => setSport(e.target.value as Fixture['sport'])}>
                 {SPORTS.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
             <div style={{ flex: 2 }}>
-              <label style={labelStyle}>Title</label>
+              <label style={labelStyle}>{t('Title', 'Tiêu đề')}</label>
               <input style={inputStyle} value={title} onChange={e => setTitle(e.target.value)} />
             </div>
           </div>
           <div>
-            <label style={labelStyle}>Description</label>
+            <label style={labelStyle}>{t('Description', 'Mô tả')}</label>
             <textarea style={{ ...inputStyle, resize: 'vertical' }} rows={3} value={description} onChange={e => setDescription(e.target.value)} />
           </div>
           <div style={{ display: 'flex', gap: 16 }}>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Date &amp; Time</label>
+              <label style={labelStyle}>{t('Date & Time', 'Ngày & Giờ')}</label>
               <input type="datetime-local" style={inputStyle} value={date} onChange={e => setDate(e.target.value)} />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Location</label>
+              <label style={labelStyle}>{t('Location', 'Địa điểm')}</label>
               <input style={inputStyle} value={location} onChange={e => setLocation(e.target.value)} />
             </div>
           </div>
           <div style={{ display: 'flex', gap: 16 }}>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Max Sign-ups</label>
+              <label style={labelStyle}>{t('Max Sign-ups', 'Số lượt đăng ký tối đa')}</label>
               <input type="number" style={inputStyle} value={maxSignups} onChange={e => setMaxSignups(e.target.value)} />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Sign-up Deadline</label>
+              <label style={labelStyle}>{t('Sign-up Deadline', 'Hạn chót đăng ký')}</label>
               <input type="datetime-local" style={inputStyle} value={signupDeadline} onChange={e => setSignupDeadline(e.target.value)} />
             </div>
           </div>
           <div>
-            <label style={labelStyle}>Ops Hub board <span style={{ opacity: 0.5 }}>· optional link</span></label>
+            <label style={labelStyle}>{t('Ops Hub board', 'Bảng Ops Hub')} <span style={{ opacity: 0.5 }}>{t('· optional link', '· liên kết tùy chọn')}</span></label>
             <select style={inputStyle} value={opsProjectId} onChange={e => setOpsProjectId(e.target.value)}>
-              <option value="">— none —</option>
+              <option value="">{t('— none —', '— không —')}</option>
               {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
           {editing && isPast(editing.date) && (
             <div>
-              <label style={labelStyle}>Results</label>
+              <label style={labelStyle}>{t('Results', 'Kết quả')}</label>
               <textarea style={{ ...inputStyle, resize: 'vertical' }} rows={3} value={results} onChange={e => setResults(e.target.value)} />
             </div>
           )}
           <div style={{ display: 'flex', gap: 12 }}>
-            <button onClick={handleSubmit} style={btnStyle}>{editing ? 'Update' : 'Create'}</button>
-            <button onClick={resetForm} style={{ ...btnStyle, opacity: 0.5 }}>Cancel</button>
+            <button onClick={handleSubmit} style={btnStyle}>{editing ? t('Update', 'Cập nhật') : t('Create', 'Tạo mới')}</button>
+            <button onClick={resetForm} style={{ ...btnStyle, opacity: 0.5 }}>{t('Cancel', 'Hủy')}</button>
           </div>
         </div>
       )}
@@ -216,15 +218,15 @@ export default function AdminFixtures() {
                   {new Date(f.date).toLocaleDateString()} · {f.location || '—'}
                 </span>
                 <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>
-                  {signupCounts[f.id] || 0} signed up
+                  {signupCounts[f.id] || 0} {t('signed up', 'đã đăng ký')}
                 </span>
                 {f.ops_project_id && (
-                  <a href={`/admin/ops/${f.ops_project_id}`} style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#9E8FC4', textDecoration: 'none' }} title="Open the linked Ops Hub board">⊙ ops board →</a>
+                  <a href={`/admin/ops/${f.ops_project_id}`} style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#9E8FC4', textDecoration: 'none' }} title={t('Open the linked Ops Hub board', 'Mở bảng Ops Hub đã liên kết')}>{t('⊙ ops board →', '⊙ bảng ops →')}</a>
                 )}
               </div>
               <div style={{ display: 'flex', gap: 12 }}>
-                <button onClick={() => startEdit(f)} style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.5, cursor: 'pointer' }}>Edit</button>
-                <button onClick={() => requestRemove(f)} style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.5, cursor: 'pointer' }}>Delete</button>
+                <button onClick={() => startEdit(f)} style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.5, cursor: 'pointer' }}>{t('Edit', 'Sửa')}</button>
+                <button onClick={() => requestRemove(f)} style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.5, cursor: 'pointer' }}>{t('Delete', 'Xóa')}</button>
               </div>
             </div>
             {/* ADMIN-ONLY roster — who signed up (member view + public /sports stay counts-only) */}
@@ -239,14 +241,14 @@ export default function AdminFixtures() {
 
       <ConfirmModal
         open={!!confirmFixture}
-        eyebrow="⚠ PERMANENT"
-        title="Delete fixture?"
+        eyebrow={t('⚠ PERMANENT', '⚠ VĨNH VIỄN')}
+        title={t('Delete fixture?', 'Xóa trận đấu?')}
         subject={confirmFixture?.title}
         body={confirmFixture
-          ? `Removes the fixture permanently, along with all ${signupCounts[confirmFixture.id] || 0} sign-up${(signupCounts[confirmFixture.id] || 0) === 1 ? '' : 's'}. Members can no longer see or join it. Cannot be undone.`
+          ? `${t('Removes the fixture permanently, along with all', 'Xóa vĩnh viễn trận đấu, cùng với toàn bộ')} ${signupCounts[confirmFixture.id] || 0} ${t('sign-up', 'lượt đăng ký')}${(signupCounts[confirmFixture.id] || 0) === 1 ? '' : 's'}. ${t('Members can no longer see or join it. Cannot be undone.', 'Hội viên sẽ không còn thấy hoặc tham gia được. Không thể hoàn tác.')}`
           : ''}
-        confirmLabel="Delete fixture"
-        busyLabel="Deleting…"
+        confirmLabel={t('Delete fixture', 'Xóa trận đấu')}
+        busyLabel={t('Deleting…', 'Đang xóa…')}
         busy={confirmBusy}
         onCancel={closeConfirm}
         onConfirm={runRemove}

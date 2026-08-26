@@ -7,6 +7,7 @@ import {
 } from '@/lib/mis/live-pst'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { OBSERVATORY_SAMPLES, type SampleTranscript } from '@/lib/observatory-samples'
+import { useLang } from '@/lib/admin-lang'
 
 // Admin / Observatory
 //
@@ -214,13 +215,14 @@ type DemoGate = 'open' | 'closed' | 'probing'
 type DemoState = 'idle' | 'promoting' | 'active' | 'reverting'
 
 export default function ObservatoryPage() {
+  const { t } = useLang()
   const [snap, setSnap] = useState<Snapshot | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedMember, setSelectedMember] = useState<string | null>(null)
   const [selectedPref, setSelectedPref] = useState<string | null>(null)
   const [tick, setTick] = useState(0)  // forces 1s recompute + countdown
   const [transport, setTransport] = useState<Transport>('probing')
-  const [transportNote, setTransportNote] = useState<string>('probing supabase realtime…')
+  const [transportNote, setTransportNote] = useState<string>(t('probing supabase realtime…', 'đang dò supabase realtime…'))
   const [refreshing, setRefreshing] = useState<boolean>(false)
   const [demoGate, setDemoGate] = useState<DemoGate>('probing')
   const [demoState, setDemoState] = useState<DemoState>('idle')
@@ -303,7 +305,7 @@ export default function ObservatoryPage() {
 
   const runDemoExtraction = useCallback(async () => {
     if (!demoTranscript.trim()) {
-      setDemoExtractError('Paste a transcript or load a sample first.')
+      setDemoExtractError(t('Paste a transcript or load a sample first.', 'Vui lòng dán một bản ghi hoặc tải một mẫu trước.'))
       return
     }
     setDemoExtractError(null)
@@ -625,18 +627,18 @@ export default function ObservatoryPage() {
           if (status === 'SUBSCRIBED') {
             resolved = true
             setTransport('realtime')
-            setTransportNote('postgres_changes subscribed · live events arrive immediately')
+            setTransportNote(t('postgres_changes subscribed · live events arrive immediately', 'postgres_changes đã kết nối · sự kiện trực tiếp đến ngay lập tức'))
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-            fallback(`realtime ${status.toLowerCase()} — falling back to 15s polling`)
+            fallback(`realtime ${status.toLowerCase()} — ${t('falling back to 15s polling', 'chuyển sang thăm dò mỗi 15 giây')}`)
           }
         })
       unsub = () => { try { sb.removeChannel(channel) } catch { /* ignore */ } }
     } catch (e) {
-      fallback(`realtime init failed: ${(e as Error).message} — polling 15s`)
+      fallback(`${t('realtime init failed:', 'khởi tạo realtime thất bại:')} ${(e as Error).message} — ${t('polling 15s', 'thăm dò mỗi 15 giây')}`)
     }
 
     const timeoutId = setTimeout(
-      () => fallback('realtime did not subscribe within 3s — polling 15s'),
+      () => fallback(t('realtime did not subscribe within 3s — polling 15s', 'realtime không kết nối trong 3 giây — thăm dò mỗi 15 giây')),
       REALTIME_SUBSCRIBE_TIMEOUT_MS
     )
 
@@ -735,7 +737,7 @@ export default function ObservatoryPage() {
   )
 
   if (error) return <div style={errorBox}>{error}</div>
-  if (!snap) return <div style={empty}>Loading the live state…</div>
+  if (!snap) return <div style={empty}>{t('Loading the live state…', 'Đang tải trạng thái trực tiếp…')}</div>
 
   return (
     <>
@@ -753,12 +755,12 @@ export default function ObservatoryPage() {
         }
       ` }} />
       <div style={{ marginBottom: 28 }}>
-        <div style={eyebrow}>Intelligence · Live</div>
+        <div style={eyebrow}>{t('Intelligence · Live', 'Trí tuệ · Trực tiếp')}</div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16, flexWrap: 'wrap' }}>
-          <h1 style={pageTitle}>The Observatory</h1>
+          <h1 style={pageTitle}>{t('The Observatory', 'Đài Quan Sát')}</h1>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-            <button onClick={collapseAll} style={collapseAllBtn} title="Collapse every panel">collapse all</button>
-            <button onClick={expandAll}   style={collapseAllBtn} title="Expand every panel">expand all</button>
+            <button onClick={collapseAll} style={collapseAllBtn} title={t('Collapse every panel', 'Thu gọn mọi bảng')}>{t('collapse all', 'thu gọn tất cả')}</button>
+            <button onClick={expandAll}   style={collapseAllBtn} title={t('Expand every panel', 'Mở rộng mọi bảng')}>{t('expand all', 'mở rộng tất cả')}</button>
             <TransportPill transport={transport} note={transportNote} demoGate={demoGate} />
             <RefreshButton
               busy={refreshing}
@@ -771,12 +773,7 @@ export default function ObservatoryPage() {
           </div>
         </div>
         <p style={lede}>
-          A live, glass-box view of the system's mathematics. Every figure on this page traces to a real row.
-          PS(t) is recomputed client-side from the stored inputs (λ, <code>last_validated</code>, validation
-          count, member visit cadence) by the same formulas as the <code>preference_scores</code> SQL view,
-          so the displayed number equals the system's number. The integer-day decay term only visibly steps
-          at the UTC date boundary — the trajectory curve shows where the score is heading; the dot marks
-          where it is now.
+          {t("A live, glass-box view of the system's mathematics. Every figure on this page traces to a real row. PS(t) is recomputed client-side from the stored inputs (λ, ", "Góc nhìn trực tiếp, minh bạch về toán học của hệ thống. Mọi con số trên trang này đều truy ngược về một dòng dữ liệu thật. PS(t) được tính lại phía trình duyệt từ các đầu vào đã lưu (λ, ")}<code>last_validated</code>{t(", validation count, member visit cadence) by the same formulas as the ", ", số lần xác thực, nhịp ghé thăm của hội viên) bằng chính các công thức như ")}<code>preference_scores</code>{t(" SQL view, so the displayed number equals the system's number. The integer-day decay term only visibly steps at the UTC date boundary — the trajectory curve shows where the score is heading; the dot marks where it is now.", " (SQL view), nên con số hiển thị bằng đúng con số của hệ thống. Số hạng suy giảm theo ngày nguyên chỉ nhảy bước rõ rệt tại ranh giới ngày UTC — đường quỹ đạo cho thấy điểm số đang hướng tới đâu; chấm điểm đánh dấu vị trí hiện tại.")}
         </p>
       </div>
 
@@ -787,14 +784,14 @@ export default function ObservatoryPage() {
         onToggle={() => togglePanel('panel1')}
         head={
           <div>
-            <div style={panelEyebrow}>Panel 1 · Live decomposition</div>
-            <div style={panelTitle}>PS(t) = S₀ · C · e<sup>−λt</sup> · F · R · M, capped at 5</div>
+            <div style={panelEyebrow}>{t('Panel 1 · Live decomposition', 'Bảng 1 · Phân rã trực tiếp')}</div>
+            <div style={panelTitle}>PS(t) = S₀ · C · e<sup>−λt</sup>{t(' · F · R · M, capped at 5', ' · F · R · M, giới hạn ở mức 5')}</div>
           </div>
         }
       >
         <div style={pickerRow}>
           <label style={pickerLabel}>
-            Member
+            {t('Member', 'Hội viên')}
             <select
               value={selectedMember || ''}
               onChange={e => {
@@ -806,13 +803,13 @@ export default function ObservatoryPage() {
             >
               {snap.members.map(m => (
                 <option key={m.member_no} value={m.member_no}>
-                  {m.full_name} · {m.active_pref_count} prefs
+                  {m.full_name} · {m.active_pref_count} {t('prefs', 'sở thích')}
                 </option>
               ))}
             </select>
           </label>
           <label style={pickerLabel}>
-            Preference
+            {t('Preference', 'Sở thích')}
             <select
               value={selectedPref || ''}
               onChange={e => setSelectedPref(e.target.value)}
@@ -831,7 +828,7 @@ export default function ObservatoryPage() {
         {focusPref ? (
           <Decomposition pref={focusPref} member={selectedMemberObj} />
         ) : (
-          <div style={empty}>This member has no active preferences.</div>
+          <div style={empty}>{t('This member has no active preferences.', 'Hội viên này chưa có sở thích đang hoạt động.')}</div>
         )}
       </CollapsiblePanel>
 
@@ -843,13 +840,13 @@ export default function ObservatoryPage() {
         head={
           <>
             <div>
-              <div style={panelEyebrow}>Panel 2 · Category posteriors</div>
-              <div style={panelTitle}>Designed prior vs learned posterior, 95% credible interval, distance to event floor</div>
+              <div style={panelEyebrow}>{t('Panel 2 · Category posteriors', 'Bảng 2 · Hậu nghiệm theo danh mục')}</div>
+              <div style={panelTitle}>{t('Designed prior vs learned posterior, 95% credible interval, distance to event floor', 'Tiên nghiệm thiết kế so với hậu nghiệm đã học, khoảng tin cậy 95%, khoảng cách đến ngưỡng sự kiện')}</div>
             </div>
             <div style={metaText}>
-              {snap.vitals.category_status_counts.active} active ·
-              {' '}{snap.vitals.category_status_counts.proposed} proposed ·
-              {' '}{snap.vitals.category_status_counts.insufficient_data + snap.vitals.category_status_counts.no_fit_yet} awaiting evidence
+              {snap.vitals.category_status_counts.active} {t('active', 'đang hoạt động')} ·
+              {' '}{snap.vitals.category_status_counts.proposed} {t('proposed', 'đề xuất')} ·
+              {' '}{snap.vitals.category_status_counts.insufficient_data + snap.vitals.category_status_counts.no_fit_yet} {t('awaiting evidence', 'đang chờ bằng chứng')}
             </div>
           </>
         }
@@ -865,27 +862,21 @@ export default function ObservatoryPage() {
         head={
           <>
             <div>
-              <div style={panelEyebrow}>Panel 3 · Loop-closure · baseline inheritance</div>
-              <div style={panelTitle}>What a new extraction would inherit right now</div>
+              <div style={panelEyebrow}>{t('Panel 3 · Loop-closure · baseline inheritance', 'Bảng 3 · Đóng vòng lặp · kế thừa mốc cơ sở')}</div>
+              <div style={panelTitle}>{t('What a new extraction would inherit right now', 'Một trích xuất mới sẽ kế thừa gì ngay lúc này')}</div>
             </div>
             {demoGate === 'open' && demoState !== 'idle' && (
               <span style={demoActivePill}>
-                {demoState === 'promoting' ? 'promoting…' :
-                  demoState === 'reverting' ? 'reverting…' :
-                    `DEMO ACTIVE · reverting in ${secondsLeft}s`}
+                {demoState === 'promoting' ? t('promoting…', 'đang thăng cấp…') :
+                  demoState === 'reverting' ? t('reverting…', 'đang hoàn tác…') :
+                    `DEMO ACTIVE · ${t('reverting in', 'hoàn tác sau')} ${secondsLeft}s`}
               </span>
             )}
           </>
         }
       >
         <p style={loopLede}>
-          For each canonical category, this is the λ a new preference inherits when the AI doesn't emit a
-          preference-specific signal. The source is <code>learned</code> when an active row exists in
-          <code> learned_decay_constants</code> for that category, else <code>designed</code> (the prior
-          centre from <code>lib/mis/decay-priors.ts</code>). This is what
-          <code> buildCategoryBaselines(getActiveLearnedLambda(sb))</code> returns — the same call the
-          intake route makes per request. Today every row reads <code>designed</code> because no proposal
-          has been promoted yet.
+          {t("For each canonical category, this is the λ a new preference inherits when the AI doesn't emit a preference-specific signal. The source is ", "Với mỗi danh mục chuẩn, đây là λ mà một sở thích mới kế thừa khi AI không phát ra tín hiệu riêng cho sở thích đó. Nguồn là ")}<code>learned</code>{t(" when an active row exists in ", " khi tồn tại một dòng đang hoạt động trong ")}<code> learned_decay_constants</code>{t(" for that category, else ", " cho danh mục đó, nếu không thì ")}<code>designed</code>{t(" (the prior centre from ", " (tâm tiên nghiệm từ ")}<code>lib/mis/decay-priors.ts</code>{t("). This is what ", "). Đây chính là giá trị mà ")}<code> buildCategoryBaselines(getActiveLearnedLambda(sb))</code>{t(" returns — the same call the intake route makes per request. Today every row reads ", " trả về — cùng lời gọi mà tuyến tiếp nhận thực hiện cho mỗi yêu cầu. Hôm nay mọi dòng đều đọc ")}<code>designed</code>{t(" because no proposal has been promoted yet.", " vì chưa có đề xuất nào được thăng cấp.")}
         </p>
 
         <BaselineTable categories={snap.categories} demoCategory={demoState === 'active' ? demoCategory : null} />
@@ -896,13 +887,12 @@ export default function ObservatoryPage() {
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 6 }}>
               <span style={demoEyebrow}>DEV FIXTURE</span>
               <span style={metaText}>
-                MIS_DEMO_ENABLED=1 detected. This promotes a real learned λ, shows what new extractions would
-                inherit, then reverts. Not a mock.
+                {t('MIS_DEMO_ENABLED=1 detected. This promotes a real learned λ, shows what new extractions would inherit, then reverts. Not a mock.', 'Đã phát hiện MIS_DEMO_ENABLED=1. Thao tác này thăng cấp một λ đã học thực, cho thấy các trích xuất mới sẽ kế thừa gì, rồi hoàn tác. Không phải bản giả lập.')}
               </span>
             </div>
             <div style={demoControls}>
               <label style={pickerLabel}>
-                Category
+                {t('Category', 'Danh mục')}
                 <select
                   value={demoCategory}
                   onChange={e => setDemoCategory(e.target.value)}
@@ -911,13 +901,13 @@ export default function ObservatoryPage() {
                 >
                   {snap.categories.map(c => (
                     <option key={c.category} value={c.category}>
-                      {c.category} · designed {c.designed_lambda.toFixed(3)}{c.active ? ' · already active' : ''}
+                      {c.category} · {t('designed', 'thiết kế')} {c.designed_lambda.toFixed(3)}{c.active ? ` · ${t('already active', 'đã hoạt động')}` : ''}
                     </option>
                   ))}
                 </select>
               </label>
               <label style={pickerLabel}>
-                Learned λ
+                {t('Learned λ', 'λ đã học')}
                 <select
                   value={demoLambda}
                   onChange={e => setDemoLambda(Number(e.target.value))}
@@ -925,19 +915,19 @@ export default function ObservatoryPage() {
                   style={pickerInput}
                 >
                   {[0.002, 0.005, 0.010, 0.020].map(v => (
-                    <option key={v} value={v}>{v.toFixed(3)} · half-life {Math.round(Math.LN2 / v)}d</option>
+                    <option key={v} value={v}>{v.toFixed(3)} · {t('half-life', 'chu kỳ bán rã')} {Math.round(Math.LN2 / v)}d</option>
                   ))}
                 </select>
               </label>
               <div style={{ display: 'flex', alignItems: 'end', gap: 8 }}>
                 {demoState === 'idle' && (
                   <button onClick={promoteDemo} style={demoBtn}>
-                    Demonstrate the loop
+                    {t('Demonstrate the loop', 'Trình diễn vòng lặp')}
                   </button>
                 )}
                 {demoState === 'active' && (
                   <button onClick={revertDemo} style={demoBtnDanger}>
-                    Revert now
+                    {t('Revert now', 'Hoàn tác ngay')}
                   </button>
                 )}
                 {(demoState === 'promoting' || demoState === 'reverting') && (
@@ -951,8 +941,7 @@ export default function ObservatoryPage() {
           <div style={demoBlockClosed}>
             <span style={demoEyebrow}>DEV FIXTURE</span>
             <span style={metaText}>
-              {' '}Demo affordance disabled (<code>MIS_DEMO_ENABLED</code> not set to <code>1</code>).
-              Baselines above are read-only; this guards production scoring from accidental promotion.
+              {' '}{t('Demo affordance disabled (', 'Tính năng demo đã tắt (')}<code>MIS_DEMO_ENABLED</code>{t(' not set to ', ' chưa được đặt bằng ')}<code>1</code>{t('). Baselines above are read-only; this guards production scoring from accidental promotion.', '). Các mốc cơ sở ở trên chỉ để đọc; điều này bảo vệ việc chấm điểm sản xuất khỏi bị thăng cấp nhầm.')}
             </span>
           </div>
         ) : null}
@@ -966,13 +955,13 @@ export default function ObservatoryPage() {
         head={
           <>
             <div>
-              <div style={panelEyebrow}>Panel 4 · Live event stream</div>
-              <div style={panelTitle}>Scoring events as they happen, with the mathematical consequence of each</div>
+              <div style={panelEyebrow}>{t('Panel 4 · Live event stream', 'Bảng 4 · Luồng sự kiện trực tiếp')}</div>
+              <div style={panelTitle}>{t('Scoring events as they happen, with the mathematical consequence of each', 'Các sự kiện chấm điểm ngay khi diễn ra, kèm hệ quả toán học của từng sự kiện')}</div>
             </div>
             <div style={metaText}>
               {events.length === 0
-                ? `watching… ${transport === 'realtime' ? 'Realtime subscribed' : transport === 'polling' ? 'polling every 15s' : 'probing transport'}`
-                : `${events.length} event${events.length === 1 ? '' : 's'} · loop-closure: ${events.filter(e => e.loop_closure).length}`}
+                ? `${t('watching…', 'đang theo dõi…')} ${transport === 'realtime' ? t('Realtime subscribed', 'Realtime đã kết nối') : transport === 'polling' ? t('polling every 15s', 'thăm dò mỗi 15 giây') : t('probing transport', 'đang dò kênh truyền')}`
+                : `${events.length} ${t('event', 'sự kiện')}${events.length === 1 ? '' : t('s', '')} · ${t('loop-closure:', 'đóng vòng lặp:')} ${events.filter(e => e.loop_closure).length}`}
             </div>
           </>
         }
@@ -987,8 +976,8 @@ export default function ObservatoryPage() {
         onToggle={() => togglePanel('panel5')}
         head={
           <div>
-            <div style={panelEyebrow}>Panel 5 · Aggregate vitals</div>
-            <div style={panelTitle}>What the system holds right now</div>
+            <div style={panelEyebrow}>{t('Panel 5 · Aggregate vitals', 'Bảng 5 · Chỉ số tổng hợp')}</div>
+            <div style={panelTitle}>{t('What the system holds right now', 'Những gì hệ thống đang nắm giữ ngay lúc này')}</div>
           </div>
         }
       >
@@ -1003,19 +992,17 @@ export default function ObservatoryPage() {
         head={
           <>
             <div>
-              <div style={panelEyebrow}>Panel 6 · Demo · Live extraction</div>
-              <div style={panelTitle}>Paste a transcript, watch the system extract preferences in real time</div>
+              <div style={panelEyebrow}>{t('Panel 6 · Demo · Live extraction', 'Bảng 6 · Demo · Trích xuất trực tiếp')}</div>
+              <div style={panelTitle}>{t('Paste a transcript, watch the system extract preferences in real time', 'Dán một bản ghi, xem hệ thống trích xuất sở thích theo thời gian thực')}</div>
             </div>
             {demoGate === 'open' && demoPhase !== 'idle' && demoPhase !== 'done' && (
-              <span style={demoActivePill}>{demoPhase === 'streaming' ? 'extracting…' : demoPhase === 'reconciling' ? 'reconciling…' : 'error'}</span>
+              <span style={demoActivePill}>{demoPhase === 'streaming' ? t('extracting…', 'đang trích xuất…') : demoPhase === 'reconciling' ? t('reconciling…', 'đang đối chiếu…') : t('error', 'lỗi')}</span>
             )}
           </>
         }
       >
         <p style={loopLede}>
-          Demo runs the same engine as the live intake — same <code>buildSystemPrompt</code>, same
-          <code> reconcile</code> from <code>lib/mis/extraction-decay.ts</code>, same Claude model, same SSE
-          streaming. The only difference: there is no save path. Nothing reaches the database. <strong style={{ color: '#E5D4C2' }}>Demo runs on sample data. Nothing is saved.</strong>
+          {t('Demo runs the same engine as the live intake — same ', 'Demo chạy cùng bộ máy như tuyến tiếp nhận trực tiếp — cùng ')}<code>buildSystemPrompt</code>{t(', same ', ', cùng ')}<code> reconcile</code>{t(' from ', ' từ ')}<code>lib/mis/extraction-decay.ts</code>{t(', same Claude model, same SSE streaming. The only difference: there is no save path. Nothing reaches the database. ', ', cùng mô hình Claude, cùng luồng SSE. Khác biệt duy nhất: không có đường lưu. Không gì chạm tới cơ sở dữ liệu. ')}<strong style={{ color: '#E5D4C2' }}>{t('Demo runs on sample data. Nothing is saved.', 'Demo chạy trên dữ liệu mẫu. Không có gì được lưu.')}</strong>
         </p>
 
         {demoGate === 'open' ? (
@@ -1076,9 +1063,7 @@ export default function ObservatoryPage() {
           <div style={demoBlockClosed}>
             <span style={demoEyebrow}>DEMO SURFACE</span>
             <span style={metaText}>
-              {' '}Demo affordance disabled (<code>MIS_DEMO_ENABLED</code> not set to <code>1</code>).
-              When enabled, this panel runs the live extraction pipeline on a bundled fictional
-              transcript and streams the result here. No database write of any kind.
+              {' '}{t('Demo affordance disabled (', 'Tính năng demo đã tắt (')}<code>MIS_DEMO_ENABLED</code>{t(' not set to ', ' chưa được đặt bằng ')}<code>1</code>{t('). When enabled, this panel runs the live extraction pipeline on a bundled fictional transcript and streams the result here. No database write of any kind.', '). Khi bật, bảng này chạy quy trình trích xuất trực tiếp trên một bản ghi hư cấu đi kèm và truyền kết quả về đây. Không ghi cơ sở dữ liệu dưới bất kỳ hình thức nào.')}
             </span>
           </div>
         )}
@@ -1092,11 +1077,11 @@ export default function ObservatoryPage() {
         head={
           <>
             <div>
-              <div style={panelEyebrow}>Breadth · all {snap.preferences.length} active preferences</div>
-              <div style={panelTitle}>Current PS(t) across the live profile</div>
+              <div style={panelEyebrow}>{t('Breadth · all', 'Toàn diện · tất cả')} {snap.preferences.length} {t('active preferences', 'sở thích đang hoạt động')}</div>
+              <div style={panelTitle}>{t('Current PS(t) across the live profile', 'PS(t) hiện tại trên toàn hồ sơ trực tiếp')}</div>
             </div>
             <div style={metaText}>
-              snapshot: {new Date(snap.timestamp).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              {t('snapshot:', 'ảnh chụp:')} {new Date(snap.timestamp).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
             </div>
           </>
         }

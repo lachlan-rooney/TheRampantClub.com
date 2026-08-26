@@ -3,6 +3,7 @@
 import { use, useCallback, useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { useLang } from '@/lib/admin-lang'
 
 // Admin / Floor / Harmony Log / [id]
 //
@@ -51,6 +52,7 @@ const KIND_META: Record<string, { label: string; icon: string; color: string }> 
 }
 
 export default function HarmonyLogDetail({ params }: { params: Promise<{ id: string }> }) {
+  const { t } = useLang()
   const { id } = use(params)
   const searchParams = useSearchParams()
   const autoRun = searchParams?.get('run') === '1'
@@ -85,7 +87,7 @@ export default function HarmonyLogDetail({ params }: { params: Promise<{ id: str
   const startExtraction = useCallback(async () => {
     if (streaming) return
     setStreaming(true)
-    setStreamProgress('Starting…')
+    setStreamProgress(t('Starting…', 'Đang bắt đầu…'))
     setStreamPartial('')
     setError(null)
     // Clear any previously-pending extractions client-side so the stream
@@ -99,7 +101,7 @@ export default function HarmonyLogDetail({ params }: { params: Promise<{ id: str
       })
       if (!r.ok || !r.body) {
         const j = await r.json().catch(() => ({}))
-        throw new Error(j.error || `extract failed: ${r.status}`)
+        throw new Error(j.error || `${t('extract failed', 'trích xuất thất bại')}: ${r.status}`)
       }
       const reader = r.body.getReader()
       const decoder = new TextDecoder()
@@ -122,19 +124,19 @@ export default function HarmonyLogDetail({ params }: { params: Promise<{ id: str
           if (!data) { split = buf.indexOf('\n\n'); continue }
           try {
             const obj = JSON.parse(data)
-            if (event === 'status')         setStreamProgress(`Reading: ${obj.shift_label} of ${obj.shift_date}…`)
-            else if (event === 'thinking')  setStreamProgress(prev => prev.startsWith('Reasoning') ? prev : 'Reasoning…')
+            if (event === 'status')         setStreamProgress(`${t('Reading', 'Đang đọc')}: ${obj.shift_label} ${t('of', 'của')} ${obj.shift_date}…`)
+            else if (event === 'thinking')  setStreamProgress(prev => prev.startsWith(t('Reasoning…', 'Đang suy luận…')) ? prev : t('Reasoning…', 'Đang suy luận…'))
             else if (event === 'partial')   setStreamPartial(p => (p + (obj.text || '')).slice(-400))
             else if (event === 'extraction') {
               const x = obj.extraction as Extraction
               if (x && x.id) {
                 setExtractions(prev => [...prev, x])
                 setSelected(prev => { const n = new Set(prev); n.add(x.id); return n })
-                setStreamProgress(`Extracted ${obj.index} so far…`)
+                setStreamProgress(`${t('Extracted', 'Đã trích xuất')} ${obj.index} ${t('so far…', 'cho đến nay…')}`)
               }
             }
-            else if (event === 'done')      setStreamProgress(`Done — ${obj.count} extractions.`)
-            else if (event === 'error')     setError(obj.message || 'extraction error')
+            else if (event === 'done')      setStreamProgress(`${t('Done —', 'Xong —')} ${obj.count} ${t('extractions.', 'trích xuất.')}`)
+            else if (event === 'error')     setError(obj.message || t('extraction error', 'lỗi trích xuất'))
           } catch { /* ignore malformed frame */ }
           split = buf.indexOf('\n\n')
         }
@@ -174,7 +176,7 @@ export default function HarmonyLogDetail({ params }: { params: Promise<{ id: str
         body: JSON.stringify({ extraction_ids: Array.from(selected) }),
       })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'apply failed')
+      if (!r.ok) throw new Error(j.error || t('apply failed', 'áp dụng thất bại'))
       load()
       setSelected(new Set())
     } catch (e) {
@@ -184,7 +186,7 @@ export default function HarmonyLogDetail({ params }: { params: Promise<{ id: str
     }
   }, [id, selected, load])
 
-  if (loading || !log) return <div style={emptyText}>Loading…</div>
+  if (loading || !log) return <div style={emptyText}>{t('Loading…', 'Đang tải…')}</div>
 
   const pendingExtractions = extractions.filter(x => x.status === 'pending')
   const settledExtractions = extractions.filter(x => x.status !== 'pending')
@@ -193,21 +195,21 @@ export default function HarmonyLogDetail({ params }: { params: Promise<{ id: str
 
   return (
     <>
-      <Link href="/admin/harmony" style={backLink}>← Harmony Log</Link>
+      <Link href="/admin/harmony" style={backLink}>{t('← Harmony Log', '← Nhật ký Harmony')}</Link>
 
       {/* Hero */}
       <div style={hero}>
         <div>
-          <div style={eyebrow}>Floor · Harmony Log</div>
+          <div style={eyebrow}>{t('Floor · Harmony Log', 'Sảnh · Nhật ký Harmony')}</div>
           <h1 style={pageTitle}>
             {datePretty}
             <span style={{ marginLeft: 14, fontSize: 18, color: '#D4B85A', textTransform: 'capitalize', letterSpacing: '0.06em' }}>· {log.shift_label}</span>
           </h1>
           <div style={metaStrip}>
-            {log.attendee_count != null && <span style={metaPill}>{log.attendee_count} in</span>}
+            {log.attendee_count != null && <span style={metaPill}>{log.attendee_count} {t('in', 'có mặt')}</span>}
             {log.weather && <span style={metaPill}>{log.weather}</span>}
             {log.room_state && <span style={metaPill}>{log.room_state}</span>}
-            <span style={metaPill}>{log.submitted_by || 'unknown'}</span>
+            <span style={metaPill}>{log.submitted_by || t('unknown', 'không rõ')}</span>
             <span style={statusPill(log.status)}>{log.status}</span>
           </div>
         </div>
@@ -218,12 +220,12 @@ export default function HarmonyLogDetail({ params }: { params: Promise<{ id: str
       <div style={twoCol}>
         {/* LEFT — narrative + actions */}
         <div>
-          <div style={panelTitle}>The night</div>
+          <div style={panelTitle}>{t('The night', 'Đêm nay')}</div>
           <div style={narrativeBox}>{log.narrative}</div>
 
           <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
             <button onClick={startExtraction} disabled={streaming} style={{ ...btnPrimary, opacity: streaming ? 0.6 : 1 }}>
-              {streaming ? '◌ Processing…' : extractions.length === 0 ? '◆ Process with Claude' : '↻ Re-process'}
+              {streaming ? t('◌ Processing…', '◌ Đang xử lý…') : extractions.length === 0 ? t('◆ Process with Claude', '◆ Xử lý bằng Claude') : t('↻ Re-process', '↻ Xử lý lại')}
             </button>
           </div>
 
@@ -241,19 +243,19 @@ export default function HarmonyLogDetail({ params }: { params: Promise<{ id: str
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
             <div style={panelTitle}>
-              Proposed updates
+              {t('Proposed updates', 'Cập nhật đề xuất')}
               {pendingExtractions.length > 0 && <span style={panelBadge}>{pendingExtractions.length}</span>}
             </div>
             {selected.size > 0 && (
               <button onClick={apply} disabled={applying} style={btnAccent}>
-                {applying ? 'Applying…' : `Apply ${selected.size} →`}
+                {applying ? t('Applying…', 'Đang áp dụng…') : `${t('Apply', 'Áp dụng')} ${selected.size} →`}
               </button>
             )}
           </div>
 
           {pendingExtractions.length === 0 && settledExtractions.length === 0 && (
             <div style={emptyHint}>
-              {streaming ? 'Streaming…' : 'Hit Process to extract structured updates from the narrative.'}
+              {streaming ? t('Streaming…', 'Đang truyền…') : t('Hit Process to extract structured updates from the narrative.', 'Nhấn Xử lý để trích xuất các cập nhật có cấu trúc từ tường thuật.')}
             </div>
           )}
 
@@ -279,7 +281,7 @@ export default function HarmonyLogDetail({ params }: { params: Promise<{ id: str
           {/* Settled (applied / rejected / failed) */}
           {settledExtractions.length > 0 && (
             <div style={{ marginTop: 18 }}>
-              <div style={settledLabel}>Resolved · {settledExtractions.length}</div>
+              <div style={settledLabel}>{t('Resolved', 'Đã xử lý')} · {settledExtractions.length}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {settledExtractions.map(x => (
                   <SettledRow key={x.id} x={x} />

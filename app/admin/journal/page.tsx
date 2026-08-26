@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { ConfirmModal, useToast } from '@/components/admin/dialogs'
+import { useLang } from '@/lib/admin-lang'
 
 interface Entry {
   id: string
@@ -36,6 +37,7 @@ const btnPrimary = { ...btn, background: '#5E6650' }
 const btnDanger  = { ...btn, background: 'rgba(180,70,70,0.2)' }
 
 export default function AdminJournal() {
+  const { t } = useLang()
   const [entries, setEntries] = useState<Entry[]>([])
   const [editing, setEditing] = useState<Entry | null>(null)
   const [form, setForm] = useState({
@@ -74,7 +76,7 @@ export default function AdminJournal() {
 
   const save = async () => {
     if (!form.title.trim() || !form.body.trim()) {
-      showToast('Title and body are required.', 'error'); return
+      showToast(t('Title and body are required.', 'Tiêu đề và nội dung là bắt buộc.'), 'error'); return
     }
     setBusy(true)
     const payload = {
@@ -108,7 +110,7 @@ export default function AdminJournal() {
     setConfirmBusy(true)
     try {
       const { error } = await supabase.from('journal_entries').delete().eq('id', confirmEntry.id)
-      if (error) { showToast(`Delete failed: ${error.message}`, 'error'); return }
+      if (error) { showToast(`${t('Delete failed', 'Xóa thất bại')}: ${error.message}`, 'error'); return }
       setConfirmEntry(null)
       load()
     } finally {
@@ -120,9 +122,9 @@ export default function AdminJournal() {
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 24, fontWeight: 500, color: '#E5D4C2', letterSpacing: '0.04em' }}>
-          The Cellarmaster's Journal
+          {t("The Cellarmaster's Journal", 'Nhật ký của The Cellarmaster')}
         </h1>
-        {!showForm && <button onClick={() => setShowForm(true)} style={btnPrimary}>+ New Entry</button>}
+        {!showForm && <button onClick={() => setShowForm(true)} style={btnPrimary}>{t('+ New Entry', '+ Bài viết mới')}</button>}
       </div>
 
       {showForm && (
@@ -134,41 +136,41 @@ export default function AdminJournal() {
           display: 'grid', gap: 14,
         }}>
           <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2' }}>
-            {editing ? 'Edit entry' : 'New entry'}
+            {editing ? t('Edit entry', 'Sửa bài viết') : t('New entry', 'Bài viết mới')}
           </div>
           <div>
-            <label style={labelStyle}>Title</label>
+            <label style={labelStyle}>{t('Title', 'Tiêu đề')}</label>
             <input style={inputStyle} value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-              placeholder="On the matter of Mizunara"
+              placeholder={t('On the matter of Mizunara', 'Về chủ đề gỗ sồi Mizunara')}
             />
           </div>
           <div>
-            <label style={labelStyle}>Excerpt (optional, shown on the index)</label>
+            <label style={labelStyle}>{t('Excerpt (optional, shown on the index)', 'Đoạn trích (không bắt buộc, hiển thị ở trang danh sách)')}</label>
             <input style={inputStyle} value={form.excerpt}
               onChange={e => setForm(f => ({ ...f, excerpt: e.target.value }))}
-              placeholder="A few words on Japan's most distinctive cask."
+              placeholder={t("A few words on Japan's most distinctive cask.", 'Đôi lời về loại thùng gỗ đặc trưng nhất của Nhật Bản.')}
             />
           </div>
           <div>
-            <label style={labelStyle}>Body (Markdown-ish — line breaks render as paragraphs)</label>
+            <label style={labelStyle}>{t('Body (Markdown-ish — line breaks render as paragraphs)', 'Nội dung (kiểu Markdown — ngắt dòng sẽ thành đoạn văn)')}</label>
             <textarea
               rows={12}
               style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical', minHeight: 220 }}
               value={form.body}
               onChange={e => setForm(f => ({ ...f, body: e.target.value }))}
-              placeholder="The cask comes from Quercus mizuno, a slow-growing Japanese oak…"
+              placeholder={t('The cask comes from Quercus mizuno, a slow-growing Japanese oak…', 'Loại thùng này làm từ Quercus mizuno, một giống sồi Nhật Bản sinh trưởng chậm…')}
             />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <div>
-              <label style={labelStyle}>Author</label>
+              <label style={labelStyle}>{t('Author', 'Tác giả')}</label>
               <input style={inputStyle} value={form.author_name}
                 onChange={e => setForm(f => ({ ...f, author_name: e.target.value }))}
               />
             </div>
             <div>
-              <label style={labelStyle}>Cover image URL (optional)</label>
+              <label style={labelStyle}>{t('Cover image URL (optional)', 'URL ảnh bìa (không bắt buộc)')}</label>
               <input style={inputStyle} value={form.cover_image_url}
                 onChange={e => setForm(f => ({ ...f, cover_image_url: e.target.value }))}
                 placeholder="/images/…"
@@ -179,13 +181,13 @@ export default function AdminJournal() {
             <input type="checkbox" checked={form.is_published}
               onChange={e => setForm(f => ({ ...f, is_published: e.target.checked }))}
             />
-            Published — visible to members
+            {t('Published — visible to members', 'Đã đăng — hội viên có thể xem')}
           </label>
           <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
             <button onClick={save} disabled={busy} style={btnPrimary}>
-              {busy ? 'Saving…' : editing ? 'Update' : 'Publish'}
+              {busy ? t('Saving…', 'Đang lưu…') : editing ? t('Update', 'Cập nhật') : t('Publish', 'Đăng')}
             </button>
-            <button onClick={reset} style={btn}>Cancel</button>
+            <button onClick={reset} style={btn}>{t('Cancel', 'Hủy')}</button>
           </div>
         </div>
       )}
@@ -193,7 +195,7 @@ export default function AdminJournal() {
       <div>
         {entries.length === 0 && (
           <p style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#B2AA98' }}>
-            No entries yet. Write the first one.
+            {t('No entries yet. Write the first one.', 'Chưa có bài viết nào. Hãy viết bài đầu tiên.')}
           </p>
         )}
         {entries.map(e => (
@@ -208,7 +210,7 @@ export default function AdminJournal() {
                 color: '#E5D4C2', borderRadius: 4, padding: '2px 8px', marginRight: 10,
                 letterSpacing: '0.06em', textTransform: 'uppercase',
               }}>
-                {e.is_published ? 'Live' : 'Draft'}
+                {e.is_published ? t('Live', 'Đang hiển thị') : t('Draft', 'Bản nháp')}
               </span>
               <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 14, color: '#E5D4C2' }}>{e.title}</span>
               <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', opacity: 0.6, marginTop: 4 }}>
@@ -217,10 +219,10 @@ export default function AdminJournal() {
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => togglePublish(e)} style={btn}>
-                {e.is_published ? 'Unpublish' : 'Publish'}
+                {e.is_published ? t('Unpublish', 'Gỡ đăng') : t('Publish', 'Đăng')}
               </button>
-              <button onClick={() => startEdit(e)} style={btn}>Edit</button>
-              <button onClick={() => requestRemove(e)} style={btnDanger}>Delete</button>
+              <button onClick={() => startEdit(e)} style={btn}>{t('Edit', 'Sửa')}</button>
+              <button onClick={() => requestRemove(e)} style={btnDanger}>{t('Delete', 'Xóa')}</button>
             </div>
           </div>
         ))}
@@ -228,12 +230,12 @@ export default function AdminJournal() {
 
       <ConfirmModal
         open={!!confirmEntry}
-        eyebrow="⚠ PERMANENT"
-        title="Delete journal entry?"
+        eyebrow={t('⚠ PERMANENT', '⚠ VĨNH VIỄN')}
+        title={t('Delete journal entry?', 'Xóa bài viết nhật ký?')}
         subject={confirmEntry?.title}
-        body="Removes the entry permanently. Members can no longer read it, and any links to it will break. Cannot be undone."
-        confirmLabel="Delete entry"
-        busyLabel="Deleting…"
+        body={t('Removes the entry permanently. Members can no longer read it, and any links to it will break. Cannot be undone.', 'Xóa vĩnh viễn bài viết này. Hội viên sẽ không còn đọc được, và mọi liên kết tới bài sẽ hỏng. Không thể hoàn tác.')}
+        confirmLabel={t('Delete entry', 'Xóa bài viết')}
+        busyLabel={t('Deleting…', 'Đang xóa…')}
         busy={confirmBusy}
         onCancel={closeConfirm}
         onConfirm={runRemove}

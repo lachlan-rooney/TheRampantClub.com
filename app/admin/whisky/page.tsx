@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { useToast } from '@/components/admin/dialogs'
 import WhiskyFlavourPanel from '@/components/whisky/WhiskyFlavourPanel'
+import { useLang } from '@/lib/admin-lang'
 import type { Whisky } from '@/lib/types'
 
 // Admin / Whisky Library
@@ -30,6 +31,7 @@ interface FillHistoryRow {
 }
 
 export default function AdminWhisky() {
+  const { t } = useLang()
   const [whiskies, setWhiskies] = useState<Whisky[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Whisky | null>(null)
@@ -126,7 +128,7 @@ export default function AdminWhisky() {
 
   const finishStocktake = async () => {
     if (stocktakeReviewed.size === 0) {
-      showToast('No whiskies reviewed yet — mark at least one before finishing.', 'warn')
+      showToast(t('No whiskies reviewed yet — mark at least one before finishing.', 'Chưa kiểm kê chai nào — hãy đánh dấu ít nhất một chai trước khi kết thúc.'), 'warn')
       return
     }
     // Detailed report CSV.
@@ -184,14 +186,14 @@ export default function AdminWhisky() {
         }),
       })
       if (resp.ok) {
-        showToast('Stocktake session saved.', 'info')
+        showToast(t('Stocktake session saved.', 'Đã lưu phiên kiểm kê.'), 'info')
         loadStocktakeHistory()
       } else {
         const j = await resp.json().catch(() => ({}))
-        showToast(`Stocktake CSV downloaded; session save failed: ${j.error || resp.status}`, 'warn')
+        showToast(`${t('Stocktake CSV downloaded; session save failed:', 'Đã tải CSV kiểm kê; lưu phiên thất bại:')} ${j.error || resp.status}`, 'warn')
       }
     } catch (e) {
-      showToast(`Stocktake CSV downloaded; session save failed: ${(e as Error).message}`, 'warn')
+      showToast(`${t('Stocktake CSV downloaded; session save failed:', 'Đã tải CSV kiểm kê; lưu phiên thất bại:')} ${(e as Error).message}`, 'warn')
     }
 
     // Reset state.
@@ -325,7 +327,7 @@ export default function AdminWhisky() {
     try {
       const ids = [...selectedIds]
       const { error } = await supabase.from('whiskies').update(patch).in('id', ids)
-      if (error) { showToast(`Bulk update failed: ${error.message}`, 'warn'); return }
+      if (error) { showToast(`${t('Bulk update failed:', 'Cập nhật hàng loạt thất bại:')} ${error.message}`, 'warn'); return }
       // Optimistic local merge so the UI reflects it immediately.
       setWhiskies(prev => prev.map(w => selectedIds.has(w.id) ? { ...w, ...patch } as Whisky : w))
       clearSelection()
@@ -359,7 +361,7 @@ export default function AdminWhisky() {
     setDeleting(true)
     try {
       const { error } = await supabase.from('whiskies').delete().eq('id', deleteTarget.id)
-      if (error) { showToast(`Delete failed: ${error.message}`, 'warn'); return }
+      if (error) { showToast(`${t('Delete failed:', 'Xóa thất bại:')} ${error.message}`, 'warn'); return }
       setDeleteTarget(null)
       setDeleteConfirmText('')
       load()
@@ -387,7 +389,7 @@ export default function AdminWhisky() {
         body: JSON.stringify({ fill_pct: draftFill, note: draftNote || undefined }),
       })
       const j = await r.json()
-      if (!r.ok) { showToast(j.error || 'Failed to save fill', 'warn'); return }
+      if (!r.ok) { showToast(j.error || t('Failed to save fill', 'Lưu mức rót thất bại'), 'warn'); return }
       // Optimistic merge — the API echo gives us the canonical timestamp
       // and admin email so the audit attribution updates immediately.
       setWhiskies(prev => prev.map(x => x.id === w.id ? {
@@ -434,7 +436,7 @@ export default function AdminWhisky() {
       } : x))
     }
     const { error } = await supabase.from('whiskies').update(payload).eq('id', id)
-    if (error) { showToast(`Save failed: ${error.message}`, 'warn'); load() }
+    if (error) { showToast(`${t('Save failed:', 'Lưu thất bại:')} ${error.message}`, 'warn'); load() }
   }
 
   const loadHistory = useCallback(async () => {
@@ -561,44 +563,44 @@ export default function AdminWhisky() {
         }
       ` }} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h1 style={pageTitle}>Whisky Library</h1>
+        <h1 style={pageTitle}>{t('Whisky Library', 'Thư viện Whisky')}</h1>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <a href="/admin/whisky/flavour-review" style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#D4B85A', textDecoration: 'none', border: '1px solid rgba(212,184,90,0.35)', borderRadius: 6, padding: '7px 12px' }}>Flavour review →</a>
+          <a href="/admin/whisky/flavour-review" style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#D4B85A', textDecoration: 'none', border: '1px solid rgba(212,184,90,0.35)', borderRadius: 6, padding: '7px 12px' }}>{t('Flavour review →', 'Duyệt hương vị →')}</a>
           {!showForm && (
-            <button onClick={() => { resetForm(); setShowForm(true) }} style={btnStyle}>+ New Whisky</button>
+            <button onClick={() => { resetForm(); setShowForm(true) }} style={btnStyle}>{t('+ New Whisky', '+ Whisky mới')}</button>
           )}
         </div>
       </div>
 
       <div style={subline}>
-        Catalogue + open-bottle fill tracking. Click a fill cell to update — every change is logged with your name and time, and the trend graph reads the same audit trail.
+        {t('Catalogue + open-bottle fill tracking. Click a fill cell to update — every change is logged with your name and time, and the trend graph reads the same audit trail.', 'Danh mục + theo dõi mức rót của chai đã mở. Nhấn vào ô mức rót để cập nhật — mỗi thay đổi đều được ghi lại kèm tên và thời gian của bạn, và biểu đồ xu hướng đọc từ cùng nhật ký này.')}
       </div>
 
       {/* ── Stat strip ─────────────────────────────────────────────────── */}
       <div style={statStrip}>
-        <Stat label="Whiskies"        value={whiskies.length} />
-        <Stat label="In stock"        value={inStockCount} color="#7AB07A" />
-        <Stat label="Low fill (≤25%)" value={lowCount} color={lowCount > 0 ? '#C27070' : '#7E7864'} />
-        <Stat label="No tasting notes" value={missingNotesCount} color={missingNotesCount > 0 ? '#D4B85A' : '#7E7864'} />
+        <Stat label={t('Whiskies', 'Số whisky')}        value={whiskies.length} />
+        <Stat label={t('In stock', 'Còn hàng')}        value={inStockCount} color="#7AB07A" />
+        <Stat label={t('Low fill (≤25%)', 'Sắp hết (≤25%)')} value={lowCount} color={lowCount > 0 ? '#C27070' : '#7E7864'} />
+        <Stat label={t('No tasting notes', 'Chưa có ghi chú nếm')} value={missingNotesCount} color={missingNotesCount > 0 ? '#D4B85A' : '#7E7864'} />
         {!stocktakeMode && !bulkMode && (
-          <button onClick={startStocktake} style={stocktakeStartBtn} title="Begin a stocktake session — reviewed whiskies sink to the bottom; finish to log a full report.">
-            ☑ Start stocktake
+          <button onClick={startStocktake} style={stocktakeStartBtn} title={t('Begin a stocktake session — reviewed whiskies sink to the bottom; finish to log a full report.', 'Bắt đầu phiên kiểm kê — các chai đã kiểm sẽ dồn xuống cuối; kết thúc để ghi lại báo cáo đầy đủ.')}>
+            {t('☑ Start stocktake', '☑ Bắt đầu kiểm kê')}
           </button>
         )}
         {!stocktakeMode && (
           <button
             onClick={bulkMode ? exitBulkMode : enterBulkMode}
             style={{ ...stocktakeStartBtn, color: bulkMode ? '#E58F4A' : '#7AB07A', borderColor: bulkMode ? 'rgba(229,143,74,0.45)' : 'rgba(122,176,122,0.45)' }}
-            title="Multi-select rows and apply changes (in-stock, committee's pick, region) in one go."
+            title={t("Multi-select rows and apply changes (in-stock, committee's pick, region) in one go.", 'Chọn nhiều dòng và áp dụng thay đổi (còn hàng, lựa chọn của hội đồng, vùng) cùng lúc.')}
           >
-            {bulkMode ? '✕ Exit bulk' : '☐ Bulk edit'}
+            {bulkMode ? t('✕ Exit bulk', '✕ Thoát hàng loạt') : t('☐ Bulk edit', '☐ Sửa hàng loạt')}
           </button>
         )}
-        <button onClick={exportCsv} style={exportBtn} title="Export the currently-filtered list as CSV">
-          ⤓ Export CSV
+        <button onClick={exportCsv} style={exportBtn} title={t('Export the currently-filtered list as CSV', 'Xuất danh sách đang lọc ra CSV')}>
+          {t('⤓ Export CSV', '⤓ Xuất CSV')}
         </button>
         <button onClick={toggleTrend} style={trendBtn}>
-          {trendOpen ? '↓' : '↑'} Inventory trend
+          {trendOpen ? '↓' : '↑'} {t('Inventory trend', 'Xu hướng tồn kho')}
         </button>
       </div>
 
@@ -606,23 +608,23 @@ export default function AdminWhisky() {
       {stocktakeMode && (
         <div style={stocktakeBanner}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-            <span style={stocktakeChip}>STOCKTAKE LIVE</span>
+            <span style={stocktakeChip}>{t('STOCKTAKE LIVE', 'ĐANG KIỂM KÊ')}</span>
             <span style={{ color: '#E5D4C2', fontFamily: "'Google Sans Code', monospace", fontSize: 12 }}>
               <strong style={{ color: '#7AB07A' }}>{stocktakeReviewed.size}</strong>
-              <span style={{ color: '#7E7864' }}> / {whiskies.length} reviewed</span>
+              <span style={{ color: '#7E7864' }}> / {whiskies.length} {t('reviewed', 'đã kiểm')}</span>
               {stocktakeStartedAt && (
-                <span style={{ color: '#7E7864', marginLeft: 12 }}>· started {timeAgo(stocktakeStartedAt)}</span>
+                <span style={{ color: '#7E7864', marginLeft: 12 }}>· {t('started', 'bắt đầu')} {timeAgo(stocktakeStartedAt)}</span>
               )}
             </span>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-              <button onClick={cancelStocktake} style={stocktakeCancelBtn}>Cancel</button>
+              <button onClick={cancelStocktake} style={stocktakeCancelBtn}>{t('Cancel', 'Hủy')}</button>
               <button onClick={finishStocktake} style={stocktakeFinishBtn} disabled={stocktakeReviewed.size === 0}>
-                Finish &amp; download report
+                {t('Finish & download report', 'Kết thúc & tải báo cáo')}
               </button>
             </div>
           </div>
           <div style={{ marginTop: 6, fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', letterSpacing: '0.04em' }}>
-            Update a fill or click <strong>✓ unchanged</strong> on each whisky as you check it. Reviewed rows sink to the bottom of the list (dimmed) so you can see what's left.
+            {t('Update a fill or click', 'Cập nhật mức rót hoặc nhấn')} <strong>{t('✓ unchanged', '✓ không đổi')}</strong> {t("on each whisky as you check it. Reviewed rows sink to the bottom of the list (dimmed) so you can see what's left.", 'trên mỗi chai khi bạn kiểm tra. Các dòng đã kiểm sẽ dồn xuống cuối danh sách (mờ đi) để bạn thấy còn lại những gì.')}
           </div>
         </div>
       )}
@@ -631,11 +633,11 @@ export default function AdminWhisky() {
       {trendOpen && (
         <div style={trendBlock}>
           {loadingHistory ? (
-            <div style={emptyText}>Loading history…</div>
+            <div style={emptyText}>{t('Loading history…', 'Đang tải lịch sử…')}</div>
           ) : historyError ? (
             <div style={{ ...emptyText, color: '#C27070' }}>{historyError}</div>
           ) : history.length === 0 ? (
-            <div style={emptyText}>No fill updates logged yet. The graph will populate as staff record weekly fills.</div>
+            <div style={emptyText}>{t('No fill updates logged yet. The graph will populate as staff record weekly fills.', 'Chưa ghi nhận cập nhật mức rót nào. Biểu đồ sẽ hiện dần khi nhân viên ghi mức rót hàng tuần.')}</div>
           ) : (
             <TrendGraph history={history} whiskies={whiskies} />
           )}
@@ -646,7 +648,7 @@ export default function AdminWhisky() {
       {stocktakeHistory.length > 0 && (
         <div style={stocktakeHistoryBlock}>
           <div style={{ ...miniLabel, marginBottom: 8 }}>
-            Recent stocktakes · {stocktakeHistory.length}
+            {t('Recent stocktakes', 'Kiểm kê gần đây')} · {stocktakeHistory.length}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {stocktakeHistory.map(s => {
@@ -658,22 +660,22 @@ export default function AdminWhisky() {
                     {finishedDate.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                   </span>
                   <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98' }}>
-                    by {s.finished_by_email || s.finished_by || 'unknown'}
+                    {t('by', 'bởi')} {s.finished_by_email || s.finished_by || t('unknown', 'không rõ')}
                   </span>
                   <span style={{ ...stocktakeHistoryChip('#7AB07A') }}>
-                    {s.reviewed_count} reviewed
+                    {s.reviewed_count} {t('reviewed', 'đã kiểm')}
                   </span>
                   {s.changed_count > 0 && (
                     <span style={{ ...stocktakeHistoryChip('#D4B85A') }}>
-                      {s.changed_count} changed
+                      {s.changed_count} {t('changed', 'đã đổi')}
                     </span>
                   )}
                   <span style={{ ...stocktakeHistoryChip('#7E7864') }}>
-                    {Math.round(100 * s.reviewed_count / Math.max(1, s.total_catalogue_count))}% of catalogue
+                    {Math.round(100 * s.reviewed_count / Math.max(1, s.total_catalogue_count))}% {t('of catalogue', 'của danh mục')}
                   </span>
                   {durationMin > 0 && (
                     <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#7E7864', marginLeft: 'auto' }}>
-                      {durationMin}m session
+                      {durationMin}{t('m session', 'phút/phiên')}
                     </span>
                   )}
                 </div>
@@ -688,24 +690,24 @@ export default function AdminWhisky() {
         <input
           value={filterText}
           onChange={e => setFilterText(e.target.value)}
-          placeholder="Search across name, distillery, region, cask, age, ABV, tasting notes…"
+          placeholder={t('Search across name, distillery, region, cask, age, ABV, tasting notes…', 'Tìm theo tên, nhà chưng cất, vùng, thùng, tuổi, độ cồn, ghi chú nếm…')}
           style={{ ...inputStyle, flex: 1, minWidth: 220 }}
         />
         <button onClick={() => setShowOnlyLow(v => !v)} style={{ ...chip, ...(showOnlyLow ? chipActive : null) }}>
-          ≤25% only
+          {t('≤25% only', 'chỉ ≤25%')}
         </button>
         <button onClick={() => setShowOnlyInStock(v => !v)} style={{ ...chip, ...(showOnlyInStock ? chipActive : null) }}>
-          in stock only
+          {t('in stock only', 'chỉ còn hàng')}
         </button>
         <button onClick={() => setShowOnlyMissingNotes(v => !v)} style={{ ...chip, ...(showOnlyMissingNotes ? chipActive : null) }}>
-          no notes yet
+          {t('no notes yet', 'chưa có ghi chú')}
         </button>
         {(filterText || showOnlyLow || showOnlyInStock || showOnlyMissingNotes) && (
           <button
             onClick={() => { setFilterText(''); setShowOnlyLow(false); setShowOnlyInStock(false); setShowOnlyMissingNotes(false) }}
             style={{ ...chip, color: '#E58F4A' }}
           >
-            clear ({filtered.length} / {whiskies.length})
+            {t('clear', 'xóa lọc')} ({filtered.length} / {whiskies.length})
           </button>
         )}
       </div>
@@ -714,56 +716,56 @@ export default function AdminWhisky() {
       {showForm && (
         <div style={editBlock}>
           <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2' }}>
-            {editing ? `Editing: ${editing.name}` : 'New Whisky'}
+            {editing ? `${t('Editing:', 'Đang sửa:')} ${editing.name}` : t('New Whisky', 'Whisky mới')}
           </div>
           <div style={{ display: 'flex', gap: 16 }}>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Name</label>
+              <label style={labelStyle}>{t('Name', 'Tên')}</label>
               <input style={inputStyle} value={name} onChange={e => setName(e.target.value)} />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Distillery</label>
+              <label style={labelStyle}>{t('Distillery', 'Nhà chưng cất')}</label>
               <input style={inputStyle} value={distillery} onChange={e => setDistillery(e.target.value)} />
             </div>
           </div>
           <div style={{ display: 'flex', gap: 16 }}>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Region</label>
+              <label style={labelStyle}>{t('Region', 'Vùng')}</label>
               <select style={inputStyle} value={region} onChange={e => setRegion(e.target.value)}>
-                <option value="">Select…</option>
+                <option value="">{t('Select…', 'Chọn…')}</option>
                 {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Cask Type</label>
+              <label style={labelStyle}>{t('Cask Type', 'Loại thùng')}</label>
               <input style={inputStyle} value={caskType} onChange={e => setCaskType(e.target.value)} />
             </div>
           </div>
           <div style={{ display: 'flex', gap: 16 }}>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Age</label>
+              <label style={labelStyle}>{t('Age', 'Tuổi')}</label>
               <input style={inputStyle} value={age} onChange={e => setAge(e.target.value)} />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>ABV</label>
+              <label style={labelStyle}>{t('ABV', 'Độ cồn')}</label>
               <input style={inputStyle} value={abv} onChange={e => setAbv(e.target.value)} />
             </div>
           </div>
           <div>
-            <label style={labelStyle}>Tasting Notes</label>
+            <label style={labelStyle}>{t('Tasting Notes', 'Ghi chú nếm')}</label>
             <textarea style={{ ...inputStyle, resize: 'vertical' }} rows={4} value={tastingNotes} onChange={e => setTastingNotes(e.target.value)} />
           </div>
           <div style={{ display: 'flex', gap: 24 }}>
             <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-              <input type="checkbox" checked={committeesPick} onChange={e => setCommitteesPick(e.target.checked)} /> Committee&rsquo;s Pick
+              <input type="checkbox" checked={committeesPick} onChange={e => setCommitteesPick(e.target.checked)} /> {t('Committee’s Pick', 'Lựa chọn của hội đồng')}
             </label>
             <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-              <input type="checkbox" checked={inStock} onChange={e => setInStock(e.target.checked)} /> In Stock
+              <input type="checkbox" checked={inStock} onChange={e => setInStock(e.target.checked)} /> {t('In Stock', 'Còn hàng')}
             </label>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
-            <button onClick={handleSubmit} style={btnStyle}>{editing ? 'Update' : 'Create'}</button>
-            <button onClick={resetForm} style={{ ...btnStyle, opacity: 0.5 }}>Cancel</button>
+            <button onClick={handleSubmit} style={btnStyle}>{editing ? t('Update', 'Cập nhật') : t('Create', 'Tạo mới')}</button>
+            <button onClick={resetForm} style={{ ...btnStyle, opacity: 0.5 }}>{t('Cancel', 'Hủy')}</button>
           </div>
         </div>
       )}
@@ -786,7 +788,7 @@ export default function AdminWhisky() {
                   checked={isSelected}
                   onChange={() => toggleSelected(w.id)}
                   style={{ marginRight: 10, marginTop: 6, cursor: 'pointer', accentColor: '#7AB07A', flexShrink: 0 }}
-                  aria-label={`Select ${w.name}`}
+                  aria-label={`${t('Select', 'Chọn')} ${w.name}`}
                 />
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -794,37 +796,37 @@ export default function AdminWhisky() {
                   type="button"
                   onClick={() => toggleExpanded(w.id)}
                   style={whiskyTitleBtn}
-                  title={expandedIds.has(w.id) ? 'Hide details' : 'Show details + tasting notes'}
+                  title={expandedIds.has(w.id) ? t('Hide details', 'Ẩn chi tiết') : t('Show details + tasting notes', 'Xem chi tiết + ghi chú nếm')}
                 >
                   <span style={{ ...expandCaret, transform: expandedIds.has(w.id) ? 'rotate(90deg)' : 'rotate(0deg)' }}>▸</span>
                   <span style={whiskyName}>{w.name}</span>
                   {(!w.tasting_notes || w.tasting_notes.trim().length === 0) && (
-                    <span style={missingNotesBadge} title="No tasting notes yet — expand to add them">
-                      ⓘ no notes
+                    <span style={missingNotesBadge} title={t('No tasting notes yet — expand to add them', 'Chưa có ghi chú nếm — mở rộng để thêm')}>
+                      {t('ⓘ no notes', 'ⓘ chưa có ghi chú')}
                     </span>
                   )}
-                  {isReviewed && <span style={reviewedBadge}>✓ reviewed</span>}
+                  {isReviewed && <span style={reviewedBadge}>{t('✓ reviewed', '✓ đã kiểm')}</span>}
                   {w.distillery && <span style={whiskySub}>· {w.distillery}</span>}
                   {w.region && <span style={regionPill}>{w.region}</span>}
                 </button>
                 {w.last_fill_updated_at && (
                   <div style={fillAuditLine}>
-                    Last fill: {w.last_fill_updated_email || 'unknown'} · {timeAgo(w.last_fill_updated_at)}
+                    {t('Last fill:', 'Rót lần cuối:')} {w.last_fill_updated_email || t('unknown', 'không rõ')} · {timeAgo(w.last_fill_updated_at)}
                   </div>
                 )}
                 {expandedIds.has(w.id) && (
                   <div style={notesBlock}>
                     {/* Inline catalogue-metadata editors */}
                     <div style={inlineFieldGrid}>
-                      <InlineField label="Name"       value={w.name}              onSave={v => patchMetadata(w.id, 'name', v)} />
-                      <InlineField label="Distillery" value={w.distillery || ''}  onSave={v => patchMetadata(w.id, 'distillery', v || null)} />
-                      <InlineField label="Region"     value={w.region || ''}      onSave={v => patchMetadata(w.id, 'region', v || null)} select={REGIONS as readonly string[]} />
-                      <InlineField label="Cask type"  value={w.cask_type || ''}   onSave={v => patchMetadata(w.id, 'cask_type', v || null)} />
-                      <InlineField label="Age"        value={w.age || ''}         onSave={v => patchMetadata(w.id, 'age', v || null)} />
-                      <InlineField label="ABV"        value={w.abv || ''}         onSave={v => patchMetadata(w.id, 'abv', v || null)} />
+                      <InlineField label={t('Name', 'Tên')}       value={w.name}              onSave={v => patchMetadata(w.id, 'name', v)} />
+                      <InlineField label={t('Distillery', 'Nhà chưng cất')} value={w.distillery || ''}  onSave={v => patchMetadata(w.id, 'distillery', v || null)} />
+                      <InlineField label={t('Region', 'Vùng')}     value={w.region || ''}      onSave={v => patchMetadata(w.id, 'region', v || null)} select={REGIONS as readonly string[]} />
+                      <InlineField label={t('Cask type', 'Loại thùng')}  value={w.cask_type || ''}   onSave={v => patchMetadata(w.id, 'cask_type', v || null)} />
+                      <InlineField label={t('Age', 'Tuổi')}        value={w.age || ''}         onSave={v => patchMetadata(w.id, 'age', v || null)} />
+                      <InlineField label={t('ABV', 'Độ cồn')}        value={w.abv || ''}         onSave={v => patchMetadata(w.id, 'abv', v || null)} />
                     </div>
                     <div style={{ marginTop: 12 }}>
-                      <div style={{ ...labelStyle, marginBottom: 6 }}>Tasting notes</div>
+                      <div style={{ ...labelStyle, marginBottom: 6 }}>{t('Tasting notes', 'Ghi chú nếm')}</div>
                       <textarea
                         defaultValue={w.tasting_notes || ''}
                         onBlur={e => {
@@ -832,17 +834,17 @@ export default function AdminWhisky() {
                           if (v !== (w.tasting_notes || '')) patchMetadata(w.id, 'tasting_notes', v || null)
                         }}
                         rows={4}
-                        placeholder="Nose: … Palate: … Finish: …"
+                        placeholder={t('Nose: … Palate: … Finish: …', 'Hương: … Vị: … Hậu vị: …')}
                         style={{ ...inputStyle, resize: 'vertical', fontSize: 12 }}
                       />
                       <div style={notesAttribution}>
                         {w.tasting_notes_source === 'human'
-                          ? 'Entered manually by the team'
+                          ? t('Entered manually by the team', 'Nhập thủ công bởi đội ngũ')
                           : w.tasting_notes_source?.startsWith('claude-auto-backfill-')
-                            ? `Auto-backfilled · confidence ${w.tasting_notes_confidence ?? '—'}${w.tasting_notes_generated_at ? ' · ' + new Date(w.tasting_notes_generated_at).toLocaleDateString() : ''} — editing will re-stamp as human-curated`
+                            ? `${t('Auto-backfilled · confidence', 'Tự động điền · độ tin cậy')} ${w.tasting_notes_confidence ?? '—'}${w.tasting_notes_generated_at ? ' · ' + new Date(w.tasting_notes_generated_at).toLocaleDateString() : ''} ${t('— editing will re-stamp as human-curated', '— chỉnh sửa sẽ được đánh dấu lại là do người biên soạn')}`
                             : w.tasting_notes && w.tasting_notes.trim().length > 0
                               ? null
-                              : 'No tasting notes recorded yet — type to add'}
+                              : t('No tasting notes recorded yet — type to add', 'Chưa ghi nhận ghi chú nếm nào — gõ để thêm')}
                       </div>
                     </div>
                     <div style={{ marginTop: 16 }}>
@@ -870,18 +872,18 @@ export default function AdminWhisky() {
                     <input
                       value={draftNote}
                       onChange={e => setDraftNote(e.target.value)}
-                      placeholder="Optional note (e.g. opened new bottle)"
+                      placeholder={t('Optional note (e.g. opened new bottle)', 'Ghi chú tùy chọn (vd: mở chai mới)')}
                       style={{ ...inputStyle, fontSize: 11, padding: '6px 10px' }}
                     />
                     <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                      <button onClick={cancelFillEdit} style={tinyBtn}>cancel</button>
+                      <button onClick={cancelFillEdit} style={tinyBtn}>{t('cancel', 'hủy')}</button>
                       <button onClick={() => saveFill(w)} disabled={saving === w.id} style={{ ...tinyBtnPrimary, opacity: saving === w.id ? 0.5 : 1 }}>
-                        {saving === w.id ? 'saving…' : 'save'}
+                        {saving === w.id ? t('saving…', 'đang lưu…') : t('save', 'lưu')}
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <button onClick={() => startFillEdit(w)} style={fillDisplayBtn} title="Click to update fill %">
+                  <button onClick={() => startFillEdit(w)} style={fillDisplayBtn} title={t('Click to update fill %', 'Nhấn để cập nhật mức rót %')}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{ ...fillPctText, color: fillColor(fill) }}>{fill}%</div>
                       <div style={fillBarTrack}>
@@ -900,31 +902,31 @@ export default function AdminWhisky() {
                   onClick={() => toggleField(w.id, 'committees_pick', w.committees_pick)}
                   style={{ ...rowBtn, color: w.committees_pick ? '#E5D4C2' : '#B2AA98', opacity: w.committees_pick ? 1 : 0.4 }}
                 >
-                  ◆ Pick
+                  {t('◆ Pick', '◆ Chọn')}
                 </button>
                 <button
                   onClick={() => toggleField(w.id, 'in_stock', w.in_stock)}
                   style={{ ...rowBtn, background: w.in_stock ? 'rgba(94,102,80,0.3)' : 'rgba(229,212,194,0.06)', padding: '2px 10px', borderRadius: 4 }}
                 >
-                  {w.in_stock ? 'In Stock' : 'Out'}
+                  {w.in_stock ? t('In Stock', 'Còn hàng') : t('Out', 'Hết')}
                 </button>
                 {stocktakeMode && !isReviewed && (
                   <button
                     onClick={() => confirmUnchanged(w)}
                     style={{ ...rowBtn, color: '#7AB07A', fontWeight: 600 }}
-                    title="Mark this whisky as reviewed without changing its fill"
+                    title={t('Mark this whisky as reviewed without changing its fill', 'Đánh dấu chai này đã kiểm mà không thay đổi mức rót')}
                   >
-                    ✓ unchanged
+                    {t('✓ unchanged', '✓ không đổi')}
                   </button>
                 )}
-                <button onClick={() => startEdit(w)} style={{ ...rowBtn, opacity: 0.5 }}>Edit</button>
-                <button onClick={() => openDelete(w)} style={{ ...rowBtn, opacity: 0.5 }}>Delete</button>
+                <button onClick={() => startEdit(w)} style={{ ...rowBtn, opacity: 0.5 }}>{t('Edit', 'Sửa')}</button>
+                <button onClick={() => openDelete(w)} style={{ ...rowBtn, opacity: 0.5 }}>{t('Delete', 'Xóa')}</button>
               </div>
             </div>
           )
         })}
         {filtered.length === 0 && (
-          <div style={emptyText}>No whiskies match this filter.</div>
+          <div style={emptyText}>{t('No whiskies match this filter.', 'Không có whisky nào khớp bộ lọc này.')}</div>
         )}
       </div>
 
@@ -933,17 +935,17 @@ export default function AdminWhisky() {
         <>
           <div style={deleteBackdrop} onClick={dismissCancelStocktake} />
           <div style={cancelModal} role="dialog" aria-labelledby="cancel-title">
-            <div style={{ ...miniLabel, color: '#D4B85A', marginBottom: 8 }} id="cancel-title">CANCEL STOCKTAKE</div>
-            <div style={cancelHeadline}>End this session without saving a report?</div>
+            <div style={{ ...miniLabel, color: '#D4B85A', marginBottom: 8 }} id="cancel-title">{t('CANCEL STOCKTAKE', 'HỦY KIỂM KÊ')}</div>
+            <div style={cancelHeadline}>{t('End this session without saving a report?', 'Kết thúc phiên này mà không lưu báo cáo?')}</div>
             <div style={deleteBodyText}>
-              <strong style={{ color: '#E5D4C2' }}>{stocktakeReviewed.size}</strong> whisk{stocktakeReviewed.size === 1 ? 'y has' : 'ies have'} been reviewed so far. Fill updates already saved during the session <strong>stay in the database</strong> (they are real audit-trail writes). The only thing you lose by cancelling is the session report CSV.
+              <strong style={{ color: '#E5D4C2' }}>{stocktakeReviewed.size}</strong> {stocktakeReviewed.size === 1 ? t('whisky has', 'chai whisky đã') : t('whiskies have', 'chai whisky đã')} {t('been reviewed so far. Fill updates already saved during the session', 'được kiểm cho đến giờ. Các cập nhật mức rót đã lưu trong phiên')} <strong>{t('stay in the database', 'vẫn còn trong cơ sở dữ liệu')}</strong> {t('(they are real audit-trail writes). The only thing you lose by cancelling is the session report CSV.', '(chúng là các bản ghi nhật ký thật). Thứ duy nhất mất khi hủy là tệp CSV báo cáo của phiên.')}
             </div>
             <div style={deleteBodyText}>
-              If you want the report, click <strong>Finish &amp; download</strong> instead.
+              {t('If you want the report, click', 'Nếu bạn muốn báo cáo, hãy nhấn')} <strong>{t('Finish & download', 'Kết thúc & tải về')}</strong> {t('instead.', 'thay vào đó.')}
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 14 }}>
-              <button onClick={dismissCancelStocktake} style={deleteCancelBtn}>Keep going</button>
-              <button onClick={confirmCancelStocktake} style={cancelConfirmBtn}>End session</button>
+              <button onClick={dismissCancelStocktake} style={deleteCancelBtn}>{t('Keep going', 'Tiếp tục')}</button>
+              <button onClick={confirmCancelStocktake} style={cancelConfirmBtn}>{t('End session', 'Kết thúc phiên')}</button>
             </div>
           </div>
         </>
@@ -959,7 +961,7 @@ export default function AdminWhisky() {
         <>
           <div style={deleteBackdrop} onClick={closeDelete} />
           <div style={deleteModal} role="dialog" aria-labelledby="delete-title">
-            <div style={{ ...miniLabel, color: '#C27070', marginBottom: 8 }} id="delete-title">⚠ PERMANENT DELETE</div>
+            <div style={{ ...miniLabel, color: '#C27070', marginBottom: 8 }} id="delete-title">{t('⚠ PERMANENT DELETE', '⚠ XÓA VĨNH VIỄN')}</div>
             <div style={deleteWhiskyName}>{deleteTarget.name}</div>
             {deleteTarget.distillery && (
               <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#B2AA98', marginBottom: 12 }}>
@@ -967,10 +969,10 @@ export default function AdminWhisky() {
               </div>
             )}
             <div style={deleteBodyText}>
-              This removes the whisky from the catalogue. It also <strong>cascades</strong>: all of its fill-history audit rows are deleted (every weekly stocktake update, every staff edit). Locker contents that reference this whisky by name will not be touched, but they will no longer link to a real catalogue entry.
+              {t('This removes the whisky from the catalogue. It also', 'Thao tác này xóa whisky khỏi danh mục. Nó cũng')} <strong>{t('cascades', 'xóa lan')}</strong>{t(': all of its fill-history audit rows are deleted (every weekly stocktake update, every staff edit). Locker contents that reference this whisky by name will not be touched, but they will no longer link to a real catalogue entry.', ': toàn bộ nhật ký lịch sử mức rót của nó bị xóa (mọi cập nhật kiểm kê hàng tuần, mọi chỉnh sửa của nhân viên). Nội dung tủ rượu tham chiếu whisky này theo tên sẽ không bị đụng đến, nhưng sẽ không còn liên kết tới một mục danh mục thật.')}
             </div>
             <div style={deleteBodyText}>
-              To confirm, type the whisky&rsquo;s name exactly:
+              {t('To confirm, type the whisky’s name exactly:', 'Để xác nhận, hãy gõ chính xác tên của whisky:')}
             </div>
             <input
               autoFocus
@@ -984,7 +986,7 @@ export default function AdminWhisky() {
               }}
             />
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 14 }}>
-              <button onClick={closeDelete} disabled={deleting} style={deleteCancelBtn}>Cancel</button>
+              <button onClick={closeDelete} disabled={deleting} style={deleteCancelBtn}>{t('Cancel', 'Hủy')}</button>
               <button
                 onClick={confirmDelete}
                 disabled={deleteConfirmText.trim() !== deleteTarget.name || deleting}
@@ -994,7 +996,7 @@ export default function AdminWhisky() {
                   cursor: (deleteConfirmText.trim() === deleteTarget.name && !deleting) ? 'pointer' : 'not-allowed',
                 }}
               >
-                {deleting ? 'Deleting…' : 'Delete permanently'}
+                {deleting ? t('Deleting…', 'Đang xóa…') : t('Delete permanently', 'Xóa vĩnh viễn')}
               </button>
             </div>
           </div>
@@ -1008,17 +1010,17 @@ export default function AdminWhisky() {
           patch path (PATCH whiskies WHERE id IN (...)) so the audit
           trail and RLS rules are identical to a single-row edit. */}
       {bulkMode && (
-        <div style={bulkBar} role="region" aria-label="Bulk edit actions">
+        <div style={bulkBar} role="region" aria-label={t('Bulk edit actions', 'Thao tác sửa hàng loạt')}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <span style={bulkCountText}>
-              <strong>{selectedIds.size}</strong> selected
-              <span style={{ color: '#7E7864', marginLeft: 6 }}>/ {filtered.length} in view</span>
+              <strong>{selectedIds.size}</strong> {t('selected', 'đã chọn')}
+              <span style={{ color: '#7E7864', marginLeft: 6 }}>/ {filtered.length} {t('in view', 'trong khung nhìn')}</span>
             </span>
             <button onClick={selectAllFiltered} style={bulkChip} disabled={selectedIds.size === filtered.length}>
-              Select all in view
+              {t('Select all in view', 'Chọn tất cả trong khung nhìn')}
             </button>
             <button onClick={clearSelection} style={bulkChip} disabled={selectedIds.size === 0}>
-              Clear
+              {t('Clear', 'Bỏ chọn')}
             </button>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 'auto' }}>
@@ -1026,42 +1028,42 @@ export default function AdminWhisky() {
               onClick={() => bulkPatch({ in_stock: true })}
               disabled={selectedIds.size === 0 || bulkBusy}
               style={bulkActionBtn}
-              title="Mark all selected as in stock"
+              title={t('Mark all selected as in stock', 'Đánh dấu tất cả mục đã chọn là còn hàng')}
             >
-              ✓ Mark in stock
+              {t('✓ Mark in stock', '✓ Đánh dấu còn hàng')}
             </button>
             <button
               onClick={() => bulkPatch({ in_stock: false })}
               disabled={selectedIds.size === 0 || bulkBusy}
               style={bulkActionBtn}
-              title="Mark all selected as out of stock"
+              title={t('Mark all selected as out of stock', 'Đánh dấu tất cả mục đã chọn là hết hàng')}
             >
-              ✕ Mark out of stock
+              {t('✕ Mark out of stock', '✕ Đánh dấu hết hàng')}
             </button>
             <button
               onClick={() => bulkPatch({ committees_pick: true })}
               disabled={selectedIds.size === 0 || bulkBusy}
               style={bulkActionBtn}
-              title="Add committee's pick to all selected"
+              title={t("Add committee's pick to all selected", 'Thêm lựa chọn của hội đồng cho tất cả mục đã chọn')}
             >
-              ◆ Add pick
+              {t('◆ Add pick', '◆ Thêm lựa chọn')}
             </button>
             <button
               onClick={() => bulkPatch({ committees_pick: false })}
               disabled={selectedIds.size === 0 || bulkBusy}
               style={bulkActionBtn}
-              title="Remove committee's pick from all selected"
+              title={t("Remove committee's pick from all selected", 'Bỏ lựa chọn của hội đồng khỏi tất cả mục đã chọn')}
             >
-              ◇ Remove pick
+              {t('◇ Remove pick', '◇ Bỏ lựa chọn')}
             </button>
             <select
               onChange={e => { if (e.target.value) bulkPatch({ region: e.target.value }); e.target.value = '' }}
               disabled={selectedIds.size === 0 || bulkBusy}
               style={bulkActionSelect}
               defaultValue=""
-              aria-label="Bulk set region"
+              aria-label={t('Bulk set region', 'Đặt vùng hàng loạt')}
             >
-              <option value="" disabled>Set region…</option>
+              <option value="" disabled>{t('Set region…', 'Đặt vùng…')}</option>
               {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>

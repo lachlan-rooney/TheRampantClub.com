@@ -8,6 +8,7 @@
 // alphanumeric run terminated by Enter (or 250ms of silence) as a UID.
 
 import { useEffect, useRef, useState } from 'react'
+import { useLang } from '@/lib/admin-lang'
 
 interface CardLink {
   member_number: string
@@ -53,6 +54,7 @@ const btnPrimary: React.CSSProperties = { ...btnStyle, background: '#5E6650' }
 const btnDanger: React.CSSProperties = { ...btnStyle, background: 'rgba(180, 70, 70, 0.2)' }
 
 export default function AdminCards() {
+  const { t } = useLang()
   const [uid, setUid] = useState<string | null>(null)
   const [link, setLink] = useState<CardLink | null>(null)
   const [member, setMember] = useState<Record<string, string> | null>(null)
@@ -115,11 +117,11 @@ export default function AdminCards() {
     })
     setBusy(false)
     if (r.ok) {
-      showToast('Account purged')
+      showToast(t('Account purged', 'Đã xóa tài khoản'))
       loadOrphans(); loadMembers()
     } else {
       const d = await r.json().catch(() => ({}))
-      showToast(`Purge failed: ${d.error || r.statusText}`)
+      showToast(`${t('Purge failed', 'Xóa thất bại')}: ${d.error || r.statusText}`)
     }
   }
 
@@ -176,7 +178,7 @@ export default function AdminCards() {
         }).catch(() => {})
       }
     } catch {
-      showToast('Lookup failed')
+      showToast(t('Lookup failed', 'Tra cứu thất bại'))
     } finally {
       setBusy(false)
     }
@@ -209,12 +211,12 @@ export default function AdminCards() {
     })
     setBusy(false)
     if (r.ok) {
-      showToast('Card linked')
+      showToast(t('Card linked', 'Đã liên kết thẻ'))
       handleScan(linkUid)
       loadMembers()
     } else {
       const d = await r.json().catch(() => ({}))
-      showToast(`Link failed: ${d.error || r.statusText}`)
+      showToast(`${t('Link failed', 'Liên kết thất bại')}: ${d.error || r.statusText}`)
     }
   }
 
@@ -224,7 +226,7 @@ export default function AdminCards() {
     setConfirmModal({
       kind: 'unlink',
       uid,
-      memberName: owner ? `${owner.full_name} (${owner.member_number})` : 'unknown member',
+      memberName: owner ? `${owner.full_name} (${owner.member_number})` : t('unknown member', 'thành viên không xác định'),
     })
   }
 
@@ -237,7 +239,7 @@ export default function AdminCards() {
     })
     setBusy(false)
     if (r.ok) {
-      showToast('Card unlinked')
+      showToast(t('Card unlinked', 'Đã hủy liên kết thẻ'))
       handleScan(unlinkUid)
       loadMembers()
     }
@@ -263,7 +265,7 @@ export default function AdminCards() {
   const transact = async (kind: 'topup' | 'charge', amountStr: string) => {
     if (!link) return
     const amt = parseInt(amountStr.replace(/[^0-9]/g, ''))
-    if (!amt || amt <= 0) { showToast('Enter an amount'); return }
+    if (!amt || amt <= 0) { showToast(t('Enter an amount', 'Nhập số tiền')); return }
     setBusy(true)
     const r = await fetch('/api/admin/cards/transaction', {
       method: 'POST',
@@ -278,7 +280,7 @@ export default function AdminCards() {
     setBusy(false)
     if (r.ok) {
       const d = await r.json()
-      showToast(kind === 'topup' ? `Topped up ${fmt(amt)}` : `Charged ${fmt(amt)}`)
+      showToast(kind === 'topup' ? `${t('Topped up', 'Đã nạp')} ${fmt(amt)}` : `${t('Charged', 'Đã trừ')} ${fmt(amt)}`)
       setLink(l => l ? { ...l, credit_vnd: d.balance_vnd } : l)
       setTopupAmount(''); setChargeAmount(''); setNote('')
       // Refresh history
@@ -289,7 +291,7 @@ export default function AdminCards() {
       }
     } else {
       const d = await r.json().catch(() => ({}))
-      showToast(`Failed: ${d.error || r.statusText}`)
+      showToast(`${t('Failed', 'Thất bại')}: ${d.error || r.statusText}`)
     }
   }
 
@@ -301,10 +303,10 @@ export default function AdminCards() {
   return (
     <>
       <h1 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 24, fontWeight: 500, color: '#E5D4C2', letterSpacing: '0.04em', marginBottom: 8 }}>
-        Member Cards
+        {t('Member Cards', 'Thẻ hội viên')}
       </h1>
       <p style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#B2AA98', marginBottom: 24, lineHeight: 1.6, maxWidth: 640 }}>
-        Tap a member card on the USB reader to view balance, top up, or charge. Cards link to members from the Google Sheet roster by Member No.
+        {t('Tap a member card on the USB reader to view balance, top up, or charge. Cards link to members from the Google Sheet roster by Member No.', 'Chạm thẻ hội viên lên đầu đọc USB để xem số dư, nạp tiền hoặc trừ tiền. Thẻ được liên kết với hội viên từ danh sách Google Sheet theo Số hội viên.')}
       </p>
 
       {/* Listening pill */}
@@ -322,11 +324,11 @@ export default function AdminCards() {
             boxShadow: listening ? '0 0 8px #7AB07A' : 'none',
           }} />
           <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#E5D4C2' }}>
-            {listening ? 'Listening for card taps' : 'Paused'}
+            {listening ? t('Listening for card taps', 'Đang chờ chạm thẻ') : t('Paused', 'Đã tạm dừng')}
           </span>
         </div>
         <button onClick={() => setListening(l => !l)} style={btnStyle}>
-          {listening ? 'Pause' : 'Resume'}
+          {listening ? t('Pause', 'Tạm dừng') : t('Resume', 'Tiếp tục')}
         </button>
       </div>
 
@@ -338,10 +340,10 @@ export default function AdminCards() {
           borderRadius: 12,
         }}>
           <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 20, color: '#E5D4C2', opacity: 0.8, marginBottom: 8 }}>
-            Place a card on the reader
+            {t('Place a card on the reader', 'Đặt thẻ lên đầu đọc')}
           </div>
           <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#B2AA98', opacity: 0.7 }}>
-            Make sure this page has focus, then tap.
+            {t('Make sure this page has focus, then tap.', 'Đảm bảo trang này đang được chọn, rồi chạm thẻ.')}
           </div>
         </div>
       ) : (
@@ -353,12 +355,12 @@ export default function AdminCards() {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 24, flexWrap: 'wrap', marginBottom: 24 }}>
             <div>
-              <label style={labelStyle}>Card UID</label>
+              <label style={labelStyle}>{t('Card UID', 'Mã UID thẻ')}</label>
               <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 20, color: '#E5D4C2', letterSpacing: '0.05em' }}>
                 {uid}
               </div>
             </div>
-            <button onClick={reset} style={btnStyle}>Clear</button>
+            <button onClick={reset} style={btnStyle}>{t('Clear', 'Xóa')}</button>
           </div>
 
           {link ? (
@@ -366,7 +368,7 @@ export default function AdminCards() {
               {/* Member + balance */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 24, flexWrap: 'wrap', marginBottom: 24 }}>
                 <div>
-                  <label style={labelStyle}>Linked member</label>
+                  <label style={labelStyle}>{t('Linked member', 'Hội viên liên kết')}</label>
                   {member ? (
                     <>
                       <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 20, color: '#E5D4C2', marginBottom: 4 }}>
@@ -379,16 +381,16 @@ export default function AdminCards() {
                   ) : (
                     <>
                       <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2', marginBottom: 4 }}>
-                        Member {link.member_number}
+                        {t('Member', 'Hội viên')} {link.member_number}
                       </div>
                       <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#D4B85A' }}>
-                        Sheet lookup failed — name unavailable
+                        {t('Sheet lookup failed — name unavailable', 'Tra cứu bảng tính thất bại — không có tên')}
                       </div>
                     </>
                   )}
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <label style={{ ...labelStyle, textAlign: 'right' }}>Credit balance</label>
+                  <label style={{ ...labelStyle, textAlign: 'right' }}>{t('Credit balance', 'Số dư tín dụng')}</label>
                   <div style={{
                     fontFamily: "'Rampant Sans', serif", fontSize: 32,
                     color: link.credit_vnd > 0 ? '#7AB07A' : link.credit_vnd < 0 ? '#B45656' : '#E5D4C2',
@@ -401,12 +403,12 @@ export default function AdminCards() {
               {/* Top up + charge */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 16 }}>
                 <div>
-                  <label style={labelStyle}>Top up (VND)</label>
+                  <label style={labelStyle}>{t('Top up (VND)', 'Nạp tiền (VND)')}</label>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input
                       type="text" inputMode="numeric"
                       style={inputStyle}
-                      placeholder="e.g. 500000"
+                      placeholder={t('e.g. 500000', 'ví dụ 500000')}
                       value={topupAmount}
                       onChange={e => setTopupAmount(e.target.value)}
                     />
@@ -414,16 +416,16 @@ export default function AdminCards() {
                       onClick={() => transact('topup', topupAmount)}
                       disabled={busy || !topupAmount}
                       style={btnPrimary}
-                    >Top up</button>
+                    >{t('Top up', 'Nạp tiền')}</button>
                   </div>
                 </div>
                 <div>
-                  <label style={labelStyle}>Charge (VND)</label>
+                  <label style={labelStyle}>{t('Charge (VND)', 'Trừ tiền (VND)')}</label>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input
                       type="text" inputMode="numeric"
                       style={inputStyle}
-                      placeholder="e.g. 120000"
+                      placeholder={t('e.g. 120000', 'ví dụ 120000')}
                       value={chargeAmount}
                       onChange={e => setChargeAmount(e.target.value)}
                     />
@@ -431,16 +433,16 @@ export default function AdminCards() {
                       onClick={() => transact('charge', chargeAmount)}
                       disabled={busy || !chargeAmount}
                       style={btnDanger}
-                    >Charge</button>
+                    >{t('Charge', 'Trừ tiền')}</button>
                   </div>
                 </div>
               </div>
 
               <div style={{ marginBottom: 20 }}>
-                <label style={labelStyle}>Note (optional, attached to next transaction)</label>
+                <label style={labelStyle}>{t('Note (optional, attached to next transaction)', 'Ghi chú (tùy chọn, đính kèm giao dịch tiếp theo)')}</label>
                 <input
                   style={inputStyle}
-                  placeholder="e.g. Kitchen — 2 drams Lagavulin"
+                  placeholder={t('e.g. Kitchen — 2 drams Lagavulin', 'ví dụ Bếp — 2 ly Lagavulin')}
                   value={note}
                   onChange={e => setNote(e.target.value)}
                 />
@@ -460,7 +462,7 @@ export default function AdminCards() {
               {/* Transaction history */}
               {txs.length > 0 && (
                 <div style={{ marginBottom: 16 }}>
-                  <label style={labelStyle}>Recent transactions</label>
+                  <label style={labelStyle}>{t('Recent transactions', 'Giao dịch gần đây')}</label>
                   <div style={{ background: 'rgba(0,0,0,0.15)', borderRadius: 6, padding: '4px 0' }}>
                     {txs.map(t => (
                       <div key={t.id} style={{
@@ -487,27 +489,27 @@ export default function AdminCards() {
                 </div>
               )}
 
-              <button onClick={unlinkCard} disabled={busy} style={btnDanger}>Unlink card</button>
+              <button onClick={unlinkCard} disabled={busy} style={btnDanger}>{t('Unlink card', 'Hủy liên kết thẻ')}</button>
             </>
           ) : (
             <div>
-              <label style={labelStyle}>This card isn&rsquo;t linked yet</label>
+              <label style={labelStyle}>{t("This card isn't linked yet", 'Thẻ này chưa được liên kết')}</label>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
                 <select
                   value={pickerNumber}
                   onChange={e => setPickerNumber(e.target.value)}
                   style={{ ...inputStyle, flex: 1, minWidth: 280 }}
                 >
-                  <option value="">— select member to link —</option>
+                  <option value="">{t('— select member to link —', '— chọn hội viên để liên kết —')}</option>
                   {members.map((m, i) => (
                     <option key={`${m.member_number}-${i}`} value={m.member_number}>
                       {m.member_number} · {m.full_name} ({m.tier})
-                      {m.card_uid ? ' · already has card' : m.credit_vnd > 0 ? ` · ${fmt(m.credit_vnd)} credit preserved` : ''}
+                      {m.card_uid ? ` · ${t('already has card', 'đã có thẻ')}` : m.credit_vnd > 0 ? ` · ${fmt(m.credit_vnd)} ${t('credit preserved', 'tín dụng được giữ lại')}` : ''}
                     </option>
                   ))}
                 </select>
                 <button onClick={linkCard} disabled={!pickerNumber || busy} style={btnPrimary}>
-                  {busy ? 'Linking…' : 'Link'}
+                  {busy ? t('Linking…', 'Đang liên kết…') : t('Link', 'Liên kết')}
                 </button>
               </div>
             </div>
@@ -527,7 +529,7 @@ export default function AdminCards() {
               fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11,
             }}
           >
-            {showOrphans ? '▾' : '▸'} {orphans.length} orphan account{orphans.length === 1 ? '' : 's'} (member no longer in sheet)
+            {showOrphans ? '▾' : '▸'} {orphans.length} {t('orphan account', 'tài khoản mồ côi')}{orphans.length === 1 ? '' : t('s', '')} {t('(member no longer in sheet)', '(hội viên không còn trong bảng tính)')}
           </button>
           {showOrphans && (
             <div style={{
@@ -542,10 +544,10 @@ export default function AdminCards() {
                   fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, gap: 16, flexWrap: 'wrap',
                 }}>
                   <div>
-                    <div style={{ color: '#E5D4C2' }}>Member {o.member_number}</div>
+                    <div style={{ color: '#E5D4C2' }}>{t('Member', 'Hội viên')} {o.member_number}</div>
                     <div style={{ color: '#B2AA98', opacity: 0.7, fontSize: 10 }}>
-                      {o.card_uid ? `card ${o.card_uid}` : 'no card'}
-                      {' · '}updated {new Date(o.updated_at).toLocaleDateString()}
+                      {o.card_uid ? `${t('card', 'thẻ')} ${o.card_uid}` : t('no card', 'không có thẻ')}
+                      {' · '}{t('updated', 'cập nhật')} {new Date(o.updated_at).toLocaleDateString()}
                     </div>
                   </div>
                   <div style={{ color: o.credit_vnd > 0 ? '#7AB07A' : '#B2AA98', minWidth: 120, textAlign: 'right' }}>
@@ -555,7 +557,7 @@ export default function AdminCards() {
                     onClick={() => purgeAccount(o.member_number)}
                     disabled={busy}
                     style={{ background: 'rgba(180, 70, 70, 0.2)', color: '#E5D4C2', border: 'none', borderRadius: 4, padding: '5px 12px', cursor: 'pointer', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10 }}
-                  >Purge</button>
+                  >{t('Purge', 'Xóa')}</button>
                 </div>
               ))}
             </div>
@@ -579,28 +581,28 @@ export default function AdminCards() {
       {confirmModal && (() => {
         const config = (() => {
           if (confirmModal.kind === 'purge') return {
-            title:    'Purge credit account?',
+            title:    t('Purge credit account?', 'Xóa tài khoản tín dụng?'),
             severity: 'red' as const,
             subject:  `${confirmModal.memberName} (${confirmModal.memberNumber})`,
-            body:     'Permanently deletes the credit account row AND all transaction history. The audit trail is GONE. Cannot be undone.',
-            confirm:  'Purge account',
-            eyebrow:  '⚠ PERMANENT',
+            body:     t('Permanently deletes the credit account row AND all transaction history. The audit trail is GONE. Cannot be undone.', 'Xóa vĩnh viễn dòng tài khoản tín dụng VÀ toàn bộ lịch sử giao dịch. Nhật ký kiểm tra sẽ MẤT. Không thể hoàn tác.'),
+            confirm:  t('Purge account', 'Xóa tài khoản'),
+            eyebrow:  `⚠ ${t('PERMANENT', 'VĨNH VIỄN')}`,
           }
           if (confirmModal.kind === 'unlink') return {
-            title:    'Unlink card?',
+            title:    t('Unlink card?', 'Hủy liên kết thẻ?'),
             severity: 'amber' as const,
-            subject:  `Card ${confirmModal.uid} · ${confirmModal.memberName}`,
-            body:     'The card stops resolving to the member. The member\'s credit balance is preserved — re-linking the same card later restores access.',
-            confirm:  'Unlink',
-            eyebrow:  'CONFIRM',
+            subject:  `${t('Card', 'Thẻ')} ${confirmModal.uid} · ${confirmModal.memberName}`,
+            body:     t("The card stops resolving to the member. The member's credit balance is preserved — re-linking the same card later restores access.", 'Thẻ sẽ ngừng liên kết với hội viên. Số dư tín dụng của hội viên được giữ lại — liên kết lại chính thẻ đó sau này sẽ khôi phục quyền truy cập.'),
+            confirm:  t('Unlink', 'Hủy liên kết'),
+            eyebrow:  t('CONFIRM', 'XÁC NHẬN'),
           }
           return {  // relink
-            title:    'Reassign card to another member?',
+            title:    t('Reassign card to another member?', 'Gán lại thẻ cho hội viên khác?'),
             severity: 'amber' as const,
-            subject:  `Card ${confirmModal.uid}: ${confirmModal.fromName} → ${confirmModal.toName} (${confirmModal.toNumber})`,
-            body:     `${confirmModal.fromName}'s credit balance (${fmt(confirmModal.fromBalance)}) stays on their account. The card just stops resolving to them.`,
-            confirm:  'Reassign',
-            eyebrow:  'CONFIRM',
+            subject:  `${t('Card', 'Thẻ')} ${confirmModal.uid}: ${confirmModal.fromName} → ${confirmModal.toName} (${confirmModal.toNumber})`,
+            body:     `${confirmModal.fromName}${t("'s credit balance", ' — số dư tín dụng')} (${fmt(confirmModal.fromBalance)}) ${t('stays on their account. The card just stops resolving to them.', 'vẫn nằm trên tài khoản của họ. Thẻ chỉ ngừng liên kết với họ.')}`,
+            confirm:  t('Reassign', 'Gán lại'),
+            eyebrow:  t('CONFIRM', 'XÁC NHẬN'),
           }
         })()
         const tone = config.severity === 'red'
@@ -615,13 +617,13 @@ export default function AdminCards() {
               <div style={cardsConfirmSubject}>{config.subject}</div>
               <p style={cardsConfirmBody}>{config.body}</p>
               <div style={cardsConfirmActions}>
-                <button onClick={closeConfirm} disabled={confirmBusy} style={cardsConfirmCancelBtn}>Cancel</button>
+                <button onClick={closeConfirm} disabled={confirmBusy} style={cardsConfirmCancelBtn}>{t('Cancel', 'Hủy')}</button>
                 <button
                   onClick={runConfirm}
                   disabled={confirmBusy}
                   style={{ ...cardsConfirmGoBtn, background: tone.confirmBg, color: tone.confirmFg, opacity: confirmBusy ? 0.5 : 1 }}
                 >
-                  {confirmBusy ? 'Working…' : config.confirm}
+                  {confirmBusy ? t('Working…', 'Đang xử lý…') : config.confirm}
                 </button>
               </div>
             </div>

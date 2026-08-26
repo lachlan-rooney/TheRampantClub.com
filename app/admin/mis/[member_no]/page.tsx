@@ -10,6 +10,7 @@ import SuggestAPour from '@/components/whisky/SuggestAPour'
 import GiftingPanel from '../GiftingPanel'
 import ActivityTimeline from '../ActivityTimeline'
 import MemberLoginPanel from '@/components/admin/MemberLoginPanel'
+import { useLang } from '@/lib/admin-lang'
 
 interface Member {
   member_no: string
@@ -121,6 +122,7 @@ function InfoDot({ tip }: { tip: string }) {
 }
 
 export default function MisMemberProfile({ params }: { params: Promise<{ member_no: string }> }) {
+  const { t } = useLang()
   const { member_no } = use(params)
   const router = useRouter()
   const [member, setMember] = useState<Member | null>(null)
@@ -146,7 +148,7 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
         body: JSON.stringify({ member_no }),
       })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'Could not start visit')
+      if (!r.ok) throw new Error(j.error || t('Could not start visit', 'Không thể bắt đầu lượt ghé thăm'))
       router.push(`/admin/mis/visits/${j.visit.visit_id}`)
     } catch (e) {
       showToast((e as Error).message, 'error')
@@ -191,7 +193,7 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
         body: JSON.stringify(body),
       })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'Save failed')
+      if (!r.ok) throw new Error(j.error || t('Save failed', 'Lưu thất bại'))
       // Merge the refreshed preference back into state
       if (j.preference) {
         setPreferences(prev => prev.map(x => x.preference_id === p.preference_id ? { ...x, ...j.preference } : x))
@@ -228,13 +230,13 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
     })
   }, [preferences, category, revalOnly])
 
-  if (loading) return <div style={emptyText}>Loading…</div>
-  if (!member) return <div style={emptyText}>Member not found.</div>
+  if (loading) return <div style={emptyText}>{t('Loading…', 'Đang tải…')}</div>
+  if (!member) return <div style={emptyText}>{t('Member not found.', 'Không tìm thấy hội viên.')}</div>
 
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
-        <Link href="/admin/mis" style={{ ...backLink, marginBottom: 0 }}>← Back to members</Link>
+        <Link href="/admin/mis" style={{ ...backLink, marginBottom: 0 }}>← {t('Back to members', 'Quay lại danh sách hội viên')}</Link>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
           <button
             onClick={startVisit}
@@ -247,10 +249,10 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
               opacity: startingVisit ? 0.6 : 1,
             }}
           >
-            {startingVisit ? 'Starting…' : "◉ Start tonight's visit →"}
+            {startingVisit ? t('Starting…', 'Đang bắt đầu…') : `◉ ${t("Start tonight's visit", 'Bắt đầu lượt ghé thăm tối nay')} →`}
           </button>
           <Link href={`/admin/mis/${member.member_no}/intake`} style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#D4B85A', textDecoration: 'none', letterSpacing: '0.06em', borderBottom: '1px solid rgba(212,184,90,0.35)' }}>
-            ◆ Process interview transcript →
+            ◆ {t('Process interview transcript', 'Xử lý biên bản phỏng vấn')} →
           </Link>
         </div>
       </div>
@@ -262,17 +264,17 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
           {member.nickname && <div style={nicknameText}>“{member.nickname}”</div>}
         </div>
         <div style={metaPanel}>
-          <div style={metaItem}><span style={metaLabel}>Tier</span><span style={metaValue}>{member.tier}</span></div>
-          <div style={metaItem}><span style={metaLabel}>Status</span><span style={metaValue}>{member.status}</span></div>
-          <div style={metaItem}><span style={metaLabel}>Joined</span><span style={metaValue}>{fmtDate(member.join_date)}</span></div>
-          {member.birthday && <div style={metaItem}><span style={metaLabel}>Birthday</span><span style={metaValue}>{fmtDate(member.birthday)}</span></div>}
-          {member.referred_by && <div style={metaItem}><span style={metaLabel}>Referred by</span><span style={metaValue}>{member.referred_by}</span></div>}
+          <div style={metaItem}><span style={metaLabel}>{t('Tier', 'Hạng')}</span><span style={metaValue}>{member.tier}</span></div>
+          <div style={metaItem}><span style={metaLabel}>{t('Status', 'Trạng thái')}</span><span style={metaValue}>{member.status}</span></div>
+          <div style={metaItem}><span style={metaLabel}>{t('Joined', 'Ngày gia nhập')}</span><span style={metaValue}>{fmtDate(member.join_date)}</span></div>
+          {member.birthday && <div style={metaItem}><span style={metaLabel}>{t('Birthday', 'Sinh nhật')}</span><span style={metaValue}>{fmtDate(member.birthday)}</span></div>}
+          {member.referred_by && <div style={metaItem}><span style={metaLabel}>{t('Referred by', 'Người giới thiệu')}</span><span style={metaValue}>{member.referred_by}</span></div>}
         </div>
       </div>
 
       {score5s.length > 0 && (
         <div style={score5Panel}>
-          <div style={panelLabel}>The non-negotiables · S₀ = 5</div>
+          <div style={panelLabel}>{t('The non-negotiables', 'Những điều bất di bất dịch')} · S₀ = 5</div>
           <div style={score5Grid}>
             {score5s.map(p => (
               <div key={p.preference_id} style={score5Card}>
@@ -305,29 +307,29 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
           onClick={() => setRevalOnly(v => !v)}
           style={{ ...inputStyle, cursor: 'pointer', background: revalOnly ? 'rgba(212,184,90,0.18)' : 'rgba(229,212,194,0.06)' }}
         >
-          {revalOnly ? '✓ Needs revalidation only' : 'Filter: needs revalidation'}
+          {revalOnly ? `✓ ${t('Needs revalidation only', 'Chỉ mục cần xác thực lại')}` : t('Filter: needs revalidation', 'Lọc: cần xác thực lại')}
         </button>
         <div style={{ marginLeft: 'auto', alignSelf: 'center', fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#B2AA98', opacity: 0.7 }}>
-          {filtered.length} of {preferences.length}
+          {filtered.length} {t('of', 'trên')} {preferences.length}
         </div>
       </div>
 
       <div>
         <div style={prefListHeader}>
-          <span style={{ ...prefColCategory, color: '#B2AA98' }}>Category</span>
-          <span style={{ ...prefColName, color: '#B2AA98' }}>Preference</span>
+          <span style={{ ...prefColCategory, color: '#B2AA98' }}>{t('Category', 'Danh mục')}</span>
+          <span style={{ ...prefColName, color: '#B2AA98' }}>{t('Preference', 'Sở thích')}</span>
           <span style={{ ...prefColScore, color: '#B2AA98' }}>S₀</span>
           <span style={{ ...prefColScore, color: '#B2AA98' }}>C</span>
           <span style={{ ...prefColScore, color: '#B2AA98' }}>λ</span>
           <span style={{ ...prefColScore, color: '#B2AA98' }}>F</span>
-          <span style={{ ...prefColScore, color: '#B2AA98' }}>Days</span>
+          <span style={{ ...prefColScore, color: '#B2AA98' }}>{t('Days', 'Ngày')}</span>
           <span style={{ ...prefColScoreWide, color: '#B2AA98' }}>PS(t)</span>
-          <span style={{ ...prefColScore, color: '#B2AA98' }}>Health</span>
-          <span style={{ ...prefColFlag, color: '#B2AA98' }}>Flag</span>
+          <span style={{ ...prefColScore, color: '#B2AA98' }}>{t('Health', 'Độ khỏe')}</span>
+          <span style={{ ...prefColFlag, color: '#B2AA98' }}>{t('Flag', 'Cờ')}</span>
         </div>
 
         {filtered.length === 0 ? (
-          <div style={emptyText}>No preferences match.</div>
+          <div style={emptyText}>{t('No preferences match.', 'Không có sở thích nào phù hợp.')}</div>
         ) : filtered.map(p => {
           const expanded = expandedId === p.preference_id
           const flag = p.needs_revalidation.includes('REVALIDATE')
@@ -354,27 +356,27 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
                 <div style={prefExpanded}>
                   {p.detail && (
                     <div style={prefSection}>
-                      <div style={prefSectionLabel}>Detail</div>
+                      <div style={prefSectionLabel}>{t('Detail', 'Chi tiết')}</div>
                       <div style={prefSectionBody}>{p.detail}</div>
                     </div>
                   )}
                   {p.verbatim_quote && (
                     <div style={prefSection}>
-                      <div style={prefSectionLabel}>Verbatim</div>
+                      <div style={prefSectionLabel}>{t('Verbatim', 'Nguyên văn')}</div>
                       <div style={{ ...prefSectionBody, fontStyle: 'italic' }}>“{p.verbatim_quote}”</div>
                     </div>
                   )}
                   <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginTop: 12 }}>
-                    <div style={prefMetaItem}><span style={prefMetaLabel}>Last validated</span>{fmtDate(p.last_validated)}</div>
-                    <div style={prefMetaItem}><span style={prefMetaLabel}>Validations</span>{p.validation_count}</div>
-                    <div style={prefMetaItem}><span style={prefMetaLabel}>Source</span>{p.source || '—'}</div>
-                    <div style={prefMetaItem}><span style={prefMetaLabel}>Logged by</span>{p.logged_by || '—'}</div>
-                    {p.contradiction && <div style={prefMetaItem}><span style={prefMetaLabel}>Contradiction</span>YES</div>}
+                    <div style={prefMetaItem}><span style={prefMetaLabel}>{t('Last validated', 'Xác thực lần cuối')}</span>{fmtDate(p.last_validated)}</div>
+                    <div style={prefMetaItem}><span style={prefMetaLabel}>{t('Validations', 'Số lần xác thực')}</span>{p.validation_count}</div>
+                    <div style={prefMetaItem}><span style={prefMetaLabel}>{t('Source', 'Nguồn')}</span>{p.source || '—'}</div>
+                    <div style={prefMetaItem}><span style={prefMetaLabel}>{t('Logged by', 'Người ghi nhận')}</span>{p.logged_by || '—'}</div>
+                    {p.contradiction && <div style={prefMetaItem}><span style={prefMetaLabel}>{t('Contradiction', 'Mâu thuẫn')}</span>{t('YES', 'CÓ')}</div>}
                   </div>
 
                   {/* Validate / revise controls */}
                   <div style={editBlock}>
-                    <div style={prefSectionLabel}>Validate or revise</div>
+                    <div style={prefSectionLabel}>{t('Validate or revise', 'Xác thực hoặc chỉnh sửa')}</div>
                     <div style={editGrid}>
                       <div>
                         <div style={editLabel}>S₀ <InfoDot tip={TIPS.s0} /></div>
@@ -387,7 +389,7 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
                         </select>
                       </div>
                       <div>
-                        <div style={editLabel}>Confidence <InfoDot tip={TIPS.confidence} /></div>
+                        <div style={editLabel}>{t('Confidence', 'Độ tin cậy')} <InfoDot tip={TIPS.confidence} /></div>
                         <select
                           value={draftFor(p).confidence}
                           onChange={e => setDraft(p.preference_id, { confidence: Number(e.target.value) })}
@@ -397,7 +399,7 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
                         </select>
                       </div>
                       <div>
-                        <div style={editLabel}>Lambda <InfoDot tip={TIPS.lambda} /></div>
+                        <div style={editLabel}>{t('Lambda', 'Lambda')} <InfoDot tip={TIPS.lambda} /></div>
                         <select
                           value={draftFor(p).lambda}
                           onChange={e => setDraft(p.preference_id, { lambda: Number(e.target.value) })}
@@ -407,7 +409,7 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
                         </select>
                       </div>
                       <div>
-                        <div style={editLabel}>Frequency <InfoDot tip={TIPS.frequency} /></div>
+                        <div style={editLabel}>{t('Frequency', 'Tần suất')} <InfoDot tip={TIPS.frequency} /></div>
                         <select
                           value={draftFor(p).frequency}
                           onChange={e => setDraft(p.preference_id, { frequency: Number(e.target.value) })}
@@ -417,7 +419,7 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
                         </select>
                       </div>
                       <div>
-                        <div style={editLabel}>Status <InfoDot tip={TIPS.status} /></div>
+                        <div style={editLabel}>{t('Status', 'Trạng thái')} <InfoDot tip={TIPS.status} /></div>
                         <select
                           value={draftFor(p).status}
                           onChange={e => setDraft(p.preference_id, { status: e.target.value })}
@@ -437,7 +439,7 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
                       return (
                         <div style={previewRow}>
                           <div style={previewItem}>
-                            <span style={previewLabel}>Current</span>
+                            <span style={previewLabel}>{t('Current', 'Hiện tại')}</span>
                             <span style={previewValue}>
                               {Number(p.ps_t).toFixed(2)}
                               <span style={{ ...previewSub, color: '#B2AA98' }}> · {p.score_health_pct}%</span>
@@ -445,9 +447,9 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
                           </div>
                           <span style={previewArrow}>→</span>
                           <div style={previewItem}>
-                            <span style={previewLabel}>After save</span>
+                            <span style={previewLabel}>{t('After save', 'Sau khi lưu')}</span>
                             {isHidden ? (
-                              <span style={{ ...previewValue, color: '#C27070', fontSize: 12 }}>(hidden from live view)</span>
+                              <span style={{ ...previewValue, color: '#C27070', fontSize: 12 }}>{t('(hidden from live view)', '(ẩn khỏi chế độ xem trực tiếp)')}</span>
                             ) : (
                               <span style={previewValue}>
                                 {pred.ps.toFixed(2)}
@@ -465,11 +467,11 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
                     })()}
 
                     <div style={{ marginTop: 12 }}>
-                      <div style={editLabel}>Notes <span style={{ opacity: 0.5 }}>(saved to validation_events)</span></div>
+                      <div style={editLabel}>{t('Notes', 'Ghi chú')} <span style={{ opacity: 0.5 }}>({t('saved to', 'lưu vào')} validation_events)</span></div>
                       <textarea
                         value={draftFor(p).notes}
                         onChange={e => setDraft(p.preference_id, { notes: e.target.value })}
-                        placeholder="Optional context — e.g. 'Confirmed in conversation with Lachlan, 13 May.'"
+                        placeholder={t("Optional context — e.g. 'Confirmed in conversation with Lachlan, 13 May.'", "Bối cảnh tùy chọn — ví dụ: 'Đã xác nhận trong cuộc trò chuyện với Lachlan, 13 tháng 5.'")}
                         rows={2}
                         style={{ ...editInput, width: '100%', resize: 'vertical', fontFamily: "'Google Sans Code', monospace" }}
                       />
@@ -487,14 +489,14 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
                         disabled={saving === p.preference_id}
                         style={isDirty(p) ? btnPrimary : btnGhost}
                       >
-                        {saving === p.preference_id ? '…' : isDirty(p) ? 'Save revision' : 'Confirm — still accurate'}
+                        {saving === p.preference_id ? '…' : isDirty(p) ? t('Save revision', 'Lưu chỉnh sửa') : t('Confirm — still accurate', 'Xác nhận — vẫn chính xác')}
                       </button>
                       <button
                         onClick={() => setConfirmInvalidate(p)}
                         disabled={saving === p.preference_id}
                         style={btnDanger}
                       >
-                        Invalidate
+                        {t('Invalidate', 'Vô hiệu hóa')}
                       </button>
                     </div>
                   </div>
@@ -507,12 +509,12 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
 
       <ConfirmModal
         open={!!confirmInvalidate}
-        eyebrow="⚠ INVALIDATE PREFERENCE"
-        title="Invalidate this preference?"
+        eyebrow={`⚠ ${t('INVALIDATE PREFERENCE', 'VÔ HIỆU HÓA SỞ THÍCH')}`}
+        title={t('Invalidate this preference?', 'Vô hiệu hóa sở thích này?')}
         subject={confirmInvalidate ? `${confirmInvalidate.preference_name} · ${confirmInvalidate.category}` : undefined}
-        body="Hides it from the live PS(t) view and stops it scoring. The row stays for history and the validation event is logged. Cannot be confirmed back from here — re-add via interview if needed."
-        confirmLabel="Invalidate"
-        busyLabel="Invalidating…"
+        body={t('Hides it from the live PS(t) view and stops it scoring. The row stays for history and the validation event is logged. Cannot be confirmed back from here — re-add via interview if needed.', 'Ẩn khỏi chế độ xem PS(t) trực tiếp và ngừng tính điểm. Dòng này vẫn được giữ lại để lưu lịch sử và sự kiện xác thực được ghi lại. Không thể khôi phục lại từ đây — thêm lại qua phỏng vấn nếu cần.')}
+        confirmLabel={t('Invalidate', 'Vô hiệu hóa')}
+        busyLabel={t('Invalidating…', 'Đang vô hiệu hóa…')}
         busy={!!confirmInvalidate && saving === confirmInvalidate.preference_id}
         onCancel={() => setConfirmInvalidate(null)}
         onConfirm={() => { const p = confirmInvalidate; if (p) { setConfirmInvalidate(null); submit(p, 'invalidated') } }}

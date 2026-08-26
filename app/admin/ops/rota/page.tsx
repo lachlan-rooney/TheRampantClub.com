@@ -7,6 +7,7 @@ import { ConfirmModal, PromptModal, useToast } from '@/components/admin/dialogs'
 import { vnDateString } from '@/lib/datetime'
 import { createShift, updateShift, deleteShift, moveShift } from '@/lib/ops/api'
 import type { RotaShift, RotaShiftType, TeamMember, CoverageTarget, ScalingRule, Unavailability } from '@/lib/ops/types'
+import { useLang } from '@/lib/admin-lang'
 
 const FAMILY = "'Google Sans Code', monospace"
 const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -47,6 +48,7 @@ interface Proposal { member: string; shift_date: string; shift_name: string; cov
 interface Gap { date: string; shift_name: string; function: string; still_needed: number }
 
 export default function RotaPage() {
+  const { t } = useLang()
   const supabase = createBrowserSupabaseClient()
   const { showToast, toastNode } = useToast()
 
@@ -200,7 +202,7 @@ export default function RotaPage() {
   // Mark a future date off via the picker (any date ≥ today). Upsert so re-marking
   // updates the note; refresh both the week + the upcoming list.
   const markOffDate = async () => {
-    if (!offMember || !offDate) { showToast('Pick a person and a date.', 'error'); return }
+    if (!offMember || !offDate) { showToast(t('Pick a person and a date.', 'Chọn một người và một ngày.'), 'error'); return }
     const { error } = await supabase.from('rota_unavailability').upsert({ member: offMember, off_date: offDate, note: offNote.trim() || null }, { onConflict: 'member,off_date' })
     if (error) { showToast(error.message, 'error'); return }
     setOffNote(''); setOffDate('')
@@ -261,7 +263,7 @@ export default function RotaPage() {
       }
     }
     setProposals(newProps); setGaps(newGaps)
-    if (newProps.length === 0 && newGaps.length === 0) showToast('Every shift already meets its targets.', 'success')
+    if (newProps.length === 0 && newGaps.length === 0) showToast(t('Every shift already meets its targets.', 'Mọi ca đã đạt mục tiêu.'), 'success')
   }
   const acceptAutofill = () => {
     if (proposals.length === 0) return
@@ -289,7 +291,7 @@ export default function RotaPage() {
       : { member: team[0]?.id || '', shift_name, start_time: '', end_time: '', role: '', notes: '' })
   }
   const saveAssign = () => {
-    if (!cell || !draft.member) { showToast('Pick a team member.', 'error'); return }
+    if (!cell || !draft.member) { showToast(t('Pick a team member.', 'Chọn một nhân sự.'), 'error'); return }
     const common = {
       member: draft.member, shift_name: draft.shift_name,
       start_time: draft.start_time || null, end_time: draft.end_time || null,
@@ -325,13 +327,13 @@ export default function RotaPage() {
   }
   const warnIfLost = (shift: RotaShift) => {
     const lost = lostOnlyFunctions(shift)
-    if (lost.length) showToast(`Heads up: that was the only ${lost.map(f => FN_LABEL[f] || f).join(' / ')} on ${shift.shift_name} · ${dayLabel(shift.shift_date)}.`, 'error')
+    if (lost.length) showToast(`${t('Heads up: that was the only', 'Lưu ý: đó là người duy nhất')} ${lost.map(f => FN_LABEL[f] || f).join(' / ')} ${t('on', 'ở')} ${shift.shift_name} · ${dayLabel(shift.shift_date)}.`, 'error')
   }
   // Soft-warn when a drag puts someone onto a 6th distinct day this week (the
   // autofill hard-caps at 5; a manual drag may override but is flagged).
   const warn6thDay = (memberId: string, toDate: string) => {
     const wkDays = new Set(shifts.filter(s => s.member === memberId && days.includes(s.shift_date)).map(s => s.shift_date))
-    if (!wkDays.has(toDate) && wkDays.size >= 5) showToast(`${memberName(memberId)} would be on a 6th day this week.`, 'error')
+    if (!wkDays.has(toDate) && wkDays.size >= 5) showToast(`${memberName(memberId)} ${t('would be on a 6th day this week.', 'sẽ làm ngày thứ 6 trong tuần này.')}`, 'error')
   }
 
   // Move (optimistic local update → RPC → reconcile via load() in wrap).
@@ -345,7 +347,7 @@ export default function RotaPage() {
     const dragged = shifts.find(s => s.id === dragId); setDragId(null)
     if (!dragged || (dragged.shift_date === toDate && dragged.shift_name === toName)) return
     warnIfLost(dragged)
-    if (isOff(dragged.member, toDate)) showToast(`${memberName(dragged.member)} is marked off ${dayLabel(toDate)} — assigned anyway.`, 'error')
+    if (isOff(dragged.member, toDate)) showToast(`${memberName(dragged.member)} ${t('is marked off', 'được đánh dấu nghỉ')} ${dayLabel(toDate)} — ${t('assigned anyway.', 'vẫn được xếp.')}`, 'error')
     warn6thDay(dragged.member, toDate)
     doMove(dragged.id, toDate, toName)
   }
@@ -355,8 +357,8 @@ export default function RotaPage() {
     if (!dragged || dragged.id === target.id) return
     if (dragged.shift_date === target.shift_date && dragged.shift_name === target.shift_name) return
     warnIfLost(dragged)
-    if (isOff(dragged.member, target.shift_date)) showToast(`${memberName(dragged.member)} is marked off ${dayLabel(target.shift_date)} — assigned anyway.`, 'error')
-    if (isOff(target.member, dragged.shift_date)) showToast(`${memberName(target.member)} is marked off ${dayLabel(dragged.shift_date)} — assigned anyway.`, 'error')
+    if (isOff(dragged.member, target.shift_date)) showToast(`${memberName(dragged.member)} ${t('is marked off', 'được đánh dấu nghỉ')} ${dayLabel(target.shift_date)} — ${t('assigned anyway.', 'vẫn được xếp.')}`, 'error')
+    if (isOff(target.member, dragged.shift_date)) showToast(`${memberName(target.member)} ${t('is marked off', 'được đánh dấu nghỉ')} ${dayLabel(dragged.shift_date)} — ${t('assigned anyway.', 'vẫn được xếp.')}`, 'error')
     warn6thDay(dragged.member, target.shift_date)
     warn6thDay(target.member, dragged.shift_date)
     setShifts(ss => ss.map(s =>
@@ -386,34 +388,34 @@ export default function RotaPage() {
 
   return (
     <>
-      <Link href="/admin/ops" style={backLink}>← Boards</Link>
+      <Link href="/admin/ops" style={backLink}>{t('← Boards', '← Bảng')}</Link>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '8px 0 4px', flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <div style={eyebrow}>Operations Hub</div>
-          <h1 style={pageTitle}>Rota</h1>
+          <div style={eyebrow}>{t('Operations Hub', 'Trung tâm Vận hành')}</div>
+          <h1 style={pageTitle}>{t('Rota', 'Lịch làm việc')}</h1>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button onClick={() => setWeekStart(w => addDays(w, -7))} style={tinyBtn}>‹ Prev</button>
-          <button onClick={() => setWeekStart(mondayOf(vnDateString()))} style={tinyBtn}>This week</button>
-          <button onClick={() => setWeekStart(w => addDays(w, 7))} style={tinyBtn}>Next ›</button>
-          <button onClick={runAutofill} disabled={busy} style={{ ...tinyBtn, color: '#D4B85A', borderColor: 'rgba(212,184,90,0.45)' }}>✦ Autofill week</button>
+          <button onClick={() => setWeekStart(w => addDays(w, -7))} style={tinyBtn}>{t('‹ Prev', '‹ Trước')}</button>
+          <button onClick={() => setWeekStart(mondayOf(vnDateString()))} style={tinyBtn}>{t('This week', 'Tuần này')}</button>
+          <button onClick={() => setWeekStart(w => addDays(w, 7))} style={tinyBtn}>{t('Next ›', 'Sau ›')}</button>
+          <button onClick={runAutofill} disabled={busy} style={{ ...tinyBtn, color: '#D4B85A', borderColor: 'rgba(212,184,90,0.45)' }}>{t('✦ Autofill week', '✦ Tự động xếp tuần')}</button>
         </div>
       </div>
-      <p style={lede}>Club-wide weekly rota — who&apos;s on which shift. Drag a name to move it across shifts or days; drop onto another name to swap. Week of {dayLabel(weekStart)} – {dayLabel(weekEnd)}.</p>
+      <p style={lede}>{t("Club-wide weekly rota — who's on which shift. Drag a name to move it across shifts or days; drop onto another name to swap. Week of", 'Lịch làm việc tuần toàn câu lạc bộ — ai làm ca nào. Kéo một tên để chuyển sang ca hoặc ngày khác; thả lên một tên khác để hoán đổi. Tuần của')} {dayLabel(weekStart)} – {dayLabel(weekEnd)}.</p>
 
       {(proposals.length > 0 || gaps.length > 0) && (
         <div style={autofillBanner}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <strong style={{ color: '#D4B85A' }}>Autofill draft: {proposals.length} proposed assignment{proposals.length === 1 ? '' : 's'}</strong>
-            <span style={{ ...metaText, opacity: 0.7 }}>Draft only — fills by role to meet targets, skipping anyone marked off. Drop any chip with its × before accepting; review the rest.</span>
+            <strong style={{ color: '#D4B85A' }}>{t('Autofill draft:', 'Bản nháp tự động:')} {proposals.length} {proposals.length === 1 ? t('proposed assignment', 'phân ca đề xuất') : t('proposed assignments', 'phân ca đề xuất')}</strong>
+            <span style={{ ...metaText, opacity: 0.7 }}>{t('Draft only — fills by role to meet targets, skipping anyone marked off. Drop any chip with its × before accepting; review the rest.', 'Chỉ là bản nháp — xếp theo vai trò để đạt mục tiêu, bỏ qua ai đã đánh dấu nghỉ. Bỏ bất kỳ ô nào bằng dấu × trước khi chấp nhận; xem lại phần còn lại.')}</span>
             <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-              <button onClick={acceptAutofill} disabled={busy || proposals.length === 0} style={{ ...btnPrimary, opacity: proposals.length === 0 ? 0.5 : 1 }}>{busy ? 'Saving…' : `Accept kept (${proposals.length})`}</button>
-              <button onClick={discardAutofill} disabled={busy} style={tinyBtn}>Discard all</button>
+              <button onClick={acceptAutofill} disabled={busy || proposals.length === 0} style={{ ...btnPrimary, opacity: proposals.length === 0 ? 0.5 : 1 }}>{busy ? t('Saving…', 'Đang lưu…') : `${t('Accept kept', 'Chấp nhận đã giữ')} (${proposals.length})`}</button>
+              <button onClick={discardAutofill} disabled={busy} style={tinyBtn}>{t('Discard all', 'Bỏ tất cả')}</button>
             </span>
           </div>
           {gaps.length > 0 && (
             <div style={{ marginTop: 10 }}>
-              <span style={{ ...metaText, color: '#C27070', marginRight: 4 }}>Couldn&apos;t fill (sort by hand):</span>
+              <span style={{ ...metaText, color: '#C27070', marginRight: 4 }}>{t("Couldn't fill (sort by hand):", 'Không thể xếp (sắp bằng tay):')}</span>
               {gaps.map((g, i) => <span key={i} style={gapTag}>{g.shift_name} {dayLabel(g.date)} · +{g.still_needed} {FN_LABEL[g.function] || g.function}</span>)}
             </div>
           )}
@@ -421,13 +423,13 @@ export default function RotaPage() {
       )}
 
       {loading ? (
-        <div style={emptyText}>Loading…</div>
+        <div style={emptyText}>{t('Loading…', 'Đang tải…')}</div>
       ) : (
         <div style={{ overflowX: 'auto', marginTop: 16 }}>
           <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 820 }}>
             <thead>
               <tr>
-                <th style={{ ...th, textAlign: 'left', width: 90 }}>Shift</th>
+                <th style={{ ...th, textAlign: 'left', width: 90 }}>{t('Shift', 'Ca')}</th>
                 {days.map((d, i) => (
                   <th key={d} style={{ ...th, background: d === vnDateString() ? 'rgba(212,184,90,0.10)' : undefined }}>
                     <div>{DOW[i]}</div>
@@ -439,7 +441,7 @@ export default function RotaPage() {
             <tbody>
               {/* What's on — the day's demand (member bookings + house events) by space */}
               <tr>
-                <td style={{ ...td, ...onLabelCell }}>What&apos;s on</td>
+                <td style={{ ...td, ...onLabelCell }}>{t("What's on", 'Lịch trong ngày')}</td>
                 {days.map(d => {
                   const dq = demandFor(d)
                   const bySpace = new Map<string, { n: number; covers: number }>()
@@ -454,12 +456,12 @@ export default function RotaPage() {
                       {quiet ? <span style={{ ...metaText, opacity: 0.35 }}>·</span> : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                           {dq.entries.map((e, i) => (
-                            <Link key={`e${i}`} href={`/admin/bookings/new?entry=${e.id}`} style={{ ...onEvent, textDecoration: 'none' }} title={`${e.title} · ${e.space || 'no room'} — open entry`}>
+                            <Link key={`e${i}`} href={`/admin/bookings/new?entry=${e.id}`} style={{ ...onEvent, textDecoration: 'none' }} title={`${e.title} · ${e.space || t('no room', 'không có phòng')} — ${t('open entry', 'mở mục')}`}>
                               ◆ {shortSpace(e.space)} · {e.title} <span style={{ opacity: 0.65 }}>({HOUSE_KIND_SHORT[e.kind] || 'event'})</span>
                             </Link>
                           ))}
                           {[...bySpace.entries()].map(([sp, v]) => (
-                            <span key={sp} style={onBooking}>{shortSpace(sp)} · {v.n} {v.n === 1 ? 'bkg' : 'bkgs'} · {v.covers}p</span>
+                            <span key={sp} style={onBooking}>{shortSpace(sp)} · {v.n} {v.n === 1 ? t('bkg', 'đặt') : t('bkgs', 'đặt')} · {v.covers}p</span>
                           ))}
                         </div>
                       )}
@@ -468,13 +470,13 @@ export default function RotaPage() {
                 })}
               </tr>
               {rowNames.length === 0 ? (
-                <tr><td colSpan={8} style={{ ...td, ...metaText, opacity: 0.6, fontStyle: 'italic' }}>No shift names yet — add one below.</td></tr>
+                <tr><td colSpan={8} style={{ ...td, ...metaText, opacity: 0.6, fontStyle: 'italic' }}>{t('No shift names yet — add one below.', 'Chưa có tên ca — thêm một cái bên dưới.')}</td></tr>
               ) : rowNames.map(name => {
                 const isType = typeNames.includes(name)
                 return (
                 <tr key={name}>
                   <td style={{ ...td, fontFamily: FAMILY, fontSize: 12, color: isType ? '#E5D4C2' : '#7E7864' }}>
-                    {name}{!isType && <span title="retired shift name — kept on existing shifts" style={{ ...metaText, opacity: 0.5 }}> · retired</span>}
+                    {name}{!isType && <span title={t('retired shift name — kept on existing shifts', 'tên ca đã ngừng — giữ trên các ca hiện có')} style={{ ...metaText, opacity: 0.5 }}> · {t('retired', 'đã ngừng')}</span>}
                   </td>
                   {days.map(d => {
                     // Under-staffing: required (base + day bumps) vs present (assigned who HAVE the function).
@@ -521,21 +523,21 @@ export default function RotaPage() {
                           )
                         })}
                         {ghosts.map((g, gi) => (
-                          <div key={`g${gi}`} style={ghostChip} title={`Proposed · ${FN_LABEL[g.coverFn] || g.coverFn}`}>
+                          <div key={`g${gi}`} style={ghostChip} title={`${t('Proposed', 'Đề xuất')} · ${FN_LABEL[g.coverFn] || g.coverFn}`}>
                             <span>{memberName(g.member)}</span>
                             <span style={{ display: 'inline-flex', gap: 4, marginLeft: 6, alignItems: 'center', flexShrink: 0 }}>
                               <span style={{ ...fnDot, background: FN_COLOR[g.coverFn] || '#B2AA98' }} />
-                              <span style={{ fontSize: 8, opacity: 0.7, letterSpacing: '0.08em' }}>NEW</span>
-                              <button onClick={() => setProposals(ps => ps.filter(p => p !== g))} title="Drop this proposal" style={ghostDrop}>×</button>
+                              <span style={{ fontSize: 8, opacity: 0.7, letterSpacing: '0.08em' }}>{t('NEW', 'MỚI')}</span>
+                              <button onClick={() => setProposals(ps => ps.filter(p => p !== g))} title={t('Drop this proposal', 'Bỏ đề xuất này')} style={ghostDrop}>×</button>
                             </span>
                           </div>
                         ))}
-                        {isType && <button onClick={() => openAssign(d, name, null)} style={addCellBtn}>+ assign</button>}
+                        {isType && <button onClick={() => openAssign(d, name, null)} style={addCellBtn}>{t('+ assign', '+ xếp')}</button>}
                         {cov.length > 0 && (
                           <div style={covStrip}>
                             {cov.map(c => (
                               <span key={c.fn} style={{ ...covTag, color: c.pres >= c.req ? '#7AB07A' : '#C27070' }}
-                                title={`${FN_LABEL[c.fn]}: ${c.pres} on, ${c.req} wanted`}>
+                                title={`${FN_LABEL[c.fn]}: ${c.pres} ${t('on', 'đang làm')}, ${c.req} ${t('wanted', 'cần')}`}>
                                 {FN_LABEL[c.fn]} {c.pres}/{c.req}
                               </span>
                             ))}
@@ -555,22 +557,22 @@ export default function RotaPage() {
 
       {/* Editable shift names */}
       <div style={{ marginTop: 22, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ ...metaText, opacity: 0.7 }}>Shift names:</span>
-        {types.map(t => (
-          <span key={t.name} style={typePill}>
-            {t.name}
-            <button onClick={() => removeType(t.name)} title="Remove" style={typeRemove}>×</button>
+        <span style={{ ...metaText, opacity: 0.7 }}>{t('Shift names:', 'Tên ca:')}</span>
+        {types.map(ty => (
+          <span key={ty.name} style={typePill}>
+            {ty.name}
+            <button onClick={() => removeType(ty.name)} title={t('Remove', 'Xóa')} style={typeRemove}>×</button>
           </span>
         ))}
-        <button onClick={() => setAddTypeOpen(true)} style={tinyBtn}>+ add</button>
+        <button onClick={() => setAddTypeOpen(true)} style={tinyBtn}>{t('+ add', '+ thêm')}</button>
       </div>
 
       {/* Team & functions — the roles each person can cover (shown as dots on shifts) */}
       <div style={{ marginTop: 14 }}>
-        <button onClick={() => setShowTeam(v => !v)} style={tinyBtn}>{showTeam ? '▾' : '▸'} Team &amp; functions</button>
+        <button onClick={() => setShowTeam(v => !v)} style={tinyBtn}>{showTeam ? '▾' : '▸'} {t('Team & functions', 'Nhân sự & vai trò')}</button>
         {showTeam && (
           <div style={teamPanel}>
-            <div style={{ ...metaText, opacity: 0.7, marginBottom: 10 }}>Tick the roles each person can cover. They show as coloured dots on their shifts; dragging the only person of a role off a shift gives a heads-up.</div>
+            <div style={{ ...metaText, opacity: 0.7, marginBottom: 10 }}>{t('Tick the roles each person can cover. They show as coloured dots on their shifts; dragging the only person of a role off a shift gives a heads-up.', 'Đánh dấu các vai trò mỗi người có thể đảm nhận. Chúng hiện dưới dạng chấm màu trên ca của họ; kéo người duy nhất của một vai trò ra khỏi ca sẽ có lưu ý.')}</div>
             {team.map(m => (
               <div key={m.id} style={teamRow}>
                 <span style={{ flex: 1, color: '#E5D4C2', fontSize: 12, minWidth: 120 }}>{m.display_name}</span>
@@ -593,15 +595,15 @@ export default function RotaPage() {
 
       {/* Coverage — base targets per shift × function + demand-scaling rules (tunable) */}
       <div style={{ marginTop: 12 }}>
-        <button onClick={() => setShowCoverage(v => !v)} style={tinyBtn}>{showCoverage ? '▾' : '▸'} Coverage targets</button>
+        <button onClick={() => setShowCoverage(v => !v)} style={tinyBtn}>{showCoverage ? '▾' : '▸'} {t('Coverage targets', 'Mục tiêu nhân lực')}</button>
         {showCoverage && (
           <div style={teamPanel}>
-            <div style={{ ...metaText, opacity: 0.7, marginBottom: 10 }}>How many of each function a shift wants. The grid shows <span style={{ color: '#7AB07A' }}>on/wanted</span> per shift, tinting any that fall short — guidance, not a block.</div>
+            <div style={{ ...metaText, opacity: 0.7, marginBottom: 10 }}>{t('How many of each function a shift wants. The grid shows', 'Mỗi ca cần bao nhiêu người cho từng vai trò. Lưới hiển thị')} <span style={{ color: '#7AB07A' }}>{t('on/wanted', 'đang làm/cần')}</span> {t('per shift, tinting any that fall short — guidance, not a block.', 'cho mỗi ca, tô màu những ca chưa đủ — chỉ là gợi ý, không chặn.')}</div>
 
-            <div style={{ ...fieldLabel, marginBottom: 6 }}>Base targets (per shift)</div>
+            <div style={{ ...fieldLabel, marginBottom: 6 }}>{t('Base targets (per shift)', 'Mục tiêu cơ bản (mỗi ca)')}</div>
             <div style={{ overflowX: 'auto', marginBottom: 16 }}>
               <table style={{ borderCollapse: 'collapse' }}>
-                <thead><tr><th style={{ ...covTh, textAlign: 'left' }}>Shift</th>{FUNCTIONS.map(f => <th key={f} style={covTh}>{FN_LABEL[f]}</th>)}</tr></thead>
+                <thead><tr><th style={{ ...covTh, textAlign: 'left' }}>{t('Shift', 'Ca')}</th>{FUNCTIONS.map(f => <th key={f} style={covTh}>{FN_LABEL[f]}</th>)}</tr></thead>
                 <tbody>
                   {types.map(t => (
                     <tr key={t.name}>
@@ -615,25 +617,25 @@ export default function RotaPage() {
                       ))}
                     </tr>
                   ))}
-                  {types.length === 0 && <tr><td colSpan={FUNCTIONS.length + 1} style={{ ...covTd, ...metaText, opacity: 0.6 }}>Add a shift name first.</td></tr>}
+                  {types.length === 0 && <tr><td colSpan={FUNCTIONS.length + 1} style={{ ...covTd, ...metaText, opacity: 0.6 }}>{t('Add a shift name first.', 'Thêm tên ca trước.')}</td></tr>}
                 </tbody>
               </table>
             </div>
 
-            <div style={{ ...fieldLabel, marginBottom: 6 }}>Demand-scaling rules</div>
-            <div style={{ ...metaText, opacity: 0.6, marginBottom: 8, fontSize: 10 }}>When a day&apos;s demand crosses a threshold, add to a function&apos;s target. Tune freely — these are data, not code.</div>
+            <div style={{ ...fieldLabel, marginBottom: 6 }}>{t('Demand-scaling rules', 'Quy tắc điều chỉnh theo nhu cầu')}</div>
+            <div style={{ ...metaText, opacity: 0.6, marginBottom: 8, fontSize: 10 }}>{t("When a day's demand crosses a threshold, add to a function's target. Tune freely — these are data, not code.", 'Khi nhu cầu trong ngày vượt ngưỡng, tăng mục tiêu của một vai trò. Tùy chỉnh thoải mái — đây là dữ liệu, không phải mã.')}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {rules.map(r => (
                 <div key={r.id} style={ruleRow}>
-                  <button onClick={() => updateRule(r.id, { active: !r.active })} title={r.active ? 'Active — click to disable' : 'Disabled — click to enable'}
+                  <button onClick={() => updateRule(r.id, { active: !r.active })} title={r.active ? t('Active — click to disable', 'Đang bật — nhấn để tắt') : t('Disabled — click to enable', 'Đang tắt — nhấn để bật')}
                     style={{ ...fnToggle, ...(r.active ? { background: '#7AB07A', color: '#052E20', borderColor: '#7AB07A' } : { opacity: 0.5 }) }}>
-                    {r.active ? 'on' : 'off'}
+                    {r.active ? t('on', 'bật') : t('off', 'tắt')}
                   </button>
-                  <span style={{ ...metaText, fontSize: 11 }}>When</span>
+                  <span style={{ ...metaText, fontSize: 11 }}>{t('When', 'Khi')}</span>
                   <select value={r.trigger_type} onChange={e => updateRule(r.id, { trigger_type: e.target.value as ScalingRule['trigger_type'] })} style={ruleSelect}>
-                    <option value="session_covers" style={opt}>covers in a session</option>
-                    <option value="day_covers" style={opt}>covers in the day</option>
-                    <option value="event_present" style={opt}>an event is on</option>
+                    <option value="session_covers" style={opt}>{t('covers in a session', 'lượt khách trong một phiên')}</option>
+                    <option value="day_covers" style={opt}>{t('covers in the day', 'lượt khách trong ngày')}</option>
+                    <option value="event_present" style={opt}>{t('an event is on', 'có sự kiện diễn ra')}</option>
                   </select>
                   {r.trigger_type !== 'event_present' && (
                     <>
@@ -646,10 +648,10 @@ export default function RotaPage() {
                   <select value={r.function} onChange={e => updateRule(r.id, { function: e.target.value })} style={ruleSelect}>
                     {FUNCTIONS.map(f => <option key={f} value={f} style={opt}>{FN_LABEL[f]}</option>)}
                   </select>
-                  <button onClick={() => removeRule(r.id)} title="Remove rule" style={{ ...typeRemove, marginLeft: 'auto' }}>×</button>
+                  <button onClick={() => removeRule(r.id)} title={t('Remove rule', 'Xóa quy tắc')} style={{ ...typeRemove, marginLeft: 'auto' }}>×</button>
                 </div>
               ))}
-              <button onClick={addRule} style={{ ...tinyBtn, alignSelf: 'flex-start', marginTop: 4 }}>+ add rule</button>
+              <button onClick={addRule} style={{ ...tinyBtn, alignSelf: 'flex-start', marginTop: 4 }}>{t('+ add rule', '+ thêm quy tắc')}</button>
             </div>
           </div>
         )}
@@ -657,15 +659,15 @@ export default function RotaPage() {
 
       {/* Time off — who can't work each day this week (autofill skips; drag warns) */}
       <div style={{ marginTop: 12 }}>
-        <button onClick={() => setShowTimeOff(v => !v)} style={tinyBtn}>{showTimeOff ? '▾' : '▸'} Time off</button>
+        <button onClick={() => setShowTimeOff(v => !v)} style={tinyBtn}>{showTimeOff ? '▾' : '▸'} {t('Time off', 'Nghỉ phép')}</button>
         {showTimeOff && (
           <div style={teamPanel}>
-            <div style={{ ...metaText, opacity: 0.7, marginBottom: 10 }}>Mark who can&apos;t work each day this week. Autofill won&apos;t roster them that day; dragging someone onto their day off warns (you can still override).</div>
+            <div style={{ ...metaText, opacity: 0.7, marginBottom: 10 }}>{t("Mark who can't work each day this week. Autofill won't roster them that day; dragging someone onto their day off warns (you can still override).", 'Đánh dấu ai không thể làm mỗi ngày trong tuần này. Tự động xếp sẽ không xếp họ ngày đó; kéo ai đó vào ngày nghỉ của họ sẽ cảnh báo (bạn vẫn có thể ghi đè).')}</div>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    <th style={{ ...covTh, textAlign: 'left' }}>Person</th>
+                    <th style={{ ...covTh, textAlign: 'left' }}>{t('Person', 'Người')}</th>
                     {days.map((d, i) => <th key={d} style={covTh}>{DOW[i]}<div style={{ ...metaText, opacity: 0.5, fontSize: 9 }}>{new Date(d + 'T00:00:00Z').getUTCDate()}</div></th>)}
                   </tr>
                 </thead>
@@ -677,33 +679,33 @@ export default function RotaPage() {
                         const off = isOff(m.id, d)
                         return (
                           <td key={d} style={covTd}>
-                            <button onClick={() => toggleOff(m.id, d)} title={off ? 'Marked off — click to clear' : 'Available — click to mark off'}
-                              style={off ? offBtnOn : offBtnOff}>{off ? 'off' : '·'}</button>
+                            <button onClick={() => toggleOff(m.id, d)} title={off ? t('Marked off — click to clear', 'Đã đánh dấu nghỉ — nhấn để xóa') : t('Available — click to mark off', 'Có mặt — nhấn để đánh dấu nghỉ')}
+                              style={off ? offBtnOn : offBtnOff}>{off ? t('off', 'nghỉ') : '·'}</button>
                           </td>
                         )
                       })}
                     </tr>
                   ))}
-                  {team.length === 0 && <tr><td colSpan={8} style={{ ...covTd, ...metaText, opacity: 0.6 }}>No team members.</td></tr>}
+                  {team.length === 0 && <tr><td colSpan={8} style={{ ...covTd, ...metaText, opacity: 0.6 }}>{t('No team members.', 'Chưa có nhân sự.')}</td></tr>}
                 </tbody>
               </table>
             </div>
 
             {/* Ahead-of-time: mark any future date off (leave booked weeks out) */}
-            <div style={{ ...fieldLabel, marginTop: 16, marginBottom: 6 }}>Book time off ahead (any future date)</div>
+            <div style={{ ...fieldLabel, marginTop: 16, marginBottom: 6 }}>{t('Book time off ahead (any future date)', 'Đăng ký nghỉ trước (bất kỳ ngày tương lai nào)')}</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <select value={offMember} onChange={e => setOffMember(e.target.value)} style={ruleSelect}>
-                <option value="" style={opt}>— person —</option>
+                <option value="" style={opt}>{t('— person —', '— người —')}</option>
                 {team.map(m => <option key={m.id} value={m.id} style={opt}>{m.display_name}</option>)}
               </select>
               <input type="date" min={vnDateString()} value={offDate} onChange={e => setOffDate(e.target.value)} style={{ ...ruleSelect, colorScheme: 'dark' }} />
-              <input value={offNote} onChange={e => setOffNote(e.target.value)} placeholder="note (leave / sick…)" style={{ ...ruleSelect, minWidth: 130 }} />
-              <button onClick={markOffDate} style={tinyBtn}>Mark off</button>
+              <input value={offNote} onChange={e => setOffNote(e.target.value)} placeholder={t('note (leave / sick…)', 'ghi chú (nghỉ phép / ốm…)')} style={{ ...ruleSelect, minWidth: 130 }} />
+              <button onClick={markOffDate} style={tinyBtn}>{t('Mark off', 'Đánh dấu nghỉ')}</button>
             </div>
 
-            <div style={{ ...fieldLabel, marginTop: 16, marginBottom: 6 }}>Upcoming time off</div>
+            <div style={{ ...fieldLabel, marginTop: 16, marginBottom: 6 }}>{t('Upcoming time off', 'Nghỉ phép sắp tới')}</div>
             {upcomingOff.length === 0 ? (
-              <div style={{ ...metaText, opacity: 0.55, fontStyle: 'italic' }}>Nothing booked ahead.</div>
+              <div style={{ ...metaText, opacity: 0.55, fontStyle: 'italic' }}>{t('Nothing booked ahead.', 'Chưa đặt gì trước.')}</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {upcomingOff.map(u => (
@@ -711,7 +713,7 @@ export default function RotaPage() {
                     <span style={{ minWidth: 120 }}>{memberName(u.member)}</span>
                     <span style={{ ...metaText }}>{dayLabel(u.off_date)}</span>
                     {u.note && <span style={{ ...metaText, opacity: 0.6 }}>· {u.note}</span>}
-                    <button onClick={() => clearOff(u.member, u.off_date)} title="Clear" style={{ ...typeRemove, marginLeft: 'auto' }}>×</button>
+                    <button onClick={() => clearOff(u.member, u.off_date)} title={t('Clear', 'Xóa')} style={{ ...typeRemove, marginLeft: 'auto' }}>×</button>
                   </div>
                 ))}
               </div>
@@ -725,44 +727,44 @@ export default function RotaPage() {
         <>
           <div style={modalBackdrop} onClick={() => { if (!busy) setCell(null) }} />
           <div style={modalBox} role="dialog">
-            <div style={eyebrow}>{cell.editing ? 'Edit shift' : 'Assign shift'}</div>
+            <div style={eyebrow}>{cell.editing ? t('Edit shift', 'Sửa ca') : t('Assign shift', 'Xếp ca')}</div>
             <div style={{ ...metaText, marginBottom: 12 }}>{cell.shift_name} · {dayLabel(cell.date)}</div>
-            <div style={fieldLabel}>Team member</div>
+            <div style={fieldLabel}>{t('Team member', 'Nhân sự')}</div>
             <select style={input} value={draft.member} onChange={e => setDraft(d => ({ ...d, member: e.target.value }))}>
-              <option value="" style={opt}>— pick —</option>
+              <option value="" style={opt}>{t('— pick —', '— chọn —')}</option>
               {team.map(m => <option key={m.id} value={m.id} style={opt}>{m.display_name}</option>)}
             </select>
             <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
               <div style={{ flex: 1 }}>
-                <div style={fieldLabel}>Shift</div>
+                <div style={fieldLabel}>{t('Shift', 'Ca')}</div>
                 <select style={input} value={draft.shift_name} onChange={e => setDraft(d => ({ ...d, shift_name: e.target.value }))}>
-                  {types.map(t => <option key={t.name} value={t.name} style={opt}>{t.name}</option>)}
+                  {types.map(ty => <option key={ty.name} value={ty.name} style={opt}>{ty.name}</option>)}
                 </select>
               </div>
               <div style={{ flex: 1 }}>
-                <div style={fieldLabel}>Role (optional)</div>
+                <div style={fieldLabel}>{t('Role (optional)', 'Vai trò (tùy chọn)')}</div>
                 <input style={input} value={draft.role} onChange={e => setDraft(d => ({ ...d, role: e.target.value }))} placeholder="Bar, Floor…" />
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
               <div style={{ flex: 1 }}>
-                <div style={fieldLabel}>Start (optional)</div>
+                <div style={fieldLabel}>{t('Start (optional)', 'Bắt đầu (tùy chọn)')}</div>
                 <input type="time" style={input} value={draft.start_time} onChange={e => setDraft(d => ({ ...d, start_time: e.target.value }))} />
               </div>
               <div style={{ flex: 1 }}>
-                <div style={fieldLabel}>End (optional)</div>
+                <div style={fieldLabel}>{t('End (optional)', 'Kết thúc (tùy chọn)')}</div>
                 <input type="time" style={input} value={draft.end_time} onChange={e => setDraft(d => ({ ...d, end_time: e.target.value }))} />
               </div>
             </div>
             <div style={{ marginTop: 10 }}>
-              <div style={fieldLabel}>Notes (optional)</div>
+              <div style={fieldLabel}>{t('Notes (optional)', 'Ghi chú (tùy chọn)')}</div>
               <input style={input} value={draft.notes} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} />
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-              <button onClick={saveAssign} disabled={busy} style={btnPrimary}>{busy ? 'Saving…' : cell.editing ? 'Save' : 'Assign'}</button>
-              <button onClick={() => setCell(null)} style={tinyBtn}>Cancel</button>
+              <button onClick={saveAssign} disabled={busy} style={btnPrimary}>{busy ? t('Saving…', 'Đang lưu…') : cell.editing ? t('Save', 'Lưu') : t('Assign', 'Xếp')}</button>
+              <button onClick={() => setCell(null)} style={tinyBtn}>{t('Cancel', 'Hủy')}</button>
               {cell.editing && (
-                <button onClick={() => { const s = cell.editing; setCell(null); setConfirmRemove(s) }} style={{ ...tinyBtn, marginLeft: 'auto', color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}>Remove</button>
+                <button onClick={() => { const s = cell.editing; setCell(null); setConfirmRemove(s) }} style={{ ...tinyBtn, marginLeft: 'auto', color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}>{t('Remove', 'Xóa')}</button>
               )}
             </div>
           </div>
@@ -771,21 +773,21 @@ export default function RotaPage() {
 
       <PromptModal
         open={addTypeOpen}
-        eyebrow="＋ SHIFT NAME"
-        title="Add a shift name"
-        label="Name (e.g. Brunch, Late) — editable anytime, no migration"
-        confirmLabel="Add"
+        eyebrow={t('＋ SHIFT NAME', '＋ TÊN CA')}
+        title={t('Add a shift name', 'Thêm tên ca')}
+        label={t('Name (e.g. Brunch, Late) — editable anytime, no migration', 'Tên (vd. Brunch, Ca muộn) — sửa được bất cứ lúc nào, không cần di chuyển dữ liệu')}
+        confirmLabel={t('Add', 'Thêm')}
         onCancel={() => setAddTypeOpen(false)}
         onConfirm={addType}
       />
       <ConfirmModal
         open={!!confirmRemove}
-        eyebrow="⚠ REMOVE SHIFT"
-        title="Remove this shift?"
+        eyebrow={t('⚠ REMOVE SHIFT', '⚠ XÓA CA')}
+        title={t('Remove this shift?', 'Xóa ca này?')}
         subject={confirmRemove ? `${memberName(confirmRemove.member)} · ${confirmRemove.shift_name} · ${dayLabel(confirmRemove.shift_date)}` : undefined}
-        body="Removes the assignment from the rota. The change is recorded in the activity log."
-        confirmLabel="Remove shift"
-        busyLabel="Removing…"
+        body={t('Removes the assignment from the rota. The change is recorded in the activity log.', 'Xóa phân ca khỏi lịch làm việc. Thay đổi được ghi lại trong nhật ký hoạt động.')}
+        confirmLabel={t('Remove shift', 'Xóa ca')}
+        busyLabel={t('Removing…', 'Đang xóa…')}
         busy={busy}
         onCancel={() => setConfirmRemove(null)}
         onConfirm={() => { const s = confirmRemove; if (s) wrap(() => deleteShift(s.id), () => setConfirmRemove(null)) }}

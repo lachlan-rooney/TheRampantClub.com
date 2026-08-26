@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { PromptModal } from '@/components/admin/dialogs'
+import { useLang } from '@/lib/admin-lang'
 
 // Admin / Floor / MX Daily
 //
@@ -77,6 +78,7 @@ interface Data {
 }
 
 export default function MXDailyPage() {
+  const { t } = useLang()
   const [data, setData] = useState<Data | null>(null)
   const [loading, setLoading] = useState(true)
   const [showAddComplaint, setShowAddComplaint] = useState(false)
@@ -127,7 +129,7 @@ export default function MXDailyPage() {
 
   const acknowledgeHandover = async () => {
     if (!data?.last_closing) return
-    if (!ackInitials.trim()) { setAckError('Enter your initials first.'); return }
+    if (!ackInitials.trim()) { setAckError(t('Enter your initials first.', 'Vui lòng nhập tên viết tắt của bạn trước.')); return }
     setAckBusy(true); setAckError(null)
     try {
       const r = await fetch('/api/admin/checklists/ack', {
@@ -138,7 +140,7 @@ export default function MXDailyPage() {
         }),
       })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'Ack failed')
+      if (!r.ok) throw new Error(j.error || t('Ack failed', 'Xác nhận thất bại'))
       load()  // refresh so the panel flips to the receipt view
     } catch (e) {
       setAckError((e as Error).message)
@@ -157,28 +159,28 @@ export default function MXDailyPage() {
   // Prompt modal — resolution note when resolving a complaint.
   const [resolveId, setResolveId] = useState<string | null>(null)
 
-  if (loading || !data) return <div style={emptyText}>Loading MX Daily…</div>
+  if (loading || !data) return <div style={emptyText}>{t('Loading MX Daily…', 'Đang tải MX Daily…')}</div>
 
   const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
   return (
     <>
       <div style={{ marginBottom: 28 }}>
-        <div style={eyebrow}>Floor · Member Experience</div>
+        <div style={eyebrow}>{t('Floor · Member Experience', 'Sàn phục vụ · Trải nghiệm hội viên')}</div>
         <h1 style={pageTitle}>MX Daily</h1>
         <p style={lede}>
-          The morning check-in. Birthdays, anniversaries, members slipping out of the rhythm, and any friction we need to clear. Action one thing from each panel before service.
+          {t('The morning check-in. Birthdays, anniversaries, members slipping out of the rhythm, and any friction we need to clear. Action one thing from each panel before service.', 'Buổi kiểm tra đầu ngày. Sinh nhật, kỷ niệm, những hội viên đang thưa dần, và bất kỳ vướng mắc nào cần xử lý. Hãy hành động một việc từ mỗi bảng trước giờ phục vụ.')}
         </p>
         <div style={{ ...lede, marginTop: 8, color: '#7E7864', fontSize: 11 }}>{today}</div>
       </div>
 
       {/* Stat strip */}
       <div style={statStrip}>
-        <StatTile label="Birthdays (7d)"     value={data.counts.birthdays} color="#D4B85A" />
-        <StatTile label="Anniversaries (7d)" value={data.counts.anniversaries} color="#7AB07A" />
-        <StatTile label="Lapsed members"     value={data.counts.lapsed_total} color="#C27070" />
-        <StatTile label="Open complaints"    value={data.counts.complaints_open} color="#C27070" />
-        <StatTile label="Missed seals (7d)"  value={data.counts.missed_seals} color={data.counts.missed_seals > 0 ? '#E58F4A' : '#7AB07A'} />
+        <StatTile label={t('Birthdays (7d)', 'Sinh nhật (7 ngày)')}     value={data.counts.birthdays} color="#D4B85A" />
+        <StatTile label={t('Anniversaries (7d)', 'Kỷ niệm (7 ngày)')} value={data.counts.anniversaries} color="#7AB07A" />
+        <StatTile label={t('Lapsed members', 'Hội viên thưa vắng')}     value={data.counts.lapsed_total} color="#C27070" />
+        <StatTile label={t('Open complaints', 'Khiếu nại đang mở')}    value={data.counts.complaints_open} color="#C27070" />
+        <StatTile label={t('Missed seals (7d)', 'Niêm phong bị thiếu (7 ngày)')}  value={data.counts.missed_seals} color={data.counts.missed_seals > 0 ? '#E58F4A' : '#7AB07A'} />
       </div>
 
       {/* Missed-seal alerts — surfaces audit-trail gaps from the last 7
@@ -188,12 +190,12 @@ export default function MXDailyPage() {
       {data.missed_seals && data.missed_seals.length > 0 && (
         <div style={missedSealsPanel}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
-            <span style={missedSealsEyebrow}>⚠ Missed seals · last 7 days</span>
+            <span style={missedSealsEyebrow}>{t('⚠ Missed seals · last 7 days', '⚠ Niêm phong bị thiếu · 7 ngày qua')}</span>
             <span style={{ ...lede, fontSize: 11, color: '#B2AA98', margin: 0 }}>
-              {data.missed_seals.length} shift-day{data.missed_seals.length === 1 ? '' : 's'} without a complete sealed record.
+              {data.missed_seals.length} {t('shift-day', 'ngày làm việc')}{data.missed_seals.length === 1 ? '' : t('s', '')} {t('without a complete sealed record.', 'không có bản ghi được niêm phong đầy đủ.')}
             </span>
             <Link href="/admin/checklists" style={{ ...panelActionLink, marginLeft: 'auto' }}>
-              Open checklists →
+              {t('Open checklists →', 'Mở danh sách kiểm tra →')}
             </Link>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -202,13 +204,13 @@ export default function MXDailyPage() {
                 <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#E5D4C2', minWidth: 140 }}>
                   {new Date(m.shift_date + 'T12:00:00+07:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
                 </span>
-                {m.missing.includes('opening') && <span style={missedSealsChip}>opening unsealed</span>}
-                {m.missing.includes('closing') && <span style={missedSealsChip}>closing unsealed</span>}
+                {m.missing.includes('opening') && <span style={missedSealsChip}>{t('opening unsealed', 'ca mở chưa niêm phong')}</span>}
+                {m.missing.includes('closing') && <span style={missedSealsChip}>{t('closing unsealed', 'ca đóng chưa niêm phong')}</span>}
               </div>
             ))}
           </div>
           <div style={{ ...lede, fontSize: 10, color: '#7E7864', marginTop: 10, lineHeight: 1.6 }}>
-            A missed seal means either no checklist was started for that shift, or one was started but never locked. Open the day on the checklists page to inspect, complete if possible, or note the gap for the audit record.
+            {t('A missed seal means either no checklist was started for that shift, or one was started but never locked. Open the day on the checklists page to inspect, complete if possible, or note the gap for the audit record.', 'Niêm phong bị thiếu nghĩa là ca đó chưa mở danh sách kiểm tra, hoặc đã mở nhưng chưa khóa lại. Hãy mở ngày đó trên trang danh sách kiểm tra để rà soát, hoàn tất nếu có thể, hoặc ghi chú khoảng trống cho hồ sơ kiểm toán.')}
           </div>
         </div>
       )}
@@ -216,22 +218,22 @@ export default function MXDailyPage() {
       {/* Closing handover from the previous shift — the loop-closer */}
       {data.last_closing && (
         <Panel
-          title={`Handover · closing of ${new Date(data.last_closing.shift_date + 'T12:00:00+07:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}`}
-          eyebrow="Yesterday's team"
-          action={<Link href="/admin/checklists" style={panelActionLink}>Open checklists →</Link>}
+          title={`${t('Handover · closing of', 'Bàn giao · đóng ca ngày')} ${new Date(data.last_closing.shift_date + 'T12:00:00+07:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}`}
+          eyebrow={t("Yesterday's team", 'Ca làm hôm qua')}
+          action={<Link href="/admin/checklists" style={panelActionLink}>{t('Open checklists →', 'Mở danh sách kiểm tra →')}</Link>}
         >
           {data.last_closing.free_notes ? (
             <div style={{ ...handoverBox }}>{data.last_closing.free_notes}</div>
           ) : (
-            <div style={panelEmpty}>No handover note recorded.</div>
+            <div style={panelEmpty}>{t('No handover note recorded.', 'Chưa có ghi chú bàn giao.')}</div>
           )}
           <div style={{ ...panelHint, marginTop: 10 }}>
-            Signed off by <strong style={{ color: '#E5D4C2' }}>{data.last_closing.submitted_by || 'unknown'}</strong>
+            {t('Signed off by', 'Ký duyệt bởi')} <strong style={{ color: '#E5D4C2' }}>{data.last_closing.submitted_by || t('unknown', 'không rõ')}</strong>
             {data.last_closing.submitted_at && (
               <> · {new Date(data.last_closing.submitted_at).toLocaleString('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</>
             )}
             {' · '}
-            {data.last_closing.items.filter(i => i.checked).length}/{data.last_closing.items.length} items ticked
+            {data.last_closing.items.filter(i => i.checked).length}/{data.last_closing.items.length} {t('items ticked', 'mục đã đánh dấu')}
           </div>
 
           {/* Handover-read receipt — closes the seam two-way. Already
@@ -239,7 +241,7 @@ export default function MXDailyPage() {
               Otherwise inline form: type initials, ✓ Acknowledge. */}
           {data.last_closing.handover_acknowledged_at ? (
             <div style={ackReceipt}>
-              <span style={{ color: '#7AB07A' }}>✓ Read by <strong>{data.last_closing.handover_acknowledged_by || 'unknown'}</strong></span>
+              <span style={{ color: '#7AB07A' }}>{t('✓ Read by', '✓ Đã đọc bởi')} <strong>{data.last_closing.handover_acknowledged_by || t('unknown', 'không rõ')}</strong></span>
               <span style={{ color: '#7E7864', marginLeft: 6 }}>
                 · {new Date(data.last_closing.handover_acknowledged_at).toLocaleString('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
               </span>
@@ -247,13 +249,13 @@ export default function MXDailyPage() {
           ) : (
             <div style={ackBlock}>
               <div style={{ ...panelHint, color: '#D4B85A', marginBottom: 6 }}>
-                Acknowledge that you&apos;ve read this handover — closes the audit seam between shifts.
+                {t("Acknowledge that you've read this handover — closes the audit seam between shifts.", 'Xác nhận rằng bạn đã đọc bản bàn giao này — khép lại mối nối kiểm toán giữa các ca.')}
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <input
                   value={ackInitials}
                   onChange={e => persistAckInitials(e.target.value)}
-                  placeholder="Your initials"
+                  placeholder={t('Your initials', 'Tên viết tắt của bạn')}
                   maxLength={20}
                   style={ackInput}
                 />
@@ -262,7 +264,7 @@ export default function MXDailyPage() {
                   disabled={!ackInitials.trim() || ackBusy}
                   style={{ ...ackBtn, opacity: !ackInitials.trim() || ackBusy ? 0.5 : 1 }}
                 >
-                  {ackBusy ? 'Acknowledging…' : '✓ Acknowledge handover'}
+                  {ackBusy ? t('Acknowledging…', 'Đang xác nhận…') : t('✓ Acknowledge handover', '✓ Xác nhận bàn giao')}
                 </button>
                 {ackError && <span style={{ color: '#C27070', fontSize: 11, fontFamily: "'Google Sans Code', monospace" }}>{ackError}</span>}
               </div>
@@ -275,22 +277,22 @@ export default function MXDailyPage() {
         {/* LEFT: Birthdays + Anniversaries + Tonight */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Panel
-            title="Tonight"
-            eyebrow="Pre-shift"
-            action={<Link href="/admin/tonight" style={panelActionLink}>Full brief →</Link>}
+            title={t('Tonight', 'Tối nay')}
+            eyebrow={t('Pre-shift', 'Trước ca')}
+            action={<Link href="/admin/tonight" style={panelActionLink}>{t('Full brief →', 'Tóm tắt đầy đủ →')}</Link>}
           >
             <div style={panelHint}>
-              The Tonight page has the full breakdown of bookings, last-visit notes, and preferences. Use that for service prep. Bring back here anything that needs MX intervention.
+              {t('The Tonight page has the full breakdown of bookings, last-visit notes, and preferences. Use that for service prep. Bring back here anything that needs MX intervention.', 'Trang Tonight có toàn bộ chi tiết đặt chỗ, ghi chú lần ghé gần nhất và sở thích. Dùng trang đó để chuẩn bị phục vụ. Mang về đây bất cứ điều gì cần MX can thiệp.')}
             </div>
           </Panel>
 
           <Panel
-            title="Birthdays this week"
-            eyebrow="Touchpoint"
+            title={t('Birthdays this week', 'Sinh nhật tuần này')}
+            eyebrow={t('Touchpoint', 'Điểm chạm')}
             badge={data.counts.birthdays > 0 ? String(data.counts.birthdays) : undefined}
           >
             {data.birthdays.length === 0 ? (
-              <div style={panelEmpty}>No birthdays in the next 7 days.</div>
+              <div style={panelEmpty}>{t('No birthdays in the next 7 days.', 'Không có sinh nhật trong 7 ngày tới.')}</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {data.birthdays.map(b => (
@@ -308,17 +310,17 @@ export default function MXDailyPage() {
               </div>
             )}
             <div style={panelTip}>
-              Action: hand-written card + a comp pour at next visit. Note it in the journal afterwards.
+              {t('Action: hand-written card + a comp pour at next visit. Note it in the journal afterwards.', 'Hành động: thiệp viết tay + một ly mời miễn phí vào lần ghé tới. Ghi lại vào nhật ký sau đó.')}
             </div>
           </Panel>
 
           <Panel
-            title="Membership anniversaries"
-            eyebrow="Milestone"
+            title={t('Membership anniversaries', 'Kỷ niệm hội viên')}
+            eyebrow={t('Milestone', 'Cột mốc')}
             badge={data.counts.anniversaries > 0 ? String(data.counts.anniversaries) : undefined}
           >
             {data.anniversaries.length === 0 ? (
-              <div style={panelEmpty}>No anniversaries in the next 7 days.</div>
+              <div style={panelEmpty}>{t('No anniversaries in the next 7 days.', 'Không có kỷ niệm trong 7 ngày tới.')}</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {data.anniversaries.map(a => (
@@ -339,8 +341,8 @@ export default function MXDailyPage() {
                             <strong style={{ color: a.gifting.gift_count === 0 ? '#C27070' : '#E5D4C2' }}>
                               {formatVndCompact(a.gifting.spent_vnd)}
                             </strong>
-                            <span style={{ opacity: 0.6 }}> of {formatVndCompact(a.gifting.budget_vnd)} used</span>
-                            {a.gifting.gift_count === 0 && <span style={{ color: '#C27070' }}> · no gifts yet</span>}
+                            <span style={{ opacity: 0.6 }}>{t(' of ', ' trên ')}{formatVndCompact(a.gifting.budget_vnd)}{t(' used', ' đã dùng')}</span>
+                            {a.gifting.gift_count === 0 && <span style={{ color: '#C27070' }}>{t(' · no gifts yet', ' · chưa có quà tặng')}</span>}
                           </div>
                         </div>
                       )}
@@ -349,86 +351,86 @@ export default function MXDailyPage() {
                       <div style={{ ...dayBadge(a.days_until), background: 'rgba(122,176,122,0.18)', color: '#7AB07A', borderColor: 'rgba(122,176,122,0.40)' }}>
                         {a.years}y · {labelForDays(a.days_until)}
                       </div>
-                      <div style={memberMeta}>since {a.join_date.slice(0, 10)}</div>
+                      <div style={memberMeta}>{t('since', 'từ')} {a.join_date.slice(0, 10)}</div>
                     </div>
                   </Link>
                 ))}
               </div>
             )}
             <div style={panelTip}>
-              Action: gift or hosted experience for 1/3/5-year marks. Smaller acknowledgement for 2/4-year.
+              {t('Action: gift or hosted experience for 1/3/5-year marks. Smaller acknowledgement for 2/4-year.', 'Hành động: quà tặng hoặc trải nghiệm được mời cho mốc 1/3/5 năm. Lời ghi nhận nhỏ hơn cho mốc 2/4 năm.')}
             </div>
           </Panel>
         </div>
 
         {/* RIGHT: Lapsed + Complaints */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Panel title="Lapsed radar" eyebrow="Retention" badge={data.counts.lapsed_total > 0 ? String(data.counts.lapsed_total) : undefined}>
-            <LapsedBucket title="30–59 days" rows={data.lapsed.bucket_30} tone="#D4B85A" />
-            <LapsedBucket title="60–89 days" rows={data.lapsed.bucket_60} tone="#E58F4A" />
-            <LapsedBucket title="90+ days"   rows={data.lapsed.bucket_90} tone="#C27070" />
+          <Panel title={t('Lapsed radar', 'Radar thưa vắng')} eyebrow={t('Retention', 'Giữ chân')} badge={data.counts.lapsed_total > 0 ? String(data.counts.lapsed_total) : undefined}>
+            <LapsedBucket title={t('30–59 days', '30–59 ngày')} rows={data.lapsed.bucket_30} tone="#D4B85A" />
+            <LapsedBucket title={t('60–89 days', '60–89 ngày')} rows={data.lapsed.bucket_60} tone="#E58F4A" />
+            <LapsedBucket title={t('90+ days', '90+ ngày')}   rows={data.lapsed.bucket_90} tone="#C27070" />
             <div style={panelTip}>
-              Action: 30d gets a casual text or invite to the next event. 60d gets a personal call from MX. 90+ gets escalated to the GM.
+              {t('Action: 30d gets a casual text or invite to the next event. 60d gets a personal call from MX. 90+ gets escalated to the GM.', 'Hành động: 30 ngày thì nhắn tin thân mật hoặc mời tới sự kiện tới. 60 ngày thì MX gọi điện cá nhân. 90+ ngày thì chuyển lên GM.')}
             </div>
           </Panel>
 
           <Panel
-            title="Complaint queue"
-            eyebrow="Triage"
+            title={t('Complaint queue', 'Hàng chờ khiếu nại')}
+            eyebrow={t('Triage', 'Phân loại')}
             badge={data.counts.complaints_open > 0 ? String(data.counts.complaints_open) : undefined}
             action={
               <button onClick={() => setShowAddComplaint(s => !s)} style={panelActionBtn}>
-                {showAddComplaint ? 'Cancel' : '＋ Log complaint'}
+                {showAddComplaint ? t('Cancel', 'Hủy') : t('＋ Log complaint', '＋ Ghi khiếu nại')}
               </button>
             }
           >
             {showAddComplaint && (
               <div style={complaintForm}>
-                <div style={editLabel}>Summary *</div>
-                <input value={c.summary} onChange={e => setC({ ...c, summary: e.target.value })} placeholder="One-line description of the friction" style={inputStyle} />
+                <div style={editLabel}>{t('Summary *', 'Tóm tắt *')}</div>
+                <input value={c.summary} onChange={e => setC({ ...c, summary: e.target.value })} placeholder={t('One-line description of the friction', 'Mô tả một dòng về vướng mắc')} style={inputStyle} />
                 <div style={{ display: 'flex', gap: 6 }}>
                   <div style={{ flex: 1 }}>
-                    <div style={editLabel}>Member no.</div>
-                    <input value={c.member_no} onChange={e => setC({ ...c, member_no: e.target.value })} placeholder="optional" style={inputStyle} />
+                    <div style={editLabel}>{t('Member no.', 'Số hội viên')}</div>
+                    <input value={c.member_no} onChange={e => setC({ ...c, member_no: e.target.value })} placeholder={t('optional', 'tùy chọn')} style={inputStyle} />
                   </div>
                   <div style={{ flex: 2 }}>
-                    <div style={editLabel}>Member name</div>
-                    <input value={c.member_name} onChange={e => setC({ ...c, member_name: e.target.value })} placeholder="optional" style={inputStyle} />
+                    <div style={editLabel}>{t('Member name', 'Tên hội viên')}</div>
+                    <input value={c.member_name} onChange={e => setC({ ...c, member_name: e.target.value })} placeholder={t('optional', 'tùy chọn')} style={inputStyle} />
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <div style={{ flex: 1 }}>
-                    <div style={editLabel}>Severity</div>
+                    <div style={editLabel}>{t('Severity', 'Mức độ')}</div>
                     <select value={c.severity} onChange={e => setC({ ...c, severity: Number(e.target.value) })} style={inputStyle}>
-                      <option value={1}>1 · Minor</option>
-                      <option value={2}>2 · Notable</option>
-                      <option value={3}>3 · Material</option>
-                      <option value={4}>4 · Serious</option>
-                      <option value={5}>5 · Critical</option>
+                      <option value={1}>{t('1 · Minor', '1 · Nhẹ')}</option>
+                      <option value={2}>{t('2 · Notable', '2 · Đáng lưu ý')}</option>
+                      <option value={3}>{t('3 · Material', '3 · Đáng kể')}</option>
+                      <option value={4}>{t('4 · Serious', '4 · Nghiêm trọng')}</option>
+                      <option value={5}>{t('5 · Critical', '5 · Rất nghiêm trọng')}</option>
                     </select>
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={editLabel}>Category</div>
+                    <div style={editLabel}>{t('Category', 'Loại')}</div>
                     <select value={c.category} onChange={e => setC({ ...c, category: e.target.value })} style={inputStyle}>
                       <option value="">—</option>
-                      <option value="service">Service</option>
-                      <option value="product">Product</option>
-                      <option value="facility">Facility</option>
-                      <option value="billing">Billing</option>
-                      <option value="other">Other</option>
+                      <option value="service">{t('Service', 'Dịch vụ')}</option>
+                      <option value="product">{t('Product', 'Sản phẩm')}</option>
+                      <option value="facility">{t('Facility', 'Cơ sở vật chất')}</option>
+                      <option value="billing">{t('Billing', 'Thanh toán')}</option>
+                      <option value="other">{t('Other', 'Khác')}</option>
                     </select>
                   </div>
                 </div>
-                <div style={editLabel}>Details</div>
-                <textarea rows={3} value={c.details} onChange={e => setC({ ...c, details: e.target.value })} placeholder="What happened, who said what, current state…" style={{ ...inputStyle, resize: 'vertical' }} />
+                <div style={editLabel}>{t('Details', 'Chi tiết')}</div>
+                <textarea rows={3} value={c.details} onChange={e => setC({ ...c, details: e.target.value })} placeholder={t('What happened, who said what, current state…', 'Chuyện gì đã xảy ra, ai nói gì, tình trạng hiện tại…')} style={{ ...inputStyle, resize: 'vertical' }} />
                 <button onClick={submitComplaint} disabled={!c.summary.trim() || submitting} style={{ ...btnPrimary, marginTop: 6, opacity: !c.summary.trim() ? 0.4 : 1 }}>
-                  {submitting ? 'Saving…' : 'Log complaint'}
+                  {submitting ? t('Saving…', 'Đang lưu…') : t('Log complaint', 'Ghi khiếu nại')}
                 </button>
               </div>
             )}
 
             {data.complaints.length === 0 ? (
-              <div style={panelEmpty}>No open or acknowledged complaints. Quiet week.</div>
+              <div style={panelEmpty}>{t('No open or acknowledged complaints. Quiet week.', 'Không có khiếu nại đang mở hoặc đã ghi nhận. Một tuần yên ả.')}</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {data.complaints.map(c => (
@@ -449,19 +451,19 @@ export default function MXDailyPage() {
                         )}
                         {c.details && <div style={complaintDetails}>{c.details}</div>}
                         <div style={memberMeta}>
-                          Reported {new Date(c.reported_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          {t('Reported', 'Ghi nhận')} {new Date(c.reported_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                           {c.reported_by && ` · ${c.reported_by}`}
                         </div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {c.status === 'open' && (
-                          <button onClick={() => setComplaintStatus(c.id, 'acknowledged')} style={tinyBtn}>Acknowledge</button>
+                          <button onClick={() => setComplaintStatus(c.id, 'acknowledged')} style={tinyBtn}>{t('Acknowledge', 'Ghi nhận')}</button>
                         )}
                         {c.status !== 'resolved' && (
-                          <button onClick={() => setResolveId(c.id)} style={{ ...tinyBtn, color: '#7AB07A', borderColor: 'rgba(122,176,122,0.30)' }}>Resolve</button>
+                          <button onClick={() => setResolveId(c.id)} style={{ ...tinyBtn, color: '#7AB07A', borderColor: 'rgba(122,176,122,0.30)' }}>{t('Resolve', 'Giải quyết')}</button>
                         )}
                         {c.status !== 'dismissed' && (
-                          <button onClick={() => setComplaintStatus(c.id, 'dismissed')} style={{ ...tinyBtn, color: '#7E7864' }}>Dismiss</button>
+                          <button onClick={() => setComplaintStatus(c.id, 'dismissed')} style={{ ...tinyBtn, color: '#7E7864' }}>{t('Dismiss', 'Bỏ qua')}</button>
                         )}
                       </div>
                     </div>
@@ -475,11 +477,11 @@ export default function MXDailyPage() {
 
       <PromptModal
         open={!!resolveId}
-        eyebrow="✓ RESOLVE COMPLAINT"
-        title="Resolve this complaint?"
-        label="Resolution note — what was done (optional)"
-        placeholder="e.g. Spoke with member, comped the round, flagged to F&B."
-        confirmLabel="Mark resolved"
+        eyebrow={t('✓ RESOLVE COMPLAINT', '✓ GIẢI QUYẾT KHIẾU NẠI')}
+        title={t('Resolve this complaint?', 'Giải quyết khiếu nại này?')}
+        label={t('Resolution note — what was done (optional)', 'Ghi chú giải quyết — đã làm gì (tùy chọn)')}
+        placeholder={t('e.g. Spoke with member, comped the round, flagged to F&B.', 'ví dụ: Đã trao đổi với hội viên, mời lượt đồ uống, báo cho F&B.')}
+        confirmLabel={t('Mark resolved', 'Đánh dấu đã giải quyết')}
         multiline
         validate={() => null}
         onCancel={() => setResolveId(null)}

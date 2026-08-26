@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { vnDateString } from '@/lib/datetime'
 import { CLOSING_HANDOVER_ITEM_ID, type SheetItemState } from '@/lib/checklist-templates'
+import { useLang } from '@/lib/admin-lang'
 
 // Admin / Floor / Shift Checklists
 //
@@ -39,6 +40,7 @@ const OPENING_LABEL = 'Opening · club ready to open'
 const CLOSING_LABEL = 'Closing · shift closed, handover recorded'
 
 export default function ChecklistsPage() {
+  const { t } = useLang()
   const today = vnDateString()
   const [date, setDate] = useState(today)
   // Deep-link from an Ops Hub card link (?date=YYYY-MM-DD) → open that day.
@@ -121,9 +123,9 @@ export default function ChecklistsPage() {
       const j = await r.json()
       if (!r.ok) {
         if (j.missing && Array.isArray(j.missing)) {
-          setMissingNotice(`Cannot seal yet: ${j.missing.length} required item${j.missing.length === 1 ? '' : 's'} still need${j.missing.length === 1 ? 's' : ''} attention.`)
+          setMissingNotice(`${t('Cannot seal yet','Chưa thể niêm phong')}: ${j.missing.length} ${t('required item','mục bắt buộc')}${j.missing.length === 1 ? '' : 's'} ${t('still need','vẫn cần')}${j.missing.length === 1 ? 's' : ''} ${t('attention','được hoàn thành')}.`)
         }
-        throw new Error(j.error || 'Save failed')
+        throw new Error(j.error || t('Save failed', 'Lưu thất bại'))
       }
       const merged: Sheet = { ...j.checklist, item_values: j.checklist.item_values || {} }
       if (kind === 'opening') setOpening(merged)
@@ -138,7 +140,7 @@ export default function ChecklistsPage() {
   // ── Mutations ──────────────────────────────────────────────────────
   const toggleItem = useCallback((sheet: Sheet, itemId: string) => {
     if (sheet.submitted_at) return
-    if (!initials.trim()) { setError('Enter your initials at the top first.'); return }
+    if (!initials.trim()) { setError(t('Enter your initials at the top first.', 'Vui lòng nhập tên viết tắt của bạn ở trên trước.')); return }
     const items = sheet.items.map(it => it.id === itemId ? {
       ...it,
       checked: !it.checked,
@@ -165,7 +167,7 @@ export default function ChecklistsPage() {
   }, [upsert])
 
   const submitSheet = useCallback((sheet: Sheet) => {
-    if (!initials.trim()) { setError('Enter your initials at the top first.'); return }
+    if (!initials.trim()) { setError(t('Enter your initials at the top first.', 'Vui lòng nhập tên viết tắt của bạn ở trên trước.')); return }
     upsert(sheet.kind, sheet.items, sheet.item_values || {}, sheet.free_notes, true)
   }, [initials, upsert])
 
@@ -267,21 +269,21 @@ export default function ChecklistsPage() {
       `}} />
       <div style={headerRow}>
         <div>
-          <div style={eyebrow}>Floor</div>
-          <h1 style={pageTitle}>Shift Checklists</h1>
+          <div style={eyebrow}>{t('Floor', 'Sàn')}</div>
+          <h1 style={pageTitle}>{t('Shift Checklists', 'Danh sách kiểm tra ca')}</h1>
           <p style={lede}>
-            Opening and closing sheets. Tick or fill as you go — your initials and timestamp are captured. Lock &amp; sign at the end seals the sheet permanently. Editing the template only affects future sheets.
+            {t('Opening and closing sheets. Tick or fill as you go — your initials and timestamp are captured. Lock & sign at the end seals the sheet permanently. Editing the template only affects future sheets.', 'Phiếu mở cửa và đóng cửa. Đánh dấu hoặc điền trong khi làm — tên viết tắt và thời gian của bạn sẽ được ghi lại. Khoá & ký ở cuối sẽ niêm phong phiếu vĩnh viễn. Chỉnh sửa mẫu chỉ ảnh hưởng đến các phiếu sau này.')}
           </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
           <Link href="/admin/checklists/templates" style={editTemplatesLink}>
-            ✎ Edit templates
+            ✎ {t('Edit templates', 'Chỉnh sửa mẫu')}
           </Link>
-          <label style={editLabel}>Your initials</label>
+          <label style={editLabel}>{t('Your initials', 'Tên viết tắt của bạn')}</label>
           <input
             value={initials}
             onChange={e => persistInitials(e.target.value)}
-            placeholder="e.g. CL"
+            placeholder={t('e.g. CL', 'vd. CL')}
             maxLength={20}
             style={{ ...inputStyle, maxWidth: 180 }}
           />
@@ -289,13 +291,13 @@ export default function ChecklistsPage() {
       </div>
 
       <div style={dateStepper}>
-        <button onClick={() => shiftDay(-1)} style={navBtn}>← prev</button>
+        <button onClick={() => shiftDay(-1)} style={navBtn}>← {t('prev', 'trước')}</button>
         <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ ...inputStyle, maxWidth: 180, textAlign: 'center' }} />
-        <button onClick={() => shiftDay(1)} style={navBtn}>next →</button>
-        <button onClick={() => setDate(today)} style={navBtn}>Today</button>
+        <button onClick={() => shiftDay(1)} style={navBtn}>{t('next', 'sau')} →</button>
+        <button onClick={() => setDate(today)} style={navBtn}>{t('Today', 'Hôm nay')}</button>
         {date !== today && (
           <span style={{ marginLeft: 12, fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#D4B85A', letterSpacing: '0.08em' }}>
-            VIEWING {new Date(date + 'T12:00:00+07:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' }).toUpperCase()}
+            {t('VIEWING', 'ĐANG XEM')} {new Date(date + 'T12:00:00+07:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' }).toUpperCase()}
           </span>
         )}
       </div>
@@ -304,7 +306,7 @@ export default function ChecklistsPage() {
       {missingNotice && <div style={warnBox}>{missingNotice}</div>}
 
       {loading ? (
-        <div style={emptyText}>Loading…</div>
+        <div style={emptyText}>{t('Loading…', 'Đang tải…')}</div>
       ) : (
         <div style={twoCol}>
           {opening && (
@@ -339,7 +341,7 @@ export default function ChecklistsPage() {
       {/* ── Recent shifts ─────────────────────────────────────────── */}
       {history.length > 0 && (
         <div style={{ marginTop: 28 }}>
-          <div style={historyHead}>Recent shifts</div>
+          <div style={historyHead}>{t('Recent shifts', 'Các ca gần đây')}</div>
           <div style={historyGrid}>
             {(() => {
               // Group by date so each row shows opening + closing side-by-side.
@@ -356,20 +358,20 @@ export default function ChecklistsPage() {
                   <button
                     key={d}
                     onClick={() => anySealed ? setDetailDate(d) : setDate(d)}
-                    title={anySealed ? 'Open sealed audit record' : 'Go to this date on the live page'}
+                    title={anySealed ? t('Open sealed audit record', 'Mở hồ sơ kiểm toán đã niêm phong') : t('Go to this date on the live page', 'Đến ngày này trên trang trực tiếp')}
                     style={{ ...historyRowBtn, ...(d === date ? historyRowBtnActive : null) }}
                   >
                     <span style={historyDate}>
                       {new Date(d + 'T12:00:00+07:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
                     </span>
                     <span style={historyChip(slot.opening?.submitted_at ? '#D4B85A' : '#7E7864')}>
-                      {slot.opening?.submitted_at ? '✓ opening' : slot.opening ? '○ opening' : '— opening'}
+                      {slot.opening?.submitted_at ? `✓ ${t('opening', 'mở cửa')}` : slot.opening ? `○ ${t('opening', 'mở cửa')}` : `— ${t('opening', 'mở cửa')}`}
                     </span>
                     <span style={historyChip(slot.closing?.submitted_at ? '#7AB07A' : '#7E7864')}>
-                      {slot.closing?.submitted_at ? '✓ closing' : slot.closing ? '○ closing' : '— closing'}
+                      {slot.closing?.submitted_at ? `✓ ${t('closing', 'đóng cửa')}` : slot.closing ? `○ ${t('closing', 'đóng cửa')}` : `— ${t('closing', 'đóng cửa')}`}
                     </span>
                     {anySealed && (
-                      <span style={{ ...historyChip('#B2AA98'), marginLeft: 'auto' }}>view record →</span>
+                      <span style={{ ...historyChip('#B2AA98'), marginLeft: 'auto' }}>{t('view record', 'xem hồ sơ')} →</span>
                     )}
                   </button>
                 )
@@ -380,7 +382,7 @@ export default function ChecklistsPage() {
       )}
 
       <div style={hintRow}>
-        Reading yesterday&apos;s closing handover is part of MX Daily — open <Link href="/admin/mx-daily" style={linkStyle}>MX Daily</Link> at the start of your shift.
+        {t("Reading yesterday's closing handover is part of MX Daily — open ", 'Đọc bàn giao đóng ca của hôm qua là một phần của MX Daily — mở ')}<Link href="/admin/mx-daily" style={linkStyle}>MX Daily</Link>{t(' at the start of your shift.', ' vào đầu ca của bạn.')}
       </div>
 
       {/* ── Sealed audit record modal ────────────────────────────────
@@ -396,33 +398,33 @@ export default function ChecklistsPage() {
             <div style={detailModal} role="dialog" data-print-modal>
               <div style={detailHeader}>
                 <div>
-                  <div style={eyebrow}>Sealed audit record</div>
+                  <div style={eyebrow}>{t('Sealed audit record', 'Hồ sơ kiểm toán đã niêm phong')}</div>
                   <h2 style={detailDateHeading}>
                     {new Date(detailDate + 'T12:00:00+07:00').toLocaleDateString('en-GB', {
                       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
                     })}
                   </h2>
                   <div style={detailSubline}>
-                    Read-only. Items shown are the SHEET&apos;S OWN SNAPSHOT — never the live template — so this is what the signing team actually saw and ticked that night.
+                    {t("Read-only. Items shown are the SHEET'S OWN SNAPSHOT — never the live template — so this is what the signing team actually saw and ticked that night.", 'Chỉ đọc. Các mục hiển thị là ẢNH CHỤP CỦA CHÍNH PHIẾU — không bao giờ là mẫu trực tiếp — nên đây chính là những gì đội ký duyệt thực sự đã thấy và đánh dấu đêm đó.')}
                   </div>
                 </div>
-                <button onClick={() => setDetailDate(null)} style={detailCloseBtn} aria-label="Close" data-print-hide>✕</button>
+                <button onClick={() => setDetailDate(null)} style={detailCloseBtn} aria-label={t('Close', 'Đóng')} data-print-hide>✕</button>
               </div>
 
               <div style={detailBody}>
-                {opening && <DetailSheet sheet={opening} kindLabel="Opening" kindColor="#D4B85A" />}
-                {closing && <DetailSheet sheet={closing} kindLabel="Closing" kindColor="#7AB07A" />}
+                {opening && <DetailSheet sheet={opening} kindLabel={t('Opening', 'Mở cửa')} kindColor="#D4B85A" />}
+                {closing && <DetailSheet sheet={closing} kindLabel={t('Closing', 'Đóng cửa')} kindColor="#7AB07A" />}
                 {!opening && !closing && (
-                  <div style={emptyText}>No sealed record for this date.</div>
+                  <div style={emptyText}>{t('No sealed record for this date.', 'Không có hồ sơ đã niêm phong cho ngày này.')}</div>
                 )}
               </div>
 
               <div style={detailFooter} data-print-hide>
                 <button onClick={() => { setDate(detailDate); setDetailDate(null) }} style={detailFooterBtn}>
-                  Go to this date on the live page →
+                  {t('Go to this date on the live page', 'Đến ngày này trên trang trực tiếp')} →
                 </button>
                 <button onClick={() => window.print()} style={detailFooterBtn}>
-                  Print
+                  {t('Print', 'In')}
                 </button>
               </div>
             </div>

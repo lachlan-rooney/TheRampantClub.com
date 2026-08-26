@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { ConfirmModal, useToast } from '@/components/admin/dialogs'
+import { useLang } from '@/lib/admin-lang'
 
 type PressType = 'kit' | 'release' | 'mention'
 
@@ -45,6 +46,7 @@ const TYPE_LABEL: Record<PressType, string> = {
 }
 
 export default function AdminPress() {
+  const { t } = useLang()
   const [items, setItems] = useState<PressItem[]>([])
   const [editing, setEditing] = useState<PressItem | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -88,7 +90,7 @@ export default function AdminPress() {
   }
 
   const save = async () => {
-    if (!form.title.trim()) { showToast('Title is required.', 'error'); return }
+    if (!form.title.trim()) { showToast(t('Title is required.', 'Cần nhập tiêu đề.'), 'error'); return }
     setBusy(true)
     const payload = {
       type: form.type,
@@ -124,7 +126,7 @@ export default function AdminPress() {
     setConfirmBusy(true)
     try {
       const { error } = await supabase.from('press_items').delete().eq('id', confirmItem.id)
-      if (error) { showToast(`Delete failed: ${error.message}`, 'error'); return }
+      if (error) { showToast(`${t('Delete failed', 'Xóa thất bại')}: ${error.message}`, 'error'); return }
       setConfirmItem(null)
       load()
     } finally {
@@ -139,9 +141,9 @@ export default function AdminPress() {
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 24, fontWeight: 500, color: '#E5D4C2', letterSpacing: '0.04em' }}>
-          Press
+          {t('Press', 'Báo chí')}
         </h1>
-        {!showForm && <button onClick={() => setShowForm(true)} style={btnPrimary}>+ New Press Item</button>}
+        {!showForm && <button onClick={() => setShowForm(true)} style={btnPrimary}>{t('+ New Press Item', '+ Mục báo chí mới')}</button>}
       </div>
 
       {showForm && (
@@ -154,31 +156,31 @@ export default function AdminPress() {
         }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <div>
-              <label style={labelStyle}>Type</label>
+              <label style={labelStyle}>{t('Type', 'Loại')}</label>
               <select style={inputStyle} value={form.type}
                 onChange={e => setForm(f => ({ ...f, type: e.target.value as PressType }))}>
-                <option value="release" style={{ background: '#052E20' }}>Press Release</option>
-                <option value="kit"     style={{ background: '#052E20' }}>Press Kit</option>
-                <option value="mention" style={{ background: '#052E20' }}>In the Press (coverage)</option>
+                <option value="release" style={{ background: '#052E20' }}>{t('Press Release', 'Thông cáo báo chí')}</option>
+                <option value="kit"     style={{ background: '#052E20' }}>{t('Press Kit', 'Bộ tài liệu báo chí')}</option>
+                <option value="mention" style={{ background: '#052E20' }}>{t('In the Press (coverage)', 'Truyền thông đưa tin (bài viết)')}</option>
               </select>
             </div>
             <div>
-              <label style={labelStyle}>Date</label>
+              <label style={labelStyle}>{t('Date', 'Ngày')}</label>
               <input type="date" style={inputStyle} value={form.published_at}
                 onChange={e => setForm(f => ({ ...f, published_at: e.target.value }))}
               />
             </div>
           </div>
           <div>
-            <label style={labelStyle}>Title</label>
+            <label style={labelStyle}>{t('Title', 'Tiêu đề')}</label>
             <input style={inputStyle} value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-              placeholder={form.type === 'mention' ? 'A members’ club worth knowing' : 'The Rampant Club opens its doors'}
+              placeholder={form.type === 'mention' ? t('A members’ club worth knowing', 'Một câu lạc bộ hội viên đáng để biết đến') : t('The Rampant Club opens its doors', 'The Rampant Club mở cửa đón khách')}
             />
           </div>
           {form.type === 'mention' && (
             <div>
-              <label style={labelStyle}>Outlet</label>
+              <label style={labelStyle}>{t('Outlet', 'Đơn vị báo chí')}</label>
               <input style={inputStyle} value={form.outlet}
                 onChange={e => setForm(f => ({ ...f, outlet: e.target.value }))}
                 placeholder="Drinks Business, Saigon Times, Robb Report…"
@@ -186,25 +188,25 @@ export default function AdminPress() {
             </div>
           )}
           <div>
-            <label style={labelStyle}>{form.type === 'mention' ? 'Excerpt / pull quote' : 'Description'}</label>
+            <label style={labelStyle}>{form.type === 'mention' ? t('Excerpt / pull quote', 'Trích đoạn / câu trích dẫn') : t('Description', 'Mô tả')}</label>
             <textarea
               rows={3}
               style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }}
               value={form.body}
               onChange={e => setForm(f => ({ ...f, body: e.target.value }))}
-              placeholder={form.type === 'mention' ? '"...one of the most distinctive private members’ clubs in Southeast Asia."' : 'A short paragraph describing this kit/release.'}
+              placeholder={form.type === 'mention' ? t('"...one of the most distinctive private members’ clubs in Southeast Asia."', '"...một trong những câu lạc bộ hội viên tư nhân đặc sắc nhất Đông Nam Á."') : t('A short paragraph describing this kit/release.', 'Một đoạn ngắn mô tả bộ tài liệu/thông cáo này.')}
             />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <div>
-              <label style={labelStyle}>Link (external URL or download)</label>
+              <label style={labelStyle}>{t('Link (external URL or download)', 'Liên kết (URL bên ngoài hoặc tải xuống)')}</label>
               <input style={inputStyle} value={form.link}
                 onChange={e => setForm(f => ({ ...f, link: e.target.value }))}
                 placeholder="https://…"
               />
             </div>
             <div>
-              <label style={labelStyle}>Image URL (optional)</label>
+              <label style={labelStyle}>{t('Image URL (optional)', 'URL hình ảnh (tùy chọn)')}</label>
               <input style={inputStyle} value={form.image_url}
                 onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))}
                 placeholder="/images/…"
@@ -215,30 +217,30 @@ export default function AdminPress() {
             <input type="checkbox" checked={form.is_published}
               onChange={e => setForm(f => ({ ...f, is_published: e.target.checked }))}
             />
-            Published
+            {t('Published', 'Đã xuất bản')}
           </label>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={save} disabled={busy} style={btnPrimary}>
-              {busy ? 'Saving…' : editing ? 'Update' : 'Save'}
+              {busy ? t('Saving…', 'Đang lưu…') : editing ? t('Update', 'Cập nhật') : t('Save', 'Lưu')}
             </button>
-            <button onClick={reset} style={btn}>Cancel</button>
+            <button onClick={reset} style={btn}>{t('Cancel', 'Hủy')}</button>
           </div>
         </div>
       )}
 
-      {(['release', 'mention', 'kit'] as PressType[]).map(t => (
-        <section key={t} style={{ marginBottom: 32 }}>
+      {(['release', 'mention', 'kit'] as PressType[]).map(pt => (
+        <section key={pt} style={{ marginBottom: 32 }}>
           <h2 style={{
             fontFamily: "'Rampant Sans', serif", fontSize: 16, fontWeight: 500,
             color: '#E5D4C2', letterSpacing: '0.04em', marginBottom: 12,
           }}>
-            {TYPE_LABEL[t]} &middot; <span style={{ opacity: 0.5, fontSize: 12 }}>{groups[t].length}</span>
+            {TYPE_LABEL[pt]} &middot; <span style={{ opacity: 0.5, fontSize: 12 }}>{groups[pt].length}</span>
           </h2>
-          {groups[t].length === 0 ? (
+          {groups[pt].length === 0 ? (
             <p style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#B2AA98', opacity: 0.5 }}>
-              None yet.
+              {t('None yet.', 'Chưa có mục nào.')}
             </p>
-          ) : groups[t].map(i => (
+          ) : groups[pt].map(i => (
             <div key={i.id} style={{
               padding: '12px 0', borderBottom: '1px solid rgba(229,212,194,0.08)',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap',
@@ -250,20 +252,20 @@ export default function AdminPress() {
                   color: '#E5D4C2', borderRadius: 4, padding: '2px 8px', marginRight: 10,
                   letterSpacing: '0.06em', textTransform: 'uppercase',
                 }}>
-                  {i.is_published ? 'Live' : 'Draft'}
+                  {i.is_published ? t('Live', 'Đang hiển thị') : t('Draft', 'Bản nháp')}
                 </span>
                 <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 14, color: '#E5D4C2' }}>{i.title}</span>
                 <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', opacity: 0.6, marginTop: 4 }}>
                   {i.outlet ? `${i.outlet} · ` : ''}
-                  {i.published_at ? new Date(i.published_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'no date'}
+                  {i.published_at ? new Date(i.published_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : t('no date', 'chưa có ngày')}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => togglePublish(i)} style={btn}>
-                  {i.is_published ? 'Unpublish' : 'Publish'}
+                  {i.is_published ? t('Unpublish', 'Gỡ xuất bản') : t('Publish', 'Xuất bản')}
                 </button>
-                <button onClick={() => startEdit(i)} style={btn}>Edit</button>
-                <button onClick={() => requestRemove(i)} style={btnDanger}>Delete</button>
+                <button onClick={() => startEdit(i)} style={btn}>{t('Edit', 'Sửa')}</button>
+                <button onClick={() => requestRemove(i)} style={btnDanger}>{t('Delete', 'Xóa')}</button>
               </div>
             </div>
           ))}
@@ -272,14 +274,14 @@ export default function AdminPress() {
 
       <ConfirmModal
         open={!!confirmItem}
-        eyebrow="⚠ PERMANENT"
-        title="Delete press item?"
+        eyebrow={t('⚠ PERMANENT', '⚠ VĨNH VIỄN')}
+        title={t('Delete press item?', 'Xóa mục báo chí?')}
         subject={confirmItem?.title}
         body={confirmItem
-          ? `Removes this ${TYPE_LABEL[confirmItem.type].toLowerCase()} permanently from the press page. Cannot be undone.`
+          ? `${t('Removes this', 'Gỡ bỏ')} ${TYPE_LABEL[confirmItem.type].toLowerCase()} ${t('permanently from the press page. Cannot be undone.', 'này khỏi trang báo chí vĩnh viễn. Không thể hoàn tác.')}`
           : ''}
-        confirmLabel="Delete item"
-        busyLabel="Deleting…"
+        confirmLabel={t('Delete item', 'Xóa mục')}
+        busyLabel={t('Deleting…', 'Đang xóa…')}
         busy={confirmBusy}
         onCancel={closeConfirm}
         onConfirm={runRemove}

@@ -5,6 +5,7 @@ import { useToast, ConfirmModal } from '@/components/admin/dialogs'
 import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
 import UnitPicker from '@/components/admin/UnitPicker'
+import { useLang } from '@/lib/admin-lang'
 
 // Admin / Floor / Calendar / Edit booking.
 // Loads via GET /api/admin/bookings/[id], saves via PATCH (member is fixed — the
@@ -16,6 +17,7 @@ const SESSIONS = ['', 'early', 'evening', 'late']
 const STATUSES = ['pending', 'confirmed', 'arrived', 'cancelled', 'no_show']
 
 export default function EditBookingPage() {
+  const { t } = useLang()
   const router = useRouter()
   const { id } = useParams<{ id: string }>()
   const { showToast, toastNode } = useToast()
@@ -47,7 +49,7 @@ export default function EditBookingPage() {
       .then(r => r.json())
       .then(d => {
         const b = d.booking
-        if (!b) { setError('Booking not found.'); setLoading(false); return }
+        if (!b) { setError(t('Booking not found.', 'Không tìm thấy lượt đặt.')); setLoading(false); return }
         setMemberName(b.member_name || '—'); setMemberNo(b.member_no || '')
         setBookingDate(b.booking_date || '')
         setStartTime((b.start_time || '').slice(0, 5)); setEndTime((b.end_time || '').slice(0, 5))
@@ -57,13 +59,13 @@ export default function EditBookingPage() {
         setUnitIds(Array.isArray(d.unit_ids) ? d.unit_ids : [])
         setLoading(false)
       })
-      .catch(() => { setError('Failed to load booking.'); setLoading(false) })
+      .catch(() => { setError(t('Failed to load booking.', 'Không tải được lượt đặt.')); setLoading(false) })
   }, [id])
 
   const save = useCallback(async () => {
-    if (!sessionLabel && !startTime) { setError('Either a start time or a session is required.'); return }
+    if (!sessionLabel && !startTime) { setError(t('Either a start time or a session is required.', 'Cần có giờ bắt đầu hoặc một ca.')); return }
     const party = partySize ? Number(partySize) : 1
-    if (unitIds.length > 0 && selectedSeats < party) { setError(`The selected table${unitIds.length === 1 ? '' : 's'} seat ${selectedSeats}, but the party is ${party}. Add a table or pick a larger one.`); return }
+    if (unitIds.length > 0 && selectedSeats < party) { setError(`${t('The selected table', 'Bàn đã chọn')}${unitIds.length === 1 ? '' : 's'} ${t('seat', 'có')} ${selectedSeats}, ${t('but the party is', 'nhưng số khách là')} ${party}. ${t('Add a table or pick a larger one.', 'Thêm bàn hoặc chọn bàn lớn hơn.')}`); return }
     setSaving(true); setError(null)
     try {
       const r = await fetch(`/api/admin/bookings/${id}`, {
@@ -81,7 +83,7 @@ export default function EditBookingPage() {
         }),
       })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'Save failed')
+      if (!r.ok) throw new Error(j.error || t('Save failed', 'Lưu thất bại'))
       router.push('/admin/calendar')
     } catch (e) { setError((e as Error).message); setSaving(false) }
   }, [id, bookingDate, startTime, endTime, sessionLabel, space, partySize, unitIds, selectedSeats, notes, status, router])
@@ -91,43 +93,43 @@ export default function EditBookingPage() {
     const r = await fetch(`/api/admin/bookings/${id}`, { method: 'DELETE' })
     if (!r.ok) {
       const j = await r.json().catch(() => ({}))
-      showToast(j.error || 'Cancel failed', 'error'); setCancelBusy(false); return
+      showToast(j.error || t('Cancel failed', 'Hủy thất bại'), 'error'); setCancelBusy(false); return
     }
     router.push('/admin/calendar')
   }
 
-  if (loading) return (<><Link href="/admin/calendar" style={backLink}>← Calendar</Link><div style={hintText}>Loading…</div></>)
+  if (loading) return (<><Link href="/admin/calendar" style={backLink}>{t('← Calendar', '← Lịch')}</Link><div style={hintText}>{t('Loading…', 'Đang tải…')}</div></>)
 
   return (
     <>
-      <Link href="/admin/calendar" style={backLink}>← Calendar</Link>
+      <Link href="/admin/calendar" style={backLink}>{t('← Calendar', '← Lịch')}</Link>
       <div style={{ marginBottom: 24 }}>
-        <div style={eyebrow}>Floor · Calendar</div>
-        <h1 style={pageTitle}>Edit booking</h1>
+        <div style={eyebrow}>{t('Floor · Calendar', 'Sàn · Lịch')}</div>
+        <h1 style={pageTitle}>{t('Edit booking', 'Sửa lượt đặt')}</h1>
       </div>
 
       {error && <div style={errorBox}>{error}</div>}
 
       <div style={fieldRow}>
-        <div style={editLabel}>Member</div>
+        <div style={editLabel}>{t('Member', 'Hội viên')}</div>
         <div style={selectedMemberRow}>
           <div><strong>{memberName}</strong><span style={{ marginLeft: 8, color: '#B2AA98', fontSize: 11 }}>{memberNo}</span></div>
-          <span style={{ color: '#B2AA98', fontSize: 10 }}>fixed — create a new booking to change member</span>
+          <span style={{ color: '#B2AA98', fontSize: 10 }}>{t('fixed — create a new booking to change member', 'cố định — tạo lượt đặt mới để đổi hội viên')}</span>
         </div>
       </div>
 
       <div style={metaGrid}>
-        <div style={fieldRow}><div style={editLabel}>Date *</div><input type="date" value={bookingDate} onChange={e => setBookingDate(e.target.value)} style={inputStyle} /></div>
-        <div style={fieldRow}><div style={editLabel}>Room *</div><select value={space} onChange={e => { setSpace(e.target.value); setUnitIds([]) }} style={inputStyle}>{(rooms.length ? rooms : SPACES.filter(s => s !== 'Sports Club')).map(s => <option key={s} value={s}>{s}</option>)}</select></div>
-        <div style={fieldRow}><div style={editLabel}>Party size</div><input type="number" min={1} max={50} value={partySize} onChange={e => setPartySize(e.target.value)} style={inputStyle} /></div>
+        <div style={fieldRow}><div style={editLabel}>{t('Date *', 'Ngày *')}</div><input type="date" value={bookingDate} onChange={e => setBookingDate(e.target.value)} style={inputStyle} /></div>
+        <div style={fieldRow}><div style={editLabel}>{t('Room *', 'Phòng *')}</div><select value={space} onChange={e => { setSpace(e.target.value); setUnitIds([]) }} style={inputStyle}>{(rooms.length ? rooms : SPACES.filter(s => s !== 'Sports Club')).map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+        <div style={fieldRow}><div style={editLabel}>{t('Party size', 'Số khách')}</div><input type="number" min={1} max={50} value={partySize} onChange={e => setPartySize(e.target.value)} style={inputStyle} /></div>
       </div>
 
       <div style={metaGrid}>
-        <div style={fieldRow}><div style={editLabel}>Session</div><select value={sessionLabel} onChange={e => setSessionLabel(e.target.value)} style={inputStyle}>{SESSIONS.map(s => <option key={s} value={s}>{s || '— none —'}</option>)}</select></div>
-        <div style={fieldRow}><div style={editLabel}>Start time</div><input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} style={inputStyle} /></div>
-        <div style={fieldRow}><div style={editLabel}>End time</div><input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} style={inputStyle} /></div>
+        <div style={fieldRow}><div style={editLabel}>{t('Session', 'Ca')}</div><select value={sessionLabel} onChange={e => setSessionLabel(e.target.value)} style={inputStyle}>{SESSIONS.map(s => <option key={s} value={s}>{s || t('— none —', '— không —')}</option>)}</select></div>
+        <div style={fieldRow}><div style={editLabel}>{t('Start time', 'Giờ bắt đầu')}</div><input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} style={inputStyle} /></div>
+        <div style={fieldRow}><div style={editLabel}>{t('End time', 'Giờ kết thúc')}</div><input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} style={inputStyle} /></div>
       </div>
-      <div style={{ ...hintText, marginTop: 6 }}>Set either a precise time or a session. Both is fine too.</div>
+      <div style={{ ...hintText, marginTop: 6 }}>{t('Set either a precise time or a session. Both is fine too.', 'Đặt một giờ cụ thể hoặc một ca. Cả hai cũng được.')}</div>
 
       <div style={{ marginTop: 14 }}>
         <UnitPicker
@@ -139,28 +141,28 @@ export default function EditBookingPage() {
       </div>
 
       <div style={metaGrid}>
-        <div style={fieldRow}><div style={editLabel}>Status</div><select value={status} onChange={e => setStatus(e.target.value)} style={inputStyle}>{STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+        <div style={fieldRow}><div style={editLabel}>{t('Status', 'Trạng thái')}</div><select value={status} onChange={e => setStatus(e.target.value)} style={inputStyle}>{STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
       </div>
 
       <div style={{ ...fieldRow, marginTop: 14 }}>
-        <div style={editLabel}>Notes</div>
+        <div style={editLabel}>{t('Notes', 'Ghi chú')}</div>
         <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
       </div>
 
       <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
-        <button onClick={save} disabled={saving} style={btnPrimary}>{saving ? 'Saving…' : 'Save changes'}</button>
-        <Link href="/admin/calendar" style={btnGhost}>Discard</Link>
-        <button onClick={() => setConfirmCancel(true)} style={{ ...btnGhost, marginLeft: 'auto', color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}>Cancel booking</button>
+        <button onClick={save} disabled={saving} style={btnPrimary}>{saving ? t('Saving…', 'Đang lưu…') : t('Save changes', 'Lưu thay đổi')}</button>
+        <Link href="/admin/calendar" style={btnGhost}>{t('Discard', 'Bỏ qua')}</Link>
+        <button onClick={() => setConfirmCancel(true)} style={{ ...btnGhost, marginLeft: 'auto', color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}>{t('Cancel booking', 'Hủy lượt đặt')}</button>
       </div>
 
       <ConfirmModal
         open={confirmCancel}
-        eyebrow="⚠ CANCEL BOOKING"
-        title="Cancel this booking?"
+        eyebrow={t('⚠ CANCEL BOOKING', '⚠ HỦY LƯỢT ĐẶT')}
+        title={t('Cancel this booking?', 'Hủy lượt đặt này?')}
         subject={`${memberName} · ${bookingDate}`}
-        body="Marks the booking cancelled (soft-cancel) — it leaves the active calendar. Can't be undone from here."
-        confirmLabel="Cancel booking"
-        busyLabel="Cancelling…"
+        body={t('Marks the booking cancelled (soft-cancel) — it leaves the active calendar. Can\'t be undone from here.', 'Đánh dấu lượt đặt đã hủy (hủy mềm) — nó rời khỏi lịch đang hoạt động. Không thể hoàn tác từ đây.')}
+        confirmLabel={t('Cancel booking', 'Hủy lượt đặt')}
+        busyLabel={t('Cancelling…', 'Đang hủy…')}
         busy={cancelBusy}
         tone="danger"
         onConfirm={doCancel}

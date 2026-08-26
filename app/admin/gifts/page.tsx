@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import { OCCASIONS, OCCASION_LABELS, CATEGORIES, CATEGORY_LABELS, formatVnd, percentUsed, type Occasion, type Category } from '@/lib/gifting'
 import { vnDateString } from '@/lib/datetime'
+import { useLang } from '@/lib/admin-lang'
 
 // Admin / Intelligence / Gifts
 //
@@ -65,6 +66,7 @@ const sb = createClient(
 )
 
 export default function GiftsPage() {
+  const { t } = useLang()
   const [gifts, setGifts] = useState<Gift[]>([])
   const [summary, setSummary] = useState<OrgSummary | null>(null)
   const [members, setMembers] = useState<MemberLite[]>([])
@@ -123,11 +125,11 @@ export default function GiftsPage() {
       const r = await fetch(`/api/admin/gifts/${confirmDeleteGift.id}`, { method: 'DELETE' })
       if (!r.ok) {
         const j = await r.json().catch(() => ({}))
-        showToast(`Delete failed: ${j.error || r.statusText}`, 'error')
+        showToast(`${t('Delete failed', 'Xóa thất bại')}: ${j.error || r.statusText}`, 'error')
         return
       }
       setConfirmDeleteGift(null)
-      showToast('Gift deleted.')
+      showToast(t('Gift deleted.', 'Đã xóa quà tặng.'))
       load()
     } finally {
       setDeleteBusy(false)
@@ -179,15 +181,15 @@ export default function GiftsPage() {
     <>
       <div style={headerRow}>
         <div>
-          <div style={eyebrow}>Intelligence · Member Experience</div>
-          <h1 style={pageTitle}>Gifting</h1>
+          <div style={eyebrow}>{t('Intelligence · Member Experience', 'Phân tích · Trải nghiệm hội viên')}</div>
+          <h1 style={pageTitle}>{t('Gifting', 'Quà tặng')}</h1>
           <p style={lede}>
             <span ref={infoRef} style={{ position: 'relative', display: 'inline-flex', alignItems: 'baseline', gap: 5, whiteSpace: 'nowrap' }}>
-              Unreasonable Hospitality
+              {t('Unreasonable Hospitality', 'Lòng hiếu khách phi thường')}
               <button
                 onClick={() => setInfoOpen(o => !o)}
                 style={infoBtn}
-                aria-label="About Unreasonable Hospitality"
+                aria-label={t('About Unreasonable Hospitality', 'Về Lòng hiếu khách phi thường')}
                 aria-expanded={infoOpen}
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D4B85A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: 'translateY(2px)' }}>
@@ -197,35 +199,35 @@ export default function GiftsPage() {
                 </svg>
               </button>
               {infoOpen && (
-                <div style={infoPopover} role="dialog" aria-label="Unreasonable Hospitality">
-                  <div style={infoTitle}>Unreasonable Hospitality</div>
-                  <p style={infoPara}>The phrase comes from restaurateur Will Guidara, who built the world&apos;s best restaurant on a simple idea: there&apos;s a difference between service and hospitality. Service is doing your job well. Hospitality is making someone feel genuinely cared for — doing the unexpected, generous thing precisely because no one asked you to.</p>
-                  <p style={infoPara}>We hold to it closely because it&apos;s the whole point of The Rampant Club. We don&apos;t reward loyalty with a points card — a free sticker on the tenth visit, a discount on the twentieth. We treat every member like royalty from the first day, because the gestures that cost a little more and surprise a little deeper are the ones people remember for the rest of their lives.</p>
-                  <p style={{ ...infoPara, marginBottom: 0 }}>When a member walks through our doors, everything should feel as though it was designed around them — because it was. That&apos;s not extravagance for its own sake. It&apos;s the belief that how you make someone feel is what they carry home. We go further than we have to, on purpose, because that&apos;s what turns a visit into a memory and a member into family.</p>
+                <div style={infoPopover} role="dialog" aria-label={t('Unreasonable Hospitality', 'Lòng hiếu khách phi thường')}>
+                  <div style={infoTitle}>{t('Unreasonable Hospitality', 'Lòng hiếu khách phi thường')}</div>
+                  <p style={infoPara}>{t('The phrase comes from restaurateur Will Guidara, who built the world’s best restaurant on a simple idea: there’s a difference between service and hospitality. Service is doing your job well. Hospitality is making someone feel genuinely cared for — doing the unexpected, generous thing precisely because no one asked you to.', 'Cụm từ này bắt nguồn từ nhà hàng gia Will Guidara, người đã xây dựng nhà hàng tốt nhất thế giới dựa trên một ý tưởng đơn giản: có sự khác biệt giữa phục vụ và hiếu khách. Phục vụ là làm tốt công việc của mình. Hiếu khách là khiến ai đó cảm thấy thực sự được quan tâm — làm điều bất ngờ, hào phóng chính vì không ai yêu cầu bạn làm vậy.')}</p>
+                  <p style={infoPara}>{t('We hold to it closely because it’s the whole point of The Rampant Club. We don’t reward loyalty with a points card — a free sticker on the tenth visit, a discount on the twentieth. We treat every member like royalty from the first day, because the gestures that cost a little more and surprise a little deeper are the ones people remember for the rest of their lives.', 'Chúng tôi luôn giữ vững điều này vì đó chính là tinh thần cốt lõi của The Rampant Club. Chúng tôi không tưởng thưởng lòng trung thành bằng thẻ tích điểm — một sticker miễn phí ở lần ghé thứ mười, một khoản giảm giá ở lần thứ hai mươi. Chúng tôi đối đãi mỗi hội viên như bậc vương giả ngay từ ngày đầu tiên, bởi những cử chỉ tốn kém hơn một chút và bất ngờ sâu sắc hơn một chút mới là điều người ta ghi nhớ suốt đời.')}</p>
+                  <p style={{ ...infoPara, marginBottom: 0 }}>{t('When a member walks through our doors, everything should feel as though it was designed around them — because it was. That’s not extravagance for its own sake. It’s the belief that how you make someone feel is what they carry home. We go further than we have to, on purpose, because that’s what turns a visit into a memory and a member into family.', 'Khi một hội viên bước qua cửa, mọi thứ phải mang lại cảm giác như được thiết kế riêng cho họ — vì đúng là như vậy. Đó không phải sự xa hoa vì bản thân sự xa hoa. Đó là niềm tin rằng cảm giác bạn tạo ra cho ai đó chính là điều họ mang về nhà. Chúng tôi đi xa hơn mức cần thiết, một cách có chủ đích, bởi đó là điều biến một lần ghé thăm thành một kỷ niệm và một hội viên thành người thân.')}</p>
                 </div>
               )}
-            </span>{' '}— the small, thoughtful gestures that make a member feel cared for. The budget is set by tier ({' '}
-            <Link href="/admin/tier-budgets" style={linkStyle}>tier budgets →</Link>{' '}
-            ) and runs anniversary to anniversary. Each gift carries a cost, a source, and the &quot;why&quot; we did it.
+            </span>{' '}— {t('the small, thoughtful gestures that make a member feel cared for. The budget is set by tier (', 'những cử chỉ nhỏ, chu đáo khiến hội viên cảm thấy được quan tâm. Ngân sách được đặt theo hạng (')}{' '}
+            <Link href="/admin/tier-budgets" style={linkStyle}>{t('tier budgets →', 'ngân sách theo hạng →')}</Link>{' '}
+            {t(') and runs anniversary to anniversary. Each gift carries a cost, a source, and the “why” we did it.', ') và tính theo chu kỳ từ ngày kỷ niệm này đến ngày kỷ niệm sau. Mỗi món quà đều ghi rõ chi phí, nguồn, và “lý do” chúng tôi tặng.')}
           </p>
         </div>
         <button onClick={() => setShowAdd(s => !s)} style={btnPrimary}>
-          {showAdd ? 'Cancel' : '＋ Log a gift'}
+          {showAdd ? t('Cancel', 'Hủy') : t('＋ Log a gift', '＋ Ghi nhận quà tặng')}
         </button>
       </div>
 
       {/* Org-wide budget strip */}
       {summary && (
         <div style={strip}>
-          <StatTile label="Active members" value={String(summary.totals.members)} color="#E5D4C2" />
-          <StatTile label="Annual budget" value={formatVnd(summary.totals.total_annual_budget_vnd)} color="#D4B85A" />
-          <StatTile label="Spent" value={formatVnd(summary.totals.total_spent_vnd)} color="#7AB07A" sub={`${summary.totals.pct_used}% used`} />
-          <StatTile label="Remaining" value={formatVnd(summary.totals.remaining_vnd)} color="#9E8FC4" />
+          <StatTile label={t('Active members', 'Hội viên đang hoạt động')} value={String(summary.totals.members)} color="#E5D4C2" />
+          <StatTile label={t('Annual budget', 'Ngân sách năm')} value={formatVnd(summary.totals.total_annual_budget_vnd)} color="#D4B85A" />
+          <StatTile label={t('Spent', 'Đã chi')} value={formatVnd(summary.totals.total_spent_vnd)} color="#7AB07A" sub={`${summary.totals.pct_used}% ${t('used', 'đã dùng')}`} />
+          <StatTile label={t('Remaining', 'Còn lại')} value={formatVnd(summary.totals.remaining_vnd)} color="#9E8FC4" />
           <StatTile
-            label="Unloved members"
+            label={t('Unloved members', 'Hội viên chưa được tặng')}
             value={String(summary.unloved.length)}
             color={summary.unloved.length > 0 ? '#C27070' : '#7AB07A'}
-            sub={summary.unloved.length > 0 ? 'no gift this year yet' : 'everyone has received something'}
+            sub={summary.unloved.length > 0 ? t('no gift this year yet', 'chưa có quà nào năm nay') : t('everyone has received something', 'mọi người đều đã nhận quà')}
           />
         </div>
       )}
@@ -233,7 +235,7 @@ export default function GiftsPage() {
       {/* Unloved alarm */}
       {summary && summary.unloved.length > 0 && (
         <div style={alarmBox}>
-          <div style={alarmHeader}>Members with budget but no gift this year</div>
+          <div style={alarmHeader}>{t('Members with budget but no gift this year', 'Hội viên còn ngân sách nhưng chưa có quà năm nay')}</div>
           <div style={unlovedRow}>
             {summary.unloved.map(u => (
               <Link key={u.member_no} href={`/admin/mis/${u.member_no}`} style={unlovedChip}>
@@ -255,7 +257,7 @@ export default function GiftsPage() {
 
       {/* Filters */}
       <div style={filterRow}>
-        <button onClick={() => setOccFilter('all')} style={{ ...filterChip, ...(occFilter === 'all' ? filterChipActive : null) }}>All</button>
+        <button onClick={() => setOccFilter('all')} style={{ ...filterChip, ...(occFilter === 'all' ? filterChipActive : null) }}>{t('All', 'Tất cả')}</button>
         {OCCASIONS.map(o => (
           <button key={o} onClick={() => setOccFilter(o)} style={{ ...filterChip, ...(occFilter === o ? filterChipActive : null) }}>
             {OCCASION_LABELS[o]}
@@ -265,10 +267,10 @@ export default function GiftsPage() {
 
       {/* Ledger */}
       {loading ? (
-        <div style={emptyText}>Loading…</div>
+        <div style={emptyText}>{t('Loading…', 'Đang tải…')}</div>
       ) : gifts.length === 0 ? (
         <div style={emptyBlock}>
-          {occFilter === 'all' ? 'No gifts logged yet.' : `No ${OCCASION_LABELS[occFilter as Occasion] || occFilter} gifts.`}
+          {occFilter === 'all' ? t('No gifts logged yet.', 'Chưa ghi nhận quà tặng nào.') : t(`No ${OCCASION_LABELS[occFilter as Occasion] || occFilter} gifts.`, `Không có quà ${OCCASION_LABELS[occFilter as Occasion] || occFilter}.`)}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -305,29 +307,29 @@ export default function GiftsPage() {
                     {g.member?.full_name || g.member_no}
                   </Link>
                   <div style={giftDescription}>{g.description}</div>
-                  {g.source && <div style={giftMeta}>via {g.source}</div>}
+                  {g.source && <div style={giftMeta}>{t('via', 'qua')} {g.source}</div>}
                   {g.expected_value && (
                     <div style={whyBox}>
-                      <span style={whyLabel}>Why · </span>{g.expected_value}
+                      <span style={whyLabel}>{t('Why · ', 'Lý do · ')}</span>{g.expected_value}
                     </div>
                   )}
 
                   <div style={giftRowActions}>
                     {(g.edit_count ?? 0) > 0 && (
-                      <button onClick={() => toggleHistory(g)} style={giftSmallBtn} title="Show edit history">
-                        ⏱ {g.edit_count} edit{g.edit_count === 1 ? '' : 's'}
+                      <button onClick={() => toggleHistory(g)} style={giftSmallBtn} title={t('Show edit history', 'Xem lịch sử chỉnh sửa')}>
+                        ⏱ {g.edit_count} {g.edit_count === 1 ? t('edit', 'lần sửa') : t('edits', 'lần sửa')}
                       </button>
                     )}
-                    <button onClick={() => setEditingGiftId(g.id)} style={giftSmallBtn}>Edit</button>
-                    <button onClick={() => setConfirmDeleteGift(g)} style={{ ...giftSmallBtn, color: '#C27070' }}>Delete</button>
+                    <button onClick={() => setEditingGiftId(g.id)} style={giftSmallBtn}>{t('Edit', 'Sửa')}</button>
+                    <button onClick={() => setConfirmDeleteGift(g)} style={{ ...giftSmallBtn, color: '#C27070' }}>{t('Delete', 'Xóa')}</button>
                   </div>
 
                   {expandedHistory.has(g.id) && (
                     <div style={giftHistoryBlock}>
                       {historyByGift[g.id] == null ? (
-                        <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', fontStyle: 'italic' }}>Loading history…</div>
+                        <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', fontStyle: 'italic' }}>{t('Loading history…', 'Đang tải lịch sử…')}</div>
                       ) : historyByGift[g.id]!.length === 0 ? (
-                        <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', fontStyle: 'italic' }}>No edits recorded.</div>
+                        <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', fontStyle: 'italic' }}>{t('No edits recorded.', 'Chưa ghi nhận chỉnh sửa nào.')}</div>
                       ) : (
                         historyByGift[g.id]!.map(e => (
                           <div key={e.id} style={giftHistoryRow}>
@@ -366,20 +368,18 @@ export default function GiftsPage() {
         <>
           <div style={giftConfirmBackdrop} onClick={() => !deleteBusy && setConfirmDeleteGift(null)} />
           <div style={giftConfirmModalBox} role="dialog">
-            <div style={giftConfirmEyebrow}>⚠ PERMANENT</div>
-            <div style={giftConfirmTitle}>Delete gift record?</div>
+            <div style={giftConfirmEyebrow}>⚠ {t('PERMANENT', 'VĨNH VIỄN')}</div>
+            <div style={giftConfirmTitle}>{t('Delete gift record?', 'Xóa bản ghi quà tặng?')}</div>
             <div style={giftConfirmSubject}>
               {confirmDeleteGift.member?.full_name || confirmDeleteGift.member_no} · {formatVnd(confirmDeleteGift.cost_vnd)} · {confirmDeleteGift.gift_date}
             </div>
             <p style={giftConfirmBody}>
-              Removes the gift from the ledger AND the audit trail of edits it accumulated.
-              The associated photo (if any) is also unlinked from storage.
-              Cannot be undone — consider editing instead if the values just need correcting.
+              {t('Removes the gift from the ledger AND the audit trail of edits it accumulated. The associated photo (if any) is also unlinked from storage. Cannot be undone — consider editing instead if the values just need correcting.', 'Xóa món quà khỏi sổ ghi VÀ toàn bộ nhật ký chỉnh sửa đã tích lũy. Ảnh liên quan (nếu có) cũng sẽ được gỡ khỏi kho lưu trữ. Không thể hoàn tác — hãy cân nhắc chỉnh sửa nếu chỉ cần sửa lại giá trị.')}
             </p>
             <div style={giftConfirmActions}>
-              <button onClick={() => setConfirmDeleteGift(null)} disabled={deleteBusy} style={giftConfirmCancelBtn}>Cancel</button>
+              <button onClick={() => setConfirmDeleteGift(null)} disabled={deleteBusy} style={giftConfirmCancelBtn}>{t('Cancel', 'Hủy')}</button>
               <button onClick={runDelete} disabled={deleteBusy} style={{ ...giftConfirmGoBtn, opacity: deleteBusy ? 0.5 : 1 }}>
-                {deleteBusy ? 'Deleting…' : 'Delete gift'}
+                {deleteBusy ? t('Deleting…', 'Đang xóa…') : t('Delete gift', 'Xóa quà tặng')}
               </button>
             </div>
           </div>

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { describeEvent, actorName, timeAgo } from '@/lib/ops/feed'
 import type { ActivityEvent, Project } from '@/lib/ops/types'
+import { useLang } from '@/lib/admin-lang'
 
 const FAMILY = "'Google Sans Code', monospace"
 
@@ -18,6 +19,7 @@ const MILESTONE = (ev: ActivityEvent) =>
   ev.object_type === 'project' || ev.verb === 'completed' || ev.verb === 'lapsed'
 
 export default function BoardProgress() {
+  const { t } = useLang()
   const supabase = createBrowserSupabaseClient()
   const { project_id } = useParams<{ project_id: string }>()
   const [project, setProject] = useState<Project | null>(null)
@@ -47,31 +49,31 @@ export default function BoardProgress() {
 
   return (
     <>
-      <Link href="/admin/ops/reports" style={backLink}>← Reports</Link>
-      <div style={{ ...eyebrow, marginTop: 12 }}>Board progress</div>
+      <Link href="/admin/ops/reports" style={backLink}>← {t('Reports', 'Báo cáo')}</Link>
+      <div style={{ ...eyebrow, marginTop: 12 }}>{t('Board progress', 'Tiến độ bảng')}</div>
       <h1 style={pageTitle}>{project?.name || '…'}</h1>
 
-      {loading || !p ? <div style={emptyText}>Loading…</div> : (
+      {loading || !p ? <div style={emptyText}>{t('Loading…', 'Đang tải…')}</div> : (
         <>
           {/* summary */}
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', margin: '20px 0 8px' }}>
-            <Stat label="Complete" value={`${fmtPct(p.pct_complete)}%`} accent />
-            <Stat label="Done" value={`${p.done}/${p.total}`} />
-            <Stat label="Open" value={p.open_count} />
-            <Stat label="Lapsed" value={p.lapsed} />
-            <Stat label="Overdue" value={p.overdue} danger={p.overdue > 0} />
-            <Stat label="Done this week" value={p.completed_this_week} />
+            <Stat label={t('Complete', 'Hoàn thành')} value={`${fmtPct(p.pct_complete)}%`} accent />
+            <Stat label={t('Done', 'Xong')} value={`${p.done}/${p.total}`} />
+            <Stat label={t('Open', 'Đang mở')} value={p.open_count} />
+            <Stat label={t('Lapsed', 'Quá hạn hủy')} value={p.lapsed} />
+            <Stat label={t('Overdue', 'Trễ hạn')} value={p.overdue} danger={p.overdue > 0} />
+            <Stat label={t('Done this week', 'Xong tuần này')} value={p.completed_this_week} />
           </div>
           <div style={{ ...progressBarOuter, maxWidth: 640 }}><span style={{ ...progressBarInner, width: `${p.pct_complete}%` }} /></div>
 
           {/* throughput */}
-          <h2 style={sectionTitle}>Weekly throughput</h2>
-          {weeks.length === 0 ? <div style={emptyText}>No completions yet.</div> : (
+          <h2 style={sectionTitle}>{t('Weekly throughput', 'Sản lượng theo tuần')}</h2>
+          {weeks.length === 0 ? <div style={emptyText}>{t('No completions yet.', 'Chưa có mục nào hoàn thành.')}</div> : (
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 120, maxWidth: 640 }}>
               {weeks.map(w => (
                 <div key={w.week_start} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                   <span style={{ ...metaText, fontSize: 9 }}>{w.completed}</span>
-                  <div title={`${w.completed} completed`} style={{ width: '100%', maxWidth: 28, height: `${(w.completed / maxWeek) * 88}px`, minHeight: 2, background: '#D4B85A', borderRadius: '3px 3px 0 0' }} />
+                  <div title={`${w.completed} ${t('completed', 'đã hoàn thành')}`} style={{ width: '100%', maxWidth: 28, height: `${(w.completed / maxWeek) * 88}px`, minHeight: 2, background: '#D4B85A', borderRadius: '3px 3px 0 0' }} />
                   <span style={{ ...metaText, fontSize: 8, color: '#7E7864' }}>{new Date(w.week_start + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
                 </div>
               ))}
@@ -79,8 +81,8 @@ export default function BoardProgress() {
           )}
 
           {/* trajectory (milestones from the spine) */}
-          <h2 style={sectionTitle}>Trajectory</h2>
-          {milestones.length === 0 ? <div style={emptyText}>No milestones yet.</div> : (
+          <h2 style={sectionTitle}>{t('Trajectory', 'Diễn tiến')}</h2>
+          {milestones.length === 0 ? <div style={emptyText}>{t('No milestones yet.', 'Chưa có cột mốc nào.')}</div> : (
             <div style={{ display: 'flex', flexDirection: 'column', maxWidth: 640 }}>
               {milestones.map(ev => (
                 <div key={ev.id} style={trajRow}>
@@ -101,7 +103,7 @@ export default function BoardProgress() {
   )
 }
 
-function Stat({ label, value, accent, danger }: { label: string; value: React.ReactNode; accent?: boolean; danger?: boolean }) {
+function Stat({ label, value, accent, danger }: { label: React.ReactNode; value: React.ReactNode; accent?: boolean; danger?: boolean }) {
   return (
     <div style={{ background: 'rgba(229,212,194,0.04)', border: '1px solid rgba(229,212,194,0.08)', borderRadius: 8, padding: '10px 14px', minWidth: 92 }}>
       <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 22, color: danger ? '#C27070' : accent ? '#D4B85A' : '#E5D4C2' }}>{value}</div>
