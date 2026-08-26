@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useLang } from '@/lib/admin-lang'
 
 // The staff Concierge inbox. Left: every member↔Club thread, awaiting-first, each
 // with its RESPONSE AGE (the ops-honesty signal — nothing rots silently). Right:
@@ -25,6 +26,7 @@ function waited(iso: string | null): string {
 const time = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
 export default function ConciergeInbox() {
+  const { t } = useLang()
   const [rows, setRows] = useState<Row[]>([])
   const [sel, setSel] = useState<string | null>(null)
   const [member, setMember] = useState<{ member_no: string | null; name: string } | null>(null)
@@ -67,21 +69,21 @@ export default function ConciergeInbox() {
 
   return (
     <div>
-      <h1 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 26, color: '#E5D4C2', marginBottom: 4 }}>The Concierge</h1>
+      <h1 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 26, color: '#E5D4C2', marginBottom: 4 }}>{t('The Concierge', 'Quản Gia')}</h1>
       <p style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98', marginBottom: 24, letterSpacing: '0.04em' }}>
-        {awaitingCount > 0 ? `${awaitingCount} awaiting a reply` : 'All caught up'} · members only ever see “The Club”
+        {awaitingCount > 0 ? `${awaitingCount} ${t('awaiting a reply', 'đang chờ phản hồi')}` : t('All caught up', 'Đã xử lý hết')} · {t('members only ever see “The Club”', 'hội viên chỉ thấy “The Club”')}
       </p>
 
       <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start' }}>
         {/* List */}
         <div style={listWrap}>
           {rows.length === 0 ? (
-            <div style={{ ...muted, padding: 24 }}>No conversations yet.</div>
+            <div style={{ ...muted, padding: 24 }}>{t('No conversations yet.', 'Chưa có cuộc trò chuyện nào.')}</div>
           ) : rows.map(r => (
             <button key={r.thread_id} onClick={() => setSel(r.thread_id)} style={{ ...rowBtn, ...(sel === r.thread_id ? rowActive : null) }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
                 <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 14, color: '#E5D4C2' }}>{r.member_name}</span>
-                {r.awaiting && <span style={ageBadge}>{waited(r.awaiting_since)} waiting</span>}
+                {r.awaiting && <span style={ageBadge}>{waited(r.awaiting_since)} {t('waiting', 'đang chờ')}</span>}
               </div>
               <div style={{ fontFamily: MONO, fontSize: 9, color: '#7E7864', margin: '2px 0 5px' }}>
                 {r.member_no ? `#${r.member_no.replace(/^TRC-M/i, '')}` : '—'}
@@ -94,20 +96,20 @@ export default function ConciergeInbox() {
         {/* Conversation */}
         <div style={convWrap}>
           {!sel ? (
-            <div style={{ ...muted, padding: 40, textAlign: 'center' }}>Select a conversation.</div>
+            <div style={{ ...muted, padding: 40, textAlign: 'center' }}>{t('Select a conversation.', 'Chọn một cuộc trò chuyện.')}</div>
           ) : (
             <>
               <div style={convHeader}>
-                <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2' }}>{member?.name || 'Member'}</span>
+                <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2' }}>{member?.name || t('Member', 'Hội viên')}</span>
                 {member?.member_no && (
-                  <Link href={`/admin/mis/${member.member_no}`} style={dossierLink}>Open dossier →</Link>
+                  <Link href={`/admin/mis/${member.member_no}`} style={dossierLink}>{t('Open dossier →', 'Mở hồ sơ →')}</Link>
                 )}
               </div>
               <div ref={scrollRef} style={convScroll}>
                 {messages.map(m => (
                   <div key={m.id} style={{ display: 'flex', justifyContent: m.from_member ? 'flex-start' : 'flex-end', marginBottom: 10 }}>
                     <div style={m.from_member ? bubbleMember : bubbleClub}>
-                      <div style={{ ...senderLabel, color: m.from_member ? '#B2AA98' : '#D4B85A' }}>{m.from_member ? (member?.name || 'Member') : 'The Club'}</div>
+                      <div style={{ ...senderLabel, color: m.from_member ? '#B2AA98' : '#D4B85A' }}>{m.from_member ? (member?.name || t('Member', 'Hội viên')) : 'The Club'}</div>
                       <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{m.body}</div>
                       <div style={stamp}>{time(m.created_at)}</div>
                     </div>
@@ -116,9 +118,9 @@ export default function ConciergeInbox() {
               </div>
               <div style={composer}>
                 {err && <div style={{ fontFamily: MONO, fontSize: 11, color: '#C27070', marginBottom: 6 }}>{err}</div>}
-                <textarea value={draft} onChange={e => setDraft(e.target.value.slice(0, 4000))} onKeyDown={onKey} rows={2} placeholder="Reply as The Club…" style={textarea} />
+                <textarea value={draft} onChange={e => setDraft(e.target.value.slice(0, 4000))} onKeyDown={onKey} rows={2} placeholder={t('Reply as The Club…', 'Trả lời với tư cách The Club…')} style={textarea} />
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-                  <button onClick={reply} disabled={sending || !draft.trim()} style={{ ...sendBtn, opacity: sending || !draft.trim() ? 0.4 : 1 }}>{sending ? 'Sending…' : 'Send as The Club'}</button>
+                  <button onClick={reply} disabled={sending || !draft.trim()} style={{ ...sendBtn, opacity: sending || !draft.trim() ? 0.4 : 1 }}>{sending ? t('Sending…', 'Đang gửi…') : t('Send as The Club', 'Gửi với tư cách The Club')}</button>
                 </div>
               </div>
             </>
