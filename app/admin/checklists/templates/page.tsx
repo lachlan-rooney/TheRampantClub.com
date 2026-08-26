@@ -127,6 +127,7 @@ function Editor({ template, kindColor, onItems, onSave, saving, savedAt, error }
   savedAt: string | null
   error: string | null
 }) {
+  const { t } = useLang()
   const items = template.items
 
   // Confirm modal — single destructive path (remove item from template).
@@ -208,18 +209,18 @@ function Editor({ template, kindColor, onItems, onSave, saving, savedAt, error }
       <div style={savedRow}>
         {template.source === 'fallback' && (
           <span style={fallbackBadge}>
-            ⚠ Showing in-repo seed (DB row not yet created — first save will create it)
+            {t('⚠ Showing in-repo seed (DB row not yet created — first save will create it)', '⚠ Đang hiển thị bản mẫu trong kho mã (chưa có bản ghi trong CSDL — lần lưu đầu tiên sẽ tạo)')}
           </span>
         )}
         {template.updated_at && template.source === 'db' && (
           <span style={updatedHint}>
-            Last edited {fmtTimestamp(template.updated_at)}{template.updated_by ? ` by ${template.updated_by}` : ''}
+            {t('Last edited ', 'Chỉnh sửa lần cuối ')}{fmtTimestamp(template.updated_at)}{template.updated_by ? `${t(' by ', ' bởi ')}${template.updated_by}` : ''}
           </span>
         )}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
-          {savedAt && <span style={{ ...updatedHint, color: '#7AB07A' }}>✓ Saved {fmtTimestamp(savedAt)}</span>}
+          {savedAt && <span style={{ ...updatedHint, color: '#7AB07A' }}>{t('✓ Saved ', '✓ Đã lưu ')}{fmtTimestamp(savedAt)}</span>}
           <button onClick={onSave} disabled={saving} style={{ ...saveBtn, background: kindColor + '20', color: kindColor, borderColor: kindColor + '50' }}>
-            {saving ? 'Saving…' : 'Save template'}
+            {saving ? t('Saving…', 'Đang lưu…') : t('Save template', 'Lưu mẫu')}
           </button>
         </div>
       </div>
@@ -227,7 +228,7 @@ function Editor({ template, kindColor, onItems, onSave, saving, savedAt, error }
       {error && <div style={errorBox}>{error}</div>}
 
       <div style={futureBanner}>
-        Edits here apply to <strong>new sheets only</strong>. Sealed sheets keep the items they were started with — even renaming or removing an item here will not rewrite them.
+        {t('Edits here apply to ', 'Các chỉnh sửa ở đây chỉ áp dụng cho ')}<strong>{t('new sheets only', 'các phiếu mới')}</strong>{t('. Sealed sheets keep the items they were started with — even renaming or removing an item here will not rewrite them.', '. Các phiếu đã niêm phong giữ nguyên các mục lúc bắt đầu — kể cả việc đổi tên hay xóa một mục ở đây cũng không viết lại chúng.')}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -235,8 +236,8 @@ function Editor({ template, kindColor, onItems, onSave, saving, savedAt, error }
           <div key={zone} style={zoneBlock}>
             <div style={zoneHeaderRow}>
               <div style={{ ...zoneTitle, color: kindColor }}>{zone}</div>
-              <button onClick={() => setPromptState({ kind: 'rename_zone', oldZone: zone })} style={tinyBtn}>rename</button>
-              <button onClick={() => setPromptState({ kind: 'add_item', zone })} style={tinyBtn}>＋ add item</button>
+              <button onClick={() => setPromptState({ kind: 'rename_zone', oldZone: zone })} style={tinyBtn}>{t('rename', 'đổi tên')}</button>
+              <button onClick={() => setPromptState({ kind: 'add_item', zone })} style={tinyBtn}>{t('＋ add item', '＋ thêm mục')}</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {ordered.filter(it => it.zone === zone).map(it => (
@@ -255,17 +256,17 @@ function Editor({ template, kindColor, onItems, onSave, saving, savedAt, error }
         ))}
 
         <div style={addZoneRow}>
-          <button onClick={() => setPromptState({ kind: 'new_zone' })} style={tinyBtn}>＋ add zone</button>
+          <button onClick={() => setPromptState({ kind: 'new_zone' })} style={tinyBtn}>{t('＋ add zone', '＋ thêm khu vực')}</button>
         </div>
       </div>
 
       <ConfirmModal
         open={!!confirmRemove}
-        eyebrow="⚠ TEMPLATE CHANGE"
-        title="Remove this item?"
+        eyebrow={t('⚠ TEMPLATE CHANGE', '⚠ THAY ĐỔI MẪU')}
+        title={t('Remove this item?', 'Xóa mục này?')}
         subject={confirmRemove ? `${confirmRemove.label_en} · ${confirmRemove.zone}` : undefined}
-        body="Future sheets won't include it. Already-sealed sheets keep their snapshot and are unaffected. The change only takes effect once you save the template."
-        confirmLabel="Remove item"
+        body={t("Future sheets won't include it. Already-sealed sheets keep their snapshot and are unaffected. The change only takes effect once you save the template.", 'Các phiếu trong tương lai sẽ không bao gồm mục này. Các phiếu đã niêm phong vẫn giữ bản chụp của chúng và không bị ảnh hưởng. Thay đổi chỉ có hiệu lực khi bạn lưu mẫu.')}
+        confirmLabel={t('Remove item', 'Xóa mục')}
         onCancel={() => setConfirmRemove(null)}
         onConfirm={runRemove}
       />
@@ -273,19 +274,19 @@ function Editor({ template, kindColor, onItems, onSave, saving, savedAt, error }
       <PromptModal
         key={promptState?.kind ?? 'closed'}
         open={!!promptState}
-        eyebrow={promptState?.kind === 'rename_zone' ? '✎ RENAME ZONE'
-          : promptState?.kind === 'new_zone' ? '✎ NEW ZONE' : '✎ NEW ITEM'}
-        title={promptState?.kind === 'rename_zone' ? 'Rename zone'
-          : promptState?.kind === 'new_zone' ? 'New zone' : 'New item'}
-        label={promptState?.kind === 'rename_zone' ? `Rename "${promptState.oldZone}" to`
-          : promptState?.kind === 'new_zone' ? 'Zone name'
-          : 'Item id — lowercase, hyphens, must be unique'}
-        placeholder={promptState?.kind === 'add_item' ? 'e.g. wipe-down-bar' : undefined}
+        eyebrow={promptState?.kind === 'rename_zone' ? t('✎ RENAME ZONE', '✎ ĐỔI TÊN KHU VỰC')
+          : promptState?.kind === 'new_zone' ? t('✎ NEW ZONE', '✎ KHU VỰC MỚI') : t('✎ NEW ITEM', '✎ MỤC MỚI')}
+        title={promptState?.kind === 'rename_zone' ? t('Rename zone', 'Đổi tên khu vực')
+          : promptState?.kind === 'new_zone' ? t('New zone', 'Khu vực mới') : t('New item', 'Mục mới')}
+        label={promptState?.kind === 'rename_zone' ? `${t('Rename', 'Đổi tên')} "${promptState.oldZone}" ${t('to', 'thành')}`
+          : promptState?.kind === 'new_zone' ? t('Zone name', 'Tên khu vực')
+          : t('Item id — lowercase, hyphens, must be unique', 'Id mục — chữ thường, dấu gạch nối, phải là duy nhất')}
+        placeholder={promptState?.kind === 'add_item' ? t('e.g. wipe-down-bar', 'ví dụ: wipe-down-bar') : undefined}
         defaultValue={promptState?.kind === 'rename_zone' ? promptState.oldZone : ''}
-        confirmLabel={promptState?.kind === 'rename_zone' ? 'Rename'
-          : promptState?.kind === 'new_zone' ? 'Next: add item' : 'Add item'}
+        confirmLabel={promptState?.kind === 'rename_zone' ? t('Rename', 'Đổi tên')
+          : promptState?.kind === 'new_zone' ? t('Next: add item', 'Tiếp: thêm mục') : t('Add item', 'Thêm mục')}
         validate={promptState?.kind === 'add_item'
-          ? (v) => !v ? 'An id is required.' : items.some(it => it.id === v) ? `An item with id "${v}" already exists.` : null
+          ? (v) => !v ? t('An id is required.', 'Bắt buộc phải có id.') : items.some(it => it.id === v) ? `${t('An item with id "', 'Mục có id "')}${v}${t('" already exists.', '" đã tồn tại.')}` : null
           : undefined}
         onCancel={() => setPromptState(null)}
         onConfirm={handlePromptConfirm}
@@ -302,19 +303,20 @@ function ItemEditor({ item, kindColor, onPatch, onUp, onDown, onRemove }: {
   onDown: () => void
   onRemove: () => void
 }) {
+  const { t } = useLang()
   return (
     <div style={itemEditCard}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
         <span style={itemIdPill}>{item.id}</span>
         <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
-          <button onClick={onUp} style={tinyBtn} title="Move up">↑</button>
-          <button onClick={onDown} style={tinyBtn} title="Move down">↓</button>
-          <button onClick={onRemove} style={{ ...tinyBtn, color: '#C27070', borderColor: 'rgba(194,112,112,0.40)' }}>remove</button>
+          <button onClick={onUp} style={tinyBtn} title={t('Move up', 'Di chuyển lên')}>↑</button>
+          <button onClick={onDown} style={tinyBtn} title={t('Move down', 'Di chuyển xuống')}>↓</button>
+          <button onClick={onRemove} style={{ ...tinyBtn, color: '#C27070', borderColor: 'rgba(194,112,112,0.40)' }}>{t('remove', 'xóa')}</button>
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 8 }}>
         <div>
-          <div style={editLabel}>EN label</div>
+          <div style={editLabel}>{t('EN label', 'Nhãn EN')}</div>
           <input
             value={item.label_en}
             onChange={e => onPatch({ label_en: e.target.value })}
@@ -322,7 +324,7 @@ function ItemEditor({ item, kindColor, onPatch, onUp, onDown, onRemove }: {
           />
         </div>
         <div>
-          <div style={editLabel}>VN label (optional)</div>
+          <div style={editLabel}>{t('VN label (optional)', 'Nhãn VN (tùy chọn)')}</div>
           <input
             value={item.label_vn || ''}
             onChange={e => onPatch({ label_vn: e.target.value || null })}
@@ -333,8 +335,8 @@ function ItemEditor({ item, kindColor, onPatch, onUp, onDown, onRemove }: {
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
         <label style={inlineCheckLabel}>
           <select value={item.type} onChange={e => onPatch({ type: e.target.value as ChecklistTemplateItem['type'] })} style={{ ...inputStyle, width: 'auto' }}>
-            <option value="checkbox">Checkbox</option>
-            <option value="text">Text input</option>
+            <option value="checkbox">{t('Checkbox', 'Ô chọn')}</option>
+            <option value="text">{t('Text input', 'Nhập văn bản')}</option>
           </select>
         </label>
         <label style={inlineCheckLabel}>
@@ -344,10 +346,10 @@ function ItemEditor({ item, kindColor, onPatch, onUp, onDown, onRemove }: {
             onChange={e => onPatch({ required: e.target.checked })}
             style={{ accentColor: kindColor }}
           />
-          <span>required (blocks sealing)</span>
+          <span>{t('required (blocks sealing)', 'bắt buộc (chặn niêm phong)')}</span>
         </label>
         <div style={{ flex: 1, minWidth: 200 }}>
-          <div style={editLabel}>Zone</div>
+          <div style={editLabel}>{t('Zone', 'Khu vực')}</div>
           <input
             value={item.zone}
             onChange={e => onPatch({ zone: e.target.value })}
@@ -357,7 +359,7 @@ function ItemEditor({ item, kindColor, onPatch, onUp, onDown, onRemove }: {
       </div>
       {item.type === 'text' && (
         <div style={{ marginTop: 8 }}>
-          <div style={editLabel}>Placeholder (hint shown inside the text field)</div>
+          <div style={editLabel}>{t('Placeholder (hint shown inside the text field)', 'Chữ gợi ý (hiển thị bên trong ô nhập)')}</div>
           <input
             value={item.placeholder || ''}
             onChange={e => onPatch({ placeholder: e.target.value })}

@@ -264,16 +264,17 @@ function PhaseRail({ current }: { current: Phase }) {
 
 // ── Overture body ─────────────────────────────────────────────────────
 function OvertureBody({ brief, stats }: { brief: Brief; stats: MemberStats | null }) {
+  const { t } = useLang()
   return (
     <div style={overtureGrid}>
       {/* Score-5 non-negotiables */}
       <div>
         <div style={subHeader}>
-          Non-negotiables · S₀=5
+          {t('Non-negotiables', 'Điều không thể thương lượng')} · S₀=5
           <span style={countBadge}>{brief.score5.length}</span>
         </div>
         {brief.score5.length === 0 ? (
-          <div style={emptyHint}>None recorded yet.</div>
+          <div style={emptyHint}>{t('None recorded yet.', 'Chưa ghi nhận điều nào.')}</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {brief.score5.map(p => (
@@ -292,11 +293,11 @@ function OvertureBody({ brief, stats }: { brief: Brief; stats: MemberStats | nul
       {/* Revalidation queue */}
       <div>
         <div style={subHeader}>
-          Confirm this visit · ⚠ REVALIDATE
+          {t('Confirm this visit', 'Xác nhận trong lượt ghé này')} · ⚠ REVALIDATE
           <span style={countBadge}>{brief.revalidate.length}</span>
         </div>
         {brief.revalidate.length === 0 ? (
-          <div style={emptyHint}>Clear — no preferences need confirming.</div>
+          <div style={emptyHint}>{t('Clear — no preferences need confirming.', 'Trống — không có sở thích nào cần xác nhận.')}</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {brief.revalidate.map(p => (
@@ -304,7 +305,7 @@ function OvertureBody({ brief, stats }: { brief: Brief; stats: MemberStats | nul
                 <div style={prefName}>{p.preference_name}</div>
                 {p.detail && <div style={prefDetail}>{p.detail}</div>}
                 <div style={prefMeta}>
-                  {p.category} · last validated {p.last_validated}
+                  {p.category} · {t('last validated', 'xác nhận lần cuối')} {p.last_validated}
                 </div>
               </div>
             ))}
@@ -314,32 +315,32 @@ function OvertureBody({ brief, stats }: { brief: Brief; stats: MemberStats | nul
 
       {/* Last continuum note */}
       <div>
-        <div style={subHeader}>From the previous visit</div>
+        <div style={subHeader}>{t('From the previous visit', 'Từ lượt ghé trước')}</div>
         {brief.last_continuum_note ? (
           <div style={lastNoteBox}>
             <div style={lastNoteText}>{brief.last_continuum_note.data_for_next_overture}</div>
             <div style={lastNoteMeta}>
               {brief.last_continuum_note.visit_date} ·
-              <Link href={`/admin/mis/visits/${brief.last_continuum_note.visit_id}`} style={lastNoteLink}> open last visit →</Link>
+              <Link href={`/admin/mis/visits/${brief.last_continuum_note.visit_id}`} style={lastNoteLink}> {t('open last visit →', 'mở lượt ghé trước →')}</Link>
             </div>
           </div>
         ) : (
-          <div style={emptyHint}>No closed visit on file yet. This visit will be the first to feed the next Overture.</div>
+          <div style={emptyHint}>{t('No closed visit on file yet. This visit will be the first to feed the next Overture.', 'Chưa có lượt ghé nào được đóng. Lượt ghé này sẽ là lượt đầu tiên cung cấp dữ liệu cho Overture tiếp theo.')}</div>
         )}
 
         {stats && (
           <div style={{ marginTop: 14 }}>
-            <div style={subHeader}>Engagement</div>
+            <div style={subHeader}>{t('Engagement', 'Mức độ gắn kết')}</div>
             <div style={statRow}>
-              <span style={statLabel}>Visits on file</span>
+              <span style={statLabel}>{t('Visits on file', 'Lượt ghé đã lưu')}</span>
               <span style={statValue}>{stats.total_visits ?? 0}</span>
             </div>
             <div style={statRow}>
-              <span style={statLabel}>Avg / month</span>
+              <span style={statLabel}>{t('Avg / month', 'Trung bình / tháng')}</span>
               <span style={statValue}>{stats.avg_visits_per_month != null ? Number(stats.avg_visits_per_month).toFixed(2) : '—'}</span>
             </div>
             <div style={statRow}>
-              <span style={statLabel}>Days since last</span>
+              <span style={statLabel}>{t('Days since last', 'Số ngày kể từ lần cuối')}</span>
               <span style={statValue}>{stats.days_since_visit ?? '—'}</span>
             </div>
           </div>
@@ -351,7 +352,8 @@ function OvertureBody({ brief, stats }: { brief: Brief; stats: MemberStats | nul
 
 // ── Observation list ──────────────────────────────────────────────────
 function ObservationList({ observations, prefs }: { observations: Observation[]; prefs: PrefRow[] }) {
-  if (observations.length === 0) return <div style={emptyHint}>No observations yet.</div>
+  const { t } = useLang()
+  if (observations.length === 0) return <div style={emptyHint}>{t('No observations yet.', 'Chưa có quan sát nào.')}</div>
   const prefByName = new Map(prefs.map(p => [p.preference_id, p.preference_name]))
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
@@ -362,18 +364,18 @@ function ObservationList({ observations, prefs }: { observations: Observation[];
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
             <span style={{ ...sentimentPill, color: sentimentColor(o.sentiment), borderColor: sentimentColor(o.sentiment) + '50' }}>
-              {sentimentLabel(o.sentiment)}
+              {sentimentLabel(o.sentiment, t)}
             </span>
             {o.category && <span style={metaPill}>{o.category}</span>}
             {o.score != null && <span style={scoreChip}>{o.score}/5</span>}
             {o.links_to_preference_id && (
               <span style={linkedPill}>
-                ↳ {prefByName.get(o.links_to_preference_id) || 'preference'}
+                ↳ {prefByName.get(o.links_to_preference_id) || t('preference', 'sở thích')}
               </span>
             )}
-            {o.spawned_candidate && <span style={candidatePill}>candidate</span>}
+            {o.spawned_candidate && <span style={candidatePill}>{t('candidate', 'ứng viên')}</span>}
             <span style={{ marginLeft: 'auto', fontFamily: "'Google Sans Code', monospace", fontSize: 9, color: '#7E7864' }}>
-              {fmtTime(o.created_at)} · {o.logged_by || 'unknown'}
+              {fmtTime(o.created_at)} · {o.logged_by || t('unknown', 'không rõ')}
             </span>
           </div>
           <div style={obsBody}>{o.observation}</div>
@@ -390,6 +392,7 @@ function ObservationForm({ visit_id, prefs, revalidatePrefs, onSubmitted }: {
   revalidatePrefs: PrefRow[]
   onSubmitted: () => void
 }) {
+  const { t } = useLang()
   const [observation, setObservation] = useState('')
   const [category, setCategory] = useState('')
   const [sentiment, setSentiment] = useState<'excellence' | 'neutral' | 'grievance'>('neutral')
@@ -403,8 +406,8 @@ function ObservationForm({ visit_id, prefs, revalidatePrefs, onSubmitted }: {
   const revalidateIds = useMemo(() => new Set(revalidatePrefs.map(p => p.preference_id)), [revalidatePrefs])
 
   const submit = useCallback(async () => {
-    if (!observation.trim()) { setError('Observation text required.'); return }
-    if (mode === 'link' && !linkPref) { setError('Pick a preference to link, or switch mode.'); return }
+    if (!observation.trim()) { setError(t('Observation text required.', 'Cần nhập nội dung quan sát.')); return }
+    if (mode === 'link' && !linkPref) { setError(t('Pick a preference to link, or switch mode.', 'Chọn một sở thích để liên kết, hoặc đổi chế độ.')); return }
     setSubmitting(true); setError(null)
     try {
       const body: Record<string, unknown> = {
@@ -424,8 +427,8 @@ function ObservationForm({ visit_id, prefs, revalidatePrefs, onSubmitted }: {
         body: JSON.stringify(body),
       })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'Save failed')
-      if (j.warnings && j.warnings.length) setError(`Saved with warnings: ${j.warnings.join('; ')}`)
+      if (!r.ok) throw new Error(j.error || t('Save failed', 'Lưu thất bại'))
+      if (j.warnings && j.warnings.length) setError(`${t('Saved with warnings:', 'Đã lưu kèm cảnh báo:')} ${j.warnings.join('; ')}`)
       setObservation(''); setCategory(''); setSentiment('neutral'); setScore('')
       setMode('free'); setLinkPref(''); setEventType('confirmed')
       onSubmitted()
@@ -434,31 +437,31 @@ function ObservationForm({ visit_id, prefs, revalidatePrefs, onSubmitted }: {
     } finally {
       setSubmitting(false)
     }
-  }, [observation, category, sentiment, score, mode, linkPref, eventType, visit_id, onSubmitted])
+  }, [observation, category, sentiment, score, mode, linkPref, eventType, visit_id, onSubmitted, t])
 
   return (
     <div style={formBlock}>
-      <div style={subHeader}>Log an observation</div>
+      <div style={subHeader}>{t('Log an observation', 'Ghi lại một quan sát')}</div>
       {error && <div style={errorBox}>{error}</div>}
 
       <textarea
         value={observation}
         onChange={e => setObservation(e.target.value)}
         rows={3}
-        placeholder="What did you notice? Be specific."
+        placeholder={t('What did you notice? Be specific.', 'Bạn đã nhận thấy điều gì? Hãy cụ thể.')}
         style={{ ...inputStyle, resize: 'vertical' }}
       />
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
         <div style={fieldGroup}>
-          <div style={editLabel}>Category</div>
+          <div style={editLabel}>{t('Category', 'Danh mục')}</div>
           <select value={category} onChange={e => setCategory(e.target.value)} style={inputStyle}>
             <option value="">—</option>
             {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         <div style={fieldGroup}>
-          <div style={editLabel}>Sentiment</div>
+          <div style={editLabel}>{t('Sentiment', 'Cảm nhận')}</div>
           <div style={{ display: 'flex', gap: 4 }}>
             {(['excellence', 'neutral', 'grievance'] as const).map(s => (
               <button key={s} onClick={() => setSentiment(s)} style={{
@@ -467,13 +470,13 @@ function ObservationForm({ visit_id, prefs, revalidatePrefs, onSubmitted }: {
                 borderColor: sentiment === s ? sentimentColor(s) : 'rgba(229,212,194,0.10)',
                 background: sentiment === s ? sentimentColor(s) + '14' : 'transparent',
               }}>
-                {sentimentLabel(s)}
+                {sentimentLabel(s, t)}
               </button>
             ))}
           </div>
         </div>
         <div style={fieldGroup}>
-          <div style={editLabel}>Score (optional)</div>
+          <div style={editLabel}>{t('Score (optional)', 'Điểm (tùy chọn)')}</div>
           <select value={score} onChange={e => setScore(e.target.value)} style={inputStyle}>
             <option value="">—</option>
             {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}/5</option>)}
@@ -482,12 +485,12 @@ function ObservationForm({ visit_id, prefs, revalidatePrefs, onSubmitted }: {
       </div>
 
       <div style={{ marginTop: 10 }}>
-        <div style={editLabel}>Link this observation to…</div>
+        <div style={editLabel}>{t('Link this observation to…', 'Liên kết quan sát này với…')}</div>
         <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
           {([
-            ['free', 'Just an observation'],
-            ['link', 'An existing preference'],
-            ['candidate', 'A new candidate'],
+            ['free', t('Just an observation', 'Chỉ là một quan sát')],
+            ['link', t('An existing preference', 'Một sở thích hiện có')],
+            ['candidate', t('A new candidate', 'Một ứng viên mới')],
           ] as const).map(([k, label]) => (
             <button key={k} onClick={() => setMode(k)} style={{
               ...modeToggle,
@@ -503,18 +506,18 @@ function ObservationForm({ visit_id, prefs, revalidatePrefs, onSubmitted }: {
         {mode === 'link' && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <div style={{ ...fieldGroup, flex: 2 }}>
-              <div style={editLabel}>Preference</div>
+              <div style={editLabel}>{t('Preference', 'Sở thích')}</div>
               <select value={linkPref} onChange={e => setLinkPref(e.target.value)} style={inputStyle}>
-                <option value="">— pick —</option>
+                <option value="">{t('— pick —', '— chọn —')}</option>
                 {/* Revalidation candidates surface first */}
                 {revalidatePrefs.length > 0 && (
-                  <optgroup label="⚠ Revalidation flagged">
+                  <optgroup label={t('⚠ Revalidation flagged', '⚠ Cần xác nhận lại')}>
                     {revalidatePrefs.map(p => (
                       <option key={p.preference_id} value={p.preference_id}>{p.preference_name}</option>
                     ))}
                   </optgroup>
                 )}
-                <optgroup label="Other active">
+                <optgroup label={t('Other active', 'Đang hoạt động khác')}>
                   {prefs.filter(p => !revalidateIds.has(p.preference_id)).map(p => (
                     <option key={p.preference_id} value={p.preference_id}>{p.preference_name}</option>
                   ))}
@@ -522,11 +525,11 @@ function ObservationForm({ visit_id, prefs, revalidatePrefs, onSubmitted }: {
               </select>
             </div>
             <div style={fieldGroup}>
-              <div style={editLabel}>Effect</div>
+              <div style={editLabel}>{t('Effect', 'Hiệu ứng')}</div>
               <select value={eventType} onChange={e => setEventType(e.target.value as 'confirmed' | 'contradicted' | 'revised')} style={inputStyle}>
-                <option value="confirmed">Confirmed</option>
-                <option value="contradicted">Contradicted</option>
-                <option value="revised">Revised</option>
+                <option value="confirmed">{t('Confirmed', 'Đã xác nhận')}</option>
+                <option value="contradicted">{t('Contradicted', 'Đã phủ nhận')}</option>
+                <option value="revised">{t('Revised', 'Đã điều chỉnh')}</option>
               </select>
             </div>
           </div>
@@ -534,13 +537,13 @@ function ObservationForm({ visit_id, prefs, revalidatePrefs, onSubmitted }: {
 
         {mode === 'candidate' && (
           <div style={{ ...hintText, padding: '8px 10px', background: 'rgba(212,184,90,0.06)', borderRadius: 4 }}>
-            Adds this observation as a candidate for a brand-new preference. An admin reviews the queue and either accepts it (and it lands in <code>preferences</code> with validation_count=1) or rejects it.
+            {t('Adds this observation as a candidate for a brand-new preference. An admin reviews the queue and either accepts it (and it lands in ', 'Thêm quan sát này như một ứng viên cho một sở thích hoàn toàn mới. Quản trị viên xem lại hàng đợi và hoặc chấp nhận (khi đó nó được đưa vào ')}<code>preferences</code>{t(' with validation_count=1) or rejects it.', ' với validation_count=1) hoặc từ chối.')}
           </div>
         )}
       </div>
 
       <button onClick={submit} disabled={submitting || !observation.trim()} style={{ ...btnPrimary, marginTop: 12, opacity: !observation.trim() ? 0.4 : 1 }}>
-        {submitting ? 'Saving…' : '＋ Add observation'}
+        {submitting ? t('Saving…', 'Đang lưu…') : t('＋ Add observation', '＋ Thêm quan sát')}
       </button>
     </div>
   )
@@ -548,38 +551,39 @@ function ObservationForm({ visit_id, prefs, revalidatePrefs, onSubmitted }: {
 
 // ── Continuum block ───────────────────────────────────────────────────
 function ContinuumBlock({ visit, busy, onPatch }: { visit: Visit; busy: boolean; onPatch: (b: Record<string, unknown>) => void }) {
+  const { t } = useLang()
   const [draft, setDraft] = useState(visit.data_for_next_overture || '')
   const [dirty, setDirty] = useState(false)
   const [notes, setNotes] = useState(visit.notes || '')
   const [notesDirty, setNotesDirty] = useState(false)
 
   return (
-    <Section title="Continuum · close the loop" subtitle="The single most important field is data_for_next_overture — it becomes the opening line of the member's next Overture brief.">
+    <Section title={t('Continuum · close the loop', 'Continuum · khép lại vòng lặp')} subtitle={t("The single most important field is data_for_next_overture — it becomes the opening line of the member's next Overture brief.", 'Trường quan trọng nhất là data_for_next_overture — nó trở thành dòng mở đầu cho bản tóm tắt Overture tiếp theo của hội viên.')}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
-        <div style={editLabel}>Wrap-up notes (optional)</div>
+        <div style={editLabel}>{t('Wrap-up notes (optional)', 'Ghi chú tổng kết (tùy chọn)')}</div>
         <textarea
           value={notes}
           onChange={e => { setNotes(e.target.value); setNotesDirty(true) }}
           onBlur={() => { if (notesDirty) { onPatch({ notes }); setNotesDirty(false) } }}
           rows={3}
-          placeholder="Anything for the audit log — what worked, what didn't."
+          placeholder={t("Anything for the audit log — what worked, what didn't.", 'Bất cứ điều gì cho nhật ký kiểm toán — điều gì hiệu quả, điều gì không.')}
           disabled={visit.phase === 'closed'}
           style={{ ...inputStyle, resize: 'vertical', opacity: visit.phase === 'closed' ? 0.6 : 1 }}
         />
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <div style={editLabel}>Data for the next Overture *</div>
+        <div style={editLabel}>{t('Data for the next Overture *', 'Dữ liệu cho Overture tiếp theo *')}</div>
         <textarea
           value={draft}
           onChange={e => { setDraft(e.target.value); setDirty(true) }}
           rows={5}
-          placeholder="The single thread the team needs from tonight when this member walks back in. Example: 'Asked about Bowmore 25 — pre-pour a sample if we can get one in.'"
+          placeholder={t("The single thread the team needs from tonight when this member walks back in. Example: 'Asked about Bowmore 25 — pre-pour a sample if we can get one in.'", "Điều duy nhất đội ngũ cần từ tối nay khi hội viên này quay lại. Ví dụ: 'Đã hỏi về Bowmore 25 — rót sẵn một mẫu thử nếu có thể lấy được.'")}
           disabled={visit.phase === 'closed'}
           style={{ ...inputStyle, resize: 'vertical', opacity: visit.phase === 'closed' ? 0.6 : 1 }}
         />
         <div style={{ ...hintText, marginTop: 4 }}>
-          {draft.length.toLocaleString()} chars · feeds last_continuum_note → next Overture
+          {draft.length.toLocaleString()} {t('chars · feeds last_continuum_note → next Overture', 'ký tự · cung cấp cho last_continuum_note → Overture tiếp theo')}
         </div>
       </div>
 
@@ -590,19 +594,19 @@ function ContinuumBlock({ visit, busy, onPatch }: { visit: Visit; busy: boolean;
             disabled={busy || !draft.trim()}
             style={{ ...btnPrimary, opacity: !draft.trim() ? 0.4 : 1 }}
           >
-            {busy ? 'Saving…' : '◆ Mark visit closed →'}
+            {busy ? t('Saving…', 'Đang lưu…') : t('◆ Mark visit closed →', '◆ Đánh dấu đã đóng lượt ghé →')}
           </button>
-          <span style={hintText}>Stamps continuum_completed_at and locks observations.</span>
+          <span style={hintText}>{t('Stamps continuum_completed_at and locks observations.', 'Ghi lại continuum_completed_at và khóa các quan sát.')}</span>
         </div>
       )}
       {visit.phase === 'continuum' && dirty && (
         <button onClick={() => { onPatch({ data_for_next_overture: draft }); setDirty(false) }} style={btnGhost}>
-          Save without closing
+          {t('Save without closing', 'Lưu mà không đóng')}
         </button>
       )}
       {visit.phase === 'closed' && (
         <div style={timestampStrip}>
-          <span style={timestamp}>Closed {fmtTime(visit.continuum_completed_at!)}</span>
+          <span style={timestamp}>{t('Closed', 'Đã đóng')} {fmtTime(visit.continuum_completed_at!)}</span>
         </div>
       )}
     </Section>
@@ -632,8 +636,8 @@ function fmtTime(iso: string | null): string {
 function sentimentColor(s: 'excellence' | 'neutral' | 'grievance'): string {
   return s === 'excellence' ? '#7AB07A' : s === 'grievance' ? '#C27070' : '#B2AA98'
 }
-function sentimentLabel(s: 'excellence' | 'neutral' | 'grievance'): string {
-  return s === 'excellence' ? '★ Excellence' : s === 'grievance' ? '⚠ Grievance' : 'Neutral'
+function sentimentLabel(s: 'excellence' | 'neutral' | 'grievance', t: (en: string, vi: string) => string): string {
+  return s === 'excellence' ? t('★ Excellence', '★ Xuất sắc') : s === 'grievance' ? t('⚠ Grievance', '⚠ Phàn nàn') : t('Neutral', 'Trung lập')
 }
 
 // ── styles ────────────────────────────────────────────────────────────

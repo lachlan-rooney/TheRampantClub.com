@@ -39,14 +39,13 @@ const btn: React.CSSProperties = {
 const btnPrimary = { ...btn, background: '#5E6650' }
 const btnDanger  = { ...btn, background: 'rgba(180,70,70,0.2)' }
 
-const TYPE_LABEL: Record<PressType, string> = {
-  kit: 'Press Kit',
-  release: 'Press Release',
-  mention: 'In the Press',
-}
-
 export default function AdminPress() {
   const { t } = useLang()
+  const typeLabel: Record<PressType, string> = {
+    kit: t('Press Kit', 'Bộ tài liệu báo chí'),
+    release: t('Press Release', 'Thông cáo báo chí'),
+    mention: t('In the Press', 'Truyền thông đưa tin'),
+  }
   const [items, setItems] = useState<PressItem[]>([])
   const [editing, setEditing] = useState<PressItem | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -234,7 +233,7 @@ export default function AdminPress() {
             fontFamily: "'Rampant Sans', serif", fontSize: 16, fontWeight: 500,
             color: '#E5D4C2', letterSpacing: '0.04em', marginBottom: 12,
           }}>
-            {TYPE_LABEL[pt]} &middot; <span style={{ opacity: 0.5, fontSize: 12 }}>{groups[pt].length}</span>
+            {typeLabel[pt]} &middot; <span style={{ opacity: 0.5, fontSize: 12 }}>{groups[pt].length}</span>
           </h2>
           {groups[pt].length === 0 ? (
             <p style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#B2AA98', opacity: 0.5 }}>
@@ -278,7 +277,7 @@ export default function AdminPress() {
         title={t('Delete press item?', 'Xóa mục báo chí?')}
         subject={confirmItem?.title}
         body={confirmItem
-          ? `${t('Removes this', 'Gỡ bỏ')} ${TYPE_LABEL[confirmItem.type].toLowerCase()} ${t('permanently from the press page. Cannot be undone.', 'này khỏi trang báo chí vĩnh viễn. Không thể hoàn tác.')}`
+          ? `${t('Removes this', 'Gỡ bỏ')} ${typeLabel[confirmItem.type].toLowerCase()} ${t('permanently from the press page. Cannot be undone.', 'này khỏi trang báo chí vĩnh viễn. Không thể hoàn tác.')}`
           : ''}
         confirmLabel={t('Delete item', 'Xóa mục')}
         busyLabel={t('Deleting…', 'Đang xóa…')}

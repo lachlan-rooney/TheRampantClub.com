@@ -303,16 +303,16 @@ export default function AdminTonight() {
           <div style={sectionLabel}>{t('Tonight · House & Events', 'Tối nay · Nhà & Sự kiện')}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {houseEntries.map(e => {
-              const t = e.start_time
+              const slot = e.start_time
                 ? (e.end_time ? `${e.start_time.slice(0, 5)}–${e.end_time.slice(0, 5)}` : e.start_time.slice(0, 5))
-                : (e.session_label ? e.session_label.charAt(0).toUpperCase() + e.session_label.slice(1) : 'All day')
-              const meta = [e.space, t].filter(Boolean).join(' · ')
-              const block = e.space && e.blocks_space ? (e.tables && e.tables.length ? e.tables.join(', ') : 'room closed') : null
+                : (e.session_label ? e.session_label.charAt(0).toUpperCase() + e.session_label.slice(1) : t('All day', 'Cả ngày'))
+              const meta = [e.space, slot].filter(Boolean).join(' · ')
+              const block = e.space && e.blocks_space ? (e.tables && e.tables.length ? e.tables.join(', ') : t('room closed', 'đóng phòng')) : null
               return (
                 <div key={e.id} style={houseCard}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                     <span style={houseKind}>{HOUSE_KIND_LABEL[e.kind] || 'House'}</span>
-                    <span style={e.visibility === 'staff' ? staffBadge : memberBadge}>{e.visibility === 'staff' ? 'STAFF ONLY' : 'MEMBER-VISIBLE'}</span>
+                    <span style={e.visibility === 'staff' ? staffBadge : memberBadge}>{e.visibility === 'staff' ? t('STAFF ONLY', 'CHỈ NHÂN VIÊN') : t('MEMBER-VISIBLE', 'HỘI VIÊN THẤY ĐƯỢC')}</span>
                   </div>
                   <div style={houseTitle}>{e.title}</div>
                   <div style={houseMeta}>{meta}{block ? ` · ${block}` : ''}</div>
@@ -363,13 +363,14 @@ export default function AdminTonight() {
 
 // ── BriefCard ─────────────────────────────────────────────────────────
 function BriefCard({ brief, isStarting, onStart }: { brief: Brief; isStarting: boolean; onStart: () => void }) {
+  const { t } = useLang()
   const b = brief
   const arrived = !!b.visit
   const timeLine = b.booking
     ? (b.booking.start_time
         ? (b.booking.end_time ? `${b.booking.start_time.slice(0, 5)}–${b.booking.end_time.slice(0, 5)}` : b.booking.start_time.slice(0, 5))
         : (b.booking.session_label || '—'))
-    : 'walk-in'
+    : t('walk-in', 'khách vãng lai')
 
   return (
     <div style={cardBlock}>
@@ -380,8 +381,8 @@ function BriefCard({ brief, isStarting, onStart }: { brief: Brief; isStarting: b
           </Link>
           <div style={cardMeta}>
             {b.member.tier} · {b.member.member_no}
-            {b.stats?.days_since_visit != null && <> · last {b.stats.days_since_visit}d ago</>}
-            {b.stats?.total_visits != null && b.stats.total_visits > 0 && <> · {b.stats.total_visits} visits</>}
+            {b.stats?.days_since_visit != null && <> · {t('last', 'lần cuối')} {b.stats.days_since_visit}{t('d ago', ' ngày trước')}</>}
+            {b.stats?.total_visits != null && b.stats.total_visits > 0 && <> · {b.stats.total_visits} {t('visits', 'lượt ghé')}</>}
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
@@ -400,49 +401,49 @@ function BriefCard({ brief, isStarting, onStart }: { brief: Brief; isStarting: b
       <div style={actionRow}>
         {arrived && b.visit ? (
           <Link href={`/admin/mis/visits/${b.visit.visit_id}`} style={btnOpen}>
-            Open visit · {b.visit.phase} →
+            {t('Open visit', 'Mở lượt ghé thăm')} · {b.visit.phase} →
           </Link>
         ) : (
           <button onClick={onStart} disabled={isStarting} style={btnStart}>
-            {isStarting ? 'Starting…' : '◉ Start visit →'}
+            {isStarting ? t('Starting…', 'Đang bắt đầu…') : t('◉ Start visit →', '◉ Bắt đầu lượt ghé →')}
           </button>
         )}
       </div>
 
       {/* Score-5 non-negotiables */}
       {b.brief.score5.length > 0 && (
-        <BriefSection label="Non-negotiables · S₀=5" count={b.brief.score5.length}>
+        <BriefSection label={t('Non-negotiables · S₀=5', 'Điều bất di bất dịch · S₀=5')} count={b.brief.score5.length}>
           {b.brief.score5.slice(0, 4).map(p => (
             <div key={p.preference_id} style={prefRow}>
               <div style={prefName}>{p.preference_name}</div>
               {p.detail && <div style={prefDetail}>{p.detail}</div>}
             </div>
           ))}
-          {b.brief.score5.length > 4 && <div style={moreText}>+{b.brief.score5.length - 4} more</div>}
+          {b.brief.score5.length > 4 && <div style={moreText}>+{b.brief.score5.length - 4} {t('more', 'nữa')}</div>}
         </BriefSection>
       )}
 
       {/* Revalidate */}
       {b.brief.revalidate.length > 0 && (
-        <BriefSection label="⚠ Confirm tonight" count={b.brief.revalidate.length} accent="#D4B85A">
+        <BriefSection label={t('⚠ Confirm tonight', '⚠ Xác nhận tối nay')} count={b.brief.revalidate.length} accent="#D4B85A">
           {b.brief.revalidate.slice(0, 4).map(p => (
             <div key={p.preference_id} style={{ ...prefRow, borderLeft: '2px solid #D4B85A' }}>
               <div style={prefName}>{p.preference_name}</div>
-              <div style={prefDetailSmall}>last validated {p.last_validated}</div>
+              <div style={prefDetailSmall}>{t('last validated', 'xác thực lần cuối')} {p.last_validated}</div>
             </div>
           ))}
-          {b.brief.revalidate.length > 4 && <div style={moreText}>+{b.brief.revalidate.length - 4} more</div>}
+          {b.brief.revalidate.length > 4 && <div style={moreText}>+{b.brief.revalidate.length - 4} {t('more', 'nữa')}</div>}
         </BriefSection>
       )}
 
       {/* Last continuum note */}
       {b.brief.last_continuum_note && (
-        <BriefSection label="From the previous visit" accent="#7AB07A">
+        <BriefSection label={t('From the previous visit', 'Từ lượt ghé trước')} accent="#7AB07A">
           <div style={lastNoteBox}>
             <div style={lastNoteText}>{b.brief.last_continuum_note.data_for_next_overture}</div>
             <div style={lastNoteMeta}>
               {b.brief.last_continuum_note.visit_date} · {' '}
-              <Link href={`/admin/mis/visits/${b.brief.last_continuum_note.visit_id}`} style={lastNoteLink}>open</Link>
+              <Link href={`/admin/mis/visits/${b.brief.last_continuum_note.visit_id}`} style={lastNoteLink}>{t('open', 'mở')}</Link>
             </div>
           </div>
         </BriefSection>
@@ -450,7 +451,7 @@ function BriefCard({ brief, isStarting, onStart }: { brief: Brief; isStarting: b
 
       {/* Open complaints */}
       {b.complaints.length > 0 && (
-        <BriefSection label="Open complaints" count={b.complaints.length} accent="#C27070">
+        <BriefSection label={t('Open complaints', 'Khiếu nại chưa xử lý')} count={b.complaints.length} accent="#C27070">
           {b.complaints.slice(0, 3).map(c => (
             <div key={c.id} style={{ ...prefRow, borderLeft: '2px solid #C27070' }}>
               <div style={prefName}>S{c.severity} · {c.summary}</div>
@@ -473,15 +474,15 @@ function BriefCard({ brief, isStarting, onStart }: { brief: Brief; isStarting: b
             <strong style={{ color: b.gifting.gift_count === 0 ? '#C27070' : '#E5D4C2' }}>
               {formatVndCompact(b.gifting.spent_vnd)}
             </strong>
-            <span style={{ opacity: 0.6 }}> of {formatVndCompact(b.gifting.annual_budget_vnd)} gifting used</span>
-            {b.gifting.gift_count === 0 && <span style={{ color: '#C27070' }}> · overdue</span>}
+            <span style={{ opacity: 0.6 }}> {t('of', 'trong')} {formatVndCompact(b.gifting.annual_budget_vnd)} {t('gifting used', 'ngân sách quà đã dùng')}</span>
+            {b.gifting.gift_count === 0 && <span style={{ color: '#C27070' }}> · {t('overdue', 'quá hạn')}</span>}
           </div>
         </div>
       )}
 
       {b.booking?.notes && (
         <div style={bookingNotes}>
-          <strong style={{ opacity: 0.7 }}>Booking note:</strong> {b.booking.notes}
+          <strong style={{ opacity: 0.7 }}>{t('Booking note:', 'Ghi chú đặt chỗ:')}</strong> {b.booking.notes}
         </div>
       )}
     </div>

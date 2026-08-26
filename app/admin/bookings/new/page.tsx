@@ -28,6 +28,10 @@ const KINDS: { v: string; label: string }[] = [
   { v: 'closure', label: 'Closure' }, { v: 'private_hire', label: 'Private hire' },
   { v: 'supplier', label: 'Supplier / distiller visit' }, { v: 'tasting', label: 'Tasting' }, { v: 'other', label: 'Other' },
 ]
+const KIND_VI: Record<string, string> = {
+  closure: 'Đóng cửa', private_hire: 'Thuê riêng',
+  supplier: 'Nhà cung cấp / nhà chưng cất ghé thăm', tasting: 'Nếm thử', other: 'Khác',
+}
 
 export default function NewBookingPage() {
   const { t } = useLang()
@@ -215,7 +219,7 @@ export default function NewBookingPage() {
             <div style={fieldRow}>
               <div style={editLabel}>{t('Kind', 'Loại')}</div>
               <select value={kind} onChange={e => setKind(e.target.value)} style={inputStyle}>
-                {KINDS.map(k => <option key={k.v} value={k.v}>{k.label}</option>)}
+                {KINDS.map(k => <option key={k.v} value={k.v}>{t(k.label, KIND_VI[k.v])}</option>)}
               </select>
             </div>
             <div style={fieldRow}>

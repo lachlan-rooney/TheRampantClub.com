@@ -94,12 +94,12 @@ const DECISIONS = ['Approved', 'Declined', 'Pending', 'Deferred']
 const TIERS = ['Founding', 'Legacy', 'Pioneer', 'Corporate', 'Honorary']
 
 const SCORE_FIELDS = [
-  { key: 'cultural_fit',         label: 'Cultural Fit',         tip: 'Does the prospect align with the club\'s values and style?' },
-  { key: 'social_compatibility', label: 'Social Compatibility', tip: 'Will they get on with existing members? Will they enhance the room?' },
-  { key: 'commercial_potential', label: 'Commercial Potential', tip: 'How much will they contribute to revenue (bottle pours, events, hosting)?' },
-  { key: 'whisky_interest',      label: 'Whisky Interest',      tip: 'Genuine connoisseur, casual enthusiast, or here for the room only?' },
-  { key: 'brand_alignment',      label: 'Brand Alignment',      tip: 'Does the prospect uplift the club\'s reputation?' },
-  { key: 'community_value',      label: 'Community Value',      tip: 'What unique relationships or perspective do they bring?' },
+  { key: 'cultural_fit',         label: 'Cultural Fit',         labelVi: 'Sự phù hợp văn hóa',      tip: 'Does the prospect align with the club\'s values and style?',                  tipVi: 'Ứng viên có phù hợp với giá trị và phong cách của câu lạc bộ không?' },
+  { key: 'social_compatibility', label: 'Social Compatibility', labelVi: 'Sự hòa hợp xã hội',        tip: 'Will they get on with existing members? Will they enhance the room?',         tipVi: 'Họ có hòa hợp với các hội viên hiện tại không? Họ có làm không gian thêm đặc sắc không?' },
+  { key: 'commercial_potential', label: 'Commercial Potential', labelVi: 'Tiềm năng thương mại',     tip: 'How much will they contribute to revenue (bottle pours, events, hosting)?',    tipVi: 'Họ sẽ đóng góp bao nhiêu vào doanh thu (rượu, sự kiện, tổ chức tiếp đón)?' },
+  { key: 'whisky_interest',      label: 'Whisky Interest',      labelVi: 'Đam mê whisky',            tip: 'Genuine connoisseur, casual enthusiast, or here for the room only?',           tipVi: 'Người sành sỏi thực thụ, người yêu thích bình thường, hay chỉ đến vì không gian?' },
+  { key: 'brand_alignment',      label: 'Brand Alignment',      labelVi: 'Sự phù hợp thương hiệu',   tip: 'Does the prospect uplift the club\'s reputation?',                             tipVi: 'Ứng viên có nâng tầm uy tín của câu lạc bộ không?' },
+  { key: 'community_value',      label: 'Community Value',      labelVi: 'Giá trị cộng đồng',        tip: 'What unique relationships or perspective do they bring?',                      tipVi: 'Họ mang lại những mối quan hệ hay góc nhìn độc đáo nào?' },
 ] as const
 
 export default function ProspectDetail({ params }: { params: Promise<{ prospect_id: string }> }) {
@@ -432,8 +432,8 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
               {SCORE_FIELDS.map(f => (
                 <ScoreDial
                   key={f.key}
-                  label={f.label}
-                  tip={f.tip}
+                  label={t(f.label, f.labelVi)}
+                  tip={t(f.tip, f.tipVi)}
                   value={prospect[f.key as keyof Prospect] as number | null}
                   onSave={v => patch({ [f.key]: v })}
                 />
@@ -615,7 +615,7 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
                 <div key={a.id} style={timelineRow}>
                   <div style={timelineDot} />
                   <div style={timelineBody}>
-                    <div style={timelineEvent}>{formatEvent(a)}</div>
+                    <div style={timelineEvent}>{formatEvent(a, t)}</div>
                     <div style={timelineMeta}>
                       {a.actor || t('system', 'hệ thống')} · {new Date(a.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </div>
@@ -658,22 +658,22 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
   )
 }
 
-function formatEvent(a: Activity): string {
+function formatEvent(a: Activity, t: (en: string, vi: string) => string): string {
   switch (a.event_type) {
-    case 'created':            return `Prospect added · ${a.to_value}`
-    case 'stage_changed':      return `Stage: ${a.from_value || '∅'} → ${a.to_value}`
-    case 'source_changed':     return `Source: ${a.from_value || '∅'} → ${a.to_value || '∅'}`
-    case 'decision_changed':   return `Decision: ${a.from_value || '∅'} → ${a.to_value || '∅'}`
-    case 'letter_sent':        return 'Letter sent'
-    case 'letter_unsent':      return 'Letter sent — undone'
-    case 'scored':             return 'Score updated'
-    case 'member_no_allocated':return `Provisional ${a.to_value} allocated`
-    case 'invitation_sent':    return `Signing invitation sent · ${a.to_value}`
-    case 'invitation_resent':  return `Signing invitation resent · ${a.to_value}`
-    case 'signed':             return `Agreement signed${a.to_value ? ` · ${a.to_value} activated` : ''}`
-    case 'converted':          return `Converted to member ${a.to_value}`
-    case 'archived':           return 'Archived'
-    case 'restored':           return 'Restored'
+    case 'created':            return t(`Prospect added · ${a.to_value}`, `Đã thêm ứng viên · ${a.to_value}`)
+    case 'stage_changed':      return t(`Stage: ${a.from_value || '∅'} → ${a.to_value}`, `Giai đoạn: ${a.from_value || '∅'} → ${a.to_value}`)
+    case 'source_changed':     return t(`Source: ${a.from_value || '∅'} → ${a.to_value || '∅'}`, `Nguồn: ${a.from_value || '∅'} → ${a.to_value || '∅'}`)
+    case 'decision_changed':   return t(`Decision: ${a.from_value || '∅'} → ${a.to_value || '∅'}`, `Quyết định: ${a.from_value || '∅'} → ${a.to_value || '∅'}`)
+    case 'letter_sent':        return t('Letter sent', 'Đã gửi thư')
+    case 'letter_unsent':      return t('Letter sent — undone', 'Đã gửi thư — đã hoàn tác')
+    case 'scored':             return t('Score updated', 'Đã cập nhật điểm')
+    case 'member_no_allocated':return t(`Provisional ${a.to_value} allocated`, `Đã cấp số tạm thời ${a.to_value}`)
+    case 'invitation_sent':    return t(`Signing invitation sent · ${a.to_value}`, `Đã gửi lời mời ký · ${a.to_value}`)
+    case 'invitation_resent':  return t(`Signing invitation resent · ${a.to_value}`, `Đã gửi lại lời mời ký · ${a.to_value}`)
+    case 'signed':             return t(`Agreement signed${a.to_value ? ` · ${a.to_value} activated` : ''}`, `Đã ký thỏa thuận${a.to_value ? ` · ${a.to_value} đã kích hoạt` : ''}`)
+    case 'converted':          return t(`Converted to member ${a.to_value}`, `Đã chuyển thành hội viên ${a.to_value}`)
+    case 'archived':           return t('Archived', 'Đã lưu trữ')
+    case 'restored':           return t('Restored', 'Đã khôi phục')
     default:                   return a.event_type
   }
 }
@@ -734,6 +734,7 @@ function DateField({ label, value, onSave }: { label: string; value: string | nu
 }
 
 function SelectField({ label, value, options, onSave }: { label: string; value: string | null; options: string[]; onSave: (v: string | null) => void }) {
+  const { t } = useLang()
   return (
     <div style={fieldRow}>
       <div style={editLabel}>{label}</div>
@@ -742,7 +743,7 @@ function SelectField({ label, value, options, onSave }: { label: string; value: 
         onChange={e => onSave(e.target.value || null)}
         style={editInput}
       >
-        {options.map(o => <option key={o} value={o}>{o || '— none —'}</option>)}
+        {options.map(o => <option key={o} value={o}>{o || t('— none —', '— không —')}</option>)}
       </select>
     </div>
   )

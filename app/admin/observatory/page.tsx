@@ -1099,6 +1099,7 @@ export default function ObservatoryPage() {
 // ─── Decomposition card + trajectory SVG ─────────────────────────────────────
 
 function Decomposition({ pref, member }: { pref: PreferenceRow; member: MemberSummary | null }) {
+  const { t } = useLang()
   const inputs: PrefInputs = {
     s0: pref.s0,
     confidence: pref.confidence,
@@ -1134,38 +1135,38 @@ function Decomposition({ pref, member }: { pref: PreferenceRow; member: MemberSu
         {pref.detail && <div style={prefDetail}>{pref.detail}</div>}
 
         <div style={factorList}>
-          {factorRow('S₀ — importance', pref.s0.toString())}
-          {factorRow('C — confidence', pref.confidence.toFixed(2))}
-          {factorRow('e^(−λt) — decay', r.decay.toFixed(4), `λ=${pref.lambda.toFixed(3)} · t=${r.daysSince}d (integer)`)}
-          {factorRow('F — frequency', pref.frequency.toFixed(1))}
-          {factorRow('R — reinforcement', r.reinforcement.toFixed(3), `vc=${pref.validation_count} · cap 1.30`)}
-          {factorRow('M — engagement', r.engagement.toFixed(3),
+          {factorRow(t('S₀ — importance', 'S₀ — mức quan trọng'), pref.s0.toString())}
+          {factorRow(t('C — confidence', 'C — độ tin cậy'), pref.confidence.toFixed(2))}
+          {factorRow(t('e^(−λt) — decay', 'e^(−λt) — suy giảm'), r.decay.toFixed(4), `λ=${pref.lambda.toFixed(3)} · t=${r.daysSince}d ${t('(integer)', '(số nguyên)')}`)}
+          {factorRow(t('F — frequency', 'F — tần suất'), pref.frequency.toFixed(1))}
+          {factorRow(t('R — reinforcement', 'R — củng cố'), r.reinforcement.toFixed(3), `vc=${pref.validation_count} · ${t('cap', 'giới hạn')} 1.30`)}
+          {factorRow(t('M — engagement', 'M — mức gắn kết'), r.engagement.toFixed(3),
             member?.avg_visits_per_month != null
-              ? `avg ${member.avg_visits_per_month.toFixed(2)} visits/mo`
-              : 'no visit history → neutral 1.0'
+              ? `${t('avg', 'tb')} ${member.avg_visits_per_month.toFixed(2)} ${t('visits/mo', 'lượt/tháng')}`
+              : t('no visit history → neutral 1.0', 'chưa có lịch sử ghé thăm → trung tính 1.0')
           )}
         </div>
 
         <div style={resultRow}>
           <div>
-            <div style={factorLabel}>raw product</div>
+            <div style={factorLabel}>{t('raw product', 'tích thô')}</div>
             <div style={resultMid}>{r.rawProduct.toFixed(4)}</div>
           </div>
           <div>
-            <div style={factorLabel}>PS(t) · capped at 5</div>
+            <div style={factorLabel}>{t('PS(t) · capped at 5', 'PS(t) · giới hạn ở 5')}</div>
             <div style={resultBig}>{r.pst.toFixed(3)}</div>
           </div>
           <div>
-            <div style={factorLabel}>0.7·S₀ threshold</div>
+            <div style={factorLabel}>{t('0.7·S₀ threshold', 'ngưỡng 0.7·S₀')}</div>
             <div style={resultMid}>{(0.7 * pref.s0).toFixed(2)}</div>
           </div>
         </div>
 
         <div style={flagRow}>
-          {r.capped && <span style={flagPill('gold')}>cap binds — raw {r.rawProduct.toFixed(2)} {'>'} 5</span>}
-          {r.needsRevalidation && <span style={flagPill('red')}>flagged for revalidation</span>}
-          {pref.lambda === 0 && <span style={flagPill('red')}>medical · no decay</span>}
-          {!r.capped && !r.needsRevalidation && pref.lambda > 0 && <span style={flagPill('green')}>healthy · within band</span>}
+          {r.capped && <span style={flagPill('gold')}>{t('cap binds — raw', 'giới hạn tác động — thô')} {r.rawProduct.toFixed(2)} {'>'} 5</span>}
+          {r.needsRevalidation && <span style={flagPill('red')}>{t('flagged for revalidation', 'đã đánh dấu cần tái xác thực')}</span>}
+          {pref.lambda === 0 && <span style={flagPill('red')}>{t('medical · no decay', 'y tế · không suy giảm')}</span>}
+          {!r.capped && !r.needsRevalidation && pref.lambda > 0 && <span style={flagPill('green')}>{t('healthy · within band', 'ổn định · trong biên độ')}</span>}
         </div>
       </div>
 
@@ -1177,8 +1178,8 @@ function Decomposition({ pref, member }: { pref: PreferenceRow; member: MemberSu
           daysSince={r.daysSince}
         />
         <div style={chartCaption}>
-          Trajectory · {pref.lambda > 0 ? `half-life ≈ ${Math.round(Math.LN2 / pref.lambda)}d` : 'no decay'}
-          {' · '}horizon 365d · dot = today (integer-day score)
+          {t('Trajectory', 'Quỹ đạo')} · {pref.lambda > 0 ? `${t('half-life ≈', 'chu kỳ bán rã ≈')} ${Math.round(Math.LN2 / pref.lambda)}d` : t('no decay', 'không suy giảm')}
+          {' · '}{t('horizon 365d · dot = today (integer-day score)', 'tầm nhìn 365 ngày · chấm = hôm nay (điểm theo ngày nguyên)')}
         </div>
       </div>
     </div>
@@ -1195,6 +1196,7 @@ function TrajectoryChart({
   currentPst: number
   daysSince: number
 }) {
+  const { t } = useLang()
   const W = 460, H = 220
   const padL = 36, padR = 12, padT = 14, padB = 28
   const innerW = W - padL - padR
@@ -1233,7 +1235,7 @@ function TrajectoryChart({
       <line x1={padL} y1={y(threshold)} x2={W - padR} y2={y(threshold)}
             stroke="#C27070" strokeWidth={1} strokeDasharray="3 4" opacity={0.85} />
       <text x={W - padR - 4} y={y(threshold) - 4} fill="#C27070" fontSize="9" textAnchor="end" fontFamily="Google Sans Code, monospace">
-        0.7·S₀ = {threshold.toFixed(2)} (revalidation line)
+        0.7·S₀ = {threshold.toFixed(2)} {t('(revalidation line)', '(đường tái xác thực)')}
       </text>
       {/* trajectory */}
       <path d={pathD} fill="none" stroke="#D4B85A" strokeWidth={1.5} />
@@ -1241,7 +1243,7 @@ function TrajectoryChart({
       <line x1={todayX} y1={padT} x2={todayX} y2={H - padB} stroke="rgba(212,184,90,0.30)" strokeWidth={1} />
       <circle cx={todayX} cy={todayY} r={4.5} fill="#E5D4C2" stroke="#052E20" strokeWidth={1.5} />
       <text x={todayX + 8} y={todayY - 6} fill="#E5D4C2" fontSize="10" fontFamily="Google Sans Code, monospace">
-        today · {currentPst.toFixed(2)}
+        {t('today', 'hôm nay')} · {currentPst.toFixed(2)}
       </text>
     </svg>
   )
@@ -1252,10 +1254,11 @@ function TrajectoryChart({
 function TransportPill({ transport, note, demoGate }: {
   transport: Transport; note: string; demoGate: DemoGate
 }) {
+  const { t } = useLang()
   const tone = transport === 'realtime' ? 'green' : transport === 'polling' ? 'gold' : 'grey'
-  const label = transport === 'realtime' ? 'live · Realtime'
-    : transport === 'polling'  ? 'live · polling 15s'
-    : 'probing transport…'
+  const label = transport === 'realtime' ? t('live · Realtime', 'trực tiếp · Realtime')
+    : transport === 'polling'  ? t('live · polling 15s', 'trực tiếp · thăm dò 15 giây')
+    : t('probing transport…', 'đang dò kênh truyền…')
   return (
     <>
       <span style={transportPill(tone)} title={note}>
@@ -1272,10 +1275,11 @@ function TransportPill({ transport, note, demoGate }: {
 // ─── Refresh button — manual snapshot + events reload ───────────────────────
 
 function RefreshButton({ busy, onClick }: { busy: boolean; onClick: () => void }) {
+  const { t } = useLang()
   return (
     <button onClick={onClick} disabled={busy} style={refreshBtn}>
       <span style={refreshGlyph(busy)}>↻</span>
-      {busy ? 'refreshing…' : 'refresh'}
+      {busy ? t('refreshing…', 'đang làm mới…') : t('refresh', 'làm mới')}
     </button>
   )
 }
@@ -1286,6 +1290,7 @@ function BaselineTable({ categories, demoCategory }: {
   categories: CategorySlice[]
   demoCategory: string | null
 }) {
+  const { t } = useLang()
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10, marginBottom: 14 }}>
       {categories.map(c => {
@@ -1305,28 +1310,28 @@ function BaselineTable({ categories, demoCategory }: {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
               <div style={catName}>{c.category}</div>
               <span style={originPill(`category_baseline_${source}`)}>
-                {source}
-                {isDemoTarget && ' ← FLIPPED'}
+                {source === 'learned' ? t('learned', 'đã học') : t('designed', 'thiết kế')}
+                {isDemoTarget && t(' ← FLIPPED', ' ← ĐÃ LẬT')}
               </span>
             </div>
             <div style={{ display: 'flex', gap: 14, marginTop: 10, alignItems: 'baseline' }}>
               <div>
-                <div style={miniLabel}>baseline λ</div>
+                <div style={miniLabel}>{t('baseline λ', 'λ cơ sở')}</div>
                 <div style={{ ...posteriorBig, color: source === 'learned' ? '#7AB07A' : '#E5D4C2' }}>
                   {liveLambda.toFixed(4)}
                 </div>
               </div>
               <div>
-                <div style={miniLabel}>half-life</div>
+                <div style={miniLabel}>{t('half-life', 'chu kỳ bán rã')}</div>
                 <div style={posteriorBig}>{Math.round(Math.LN2 / liveLambda)}d</div>
               </div>
             </div>
             {source === 'designed' && (
-              <div style={metaText}>from <code>decay-priors.ts</code></div>
+              <div style={metaText}>{t('from', 'từ')} <code>decay-priors.ts</code></div>
             )}
             {source === 'learned' && c.active && (
               <div style={metaText}>
-                designed was {c.designed_lambda.toFixed(4)} · promoted {new Date(c.active.fit_timestamp).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                {t('designed was', 'thiết kế trước là')} {c.designed_lambda.toFixed(4)} · {t('promoted', 'thăng cấp')} {new Date(c.active.fit_timestamp).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                 {c.active.n_events > 0 && ` · d=${c.active.n_events}`}
               </div>
             )}
@@ -1340,6 +1345,7 @@ function BaselineTable({ categories, demoCategory }: {
 // ─── Panel 2 — Category posteriors ───────────────────────────────────────────
 
 function CategoryPosteriorsTable({ categories }: { categories: CategorySlice[] }) {
+  const { t } = useLang()
   // Visualisation scale for the CI rail: max λ across all categories' priors and CIs,
   // capped so a wide posterior doesn't squash the others.
   const lambdaScaleMax = Math.max(
@@ -1373,41 +1379,41 @@ function CategoryPosteriorsTable({ categories }: { categories: CategorySlice[] }
               <div style={catName}>{c.category}</div>
               <span style={posteriorStatusPill(statusKey)}>{statusKey.replace(/_/g, ' ')}</span>
               {halfLifeLive != null && (
-                <span style={metaText}>live λ={liveLambda.toFixed(4)} · half-life {halfLifeLive}d</span>
+                <span style={metaText}>{t('live', 'trực tiếp')} λ={liveLambda.toFixed(4)} · {t('half-life', 'chu kỳ bán rã')} {halfLifeLive}d</span>
               )}
             </div>
 
             <div style={posteriorGrid}>
               <div>
-                <div style={miniLabel}>Designed prior</div>
+                <div style={miniLabel}>{t('Designed prior', 'Tiên nghiệm thiết kế')}</div>
                 <div style={posteriorBig}>{c.designed_lambda.toFixed(4)}</div>
-                <div style={metaText}>centre · {Math.round(Math.LN2 / c.designed_lambda)}d</div>
+                <div style={metaText}>{t('centre', 'tâm')} · {Math.round(Math.LN2 / c.designed_lambda)}d</div>
               </div>
               <div>
-                <div style={miniLabel}>Posterior centre</div>
+                <div style={miniLabel}>{t('Posterior centre', 'Tâm hậu nghiệm')}</div>
                 <div style={{ ...posteriorBig, color: c.active ? '#7AB07A' : '#B2AA98' }}>
                   {latest ? latest.learned_lambda.toFixed(4) : c.designed_lambda.toFixed(4)}
                 </div>
                 <div style={metaText}>
-                  {latest ? `Gamma(α+d, β+T) · n=${latest.n_observations}` : 'equals prior (no fit yet)'}
+                  {latest ? `Gamma(α+d, β+T) · n=${latest.n_observations}` : t('equals prior (no fit yet)', 'bằng tiên nghiệm (chưa khớp)')}
                 </div>
               </div>
               <div>
-                <div style={miniLabel}>95% credible interval</div>
+                <div style={miniLabel}>{t('95% credible interval', 'khoảng tin cậy 95%')}</div>
                 {latest?.lambda_ci_lower != null && latest?.lambda_ci_upper != null ? (
                   <>
                     <div style={posteriorBig}>
                       [{latest.lambda_ci_lower.toFixed(4)}, {latest.lambda_ci_upper.toFixed(4)}]
                     </div>
                     <div style={metaText}>
-                      rel-width {latest.ci_relative_width != null ? latest.ci_relative_width.toFixed(2) : '—'}
-                      {' '}({latest.ci_narrow_enough ? 'narrow enough' : 'too wide'})
+                      {t('rel-width', 'độ rộng tương đối')} {latest.ci_relative_width != null ? latest.ci_relative_width.toFixed(2) : '—'}
+                      {' '}({latest.ci_narrow_enough ? t('narrow enough', 'đủ hẹp') : t('too wide', 'quá rộng')})
                     </div>
                   </>
                 ) : (
                   <>
                     <div style={{ ...posteriorBig, color: '#7E7864' }}>—</div>
-                    <div style={metaText}>pending fit</div>
+                    <div style={metaText}>{t('pending fit', 'chờ khớp')}</div>
                   </>
                 )}
               </div>
@@ -1428,12 +1434,12 @@ function CategoryPosteriorsTable({ categories }: { categories: CategorySlice[] }
                 position: 'absolute', top: 0, height: 20, width: 2,
                 left: `calc(${designedX}% - 1px)`,
                 background: '#B2AA98',
-              }} title={`designed prior centre · λ=${c.designed_lambda.toFixed(4)}`} />
+              }} title={`${t('designed prior centre', 'tâm tiên nghiệm thiết kế')} · λ=${c.designed_lambda.toFixed(4)}`} />
               <div style={{
                 position: 'absolute', top: 0, height: 20, width: 2,
                 left: `calc(${posteriorX}% - 1px)`,
                 background: c.active ? '#7AB07A' : '#D4B85A',
-              }} title={`posterior centre · λ=${(latest?.learned_lambda ?? c.designed_lambda).toFixed(4)}`} />
+              }} title={`${t('posterior centre', 'tâm hậu nghiệm')} · λ=${(latest?.learned_lambda ?? c.designed_lambda).toFixed(4)}`} />
               <div style={ciRailScale}>
                 <span>0</span>
                 <span>{lambdaScaleMax.toFixed(3)}</span>
@@ -1443,9 +1449,9 @@ function CategoryPosteriorsTable({ categories }: { categories: CategorySlice[] }
             {/* Distance to event floor */}
             <div style={{ marginTop: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-                <span style={miniLabel}>Distance to event floor (contradictions)</span>
+                <span style={miniLabel}>{t('Distance to event floor (contradictions)', 'Khoảng cách đến ngưỡng sự kiện (mâu thuẫn)')}</span>
                 <span style={metaText}>
-                  {nEvents} / {EVENT_FLOOR} · {nEvents < EVENT_FLOOR ? `${EVENT_FLOOR - nEvents} to go` : 'floor met'}
+                  {nEvents} / {EVENT_FLOOR} · {nEvents < EVENT_FLOOR ? `${EVENT_FLOOR - nEvents} ${t('to go', 'còn lại')}` : t('floor met', 'đã đạt ngưỡng')}
                 </span>
               </div>
               <div style={progressTrack}>
@@ -1467,6 +1473,7 @@ function CategoryPosteriorsTable({ categories }: { categories: CategorySlice[] }
 // ─── Panel 5 — Aggregate vitals ──────────────────────────────────────────────
 
 function VitalsGrid({ vitals }: { vitals: Vitals }) {
+  const { t } = useLang()
   const stat = (label: string, value: string, note?: string, tone?: 'gold' | 'green' | 'red') => (
     <div style={vitalCard}>
       <div style={miniLabel}>{label}</div>
@@ -1484,33 +1491,33 @@ function VitalsGrid({ vitals }: { vitals: Vitals }) {
   return (
     <div>
       <div style={vitalsGrid}>
-        {stat('Active preferences', vitals.active_preferences.toString())}
-        {stat('Total exposure accruing', `${vitals.total_exposure_days.toLocaleString()}d`,
-          `${totalExpYears} prefs·years · the survival data the fit will see`)}
-        {stat('Medical-locked', vitals.medical_locked.toString(),
-          'λ=0 by content guardrail — never decay', vitals.medical_locked > 0 ? 'red' : undefined)}
-        {stat('Flagged for revalidation', vitals.flagged_for_revalidation.toString(),
-          'PS(t) < 0.7·S₀ or stale beyond category window',
+        {stat(t('Active preferences', 'Sở thích đang hoạt động'), vitals.active_preferences.toString())}
+        {stat(t('Total exposure accruing', 'Tổng phơi nhiễm đang tích lũy'), `${vitals.total_exposure_days.toLocaleString()}d`,
+          `${totalExpYears} ${t('prefs·years · the survival data the fit will see', 'sở thích·năm · dữ liệu sống sót mà mô hình khớp sẽ thấy')}`)}
+        {stat(t('Medical-locked', 'Khóa y tế'), vitals.medical_locked.toString(),
+          t('λ=0 by content guardrail — never decay', 'λ=0 theo rào chắn nội dung — không bao giờ suy giảm'), vitals.medical_locked > 0 ? 'red' : undefined)}
+        {stat(t('Flagged for revalidation', 'Đã đánh dấu cần tái xác thực'), vitals.flagged_for_revalidation.toString(),
+          t('PS(t) < 0.7·S₀ or stale beyond category window', 'PS(t) < 0.7·S₀ hoặc quá hạn ngoài cửa sổ danh mục'),
           vitals.flagged_for_revalidation > 0 ? 'gold' : 'green')}
-        {stat('Validation events', vitals.total_validation_events.toString(),
+        {stat(t('Validation events', 'Sự kiện xác thực'), vitals.total_validation_events.toString(),
           vitals.total_validation_events === 0
-            ? 'Tank empty — every fit reads insufficient_data until events accrue'
-            : 'feeds the Bayesian fit')}
+            ? t('Tank empty — every fit reads insufficient_data until events accrue', 'Bể trống — mọi lần khớp đều đọc insufficient_data cho đến khi có sự kiện tích lũy')
+            : t('feeds the Bayesian fit', 'cấp dữ liệu cho phép khớp Bayes'))}
       </div>
 
       <div style={vitalsSubgrid}>
         <div style={vitalCardSm}>
-          <div style={miniLabel}>Categories</div>
+          <div style={miniLabel}>{t('Categories', 'Danh mục')}</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-            <span style={catStatChip('active')}>{cs.active} active</span>
-            <span style={catStatChip('proposed')}>{cs.proposed} proposed</span>
-            <span style={catStatChip('insufficient_data')}>{cs.insufficient_data} insufficient</span>
-            <span style={catStatChip('no_fit_yet')}>{cs.no_fit_yet} no fit yet</span>
+            <span style={catStatChip('active')}>{cs.active} {t('active', 'đang hoạt động')}</span>
+            <span style={catStatChip('proposed')}>{cs.proposed} {t('proposed', 'đề xuất')}</span>
+            <span style={catStatChip('insufficient_data')}>{cs.insufficient_data} {t('insufficient', 'chưa đủ')}</span>
+            <span style={catStatChip('no_fit_yet')}>{cs.no_fit_yet} {t('no fit yet', 'chưa khớp')}</span>
           </div>
         </div>
 
         <div style={vitalCardSm}>
-          <div style={miniLabel}>λ origin breakdown</div>
+          <div style={miniLabel}>{t('λ origin breakdown', 'phân tích nguồn gốc λ')}</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
             {Object.entries(vitals.lambda_origin_breakdown).map(([k, v]) => (
               <span key={k} style={originPill(k)}>{v} {k.replace(/_/g, ' ')}</span>
@@ -1524,36 +1531,36 @@ function VitalsGrid({ vitals }: { vitals: Vitals }) {
 
 // ─── Panel 4 — Event stream ──────────────────────────────────────────────────
 
-function consequenceText(e: FeedEvent): string {
+function consequenceText(e: FeedEvent, t: (en: string, vi: string) => string): string {
   if (e.kind === 'validation') {
     const days = e.days_since_last_validation
     switch (e.subtype) {
       case 'confirmed':
-        return `validation_count + 1, R recomputed (cap 1.30), spell clock reset, revalidation flag cleared${days != null ? ` · ${days}d since last validation` : ''}`
+        return `${t('validation_count + 1, R recomputed (cap 1.30), spell clock reset, revalidation flag cleared', 'validation_count + 1, R được tính lại (giới hạn 1.30), đồng hồ chu kỳ đặt lại, cờ tái xác thực được xóa')}${days != null ? ` · ${days}${t('d since last validation', ' ngày kể từ lần xác thực cuối')}` : ''}`
       case 'contradicted':
-        return `fed to category exposure as an event (d+1); λ posterior updates at next monthly fit${days != null ? ` · ${days}d spell` : ''}`
+        return `${t('fed to category exposure as an event (d+1); λ posterior updates at next monthly fit', 'được nạp vào phơi nhiễm danh mục dưới dạng một sự kiện (d+1); hậu nghiệm λ cập nhật ở lần khớp hằng tháng kế tiếp')}${days != null ? ` · ${days}${t('d spell', ' ngày chu kỳ')}` : ''}`
       case 'revised':
-        return `preference replaced; old row archived, new row inherits λ + lambda_origin`
+        return t('preference replaced; old row archived, new row inherits λ + lambda_origin', 'sở thích được thay thế; dòng cũ lưu trữ, dòng mới kế thừa λ + lambda_origin')
       case 'invalidated':
-        return `preference marked invalid; no longer scored`
+        return t('preference marked invalid; no longer scored', 'sở thích bị đánh dấu không hợp lệ; không còn được chấm điểm')
       default:
-        return `validation event`
+        return t('validation event', 'sự kiện xác thực')
     }
   }
   if (e.kind === 'preference_insert') {
     const origin = (e.lambda_origin || 'unknown').replace(/_/g, ' ')
-    const lam = e.lambda != null ? `λ=${e.lambda.toFixed(4)}` : 'no λ'
-    return `new preference written · ${lam} · origin: ${origin}${e.loop_closure ? ' · ← loop closed (inherited learned λ)' : ''}`
+    const lam = e.lambda != null ? `λ=${e.lambda.toFixed(4)}` : t('no λ', 'không có λ')
+    return `${t('new preference written', 'sở thích mới được ghi')} · ${lam} · ${t('origin:', 'nguồn:')} ${origin}${e.loop_closure ? ` · ${t('← loop closed (inherited learned λ)', '← vòng lặp đã đóng (kế thừa λ đã học)')}` : ''}`
   }
   if (e.kind === 'promotion') {
     if (e.subtype === 'active') {
       const designed = e.designed_lambda != null ? e.designed_lambda.toFixed(4) : '—'
       const learned  = e.learned_lambda  != null ? e.learned_lambda.toFixed(4) : '—'
-      return `λ PROMOTED · designed ${designed} → learned ${learned}${e.is_demo_fixture ? ' · DEMO fixture' : ''}`
+      return `${t('λ PROMOTED · designed', 'λ ĐÃ THĂNG CẤP · thiết kế')} ${designed} → ${t('learned', 'đã học')} ${learned}${e.is_demo_fixture ? ` · ${t('DEMO fixture', 'bản demo')}` : ''}`
     }
-    return `learned_decay_constants ${e.subtype ?? 'updated'}`
+    return `learned_decay_constants ${e.subtype ?? t('updated', 'đã cập nhật')}`
   }
-  return 'event'
+  return t('event', 'sự kiện')
 }
 
 function eventDotColor(e: FeedEvent): string {
@@ -1567,28 +1574,28 @@ function eventDotColor(e: FeedEvent): string {
   return '#B2AA98'
 }
 
-function formatRelTime(iso: string): string {
+function formatRelTime(iso: string, t: (en: string, vi: string) => string): string {
   const now = Date.now()
   const then = Date.parse(iso)
   if (!Number.isFinite(then)) return iso
   const secs = Math.max(0, Math.floor((now - then) / 1000))
-  if (secs < 60)    return `${secs}s ago`
-  if (secs < 3600)  return `${Math.floor(secs / 60)}m ago`
-  if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`
-  return `${Math.floor(secs / 86400)}d ago`
+  if (secs < 60)    return `${secs}${t('s ago', ' giây trước')}`
+  if (secs < 3600)  return `${Math.floor(secs / 60)}${t('m ago', ' phút trước')}`
+  if (secs < 86400) return `${Math.floor(secs / 3600)}${t('h ago', ' giờ trước')}`
+  return `${Math.floor(secs / 86400)}${t('d ago', ' ngày trước')}`
 }
 
 function EventStream({ events, transport }: { events: FeedEvent[]; transport: Transport }) {
+  const { t } = useLang()
   const loopClosure = events.filter(e => e.loop_closure)
 
   if (events.length === 0) {
     return (
       <div style={emptyFeedBlock}>
-        <div style={{ fontSize: 14, color: '#E5D4C2', marginBottom: 8 }}>watching · no scoring events yet.</div>
+        <div style={{ fontSize: 14, color: '#E5D4C2', marginBottom: 8 }}>{t('watching · no scoring events yet.', 'đang theo dõi · chưa có sự kiện chấm điểm nào.')}</div>
         <div style={{ lineHeight: 1.7 }}>
-          The subscription is live ({transport === 'realtime' ? 'postgres_changes' : transport === 'polling' ? '15s poll' : 'probing'}).
-          When validation events, preference inserts, or λ promotions arrive, they appear here in real time, each annotated
-          with what the system did because of it. This empty state is the honest one for an empty tank.
+          {t('The subscription is live (', 'Kênh đăng ký đang trực tiếp (')}{transport === 'realtime' ? 'postgres_changes' : transport === 'polling' ? t('15s poll', 'thăm dò 15 giây') : t('probing', 'đang dò')}).
+          {' '}{t('When validation events, preference inserts, or λ promotions arrive, they appear here in real time, each annotated with what the system did because of it. This empty state is the honest one for an empty tank.', 'Khi có sự kiện xác thực, thêm sở thích, hoặc thăng cấp λ, chúng sẽ xuất hiện tại đây theo thời gian thực, mỗi mục kèm ghi chú về việc hệ thống đã làm gì vì nó. Trạng thái trống này là trạng thái trung thực cho một bể trống.')}
         </div>
       </div>
     )
@@ -1600,8 +1607,8 @@ function EventStream({ events, transport }: { events: FeedEvent[]; transport: Tr
       {loopClosure.length > 0 && (
         <div style={loopTicker}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
-            <span style={{ ...demoEyebrow, color: '#7AB07A' }}>LOOP CLOSURE TICKER</span>
-            <span style={metaText}>{loopClosure.length} event{loopClosure.length === 1 ? '' : 's'} where the system inherited a rate it learned</span>
+            <span style={{ ...demoEyebrow, color: '#7AB07A' }}>{t('LOOP CLOSURE TICKER', 'BẢNG ĐÓNG VÒNG LẶP')}</span>
+            <span style={metaText}>{loopClosure.length} {t('event', 'sự kiện')}{loopClosure.length === 1 ? '' : t('s', '')} {t('where the system inherited a rate it learned', 'nơi hệ thống kế thừa một tốc độ mà nó đã học')}</span>
           </div>
           {loopClosure.slice(0, 5).map(e => (
             <div key={`lc_${e.id}`} style={loopTickerRow}>
@@ -1611,11 +1618,11 @@ function EventStream({ events, transport }: { events: FeedEvent[]; transport: Tr
               }} />
               <span style={{ ...metaText, color: '#E5D4C2' }}>
                 {e.kind === 'promotion'
-                  ? `λ PROMOTED · ${e.category}`
-                  : `${e.preference_name || 'preference'} · ${e.category}`}
+                  ? `${t('λ PROMOTED', 'λ ĐÃ THĂNG CẤP')} · ${e.category}`
+                  : `${e.preference_name || t('preference', 'sở thích')} · ${e.category}`}
               </span>
-              <span style={metaText}>{consequenceText(e)}</span>
-              <span style={{ ...metaText, marginLeft: 'auto' }}>{formatRelTime(e.timestamp)}</span>
+              <span style={metaText}>{consequenceText(e, t)}</span>
+              <span style={{ ...metaText, marginLeft: 'auto' }}>{formatRelTime(e.timestamp, t)}</span>
             </div>
           ))}
         </div>
@@ -1629,17 +1636,17 @@ function EventStream({ events, transport }: { events: FeedEvent[]; transport: Tr
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={feedLine1}>
                 <span style={feedKindLabel(e)}>
-                  {e.kind === 'validation'  ? `validation · ${e.subtype}` :
-                   e.kind === 'preference_insert' ? 'preference · insert' :
-                                                    `learned λ · ${e.subtype || 'change'}`}
+                  {e.kind === 'validation'  ? `${t('validation', 'xác thực')} · ${e.subtype}` :
+                   e.kind === 'preference_insert' ? t('preference · insert', 'sở thích · thêm mới') :
+                                                    `${t('learned λ', 'λ đã học')} · ${e.subtype || t('change', 'thay đổi')}`}
                 </span>
                 {e.member_name && <span style={metaText}>· {e.member_name}</span>}
                 {e.category    && <span style={metaText}>· {e.category}</span>}
                 {e.preference_name && <span style={{ ...metaText, color: '#E5D4C2' }}>· {e.preference_name}</span>}
                 {e.is_demo_fixture && <span style={demoGatePill}>DEMO</span>}
-                <span style={{ ...metaText, marginLeft: 'auto' }}>{formatRelTime(e.timestamp)}</span>
+                <span style={{ ...metaText, marginLeft: 'auto' }}>{formatRelTime(e.timestamp, t)}</span>
               </div>
-              <div style={feedLine2}>{consequenceText(e)}</div>
+              <div style={feedLine2}>{consequenceText(e, t)}</div>
             </div>
           </div>
         ))}
@@ -1682,41 +1689,42 @@ function DemoExtractionPanel({
   onRun: () => void
   onCancel: () => void
 }) {
+  const { t } = useLang()
   const reconciled = phase === 'done' && summary !== null
   const baselineSummary = summary ? (() => {
     const learned = Object.entries(summary.baselines)
       .filter(([, b]) => b.source === 'learned').map(([cat]) => cat)
     return learned.length === 0
-      ? 'all baselines designed (no learned λ promoted)'
-      : `learned: ${learned.join(', ')} · rest designed`
+      ? t('all baselines designed (no learned λ promoted)', 'tất cả mốc cơ sở đều thiết kế (chưa thăng cấp λ đã học)')
+      : `${t('learned:', 'đã học:')} ${learned.join(', ')} · ${t('rest designed', 'còn lại là thiết kế')}`
   })() : null
 
   return (
     <>
       <div style={demoControlsRow}>
         <label style={pickerLabel}>
-          Sample transcript
+          {t('Sample transcript', 'Bản ghi mẫu')}
           <select
             value={sampleId}
             onChange={e => onLoadSample(e.target.value)}
             disabled={phase === 'streaming' || phase === 'reconciling'}
             style={pickerInput}
           >
-            <option value="">— choose a sample —</option>
+            <option value="">{t('— choose a sample —', '— chọn một mẫu —')}</option>
             {samples.map(s => (
               <option key={s.id} value={s.id}>{s.label}</option>
             ))}
           </select>
         </label>
         <label style={pickerLabel}>
-          Member name (for the prompt)
+          {t('Member name (for the prompt)', 'Tên hội viên (cho lời nhắc)')}
           <input
             type="text"
             value={memberName}
             onChange={e => onMemberNameChange(e.target.value)}
             disabled={phase === 'streaming' || phase === 'reconciling'}
             style={pickerInput}
-            placeholder="Demo Member"
+            placeholder={t('Demo Member', 'Hội viên demo')}
           />
         </label>
       </div>
@@ -1725,14 +1733,14 @@ function DemoExtractionPanel({
         value={transcript}
         onChange={e => onTranscriptChange(e.target.value)}
         disabled={phase === 'streaming' || phase === 'reconciling'}
-        placeholder="Load a bundled sample above, or paste a fictional transcript here. Real member transcripts have no business on this surface."
+        placeholder={t('Load a bundled sample above, or paste a fictional transcript here. Real member transcripts have no business on this surface.', 'Tải một mẫu đi kèm ở trên, hoặc dán một bản ghi hư cấu vào đây. Bản ghi của hội viên thật không nên xuất hiện trên bề mặt này.')}
         rows={6}
         style={demoTextarea}
       />
 
       <div style={{ display: 'flex', gap: 10, marginTop: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         {(phase === 'streaming' || phase === 'reconciling') ? (
-          <button onClick={onCancel} style={btnGhostDemo}>Cancel</button>
+          <button onClick={onCancel} style={btnGhostDemo}>{t('Cancel', 'Hủy')}</button>
         ) : (
           <button
             onClick={onRun}
@@ -1741,20 +1749,20 @@ function DemoExtractionPanel({
               ...demoBtn,
               ...(transcript.trim() ? {} : { opacity: 0.4, cursor: 'not-allowed' }),
             }}
-            title={transcript.trim() ? '' : 'Load a sample or paste a transcript first'}
+            title={transcript.trim() ? '' : t('Load a sample or paste a transcript first', 'Vui lòng tải một mẫu hoặc dán một bản ghi trước')}
           >
-            {phase === 'done' || phase === 'error' ? 'Run extraction again' : 'Run extraction'}
+            {phase === 'done' || phase === 'error' ? t('Run extraction again', 'Chạy trích xuất lại') : t('Run extraction', 'Chạy trích xuất')}
           </button>
         )}
         {phase === 'streaming' && (
-          <span style={metaText}>Claude is reading the transcript · {extracted.length} preference{extracted.length === 1 ? '' : 's'} so far…</span>
+          <span style={metaText}>{t('Claude is reading the transcript', 'Claude đang đọc bản ghi')} · {extracted.length} {t('preference', 'sở thích')}{extracted.length === 1 ? '' : t('s', '')} {t('so far…', 'cho đến nay…')}</span>
         )}
         {phase === 'reconciling' && (
-          <span style={metaText}>Applying medical guardrail and baseline inheritance…</span>
+          <span style={metaText}>{t('Applying medical guardrail and baseline inheritance…', 'Đang áp dụng rào chắn y tế và kế thừa mốc cơ sở…')}</span>
         )}
         {phase === 'done' && summary && (
           <span style={metaText}>
-            done · {summary.count} preference{summary.count === 1 ? '' : 's'} · {summary.medicalForced} medical · {summary.identityForced} identity · {summary.aiPermanent} permanent · {summary.dropped.length} dropped
+            {t('done', 'hoàn tất')} · {summary.count} {t('preference', 'sở thích')}{summary.count === 1 ? '' : t('s', '')} · {summary.medicalForced} {t('medical', 'y tế')} · {summary.identityForced} {t('identity', 'danh tính')} · {summary.aiPermanent} {t('permanent', 'vĩnh viễn')} · {summary.dropped.length} {t('dropped', 'bị loại')}
           </span>
         )}
       </div>
@@ -1763,19 +1771,19 @@ function DemoExtractionPanel({
 
       {reconciled && summary && (
         <div style={demoSummaryBanner}>
-          <strong style={{ color: '#D4B85A' }}>{summary.count}</strong> preference{summary.count === 1 ? '' : 's'} ·
-          {' '}<strong style={{ color: summary.medicalForced  > 0 ? '#C27070' : '#B2AA98' }}>{summary.medicalForced}</strong> medical-forced ·
-          {' '}<strong style={{ color: summary.identityForced > 0 ? '#D4B85A' : '#B2AA98' }}>{summary.identityForced}</strong> identity-locked ·
-          {' '}<strong style={{ color: summary.aiPermanent    > 0 ? '#D4B85A' : '#B2AA98' }}>{summary.aiPermanent}</strong> permanent-locked ·
-          {' '}<strong style={{ color: summary.dropped.length > 0 ? '#B2AA98' : '#7AB07A' }}>{summary.dropped.length}</strong> dropped
+          <strong style={{ color: '#D4B85A' }}>{summary.count}</strong> {t('preference', 'sở thích')}{summary.count === 1 ? '' : t('s', '')} ·
+          {' '}<strong style={{ color: summary.medicalForced  > 0 ? '#C27070' : '#B2AA98' }}>{summary.medicalForced}</strong> {t('medical-forced', 'ép y tế')} ·
+          {' '}<strong style={{ color: summary.identityForced > 0 ? '#D4B85A' : '#B2AA98' }}>{summary.identityForced}</strong> {t('identity-locked', 'khóa danh tính')} ·
+          {' '}<strong style={{ color: summary.aiPermanent    > 0 ? '#D4B85A' : '#B2AA98' }}>{summary.aiPermanent}</strong> {t('permanent-locked', 'khóa vĩnh viễn')} ·
+          {' '}<strong style={{ color: summary.dropped.length > 0 ? '#B2AA98' : '#7AB07A' }}>{summary.dropped.length}</strong> {t('dropped', 'bị loại')}
           {summary.dropped.length > 0 && (
             <span style={{ color: '#B2AA98', opacity: 0.75 }}> ({summary.dropped.map(d => d.reason).join(', ')})</span>
           )}
           <div style={{ marginTop: 4, color: '#B2AA98', opacity: 0.85 }}>
-            baselines used: {baselineSummary}
+            {t('baselines used:', 'mốc cơ sở đã dùng:')} {baselineSummary}
           </div>
           <div style={{ marginTop: 6, color: '#7E7864', fontSize: 10, fontStyle: 'italic' }}>
-            No database write occurred. The list below exists only in this browser session.
+            {t('No database write occurred. The list below exists only in this browser session.', 'Không có thao tác ghi cơ sở dữ liệu nào. Danh sách bên dưới chỉ tồn tại trong phiên trình duyệt này.')}
           </div>
         </div>
       )}
@@ -1783,12 +1791,12 @@ function DemoExtractionPanel({
       {reconciled && summary && summary.dropped.length > 0 && (
         <div style={droppedStrip}>
           <div style={{ ...miniLabel, color: '#C27070', marginBottom: 6 }}>
-            ⚠ DROPPED · {summary.dropped.length} row{summary.dropped.length === 1 ? '' : 's'} did not survive reconciliation
+            {t('⚠ DROPPED ·', '⚠ ĐÃ LOẠI ·')} {summary.dropped.length} {t('row', 'dòng')}{summary.dropped.length === 1 ? '' : t('s', '')} {t('did not survive reconciliation', 'không vượt qua đối chiếu')}
           </div>
           {summary.dropped.map((d, i) => (
             <div key={i} style={droppedRow}>
               <span style={{ color: '#C27070', marginRight: 8 }}>·</span>
-              <span style={{ color: '#E5D4C2' }}>{d.item?.preference_name || '(unnamed)'}</span>
+              <span style={{ color: '#E5D4C2' }}>{d.item?.preference_name || t('(unnamed)', '(không tên)')}</span>
               <span style={{ color: '#7E7864' }}> — {d.reason}</span>
             </div>
           ))}
@@ -1828,6 +1836,7 @@ function DemoPreferenceCard({ pref, index, phase, expanded, onToggleExpand }: {
   pref: DemoExtractedPref; index: number; phase: DemoPhase
   expanded: boolean; onToggleExpand: () => void
 }) {
+  const { t } = useLang()
   // Streaming heuristic: AI-emitted λ=0 = the model thinks this is permanent.
   // Whether it's MEDICAL or PERMANENT depends on content-detection, which only
   // runs at reconcile. During streaming, render λ=0 as "PERMANENT — suspected"
@@ -1839,14 +1848,14 @@ function DemoPreferenceCard({ pref, index, phase, expanded, onToggleExpand }: {
   const isPermanent = pref.lambda_origin === 'ai_permanent'
   const isLocked    = isMedical || isIdentity || isPermanent || (!isReconciled && pref.lambda === 0)
   const originLabel: { text: string; tone: 'red' | 'gold' | 'green' | 'grey' | 'amber' } =
-    isMedical                                           ? { text: 'MEDICAL — LOCKED',         tone: 'red'   } :
-    isIdentity                                          ? { text: 'IDENTITY — LOCKED',        tone: 'gold'  } :
-    isPermanent                                         ? { text: 'PERMANENT — LOCKED',       tone: 'amber' } :
-    pref.lambda_origin === 'ai_specific'                ? { text: 'AI · SPECIFIC',             tone: 'gold'  } :
-    pref.lambda_origin === 'category_baseline_learned'  ? { text: 'BASELINE · LEARNED',        tone: 'green' } :
-    pref.lambda_origin === 'category_baseline_designed' ? { text: 'BASELINE · DESIGNED',       tone: 'grey'  } :
-    isLocked                                            ? { text: 'PERMANENT — suspected',     tone: 'amber' } :
-                                                          { text: 'LIVE · pending reconcile',  tone: 'grey'  }
+    isMedical                                           ? { text: t('MEDICAL — LOCKED', 'Y TẾ — ĐÃ KHÓA'),         tone: 'red'   } :
+    isIdentity                                          ? { text: t('IDENTITY — LOCKED', 'DANH TÍNH — ĐÃ KHÓA'),        tone: 'gold'  } :
+    isPermanent                                         ? { text: t('PERMANENT — LOCKED', 'VĨNH VIỄN — ĐÃ KHÓA'),       tone: 'amber' } :
+    pref.lambda_origin === 'ai_specific'                ? { text: t('AI · SPECIFIC', 'AI · RIÊNG BIỆT'),             tone: 'gold'  } :
+    pref.lambda_origin === 'category_baseline_learned'  ? { text: t('BASELINE · LEARNED', 'CƠ SỞ · ĐÃ HỌC'),        tone: 'green' } :
+    pref.lambda_origin === 'category_baseline_designed' ? { text: t('BASELINE · DESIGNED', 'CƠ SỞ · THIẾT KẾ'),       tone: 'grey'  } :
+    isLocked                                            ? { text: t('PERMANENT — suspected', 'VĨNH VIỄN — nghi ngờ'),     tone: 'amber' } :
+                                                          { text: t('LIVE · pending reconcile', 'TRỰC TIẾP · chờ đối chiếu'),  tone: 'grey'  }
 
   const borderColor = isMedical   ? '#C27070'
                     : isIdentity  ? '#D4B85A'
@@ -1881,20 +1890,20 @@ function DemoPreferenceCard({ pref, index, phase, expanded, onToggleExpand }: {
         {showLowConfidence && (
           <span
             style={attentionBadge}
-            title="C ≤ 0.50 — the AI hedged this scoring (e.g. one-off mention, qualifier). Worth a closer look."
+            title={t('C ≤ 0.50 — the AI hedged this scoring (e.g. one-off mention, qualifier). Worth a closer look.', 'C ≤ 0.50 — AI đã dè dặt khi chấm điểm này (ví dụ: chỉ nhắc một lần, có từ hạn định). Đáng xem xét kỹ hơn.')}
           >
-            ⚠ LOW CONFIDENCE
+            {t('⚠ LOW CONFIDENCE', '⚠ ĐỘ TIN CẬY THẤP')}
           </span>
         )}
         {showMedicalAdjacentAttention && (
           <span
             style={attentionBadgeMedicalAdjacent}
-            title={`Pattern-matched: contains medical-adjacent language (matched /medic|allerg|intoleran|epipen|anaphyla/i) and was NOT locked. The badge does NOT certify the non-firing as correct — the same pattern catches "medicinal tasting note" (correctly unlocked) AND a missed allergy (incorrectly unlocked). Verify which this is.`}
+            title={t(`Pattern-matched: contains medical-adjacent language (matched /medic|allerg|intoleran|epipen|anaphyla/i) and was NOT locked. The badge does NOT certify the non-firing as correct — the same pattern catches "medicinal tasting note" (correctly unlocked) AND a missed allergy (incorrectly unlocked). Verify which this is.`, 'Khớp theo mẫu: chứa ngôn ngữ liên quan đến y tế (khớp /medic|allerg|intoleran|epipen|anaphyla/i) và KHÔNG được khóa. Nhãn này KHÔNG xác nhận việc không kích hoạt là đúng — cùng mẫu này bắt cả "ghi chú thử vị mang tính dược liệu" (đúng khi không khóa) LẪN một dị ứng bị bỏ sót (sai khi không khóa). Hãy kiểm chứng đây là trường hợp nào.')}
           >
-            ⚠ MEDICAL-ADJACENT · UNLOCKED · VERIFY
+            {t('⚠ MEDICAL-ADJACENT · UNLOCKED · VERIFY', '⚠ LIÊN QUAN Y TẾ · CHƯA KHÓA · KIỂM CHỨNG')}
           </span>
         )}
-        {phase === 'streaming' && !isReconciled && <span style={liveTag}>· live</span>}
+        {phase === 'streaming' && !isReconciled && <span style={liveTag}>· {t('live', 'trực tiếp')}</span>}
       </div>
       <div style={demoPrefName}>{pref.preference_name}</div>
       {pref.detail && <div style={demoPrefDetail}>{pref.detail}</div>}
@@ -1906,17 +1915,17 @@ function DemoPreferenceCard({ pref, index, phase, expanded, onToggleExpand }: {
         <span style={demoFactor}>λ <strong style={{ color: pref.lambda === 0 ? '#C27070' : '#E5D4C2' }}>{pref.lambda.toFixed(3)}</strong></span>
         <span style={demoFactor}>F <strong style={{ color: '#E5D4C2' }}>{pref.frequency.toFixed(1)}</strong></span>
         {pref.lambda > 0 && (
-          <span style={demoFactor}>half-life <strong style={{ color: '#B2AA98' }}>{Math.round(Math.LN2 / pref.lambda)}d</strong></span>
+          <span style={demoFactor}>{t('half-life', 'chu kỳ bán rã')} <strong style={{ color: '#B2AA98' }}>{Math.round(Math.LN2 / pref.lambda)}d</strong></span>
         )}
         {pref.lambda === 0 && (
-          <span style={demoFactor}><strong style={{ color: '#C27070' }}>never decays</strong></span>
+          <span style={demoFactor}><strong style={{ color: '#C27070' }}>{t('never decays', 'không bao giờ suy giảm')}</strong></span>
         )}
       </div>
 
       {pref.rationale && (
         <div style={{ marginTop: 10 }}>
           <button onClick={onToggleExpand} style={rationaleToggle}>
-            {expanded ? '▾' : '▸'} rationale
+            {expanded ? '▾' : '▸'} {t('rationale', 'lý giải')}
           </button>
           {expanded && <RationaleBreakdown pref={pref} />}
         </div>
@@ -1936,6 +1945,7 @@ function CollapsiblePanel({ id, open, onToggle, head, children }: {
   head: React.ReactNode
   children: React.ReactNode
 }) {
+  const { t } = useLang()
   return (
     <section style={panel} id={id}>
       <div style={panelHead}>
@@ -1943,8 +1953,8 @@ function CollapsiblePanel({ id, open, onToggle, head, children }: {
         <button
           onClick={onToggle}
           style={chevronBtn}
-          aria-label={open ? 'collapse panel' : 'expand panel'}
-          title={open ? 'collapse panel' : 'expand panel'}
+          aria-label={open ? t('collapse panel', 'thu gọn bảng') : t('expand panel', 'mở rộng bảng')}
+          title={open ? t('collapse panel', 'thu gọn bảng') : t('expand panel', 'mở rộng bảng')}
         >
           <span style={{ ...chevronGlyph, transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }}>▾</span>
         </button>
@@ -1958,6 +1968,7 @@ function CollapsiblePanel({ id, open, onToggle, head, children }: {
  *  carry a 🔒 glyph + a subtle "rule" tone so it's glanceable that the line
  *  came from deterministic code rather than the AI. */
 function RationaleBreakdown({ pref }: { pref: DemoExtractedPref }) {
+  const { t } = useLang()
   // Legacy string rationale — show as one summary line, no per-factor breakdown.
   if (typeof pref.rationale === 'string') {
     return (
@@ -1995,7 +2006,7 @@ function RationaleBreakdown({ pref }: { pref: DemoExtractedPref }) {
             <span style={rationaleFactorValue}>{f.value}</span>
             {f.forced && <span style={lockGlyph}>🔒</span>}
             <span style={f.forced ? rationaleFactorTextForced : rationaleFactorText}>
-              {f.text || (f.forced ? '(rule-forced; no AI rationale needed)' : '(no rationale supplied)')}
+              {f.text || (f.forced ? t('(rule-forced; no AI rationale needed)', '(ép theo quy tắc; không cần lý giải từ AI)') : t('(no rationale supplied)', '(không có lý giải)'))}
             </span>
           </div>
         ))}
@@ -2012,12 +2023,13 @@ function ProbeRunsStrip({ runs, onRestore, compareIds, onCompareToggle }: {
   compareIds: string[]
   onCompareToggle: (id: string) => void
 }) {
+  const { t } = useLang()
   return (
     <div style={probeRunsStrip}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-        <span style={{ ...miniLabel, color: '#D4B85A' }}>PROBE RUNS · last {runs.length}</span>
+        <span style={{ ...miniLabel, color: '#D4B85A' }}>{t('PROBE RUNS · last', 'LẦN CHẠY THĂM DÒ · gần nhất')} {runs.length}</span>
         <span style={metaText}>
-          click a run to restore · check 2 to compare side-by-side · check 3 to override the auto-pick for AI consistency analysis · kept for this session only, nothing is saved
+          {t('click a run to restore · check 2 to compare side-by-side · check 3 to override the auto-pick for AI consistency analysis · kept for this session only, nothing is saved', 'nhấp một lần chạy để khôi phục · chọn 2 để so sánh song song · chọn 3 để ghi đè lựa chọn tự động cho phân tích nhất quán bằng AI · chỉ lưu trong phiên này, không có gì được lưu lại')}
         </span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -2035,16 +2047,16 @@ function ProbeRunsStrip({ runs, onRestore, compareIds, onCompareToggle }: {
                 disabled={atCap}
                 onChange={() => onCompareToggle(r.id)}
                 style={{ marginRight: 6, opacity: atCap ? 0.35 : 1 }}
-                title={atCap ? '3 already selected (max)' : '2 = side-by-side compare · 3 = AI consistency analysis'}
+                title={atCap ? t('3 already selected (max)', 'đã chọn 3 (tối đa)') : t('2 = side-by-side compare · 3 = AI consistency analysis', '2 = so sánh song song · 3 = phân tích nhất quán bằng AI')}
               />
               <button onClick={() => onRestore(r.id)} style={probeRunButton}>
                 <span style={{ color: '#7E7864', marginRight: 8 }}>#{runs.length - i}</span>
                 <span style={{ color: '#E5D4C2' }}>{r.label}</span>
-                <span style={metaText}> · {r.summary.count} prefs</span>
-                {r.summary.medicalForced  > 0 && <span style={{ ...metaText, color: '#C27070' }}> · {r.summary.medicalForced} medical</span>}
-                {r.summary.identityForced > 0 && <span style={{ ...metaText, color: '#D4B85A' }}> · {r.summary.identityForced} identity</span>}
-                {r.summary.aiPermanent    > 0 && <span style={{ ...metaText, color: '#D4B85A' }}> · {r.summary.aiPermanent} permanent</span>}
-                {r.summary.dropped.length > 0 && <span style={metaText}> · {r.summary.dropped.length} dropped</span>}
+                <span style={metaText}> · {r.summary.count} {t('prefs', 'sở thích')}</span>
+                {r.summary.medicalForced  > 0 && <span style={{ ...metaText, color: '#C27070' }}> · {r.summary.medicalForced} {t('medical', 'y tế')}</span>}
+                {r.summary.identityForced > 0 && <span style={{ ...metaText, color: '#D4B85A' }}> · {r.summary.identityForced} {t('identity', 'danh tính')}</span>}
+                {r.summary.aiPermanent    > 0 && <span style={{ ...metaText, color: '#D4B85A' }}> · {r.summary.aiPermanent} {t('permanent', 'vĩnh viễn')}</span>}
+                {r.summary.dropped.length > 0 && <span style={metaText}> · {r.summary.dropped.length} {t('dropped', 'bị loại')}</span>}
                 <span style={{ ...metaText, marginLeft: 'auto' }}>
                   {new Date(r.ran_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                 </span>
@@ -2062,6 +2074,7 @@ function ProbeCompareView({ a, b, onClose }: {
   b: ProbeRun
   onClose: () => void
 }) {
+  const { t } = useLang()
   // Group preferences by category so both columns line up by topic.
   const allCats = Array.from(new Set([
     ...a.preferences.map(p => p.category),
@@ -2071,22 +2084,22 @@ function ProbeCompareView({ a, b, onClose }: {
   return (
     <div style={probeCompareWrap}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 12 }}>
-        <span style={{ ...miniLabel, color: '#D4B85A' }}>COMPARE</span>
-        <span style={metaText}>category-aligned · locked rows highlighted in colour</span>
-        <button onClick={onClose} style={{ ...btnGhostDemo, marginLeft: 'auto', padding: '4px 10px', fontSize: 10 }}>close</button>
+        <span style={{ ...miniLabel, color: '#D4B85A' }}>{t('COMPARE', 'SO SÁNH')}</span>
+        <span style={metaText}>{t('category-aligned · locked rows highlighted in colour', 'căn theo danh mục · dòng bị khóa được tô màu nổi bật')}</span>
+        <button onClick={onClose} style={{ ...btnGhostDemo, marginLeft: 'auto', padding: '4px 10px', fontSize: 10 }}>{t('close', 'đóng')}</button>
       </div>
       <div style={probeCompareGrid}>
         <div style={probeCompareCol}>
           <div style={probeCompareHeader}>
             <strong>{a.label}</strong>
-            <div style={metaText}>{a.summary.count} prefs · {a.summary.medicalForced} medical · {a.summary.identityForced} identity · {a.summary.aiPermanent} permanent · {a.summary.dropped.length} dropped</div>
+            <div style={metaText}>{a.summary.count} {t('prefs', 'sở thích')} · {a.summary.medicalForced} {t('medical', 'y tế')} · {a.summary.identityForced} {t('identity', 'danh tính')} · {a.summary.aiPermanent} {t('permanent', 'vĩnh viễn')} · {a.summary.dropped.length} {t('dropped', 'bị loại')}</div>
           </div>
           <ProbeCompareCategoryList cats={allCats} prefs={a.preferences} />
         </div>
         <div style={probeCompareCol}>
           <div style={probeCompareHeader}>
             <strong>{b.label}</strong>
-            <div style={metaText}>{b.summary.count} prefs · {b.summary.medicalForced} medical · {b.summary.identityForced} identity · {b.summary.aiPermanent} permanent · {b.summary.dropped.length} dropped</div>
+            <div style={metaText}>{b.summary.count} {t('prefs', 'sở thích')} · {b.summary.medicalForced} {t('medical', 'y tế')} · {b.summary.identityForced} {t('identity', 'danh tính')} · {b.summary.aiPermanent} {t('permanent', 'vĩnh viễn')} · {b.summary.dropped.length} {t('dropped', 'bị loại')}</div>
           </div>
           <ProbeCompareCategoryList cats={allCats} prefs={b.preferences} />
         </div>
@@ -2099,6 +2112,7 @@ function ProbeCompareCategoryList({ cats, prefs }: {
   cats: string[]
   prefs: DemoExtractedPref[]
 }) {
+  const { t } = useLang()
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {cats.map(cat => {
@@ -2107,7 +2121,7 @@ function ProbeCompareCategoryList({ cats, prefs }: {
           return (
             <div key={cat} style={probeCompareCatBlock}>
               <div style={{ ...miniLabel, marginBottom: 6 }}>{cat}</div>
-              <div style={{ ...metaText, opacity: 0.5 }}>— no preferences in this category —</div>
+              <div style={{ ...metaText, opacity: 0.5 }}>{t('— no preferences in this category —', '— không có sở thích nào trong danh mục này —')}</div>
             </div>
           )
         }
@@ -2149,11 +2163,12 @@ function ConsistencyControl({ triple, source, explicitMismatch, phase, error, on
   error: string | null
   onRun: () => void
 }) {
+  const { t } = useLang()
   const enabled = triple !== null && phase !== 'analysing'
   const tooltip = !triple
     ? (explicitMismatch
-       ? 'Three runs selected but they span multiple transcripts. Tick 3 of the same.'
-       : 'Run the same transcript three times to enable.')
+       ? t('Three runs selected but they span multiple transcripts. Tick 3 of the same.', 'Đã chọn ba lần chạy nhưng chúng thuộc nhiều bản ghi khác nhau. Hãy đánh dấu 3 lần của cùng một bản ghi.')
+       : t('Run the same transcript three times to enable.', 'Chạy cùng một bản ghi ba lần để kích hoạt.'))
     : ''
   const counts = triple?.map(r => r.preferences.length).join(' / ')
   return (
@@ -2168,23 +2183,23 @@ function ConsistencyControl({ triple, source, explicitMismatch, phase, error, on
           }}
           title={tooltip}
         >
-          {phase === 'analysing' ? 'Analysing…' : 'AI consistency analysis'}
+          {phase === 'analysing' ? t('Analysing…', 'Đang phân tích…') : t('AI consistency analysis', 'Phân tích nhất quán bằng AI')}
         </button>
         {triple ? (
           <span style={metaText}>
             {source === 'explicit'
-              ? <>analysing the <strong style={{ color: '#D4B85A' }}>3 selected runs</strong> of </>
-              : <>analysing the 3 most-recent runs of </>}
+              ? <>{t('analysing the', 'đang phân tích')} <strong style={{ color: '#D4B85A' }}>{t('3 selected runs', '3 lần chạy đã chọn')}</strong> {t('of', 'của')} </>
+              : <>{t('analysing the 3 most-recent runs of', 'đang phân tích 3 lần chạy gần nhất của')} </>}
             <strong style={{ color: '#E5D4C2' }}>{triple[0].label}</strong> ·
-            counts {counts}
+            {t('counts', 'số lượng')} {counts}
           </span>
         ) : explicitMismatch ? (
           <span style={{ ...metaText, color: '#E58F4A' }}>
-            ⚠ selected runs span multiple transcripts · tick 3 of the same to analyse
+            {t('⚠ selected runs span multiple transcripts · tick 3 of the same to analyse', '⚠ các lần chạy đã chọn thuộc nhiều bản ghi · đánh dấu 3 lần của cùng một bản ghi để phân tích')}
           </span>
         ) : (
           <span style={metaText}>
-            requires ≥ 3 runs of the same transcript · auto-picks the most-recent triple, or tick 3 to override
+            {t('requires ≥ 3 runs of the same transcript · auto-picks the most-recent triple, or tick 3 to override', 'cần ≥ 3 lần chạy của cùng một bản ghi · tự động chọn bộ ba gần nhất, hoặc đánh dấu 3 để ghi đè')}
           </span>
         )}
       </div>
@@ -2419,58 +2434,58 @@ function buildAllRows(
 //     runs, but a score moved — ordinary judgment variance that Pass B
 //     won't touch.
 
-function runListPhrase(runs: number[]): string {
+function runListPhrase(runs: number[], t: (en: string, vi: string) => string): string {
   if (runs.length === 0) return ''
-  if (runs.length === 1) return `run ${runs[0]}`
-  if (runs.length === 2) return `runs ${runs[0]} & ${runs[1]}`
-  return `runs ${runs.slice(0, -1).join(', ')} & ${runs[runs.length - 1]}`
+  if (runs.length === 1) return `${t('run', 'lần chạy')} ${runs[0]}`
+  if (runs.length === 2) return `${t('runs', 'các lần chạy')} ${runs[0]} & ${runs[1]}`
+  return `${t('runs', 'các lần chạy')} ${runs.slice(0, -1).join(', ')} & ${runs[runs.length - 1]}`
 }
 
-function permanenceRowMessage(r: MatrixRowData): string {
+function permanenceRowMessage(r: MatrixRowData, t: (en: string, vi: string) => string): string {
   if (r.permanenceShape === 'held') {
-    return r.detail || 'judged identity-permanent (λ=0) in all 3 runs'
+    return r.detail || t('judged identity-permanent (λ=0) in all 3 runs', 'được đánh giá là bất biến theo danh tính (λ=0) trong cả 3 lần chạy')
   }
   if (r.permanenceShape === 'classification_toggled') {
-    const lockedPhrase   = runListPhrase(r.permanenceLockedRuns)
-    const unlockedPhrase = runListPhrase(r.permanenceUnlockedRuns)
-    return `classification toggled — judged identity-permanent in ${lockedPhrase}, decaying in ${unlockedPhrase}. The model couldn't decide whether this is permanent.`
+    const lockedPhrase   = runListPhrase(r.permanenceLockedRuns, t)
+    const unlockedPhrase = runListPhrase(r.permanenceUnlockedRuns, t)
+    return `${t('classification toggled — judged identity-permanent in', 'phân loại đảo chiều — được đánh giá là bất biến theo danh tính trong')} ${lockedPhrase}, ${t('decaying in', 'suy giảm trong')} ${unlockedPhrase}. ${t("The model couldn't decide whether this is permanent.", 'Mô hình không thể quyết định liệu điều này có vĩnh viễn hay không.')}`
   }
   // score_drift_within_lock
   const moved = [...r.driftedFactors]
     .map(f => f === 's0' ? 'S₀' : f === 'c' ? 'C' : f === 'lambda' ? 'λ' : 'F')
     .join(' / ')
-  return `permanence held (ai_permanent in all 3 runs); ${moved || 'a score'} varied — judgment-level.`
+  return `${t('permanence held (ai_permanent in all 3 runs);', 'tính bất biến được giữ (ai_permanent trong cả 3 lần chạy);')} ${moved || t('a score', 'một điểm số')} ${t('varied — judgment-level.', 'đã thay đổi — mức đánh giá.')}`
 }
 
-function medicalRowMessage(r: MatrixRowData): string {
+function medicalRowMessage(r: MatrixRowData, t: (en: string, vi: string) => string): string {
   if (r.medicalShape === 'held') {
-    return r.detail || 'forced_medical (S₀=5/C=1/λ=0) in all 3 runs'
+    return r.detail || t('forced_medical (S₀=5/C=1/λ=0) in all 3 runs', 'forced_medical (S₀=5/C=1/λ=0) trong cả 3 lần chạy')
   }
   if (r.medicalShape === 'classification_toggled') {
-    const lockedPhrase   = runListPhrase(r.medicalLockedRuns)
-    const unlockedPhrase = runListPhrase(r.medicalUnlockedRuns)
-    return `forced_medical in ${lockedPhrase}, NOT locked in ${unlockedPhrase}. The medical guardrail is enforced in code and cannot vary for the same input — this is a GUARDRAIL CODE DEFECT.`
+    const lockedPhrase   = runListPhrase(r.medicalLockedRuns, t)
+    const unlockedPhrase = runListPhrase(r.medicalUnlockedRuns, t)
+    return `${t('forced_medical in', 'forced_medical trong')} ${lockedPhrase}, ${t('NOT locked in', 'KHÔNG khóa trong')} ${unlockedPhrase}. ${t('The medical guardrail is enforced in code and cannot vary for the same input — this is a GUARDRAIL CODE DEFECT.', 'Rào chắn y tế được thực thi trong mã và không thể thay đổi với cùng một đầu vào — đây là LỖI MÃ RÀO CHẮN.')}`
   }
   // score_drift_within_lock — should be impossible for forced_medical
   // (reconcile forces s0/c/λ deterministically) but render honestly if it
   // ever happens.
-  return r.detail || 'medical-locked; a score varied within the lock — investigate.'
+  return r.detail || t('medical-locked; a score varied within the lock — investigate.', 'khóa y tế; một điểm số đã thay đổi trong phạm vi khóa — hãy điều tra.')
 }
 
 // Identity drift is deterministic-rule drift (Pass B). For a same-transcript
 // triple, isIdentityPreference is a pure function — every cell must classify
 // the same way. Any toggle means the detector regex matched on one rendering
 // of the same text and not another, which is a code defect.
-function identityRowMessage(r: MatrixRowData): string {
+function identityRowMessage(r: MatrixRowData, t: (en: string, vi: string) => string): string {
   if (r.identityShape === 'held') {
-    return r.detail || 'forced_identity (S₀=5/C=1/λ=0) in all 3 runs — declarative identity/relationship fact, code-locked'
+    return r.detail || t('forced_identity (S₀=5/C=1/λ=0) in all 3 runs — declarative identity/relationship fact, code-locked', 'forced_identity (S₀=5/C=1/λ=0) trong cả 3 lần chạy — sự kiện danh tính/quan hệ mang tính khẳng định, khóa trong mã')
   }
   if (r.identityShape === 'classification_toggled') {
-    const lockedPhrase   = runListPhrase(r.identityLockedRuns)
-    const unlockedPhrase = runListPhrase(r.identityUnlockedRuns)
-    return `forced_identity in ${lockedPhrase}, NOT locked in ${unlockedPhrase}. The identity guardrail is enforced in code and cannot vary for the same input — this is a GUARDRAIL CODE DEFECT.`
+    const lockedPhrase   = runListPhrase(r.identityLockedRuns, t)
+    const unlockedPhrase = runListPhrase(r.identityUnlockedRuns, t)
+    return `${t('forced_identity in', 'forced_identity trong')} ${lockedPhrase}, ${t('NOT locked in', 'KHÔNG khóa trong')} ${unlockedPhrase}. ${t('The identity guardrail is enforced in code and cannot vary for the same input — this is a GUARDRAIL CODE DEFECT.', 'Rào chắn danh tính được thực thi trong mã và không thể thay đổi với cùng một đầu vào — đây là LỖI MÃ RÀO CHẮN.')}`
   }
-  return r.detail || 'identity-locked; a score varied within the lock — investigate.'
+  return r.detail || t('identity-locked; a score varied within the lock — investigate.', 'khóa danh tính; một điểm số đã thay đổi trong phạm vi khóa — hãy điều tra.')
 }
 
 // ─── ConsistencyReportView ───────────────────────────────────────────────────
@@ -2479,6 +2494,7 @@ function ConsistencyReportView({ report, triple }: {
   report: ConsistencyReport
   triple: [ProbeRun, ProbeRun, ProbeRun]
 }) {
+  const { t } = useLang()
   const tone: 'safety' | 'amber' | 'green' =
       report.verdict === 'safety_inconsistency' ? 'safety'
     : report.verdict === 'judgment_variance'   ? 'amber'
@@ -2511,24 +2527,24 @@ function ConsistencyReportView({ report, triple }: {
       <div style={{ ...stagger(0) }}>
         <VerdictReading tone={tone} headline={report.headline} verdict={report.verdict} />
         <div style={{ ...evidenceTally, marginTop: 10 }}>
-          <span style={tallyValue('#7AB07A')}>{held}</span> held
+          <span style={tallyValue('#7AB07A')}>{held}</span> {t('held', 'giữ nguyên')}
           <span style={tallyDivider}>·</span>
-          <span style={tallyValue('#D4B85A')}>{judgmentN}</span> judgment
+          <span style={tallyValue('#D4B85A')}>{judgmentN}</span> {t('judgment', 'đánh giá')}
           <span style={tallyDivider}>·</span>
-          <span style={tallyValue('#B2AA98')}>{granularityN}</span> granularity
+          <span style={tallyValue('#B2AA98')}>{granularityN}</span> {t('granularity', 'độ chi tiết')}
           <span style={tallyDivider}>·</span>
-          <span style={tallyValue(safetyN > 0 ? '#C27070' : '#7E7864')}>{safetyN}</span> safety
+          <span style={tallyValue(safetyN > 0 ? '#C27070' : '#7E7864')}>{safetyN}</span> {t('safety', 'an toàn')}
         </div>
         <div style={{ ...countsLine, marginTop: 4 }}>
-          Run counts <span style={mono}>{report.counts.join(' / ')}</span>
+          {t('Run counts', 'Số lượng theo lần chạy')} <span style={mono}>{report.counts.join(' / ')}</span>
           {(() => {
             const lo = Math.min(...report.counts), hi = Math.max(...report.counts)
             const spread = hi - lo
             if (spread === 0) return null
             return tone === 'safety' ? null : (
               <span style={{ color: '#7E7864' }}>
-                · spread {spread}
-                {report.verdict === 'stable' && ' attributable to granularity, not judgment'}
+                · {t('spread', 'độ chênh')} {spread}
+                {report.verdict === 'stable' && t(' attributable to granularity, not judgment', ' do độ chi tiết, không phải do đánh giá')}
               </span>
             )
           })()}
@@ -2538,22 +2554,22 @@ function ConsistencyReportView({ report, triple }: {
       {/* ── 2. SAFETY · IDENTITY · PERMANENCE LOCKS — three sub-bands ── */}
       <div style={{ ...stagger(1) }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
-          <span style={{ ...miniLabel, color: '#7AB07A' }}>SAFETY · IDENTITY · PERMANENCE LOCKS</span>
+          <span style={{ ...miniLabel, color: '#7AB07A' }}>{t('SAFETY · IDENTITY · PERMANENCE LOCKS', 'KHÓA AN TOÀN · DANH TÍNH · VĨNH VIỄN')}</span>
           <span style={metaText}>
             {medicalRows.length === 0 && identityRows.length === 0 && permanenceRows.length === 0
-              ? '— no locked preferences in this triple'
+              ? t('— no locked preferences in this triple', '— không có sở thích bị khóa trong bộ ba này')
               : (() => {
                   // Honest combined-state meta: separate medical / identity /
                   // permanence; never imply safety where it's only judgment drift.
                   const medPhrase = medicalRows.length === 0 ? null
-                    : medicalToggled ? '⛔ medical lock differed across runs'
-                    : 'medical locks held'
+                    : medicalToggled ? t('⛔ medical lock differed across runs', '⛔ khóa y tế khác nhau giữa các lần chạy')
+                    : t('medical locks held', 'các khóa y tế được giữ nguyên')
                   const idnPhrase = identityRows.length === 0 ? null
-                    : identityToggled ? '⛔ identity lock differed across runs'
-                    : 'identity locks held'
+                    : identityToggled ? t('⛔ identity lock differed across runs', '⛔ khóa danh tính khác nhau giữa các lần chạy')
+                    : t('identity locks held', 'các khóa danh tính được giữ nguyên')
                   const permPhrase = permanenceRows.length === 0 ? null
-                    : permanenceDrifted ? `permanence classification varied on ${permanenceRows.filter(r => r.permanenceShape !== 'held').length} row${permanenceRows.filter(r => r.permanenceShape !== 'held').length === 1 ? '' : 's'} — judgment-level (see below)`
-                    : 'permanence classifications held'
+                    : permanenceDrifted ? `${t('permanence classification varied on', 'phân loại vĩnh viễn thay đổi ở')} ${permanenceRows.filter(r => r.permanenceShape !== 'held').length} ${t('row', 'dòng')}${permanenceRows.filter(r => r.permanenceShape !== 'held').length === 1 ? '' : t('s', '')} ${t('— judgment-level (see below)', '— mức đánh giá (xem bên dưới)')}`
+                    : t('permanence classifications held', 'các phân loại vĩnh viễn được giữ nguyên')
                   return '— ' + [medPhrase, idnPhrase, permPhrase].filter(Boolean).join('; ') + '.'
                 })()}
           </span>
@@ -2564,12 +2580,12 @@ function ConsistencyReportView({ report, triple }: {
           <div style={subBand(medicalToggled ? 'alarm' : 'calm')}>
             <div style={subBandHeader}>
               <span style={{ ...miniLabel, color: medicalToggled ? '#FFFFFF' : '#7AB07A' }}>
-                SAFETY LOCKS
+                {t('SAFETY LOCKS', 'KHÓA AN TOÀN')}
               </span>
               <span style={{ ...metaText, color: medicalToggled ? '#FFFFFF' : '#B2AA98' }}>
                 {medicalToggled
-                  ? '⛔ a medical lock differed across runs — GUARDRAIL CODE DEFECT (medical guardrail is enforced in code; this cannot vary for the same input)'
-                  : 'medical guardrail enforcements · held identically across all 3 runs'}
+                  ? t('⛔ a medical lock differed across runs — GUARDRAIL CODE DEFECT (medical guardrail is enforced in code; this cannot vary for the same input)', '⛔ một khóa y tế khác nhau giữa các lần chạy — LỖI MÃ RÀO CHẮN (rào chắn y tế được thực thi trong mã; điều này không thể thay đổi với cùng một đầu vào)')
+                  : t('medical guardrail enforcements · held identically across all 3 runs', 'các thực thi rào chắn y tế · giữ nguyên y hệt trong cả 3 lần chạy')}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -2582,7 +2598,7 @@ function ConsistencyReportView({ report, triple }: {
                     </span>
                     <span style={{ color: isAlarm ? '#FFFFFF' : '#E5D4C2', fontWeight: 500 }}>{r.preference}</span>
                     <span style={{ ...metaText, color: isAlarm ? '#FFFFFF' : '#B2AA98' }}>
-                      — {medicalRowMessage(r)}
+                      — {medicalRowMessage(r, t)}
                     </span>
                   </div>
                 )
@@ -2602,12 +2618,12 @@ function ConsistencyReportView({ report, triple }: {
           <div style={subBand(identityToggled ? 'alarm' : 'calm')}>
             <div style={subBandHeader}>
               <span style={{ ...miniLabel, color: identityToggled ? '#FFFFFF' : '#7AB07A' }}>
-                IDENTITY LOCKS
+                {t('IDENTITY LOCKS', 'KHÓA DANH TÍNH')}
               </span>
               <span style={{ ...metaText, color: identityToggled ? '#FFFFFF' : '#B2AA98' }}>
                 {identityToggled
-                  ? '⛔ an identity lock differed across runs — GUARDRAIL CODE DEFECT (the identity guardrail is enforced in code and cannot vary for the same input)'
-                  : 'identity guardrail enforcements · held identically across all 3 runs'}
+                  ? t('⛔ an identity lock differed across runs — GUARDRAIL CODE DEFECT (the identity guardrail is enforced in code and cannot vary for the same input)', '⛔ một khóa danh tính khác nhau giữa các lần chạy — LỖI MÃ RÀO CHẮN (rào chắn danh tính được thực thi trong mã và không thể thay đổi với cùng một đầu vào)')
+                  : t('identity guardrail enforcements · held identically across all 3 runs', 'các thực thi rào chắn danh tính · giữ nguyên y hệt trong cả 3 lần chạy')}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -2620,7 +2636,7 @@ function ConsistencyReportView({ report, triple }: {
                     </span>
                     <span style={{ color: isAlarm ? '#FFFFFF' : '#E5D4C2', fontWeight: 500 }}>{r.preference}</span>
                     <span style={{ ...metaText, color: isAlarm ? '#FFFFFF' : '#B2AA98' }}>
-                      — {identityRowMessage(r)}
+                      — {identityRowMessage(r, t)}
                     </span>
                   </div>
                 )
@@ -2634,12 +2650,12 @@ function ConsistencyReportView({ report, triple }: {
           <div style={subBand(permanenceDrifted ? 'amber' : 'calm')}>
             <div style={subBandHeader}>
               <span style={{ ...miniLabel, color: permanenceDrifted ? '#D4B85A' : '#7AB07A' }}>
-                PERMANENCE LOCKS
+                {t('PERMANENCE LOCKS', 'KHÓA VĨNH VIỄN')}
               </span>
               <span style={metaText}>
                 {permanenceDrifted
-                  ? `model identity-level judgments · classification toggled on ${permanenceRows.filter(r => r.permanenceShape === 'classification_toggled').length} row${permanenceRows.filter(r => r.permanenceShape === 'classification_toggled').length === 1 ? '' : 's'} — judgment-level variance (not safety)`
-                  : 'model identity-level judgments · held identically across all 3 runs'}
+                  ? `${t('model identity-level judgments · classification toggled on', 'đánh giá cấp danh tính của mô hình · phân loại đảo chiều ở')} ${permanenceRows.filter(r => r.permanenceShape === 'classification_toggled').length} ${t('row', 'dòng')}${permanenceRows.filter(r => r.permanenceShape === 'classification_toggled').length === 1 ? '' : t('s', '')} ${t('— judgment-level variance (not safety)', '— biến thiên mức đánh giá (không phải an toàn)')}`
+                  : t('model identity-level judgments · held identically across all 3 runs', 'đánh giá cấp danh tính của mô hình · giữ nguyên y hệt trong cả 3 lần chạy')}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -2651,7 +2667,7 @@ function ConsistencyReportView({ report, triple }: {
                       {drifted ? 'Δ' : '✓'}
                     </span>
                     <span style={{ color: '#E5D4C2', fontWeight: 500 }}>{r.preference}</span>
-                    <span style={metaText}>— {permanenceRowMessage(r)}</span>
+                    <span style={metaText}>— {permanenceRowMessage(r, t)}</span>
                   </div>
                 )
               })}
@@ -2663,23 +2679,23 @@ function ConsistencyReportView({ report, triple }: {
       {/* ── 3. RUN-COMPARISON MATRIX ── */}
       <div style={{ ...stagger(2) }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
-          <span style={miniLabel}>RUN COMPARISON</span>
-          <span style={metaText}>· preferences down · runs across · each cell shows S₀ / C / λ</span>
+          <span style={miniLabel}>{t('RUN COMPARISON', 'SO SÁNH LẦN CHẠY')}</span>
+          <span style={metaText}>{t('· preferences down · runs across · each cell shows S₀ / C / λ', '· sở thích theo hàng dọc · lần chạy theo hàng ngang · mỗi ô hiển thị S₀ / C / λ')}</span>
         </div>
         <MatrixLegend />
         <div style={matrixWrap}>
           <div style={matrixHeader}>
-            <div style={matrixHeaderCellPref}>preference</div>
+            <div style={matrixHeaderCellPref}>{t('preference', 'sở thích')}</div>
             {[1, 2, 3].map(i => (
               <div key={i} style={matrixHeaderCellRun}>
-                Run {i}
+                {t('Run', 'Lần chạy')} {i}
                 <span style={{ ...metaText, marginLeft: 4 }}>({triple[i - 1].preferences.length})</span>
               </div>
             ))}
           </div>
           {lockedRows.length === 0 && nonLockedRows.length === 0 && (
             <div style={{ ...metaText, padding: 16, textAlign: 'center' }}>
-              No preferences classified by the analyser.
+              {t('No preferences classified by the analyser.', 'Trình phân tích chưa phân loại sở thích nào.')}
             </div>
           )}
           {[...lockedRows, ...nonLockedRows].map(row => (
@@ -2692,10 +2708,10 @@ function ConsistencyReportView({ report, triple }: {
       <div style={{ ...stagger(3) }}>
         {(report.invariants.length > 0 || report.variances.length > 0) && (
           <div style={{ marginTop: 18 }}>
-            <div style={{ ...miniLabel, marginBottom: 10 }}>FINDINGS</div>
+            <div style={{ ...miniLabel, marginBottom: 10 }}>{t('FINDINGS', 'PHÁT HIỆN')}</div>
             {report.invariants.length > 0 && (
               <div style={{ marginBottom: 10 }}>
-                <div style={{ ...miniLabelInner, color: '#7AB07A' }}>HELD</div>
+                <div style={{ ...miniLabelInner, color: '#7AB07A' }}>{t('HELD', 'GIỮ NGUYÊN')}</div>
                 <ul style={findingsList}>
                   {report.invariants.map((inv, i) => (
                     <li key={i} style={findingItem}>
@@ -2709,7 +2725,7 @@ function ConsistencyReportView({ report, triple }: {
             )}
             {report.variances.length > 0 && (
               <div>
-                <div style={{ ...miniLabelInner, color: '#D4B85A' }}>DIFFERED</div>
+                <div style={{ ...miniLabelInner, color: '#D4B85A' }}>{t('DIFFERED', 'KHÁC BIỆT')}</div>
                 <ul style={findingsList}>
                   {report.variances.map((v, i) => (
                     <li key={i} style={findingItem}>
@@ -2726,7 +2742,7 @@ function ConsistencyReportView({ report, triple }: {
 
         {report.synthesis && (
           <div style={synthesisBlock}>
-            <div style={{ ...miniLabel, marginBottom: 10 }}>SYNTHESIS</div>
+            <div style={{ ...miniLabel, marginBottom: 10 }}>{t('SYNTHESIS', 'TỔNG HỢP')}</div>
             <p style={synthesisProse}>{report.synthesis}</p>
           </div>
         )}
@@ -2734,8 +2750,7 @@ function ConsistencyReportView({ report, triple }: {
 
       {/* ── 5. FOOTER ── */}
       <div style={{ ...reportFooter, ...stagger(4) }}>
-        Analysis compares the three captured runs in this session. Nothing is saved.
-        Verdict is reproducible across re-runs; classification of borderline items may rephrase.
+        {t('Analysis compares the three captured runs in this session. Nothing is saved. Verdict is reproducible across re-runs; classification of borderline items may rephrase.', 'Phân tích so sánh ba lần chạy đã ghi lại trong phiên này. Không có gì được lưu. Kết luận có thể tái lập qua các lần chạy lại; cách phân loại các mục ở ranh giới có thể được diễn đạt lại.')}
       </div>
     </div>
   )
@@ -2746,11 +2761,12 @@ function VerdictReading({ tone, headline, verdict }: {
   headline: string
   verdict: ConsistencyReport['verdict']
 }) {
+  const { t } = useLang()
   if (tone === 'safety') {
     return (
       <div style={verdictBarSafety}>
         <div style={{ ...miniLabel, color: '#FFFFFF', marginBottom: 6, letterSpacing: '0.18em' }}>
-          ⛔ SAFETY INCONSISTENCY
+          {t('⛔ SAFETY INCONSISTENCY', '⛔ KHÔNG NHẤT QUÁN VỀ AN TOÀN')}
         </div>
         <div style={{
           fontFamily: "'Rampant Sans', serif", fontSize: 19, fontWeight: 500,
@@ -2763,8 +2779,7 @@ function VerdictReading({ tone, headline, verdict }: {
           fontFamily: "'Google Sans Code', monospace", fontSize: 11,
           color: '#FFFFFF', opacity: 0.92, letterSpacing: '0.04em',
         }}>
-          The medical and identity guardrails are enforced in code and cannot vary for the same input.
-          This indicates a code defect — investigate immediately.
+          {t('The medical and identity guardrails are enforced in code and cannot vary for the same input. This indicates a code defect — investigate immediately.', 'Các rào chắn y tế và danh tính được thực thi trong mã và không thể thay đổi với cùng một đầu vào. Điều này cho thấy một lỗi mã — hãy điều tra ngay lập tức.')}
         </div>
       </div>
     )
@@ -2773,7 +2788,7 @@ function VerdictReading({ tone, headline, verdict }: {
     return (
       <div style={verdictBarAmber}>
         <div style={{ ...miniLabel, color: '#D4B85A', marginBottom: 4 }}>
-          JUDGMENT VARIANCE
+          {t('JUDGMENT VARIANCE', 'BIẾN THIÊN ĐÁNH GIÁ')}
         </div>
         <div style={{
           fontFamily: "'Rampant Sans', serif", fontSize: 17, fontWeight: 500,
@@ -2788,7 +2803,7 @@ function VerdictReading({ tone, headline, verdict }: {
   return (
     <div style={verdictBarStable}>
       <div style={{ ...miniLabel, color: '#7AB07A', marginBottom: 4 }}>
-        JUDGMENT STABLE
+        {t('JUDGMENT STABLE', 'ĐÁNH GIÁ ỔN ĐỊNH')}
       </div>
       <div style={{
         fontFamily: "'Rampant Sans', serif", fontSize: 17, fontWeight: 500,
@@ -2802,29 +2817,31 @@ function VerdictReading({ tone, headline, verdict }: {
 }
 
 function MatrixLegend() {
+  const { t } = useLang()
   return (
     <div style={matrixLegend}>
       <span style={legendItem}>
         <span style={legendMarker('#7AB07A', 'solid')} />
-        held identically
+        {t('held identically', 'giữ nguyên y hệt')}
       </span>
       <span style={legendItem}>
         <span style={legendMarker('#D4B85A', 'solid')} />
-        moved factor (Δ)
+        {t('moved factor (Δ)', 'yếu tố thay đổi (Δ)')}
       </span>
       <span style={legendItem}>
         <span style={legendMarker('#B2AA98', 'dashed')} />
-        granularity gap
+        {t('granularity gap', 'khoảng trống độ chi tiết')}
       </span>
       <span style={legendItem}>
         <span style={legendMarker('#E58F4A', 'dashed')} />
-        matcher miss — alignment failure
+        {t('matcher miss — alignment failure', 'khớp hụt — không căn được')}
       </span>
     </div>
   )
 }
 
 function MatrixRow({ row }: { row: MatrixRowData }) {
+  const { t } = useLang()
   const [expanded, setExpanded] = useState(false)
   const hasDrift = row.driftedFactors.size > 0
   const hasMatcherMiss = row.cells.some(c => c.kind === 'matcher_miss')
@@ -2844,7 +2861,7 @@ function MatrixRow({ row }: { row: MatrixRowData }) {
       <div
         style={matrixRowStyle(tone)}
         onClick={() => rowDriftsOrGaps && setExpanded(e => !e)}
-        title={rowDriftsOrGaps ? 'click to expand' : ''}
+        title={rowDriftsOrGaps ? t('click to expand', 'nhấp để mở rộng') : ''}
       >
         <div style={matrixRowPrefCell}>
           {hasDrift && <span style={{ color: '#D4B85A', marginRight: 6 }}>Δ</span>}
@@ -2869,7 +2886,7 @@ function MatrixRow({ row }: { row: MatrixRowData }) {
           <div style={drilldownGrid}>
             {row.cells.map((cell, i) => (
               <div key={i} style={drilldownCol}>
-                <div style={{ ...miniLabel, marginBottom: 6 }}>Run {i + 1}</div>
+                <div style={{ ...miniLabel, marginBottom: 6 }}>{t('Run', 'Lần chạy')} {i + 1}</div>
                 {cell.kind === 'present' ? (
                   <>
                     <div style={drilldownFactors}>
@@ -2892,18 +2909,18 @@ function MatrixRow({ row }: { row: MatrixRowData }) {
                     </div>
                     {rationaleSummary(cell.pref.rationale) && (
                       <div style={drilldownRationale}>
-                        <span style={{ color: '#7E7864' }}>rationale: </span>
+                        <span style={{ color: '#7E7864' }}>{t('rationale: ', 'lý giải: ')}</span>
                         {rationaleSummary(cell.pref.rationale)}
                       </div>
                     )}
                   </>
                 ) : cell.kind === 'granularity_gap' ? (
                   <div style={drilldownAbsence('granularity')}>
-                    <strong>absent</strong> — split/merged differently in this run (cosmetic, expected)
+                    <strong>{t('absent', 'vắng mặt')}</strong> {t('— split/merged differently in this run (cosmetic, expected)', '— được tách/gộp khác đi trong lần chạy này (hình thức, dự kiến)')}
                   </div>
                 ) : (
                   <div style={drilldownAbsence('matcher')}>
-                    <strong>unmatched</strong> — analyser said this preference should be present here, but the UI couldn't confidently align a row by name. Not a system finding; a UI matcher limitation.
+                    <strong>{t('unmatched', 'không khớp')}</strong> {t("— analyser said this preference should be present here, but the UI couldn't confidently align a row by name. Not a system finding; a UI matcher limitation.", '— trình phân tích nói sở thích này lẽ ra phải có ở đây, nhưng giao diện không thể căn một dòng theo tên một cách chắc chắn. Không phải phát hiện của hệ thống; là giới hạn của bộ khớp giao diện.')}
                   </div>
                 )}
               </div>
@@ -2919,9 +2936,10 @@ function MatrixCellView({ cell, deviance }: {
   cell: MatrixCell
   deviance: { s0?: boolean; c?: boolean; lambda?: boolean; f?: boolean }
 }) {
+  const { t } = useLang()
   if (cell.kind === 'granularity_gap') {
     return (
-      <div style={matrixCellGap} title="absent — split/merged differently across runs (granularity)">
+      <div style={matrixCellGap} title={t('absent — split/merged differently across runs (granularity)', 'vắng mặt — được tách/gộp khác đi giữa các lần chạy (độ chi tiết)')}>
         <span style={{ color: '#7E7864', letterSpacing: '0.4em' }}>· · ·</span>
       </div>
     )
@@ -2930,9 +2948,9 @@ function MatrixCellView({ cell, deviance }: {
     return (
       <div
         style={matrixCellMatcherMiss}
-        title="alignment failure — analyser said this preference should be present in this run, but the UI couldn't confidently match a row by name. Not a system inconsistency; a matcher limitation."
+        title={t("alignment failure — analyser said this preference should be present in this run, but the UI couldn't confidently match a row by name. Not a system inconsistency; a matcher limitation.", 'lỗi căn chỉnh — trình phân tích nói sở thích này lẽ ra phải có trong lần chạy này, nhưng giao diện không thể khớp một dòng theo tên một cách chắc chắn. Không phải sự không nhất quán của hệ thống; là giới hạn của bộ khớp.')}
       >
-        <span style={{ color: '#E58F4A' }}>unmatched</span>
+        <span style={{ color: '#E58F4A' }}>{t('unmatched', 'không khớp')}</span>
       </div>
     )
   }
@@ -2959,6 +2977,7 @@ function BreadthTable({
   members: MemberSummary[]
   onPick: (memberNo: string, prefId: string) => void
 }) {
+  const { t } = useLang()
   const statByMember = useMemo(() => {
     const m = new Map<string, MemberSummary>()
     for (const x of members) m.set(x.member_no, x)
@@ -3006,7 +3025,7 @@ function BreadthTable({
       <div style={breadthControls}>
         <input
           type="text"
-          placeholder="Filter by name, category, member, or origin…"
+          placeholder={t('Filter by name, category, member, or origin…', 'Lọc theo tên, danh mục, hội viên, hoặc nguồn gốc…')}
           value={filterText}
           onChange={e => setFilterText(e.target.value)}
           style={breadthFilter}
@@ -3018,7 +3037,7 @@ function BreadthTable({
               onClick={() => setSortBy(key)}
               style={sortBy === key ? sortChipActive : sortChip}
             >
-              {key}
+              {key === 'category' ? t('category', 'danh mục') : key === 'days' ? t('days', 'ngày') : key === 'origin' ? t('origin', 'nguồn') : key}
             </button>
           ))}
         </div>
@@ -3027,13 +3046,13 @@ function BreadthTable({
         <table style={breadthTable}>
           <thead>
             <tr>
-              <th style={thLeft}>Preference</th>
-              <th style={th}>Member</th>
-              <th style={th}>Category</th>
+              <th style={thLeft}>{t('Preference', 'Sở thích')}</th>
+              <th style={th}>{t('Member', 'Hội viên')}</th>
+              <th style={th}>{t('Category', 'Danh mục')}</th>
               <th style={thNum}>λ</th>
-              <th style={thNum}>days</th>
+              <th style={thNum}>{t('days', 'ngày')}</th>
               <th style={thNum}>PS(t)</th>
-              <th style={th}>origin</th>
+              <th style={th}>{t('origin', 'nguồn')}</th>
             </tr>
           </thead>
           <tbody>
@@ -3041,7 +3060,7 @@ function BreadthTable({
               <tr key={r.preference_id} onClick={() => onPick(r.member_no, r.preference_id)} style={tr}>
                 <td style={tdLeft}>
                   {r.preference_name}
-                  {r.needsRevalidation && <span style={{ color: '#C27070', marginLeft: 6 }}>·flag</span>}
+                  {r.needsRevalidation && <span style={{ color: '#C27070', marginLeft: 6 }}>{t('·flag', '·cờ')}</span>}
                 </td>
                 <td style={td}>{r.member_name}</td>
                 <td style={td}>{r.category}</td>
@@ -3053,14 +3072,14 @@ function BreadthTable({
                   </span>
                 </td>
                 <td style={td}>
-                  <span style={originPill(r.lambda_origin || '(null)')}>{(r.lambda_origin || 'none').replace(/_/g, ' ')}</span>
+                  <span style={originPill(r.lambda_origin || '(null)')}>{(r.lambda_origin || t('none', 'không')).replace(/_/g, ' ')}</span>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <div style={metaText}>{rows.length} row{rows.length === 1 ? '' : 's'} · click any row to focus the decomposition above.</div>
+      <div style={metaText}>{rows.length} {t('row', 'dòng')}{rows.length === 1 ? '' : t('s', '')} · {t('click any row to focus the decomposition above.', 'nhấp bất kỳ dòng nào để tập trung phân rã ở trên.')}</div>
     </>
   )
 }

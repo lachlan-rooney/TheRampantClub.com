@@ -341,6 +341,7 @@ function AttentionCol({ title, accent, items, empty, renderMeta, tail }: {
 }
 
 function ProspectCard({ p, onChange }: { p: Prospect; onChange: () => void }) {
+  const { t } = useLang()
   const [hover, setHover] = useState(false)
   const [busy, setBusy] = useState(false)
   const [confirmArchive, setConfirmArchive] = useState(false)
@@ -396,22 +397,22 @@ function ProspectCard({ p, onChange }: { p: Prospect; onChange: () => void }) {
         {hover && (
           <div style={quickActions}>
             {nextStage && (
-              <button onClick={moveNext} title={`Move to ${nextStage}`} style={quickBtn}>→</button>
+              <button onClick={moveNext} title={`${t('Move to', 'Chuyển đến')} ${nextStage}`} style={quickBtn}>→</button>
             )}
             <button
               onClick={toggleLetter}
-              title={p.letter_sent ? 'Mark letter not-sent' : 'Mark letter sent'}
+              title={p.letter_sent ? t('Mark letter not-sent', 'Đánh dấu thư chưa gửi') : t('Mark letter sent', 'Đánh dấu thư đã gửi')}
               style={{ ...quickBtn, color: p.letter_sent ? '#D4B85A' : '#B2AA98' }}
             >
               ✉
             </button>
-            <button onClick={archive} title="Archive prospect" style={{ ...quickBtn, color: '#C27070' }}>×</button>
+            <button onClick={archive} title={t('Archive prospect', 'Lưu trữ ứng viên')} style={{ ...quickBtn, color: '#C27070' }}>×</button>
           </div>
         )}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 }}>
           <div style={cardName}>{p.full_name}</div>
-          {p.letter_sent && !hover && <span style={letterDot} title="Letter sent">✉</span>}
+          {p.letter_sent && !hover && <span style={letterDot} title={t('Letter sent', 'Thư đã gửi')}>✉</span>}
         </div>
         {p.nickname && <div style={cardSub}>{p.nickname}</div>}
 
@@ -448,11 +449,11 @@ function ProspectCard({ p, onChange }: { p: Prospect; onChange: () => void }) {
 
     <ConfirmModal
       open={confirmArchive}
-      eyebrow="⚠ ARCHIVE PROSPECT"
-      title="Archive this prospect?"
+      eyebrow={t('⚠ ARCHIVE PROSPECT', '⚠ LƯU TRỮ ỨNG VIÊN')}
+      title={t('Archive this prospect?', 'Lưu trữ ứng viên này?')}
       subject={p.full_name}
-      body="Hides the prospect from the pipeline. The record and its full activity trail are preserved for audit."
-      confirmLabel="Archive prospect"
+      body={t('Hides the prospect from the pipeline. The record and its full activity trail are preserved for audit.', 'Ẩn ứng viên khỏi quy trình. Hồ sơ và toàn bộ lịch sử hoạt động được lưu giữ để đối chiếu.')}
+      confirmLabel={t('Archive prospect', 'Lưu trữ ứng viên')}
       onCancel={() => setConfirmArchive(false)}
       onConfirm={runArchive}
     />

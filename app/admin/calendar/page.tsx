@@ -51,7 +51,16 @@ interface CalendarEntry {
 
 const SPACES = ['Library Bar', 'The Studio', 'The Dining Room', 'The Rampant Room', 'Source & Origin Lab', 'Sports Club']
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const KIND_LABEL: Record<string, string> = { closure: 'Closure', private_hire: 'Private hire', supplier: 'Supplier visit', tasting: 'Tasting', other: 'House' }
+function kindLabel(kind: string, t: (en: string, vi: string) => string): string {
+  switch (kind) {
+    case 'closure': return t('Closure', 'Đóng cửa')
+    case 'private_hire': return t('Private hire', 'Thuê riêng')
+    case 'supplier': return t('Supplier visit', 'Nhà cung cấp ghé')
+    case 'tasting': return t('Tasting', 'Nếm thử')
+    case 'other': return t('House', 'Nội bộ')
+    default: return t('House', 'Nội bộ')
+  }
+}
 
 function startOfWeek(d: Date): Date {
   const day = d.getDay()  // 0=Sun
@@ -218,25 +227,25 @@ export default function CalendarPage() {
                         onMouseLeave={() => setHoveredEntry(h => h === e.id ? null : h)}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
-                          <span style={houseTime}>{fmtEntryTime(e)}</span>
+                          <span style={houseTime}>{fmtEntryTime(e, t)}</span>
                           {e.visibility === 'staff'
                             ? <span style={staffBadge}>{t('STAFF ONLY', 'CHỈ NHÂN VIÊN')}</span>
                             : <span style={memberBadge}>{t('MEMBER', 'HỘI VIÊN')}</span>}
                         </div>
                         <div style={houseTitle}>{e.title}</div>
                         <div style={houseMeta}>
-                          {KIND_LABEL[e.kind] || t('House', 'Nội bộ')}{e.space ? ` · ${e.space}` : ''}
-                          {e.space && e.blocks_space && (e.tables && e.tables.length > 0 ? ` · ${e.tables.join(', ')}` : ' · closed')}
+                          {kindLabel(e.kind, t)}{e.space ? ` · ${e.space}` : ''}
+                          {e.space && e.blocks_space && (e.tables && e.tables.length > 0 ? ` · ${e.tables.join(', ')}` : ` · ${t('closed', 'đóng cửa')}`)}
                         </div>
                         {e.description && <div style={bookingNotes}>{e.description}</div>}
 
                         {hoveredEntry === e.id && (
                           <div style={tooltip} onMouseEnter={() => setHoveredEntry(e.id)}>
                             <div style={tipMember}>{e.title}</div>
-                            <div style={tipMeta}>{KIND_LABEL[e.kind] || t('House', 'Nội bộ')} · {e.visibility === 'staff' ? t('Staff-only', 'Chỉ nhân viên') : t('Member-visible', 'Hội viên thấy được')}</div>
+                            <div style={tipMeta}>{kindLabel(e.kind, t)} · {e.visibility === 'staff' ? t('Staff-only', 'Chỉ nhân viên') : t('Member-visible', 'Hội viên thấy được')}</div>
                             <div style={tipRow}>
-                              {fmtEntryTime(e)}{e.space ? ` · ${e.space}` : ''}
-                              {e.space && e.blocks_space && (e.tables && e.tables.length > 0 ? ` · ${e.tables.join(', ')}` : ' · room closed')}
+                              {fmtEntryTime(e, t)}{e.space ? ` · ${e.space}` : ''}
+                              {e.space && e.blocks_space && (e.tables && e.tables.length > 0 ? ` · ${e.tables.join(', ')}` : ` · ${t('room closed', 'phòng đóng cửa')}`)}
                             </div>
                             <div style={tipNotesLabel}>{t('Details', 'Chi tiết')}</div>
                             <div style={tipNotesBox}>{e.description && e.description.trim() ? e.description : t('No description on this entry.', 'Không có mô tả cho mục này.')}</div>
@@ -342,13 +351,13 @@ export default function CalendarPage() {
   )
 }
 
-function fmtEntryTime(e: CalendarEntry): string {
+function fmtEntryTime(e: CalendarEntry, t: (en: string, vi: string) => string): string {
   if (e.start_time) {
-    const t = e.start_time.slice(0, 5)
-    return e.end_time ? `${t}–${e.end_time.slice(0, 5)}` : t
+    const time = e.start_time.slice(0, 5)
+    return e.end_time ? `${time}–${e.end_time.slice(0, 5)}` : time
   }
   if (e.session_label) return e.session_label
-  return 'All day'
+  return t('All day', 'Cả ngày')
 }
 
 function fmtTime(b: Booking): string {

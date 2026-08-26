@@ -313,7 +313,7 @@ export default function ChecklistsPage() {
             <SheetBlock
               sheet={opening}
               summary={openingS}
-              kindLabel={OPENING_LABEL}
+              kindLabel={t(OPENING_LABEL, 'Mở cửa · câu lạc bộ sẵn sàng mở cửa')}
               kindColor="#D4B85A"
               busy={busy === 'opening'}
               onToggle={(id) => toggleItem(opening, id)}
@@ -326,7 +326,7 @@ export default function ChecklistsPage() {
             <SheetBlock
               sheet={closing}
               summary={closingS}
-              kindLabel={CLOSING_LABEL}
+              kindLabel={t(CLOSING_LABEL, 'Đóng cửa · ca đã đóng, đã ghi bàn giao')}
               kindColor="#7AB07A"
               busy={busy === 'closing'}
               onToggle={(id) => toggleItem(closing, id)}
@@ -444,6 +444,7 @@ function DetailSheet({ sheet, kindLabel, kindColor }: {
   kindLabel: string
   kindColor: string
 }) {
+  const { t } = useLang()
   const grouped = useMemo(() => {
     const byZone = new Map<string, SheetItemState[]>()
     for (const it of sheet.items) {
@@ -480,23 +481,23 @@ function DetailSheet({ sheet, kindLabel, kindColor }: {
         <div style={detailSealLine}>
           {sealed ? (
             <>
-              <strong style={{ color: kindColor }}>✓ Signed off by {sheet.submitted_by}</strong>
+              <strong style={{ color: kindColor }}>✓ {t('Signed off by', 'Ký duyệt bởi')} {sheet.submitted_by}</strong>
               <span style={{ color: '#7E7864', marginLeft: 8 }}>· {fmtTimestamp(sheet.submitted_at)}</span>
             </>
           ) : (
-            <span style={{ color: '#E58F4A' }}>○ In progress — not yet sealed ({ticked}/{total} ticked)</span>
+            <span style={{ color: '#E58F4A' }}>○ {t('In progress — not yet sealed', 'Đang thực hiện — chưa niêm phong')} ({ticked}/{total} {t('ticked', 'đã đánh dấu')})</span>
           )}
         </div>
         {isClosing && sealed && (
           <div style={detailAckLine}>
             {ackAt ? (
               <>
-                <strong style={{ color: '#7AB07A' }}>✓ Handover read by {ackBy || 'unknown'}</strong>
+                <strong style={{ color: '#7AB07A' }}>✓ {t('Handover read by', 'Bàn giao được đọc bởi')} {ackBy || t('unknown', 'không rõ')}</strong>
                 <span style={{ color: '#7E7864', marginLeft: 8 }}>· {fmtTimestamp(ackAt)}</span>
               </>
             ) : (
               <span style={{ color: '#B2AA98', fontStyle: 'italic' }}>
-                ○ Awaiting handover-acknowledgement — opening team will tick this on MX Daily.
+                ○ {t('Awaiting handover-acknowledgement — opening team will tick this on MX Daily.', 'Đang chờ xác nhận bàn giao — đội mở cửa sẽ đánh dấu mục này trên MX Daily.')}
               </span>
             )}
           </div>
@@ -527,7 +528,7 @@ function DetailSheet({ sheet, kindLabel, kindColor }: {
                       <div style={detailItemValue} data-print-value>{value}</div>
                     )}
                     {it.checked && it.name && (
-                      <div style={itemMeta}>Ticked by {it.name} · {fmtTimestamp(it.ts ?? null)}</div>
+                      <div style={itemMeta}>{t('Ticked by', 'Đánh dấu bởi')} {it.name} · {fmtTimestamp(it.ts ?? null)}</div>
                     )}
                   </div>
                 </div>
@@ -552,6 +553,7 @@ function SheetBlock({ sheet, summary, kindLabel, kindColor, busy, onToggle, onTe
   onTextBlur: () => void
   onSubmit: () => void
 }) {
+  const { t } = useLang()
   const locked = !!sheet.submitted_at
 
   // Group items by zone, preserving zone order via the lowest sort_order
@@ -580,23 +582,23 @@ function SheetBlock({ sheet, summary, kindLabel, kindColor, busy, onToggle, onTe
         <div>
           <div style={{ ...sheetEyebrow, color: kindColor }}>{kindLabel}</div>
           <div style={sheetTitle}>
-            {summary.done}/{summary.total} required complete · {summary.pct}%
+            {summary.done}/{summary.total} {t('required complete', 'mục bắt buộc hoàn thành')} · {summary.pct}%
             {summary.missing > 0 && !locked && (
               <span style={{ color: '#E58F4A', fontSize: 12, marginLeft: 8, fontFamily: "'Google Sans Code', monospace" }}>
-                · {summary.missing} required item{summary.missing === 1 ? '' : 's'} pending
+                · {summary.missing} {t(`required item${summary.missing === 1 ? '' : 's'} pending`, 'mục bắt buộc chưa hoàn thành')}
               </span>
             )}
           </div>
         </div>
         {locked ? (
           <div style={{ ...lockedBadge, color: kindColor, borderColor: kindColor + '60' }}>
-            ✓ Signed off by {sheet.submitted_by} · {fmtTimestamp(sheet.submitted_at!)}
+            ✓ {t('Signed off by', 'Ký duyệt bởi')} {sheet.submitted_by} · {fmtTimestamp(sheet.submitted_at!)}
           </div>
         ) : (
           <button
             onClick={onSubmit}
             disabled={sealDisabled}
-            title={!summary.sealable ? 'Complete all required items first' : 'Lock and sign this sheet'}
+            title={!summary.sealable ? t('Complete all required items first', 'Hoàn thành tất cả mục bắt buộc trước') : t('Lock and sign this sheet', 'Khoá và ký phiếu này')}
             style={{
               ...btnSign,
               background: kindColor + '18', color: kindColor, borderColor: kindColor + '40',
@@ -604,7 +606,7 @@ function SheetBlock({ sheet, summary, kindLabel, kindColor, busy, onToggle, onTe
               cursor: sealDisabled ? 'not-allowed' : 'pointer',
             }}
           >
-            Lock &amp; sign
+            {t('Lock', 'Khoá')} &amp; {t('sign', 'ký')}
           </button>
         )}
       </div>
@@ -651,6 +653,7 @@ function CheckboxItem({ item, locked, kindColor, onToggle }: {
   kindColor: string
   onToggle: () => void
 }) {
+  const { t } = useLang()
   return (
     <div style={{ ...itemRow, ...(item.checked ? { background: kindColor + '08' } : null), ...(locked ? { opacity: 0.7 } : null) }}>
       <input
@@ -663,11 +666,11 @@ function CheckboxItem({ item, locked, kindColor, onToggle }: {
       <div style={{ flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ ...itemLabel, ...(item.checked ? { color: '#E5D4C2' } : null) }}>{item.label_en || item.label}</span>
-          {item.required && <span style={requiredPill} title="Required for sealing">required</span>}
+          {item.required && <span style={requiredPill} title={t('Required for sealing', 'Bắt buộc để niêm phong')}>{t('required', 'bắt buộc')}</span>}
         </div>
         {item.label_vn && <div style={itemLabelVn}>{item.label_vn}</div>}
         {item.checked && (
-          <div style={itemMeta}>Ticked by {item.name || 'unknown'} · {fmtTimestamp(item.ts ?? null)}</div>
+          <div style={itemMeta}>{t('Ticked by', 'Đánh dấu bởi')} {item.name || t('unknown', 'không rõ')} · {fmtTimestamp(item.ts ?? null)}</div>
         )}
       </div>
     </div>
@@ -682,14 +685,15 @@ function TextItem({ item, value, locked, kindColor, onChange, onBlur }: {
   onChange: (v: string) => void
   onBlur: () => void
 }) {
+  const { t } = useLang()
   const isHandover = item.id === CLOSING_HANDOVER_ITEM_ID
   const filled = value.trim().length > 0
   return (
     <div style={{ ...itemRow, ...(filled ? { background: kindColor + '08' } : null), flexDirection: 'column', alignItems: 'stretch', ...(locked ? { opacity: 0.85 } : null) }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
         <span style={{ ...itemLabel, color: '#E5D4C2' }}>{item.label_en || item.label}</span>
-        {item.required && <span style={requiredPill} title="Required for sealing">required</span>}
-        {filled && !locked && <span style={filledChip(kindColor)}>✓ filled</span>}
+        {item.required && <span style={requiredPill} title={t('Required for sealing', 'Bắt buộc để niêm phong')}>{t('required', 'bắt buộc')}</span>}
+        {filled && !locked && <span style={filledChip(kindColor)}>✓ {t('filled', 'đã điền')}</span>}
       </div>
       {item.label_vn && <div style={{ ...itemLabelVn, marginBottom: 6 }}>{item.label_vn}</div>}
       <textarea
@@ -697,7 +701,7 @@ function TextItem({ item, value, locked, kindColor, onChange, onBlur }: {
         onChange={e => onChange(e.target.value)}
         onBlur={onBlur}
         disabled={locked}
-        placeholder={item.placeholder || (isHandover ? 'What does the next shift / MX need to know?' : '')}
+        placeholder={item.placeholder || (isHandover ? t('What does the next shift / MX need to know?', 'Ca sau / MX cần biết những gì?') : '')}
         rows={isHandover ? 4 : 2}
         style={{ ...inputStyle, resize: 'vertical', fontSize: 12 }}
       />

@@ -44,35 +44,35 @@ const fmt = (vnd: number) => new Intl.NumberFormat('en-US').format(vnd) + ' ₫'
 const vnToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 const fmtDate = (d: string | null) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
 
-const STATE_META: Record<RosterRow['state'], { label: string; color: string }> = {
-  paid:     { label: 'Paid',      color: '#7AB07A' },
-  due_soon: { label: 'Due soon',  color: '#D4B85A' },
-  grace:    { label: 'In grace',  color: '#C49555' },
-  overdue:  { label: 'Overdue',   color: '#B45656' },
-  never:    { label: 'No record', color: '#B2AA98' },
+const STATE_META: Record<RosterRow['state'], { label: string; vi: string; color: string }> = {
+  paid:     { label: 'Paid',      vi: 'Đã thanh toán',          color: '#7AB07A' },
+  due_soon: { label: 'Due soon',  vi: 'Sắp đến hạn',            color: '#D4B85A' },
+  grace:    { label: 'In grace',  vi: 'Trong thời gian gia hạn', color: '#C49555' },
+  overdue:  { label: 'Overdue',   vi: 'Quá hạn',                color: '#B45656' },
+  never:    { label: 'No record', vi: 'Chưa có hồ sơ',          color: '#B2AA98' },
 }
 const METHODS = [
-  { v: 'bank_transfer', l: 'Bank Transfer' },
-  { v: 'cash', l: 'Cash' },
-  { v: 'card_offline', l: 'Card' },
-  { v: 'other', l: 'Other' },
+  { v: 'bank_transfer', l: 'Bank Transfer', vi: 'Chuyển khoản ngân hàng' },
+  { v: 'cash', l: 'Cash', vi: 'Tiền mặt' },
+  { v: 'card_offline', l: 'Card', vi: 'Thẻ' },
+  { v: 'other', l: 'Other', vi: 'Khác' },
 ]
 const FEE_KINDS = [
-  { v: 'membership_fee', l: 'Annual Membership Fee' },
-  { v: 'renewal', l: 'Renewal' },
-  { v: 'honorary', l: 'Honorary / Complimentary — no charge' },
-  { v: 'joining_fee', l: 'Joining Fee (no period)' },
-  { v: 'proration', l: 'Pro-rata' },
+  { v: 'membership_fee', l: 'Annual Membership Fee', vi: 'Phí hội viên hàng năm' },
+  { v: 'renewal', l: 'Renewal', vi: 'Gia hạn' },
+  { v: 'honorary', l: 'Honorary / Complimentary — no charge', vi: 'Danh dự / Miễn phí — không tính phí' },
+  { v: 'joining_fee', l: 'Joining Fee (no period)', vi: 'Phí gia nhập (không có kỳ hạn)' },
+  { v: 'proration', l: 'Pro-rata', vi: 'Theo tỷ lệ' },
 ]
 
 // days_to_renewal → a short, staff-facing renewal string.
-function renewsIn(row: RosterRow): { text: string; color: string } {
+function renewsIn(row: RosterRow, t: (en: string, vi: string) => string): { text: string; color: string } {
   if (row.days_to_renewal == null) return { text: '—', color: '#7E7864' }
   const d = row.days_to_renewal
-  if (d < 0) return { text: `${Math.abs(d)}d overdue`, color: '#B45656' }
-  if (d === 0) return { text: 'today', color: '#C49555' }
+  if (d < 0) return { text: `${Math.abs(d)}${t('d overdue', ' ngày quá hạn')}`, color: '#B45656' }
+  if (d === 0) return { text: t('today', 'hôm nay'), color: '#C49555' }
   const color = d <= 30 ? '#D4B85A' : '#B2AA98'
-  return { text: `${d}d`, color }
+  return { text: `${d}${t('d', ' ngày')}`, color }
 }
 
 export default function AdminMembership() {
@@ -227,7 +227,7 @@ export default function AdminMembership() {
               if (v === 'honorary') { setAmount(''); setEmail('') }
               else if ((v === 'membership_fee' || v === 'renewal') && selected?.default_fee) setAmount(String(selected.default_fee))
             }}>
-              {FEE_KINDS.map(k => <option key={k.v} value={k.v}>{k.l}</option>)}
+              {FEE_KINDS.map(k => <option key={k.v} value={k.v}>{t(k.l, k.vi)}</option>)}
             </select>
           </div>
           <div>
@@ -244,7 +244,7 @@ export default function AdminMembership() {
           <div>
             <label style={label}>{t('Payment method', 'Phương thức thanh toán')}</label>
             <select style={{ ...input, opacity: honorary ? 0.5 : 1 }} value={method} disabled={honorary} onChange={e => setMethod(e.target.value)}>
-              {METHODS.map(m => <option key={m.v} value={m.v}>{m.l}</option>)}
+              {METHODS.map(m => <option key={m.v} value={m.v}>{t(m.l, m.vi)}</option>)}
             </select>
           </div>
           <div>
@@ -275,7 +275,7 @@ export default function AdminMembership() {
         {(['paid', 'due_soon', 'grace', 'overdue', 'never'] as const).map(s => (
           <div key={s} style={pill}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: STATE_META[s].color, display: 'inline-block' }} />
-            <span>{STATE_META[s].label}</span>
+            <span>{t(STATE_META[s].label, STATE_META[s].vi)}</span>
             <strong style={{ color: '#E5D4C2' }}>{counts[s]}</strong>
           </div>
         ))}
@@ -292,7 +292,7 @@ export default function AdminMembership() {
             <Stat label={t('Collected · all time', 'Đã thu · toàn thời gian')} value={fmt(summary.total)} sub={`${summary.count} ${t('receipt', 'biên nhận')}${summary.count === 1 ? '' : 's'}`} />
             <Stat label={`${t('Collected', 'Đã thu')} · ${summary.year}`} value={fmt(summary.year_total)} sub={`${summary.year_count} ${t('receipt', 'biên nhận')}${summary.year_count === 1 ? '' : 's'}`} />
             {Object.entries(summary.by_method).map(([m, v]) => (
-              <Stat key={m} label={METHODS.find(x => x.v === m)?.l || m} value={fmt(v.total)} sub={`${v.count} ${t('payment', 'thanh toán')}${v.count === 1 ? '' : 's'}`} />
+              <Stat key={m} label={((meth) => meth ? t(meth.l, meth.vi) : m)(METHODS.find(x => x.v === m))} value={fmt(v.total)} sub={`${v.count} ${t('payment', 'thanh toán')}${v.count === 1 ? '' : 's'}`} />
             ))}
             {summary.voided > 0 && <Stat label={t('Voided', 'Đã hủy')} value={String(summary.voided)} sub={t('counter-entries', 'bút toán đối ứng')} />}
           </div>
@@ -310,13 +310,13 @@ export default function AdminMembership() {
               </thead>
               <tbody>
                 {roster.map(m => {
-                  const r = renewsIn(m)
+                  const r = renewsIn(m, t)
                   return (
                   <tr key={m.member_no} style={{ borderTop: '1px solid rgba(229,212,194,0.06)' }}>
                     <td style={td}><span style={{ color: '#E5D4C2' }}>{m.full_name}</span><span style={{ color: '#7E7864' }}> · {m.member_no}</span></td>
                     <td style={td}>{m.tier || '—'}</td>
                     <td style={td}>
-                      <span style={{ color: STATE_META[m.state].color }}>● {STATE_META[m.state].label}</span>
+                      <span style={{ color: STATE_META[m.state].color }}>● {t(STATE_META[m.state].label, STATE_META[m.state].vi)}</span>
                       {m.complimentary && <span style={honTag}>{t('Honorary', 'Danh dự')}</span>}
                     </td>
                     <td style={{ ...td, color: '#E5D4C2' }}>{fmtDate(m.paid_through)}</td>
@@ -351,7 +351,7 @@ export default function AdminMembership() {
                       <td style={td}>{p.receipt_no}</td>
                       <td style={td}>{fmtDate(p.payment_date)}</td>
                       <td style={{ ...td, color: p.amount_vnd < 0 ? '#B45656' : '#E5D4C2' }}>{fmt(p.amount_vnd)}</td>
-                      <td style={td}>{METHODS.find(m => m.v === p.payment_method)?.l || p.payment_method}</td>
+                      <td style={td}>{((meth) => meth ? t(meth.l, meth.vi) : p.payment_method)(METHODS.find(m => m.v === p.payment_method))}</td>
                       <td style={td}>{p.status}</td>
                       <td style={{ ...td, textAlign: 'right' }}>
                         <span style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
@@ -379,7 +379,7 @@ export default function AdminMembership() {
           <div style={modal} role="dialog">
             <div style={{ ...eyebrow, color: '#D4B85A' }}>{honorary ? t('CONFIRM ACTIVATION', 'XÁC NHẬN KÍCH HOẠT') : t('CONFIRM PAYMENT', 'XÁC NHẬN THANH TOÁN')}</div>
             <div style={modalTitle}>{honorary ? `${t('Activate', 'Kích hoạt')} ${selected.full_name}?` : `${t('Record', 'Ghi nhận')} ${fmt(amountNum)}?`}</div>
-            <div style={modalSub}>{selected.full_name} ({selected.member_no}) · {FEE_KINDS.find(k => k.v === feeKind)?.l} · {fmtDate(date)}</div>
+            <div style={modalSub}>{selected.full_name} ({selected.member_no}) · {((fk) => fk ? t(fk.l, fk.vi) : '')(FEE_KINDS.find(k => k.v === feeKind))} · {fmtDate(date)}</div>
             <p style={modalBody}>
               {honorary
                 ? t('Starts a complimentary one-year membership from this date — no charge, no receipt, no email, and no renewal reminders. You’ll renew manually if appropriate.', 'Bắt đầu kỳ hội viên miễn phí một năm tính từ ngày này — không tính phí, không biên nhận, không email và không nhắc gia hạn. Bạn sẽ gia hạn thủ công nếu phù hợp.')

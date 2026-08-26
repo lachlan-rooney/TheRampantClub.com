@@ -405,6 +405,7 @@ function SubGrid({
   lowFillByLocker: Map<string, number>
   showLowFillOnly: boolean
 }) {
+  const { t } = useLang()
   // Search predicate: matches against member full name, nickname, OR
   // the locker number itself. Case-insensitive, substring match. Empty
   // query = no dimming. Status filter and search compose multiplicatively.
@@ -489,17 +490,17 @@ function SubGrid({
                 ...(isSearchHit ? { outline: '2px solid #D4B85A', outlineOffset: 1 } : {}),
                 position: 'relative',  // anchor the low-fill dot
               }}
-              title={`${l.locker_no} · ${l.member_name || 'unassigned'}${lowFillCount > 0 ? ` · ${lowFillCount} bottle${lowFillCount === 1 ? '' : 's'} ≤25%` : ''}`}
+              title={`${l.locker_no} · ${l.member_name || t('unassigned', 'chưa phân bổ')}${lowFillCount > 0 ? ` · ${lowFillCount} ${lowFillCount === 1 ? t('bottle', 'chai') : t('bottles', 'chai')} ≤25%` : ''}`}
             >
               {lowFillCount > 0 && (
-                <span style={lowFillDot} aria-label={`${lowFillCount} low-fill bottles`}>
+                <span style={lowFillDot} aria-label={`${lowFillCount} ${t('low-fill bottles', 'chai sắp hết')}`}>
                   {lowFillCount > 1 ? lowFillCount : ''}
                 </span>
               )}
               <div style={tileNo}>{l.locker_no}</div>
-              <div style={tileName}>{l.label || l.member_name || (l.status === 'reserved' ? 'Reserved' : l.status === 'retired' ? 'Retired' : '—')}</div>
+              <div style={tileName}>{l.label || l.member_name || (l.status === 'reserved' ? t('Reserved', 'Đã đặt trước') : l.status === 'retired' ? t('Retired', 'Ngừng dùng') : '—')}</div>
               <div style={tileMeta}>
-                {l.bottle_count > 0 ? `${l.bottle_count} btl` : ''}
+                {l.bottle_count > 0 ? `${l.bottle_count} ${t('btl', 'chai')}` : ''}
               </div>
               {l.bottle_count > 0 && (
                 <div style={tileFillTrack}>
@@ -937,7 +938,7 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
                             {new Date(a.created_at).toLocaleString('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                           </span>
                           <span style={activityChip(a.event_type)}>{a.event_type.replace(/_/g, ' ')}</span>
-                          <span style={activityDescription}>{describeActivity(a)}</span>
+                          <span style={activityDescription}>{describeActivity(a, t)}</span>
                           {a.changed_by_email && (
                             <span style={{ color: '#7E7864', fontSize: 9, marginLeft: 'auto' }}>{a.changed_by_email}</span>
                           )}
@@ -970,29 +971,29 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
 
 // Plain-English summary of an activity row — preferred over rendering
 // raw before/after JSON to non-technical staff.
-function describeActivity(a: ActivityRow): string {
+function describeActivity(a: ActivityRow, t: (en: string, vi: string) => string): string {
   const before = a.before_state || {}
   const after  = a.after_state  || {}
   const fmt = (v: unknown) => v == null || v === '' ? '—' : String(v)
   switch (a.event_type) {
     case 'assigned':
-      return `member set to ${fmt(after.member_no)}`
+      return `${t('member set to', 'phân bổ hội viên')} ${fmt(after.member_no)}`
     case 'unassigned':
-      return `member ${fmt(before.member_no)} removed`
+      return `${t('member', 'hội viên')} ${fmt(before.member_no)} ${t('removed', 'đã được gỡ')}`
     case 'status_changed':
-      return `status ${fmt(before.status)} → ${fmt(after.status)}`
+      return `${t('status', 'trạng thái')} ${fmt(before.status)} → ${fmt(after.status)}`
     case 'retired':
-      return `retired (was ${fmt(before.status)}${before.member_no ? `, member ${fmt(before.member_no)}` : ''})`
+      return `${t('retired (was', 'ngừng dùng (trước là')} ${fmt(before.status)}${before.member_no ? `, ${t('member', 'hội viên')} ${fmt(before.member_no)}` : ''})`
     case 'label_changed':
-      return `label ${fmt(before.label)} → ${fmt(after.label)}`
+      return `${t('label', 'nhãn')} ${fmt(before.label)} → ${fmt(after.label)}`
     case 'notes_changed':
-      return 'notes updated'
+      return t('notes updated', 'đã cập nhật ghi chú')
     case 'position_changed':
-      return `position (${fmt(before.position_row)},${fmt(before.position_col)}) → (${fmt(after.position_row)},${fmt(after.position_col)})`
+      return `${t('position', 'vị trí')} (${fmt(before.position_row)},${fmt(before.position_col)}) → (${fmt(after.position_row)},${fmt(after.position_col)})`
     default: {
       // Generic before/after dump for misc_patch.
       const changedKeys = Object.keys(after).join(', ')
-      return `changed: ${changedKeys || '(unknown)'}`
+      return `${t('changed:', 'đã thay đổi:')} ${changedKeys || t('(unknown)', '(không rõ)')}`
     }
   }
 }

@@ -28,6 +28,12 @@ const STATUS: Record<string, { label: string; color: string }> = {
   approved: { label: 'Approved', color: '#7AB07A' },
   sent: { label: 'Sent', color: '#5B8FA8' },
 }
+const STATUS_VI: Record<string, string> = {
+  draft: 'Bản nháp',
+  pending_approval: 'Chờ phê duyệt',
+  approved: 'Đã phê duyệt',
+  sent: 'Đã gửi',
+}
 
 export default function AdminReports() {
   const { t } = useLang()
@@ -81,7 +87,7 @@ export default function AdminReports() {
                   <tr key={r.id} style={{ borderTop: '1px solid rgba(229,212,194,0.06)' }}>
                     <td style={td}>{fmt(r.period_start)} – {fmt(r.period_end)}{r.include_financials ? <span style={finTag}>{t('+ financials', '+ tài chính')}</span> : ''}</td>
                     <td style={{ ...td, color: '#E5D4C2' }}>{r.headline || '—'}</td>
-                    <td style={td}><span style={{ color: s.color }}>● {s.label}</span></td>
+                    <td style={td}><span style={{ color: s.color }}>● {t(s.label, STATUS_VI[r.status] || STATUS_VI.draft)}</span></td>
                     <td style={td}>{r.token_view_count || 0}</td>
                     <td style={{ ...td, textAlign: 'right' }}><Link href={`/admin/reports/${r.id}`} style={btnGhost}>{t('Open', 'Mở')}</Link></td>
                   </tr>

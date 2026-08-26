@@ -420,6 +420,7 @@ function AddGiftForm({ members, onCancel, onSaved, initial }: {
   onSaved: () => void
   initial?: Gift | null
 }) {
+  const { t } = useLang()
   const today = vnDateString()
   const editMode = !!initial
   const [memberQuery, setMemberQuery] = useState('')
@@ -473,14 +474,14 @@ function AddGiftForm({ members, onCancel, onSaved, initial }: {
         body: JSON.stringify({ member_no: memberNo, filename: file.name }),
       })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'Could not get upload URL')
+      if (!r.ok) throw new Error(j.error || t('Could not get upload URL', 'Không lấy được đường dẫn tải lên'))
       const { error: upErr } = await sb.storage.from('gift-photos').uploadToSignedUrl(j.path, j.token, file)
       if (upErr) throw upErr
       // If a newer upload has started while we were in flight, drop this
       // result rather than overwriting the newer photo's path.
       if (myId === uploadIdRef.current) setPhotoPath(j.path)
     } catch (e) {
-      if (myId === uploadIdRef.current) setError(`Photo upload failed: ${(e as Error).message}`)
+      if (myId === uploadIdRef.current) setError(`${t('Photo upload failed', 'Tải ảnh lên thất bại')}: ${(e as Error).message}`)
     } finally {
       if (myId === uploadIdRef.current) setUploadingPhoto(false)
     }
@@ -494,9 +495,9 @@ function AddGiftForm({ members, onCancel, onSaved, initial }: {
   }, [photoFile, memberNo, photoPath, uploadingPhoto, uploadPhoto])
 
   const submit = async () => {
-    if (!memberNo) { setError('Pick a member.'); return }
-    if (!description.trim()) { setError('Description required.'); return }
-    if (!costVnd) { setError('Cost required.'); return }
+    if (!memberNo) { setError(t('Pick a member.', 'Hãy chọn một hội viên.')); return }
+    if (!description.trim()) { setError(t('Description required.', 'Cần nhập mô tả.')); return }
+    if (!costVnd) { setError(t('Cost required.', 'Cần nhập chi phí.')); return }
     setSubmitting(true); setError(null)
     try {
       const url    = editMode ? `/api/admin/gifts/${initial!.id}` : '/api/admin/gifts'
@@ -520,7 +521,7 @@ function AddGiftForm({ members, onCancel, onSaved, initial }: {
         body: JSON.stringify(body),
       })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'Save failed')
+      if (!r.ok) throw new Error(j.error || t('Save failed', 'Lưu thất bại'))
       onSaved()
     } catch (e) {
       setError((e as Error).message)
@@ -531,22 +532,22 @@ function AddGiftForm({ members, onCancel, onSaved, initial }: {
 
   return (
     <div style={addBlock}>
-      <div style={addHeader}>{editMode ? `Edit gift · ${initial?.gift_date}` : 'Log a gift'}</div>
+      <div style={addHeader}>{editMode ? `${t('Edit gift', 'Sửa quà tặng')} · ${initial?.gift_date}` : t('Log a gift', 'Ghi nhận quà tặng')}</div>
       {error && <div style={errorBox}>{error}</div>}
 
       <div style={fieldRow}>
-        <div style={editLabel}>Member *</div>
+        <div style={editLabel}>{t('Member *', 'Hội viên *')}</div>
         {selectedMember ? (
           <div style={selectedMemberRow}>
             <div>
               <strong>{selectedMember.full_name}</strong>
               <span style={{ marginLeft: 8, color: '#B2AA98', fontSize: 11 }}>{selectedMember.member_no} · {selectedMember.tier}</span>
             </div>
-            <button onClick={() => { setMemberNo(''); setMemberQuery('') }} style={tinyBtn}>Change</button>
+            <button onClick={() => { setMemberNo(''); setMemberQuery('') }} style={tinyBtn}>{t('Change', 'Đổi')}</button>
           </div>
         ) : (
           <>
-            <input value={memberQuery} onChange={e => setMemberQuery(e.target.value)} placeholder="Search…" style={inputStyle} />
+            <input value={memberQuery} onChange={e => setMemberQuery(e.target.value)} placeholder={t('Search…', 'Tìm kiếm…')} style={inputStyle} />
             <div style={memberList}>
               {filteredMembers.map(m => (
                 <button key={m.member_no} onClick={() => setMemberNo(m.member_no)} style={memberRow}>
@@ -561,63 +562,63 @@ function AddGiftForm({ members, onCancel, onSaved, initial }: {
 
       <div style={metaGrid}>
         <div>
-          <div style={editLabel}>Date *</div>
+          <div style={editLabel}>{t('Date *', 'Ngày *')}</div>
           <input type="date" value={giftDate} onChange={e => setGiftDate(e.target.value)} style={inputStyle} />
         </div>
         <div>
-          <div style={editLabel}>Occasion *</div>
+          <div style={editLabel}>{t('Occasion *', 'Dịp *')}</div>
           <select value={occasion} onChange={e => setOccasion(e.target.value as Occasion)} style={inputStyle}>
             {OCCASIONS.map(o => <option key={o} value={o}>{OCCASION_LABELS[o]}</option>)}
           </select>
         </div>
         <div>
-          <div style={editLabel}>Category</div>
+          <div style={editLabel}>{t('Category', 'Loại')}</div>
           <select value={category} onChange={e => setCategory(e.target.value as Category | '')} style={inputStyle}>
             <option value="">—</option>
             {CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
           </select>
         </div>
         <div>
-          <div style={editLabel}>Cost (VND) *</div>
+          <div style={editLabel}>{t('Cost (VND) *', 'Chi phí (VND) *')}</div>
           <input
             type="number" min={0} step={50000}
             value={costVnd}
             onChange={e => setCostVnd(e.target.value)}
-            placeholder="e.g. 1500000"
+            placeholder={t('e.g. 1500000', 'ví dụ 1500000')}
             style={inputStyle}
           />
         </div>
       </div>
 
       <div style={{ ...fieldRow, marginTop: 10 }}>
-        <div style={editLabel}>What was the gift? *</div>
+        <div style={editLabel}>{t('What was the gift? *', 'Món quà là gì? *')}</div>
         <input
           value={description}
           onChange={e => setDescription(e.target.value)}
-          placeholder="e.g. Hand-written birthday card with a bottle of Hibiki 17"
+          placeholder={t('e.g. Hand-written birthday card with a bottle of Hibiki 17', 'ví dụ Thiệp sinh nhật viết tay kèm một chai Hibiki 17')}
           style={inputStyle}
         />
       </div>
 
       <div style={{ ...fieldRow, marginTop: 10 }}>
-        <div style={editLabel}>Source / supplier</div>
-        <input value={source} onChange={e => setSource(e.target.value)} placeholder="Optional — vendor name" style={inputStyle} />
+        <div style={editLabel}>{t('Source / supplier', 'Nguồn / nhà cung cấp')}</div>
+        <input value={source} onChange={e => setSource(e.target.value)} placeholder={t('Optional — vendor name', 'Không bắt buộc — tên nhà cung cấp')} style={inputStyle} />
       </div>
 
       <div style={{ ...fieldRow, marginTop: 10 }}>
-        <div style={editLabel}>Why we did this</div>
+        <div style={editLabel}>{t('Why we did this', 'Lý do chúng tôi làm điều này')}</div>
         <textarea
           value={expectedValue}
           onChange={e => setExpectedValue(e.target.value)}
           rows={2}
-          placeholder="The reasoning. Strengthen Bowmore-club affinity. Thank-you for the Mike Tran intro. Recover from the music incident."
+          placeholder={t('The reasoning. Strengthen Bowmore-club affinity. Thank-you for the Mike Tran intro. Recover from the music incident.', 'Lý do đằng sau. Củng cố mối gắn kết với câu lạc bộ Bowmore. Cảm ơn về lời giới thiệu của Mike Tran. Xoa dịu sau sự cố âm nhạc.')}
           style={{ ...inputStyle, resize: 'vertical' }}
         />
       </div>
 
       {/* Photo */}
       <div style={{ ...fieldRow, marginTop: 10 }}>
-        <div style={editLabel}>Photo (optional)</div>
+        <div style={editLabel}>{t('Photo (optional)', 'Ảnh (không bắt buộc)')}</div>
         <input
           type="file"
           accept="image/*"
@@ -629,7 +630,7 @@ function AddGiftForm({ members, onCancel, onSaved, initial }: {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={photoPreview} alt="" style={previewImg} />
             <div style={hintText}>
-              {uploadingPhoto ? 'Uploading…' : photoPath ? 'Uploaded' : memberNo ? 'Ready to upload' : 'Pick a member to enable upload'}
+              {uploadingPhoto ? t('Uploading…', 'Đang tải lên…') : photoPath ? t('Uploaded', 'Đã tải lên') : memberNo ? t('Ready to upload', 'Sẵn sàng tải lên') : t('Pick a member to enable upload', 'Chọn một hội viên để bật tải lên')}
             </div>
           </div>
         )}
@@ -637,9 +638,9 @@ function AddGiftForm({ members, onCancel, onSaved, initial }: {
 
       <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
         <button onClick={submit} disabled={submitting || uploadingPhoto || !memberNo} style={{ ...btnPrimary, opacity: !memberNo ? 0.4 : 1 }}>
-          {submitting ? 'Saving…' : (editMode ? 'Save changes' : 'Save gift')}
+          {submitting ? t('Saving…', 'Đang lưu…') : (editMode ? t('Save changes', 'Lưu thay đổi') : t('Save gift', 'Lưu quà tặng'))}
         </button>
-        <button onClick={onCancel} style={btnGhost}>Cancel</button>
+        <button onClick={onCancel} style={btnGhost}>{t('Cancel', 'Hủy')}</button>
       </div>
     </div>
   )

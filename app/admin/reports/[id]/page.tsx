@@ -20,15 +20,15 @@ interface Report {
   send_postponed_to: string | null
 }
 
-const FIELDS: { key: string; label: string; hint: string; rows: number }[] = [
-  { key: 'headline', label: 'Headline', hint: 'The strapline on the cover', rows: 1 },
-  { key: 'moment_of_week', label: 'Moment of the week', hint: 'A highlight — sits in a gold callout', rows: 2 },
-  { key: 'interviews_commentary', label: 'Interviews & pipeline commentary', hint: 'Colour on this week&rsquo;s prospects', rows: 3 },
-  { key: 'marketing', label: 'Marketing initiatives', hint: 'What went out, what&rsquo;s planned', rows: 3 },
-  { key: 'cost_cutting', label: 'Cost-cutting', hint: 'Savings & efficiencies (narrative — no data feed)', rows: 3 },
-  { key: 'successes', label: 'Successes', hint: 'Wins worth celebrating', rows: 3 },
-  { key: 'guests_note', label: 'Guests note', hint: 'Guest attendance is narrative (only a party-size estimate exists)', rows: 2 },
-  { key: 'closing_note', label: 'Closing note', hint: 'A sign-off line', rows: 2 },
+const FIELDS: { key: string; label: string; labelVi: string; hint: string; hintVi: string; rows: number }[] = [
+  { key: 'headline', label: 'Headline', labelVi: 'Tiêu đề', hint: 'The strapline on the cover', hintVi: 'Dòng phụ đề trên trang bìa', rows: 1 },
+  { key: 'moment_of_week', label: 'Moment of the week', labelVi: 'Khoảnh khắc của tuần', hint: 'A highlight — sits in a gold callout', hintVi: 'Điểm nhấn — hiển thị trong khung vàng', rows: 2 },
+  { key: 'interviews_commentary', label: 'Interviews & pipeline commentary', labelVi: 'Phỏng vấn & bình luận về nguồn hội viên tiềm năng', hint: 'Colour on this week&rsquo;s prospects', hintVi: 'Nhận định về các ứng viên tuần này', rows: 3 },
+  { key: 'marketing', label: 'Marketing initiatives', labelVi: 'Sáng kiến tiếp thị', hint: 'What went out, what&rsquo;s planned', hintVi: 'Đã triển khai gì, dự kiến gì', rows: 3 },
+  { key: 'cost_cutting', label: 'Cost-cutting', labelVi: 'Cắt giảm chi phí', hint: 'Savings & efficiencies (narrative — no data feed)', hintVi: 'Tiết kiệm & hiệu quả (nội dung mô tả — không có nguồn dữ liệu)', rows: 3 },
+  { key: 'successes', label: 'Successes', labelVi: 'Thành công', hint: 'Wins worth celebrating', hintVi: 'Những thắng lợi đáng ăn mừng', rows: 3 },
+  { key: 'guests_note', label: 'Guests note', labelVi: 'Ghi chú về khách', hint: 'Guest attendance is narrative (only a party-size estimate exists)', hintVi: 'Lượng khách chỉ ghi bằng mô tả (chỉ có ước tính số lượng theo nhóm)', rows: 2 },
+  { key: 'closing_note', label: 'Closing note', labelVi: 'Lời kết', hint: 'A sign-off line', hintVi: 'Một dòng kết thúc', rows: 2 },
 ]
 
 export default function ReportEditor() {
@@ -126,13 +126,13 @@ export default function ReportEditor() {
         </div>
         {FIELDS.map(f => (
           <div key={f.key} style={{ marginBottom: 16 }}>
-            <label style={label}>{f.label}</label>
+            <label style={label}>{t(f.label, f.labelVi)}</label>
             {f.rows === 1 ? (
               <input style={input} disabled={locked} value={nar[f.key] || ''} onChange={e => setNar(v => ({ ...v, [f.key]: e.target.value }))} />
             ) : (
               <textarea style={{ ...input, resize: 'vertical' }} rows={f.rows} disabled={locked} value={nar[f.key] || ''} onChange={e => setNar(v => ({ ...v, [f.key]: e.target.value }))} />
             )}
-            <div style={{ fontFamily: MONO, fontSize: 9, color: '#7E7864', marginTop: 3 }} dangerouslySetInnerHTML={{ __html: f.hint }} />
+            <div style={{ fontFamily: MONO, fontSize: 9, color: '#7E7864', marginTop: 3 }} dangerouslySetInnerHTML={{ __html: t(f.hint, f.hintVi) }} />
           </div>
         ))}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>

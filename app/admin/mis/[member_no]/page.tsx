@@ -101,6 +101,7 @@ const CATEGORIES = [
 ]
 
 function InfoDot({ tip }: { tip: string }) {
+  const { t } = useLang()
   const [open, setOpen] = useState(false)
   return (
     <span style={{ position: 'relative', display: 'inline-flex' }}>
@@ -111,7 +112,7 @@ function InfoDot({ tip }: { tip: string }) {
         onBlur={() => setOpen(false)}
         tabIndex={0}
         role="button"
-        aria-label="More info"
+        aria-label={t('More info', 'Thêm thông tin')}
         style={infoDotStyle}
       >
         i
@@ -379,7 +380,7 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
                     <div style={prefSectionLabel}>{t('Validate or revise', 'Xác thực hoặc chỉnh sửa')}</div>
                     <div style={editGrid}>
                       <div>
-                        <div style={editLabel}>S₀ <InfoDot tip={TIPS.s0} /></div>
+                        <div style={editLabel}>S₀ <InfoDot tip={t(TIPS.s0, 'Mức độ quan trọng của sở thích này. 5 = tuyệt đối (dị ứng / bản sắc), 1 = gần như không phải là quan điểm. Tăng giá trị này khuếch đại PS(t) theo tỷ lệ; giới hạn ở mức 5 hạn chế điểm số tối đa mà bất kỳ mục nào có thể đạt được.')} /></div>
                         <select
                           value={draftFor(p).s0}
                           onChange={e => setDraft(p.preference_id, { s0: Number(e.target.value) })}
@@ -389,7 +390,7 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
                         </select>
                       </div>
                       <div>
-                        <div style={editLabel}>{t('Confidence', 'Độ tin cậy')} <InfoDot tip={TIPS.confidence} /></div>
+                        <div style={editLabel}>{t('Confidence', 'Độ tin cậy')} <InfoDot tip={t(TIPS.confidence, 'Mức độ chắc chắn rằng sở thích này là thật. 1.00 = được nêu rõ ràng. 0.75 = mẫu hình lặp lại nhiều lần. 0.25 = suy ra từ một trường hợp. Đóng vai trò như một hệ số nhân — kéo PS(t) xuống khi thấp.')} /></div>
                         <select
                           value={draftFor(p).confidence}
                           onChange={e => setDraft(p.preference_id, { confidence: Number(e.target.value) })}
@@ -399,7 +400,7 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
                         </select>
                       </div>
                       <div>
-                        <div style={editLabel}>{t('Lambda', 'Lambda')} <InfoDot tip={TIPS.lambda} /></div>
+                        <div style={editLabel}>{t('Lambda', 'Lambda')} <InfoDot tip={t(TIPS.lambda, 'Tốc độ sở thích này trở nên lỗi thời. 0 = không bao giờ suy giảm (y tế, bản sắc). 0.020 = giảm một nửa sau mỗi ~35 ngày. Không ảnh hưởng đến điểm số hôm nay; chỉ có ý nghĩa khi thời gian trôi qua kể từ lần xác thực cuối.')} /></div>
                         <select
                           value={draftFor(p).lambda}
                           onChange={e => setDraft(p.preference_id, { lambda: Number(e.target.value) })}
@@ -409,7 +410,7 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
                         </select>
                       </div>
                       <div>
-                        <div style={editLabel}>{t('Frequency', 'Tần suất')} <InfoDot tip={TIPS.frequency} /></div>
+                        <div style={editLabel}>{t('Frequency', 'Tần suất')} <InfoDot tip={t(TIPS.frequency, 'Tần suất sở thích này xuất hiện trong thực tế. 1.0 = mặc định hàng tháng. 1.5 = hàng ngày / mỗi lần ghé thăm, khuếch đại. 0.8 = hiếm khi, giảm nhẹ.')} /></div>
                         <select
                           value={draftFor(p).frequency}
                           onChange={e => setDraft(p.preference_id, { frequency: Number(e.target.value) })}
@@ -419,7 +420,7 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
                         </select>
                       </div>
                       <div>
-                        <div style={editLabel}>{t('Status', 'Trạng thái')} <InfoDot tip={TIPS.status} /></div>
+                        <div style={editLabel}>{t('Status', 'Trạng thái')} <InfoDot tip={t(TIPS.status, 'Active = hiển thị trong chế độ xem PS(t) trực tiếp. Invalidated = ẩn khỏi chế độ xem trực tiếp nhưng giữ lại cho lịch sử kiểm toán. Archived = xóa mềm.')} /></div>
                         <select
                           value={draftFor(p).status}
                           onChange={e => setDraft(p.preference_id, { status: e.target.value })}

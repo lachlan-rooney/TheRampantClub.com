@@ -37,6 +37,55 @@ const SECTIONS = [
   },
 ]
 
+const SECTION_TITLE_VI: Record<string, string> = {
+  'Food & Beverage': 'Ẩm thực & Đồ uống',
+  'Whisky & Drinks': 'Whisky & Đồ uống',
+  'Social & Environment': 'Giao tiếp & Không gian',
+  'Personal & Lifestyle': 'Cá nhân & Lối sống',
+  'Service Intelligence': 'Thông tin phục vụ',
+}
+
+const FIELD_VI: Record<string, string> = {
+  'Allergies': 'Dị ứng',
+  'Dietary Requirements': 'Yêu cầu ăn kiêng',
+  'Cuisine Preference': 'Ẩm thực ưa thích',
+  'Spice Tolerance': 'Mức độ ăn cay',
+  'Coffee/Tea': 'Cà phê/Trà',
+  'Comfort Food': 'Món ăn yêu thích',
+  'Water Preference': 'Nước uống ưa thích',
+  'Whisky Profile': 'Hồ sơ whisky',
+  'Preferred Region': 'Vùng ưa thích',
+  'Favourite Expression': 'Phiên bản yêu thích',
+  'Default Serve': 'Cách phục vụ mặc định',
+  'Flavour Loves': 'Hương vị yêu thích',
+  'Flavour Avoids': 'Hương vị cần tránh',
+  'Non-Alcoholic': 'Đồ uống không cồn',
+  'Wine Preference': 'Rượu vang ưa thích',
+  'Cocktail Style': 'Phong cách cocktail',
+  'Social Type': 'Kiểu giao tiếp',
+  'Preferred Group Size': 'Quy mô nhóm ưa thích',
+  'Preferred Space': 'Không gian ưa thích',
+  'Seating Preference': 'Chỗ ngồi ưa thích',
+  'Music/Volume': 'Âm nhạc/Âm lượng',
+  'Greeting Preference': 'Cách chào ưa thích',
+  'Introduction Rules': 'Quy tắc giới thiệu',
+  'Celebration Preference': 'Cách chúc mừng ưa thích',
+  'Profession/Industry': 'Nghề nghiệp/Ngành',
+  'Hobbies & Interests': 'Sở thích & Mối quan tâm',
+  'Art/Culture': 'Nghệ thuật/Văn hóa',
+  'Whisky Education Level': 'Trình độ hiểu biết whisky',
+  'Technology Comfort': 'Mức độ thành thạo công nghệ',
+  'Meeting Style': 'Phong cách gặp gỡ',
+  'Client Entertainment': 'Tiếp đãi khách hàng',
+  'Billing Preference': 'Cách thanh toán ưa thích',
+  'Morning/Evening': 'Sáng/Tối',
+  'Temperature': 'Nhiệt độ',
+  'Comfort Notes': 'Ghi chú tiện nghi',
+  'Preferred Merch': 'Sản phẩm ưa thích',
+  'Surprise Preference': 'Cách tạo bất ngờ ưa thích',
+  'Family Inclusion': 'Sự tham gia của gia đình',
+}
+
 export default function QuickRefPage() {
   const { t } = useLang()
   const [members, setMembers] = useState<Member[]>([])
@@ -501,7 +550,7 @@ export default function QuickRefPage() {
                       fontFamily: "'Rampant Sans', serif", fontSize: 14, fontWeight: 500,
                       color: '#E5D4C2', marginBottom: 16, letterSpacing: '0.04em',
                     }}>
-                      {section.title}
+                      {t(section.title, SECTION_TITLE_VI[section.title] ?? section.title)}
                     </div>
                     {section.fields.map(field => {
                       const val = selected[field]
@@ -513,7 +562,7 @@ export default function QuickRefPage() {
                             color: '#B2AA98', letterSpacing: '0.06em', textTransform: 'uppercase',
                             marginBottom: 3, opacity: 0.6,
                           }}>
-                            {field}
+                            {t(field, FIELD_VI[field] ?? field)}
                           </div>
                           <div style={{
                             fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11,

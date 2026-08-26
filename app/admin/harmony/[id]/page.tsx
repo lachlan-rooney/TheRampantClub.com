@@ -51,6 +51,15 @@ const KIND_META: Record<string, { label: string; icon: string; color: string }> 
   card_charge:      { label: 'Card charge',      icon: '₫', color: '#5B8FA8' },
 }
 
+const KIND_LABEL_VI: Record<string, string> = {
+  visit:            'Ghé thăm',
+  preference:       'Sở thích',
+  bottle_depletion: 'Rót chai',
+  prospect:         'Khách tiềm năng',
+  complaint:        'Phàn nàn',
+  card_charge:      'Ghi nợ thẻ',
+}
+
 export default function HarmonyLogDetail({ params }: { params: Promise<{ id: string }> }) {
   const { t } = useLang()
   const { id } = use(params)
@@ -299,6 +308,7 @@ export default function HarmonyLogDetail({ params }: { params: Promise<{ id: str
 function ExtractionRow({ x, checked, onToggle, onReject }: {
   x: Extraction; checked: boolean; onToggle: () => void; onReject: () => void
 }) {
+  const { t } = useLang()
   const meta = KIND_META[x.kind] || { label: x.kind, icon: '•', color: '#B2AA98' }
   const p = x.payload || {}
   return (
@@ -312,11 +322,11 @@ function ExtractionRow({ x, checked, onToggle, onReject }: {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ ...kindPill, color: meta.color, borderColor: meta.color + '50', background: meta.color + '14' }}>
-              {meta.icon} {meta.label}
+              {meta.icon} {t(meta.label, KIND_LABEL_VI[x.kind] || meta.label)}
             </span>
             {x.member_hint && <span style={hintPill}>{x.member_hint}</span>}
           </div>
-          <div style={extractionBody}>{summarizePayload(x.kind, p)}</div>
+          <div style={extractionBody}>{summarizePayload(x.kind, p, t)}</div>
         </div>
       </label>
       <button onClick={onReject} style={rejectBtn}>×</button>
@@ -325,6 +335,7 @@ function ExtractionRow({ x, checked, onToggle, onReject }: {
 }
 
 function SettledRow({ x }: { x: Extraction }) {
+  const { t } = useLang()
   const meta = KIND_META[x.kind] || { label: x.kind, icon: '•', color: '#B2AA98' }
   const statusColor =
     x.status === 'applied'  ? '#7AB07A'
@@ -336,7 +347,7 @@ function SettledRow({ x }: { x: Extraction }) {
       <span style={{ ...kindPill, color: meta.color, borderColor: meta.color + '40', background: meta.color + '0E', opacity: 0.7 }}>
         {meta.icon}
       </span>
-      <span style={settledText}>{summarizePayload(x.kind, x.payload || {})}</span>
+      <span style={settledText}>{summarizePayload(x.kind, x.payload || {}, t)}</span>
       <span style={{ ...settledStatus, color: statusColor }}>
         {x.status}
         {x.status === 'applied' && x.target_id && (
@@ -352,17 +363,17 @@ function SettledRow({ x }: { x: Extraction }) {
   )
 }
 
-function summarizePayload(kind: string, p: Record<string, unknown>): string {
+function summarizePayload(kind: string, p: Record<string, unknown>, t: (en: string, vi: string) => string): string {
   switch (kind) {
     case 'visit': {
       const space = p.space ? ` · ${p.space}` : ''
       const dur = p.duration_min ? ` · ${p.duration_min}m` : ''
       const notes = p.notes ? ` — ${String(p.notes)}` : ''
-      return `Visit${space}${dur}${notes}`
+      return `${t('Visit', 'Ghé thăm')}${space}${dur}${notes}`
     }
     case 'preference': {
       const cat = p.category ? `${p.category} · ` : ''
-      const name = p.preference_name || 'preference'
+      const name = p.preference_name || t('preference', 'sở thích')
       const s0 = p.s0 ? ` (S₀=${p.s0})` : ''
       const detail = p.detail ? ` — ${p.detail}` : ''
       return `${cat}${name}${s0}${detail}`
@@ -370,18 +381,18 @@ function summarizePayload(kind: string, p: Record<string, unknown>): string {
     case 'bottle_depletion': {
       const fill = p.estimated_new_fill_pct != null ? ` → ${p.estimated_new_fill_pct}%` : ''
       const note = p.note ? ` — ${p.note}` : ''
-      return `${p.bottle_name || 'bottle'}${fill}${note}`
+      return `${p.bottle_name || t('bottle', 'chai rượu')}${fill}${note}`
     }
     case 'prospect': {
       const ref = p.referred_by_hint ? ` (ref: ${p.referred_by_hint})` : ''
       const prof = p.profession ? ` · ${p.profession}` : ''
       const notes = p.notes ? ` — ${p.notes}` : ''
-      return `${p.full_name || 'prospect'}${prof}${ref}${notes}`
+      return `${p.full_name || t('prospect', 'khách tiềm năng')}${prof}${ref}${notes}`
     }
     case 'complaint': {
       const sev = p.severity ? `S${p.severity} · ` : ''
       const status = p.status ? ` · ${p.status}` : ''
-      return `${sev}${p.summary || 'complaint'}${status}`
+      return `${sev}${p.summary || t('complaint', 'phàn nàn')}${status}`
     }
     case 'card_charge': {
       const amt = Number(p.amount_vnd) || 0

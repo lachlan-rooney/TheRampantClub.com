@@ -5,25 +5,13 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { ConfirmModal, useToast, type ConfirmTone } from '@/components/admin/dialogs'
 import { useLang } from '@/lib/admin-lang'
 
-// Per-kind copy for the destructive-action confirm modal.
-const AGREEMENT_CONFIRM: Record<'invitation_delete' | 'agreement_delete' | 'invitation_revoke', {
-  tone: ConfirmTone; eyebrow: string; title: string; body: string; confirm: string
-}> = {
-  invitation_delete: {
-    tone: 'info', eyebrow: 'CONFIRM', title: 'Delete invitation?',
-    body: "Removes the signing record. If the recipient hasn't signed yet, their link will no longer resolve.",
-    confirm: 'Delete invitation',
-  },
-  agreement_delete: {
-    tone: 'danger', eyebrow: '⚠ PERMANENT', title: 'Delete signed agreement?',
-    body: 'Destroys the signed legal record AND the originating invitation. The signed PDF in storage is NOT touched, but its index entry is gone. Cannot be undone.',
-    confirm: 'Delete legal record',
-  },
-  invitation_revoke: {
-    tone: 'danger', eyebrow: '⚠ PERMANENT', title: 'Revoke signing link?',
-    body: "The existing URL stops working immediately and CANNOT be un-revoked. You'll need to generate a new link if the prospect still wants to sign.",
-    confirm: 'Revoke',
-  },
+// Per-kind tone for the destructive-action confirm modal. Display copy
+// (eyebrow/title/body/confirm) is translated at the render site where t()
+// is in scope — see confirmCopy below.
+const AGREEMENT_CONFIRM_TONE: Record<'invitation_delete' | 'agreement_delete' | 'invitation_revoke', ConfirmTone> = {
+  invitation_delete: 'info',
+  agreement_delete: 'danger',
+  invitation_revoke: 'danger',
 }
 
 interface Invitation {
@@ -242,6 +230,38 @@ export default function AgreementsPage() {
     if (s === 'pending') return 'rgba(201,168,76,0.3)'
     return 'rgba(178,170,152,0.2)'
   }
+
+  // Translated confirm-modal copy, keyed by the active kind. Built here so
+  // the destructive-action strings resolve through t() at render time.
+  const confirmCopy = confirmModal ? ({
+    invitation_delete: {
+      eyebrow: t('CONFIRM', 'XÁC NHẬN'),
+      title: t('Delete invitation?', 'Xóa lời mời?'),
+      body: t(
+        "Removes the signing record. If the recipient hasn't signed yet, their link will no longer resolve.",
+        'Xóa bản ghi ký. Nếu người nhận chưa ký, liên kết của họ sẽ không còn hiệu lực.',
+      ),
+      confirm: t('Delete invitation', 'Xóa lời mời'),
+    },
+    agreement_delete: {
+      eyebrow: t('⚠ PERMANENT', '⚠ VĨNH VIỄN'),
+      title: t('Delete signed agreement?', 'Xóa thỏa thuận đã ký?'),
+      body: t(
+        'Destroys the signed legal record AND the originating invitation. The signed PDF in storage is NOT touched, but its index entry is gone. Cannot be undone.',
+        'Hủy bản ghi pháp lý đã ký VÀ lời mời gốc. Tệp PDF đã ký trong bộ lưu trữ KHÔNG bị ảnh hưởng, nhưng mục lục của nó sẽ mất. Không thể hoàn tác.',
+      ),
+      confirm: t('Delete legal record', 'Xóa bản ghi pháp lý'),
+    },
+    invitation_revoke: {
+      eyebrow: t('⚠ PERMANENT', '⚠ VĨNH VIỄN'),
+      title: t('Revoke signing link?', 'Thu hồi liên kết ký?'),
+      body: t(
+        "The existing URL stops working immediately and CANNOT be un-revoked. You'll need to generate a new link if the prospect still wants to sign.",
+        'URL hiện tại ngừng hoạt động ngay lập tức và KHÔNG THỂ khôi phục. Bạn sẽ cần tạo liên kết mới nếu khách mời vẫn muốn ký.',
+      ),
+      confirm: t('Revoke', 'Thu hồi'),
+    },
+  }[confirmModal.kind]) : null
 
   return (
     <>
@@ -496,12 +516,12 @@ export default function AgreementsPage() {
 
       <ConfirmModal
         open={!!confirmModal}
-        tone={confirmModal ? AGREEMENT_CONFIRM[confirmModal.kind].tone : 'danger'}
-        eyebrow={confirmModal ? AGREEMENT_CONFIRM[confirmModal.kind].eyebrow : ''}
-        title={confirmModal ? AGREEMENT_CONFIRM[confirmModal.kind].title : ''}
+        tone={confirmModal ? AGREEMENT_CONFIRM_TONE[confirmModal.kind] : 'danger'}
+        eyebrow={confirmCopy ? confirmCopy.eyebrow : ''}
+        title={confirmCopy ? confirmCopy.title : ''}
         subject={confirmModal?.label}
-        body={confirmModal ? AGREEMENT_CONFIRM[confirmModal.kind].body : ''}
-        confirmLabel={confirmModal ? AGREEMENT_CONFIRM[confirmModal.kind].confirm : ''}
+        body={confirmCopy ? confirmCopy.body : ''}
+        confirmLabel={confirmCopy ? confirmCopy.confirm : ''}
         busy={confirmBusy}
         onCancel={closeConfirm}
         onConfirm={runConfirm}

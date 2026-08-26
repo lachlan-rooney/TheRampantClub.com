@@ -32,13 +32,14 @@ export default function AdminIntroductions() {
         <div style={{ fontFamily: MONO, fontSize: 12, color: '#B2AA98', opacity: 0.6, fontStyle: 'italic' }}>{t('No introductions yet.', 'Chưa có lời giới thiệu nào.')}</div>
       ) : rows.map(i => {
         const s = STATUS[i.status] || STATUS.pending
+        const statusLabel = t(s.label, i.status === 'accepted' ? 'Đã kết nối' : i.status === 'declined' ? 'Đã từ chối' : 'Đang chờ')
         return (
           <div key={i.id} style={row}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
               <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 14, color: '#E5D4C2' }}>{i.from_name} <span style={{ color: '#7E7864' }}>→</span> {i.to_name}</span>
               <span style={{ display: 'flex', gap: 6 }}>
                 {i.via === 'palate_match' && <span style={{ fontFamily: MONO, fontSize: 9, color: '#9E8FC4', border: '1px solid #9E8FC455', borderRadius: 8, padding: '2px 8px' }}>{t('palate', 'khẩu vị')}</span>}
-                <span style={{ fontFamily: MONO, fontSize: 9, color: s.color, border: `1px solid ${s.color}55`, borderRadius: 8, padding: '2px 8px', letterSpacing: '0.04em' }}>{s.label}</span>
+                <span style={{ fontFamily: MONO, fontSize: 9, color: s.color, border: `1px solid ${s.color}55`, borderRadius: 8, padding: '2px 8px', letterSpacing: '0.04em' }}>{statusLabel}</span>
               </span>
             </div>
             {i.context && <div style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98', fontStyle: 'italic', margin: '5px 0' }}>“{i.context}”</div>}

@@ -302,7 +302,7 @@ export default function MXDailyPage() {
                       <div style={memberMeta}>{b.member_no} · {b.tier}</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={dayBadge(b.days_until)}>{labelForDays(b.days_until)}</div>
+                      <div style={dayBadge(b.days_until)}>{labelForDays(b.days_until, t)}</div>
                       <div style={memberMeta}>{b.birthday.slice(5)}</div>
                     </div>
                   </Link>
@@ -349,7 +349,7 @@ export default function MXDailyPage() {
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
                       <div style={{ ...dayBadge(a.days_until), background: 'rgba(122,176,122,0.18)', color: '#7AB07A', borderColor: 'rgba(122,176,122,0.40)' }}>
-                        {a.years}y · {labelForDays(a.days_until)}
+                        {a.years}y · {labelForDays(a.days_until, t)}
                       </div>
                       <div style={memberMeta}>{t('since', 'từ')} {a.join_date.slice(0, 10)}</div>
                     </div>
@@ -492,6 +492,7 @@ export default function MXDailyPage() {
 }
 
 function LapsedBucket({ title, rows, tone }: { title: string; rows: LapsedRow[]; tone: string }) {
+  const { t } = useLang()
   if (rows.length === 0) return null
   return (
     <div style={{ marginBottom: 8 }}>
@@ -501,19 +502,19 @@ function LapsedBucket({ title, rows, tone }: { title: string; rows: LapsedRow[];
           <Link key={r.member_no} href={`/admin/mis/${r.member_no}`} style={memberRow}>
             <div>
               <div style={memberName}>{r.full_name}</div>
-              <div style={memberMeta}>{r.member_no} · {r.tier} · {r.total_visits} visits</div>
+              <div style={memberMeta}>{r.member_no} · {r.tier} · {r.total_visits} {t('visits', 'lượt ghé')}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ ...dayBadge(0), background: 'transparent', color: tone, borderColor: tone + '60' }}>
                 {r.days_since_visit}d
               </div>
               <div style={memberMeta}>
-                {r.last_visit ? `last ${new Date(r.last_visit).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : 'no visits'}
+                {r.last_visit ? `${t('last', 'lần cuối')} ${new Date(r.last_visit).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : t('no visits', 'chưa ghé lần nào')}
               </div>
             </div>
           </Link>
         ))}
-        {rows.length > 8 && <div style={{ ...memberMeta, paddingLeft: 12, marginTop: 2 }}>…and {rows.length - 8} more.</div>}
+        {rows.length > 8 && <div style={{ ...memberMeta, paddingLeft: 12, marginTop: 2 }}>{t('…and', '…và')} {rows.length - 8} {t('more.', 'nữa.')}</div>}
       </div>
     </div>
   )
@@ -548,10 +549,10 @@ function StatTile({ label, value, color }: { label: string; value: number; color
   )
 }
 
-function labelForDays(d: number): string {
-  if (d === 0) return 'today'
-  if (d === 1) return 'tomorrow'
-  return `in ${d}d`
+function labelForDays(d: number, t: (en: string, vi: string) => string): string {
+  if (d === 0) return t('today', 'hôm nay')
+  if (d === 1) return t('tomorrow', 'ngày mai')
+  return t(`in ${d}d`, `sau ${d} ngày`)
 }
 
 // ── styles ─────────────────────────────────────────────────────────

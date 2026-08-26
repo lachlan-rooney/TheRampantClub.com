@@ -485,19 +485,20 @@ function MembersPanel({ members, profiles, profileName, canEdit, onAdd, onRemove
   onAdd: (member: string, role: ProjectRole) => void
   onRemove: (member: string) => void
 }) {
+  const { t } = useLang()
   const [pick, setPick] = useState('')
   const [role, setRole] = useState<ProjectRole>('contributor')
   const available = profiles.filter(p => !members.some(m => m.member === p.id))
   return (
     <div style={{ ...columnStyle, width: 'auto', marginBottom: 16 }}>
-      <div style={columnHeader}><span style={{ color: '#E5D4C2' }}>Access</span></div>
+      <div style={columnHeader}><span style={{ color: '#E5D4C2' }}>{t('Access', 'Quyền truy cập')}</span></div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {members.map(m => (
           <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ color: '#E5D4C2', fontFamily: FAMILY, fontSize: 12 }}>{profileName(m.member)}</span>
             <span style={pill}>{m.role}</span>
             {canEdit && m.role !== 'owner' && (
-              <button onClick={() => onRemove(m.member)} style={{ ...tinyBtn, marginLeft: 'auto', color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}>Remove</button>
+              <button onClick={() => onRemove(m.member)} style={{ ...tinyBtn, marginLeft: 'auto', color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}>{t('Remove', 'Xóa')}</button>
             )}
           </div>
         ))}
@@ -505,7 +506,7 @@ function MembersPanel({ members, profiles, profileName, canEdit, onAdd, onRemove
       {canEdit && (
         <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
           <select value={pick} onChange={e => setPick(e.target.value)} style={{ ...input, width: 'auto', flex: 1 }}>
-            <option value="" style={{ background: '#052E20' }}>— pick a person —</option>
+            <option value="" style={{ background: '#052E20' }}>{t('— pick a person —', '— chọn một người —')}</option>
             {available.map(p => <option key={p.id} value={p.id} style={{ background: '#052E20' }}>{p.display_name || p.id.slice(0, 8)}</option>)}
           </select>
           <select value={role} onChange={e => setRole(e.target.value as ProjectRole)} style={{ ...input, width: 'auto' }}>
@@ -513,7 +514,7 @@ function MembersPanel({ members, profiles, profileName, canEdit, onAdd, onRemove
             <option value="viewer" style={{ background: '#052E20' }}>viewer</option>
             <option value="owner" style={{ background: '#052E20' }}>owner</option>
           </select>
-          <button disabled={!pick} onClick={() => { onAdd(pick, role); setPick('') }} style={btnPrimary}>Add</button>
+          <button disabled={!pick} onClick={() => { onAdd(pick, role); setPick('') }} style={btnPrimary}>{t('Add', 'Thêm')}</button>
         </div>
       )}
     </div>
@@ -522,6 +523,7 @@ function MembersPanel({ members, profiles, profileName, canEdit, onAdd, onRemove
 
 // Cross-site link picker (Phase 5): choose a type, search the real objects, link one.
 function LinkPicker({ onLink }: { onLink: (type: LinkType, id: string, label: string) => void }) {
+  const { t } = useLang()
   const supabase = createBrowserSupabaseClient()
   const [type, setType] = useState<LinkType>('member')
   const [q, setQ] = useState('')
@@ -538,12 +540,12 @@ function LinkPicker({ onLink }: { onLink: (type: LinkType, id: string, label: st
           {LINK_TYPES.map(t => <option key={t} value={t} style={{ background: '#052E20' }}>{LINK_TYPE_META[t].icon} {LINK_TYPE_META[t].label}</option>)}
         </select>
         {type !== 'checklist' && (
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder={`Search ${LINK_TYPE_META[type].label.toLowerCase()}…`} style={input} />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder={`${t('Search', 'Tìm')} ${LINK_TYPE_META[type].label.toLowerCase()}…`} style={input} />
         )}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 160, overflowY: 'auto' }}>
         {results.length === 0 ? (
-          <span style={{ ...metaText, opacity: 0.5, fontStyle: 'italic' }}>No matches.</span>
+          <span style={{ ...metaText, opacity: 0.5, fontStyle: 'italic' }}>{t('No matches.', 'Không có kết quả.')}</span>
         ) : results.map(r => (
           <button key={r.id} onClick={() => onLink(type, r.id, r.label)} style={{ ...tinyBtn, textAlign: 'left' }}>
             {LINK_TYPE_META[type].icon} {r.label}
@@ -556,28 +558,28 @@ function LinkPicker({ onLink }: { onLink: (type: LinkType, id: string, label: st
 
 const WEEKDAYS = [{ n: 1, l: 'Mon' }, { n: 2, l: 'Tue' }, { n: 3, l: 'Wed' }, { n: 4, l: 'Thu' }, { n: 5, l: 'Fri' }, { n: 6, l: 'Sat' }, { n: 7, l: 'Sun' }]
 
-function recurrenceSummary(r: Recurrence): string {
-  if (r.freq === 'daily') return 'Daily'
+function recurrenceSummary(r: Recurrence, t: (en: string, vi: string) => string): string {
+  if (r.freq === 'daily') return t('Daily', 'Hàng ngày')
   const days = (r.weekdays || []).slice().sort((a, b) => a - b).map(n => WEEKDAYS.find(w => w.n === n)?.l || n).join(', ')
-  return days ? `Weekly · ${days}` : 'Weekly'
+  return days ? `${t('Weekly', 'Hàng tuần')} · ${days}` : t('Weekly', 'Hàng tuần')
 }
 
 // When the first card for a freshly-added template will materialise. The cron
 // runs at 00:05 VN per day, so a template added now first appears on its next
 // due day (daily → tomorrow; weekly → the next matching weekday).
-function firstCardLabel(r: Recurrence): string {
+function firstCardLabel(r: Recurrence, t: (en: string, vi: string) => string): string {
   const iso = (d: Date) => ((d.getDay() + 6) % 7) + 1
   const fmt = (d: Date) => d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })
   if (r.freq === 'daily') {
-    const t = new Date(); t.setDate(t.getDate() + 1)
-    return `tomorrow (${fmt(t)})`
+    const d = new Date(); d.setDate(d.getDate() + 1)
+    return `${t('tomorrow', 'ngày mai')} (${fmt(d)})`
   }
   const set = r.weekdays || []
   for (let i = 1; i <= 7; i++) {
     const c = new Date(); c.setDate(c.getDate() + i)
     if (set.includes(iso(c))) return fmt(c)
   }
-  return 'its next scheduled day'
+  return t('its next scheduled day', 'ngày dự kiến kế tiếp')
 }
 
 function RecurringPanel({ templates, columns, team, canEdit, busy, onCreate, onToggle, onMaterialise }: {
@@ -590,6 +592,7 @@ function RecurringPanel({ templates, columns, team, canEdit, busy, onCreate, onT
   onToggle: (id: string, active: boolean) => void
   onMaterialise: () => void
 }) {
+  const { t } = useLang()
   const [title, setTitle] = useState('')
   const [columnId, setColumnId] = useState(columns[0]?.id || '')
   const [priority, setPriority] = useState<TaskPriority>('normal')
@@ -603,27 +606,30 @@ function RecurringPanel({ templates, columns, team, canEdit, busy, onCreate, onT
     if (!title.trim() || !columnId) return
     if (freq === 'weekly' && weekdays.length === 0) return
     const recurrence: Recurrence = freq === 'daily' ? { freq: 'daily' } : { freq: 'weekly', weekdays }
-    const col = columns.find(c => c.id === columnId)?.name || 'the board'
+    const col = columns.find(c => c.id === columnId)?.name || t('the board', 'bảng')
     onCreate({ column_id: columnId, title: title.trim(), priority, default_assignee: assignee || null, recurrence })
-    setConfirm(`“${title.trim()}” is set (${recurrenceSummary(recurrence)}). It isn’t a card yet — its first card appears in ${col} on ${firstCardLabel(recurrence)}, just after midnight. Recurring tasks come online on their due day, not when you add them.`)
+    setConfirm(t(
+      `“${title.trim()}” is set (${recurrenceSummary(recurrence, t)}). It isn’t a card yet — its first card appears in ${col} on ${firstCardLabel(recurrence, t)}, just after midnight. Recurring tasks come online on their due day, not when you add them.`,
+      `“${title.trim()}” đã được thiết lập (${recurrenceSummary(recurrence, t)}). Đây chưa phải là một thẻ — thẻ đầu tiên sẽ xuất hiện trong ${col} vào ${firstCardLabel(recurrence, t)}, ngay sau nửa đêm. Các tác vụ định kỳ chỉ hiển thị vào ngày đến hạn, không phải khi bạn thêm chúng.`,
+    ))
     setTitle('')
   }
 
   return (
     <div style={{ ...columnStyle, width: 'auto', marginBottom: 16 }}>
       <div style={columnHeader}>
-        <span style={{ color: '#9E8FC4' }}>↻ Recurring templates</span>
-        {canEdit && <button onClick={onMaterialise} disabled={busy} style={tinyBtn}>Materialise now</button>}
+        <span style={{ color: '#9E8FC4' }}>↻ {t('Recurring templates', 'Mẫu định kỳ')}</span>
+        {canEdit && <button onClick={onMaterialise} disabled={busy} style={tinyBtn}>{t('Materialise now', 'Tạo ngay')}</button>}
       </div>
       {templates.length === 0 ? (
-        <div style={{ ...metaText, opacity: 0.6, fontStyle: 'italic', marginBottom: 10 }}>No templates yet — recurring tasks auto-appear once you add one.</div>
+        <div style={{ ...metaText, opacity: 0.6, fontStyle: 'italic', marginBottom: 10 }}>{t('No templates yet — recurring tasks auto-appear once you add one.', 'Chưa có mẫu nào — các tác vụ định kỳ sẽ tự động xuất hiện khi bạn thêm một mẫu.')}</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
-          {templates.map(t => (
-            <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: t.active ? 1 : 0.5 }}>
-              <span style={{ color: '#E5D4C2', fontFamily: FAMILY, fontSize: 12 }}>{t.title}</span>
-              <span style={pill}>{recurrenceSummary(t.recurrence)}</span>
-              {canEdit && <button onClick={() => onToggle(t.id, !t.active)} style={{ ...tinyBtn, marginLeft: 'auto' }}>{t.active ? 'Pause' : 'Resume'}</button>}
+          {templates.map(tpl => (
+            <div key={tpl.id} style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: tpl.active ? 1 : 0.5 }}>
+              <span style={{ color: '#E5D4C2', fontFamily: FAMILY, fontSize: 12 }}>{tpl.title}</span>
+              <span style={pill}>{recurrenceSummary(tpl.recurrence, t)}</span>
+              {canEdit && <button onClick={() => onToggle(tpl.id, !tpl.active)} style={{ ...tinyBtn, marginLeft: 'auto' }}>{tpl.active ? t('Pause', 'Tạm dừng') : t('Resume', 'Tiếp tục')}</button>}
             </div>
           ))}
         </div>
@@ -631,12 +637,12 @@ function RecurringPanel({ templates, columns, team, canEdit, busy, onCreate, onT
       {confirm && (
         <div style={recurringConfirm}>
           <span style={{ flex: 1, lineHeight: 1.5 }}>✓ {confirm}</span>
-          <button onClick={() => setConfirm(null)} title="Dismiss" style={{ background: 'transparent', border: 'none', color: '#9E8FC4', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: '0 2px' }}>×</button>
+          <button onClick={() => setConfirm(null)} title={t('Dismiss', 'Bỏ qua')} style={{ background: 'transparent', border: 'none', color: '#9E8FC4', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: '0 2px' }}>×</button>
         </div>
       )}
       {canEdit && (
         <div style={{ display: 'grid', gap: 8 }}>
-          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="New recurring task title" style={input} />
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('New recurring task title', 'Tiêu đề tác vụ định kỳ mới')} style={input} />
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <select value={columnId} onChange={e => setColumnId(e.target.value)} style={{ ...input, width: 'auto', flex: 1 }}>
               {columns.map(c => <option key={c.id} value={c.id} style={{ background: '#052E20' }}>{c.name}</option>)}
@@ -645,14 +651,14 @@ function RecurringPanel({ templates, columns, team, canEdit, busy, onCreate, onT
               {PRIORITIES.map(p => <option key={p} value={p} style={{ background: '#052E20' }}>{p}</option>)}
             </select>
             <select value={assignee} onChange={e => setAssignee(e.target.value)} style={{ ...input, width: 'auto' }}>
-              <option value="" style={{ background: '#052E20' }}>— unassigned —</option>
+              <option value="" style={{ background: '#052E20' }}>{t('— unassigned —', '— chưa phân công —')}</option>
               {team.map(m => <option key={m.id} value={m.id} style={{ background: '#052E20' }}>{m.display_name}</option>)}
             </select>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <select value={freq} onChange={e => setFreq(e.target.value as 'daily' | 'weekly')} style={{ ...input, width: 'auto' }}>
-              <option value="daily" style={{ background: '#052E20' }}>Daily</option>
-              <option value="weekly" style={{ background: '#052E20' }}>Weekly</option>
+              <option value="daily" style={{ background: '#052E20' }}>{t('Daily', 'Hàng ngày')}</option>
+              <option value="weekly" style={{ background: '#052E20' }}>{t('Weekly', 'Hàng tuần')}</option>
             </select>
             {freq === 'weekly' && WEEKDAYS.map(w => (
               <button key={w.n} onClick={() => toggleDay(w.n)}
@@ -660,7 +666,7 @@ function RecurringPanel({ templates, columns, team, canEdit, busy, onCreate, onT
                 {w.l}
               </button>
             ))}
-            <button onClick={submit} disabled={busy || !title.trim()} style={{ ...btnPrimary, marginLeft: 'auto' }}>Add template</button>
+            <button onClick={submit} disabled={busy || !title.trim()} style={{ ...btnPrimary, marginLeft: 'auto' }}>{t('Add template', 'Thêm mẫu')}</button>
           </div>
         </div>
       )}

@@ -78,15 +78,15 @@ function predictPs(s0: number, c: number, f: number): number {
   return Math.min(5, s0 * c * f * 1.0 * 1.0)
 }
 
-function lambdaOriginLabel(o: LambdaOrigin | null): { text: string; tone: 'gold' | 'green' | 'grey' | 'red' | 'amber' } {
+function lambdaOriginLabel(o: LambdaOrigin | null, t: (en: string, vi: string) => string): { text: string; tone: 'gold' | 'green' | 'grey' | 'red' | 'amber' } {
   switch (o) {
-    case 'forced_medical':            return { text: 'MEDICAL — LOCKED',   tone: 'red'   }
-    case 'forced_identity':           return { text: 'IDENTITY — LOCKED',  tone: 'gold'  }
-    case 'ai_permanent':              return { text: 'PERMANENT — LOCKED', tone: 'amber' }
-    case 'ai_specific':               return { text: 'AI · specific',      tone: 'gold'  }
-    case 'category_baseline_learned': return { text: 'baseline · learned', tone: 'green' }
-    case 'category_baseline_designed':return { text: 'baseline · designed', tone: 'grey' }
-    default:                          return { text: 'live preview',       tone: 'grey'  }
+    case 'forced_medical':            return { text: t('MEDICAL — LOCKED', 'Y TẾ — ĐÃ KHÓA'),   tone: 'red'   }
+    case 'forced_identity':           return { text: t('IDENTITY — LOCKED', 'DANH TÍNH — ĐÃ KHÓA'),  tone: 'gold'  }
+    case 'ai_permanent':              return { text: t('PERMANENT — LOCKED', 'VĨNH VIỄN — ĐÃ KHÓA'), tone: 'amber' }
+    case 'ai_specific':               return { text: t('AI · specific', 'AI · cụ thể'),      tone: 'gold'  }
+    case 'category_baseline_learned': return { text: t('baseline · learned', 'baseline · đã học'), tone: 'green' }
+    case 'category_baseline_designed':return { text: t('baseline · designed', 'baseline · thiết kế'), tone: 'grey' }
+    default:                          return { text: t('live preview', 'xem trước trực tiếp'),       tone: 'grey'  }
   }
 }
 function isLockedOrigin(o: LambdaOrigin | null): boolean {
@@ -413,7 +413,7 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
             const locked = isLockedOrigin(p.lambda_origin)
             const isMedical   = p.lambda_origin === 'forced_medical'
             const isPermanent = p.lambda_origin === 'ai_permanent'
-            const ol = lambdaOriginLabel(p.lambda_origin)
+            const ol = lambdaOriginLabel(p.lambda_origin, t)
             return (
               <div key={p.uid} style={{
                 ...prefCard,

@@ -304,7 +304,7 @@ export default function AdminDashboard() {
                 <Link key={a.id} href={`/admin/mis/pipeline/${a.prospect_id}`} style={activityRow}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                     <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#E5D4C2' }}>
-                      {formatActivity(a)}
+                      {formatActivity(a, t)}
                     </span>
                     <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 9, color: '#7E7864' }}>
                       {new Date(a.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
@@ -475,20 +475,20 @@ function Panel({ title, subtitle, href, headerLink, children }: {
   return <div style={panel}>{header}<div>{children}</div></div>
 }
 
-function formatActivity(a: { event_type: string; from_value: string | null; to_value: string | null }): string {
+function formatActivity(a: { event_type: string; from_value: string | null; to_value: string | null }, t: (en: string, vi: string) => string): string {
   switch (a.event_type) {
-    case 'created':             return `New prospect added`
-    case 'stage_changed':       return `Stage → ${a.to_value}`
-    case 'source_changed':      return `Source → ${a.to_value || '—'}`
-    case 'decision_changed':    return `Decision → ${a.to_value || '—'}`
-    case 'letter_sent':         return 'Letter sent'
-    case 'scored':              return 'Score updated'
-    case 'member_no_allocated': return `Provisional ${a.to_value} allocated`
-    case 'invitation_sent':     return `Invitation sent`
-    case 'invitation_resent':   return `Invitation resent`
-    case 'signed':              return `Agreement signed${a.to_value ? ` → ${a.to_value}` : ''}`
-    case 'converted':           return `Converted to ${a.to_value}`
-    case 'archived':            return 'Archived'
+    case 'created':             return t('New prospect added', 'Đã thêm ứng viên mới')
+    case 'stage_changed':       return `${t('Stage', 'Giai đoạn')} → ${a.to_value}`
+    case 'source_changed':      return `${t('Source', 'Nguồn')} → ${a.to_value || '—'}`
+    case 'decision_changed':    return `${t('Decision', 'Quyết định')} → ${a.to_value || '—'}`
+    case 'letter_sent':         return t('Letter sent', 'Đã gửi thư')
+    case 'scored':              return t('Score updated', 'Đã cập nhật điểm')
+    case 'member_no_allocated': return t(`Provisional ${a.to_value} allocated`, `Đã cấp tạm ${a.to_value}`)
+    case 'invitation_sent':     return t('Invitation sent', 'Đã gửi lời mời')
+    case 'invitation_resent':   return t('Invitation resent', 'Đã gửi lại lời mời')
+    case 'signed':              return `${t('Agreement signed', 'Đã ký thỏa thuận')}${a.to_value ? ` → ${a.to_value}` : ''}`
+    case 'converted':           return t(`Converted to ${a.to_value}`, `Chuyển đổi thành ${a.to_value}`)
+    case 'archived':            return t('Archived', 'Đã lưu trữ')
     default:                    return a.event_type
   }
 }

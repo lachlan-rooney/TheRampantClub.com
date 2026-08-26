@@ -613,7 +613,7 @@ export default function AdminWhisky() {
               <strong style={{ color: '#7AB07A' }}>{stocktakeReviewed.size}</strong>
               <span style={{ color: '#7E7864' }}> / {whiskies.length} {t('reviewed', 'đã kiểm')}</span>
               {stocktakeStartedAt && (
-                <span style={{ color: '#7E7864', marginLeft: 12 }}>· {t('started', 'bắt đầu')} {timeAgo(stocktakeStartedAt)}</span>
+                <span style={{ color: '#7E7864', marginLeft: 12 }}>· {t('started', 'bắt đầu')} {timeAgo(stocktakeStartedAt, t)}</span>
               )}
             </span>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
@@ -811,7 +811,7 @@ export default function AdminWhisky() {
                 </button>
                 {w.last_fill_updated_at && (
                   <div style={fillAuditLine}>
-                    {t('Last fill:', 'Rót lần cuối:')} {w.last_fill_updated_email || t('unknown', 'không rõ')} · {timeAgo(w.last_fill_updated_at)}
+                    {t('Last fill:', 'Rót lần cuối:')} {w.last_fill_updated_email || t('unknown', 'không rõ')} · {timeAgo(w.last_fill_updated_at, t)}
                   </div>
                 )}
                 {expandedIds.has(w.id) && (
@@ -1083,6 +1083,7 @@ function InlineField({ label, value, onSave, select }: {
   onSave: (v: string) => void
   select?: readonly string[]
 }) {
+  const { t } = useLang()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(value)
   useEffect(() => { setDraft(value) }, [value])
@@ -1092,11 +1093,11 @@ function InlineField({ label, value, onSave, select }: {
       <button
         onClick={() => setEditing(true)}
         style={inlineFieldDisplay}
-        title="Click to edit"
+        title={t('Click to edit', 'Nhấn để sửa')}
       >
         <div style={inlineFieldLabel}>{label}</div>
         <div style={{ ...inlineFieldValue, color: value ? '#E5D4C2' : '#7E7864', fontStyle: value ? 'normal' : 'italic' }}>
-          {value || '— add —'}
+          {value || t('— add —', '— thêm —')}
         </div>
       </button>
     )
@@ -1139,6 +1140,7 @@ function InlineField({ label, value, onSave, select }: {
 // ─── Trend graph ─────────────────────────────────────────────────────────────
 
 function TrendGraph({ history, whiskies }: { history: FillHistoryRow[]; whiskies: Whisky[] }) {
+  const { t } = useLang()
   // Per-whisky lines. We only plot whiskies that have ≥2 history points so
   // the chart isn't a forest of stubs.
   const whiskyName = useMemo(() => {
@@ -1155,7 +1157,7 @@ function TrendGraph({ history, whiskies }: { history: FillHistoryRow[]; whiskies
     }
     return [...m.entries()]
       .filter(([, rows]) => rows.length >= 2)
-      .map(([id, rows]) => ({ id, name: whiskyName.get(id) || '(unknown)', rows }))
+      .map(([id, rows]) => ({ id, name: whiskyName.get(id) || t('(unknown)', '(không rõ)'), rows }))
   }, [history, whiskyName])
 
   // SVG canvas — fixed aspect, 30-day window (or whatever the data covers).
@@ -1164,7 +1166,7 @@ function TrendGraph({ history, whiskies }: { history: FillHistoryRow[]; whiskies
   const innerH = H - padT - padB
 
   const allDates = history.map(h => +new Date(h.created_at))
-  if (allDates.length === 0) return <div style={emptyText}>No data.</div>
+  if (allDates.length === 0) return <div style={emptyText}>{t('No data.', 'Không có dữ liệu.')}</div>
   const minT = Math.min(...allDates)
   const maxT = Math.max(...allDates)
   const tSpan = Math.max(1, maxT - minT)
@@ -1188,7 +1190,7 @@ function TrendGraph({ history, whiskies }: { history: FillHistoryRow[]; whiskies
   return (
     <div>
       <div style={{ ...miniLabel, marginBottom: 8 }}>
-        FILL % OVER TIME · {seriesById.length} whisk{seriesById.length === 1 ? 'y' : 'ies'} with ≥2 updates · {history.length} total updates
+        {t('FILL % OVER TIME', 'MỨC RÓT % THEO THỜI GIAN')} · {seriesById.length} whisk{seriesById.length === 1 ? 'y' : 'ies'} {t('with ≥2 updates', 'có ≥2 cập nhật')} · {history.length} {t('total updates', 'tổng số cập nhật')}
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}>
         {/* Y axis grid + labels (0/25/50/75/100) */}
@@ -1240,7 +1242,7 @@ function TrendGraph({ history, whiskies }: { history: FillHistoryRow[]; whiskies
                   r={isHover ? 3 : 2} fill={colour}
                   opacity={hoveredId == null || isHover ? 1 : 0.18}
                 >
-                  <title>{`${s.name}\n${h.fill_pct}% · ${new Date(h.created_at).toLocaleString()}${h.updated_by_email ? `\nby ${h.updated_by_email}` : ''}${h.note ? `\n"${h.note}"` : ''}`}</title>
+                  <title>{`${s.name}\n${h.fill_pct}% · ${new Date(h.created_at).toLocaleString()}${h.updated_by_email ? `\n${t('by', 'bởi')} ${h.updated_by_email}` : ''}${h.note ? `\n"${h.note}"` : ''}`}</title>
                 </circle>
               ))}
             </g>
@@ -1298,18 +1300,18 @@ function fillColor(pct: number): string {
   return '#7AB07A'
 }
 
-function timeAgo(iso: string): string {
-  const t = new Date(iso).getTime()
-  const diff = Date.now() - t
+function timeAgo(iso: string, t: (en: string, vi: string) => string): string {
+  const ts = new Date(iso).getTime()
+  const diff = Date.now() - ts
   const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
+  if (mins < 1) return t('just now', 'vừa xong')
+  if (mins < 60) return `${mins}${t('m ago', ' phút trước')}`
   const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
+  if (hrs < 24) return `${hrs}${t('h ago', ' giờ trước')}`
   const days = Math.floor(hrs / 24)
-  if (days < 7) return `${days}d ago`
+  if (days < 7) return `${days}${t('d ago', ' ngày trước')}`
   const weeks = Math.floor(days / 7)
-  if (weeks < 5) return `${weeks}w ago`
+  if (weeks < 5) return `${weeks}${t('w ago', ' tuần trước')}`
   return new Date(iso).toLocaleDateString()
 }
 
