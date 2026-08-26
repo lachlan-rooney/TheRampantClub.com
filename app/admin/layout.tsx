@@ -4,6 +4,8 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import AdminNav from './_nav/AdminNav'
 import NotificationBell from '@/components/admin/NotificationBell'
 import ActingChip from '@/components/admin/ActingChip'
+import LangToggle from '@/components/admin/LangToggle'
+import { AdminLangProvider } from '@/lib/admin-lang'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerSupabaseClient()
@@ -13,7 +15,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!admin) redirect('/members')
 
   return (
-    <>
+    <AdminLangProvider>
     <style dangerouslySetInnerHTML={{ __html: `html, body { background: #052E20 !important; }` }} />
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <AdminNav />
@@ -24,6 +26,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       }}>
         {/* Bell lives in-flow in its own reserved strip — never floats over content */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+          <LangToggle />
           <ActingChip />
           <NotificationBell />
         </div>
@@ -45,6 +48,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         )}
       </main>
     </div>
-    </>
+    </AdminLangProvider>
   )
 }
