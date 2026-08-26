@@ -16,6 +16,7 @@ interface Report {
   headline: string | null; narrative: Record<string, string>; include_financials: boolean
   auto_data: { usage?: { visits?: number; unique_members?: number }; generated_at?: string }
   share_token: string
+  send_postponed_to: string | null
 }
 
 const FIELDS: { key: string; label: string; hint: string; rows: number }[] = [
@@ -63,7 +64,18 @@ export default function ReportEditor() {
     const w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close() }
   }
 
-  const locked = r ? (r.status !== 'draft' && r.status !== 'pending_approval') : true
+  // Editable while draft/pending, OR approved-but-held (postponement window open).
+  const held = !!r && r.status === 'approved' && !!r.send_postponed_to && new Date(r.send_postponed_to) > new Date()
+  const locked = r ? (r.status !== 'draft' && r.status !== 'pending_approval' && !held) : true
+  const holdLabel = r?.send_postponed_to ? new Date(r.send_postponed_to).toLocaleString('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit' }) : null
+
+  const postpone = async (hours: number) => {
+    setActing(true); setMsg('')
+    const res = await fetch(`/api/admin/reports/${id}/postpone`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hours }) })
+    setActing(false)
+    setMsg(res.ok ? (hours > 0 ? 'Send postponed' : 'Hold cleared') : 'Postpone failed')
+    load(); setTimeout(() => setMsg(''), 3500)
+  }
 
   const save = async () => {
     setSaving(true); setMsg('')
@@ -107,6 +119,9 @@ export default function ReportEditor() {
           <input type="checkbox" checked={fin} disabled={locked} onChange={e => setFin(e.target.checked)} id="fin" />
           <label htmlFor="fin" style={{ fontFamily: MONO, fontSize: 12, color: '#E5D4C2' }}>Include monthly financials</label>
         </div>
+        <div style={{ fontFamily: MONO, fontSize: 10, color: '#7E7864', marginBottom: 16 }}>
+          Tip: add a clickable link in any section with <span style={{ color: '#B2AA98' }}>[label](https://…)</span>
+        </div>
         {FIELDS.map(f => (
           <div key={f.key} style={{ marginBottom: 16 }}>
             <label style={label}>{f.label}</label>
@@ -130,6 +145,15 @@ export default function ReportEditor() {
           {r.status === 'sent' && <span style={{ fontFamily: MONO, fontSize: 11, color: '#5B8FA8' }}>✓ Sent</span>}
           {msg && <span style={{ fontFamily: MONO, fontSize: 11, color: /fail|only|can't|can.t|no permitted/i.test(msg) ? '#C27070' : '#7AB07A' }}>{msg}</span>}
         </div>
+        {r.status === 'approved' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: MONO, fontSize: 10, color: '#B2AA98' }}>
+              Auto-sends 17:00 VN Mon.{holdLabel ? ` Held until ${holdLabel} VN.` : ''} Emergency postpone (max 21:00):
+            </span>
+            {[1, 2, 3, 4].map(h => <button key={h} onClick={() => postpone(h)} disabled={acting} style={btnGhost}>+{h}h</button>)}
+            {r.send_postponed_to && <button onClick={() => postpone(0)} disabled={acting} style={{ ...btnGhost, color: '#C49555' }}>Clear hold</button>}
+          </div>
+        )}
         <div style={{ fontFamily: MONO, fontSize: 10, color: '#C49555', marginTop: 10 }}>
           Beta: sends go to you only — Shawn is not emailed until you go live.
         </div>

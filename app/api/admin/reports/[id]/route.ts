@@ -27,10 +27,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = await req.json().catch(() => ({}))
   const sb = svc()
 
-  const { data: cur } = await sb.from('weekly_reports').select('status, narrative').eq('id', id).maybeSingle()
+  const { data: cur } = await sb.from('weekly_reports').select('status, narrative, send_postponed_to').eq('id', id).maybeSingle()
   if (!cur) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (cur.status !== 'draft' && cur.status !== 'pending_approval') {
-    return NextResponse.json({ error: 'This report is locked (already approved/sent).' }, { status: 400 })
+  // Editable while draft/pending, OR while approved but under an active send
+  // postponement (so the version that finally sends is the most up to date).
+  const heldOpen = cur.status === 'approved' && cur.send_postponed_to && new Date(cur.send_postponed_to) > new Date()
+  if (cur.status !== 'draft' && cur.status !== 'pending_approval' && !heldOpen) {
+    return NextResponse.json({ error: 'This report is locked (already sent, or approved and not postponed).' }, { status: 400 })
   }
 
   const narrative = { ...(cur.narrative || {}) }

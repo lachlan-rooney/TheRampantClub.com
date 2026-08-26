@@ -15,9 +15,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
   const sb = svc()
-  const { data: r } = await sb.from('weekly_reports').select('period_start, period_end, status, include_financials').eq('id', id).maybeSingle()
+  const { data: r } = await sb.from('weekly_reports').select('period_start, period_end, status, include_financials, send_postponed_to').eq('id', id).maybeSingle()
   if (!r) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (r.status !== 'draft' && r.status !== 'pending_approval') return NextResponse.json({ error: 'Locked' }, { status: 400 })
+  const heldOpen = r.status === 'approved' && r.send_postponed_to && new Date(r.send_postponed_to) > new Date()
+  if (r.status !== 'draft' && r.status !== 'pending_approval' && !heldOpen) return NextResponse.json({ error: 'Locked' }, { status: 400 })
 
   const { auto, financials } = await gatherWeek(sb, r.period_start, r.period_end, { includeFinancials: r.include_financials })
   await sb.from('weekly_reports').update({ auto_data: auto, financials: financials || {}, updated_at: new Date().toISOString() }).eq('id', id)
