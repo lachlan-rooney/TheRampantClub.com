@@ -16,7 +16,6 @@ const MEMBER_GROUPS: { label: string; links: { href: string; en: string; vn: str
     { href: '/members/spaces',        en: 'Our Spaces',            vn: 'Không gian' },
     { href: '/members/events',        en: 'Events',                vn: 'Sự kiện' },
     { href: '/members/fixtures',      en: 'Sports Fixtures',       vn: 'Lịch Thi Đấu' },
-    { href: '/members/journal',       en: "Cellarmaster's Journal", vn: 'Nhật Ký Cellarmaster' },
   ] },
   { label: 'You', links: [
     { href: '/members/concierge',     en: 'The Concierge',         vn: 'Quản Gia' },
@@ -26,7 +25,6 @@ const MEMBER_GROUPS: { label: string; links: { href: string; en: string; vn: str
     { href: '/members/annual-dram',   en: 'The Annual Dram',       vn: 'Ly Rượu Của Năm' },
     { href: '/members/notes',         en: 'Your Notes',            vn: 'Nhật Ký Nếm Thử' },
     { href: '/members/visits',        en: 'Your Visits',           vn: 'Những Lần Ghé Thăm' },
-    { href: '/members/gifts',         en: 'Gifts from the Club',   vn: 'Quà Tặng' },
   ] },
   { label: 'Connect', links: [
     { href: '/members/members',       en: 'The Members',           vn: 'Thành Viên' },

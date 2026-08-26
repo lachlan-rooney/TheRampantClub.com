@@ -73,9 +73,12 @@ create index if not exists idx_mperiod_member on membership_periods (member_no, 
 create index if not exists idx_mperiod_active on membership_periods (status, end_date);
 
 -- ── 4. Atomic write RPC ───────────────────────────────────────────────
--- SECURITY INVOKER so auth.uid() is the recording admin — this makes the
--- is_admin_uid() gate meaningful AND lets ops_emit_event stamp the real actor
--- (service-role would stamp a null actor). Mirrors apply_card_transaction.
+-- SECURITY DEFINER so the internal writes (counter, ledger, period) bypass
+-- RLS — mirrors the ops-hub write RPCs. auth.uid() still resolves from the
+-- request JWT (independent of definer), so the is_admin_uid() gate authorizes
+-- and ops_emit_event attributes the real actor. Must be called under the
+-- cookie/session client (a service-role client has no JWT → auth.uid() null
+-- → the gate rejects). Mirrors apply_card_transaction's atomicity.
 create or replace function record_membership_payment(
   p_member_no       varchar,
   p_member_name     text,
@@ -89,7 +92,7 @@ create or replace function record_membership_payment(
   p_staff_id        uuid,
   p_staff_email     text
 ) returns table (payment_id uuid, receipt_no text, period_id uuid, start_date date, end_date date)
-language plpgsql security invoker set search_path = public as $$
+language plpgsql security definer set search_path = public, extensions as $$
 declare
   v_year    int := extract(year from p_payment_date);
   v_seq     int;
@@ -180,7 +183,7 @@ create or replace function void_membership_payment(
   p_staff_id   uuid,
   p_staff_email text
 ) returns void
-language plpgsql security invoker set search_path = public as $$
+language plpgsql security definer set search_path = public, extensions as $$
 declare
   v_orig membership_payments%rowtype;
   v_year int;
