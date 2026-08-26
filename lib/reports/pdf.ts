@@ -71,7 +71,9 @@ export async function generateReportPdf(r: ReportRow): Promise<Uint8Array> {
 
   const wrapText = (text: string, size = 10, color: RGB = CREAM, f: PDFFont = font) => {
     const maxW = W - 2 * M
-    for (const para of pdfSafe(text).split('\n')) {
+    // Markdown links → "label (url)" (a PDF can't carry a live link inline here).
+    const flat = pdfSafe(text).replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '$1 ($2)')
+    for (const para of flat.split('\n')) {
       let line = ''
       for (const word of para.split(/\s+/)) {
         const test = line ? line + ' ' + word : word

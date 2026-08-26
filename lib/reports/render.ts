@@ -27,6 +27,10 @@ type Mode = 'svg' | 'email'
 const GREEN = '#052E20', CARD = '#0A3526', CREAM = '#E5D4C2', GOLD = '#D4B85A', MUTED = '#B2AA98', SAGE = '#7AB07A', RED = '#C27070'
 const SERIF = "Georgia, 'Times New Roman', serif"
 const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+// Staff can add clickable links in any narrative section with markdown syntax:
+// [label](https://…). Everything else is escaped; only http(s) links become <a>.
+const LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g
+const renderProse = (s: unknown) => esc(s).replace(LINK_RE, (_m, label, url) => `<a href="${url}" style="color:#D4B85A;text-decoration:underline">${label}</a>`)
 const vnd = (n: number) => `${new Intl.NumberFormat('en-US').format(Math.round(n))} ₫`
 const site = () => process.env.NEXT_PUBLIC_SITE_URL || 'https://therampantclub.com'
 
@@ -66,7 +70,7 @@ function stat(value: string, label: string, extra = ''): string {
 }
 function narrative(title: string, body: string | undefined): string {
   if (!body || !body.trim()) return ''
-  return section(title, '', `<div style="font-size:14px;line-height:1.75;color:${CREAM};white-space:pre-wrap">${esc(body)}</div>`)
+  return section(title, '', `<div style="font-size:14px;line-height:1.75;color:${CREAM};white-space:pre-wrap">${renderProse(body)}</div>`)
 }
 function callout(title: string, body: string): string {
   return `<div style="border-left:3px solid ${GOLD};background:rgba(212,184,90,0.06);padding:14px 18px;border-radius:0 8px 8px 0;margin:0 0 24px"><div style="font-family:'Google Sans Code',monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:${GOLD};margin-bottom:6px">${esc(title)}</div><div style="font-size:14px;color:${CREAM};line-height:1.7">${body}</div></div>`
@@ -83,7 +87,7 @@ export function renderReportBody(r: ReportRow, mode: Mode): string {
     <div style="font-size:12px;color:${MUTED}">${esc(d.period.label)}</div>
   </div>`
 
-  if (n.moment_of_week?.trim()) html += callout('Moment of the week', esc(n.moment_of_week))
+  if (n.moment_of_week?.trim()) html += callout('Moment of the week', renderProse(n.moment_of_week))
 
   // Usage
   html += section('Club Usage', 'Members through the doors this week', `
@@ -121,7 +125,7 @@ export function renderReportBody(r: ReportRow, mode: Mode): string {
     ${tierSegs.length ? chartBlock(mode, donut(tierSegs, 'dark'), barsHtml(tierSegs.map(t => ({ label: t.label, value: t.value })))) : ''}
     ${chartBlock(mode, funnel(d.pipeline.funnel, 'dark'), barsHtml(d.pipeline.funnel.map(f => ({ label: f.stage, value: f.count }))))}
     ${(d.pipeline.interviews || []).length ? `<div style="font-size:13px;color:${CREAM};margin-top:8px">Interviews this week: ${d.pipeline.interviews.map(i => `${esc(i.name)}${i.interviewer ? ` (with ${esc(i.interviewer)})` : ''}`).join(' · ')}</div>` : ''}
-    ${n.interviews_commentary?.trim() ? `<div style="font-size:14px;line-height:1.7;color:${CREAM};margin-top:10px;white-space:pre-wrap">${esc(n.interviews_commentary)}</div>` : ''}
+    ${n.interviews_commentary?.trim() ? `<div style="font-size:14px;line-height:1.7;color:${CREAM};margin-top:10px;white-space:pre-wrap">${renderProse(n.interviews_commentary)}</div>` : ''}
   `)
 
   html += narrative('Marketing Initiatives', n.marketing)
@@ -144,7 +148,7 @@ export function renderReportBody(r: ReportRow, mode: Mode): string {
     `)
   }
 
-  if (n.closing_note?.trim()) html += `<div style="font-size:14px;line-height:1.75;color:${CREAM};font-style:italic;margin-top:8px;white-space:pre-wrap">${esc(n.closing_note)}</div>`
+  if (n.closing_note?.trim()) html += `<div style="font-size:14px;line-height:1.75;color:${CREAM};font-style:italic;margin-top:8px;white-space:pre-wrap">${renderProse(n.closing_note)}</div>`
   return html
 }
 

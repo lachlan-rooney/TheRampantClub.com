@@ -4,8 +4,9 @@ import { isAdmin } from '@/lib/admin'
 import { sendReport } from '@/lib/reports/send'
 
 // Auto-send APPROVED weekly reports to the configured recipients.
-// Scheduled Monday 17:00 VN (0 10 * * 1 UTC) — before Shawn's California Monday
-// morning. Only sends reports the owner has approved; unapproved ones wait.
+// Scheduled hourly Monday 17:00–21:00 VN (0 10-14 * * 1 UTC). The 17:00 run is
+// the normal send; later runs pick up any report whose emergency postponement
+// (max 21:00 VN) has lapsed. Only sends approved reports; unapproved ones wait.
 // (Beta: the send layer hard-blocks Shawn regardless of settings.)
 
 export const dynamic = 'force-dynamic'
@@ -21,7 +22,13 @@ async function authed(req: NextRequest): Promise<boolean> {
 async function handle(req: NextRequest) {
   if (!(await authed(req))) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const sb = svc()
-  const { data: approved } = await sb.from('weekly_reports').select('id').eq('status', 'approved').order('period_start', { ascending: true })
+  // Approved reports whose send hold (if any) has lapsed. Runs hourly 17:00–21:00
+  // VN Mon, so a postponed report goes out at the top of the hour it's due.
+  const now = new Date().toISOString()
+  const { data: approved } = await sb.from('weekly_reports').select('id')
+    .eq('status', 'approved')
+    .or(`send_postponed_to.is.null,send_postponed_to.lte.${now}`)
+    .order('period_start', { ascending: true })
   const results: { id: string; ok: boolean; recipients?: string[]; error?: string }[] = []
   for (const r of approved || []) {
     const res = await sendReport(sb, r.id, { actor: null })
