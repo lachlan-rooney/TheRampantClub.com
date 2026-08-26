@@ -4,9 +4,10 @@ import { isAdmin } from '@/lib/admin'
 import { sendReport } from '@/lib/reports/send'
 
 // Auto-send APPROVED weekly reports to the configured recipients.
-// Scheduled hourly Monday 17:00–21:00 VN (0 10-14 * * 1 UTC). The 17:00 run is
-// the normal send; later runs pick up any report whose emergency postponement
-// (max 21:00 VN) has lapsed. Only sends approved reports; unapproved ones wait.
+// Scheduled Monday 17:00 VN (0 10 * * 1 UTC) — once/day (Hobby-plan cron limit).
+// Sends approved reports whose send hold (if any) has lapsed; a report postponed
+// past 17:00 is held and the owner sends it manually with "Send now" when ready.
+// Only approved reports send; unapproved ones wait.
 // (Beta: the send layer hard-blocks Shawn regardless of settings.)
 
 export const dynamic = 'force-dynamic'

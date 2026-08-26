@@ -148,7 +148,7 @@ export default function ReportEditor() {
         {r.status === 'approved' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
             <span style={{ fontFamily: MONO, fontSize: 10, color: '#B2AA98' }}>
-              Auto-sends 17:00 VN Mon.{holdLabel ? ` Held until ${holdLabel} VN.` : ''} Emergency postpone (max 21:00):
+              Auto-sends 17:00 VN Mon.{holdLabel ? ` Held until ${holdLabel} VN — use “Send now” then.` : ''} Emergency postpone holds the auto-send (max 21:00):
             </span>
             {[1, 2, 3, 4].map(h => <button key={h} onClick={() => postpone(h)} disabled={acting} style={btnGhost}>+{h}h</button>)}
             {r.send_postponed_to && <button onClick={() => postpone(0)} disabled={acting} style={{ ...btnGhost, color: '#C49555' }}>Clear hold</button>}
