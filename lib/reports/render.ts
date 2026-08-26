@@ -59,14 +59,22 @@ function chartBlock(mode: Mode, svg: string, bars: string): string {
   return mode === 'email' ? bars : `<div style="margin:8px 0;overflow-x:auto">${svg}</div>`
 }
 function section(title: string, sub: string, inner: string): string {
-  return `<div style="margin:0 0 34px">
-    <div style="font-family:'Google Sans Code',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:${GOLD};margin-bottom:3px">${esc(title)}</div>
-    ${sub ? `<div style="font-size:12px;color:${MUTED};font-style:italic;margin-bottom:14px">${esc(sub)}</div>` : ''}
+  return `<div style="margin:0 0 38px">
+    <div style="border-bottom:1px solid rgba(212,184,90,0.22);padding-bottom:7px;margin-bottom:16px">
+      <span style="font-family:'Google Sans Code',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:${GOLD}">${esc(title)}</span>
+      ${sub ? `<div style="font-size:12px;color:${MUTED};font-style:italic;margin-top:4px">${esc(sub)}</div>` : ''}
+    </div>
     ${inner}
   </div>`
 }
+// Stat card — gold figure in a bordered tile.
 function stat(value: string, label: string, extra = ''): string {
-  return `<td style="padding:10px 14px;vertical-align:top"><div style="font-family:${SERIF};font-size:30px;color:${CREAM};line-height:1">${value}${extra}</div><div style="font-family:'Google Sans Code',monospace;font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:${MUTED};margin-top:6px">${esc(label)}</div></td>`
+  return `<td style="padding:5px;width:25%;vertical-align:top">
+    <div style="background:${CARD};border:1px solid rgba(212,184,90,0.16);border-radius:10px;padding:15px 10px;text-align:center">
+      <div style="font-family:${SERIF};font-size:27px;color:${GOLD};line-height:1;font-weight:600">${value}${extra}</div>
+      <div style="font-family:'Google Sans Code',monospace;font-size:8px;letter-spacing:0.1em;text-transform:uppercase;color:${MUTED};margin-top:7px">${esc(label)}</div>
+    </div>
+  </td>`
 }
 function narrative(title: string, body: string | undefined): string {
   if (!body || !body.trim()) return ''
@@ -81,10 +89,14 @@ export function renderReportBody(r: ReportRow, mode: Mode): string {
   const n = r.narrative || {}
   const u = d.usage
 
-  let html = `<div style="text-align:center;margin:0 0 30px">
-    <div style="font-family:'Google Sans Code',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:${GOLD}">The Rampant Club · Weekly Report</div>
-    <h1 style="font-family:${SERIF};font-size:30px;color:${CREAM};font-weight:600;margin:10px 0 4px">${esc(r.headline || n.headline || 'The Week at the Club')}</h1>
-    <div style="font-size:12px;color:${MUTED}">${esc(d.period.label)}</div>
+  let html = `<div style="margin:0 0 34px">
+    <img src="${site()}/images/library-bar-opt.png" alt="" width="100%" style="display:block;width:100%;border-radius:14px;border:1px solid rgba(212,184,90,0.20)"/>
+    <div style="text-align:center;margin-top:22px">
+      <div style="font-family:'Google Sans Code',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:${GOLD}">The Rampant Club · Weekly Report</div>
+      <h1 style="font-family:${SERIF};font-size:33px;color:${CREAM};font-weight:600;margin:12px 0 4px;letter-spacing:0.01em">${esc(r.headline || n.headline || 'The Week at the Club')}</h1>
+      <div style="font-size:12px;color:${MUTED};letter-spacing:0.04em">${esc(d.period.label)}</div>
+      <div style="width:40px;height:2px;background:${GOLD};margin:16px auto 0;opacity:0.6"></div>
+    </div>
   </div>`
 
   if (n.moment_of_week?.trim()) html += callout('Moment of the week', renderProse(n.moment_of_week))
