@@ -4,6 +4,7 @@
 // so the UI can show a sensible source label + icon.
 
 export const GALLERY_CATEGORIES = [
+  { key: 'tournament', en: 'Tournament',    vn: 'Giải Đấu' },
   { key: 'fixture', en: 'Sports Fixture', vn: 'Thi Đấu' },
   { key: 'dinner',  en: 'Dinner',         vn: 'Bữa Tối' },
   { key: 'tasting', en: 'Tasting',        vn: 'Nếm Thử' },

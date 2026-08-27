@@ -14,7 +14,7 @@ create table if not exists events (
   id           uuid primary key default gen_random_uuid(),
   title        text not null,
   category     text not null default 'other'
-                 check (category in ('fixture','dinner','tasting','social','event','other')),
+                 check (category in ('tournament','fixture','dinner','tasting','social','event','other')),
   event_date   date,
   description  text,
   cover_url    text,                 -- optional cover (a Storage URL or external link)
@@ -94,3 +94,10 @@ select a.id, 'link', a.url, a.caption, a.submitted_by, a.submitter_name,
 from event_albums a
 where a.url is not null
   and not exists (select 1 from event_media m where m.event_id = a.id and m.url = a.url);
+
+-- ── 6. If the events table already existed, widen the category check to allow
+--       'tournament' (for signature events like The Rampant Cup). No-op on a
+--       fresh create above (which already includes it). Safe to re-run.
+alter table events drop constraint if exists events_category_check;
+alter table events add constraint events_category_check
+  check (category in ('tournament','fixture','dinner','tasting','social','event','other'));
