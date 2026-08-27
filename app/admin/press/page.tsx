@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { ConfirmModal, useToast } from '@/components/admin/dialogs'
 import { useLang } from '@/lib/admin-lang'
 
@@ -55,7 +54,6 @@ export default function AdminPress() {
     is_published: true, sort_order: 0,
   })
   const [busy, setBusy] = useState(false)
-  const supabase = createBrowserSupabaseClient()
 
   const { showToast, toastNode } = useToast()
   // Confirm modal — single destructive path (delete press item).
@@ -63,12 +61,8 @@ export default function AdminPress() {
   const [confirmBusy, setConfirmBusy] = useState(false)
 
   const load = async () => {
-    const { data } = await supabase.from('press_items')
-      .select('*')
-      .order('type', { ascending: true })
-      .order('published_at', { ascending: false, nullsFirst: false })
-      .order('sort_order', { ascending: true })
-    if (data) setItems(data as PressItem[])
+    const res = await fetch('/api/admin/press', { cache: 'no-store' })
+    if (res.ok) { const j = await res.json(); setItems((j.items || []) as PressItem[]) }
   }
   useEffect(() => { load() }, [])
 
@@ -101,20 +95,22 @@ export default function AdminPress() {
       published_at: form.published_at || null,
       is_published: form.is_published,
       sort_order: form.sort_order,
-      updated_at: new Date().toISOString(),
     }
-    if (editing) {
-      await supabase.from('press_items').update(payload).eq('id', editing.id)
-    } else {
-      await supabase.from('press_items').insert(payload)
-    }
-    setBusy(false); reset(); load()
+    try {
+      const res = editing
+        ? await fetch(`/api/admin/press/${editing.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+        : await fetch('/api/admin/press', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) { showToast(`${t('Save failed', 'Lưu thất bại')}: ${j.error || res.status}`, 'error'); return }
+      reset(); await load()
+    } catch (e) {
+      showToast(`${t('Save failed', 'Lưu thất bại')}: ${(e as Error).message}`, 'error')
+    } finally { setBusy(false) }
   }
 
   const togglePublish = async (i: PressItem) => {
-    await supabase.from('press_items')
-      .update({ is_published: !i.is_published, updated_at: new Date().toISOString() })
-      .eq('id', i.id)
+    const res = await fetch(`/api/admin/press/${i.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_published: !i.is_published }) })
+    if (!res.ok) { const j = await res.json().catch(() => ({})); showToast(`${t('Update failed', 'Cập nhật thất bại')}: ${j.error || res.status}`, 'error'); return }
     load()
   }
 
@@ -124,8 +120,8 @@ export default function AdminPress() {
     if (!confirmItem) return
     setConfirmBusy(true)
     try {
-      const { error } = await supabase.from('press_items').delete().eq('id', confirmItem.id)
-      if (error) { showToast(`${t('Delete failed', 'Xóa thất bại')}: ${error.message}`, 'error'); return }
+      const res = await fetch(`/api/admin/press/${confirmItem.id}`, { method: 'DELETE' })
+      if (!res.ok) { const j = await res.json().catch(() => ({})); showToast(`${t('Delete failed', 'Xóa thất bại')}: ${j.error || res.status}`, 'error'); return }
       setConfirmItem(null)
       load()
     } finally {
