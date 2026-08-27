@@ -42,6 +42,7 @@ const GROUPS: Group[] = [
       { href: '/admin/mis/candidates', label: 'Pref Candidates', icon: 'star' },
       { href: '/admin/agreements', label: 'Agreements', icon: 'signature' },
       { href: '/admin/membership', label: 'Membership Finance', icon: 'receipt' },
+      { href: '/admin/newsletters', label: 'Newsletter', icon: 'megaphone' },
       { href: '/admin/gifts', label: 'Gifting', icon: 'gift' },
       { href: '/admin/observatory', label: 'Observatory', icon: 'eye' },
       { href: '/admin/decay-fit', label: 'Decay Fit', icon: 'trend' },
