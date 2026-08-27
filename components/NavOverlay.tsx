@@ -470,9 +470,9 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
               <div className="nav-link-en">The Origin</div>
               <div className="nav-link-vn">Nguồn Gốc</div>
             </Link>
-            <Link href="/menus" className="nav-link" onClick={() => setOpen(false)}>
-              <div className="nav-link-en">The Menus</div>
-              <div className="nav-link-vn">Thực Đơn</div>
+            <Link href="/spaces" className="nav-link" onClick={() => setOpen(false)}>
+              <div className="nav-link-en">Club Spaces</div>
+              <div className="nav-link-vn">Không Gian</div>
             </Link>
             <Link href="/sports" className="nav-link" onClick={() => setOpen(false)}>
               <div className="nav-link-en">The Sports Club</div>
