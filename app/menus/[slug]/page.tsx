@@ -119,7 +119,9 @@ export default function FloorMenuPage({ params }: { params: Promise<{ slug: stri
           margin: 0 auto;
           padding: 0 16px 60px;
         }
-        .menu-frame iframe {
+        /* Inline PDF (desktop). <object> renders reliably on desktop browsers;
+           its inner fallback covers any that can't. */
+        .menu-embed {
           width: 100%;
           height: 80vh;
           min-height: 600px;
@@ -127,9 +129,28 @@ export default function FloorMenuPage({ params }: { params: Promise<{ slug: stri
           border-radius: 8px;
           background: #fff;
           box-shadow: 0 12px 32px rgba(5,46,32,0.10);
+          display: block;
         }
-
-        /* Fallback note for clients that can't render PDFs inline */
+        .menu-cta {
+          text-align: center;
+          padding: 48px 20px;
+        }
+        .menu-cta-text {
+          font-family: 'Google Sans Code', monospace;
+          font-size: 12px; color: #5E6650; opacity: 0.8;
+          margin: 0 0 18px; letter-spacing: 0.04em;
+        }
+        /* Mobile browsers don't render PDFs inline — show a clean card + button
+           instead of a broken embed box. */
+        .menu-mobile {
+          display: none;
+          background: #fff;
+          border: 1px solid rgba(5,46,32,0.12);
+          border-radius: 8px;
+          box-shadow: 0 12px 32px rgba(5,46,32,0.10);
+          text-align: center;
+          padding: 48px 24px;
+        }
         .menu-fallback {
           font-family: 'Google Sans Code', monospace;
           font-size: 11px; color: #5E6650; opacity: 0.7;
@@ -144,7 +165,8 @@ export default function FloorMenuPage({ params }: { params: Promise<{ slug: stri
 
         @media (max-width: 768px) {
           .menu-head { padding-top: 80px; }
-          .menu-frame iframe { height: 70vh; min-height: 400px; }
+          .menu-embed { display: none; }
+          .menu-mobile { display: block; }
         }
       ` }} />
 
@@ -167,10 +189,16 @@ export default function FloorMenuPage({ params }: { params: Promise<{ slug: stri
         </div>
 
         <div className="menu-frame">
-          <iframe src={menu.pdf} title={`${menu.name} menu`} />
-          <p className="menu-fallback">
-            Menu not displaying? <a href={menu.pdf} target="_blank" rel="noopener noreferrer">Open it directly →</a>
-          </p>
+          <object data={menu.pdf} type="application/pdf" className="menu-embed" aria-label={`${menu.name} menu`}>
+            <div className="menu-cta">
+              <p className="menu-cta-text">The menu opens best in your PDF viewer.</p>
+              <a href={menu.pdf} target="_blank" rel="noopener noreferrer" className="menu-action primary">View the menu →</a>
+            </div>
+          </object>
+          <div className="menu-mobile">
+            <p className="menu-cta-text">Tap to view the full menu.</p>
+            <a href={menu.pdf} target="_blank" rel="noopener noreferrer" className="menu-action primary">View the menu →</a>
+          </div>
         </div>
       </div>
     </>
