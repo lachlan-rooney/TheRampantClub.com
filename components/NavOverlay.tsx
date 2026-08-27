@@ -230,6 +230,13 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
         }
         .nav-link:hover { opacity: 0.5; }
 
+        /* Primary action (Member Log in) — gold accent so the key returning-
+           member action stands out, in both the light and dark nav themes. */
+        .nav-link-primary .nav-link-en { color: #A9822C; }
+        .nav-link-primary .nav-link-vn { color: #A9822C; opacity: 0.85; }
+        .nav-dark .nav-link-primary .nav-link-en { color: #E7C766; }
+        .nav-dark .nav-link-primary .nav-link-vn { color: #D4B85A; }
+
         .nav-link-en {
           font-family: 'Rampant Sans', 'Playfair Display', serif;
           font-size: 14px;
@@ -408,6 +415,10 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
               <div className="nav-link-en">Home</div>
               <div className="nav-link-vn">Trang chủ</div>
             </Link>
+            <Link href="/login" className="nav-link nav-link-primary" onClick={() => setOpen(false)}>
+              <div className="nav-link-en">Member Log in</div>
+              <div className="nav-link-vn">Đăng Nhập</div>
+            </Link>
             <Link href="/atlas" className="nav-link" onClick={() => setOpen(false)}>
               <div className="nav-link-en">The Atlas</div>
               <div className="nav-link-vn">Bản Đồ Whisky</div>
@@ -419,10 +430,6 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
             <Link href="/menus" className="nav-link" onClick={() => setOpen(false)}>
               <div className="nav-link-en">The Menus</div>
               <div className="nav-link-vn">Thực Đơn</div>
-            </Link>
-            <Link href="/login" className="nav-link" onClick={() => setOpen(false)}>
-              <div className="nav-link-en">Member Log in</div>
-              <div className="nav-link-vn">Đăng Nhập</div>
             </Link>
             <Link href="/sports" className="nav-link" onClick={() => setOpen(false)}>
               <div className="nav-link-en">The Sports Club</div>
