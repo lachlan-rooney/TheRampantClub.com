@@ -220,10 +220,15 @@ export default function MembersPage() {
     gifts:  { href: '/members/gifts', img: IMG('brass-pin'),         en: 'Gifts',          vn: 'Qu\u00e0 T\u1eb7ng',          icon: 'gift', secondary: 'Gifts from the club' },
     gallery: { href: '/members/gallery', img: IMG('gala-table'),     en: 'Event Gallery',  vn: 'Th\u01b0 Vi\u1ec7n S\u1ef1 Ki\u1ec7n', icon: 'image', secondary: 'Photos & video from fixtures, dinners & socials' },
   }
+  // Tile groups mirror the nav's groups exactly (Whisky · What's On · The Club ·
+  // You · Info) so the dashboard and the menu tell the same story. Events and
+  // Event Gallery sit next to each other — an event and its photos belong together.
   const bucketGroups = [
-    { label: 'Explore', tiles: [extra.snug, extra.whisky, extra.finder, byHref['/members/spaces'], byHref['/members/events'], byHref['/members/fixtures'], extra.gallery] },
-    { label: 'You',     tiles: [extra.concierge, byHref['/members/profile'], extra.taste, extra.journey, extra.visits] },
-    { label: 'House',   tiles: [extra.menus, byHref['/members/rules'], extra.terms, byHref['/members/contact']] },
+    { label: 'Whisky',    tiles: [extra.whisky, extra.finder, extra.taste, extra.journey] },
+    { label: "What's On", tiles: [byHref['/members/events'], extra.gallery, byHref['/members/fixtures']] },
+    { label: 'The Club',  tiles: [byHref['/members/spaces'], extra.menus, extra.snug, extra.concierge] },
+    { label: 'You',       tiles: [byHref['/members/profile'], extra.visits] },
+    { label: 'Info',      tiles: [byHref['/members/rules'], extra.terms, byHref['/members/contact']] },
   ].map(g => ({ ...g, tiles: g.tiles.filter(Boolean) }))
 
   return (
