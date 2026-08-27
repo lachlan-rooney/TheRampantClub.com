@@ -36,6 +36,8 @@ interface Sheet {
   handover_acknowledged_at?: string | null
 }
 
+interface Staff { id: string; display_name: string; role_title?: string | null }
+
 const OPENING_LABEL = 'Opening · club ready to open'
 const CLOSING_LABEL = 'Closing · shift closed, handover recorded'
 
@@ -51,7 +53,13 @@ export default function ChecklistsPage() {
   const [opening, setOpening] = useState<Sheet | null>(null)
   const [closing, setClosing] = useState<Sheet | null>(null)
   const [loading, setLoading] = useState(true)
+  // `initials` holds the SELECTED staff member's display name — every tick and
+  // the final seal are attributed to this person, so each sheet answers "who
+  // did it / who's responsible" with a real name, not free-typed initials.
   const [initials, setInitials] = useState('')
+  const [staffList, setStaffList] = useState<Staff[]>([])
+  // Set when Lock & sign is pressed — drives the confirm-before-seal modal.
+  const [confirmSheet, setConfirmSheet] = useState<Sheet | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [missingNotice, setMissingNotice] = useState<string | null>(null)
@@ -94,9 +102,35 @@ export default function ChecklistsPage() {
   }, [date])
   useEffect(() => { loadHistory() }, [loadHistory])
 
-  // Restore initials across sessions so the team doesn't type their name on every tick.
+  // Load the staff roster for the "who are you" dropdown, then pre-select:
+  // (1) whoever is already ACTING on this device (the trc_admin_staff identity),
+  // else (2) the last person remembered on this device. We only accept a value
+  // that's actually in the current roster, so a stale/removed name never stamps.
   useEffect(() => {
-    try { setInitials(localStorage.getItem('checklist_initials') || '') } catch { /* */ }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const rr = await fetch('/api/admin/acting', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'roster' }),
+        })
+        const roster: Staff[] = rr.ok ? ((await rr.json()).staff || []) : []
+        if (cancelled) return
+        setStaffList(roster)
+        const names = new Set(roster.map(s => s.display_name))
+
+        let pick = ''
+        try {
+          const gr = await fetch('/api/admin/acting', { cache: 'no-store' })
+          if (gr.ok) { const acting = (await gr.json()).staff; if (acting?.display_name && names.has(acting.display_name)) pick = acting.display_name }
+        } catch { /* acting is best-effort */ }
+        if (!pick) {
+          try { const saved = localStorage.getItem('checklist_initials') || ''; if (names.has(saved)) pick = saved } catch { /* */ }
+        }
+        if (pick && !cancelled) setInitials(pick)
+      } catch { /* roster is best-effort; the field simply stays empty */ }
+    })()
+    return () => { cancelled = true }
   }, [])
   const persistInitials = (v: string) => {
     setInitials(v)
@@ -140,7 +174,7 @@ export default function ChecklistsPage() {
   // ── Mutations ──────────────────────────────────────────────────────
   const toggleItem = useCallback((sheet: Sheet, itemId: string) => {
     if (sheet.submitted_at) return
-    if (!initials.trim()) { setError(t('Enter your initials at the top first.', 'Vui lòng nhập tên viết tắt của bạn ở trên trước.')); return }
+    if (!initials.trim()) { setError(t('Select your name at the top first.', 'Vui lòng chọn tên của bạn ở trên trước.')); return }
     const items = sheet.items.map(it => it.id === itemId ? {
       ...it,
       checked: !it.checked,
@@ -166,10 +200,20 @@ export default function ChecklistsPage() {
     upsert(sheet.kind, sheet.items, sheet.item_values || {}, sheet.free_notes)
   }, [upsert])
 
+  // Lock & sign is a permanent, attributed action → confirm first (naming the
+  // responsible person) rather than sealing on a single click.
   const submitSheet = useCallback((sheet: Sheet) => {
-    if (!initials.trim()) { setError(t('Enter your initials at the top first.', 'Vui lòng nhập tên viết tắt của bạn ở trên trước.')); return }
+    if (!initials.trim()) { setError(t('Select your name at the top first.', 'Vui lòng chọn tên của bạn ở trên trước.')); return }
+    setError(null)
+    setConfirmSheet(sheet)
+  }, [initials])
+
+  const confirmAndSeal = useCallback(() => {
+    const sheet = confirmSheet
+    if (!sheet || !initials.trim()) { setConfirmSheet(null); return }
+    setConfirmSheet(null)
     upsert(sheet.kind, sheet.items, sheet.item_values || {}, sheet.free_notes, true)
-  }, [initials, upsert])
+  }, [confirmSheet, initials, upsert])
 
   // ── Derived: progress + required-readiness ──────────────────────────
   const summary = (sheet: Sheet | null) => {
@@ -272,21 +316,37 @@ export default function ChecklistsPage() {
           <div style={eyebrow}>{t('Floor', 'Sàn')}</div>
           <h1 style={pageTitle}>{t('Shift Checklists', 'Danh sách kiểm tra ca')}</h1>
           <p style={lede}>
-            {t('Opening and closing sheets. Tick or fill as you go — your initials and timestamp are captured. Lock & sign at the end seals the sheet permanently. Editing the template only affects future sheets.', 'Phiếu mở cửa và đóng cửa. Đánh dấu hoặc điền trong khi làm — tên viết tắt và thời gian của bạn sẽ được ghi lại. Khoá & ký ở cuối sẽ niêm phong phiếu vĩnh viễn. Chỉnh sửa mẫu chỉ ảnh hưởng đến các phiếu sau này.')}
+            {t('Opening and closing sheets. Pick your name, then tick or fill as you go — your name and timestamp are captured on every item. Lock & sign at the end seals the sheet permanently under whoever signs it. Editing the template only affects future sheets.', 'Phiếu mở cửa và đóng cửa. Chọn tên của bạn, sau đó đánh dấu hoặc điền trong khi làm — tên và thời gian của bạn được ghi lại trên mỗi mục. Khoá & ký ở cuối sẽ niêm phong phiếu vĩnh viễn dưới tên người ký. Chỉnh sửa mẫu chỉ ảnh hưởng đến các phiếu sau này.')}
           </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
           <Link href="/admin/checklists/templates" style={editTemplatesLink}>
             ✎ {t('Edit templates', 'Chỉnh sửa mẫu')}
           </Link>
-          <label style={editLabel}>{t('Your initials', 'Tên viết tắt của bạn')}</label>
-          <input
-            value={initials}
-            onChange={e => persistInitials(e.target.value)}
-            placeholder={t('e.g. CL', 'vd. CL')}
-            maxLength={20}
-            style={{ ...inputStyle, maxWidth: 180 }}
-          />
+          <label style={editLabel}>{t('You are', 'Bạn là')}</label>
+          {staffList.length > 0 ? (
+            <select
+              value={initials}
+              onChange={e => persistInitials(e.target.value)}
+              style={{ ...inputStyle, maxWidth: 220, cursor: 'pointer' }}
+            >
+              <option value="">{t('— select your name —', '— chọn tên của bạn —')}</option>
+              {staffList.map(s => (
+                <option key={s.id} value={s.display_name}>
+                  {s.display_name}{s.role_title ? ` · ${s.role_title}` : ''}
+                </option>
+              ))}
+            </select>
+          ) : (
+            // Fallback if the roster can't be loaded — never leave the sheet unusable.
+            <input
+              value={initials}
+              onChange={e => persistInitials(e.target.value)}
+              placeholder={t('Your name', 'Tên của bạn')}
+              maxLength={40}
+              style={{ ...inputStyle, maxWidth: 220 }}
+            />
+          )}
         </div>
       </div>
 
@@ -431,6 +491,38 @@ export default function ChecklistsPage() {
           </div>
         )
       })()}
+
+      {/* ── Confirm-before-seal ───────────────────────────────────────
+          Lock & sign is permanent and attributed. Confirm names the
+          responsible person and the sheet, so no one seals by mis-click. */}
+      {confirmSheet && (
+        <div>
+          <div style={detailBackdrop} onClick={() => setConfirmSheet(null)} />
+          <div style={confirmModal} role="dialog" aria-modal="true">
+            <div style={eyebrow}>{t('Lock & sign', 'Khoá & ký')}</div>
+            <h2 style={confirmHeading}>
+              {confirmSheet.kind === 'opening'
+                ? t('Seal the opening sheet?', 'Niêm phong phiếu mở cửa?')
+                : t('Seal the closing sheet?', 'Niêm phong phiếu đóng cửa?')}
+            </h2>
+            <p style={confirmBody}>
+              {t('This permanently seals the sheet — no further edits. It will be signed and recorded as your responsibility:', 'Thao tác này niêm phong phiếu vĩnh viễn — không thể chỉnh sửa thêm. Phiếu sẽ được ký và ghi nhận là trách nhiệm của bạn:')}
+            </p>
+            <div style={confirmSigner}>
+              <span style={{ color: '#7E7864' }}>{t('Signed by', 'Ký bởi')}</span>
+              <span style={{ color: '#E5D4C2', fontSize: 15 }}>{initials || '—'}</span>
+            </div>
+            <div style={confirmActions}>
+              <button onClick={() => setConfirmSheet(null)} style={confirmCancelBtn}>
+                {t('Cancel', 'Huỷ')}
+              </button>
+              <button onClick={confirmAndSeal} style={confirmSealBtn}>
+                {t('Confirm & seal', 'Xác nhận & niêm phong')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
@@ -869,6 +961,48 @@ const errorBox: React.CSSProperties = {
 // editable surface stays in place behind it; close to return to live.
 const detailBackdrop: React.CSSProperties = {
   position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 200,
+}
+const confirmModal: React.CSSProperties = {
+  position: 'fixed',
+  top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+  width: 'min(440px, 92vw)',
+  background: '#0A3526',
+  border: '1px solid rgba(212,184,90,0.30)',
+  borderRadius: 12,
+  zIndex: 201,
+  boxShadow: '0 30px 80px rgba(0,0,0,0.55)',
+  padding: '24px 26px 22px',
+}
+const confirmHeading: React.CSSProperties = {
+  fontFamily: "'Rampant Sans', serif", fontSize: 22, fontWeight: 500,
+  color: '#E5D4C2', margin: '6px 0 10px', letterSpacing: '0.02em',
+}
+const confirmBody: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11.5,
+  color: '#B2AA98', lineHeight: 1.6, margin: '0 0 14px',
+}
+const confirmSigner: React.CSSProperties = {
+  display: 'flex', flexDirection: 'column', gap: 3,
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
+  letterSpacing: '0.06em',
+  background: 'rgba(212,184,90,0.08)',
+  border: '1px solid rgba(212,184,90,0.22)', borderRadius: 8,
+  padding: '10px 14px', marginBottom: 20,
+}
+const confirmActions: React.CSSProperties = {
+  display: 'flex', justifyContent: 'flex-end', gap: 10,
+}
+const confirmCancelBtn: React.CSSProperties = {
+  background: 'rgba(229,212,194,0.04)', color: '#B2AA98',
+  border: '1px solid rgba(229,212,194,0.14)', borderRadius: 6,
+  padding: '9px 16px', fontFamily: "'Google Sans Code', monospace",
+  fontSize: 11, cursor: 'pointer', letterSpacing: '0.06em',
+}
+const confirmSealBtn: React.CSSProperties = {
+  background: '#D4B85A', color: '#052E20',
+  border: '1px solid #D4B85A', borderRadius: 6,
+  padding: '9px 18px', fontFamily: "'Google Sans Code', monospace",
+  fontSize: 11, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.06em',
 }
 const detailModal: React.CSSProperties = {
   position: 'fixed',
