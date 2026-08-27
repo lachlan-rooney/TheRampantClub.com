@@ -147,10 +147,11 @@ export default function MembersPage() {
     {
       href: '/members/events',
       img: IMG('cocktails'),
-      en: 'Events',
-      vn: 'S\u1ef1 ki\u1ec7n',
+      en: 'Events & Fixtures',
+      vn: 'S\u1ef1 Ki\u1ec7n & Thi \u0110\u1ea5u',
       icon: 'calendar',
-      secondary: "What's on & sign-ups",
+      primary: nextFixture ? nextFixture.sport.charAt(0).toUpperCase() + nextFixture.sport.slice(1) : undefined,
+      secondary: nextFixture ? fmtDate(nextFixture.date) : "What's on \u00b7 sign-ups \u00b7 sports",
     },
     {
       href: '/members/profile',
@@ -224,9 +225,9 @@ export default function MembersPage() {
   // You · Info) so the dashboard and the menu tell the same story. Events and
   // Event Gallery sit next to each other — an event and its photos belong together.
   const bucketGroups = [
-    { label: 'Whisky',    tiles: [extra.whisky, extra.finder, extra.taste, extra.journey] },
-    { label: "What's On", tiles: [byHref['/members/events'], extra.gallery, byHref['/members/fixtures']] },
+    { label: "What's On", tiles: [byHref['/members/events'], extra.gallery] },
     { label: 'The Club',  tiles: [byHref['/members/spaces'], extra.menus, extra.snug, extra.concierge] },
+    { label: 'Whisky',    tiles: [extra.whisky, extra.finder, extra.taste, extra.journey] },
     { label: 'You',       tiles: [byHref['/members/profile'], extra.visits] },
     { label: 'Info',      tiles: [byHref['/members/rules'], extra.terms, byHref['/members/contact']] },
   ].map(g => ({ ...g, tiles: g.tiles.filter(Boolean) }))

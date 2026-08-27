@@ -9,16 +9,8 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 // intentional: whisky (the heart of the club) → what's on → the physical club →
 // people → your account → the fine print.
 const MEMBER_GROUPS: { label: string; links: { href: string; en: string; vn: string; icon: string }[] }[] = [
-  { label: 'Whisky', links: [
-    { href: '/members/whisky',        icon: 'glass',   en: 'Whisky Library',  vn: 'Thư Viện Whisky' },
-    { href: '/members/whisky/finder', icon: 'compass', en: 'Flavour Finder',  vn: 'Tìm Ly Của Bạn' },
-    { href: '/members/taste',         icon: 'radar',   en: 'Your Palate',     vn: 'Khẩu Vị Của Bạn' },
-    { href: '/members/notes',         icon: 'quill',   en: 'Your Notes',      vn: 'Nhật Ký Nếm Thử' },
-    { href: '/members/journey',       icon: 'flag',    en: 'Your Journey',    vn: 'Hành Trình Của Bạn' },
-  ] },
   { label: 'What’s On', links: [
-    { href: '/members/events',        icon: 'calendar', en: 'Events',         vn: 'Sự kiện' },
-    { href: '/members/fixtures',      icon: 'trophy',   en: 'Sports Fixtures', vn: 'Lịch Thi Đấu' },
+    { href: '/members/events',        icon: 'calendar', en: 'Events & Fixtures', vn: 'Sự Kiện & Thi Đấu' },
     { href: '/members/gallery',       icon: 'image',    en: 'Event Gallery',  vn: 'Thư Viện Sự Kiện' },
     { href: '/members/notices',       icon: 'pin',      en: 'Notice Board',   vn: 'Bảng Tin' },
   ] },
@@ -27,6 +19,13 @@ const MEMBER_GROUPS: { label: string; links: { href: string; en: string; vn: str
     { href: '/menus',                 icon: 'menu',     en: 'The Menus',      vn: 'Thực Đơn' },
     { href: '/members/snug',          icon: 'sofa',     en: 'The Snug',       vn: 'Phòng Khách' },
     { href: '/members/concierge',     icon: 'bell',     en: 'The Concierge',  vn: 'Quản Gia' },
+  ] },
+  { label: 'Whisky', links: [
+    { href: '/members/whisky',        icon: 'glass',   en: 'Whisky Library',  vn: 'Thư Viện Whisky' },
+    { href: '/members/whisky/finder', icon: 'compass', en: 'Flavour Finder',  vn: 'Tìm Ly Của Bạn' },
+    { href: '/members/taste',         icon: 'radar',   en: 'Your Palate',     vn: 'Khẩu Vị Của Bạn' },
+    { href: '/members/notes',         icon: 'quill',   en: 'Your Notes',      vn: 'Nhật Ký Nếm Thử' },
+    { href: '/members/journey',       icon: 'flag',    en: 'Your Journey',    vn: 'Hành Trình Của Bạn' },
   ] },
   { label: 'Community', links: [
     { href: '/members/members',       icon: 'people',    en: 'The Members',   vn: 'Thành Viên' },
