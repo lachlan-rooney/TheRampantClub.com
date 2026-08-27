@@ -10,7 +10,7 @@ import { isAdmin } from '@/lib/admin'
 export const dynamic = 'force-dynamic'
 
 const svc = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-const KINDS = ['closure', 'private_hire', 'supplier', 'tasting', 'other']
+const KINDS = ['closure', 'private_hire', 'supplier', 'tasting', 'meeting', 'interview', 'event', 'reminder', 'other']
 const VIS = ['member', 'staff']
 
 export async function GET(req: NextRequest) {
@@ -51,6 +51,7 @@ export function buildEntryPatch(body: Record<string, unknown>): { patch?: Record
   if ('end_time' in body) patch.end_time = typeof body.end_time === 'string' && /^\d{2}:\d{2}/.test(body.end_time) ? body.end_time : null
   if ('session_label' in body) patch.session_label = body.session_label ? String(body.session_label).slice(0, 20) : null
   if ('space' in body) patch.space = body.space ? String(body.space).trim().slice(0, 40) : null
+  if ('attendee' in body) patch.attendee = body.attendee ? String(body.attendee).trim().slice(0, 120) : null
   if ('kind' in body) patch.kind = KINDS.includes(String(body.kind)) ? body.kind : 'other'
   if ('visibility' in body) { if (!VIS.includes(String(body.visibility))) return { error: "visibility must be 'member' or 'staff'" }; patch.visibility = body.visibility }
   if ('blocks_space' in body) patch.blocks_space = !!body.blocks_space

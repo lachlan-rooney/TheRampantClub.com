@@ -43,6 +43,7 @@ interface CalendarEntry {
   end_time: string | null
   session_label: string | null
   space: string | null
+  attendee: string | null
   kind: string
   visibility: 'member' | 'staff'
   blocks_space: boolean
@@ -72,6 +73,10 @@ const TO_META: Record<TimeOff['kind'], { en: string; vi: string; tint: string; r
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 function kindLabel(kind: string, t: (en: string, vi: string) => string): string {
   switch (kind) {
+    case 'meeting': return t('Meeting', 'Cuộc họp')
+    case 'interview': return t('Interview', 'Phỏng vấn')
+    case 'event': return t('Event', 'Sự kiện')
+    case 'reminder': return t('Reminder', 'Nhắc nhở')
     case 'closure': return t('Closure', 'Đóng cửa')
     case 'private_hire': return t('Private hire', 'Thuê riêng')
     case 'supplier': return t('Supplier visit', 'Nhà cung cấp ghé')
@@ -322,6 +327,7 @@ export default function CalendarPage() {
                             : <span style={memberBadge}>{t('MEMBER', 'HỘI VIÊN')}</span>}
                         </div>
                         <div style={houseTitle}>{e.title}</div>
+                        {e.attendee && <div style={{ ...houseMeta, color: '#D4B85A' }}>{t('with', 'với')} {e.attendee}</div>}
                         <div style={houseMeta}>
                           {kindLabel(e.kind, t)}{e.space ? ` · ${e.space}` : ''}
                           {e.space && e.blocks_space && (e.tables && e.tables.length > 0 ? ` · ${e.tables.join(', ')}` : ` · ${t('closed', 'đóng cửa')}`)}

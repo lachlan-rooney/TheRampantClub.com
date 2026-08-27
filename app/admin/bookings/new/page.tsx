@@ -25,10 +25,13 @@ interface MemberLite {
 const SPACES = ['Library Bar', 'The Studio', 'The Dining Room', 'The Rampant Room', 'Source & Origin Lab', 'Sports Club']
 const SESSIONS = ['', 'early', 'evening', 'late']
 const KINDS: { v: string; label: string }[] = [
+  { v: 'meeting', label: 'Meeting' }, { v: 'interview', label: 'Interview' },
+  { v: 'event', label: 'Event' }, { v: 'reminder', label: 'Reminder' },
   { v: 'closure', label: 'Closure' }, { v: 'private_hire', label: 'Private hire' },
   { v: 'supplier', label: 'Supplier / distiller visit' }, { v: 'tasting', label: 'Tasting' }, { v: 'other', label: 'Other' },
 ]
 const KIND_VI: Record<string, string> = {
+  meeting: 'Cuộc họp', interview: 'Phỏng vấn', event: 'Sự kiện', reminder: 'Nhắc nhở',
   closure: 'Đóng cửa', private_hire: 'Thuê riêng',
   supplier: 'Nhà cung cấp / nhà chưng cất ghé thăm', tasting: 'Nếm thử', other: 'Khác',
 }
@@ -61,7 +64,8 @@ export default function NewBookingPage() {
   // House-entry fields
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [kind, setKind] = useState('closure')
+  const [kind, setKind] = useState('meeting')
+  const [attendee, setAttendee] = useState('')
   const [visibility, setVisibility] = useState<'member' | 'staff'>('staff')
   const [blocksSpace, setBlocksSpace] = useState(true)
 
@@ -90,7 +94,7 @@ export default function NewBookingPage() {
         if (!entry) return
         setMode('house')
         setTitle(entry.title || ''); setDescription(entry.description || '')
-        setKind(entry.kind || 'other'); setVisibility(entry.visibility || 'staff')
+        setKind(entry.kind || 'other'); setAttendee(entry.attendee || ''); setVisibility(entry.visibility || 'staff')
         setBlocksSpace(!!entry.blocks_space)
         setBookingDate(entry.entry_date || today)
         setStartTime(entry.start_time ? entry.start_time.slice(0, 5) : '')
@@ -149,7 +153,7 @@ export default function NewBookingPage() {
       const payload = {
         title: title.trim(), description: description || null, entry_date: bookingDate,
         start_time: startTime || null, end_time: endTime || null, session_label: sessionLabel || null,
-        space: space || null, kind, visibility, blocks_space: space ? blocksSpace : false,
+        space: space || null, kind, attendee: attendee.trim() || null, visibility, blocks_space: space ? blocksSpace : false,
         // Tables this entry occupies (only meaningful for a blocking, room-scoped
         // entry). Empty = closes the whole room (or, if not blocking, nothing).
         unit_ids: space && blocksSpace ? unitIds : [],
@@ -162,7 +166,7 @@ export default function NewBookingPage() {
       if (!r.ok) throw new Error(j.error || t('Save failed', 'Lưu thất bại'))
       router.push('/admin/calendar')
     } catch (e) { setError((e as Error).message); setSaving(false) }
-  }, [editId, title, description, bookingDate, startTime, endTime, sessionLabel, space, kind, visibility, blocksSpace, unitIds, router])
+  }, [editId, title, description, bookingDate, startTime, endTime, sessionLabel, space, kind, attendee, visibility, blocksSpace, unitIds, router])
 
   return (
     <>
@@ -229,6 +233,10 @@ export default function NewBookingPage() {
                 <option value="member">{t('Member-visible (shows on member events)', 'Thành viên thấy được (hiện trong sự kiện thành viên)')}</option>
               </select>
             </div>
+          </div>
+          <div style={fieldRow}>
+            <div style={editLabel}>{t('Who it’s with (member or guest)', 'Với ai (thành viên hoặc khách)')}</div>
+            <input value={attendee} onChange={e => setAttendee(e.target.value)} placeholder={t('e.g. Mr Nguyen (member) · Jane Smith (interview) · Fergus (distiller)', 'ví dụ: Ông Nguyễn (thành viên) · Jane Smith (phỏng vấn) · Fergus (nhà chưng cất)')} style={inputStyle} />
           </div>
         </>
       )}

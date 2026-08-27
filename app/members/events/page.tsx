@@ -33,6 +33,10 @@ const SPORT_META: Record<string, { label: string; tint: string; ring: string }> 
   other:  { label: 'Sport',  tint: 'rgba(212,184,90,0.18)',  ring: 'rgba(212,184,90,0.45)' },
 }
 const KIND_META: Record<string, { label: string; tint: string; ring: string }> = {
+  event:        { label: 'Event',          tint: 'rgba(212,184,90,0.20)',  ring: 'rgba(212,184,90,0.55)' },
+  meeting:      { label: 'Meeting',        tint: 'rgba(178,170,152,0.16)', ring: 'rgba(178,170,152,0.45)' },
+  interview:    { label: 'Interview',      tint: 'rgba(178,170,152,0.16)', ring: 'rgba(178,170,152,0.45)' },
+  reminder:     { label: 'Reminder',       tint: 'rgba(178,170,152,0.16)', ring: 'rgba(178,170,152,0.45)' },
   closure:      { label: 'Club closed',    tint: 'rgba(194,112,112,0.18)', ring: 'rgba(194,112,112,0.5)' },
   private_hire: { label: 'Private event',  tint: 'rgba(212,184,90,0.16)',  ring: 'rgba(212,184,90,0.45)' },
   supplier:     { label: 'Distiller visit',tint: 'rgba(122,176,122,0.16)', ring: 'rgba(122,176,122,0.5)' },
