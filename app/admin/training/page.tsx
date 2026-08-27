@@ -842,10 +842,12 @@ const SECTIONS: SectionDef[] = [
 ]
 
 export default function TrainingPage() {
-  const { t } = useLang()
+  // Follow the site-wide admin language toggle (top bar) rather than a separate
+  // per-page switch — the global provider uses 'vi', this page's blocks use 'vn'.
+  const { t, lang: adminLang } = useLang()
+  const lang: Lang = adminLang === 'vi' ? 'vn' : 'en'
   const [openIds, setOpenIds] = useState<Set<string>>(new Set([SECTIONS[0].id]))
   const [q, setQ] = useState('')
-  const [lang, setLang] = useState<Lang>('en')
 
   const toggle = (id: string) => {
     setOpenIds(s => {
@@ -869,26 +871,6 @@ export default function TrainingPage() {
         <p style={lede}>
           {t('The team handbook for the admin portal. Browse top-to-bottom on your first day, then come back for specific tasks. Sections collapse — open what you need.', 'Cẩm nang của đội ngũ dành cho cổng quản trị. Đọc từ trên xuống dưới trong ngày đầu, rồi quay lại khi cần làm việc cụ thể. Các mục có thể thu gọn — mở phần bạn cần.')}
         </p>
-      </div>
-
-      {/* Language toggle */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {(['en', 'vn'] as Lang[]).map(l => (
-          <button
-            key={l}
-            onClick={() => setLang(l)}
-            style={{
-              fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11,
-              letterSpacing: '0.04em', padding: '6px 20px', borderRadius: 20, cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              border: lang === l ? '1px solid transparent' : '1px solid rgba(229,212,194,0.2)',
-              background: lang === l ? 'rgba(229,212,194,0.12)' : 'transparent',
-              color: lang === l ? '#E5D4C2' : '#B2AA98',
-            }}
-          >
-            {l === 'en' ? 'EN' : 'VN'}
-          </button>
-        ))}
       </div>
 
       {lang === 'vn' && (
