@@ -71,8 +71,15 @@ export default function AdminMembers() {
         {t('User Roster', 'Danh sách người dùng')}
       </h1>
 
-      <div>
-        {members.map(m => (
+      {(() => {
+        const staff = members.filter(m => m.is_admin)
+        const memberList = members.filter(m => !m.is_admin)
+        const sectionHead: React.CSSProperties = {
+          fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10,
+          letterSpacing: '0.18em', textTransform: 'uppercase', color: '#D4B85A',
+          opacity: 0.8, margin: '8px 0 6px',
+        }
+        const renderRow = (m: Member) => (
           <div key={m.id} style={{ borderBottom: '1px solid rgba(229,212,194,0.08)' }}>
             <div
               onClick={() => expand(m)}
@@ -141,8 +148,20 @@ export default function AdminMembers() {
               </div>
             )}
           </div>
-        ))}
-      </div>
+        )
+        return (
+          <>
+            <div style={sectionHead}>{t('Staff & Logins', 'Nhân viên & Đăng nhập')} · {staff.length}</div>
+            {staff.length === 0
+              ? <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#B2AA98', opacity: 0.5, padding: '8px 0 16px' }}>{t('None', 'Không có')}</div>
+              : staff.map(renderRow)}
+            <div style={{ ...sectionHead, marginTop: 28 }}>{t('Members', 'Hội viên')} · {memberList.length}</div>
+            {memberList.length === 0
+              ? <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#B2AA98', opacity: 0.5, padding: '8px 0' }}>{t('None', 'Không có')}</div>
+              : memberList.map(renderRow)}
+          </>
+        )
+      })()}
     </>
   )
 }

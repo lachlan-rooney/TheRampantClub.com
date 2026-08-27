@@ -690,6 +690,10 @@ const infoPopover: React.CSSProperties = {
   background: '#E5D4C2', color: '#052E20',
   border: '1px solid rgba(5,46,32,0.18)', borderRadius: 12,
   boxShadow: '0 18px 50px rgba(0,0,0,0.45)', padding: '16px 22px',
+  // The trigger span sets white-space:nowrap (to keep the title + info-dot on
+  // one line); reset it here or the popover's paragraphs inherit nowrap and run
+  // off the side of the page instead of wrapping inside the card.
+  whiteSpace: 'normal',
 }
 const infoTitle: React.CSSProperties = {
   fontFamily: "'Rampant Sans', serif", fontSize: 17, fontWeight: 500,
