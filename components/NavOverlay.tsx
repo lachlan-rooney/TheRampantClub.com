@@ -4,41 +4,78 @@ import { useState, useCallback, useEffect, useRef, Fragment } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 
-// Member nav, grouped (Explore / You / House). YOU holds just My Membership today
-// but is structured to grow — the personal pages (Your Taste / Visits / Gifts)
-// slot in here post-Phase-0 with no restructure. Whisky Library + Flavour Finder
-// are top-level Explore items (one tap — no more Places→Menus→4th-floor).
-const MEMBER_GROUPS: { label: string; links: { href: string; en: string; vn: string }[] }[] = [
-  { label: 'Explore', links: [
-    { href: '/members/snug',          en: 'The Snug',              vn: 'Phòng Khách' },
-    { href: '/members/whisky',        en: 'Whisky Library',        vn: 'Thư Viện Whisky' },
-    { href: '/members/whisky/finder', en: 'Flavour Finder',        vn: 'Tìm Ly Của Bạn' },
-    { href: '/members/spaces',        en: 'Our Spaces',            vn: 'Không gian' },
-    { href: '/members/events',        en: 'Events',                vn: 'Sự kiện' },
-    { href: '/members/fixtures',      en: 'Sports Fixtures',       vn: 'Lịch Thi Đấu' },
-    { href: '/members/gallery',       en: 'Event Gallery',         vn: 'Thư Viện Sự Kiện' },
+// Member nav — grouped by what a member actually comes here to do, each link with
+// a consistent line icon (same visual language as the admin sidebar). Order is
+// intentional: whisky (the heart of the club) → what's on → the physical club →
+// people → your account → the fine print.
+const MEMBER_GROUPS: { label: string; links: { href: string; en: string; vn: string; icon: string }[] }[] = [
+  { label: 'Whisky', links: [
+    { href: '/members/whisky',        icon: 'glass',   en: 'Whisky Library',  vn: 'Thư Viện Whisky' },
+    { href: '/members/whisky/finder', icon: 'compass', en: 'Flavour Finder',  vn: 'Tìm Ly Của Bạn' },
+    { href: '/members/taste',         icon: 'radar',   en: 'Your Palate',     vn: 'Khẩu Vị Của Bạn' },
+    { href: '/members/notes',         icon: 'quill',   en: 'Your Notes',      vn: 'Nhật Ký Nếm Thử' },
+    { href: '/members/journey',       icon: 'flag',    en: 'Your Journey',    vn: 'Hành Trình Của Bạn' },
+  ] },
+  { label: 'What’s On', links: [
+    { href: '/members/events',        icon: 'calendar', en: 'Events',         vn: 'Sự kiện' },
+    { href: '/members/fixtures',      icon: 'trophy',   en: 'Sports Fixtures', vn: 'Lịch Thi Đấu' },
+    { href: '/members/gallery',       icon: 'image',    en: 'Event Gallery',  vn: 'Thư Viện Sự Kiện' },
+    { href: '/members/notices',       icon: 'pin',      en: 'Notice Board',   vn: 'Bảng Tin' },
+  ] },
+  { label: 'The Club', links: [
+    { href: '/members/spaces',        icon: 'building', en: 'Our Spaces',     vn: 'Không gian' },
+    { href: '/menus',                 icon: 'menu',     en: 'The Menus',      vn: 'Thực Đơn' },
+    { href: '/members/snug',          icon: 'sofa',     en: 'The Snug',       vn: 'Phòng Khách' },
+    { href: '/members/concierge',     icon: 'bell',     en: 'The Concierge',  vn: 'Quản Gia' },
+  ] },
+  { label: 'Community', links: [
+    { href: '/members/members',       icon: 'people',    en: 'The Members',   vn: 'Thành Viên' },
+    { href: '/members/introductions', icon: 'introduce', en: 'Introductions', vn: 'Lời Giới Thiệu' },
+    { href: '/members/messages',      icon: 'chat',      en: 'Messages',      vn: 'Tin Nhắn' },
   ] },
   { label: 'You', links: [
-    { href: '/members/concierge',     en: 'The Concierge',         vn: 'Quản Gia' },
-    { href: '/members/profile',       en: 'My Membership',         vn: 'Tư Cách Thành Viên' },
-    { href: '/members/taste',         en: 'Your Palate',           vn: 'Khẩu Vị Của Bạn' },
-    { href: '/members/journey',       en: 'Your Journey',          vn: 'Hành Trình Của Bạn' },
-    { href: '/members/notes',         en: 'Your Notes',            vn: 'Nhật Ký Nếm Thử' },
-    { href: '/members/visits',        en: 'Your Visits',           vn: 'Những Lần Ghé Thăm' },
+    { href: '/members/profile',       icon: 'card',  en: 'My Membership',  vn: 'Tư Cách Thành Viên' },
+    { href: '/members/visits',        icon: 'clock', en: 'Your Visits',    vn: 'Những Lần Ghé Thăm' },
   ] },
-  { label: 'Connect', links: [
-    { href: '/members/members',       en: 'The Members',           vn: 'Thành Viên' },
-    { href: '/members/introductions', en: 'Introductions',         vn: 'Lời Giới Thiệu' },
-    { href: '/members/messages',      en: 'Messages',              vn: 'Tin Nhắn' },
-  ] },
-  { label: 'House', links: [
-    { href: '/menus',                 en: 'The Menus',             vn: 'Thực Đơn' },
-    { href: '/members/notices',       en: 'Notice Board',          vn: 'Bảng Tin' },
-    { href: '/members/rules',         en: 'House Rules',           vn: 'Nội Quy' },
-    { href: '/members/terms',         en: 'Terms',                 vn: 'Điều Khoản' },
-    { href: '/members/contact',       en: 'Contact',               vn: 'Liên hệ' },
+  { label: 'Info', links: [
+    { href: '/members/rules',         icon: 'book',     en: 'House Rules',  vn: 'Nội Quy' },
+    { href: '/members/terms',         icon: 'document', en: 'Terms',        vn: 'Điều Khoản' },
+    { href: '/members/contact',       icon: 'mail',     en: 'Contact',      vn: 'Liên hệ' },
   ] },
 ]
+
+// One monochrome line-icon set (viewBox 0 0 16 16, currentColor strokes) shared
+// by every member-nav link — no emoji, harmonious with the admin sidebar.
+const NAV_ICONS: Record<string, string> = {
+  home:      '<path d="M3 7.5L8 3.5l5 4"/><path d="M4.2 6.8V13h7.6V6.8"/><path d="M6.8 13V9.5h2.4V13"/>',
+  glass:     '<path d="M5 3h6l-.55 9.4a1 1 0 01-1 .95H6.55a1 1 0 01-1-.95z"/><path d="M5.25 7.2h5.5"/>',
+  compass:   '<circle cx="8" cy="8" r="5.6"/><path d="M10.3 5.7L8.7 8.7 5.7 10.3 7.3 7.3z"/>',
+  radar:     '<circle cx="8" cy="8" r="5.6"/><circle cx="8" cy="8" r="3"/><circle cx="8" cy="8" r="0.7"/>',
+  quill:     '<path d="M13 3C8 3.5 5.5 6 4 10l2 2c4-1.5 6.5-4 7-9z"/><path d="M4 10l-1.4 3.4M6.2 8.4h2.2"/>',
+  flag:      '<path d="M4 13.5V2.6"/><path d="M4 3.2h6.5l-1.4 2.1 1.4 2.1H4"/>',
+  calendar:  '<rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.2h12M5.5 2v2M10.5 2v2"/>',
+  trophy:    '<path d="M5 3h6v2.6a3 3 0 01-6 0z"/><path d="M5 3.8H3.4a1.6 1.6 0 001.8 2.4M11 3.8h1.6a1.6 1.6 0 01-1.8 2.4"/><path d="M8 8.4v2.1M6 13.2h4M6.4 13.2c0-1.1.7-2 1.6-2s1.6.9 1.6 2"/>',
+  image:     '<rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.1"/><path d="M2.5 11.5l3.2-3 2.3 2 2.2-2.4 3.3 3.4"/>',
+  pin:       '<path d="M8 14s4.4-3.9 4.4-7.4a4.4 4.4 0 10-8.8 0C3.6 10.1 8 14 8 14z"/><circle cx="8" cy="6.5" r="1.6"/>',
+  building:  '<rect x="3.5" y="2.5" width="9" height="11" rx="1"/><path d="M3.5 6h9M3.5 9.5h9M6.6 13.5V11h2.8v2.5"/>',
+  menu:      '<path d="M3.5 4.5h9M3.5 8h9M3.5 11.5h6"/>',
+  sofa:      '<path d="M4 8V6.6A1.6 1.6 0 015.6 5h4.8A1.6 1.6 0 0112 6.6V8"/><path d="M2.8 8.4A1.4 1.4 0 014.2 9.8V11h7.6V9.8a1.4 1.4 0 011.4-1.4V10a1.5 1.5 0 01-1.5 1.5v.9M4 11.5v.9"/>',
+  bell:      '<path d="M4.2 7a3.8 3.8 0 017.6 0c0 2.8 1 3.7 1 3.7H3.2s1-.9 1-3.7z"/><path d="M6.6 12.6a1.5 1.5 0 002.8 0"/>',
+  people:    '<circle cx="6" cy="6" r="2.1"/><path d="M2.6 13a3.4 3.4 0 016.8 0"/><path d="M11 4.4a2 2 0 010 3.9M11.6 13a3.3 3.3 0 00-1.1-2.4"/>',
+  introduce: '<circle cx="6.2" cy="6" r="2.1"/><path d="M2.8 13a3.4 3.4 0 016.8 0"/><path d="M11.5 5.5v4M9.5 7.5h4"/>',
+  chat:      '<path d="M3 4h10a1 1 0 011 1v5a1 1 0 01-1 1H6l-3 2.5V5a1 1 0 011-1z"/>',
+  card:      '<rect x="2" y="4" width="12" height="8" rx="1.5"/><path d="M2 6.8h12M4.3 9.6h3"/>',
+  clock:     '<circle cx="8" cy="8" r="5.6"/><path d="M8 5v3.2l2.1 1.3"/>',
+  book:      '<path d="M8 4C6.5 3 4 3 2.5 3.7v8.6C4 11.6 6.5 11.6 8 12.6c1.5-1 4-1 5.5-.3V3.7C12 3 9.5 3 8 4z"/><path d="M8 4v8.6"/>',
+  document:  '<path d="M4 2.5h5l3 3v8H4z"/><path d="M9 2.5v3h3"/><path d="M6 8.2h4M6 10.6h4"/>',
+  mail:      '<rect x="2.5" y="4" width="11" height="8" rx="1.5"/><path d="M3 5l5 4 5-4"/>',
+  signout:   '<path d="M6 3.5H3.5v9H6"/><path d="M9.5 5.5L12.5 8l-3 2.5"/><path d="M12.5 8H6"/>',
+}
+function NavIcon({ name }: { name: string }) {
+  return (
+    <svg className="nav-link-ico" width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.35} strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: NAV_ICONS[name] || NAV_ICONS.glass }} aria-hidden />
+  )
+}
 
 interface NavOverlayProps {
   variant: 'public' | 'members'
@@ -228,6 +265,13 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
           transition: opacity 0.2s ease;
         }
         .nav-link:hover { opacity: 0.5; }
+
+        /* Icon-led member links — icon + stacked EN/VN text on one row. Only the
+           member nav uses this; public/Home stay block so nothing else shifts. */
+        .nav-link-withicon { display: flex; align-items: center; gap: 12px; }
+        .nav-link-text { display: block; }
+        .nav-link-ico { flex-shrink: 0; color: #A9822C; opacity: 0.85; }
+        .nav-dark .nav-link-ico { color: #D4B85A; opacity: 0.9; }
 
         /* Primary action (Member Log in) — gold accent so the key returning-
            member action stands out, in both the light and dark nav themes. */
@@ -441,9 +485,12 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
           </>
         ) : (
           <>
-            <Link href="/members" className="nav-link" onClick={() => setOpen(false)}>
-              <div className="nav-link-en">Home</div>
-              <div className="nav-link-vn">Trang chủ</div>
+            <Link href="/members" className="nav-link nav-link-withicon" onClick={() => setOpen(false)}>
+              <NavIcon name="home" />
+              <span className="nav-link-text">
+                <div className="nav-link-en">Home</div>
+                <div className="nav-link-vn">Trang chủ</div>
+              </span>
             </Link>
             {MEMBER_GROUPS.map(g => {
               const isCollapsed = collapsed[g.label] ?? true
@@ -462,14 +509,17 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
                   {!isCollapsed && (
                     <div className="nav-group-links">
                       {g.links.map(l => (
-                        <Link key={l.href} href={l.href} className="nav-link" onClick={() => setOpen(false)}>
-                          <div className="nav-link-en" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            {l.en}
-                            {l.href === '/members/concierge' && conciergeUnread > 0 && (
-                              <span className="nav-badge">{conciergeUnread > 9 ? '9+' : conciergeUnread}</span>
-                            )}
-                          </div>
-                          <div className="nav-link-vn">{l.vn}</div>
+                        <Link key={l.href} href={l.href} className="nav-link nav-link-withicon" onClick={() => setOpen(false)}>
+                          <NavIcon name={l.icon} />
+                          <span className="nav-link-text">
+                            <div className="nav-link-en" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              {l.en}
+                              {l.href === '/members/concierge' && conciergeUnread > 0 && (
+                                <span className="nav-badge">{conciergeUnread > 9 ? '9+' : conciergeUnread}</span>
+                              )}
+                            </div>
+                            <div className="nav-link-vn">{l.vn}</div>
+                          </span>
                         </Link>
                       ))}
                     </div>
@@ -477,9 +527,12 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
                 </Fragment>
               )
             })}
-            <button className="nav-link" onClick={handleSignOut} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', marginTop: 12 }}>
-              <div className="nav-link-en">Sign Out</div>
-              <div className="nav-link-vn">Đăng xuất</div>
+            <button className="nav-link nav-link-withicon" onClick={handleSignOut} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', marginTop: 12 }}>
+              <NavIcon name="signout" />
+              <span className="nav-link-text">
+                <div className="nav-link-en">Sign Out</div>
+                <div className="nav-link-vn">Đăng xuất</div>
+              </span>
             </button>
             {isAdminUser && (
               <>
