@@ -61,6 +61,7 @@ const GROUPS: Group[] = [
     label: 'Sports & Events',
     items: [
       { href: '/admin/fixtures', label: 'Fixtures', icon: 'trophy' },
+      { href: '/admin/gallery', label: 'Event Gallery', icon: 'image' },
     ],
   },
   {
@@ -87,6 +88,7 @@ const GROUPS: Group[] = [
 // consistent set — no emoji.
 const ICONS: Record<string, string> = {
   grid: '<rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/>',
+  image: '<rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.1"/><path d="M2.5 11.5l3.2-3 2.3 2 2.2-2.4 3.3 3.4"/>',
   moon: '<path d="M13 9.3A5.3 5.3 0 116.7 3 4.3 4.3 0 0013 9.3z"/>',
   clipboard: '<rect x="3.5" y="3" width="9" height="11" rx="1.5"/><path d="M6 3.2V2.2h4v1M6 7h4M6 10h4"/>',
   checklist: '<rect x="2.5" y="2.5" width="11" height="11" rx="1.5"/><path d="M5.2 8l1.8 1.8L11 5.6"/>',

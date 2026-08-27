@@ -16,6 +16,7 @@ const MEMBER_GROUPS: { label: string; links: { href: string; en: string; vn: str
     { href: '/members/spaces',        en: 'Our Spaces',            vn: 'Không gian' },
     { href: '/members/events',        en: 'Events',                vn: 'Sự kiện' },
     { href: '/members/fixtures',      en: 'Sports Fixtures',       vn: 'Lịch Thi Đấu' },
+    { href: '/members/gallery',       en: 'Event Gallery',         vn: 'Thư Viện Sự Kiện' },
   ] },
   { label: 'You', links: [
     { href: '/members/concierge',     en: 'The Concierge',         vn: 'Quản Gia' },

@@ -46,6 +46,7 @@ const TILE_ICONS: Record<string, string> = {
   star:     '<path d="M8 2.6l1.6 3.2 3.5.5-2.6 2.5.6 3.5L8 10.6l-3.1 1.7.6-3.5L2.9 6.3l3.5-.5z"/>',
   pin:      '<path d="M8 14s4.4-3.9 4.4-7.4a4.4 4.4 0 10-8.8 0C3.6 10.1 8 14 8 14z"/><circle cx="8" cy="6.5" r="1.6"/>',
   gift:     '<rect x="2.6" y="6" width="10.8" height="7.4" rx="1"/><path d="M2 6h12M8 6v7.4M5.6 6a1.7 1.7 0 110-3.4C7 2.6 8 6 8 6M10.4 6a1.7 1.7 0 100-3.4C9 2.6 8 6 8 6"/>',
+  image:    '<rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.1"/><path d="M2.5 11.5l3.2-3 2.3 2 2.2-2.4 3.3 3.4"/>',
 }
 
 function TileIcon({ name }: { name: string }) {
@@ -218,9 +219,10 @@ export default function MembersPage() {
     annual: { href: '/members/annual-dram', img: IMG('porsche'),   en: 'The Annual Dram', vn: 'Ly R\u01b0\u1ee3u C\u1ee7a N\u0103m', icon: 'star', secondary: 'Your year at the club \u2014 yours to share' },
     visits: { href: '/members/visits', img: IMG('market'),        en: 'Your Visits',    vn: 'Nh\u1eefng L\u1ea7n Gh\u00e9 Th\u0103m', icon: 'pin', secondary: 'Your record at the club' },
     gifts:  { href: '/members/gifts', img: IMG('brass-pin'),         en: 'Gifts',          vn: 'Qu\u00e0 T\u1eb7ng',          icon: 'gift', secondary: 'Gifts from the club' },
+    gallery: { href: '/members/gallery', img: IMG('gala-table'),     en: 'Event Gallery',  vn: 'Th\u01b0 Vi\u1ec7n S\u1ef1 Ki\u1ec7n', icon: 'image', secondary: 'Photos & video from fixtures, dinners & socials' },
   }
   const bucketGroups = [
-    { label: 'Explore', tiles: [extra.snug, extra.whisky, extra.finder, byHref['/members/spaces'], byHref['/members/events'], byHref['/members/fixtures']] },
+    { label: 'Explore', tiles: [extra.snug, extra.whisky, extra.finder, byHref['/members/spaces'], byHref['/members/events'], byHref['/members/fixtures'], extra.gallery] },
     { label: 'You',     tiles: [extra.concierge, byHref['/members/profile'], extra.taste, extra.journey, extra.annual, extra.visits] },
     { label: 'House',   tiles: [extra.menus, byHref['/members/rules'], extra.terms, byHref['/members/contact']] },
   ].map(g => ({ ...g, tiles: g.tiles.filter(Boolean) }))
