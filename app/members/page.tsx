@@ -216,14 +216,13 @@ export default function MembersPage() {
     terms:  { href: '/members/terms', img: IMG('springbank'),         en: 'Terms',          vn: '\u0110i\u1ec1u Kho\u1ea3n',   icon: 'document', secondary: 'Full terms & conditions' },
     taste:  { href: '/members/taste', img: IMG('bottle-collection'),         en: 'Your Palate',    vn: 'Kh\u1ea9u V\u1ecb C\u1ee7a B\u1ea1n', icon: 'radar', secondary: 'Your taste \u00b7 radar \u00b7 loved drams' },
     journey: { href: '/members/journey', img: IMG('saigon-street'),      en: 'Your Journey',   vn: 'H\u00e0nh Tr\u00ecnh', icon: 'flag', secondary: 'Your whisky story over time \u00b7 milestones \u00b7 palate drift' },
-    annual: { href: '/members/annual-dram', img: IMG('porsche'),   en: 'The Annual Dram', vn: 'Ly R\u01b0\u1ee3u C\u1ee7a N\u0103m', icon: 'star', secondary: 'Your year at the club \u2014 yours to share' },
     visits: { href: '/members/visits', img: IMG('market'),        en: 'Your Visits',    vn: 'Nh\u1eefng L\u1ea7n Gh\u00e9 Th\u0103m', icon: 'pin', secondary: 'Your record at the club' },
     gifts:  { href: '/members/gifts', img: IMG('brass-pin'),         en: 'Gifts',          vn: 'Qu\u00e0 T\u1eb7ng',          icon: 'gift', secondary: 'Gifts from the club' },
     gallery: { href: '/members/gallery', img: IMG('gala-table'),     en: 'Event Gallery',  vn: 'Th\u01b0 Vi\u1ec7n S\u1ef1 Ki\u1ec7n', icon: 'image', secondary: 'Photos & video from fixtures, dinners & socials' },
   }
   const bucketGroups = [
     { label: 'Explore', tiles: [extra.snug, extra.whisky, extra.finder, byHref['/members/spaces'], byHref['/members/events'], byHref['/members/fixtures'], extra.gallery] },
-    { label: 'You',     tiles: [extra.concierge, byHref['/members/profile'], extra.taste, extra.journey, extra.annual, extra.visits] },
+    { label: 'You',     tiles: [extra.concierge, byHref['/members/profile'], extra.taste, extra.journey, extra.visits] },
     { label: 'House',   tiles: [extra.menus, byHref['/members/rules'], extra.terms, byHref['/members/contact']] },
   ].map(g => ({ ...g, tiles: g.tiles.filter(Boolean) }))
 
