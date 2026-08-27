@@ -23,7 +23,8 @@ create table if not exists calendar_entries (
   end_time      time,
   session_label text,                         -- 'early'|'evening'|'late'|custom (optional)
   space         text,                         -- null = no specific room (blocks nothing)
-  kind          text not null default 'other' check (kind in ('closure','private_hire','supplier','tasting','other')),
+  attendee      text,                         -- who it's with: a member or a non-member/guest (free text)
+  kind          text not null default 'other' check (kind in ('meeting','interview','event','reminder','closure','private_hire','supplier','tasting','other')),
   visibility    text not null check (visibility in ('member','staff')),
   blocks_space  boolean not null default true, -- a space-entry blocks bookings unless opted out
   created_by    text,
