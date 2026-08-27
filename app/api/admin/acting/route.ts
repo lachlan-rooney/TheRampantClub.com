@@ -37,6 +37,15 @@ export async function POST(req: Request) {
     const { data } = await a.rpc('kiosk_staff_roster')
     return NextResponse.json({ staff: data || [] })
   }
+  if (body.action === 'verify') {
+    // Verify a PIN against a team member WITHOUT setting the acting cookie —
+    // used to sign an action (e.g. sealing a checklist) as a proven person,
+    // without changing who is globally "acting" on the device.
+    if (typeof body.team_member_id !== 'string' || typeof body.pin !== 'string') return NextResponse.json({ error: 'Pick a name and enter your PIN.' }, { status: 400 })
+    const { data: id } = await a.rpc('kiosk_verify_pin', { p_team_member: body.team_member_id, p_pin: body.pin })
+    if (!id) return NextResponse.json({ ok: false, error: 'Wrong PIN, or too many tries — wait a moment.' }, { status: 401 })
+    return NextResponse.json({ ok: true })
+  }
   if (body.action === 'logout') {
     const res = NextResponse.json({ ok: true })
     res.cookies.set(ADMIN_STAFF_COOKIE, '', { path: '/', maxAge: 0 })

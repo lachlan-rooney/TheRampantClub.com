@@ -56,10 +56,16 @@ export default function ChecklistsPage() {
   // `initials` holds the SELECTED staff member's display name — every tick and
   // the final seal are attributed to this person, so each sheet answers "who
   // did it / who's responsible" with a real name, not free-typed initials.
+  // `signerId` is that person's team_members.id — needed to verify their PIN
+  // when they seal (proves the signature, not just a self-selected name).
   const [initials, setInitials] = useState('')
+  const [signerId, setSignerId] = useState('')
   const [staffList, setStaffList] = useState<Staff[]>([])
   // Set when Lock & sign is pressed — drives the confirm-before-seal modal.
   const [confirmSheet, setConfirmSheet] = useState<Sheet | null>(null)
+  const [sealPin, setSealPin] = useState('')
+  const [sealErr, setSealErr] = useState<string | null>(null)
+  const [sealing, setSealing] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [missingNotice, setMissingNotice] = useState<string | null>(null)
@@ -117,21 +123,32 @@ export default function ChecklistsPage() {
         const roster: Staff[] = rr.ok ? ((await rr.json()).staff || []) : []
         if (cancelled) return
         setStaffList(roster)
-        const names = new Set(roster.map(s => s.display_name))
+        const byId = new Map(roster.map(s => [s.id, s]))
 
-        let pick = ''
+        let pickId = ''
         try {
           const gr = await fetch('/api/admin/acting', { cache: 'no-store' })
-          if (gr.ok) { const acting = (await gr.json()).staff; if (acting?.display_name && names.has(acting.display_name)) pick = acting.display_name }
+          if (gr.ok) { const acting = (await gr.json()).staff; if (acting?.id && byId.has(acting.id)) pickId = acting.id }
         } catch { /* acting is best-effort */ }
-        if (!pick) {
-          try { const saved = localStorage.getItem('checklist_initials') || ''; if (names.has(saved)) pick = saved } catch { /* */ }
+        if (!pickId) {
+          try { const saved = localStorage.getItem('checklist_staff_id') || ''; if (byId.has(saved)) pickId = saved } catch { /* */ }
         }
-        if (pick && !cancelled) setInitials(pick)
+        if (pickId && !cancelled) { setSignerId(pickId); setInitials(byId.get(pickId)!.display_name) }
       } catch { /* roster is best-effort; the field simply stays empty */ }
     })()
     return () => { cancelled = true }
   }, [])
+  // Select by team-member id; keep the display name alongside for stamping.
+  const persistSigner = (id: string) => {
+    const s = staffList.find(x => x.id === id)
+    setSignerId(id)
+    setInitials(s?.display_name || '')
+    try {
+      localStorage.setItem('checklist_staff_id', id)
+      localStorage.setItem('checklist_initials', s?.display_name || '')
+    } catch { /* */ }
+  }
+  // Fallback (no roster) — free-typed name, no id, no PIN possible.
   const persistInitials = (v: string) => {
     setInitials(v)
     try { localStorage.setItem('checklist_initials', v) } catch { /* */ }
@@ -204,16 +221,40 @@ export default function ChecklistsPage() {
   // responsible person) rather than sealing on a single click.
   const submitSheet = useCallback((sheet: Sheet) => {
     if (!initials.trim()) { setError(t('Select your name at the top first.', 'Vui lòng chọn tên của bạn ở trên trước.')); return }
-    setError(null)
+    setError(null); setSealPin(''); setSealErr(null)
     setConfirmSheet(sheet)
   }, [initials])
 
-  const confirmAndSeal = useCallback(() => {
+  // Confirm & seal. When the signer came from the roster we require their PIN
+  // and verify it server-side first — so the signature is provably that person,
+  // not just a self-selected name. The no-roster fallback seals on name alone.
+  const confirmAndSeal = useCallback(async () => {
     const sheet = confirmSheet
     if (!sheet || !initials.trim()) { setConfirmSheet(null); return }
-    setConfirmSheet(null)
+
+    if (signerId) {
+      if (sealPin.trim().length < 4) { setSealErr(t('Enter your PIN to sign.', 'Nhập mã PIN để ký.')); return }
+      setSealing(true); setSealErr(null)
+      try {
+        const r = await fetch('/api/admin/acting', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'verify', team_member_id: signerId, pin: sealPin.trim() }),
+        })
+        if (!r.ok) {
+          const j = await r.json().catch(() => ({}))
+          setSealErr(j.error || t('Wrong PIN.', 'Sai mã PIN.')); setSealPin('')
+          return
+        }
+      } catch {
+        setSealErr(t('Could not verify — try again.', 'Không thể xác minh — thử lại.')); return
+      } finally {
+        setSealing(false)
+      }
+    }
+
+    setConfirmSheet(null); setSealPin(''); setSealErr(null)
     upsert(sheet.kind, sheet.items, sheet.item_values || {}, sheet.free_notes, true)
-  }, [confirmSheet, initials, upsert])
+  }, [confirmSheet, initials, signerId, sealPin, upsert])
 
   // ── Derived: progress + required-readiness ──────────────────────────
   const summary = (sheet: Sheet | null) => {
@@ -326,13 +367,13 @@ export default function ChecklistsPage() {
           <label style={editLabel}>{t('You are', 'Bạn là')}</label>
           {staffList.length > 0 ? (
             <select
-              value={initials}
-              onChange={e => persistInitials(e.target.value)}
+              value={signerId}
+              onChange={e => persistSigner(e.target.value)}
               style={{ ...inputStyle, maxWidth: 220, cursor: 'pointer' }}
             >
               <option value="">{t('— select your name —', '— chọn tên của bạn —')}</option>
               {staffList.map(s => (
-                <option key={s.id} value={s.display_name}>
+                <option key={s.id} value={s.id}>
                   {s.display_name}{s.role_title ? ` · ${s.role_title}` : ''}
                 </option>
               ))}
@@ -512,12 +553,28 @@ export default function ChecklistsPage() {
               <span style={{ color: '#7E7864' }}>{t('Signed by', 'Ký bởi')}</span>
               <span style={{ color: '#E5D4C2', fontSize: 15 }}>{initials || '—'}</span>
             </div>
+            {signerId && (
+              <div style={{ marginBottom: 18 }}>
+                <label style={editLabel}>{t('Enter your PIN to sign', 'Nhập mã PIN để ký')}</label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  autoFocus
+                  value={sealPin}
+                  onChange={e => { setSealPin(e.target.value.replace(/\D/g, '').slice(0, 8)); setSealErr(null) }}
+                  onKeyDown={e => { if (e.key === 'Enter' && !sealing) confirmAndSeal() }}
+                  placeholder="••••"
+                  style={{ ...inputStyle, maxWidth: 160, letterSpacing: '0.3em', textAlign: 'center' }}
+                />
+              </div>
+            )}
+            {sealErr && <div style={{ ...confirmBody, color: '#C27070', marginBottom: 14 }}>{sealErr}</div>}
             <div style={confirmActions}>
-              <button onClick={() => setConfirmSheet(null)} style={confirmCancelBtn}>
+              <button onClick={() => setConfirmSheet(null)} style={confirmCancelBtn} disabled={sealing}>
                 {t('Cancel', 'Huỷ')}
               </button>
-              <button onClick={confirmAndSeal} style={confirmSealBtn}>
-                {t('Confirm & seal', 'Xác nhận & niêm phong')}
+              <button onClick={confirmAndSeal} style={{ ...confirmSealBtn, opacity: sealing ? 0.5 : 1 }} disabled={sealing}>
+                {sealing ? t('Verifying…', 'Đang xác minh…') : t('Confirm & seal', 'Xác nhận & niêm phong')}
               </button>
             </div>
           </div>
