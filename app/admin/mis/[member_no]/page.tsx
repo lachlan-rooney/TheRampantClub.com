@@ -141,21 +141,31 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
   // Confirm modal — invalidate a preference.
   const [confirmInvalidate, setConfirmInvalidate] = useState<Preference | null>(null)
 
-  // Change the member's tier (the conversion tier is only a default).
-  const changeTier = useCallback(async (tier: string) => {
-    if (!member || tier === member.tier || tierSaving) return
-    const prev = member.tier
+  // Correct the member record after conversion — tier, status (e.g. flip a
+  // Provisional allocation to Active), and join date. Optimistic + reverts.
+  const patchMember = useCallback(async (fields: Record<string, unknown>, label: string) => {
+    if (!member || tierSaving) return
+    const prev = { tier: member.tier, status: member.status, join_date: member.join_date }
     setTierSaving(true)
-    setMember(m => m ? { ...m, tier } : m)
+    setMember(m => m ? { ...m, ...fields } as typeof m : m)
     try {
-      const r = await fetch(`/api/admin/mis/members/${member_no}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tier }) })
+      const r = await fetch(`/api/admin/mis/members/${member_no}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields) })
       if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error || 'failed') }
-      showToast(`${t('Tier changed to', 'Đổi hạng thành')} ${tier}`, 'success')
+      showToast(label, 'success')
     } catch {
-      setMember(m => m ? { ...m, tier: prev } : m)
-      showToast(t('Could not change tier.', 'Không thể đổi hạng.'), 'error')
+      setMember(m => m ? { ...m, ...prev } as typeof m : m)
+      showToast(t('Could not save.', 'Không thể lưu.'), 'error')
     } finally { setTierSaving(false) }
   }, [member, member_no, tierSaving, showToast, t])
+  const changeTier = (tier: string) => { if (member && tier !== member.tier) patchMember({ tier }, `${t('Tier changed to', 'Đổi hạng thành')} ${tier}`) }
+  const changeStatus = (status: string) => {
+    if (!member || status === member.status) return
+    // Activating with no join date on file → stamp today (VN).
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
+    const extra = status === 'Active' && !member.join_date ? { join_date: today } : {}
+    patchMember({ status, ...extra }, `${t('Status changed to', 'Đổi trạng thái thành')} ${status}`)
+  }
+  const changeJoin = (join_date: string) => { patchMember({ join_date: join_date || null }, t('Join date updated.', 'Đã cập nhật ngày gia nhập.')) }
 
   const startVisit = useCallback(async () => {
     if (startingVisit) return
@@ -289,8 +299,17 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
               {['Founding', 'Legacy', 'Pioneer', 'Corporate', 'Honorary'].map(tr => <option key={tr} value={tr}>{tr}</option>)}
             </select>
           </div>
-          <div style={metaItem}><span style={metaLabel}>{t('Status', 'Trạng thái')}</span><span style={metaValue}>{member.status}</span></div>
-          <div style={metaItem}><span style={metaLabel}>{t('Joined', 'Ngày gia nhập')}</span><span style={metaValue}>{fmtDate(member.join_date)}</span></div>
+          <div style={metaItem}><span style={metaLabel}>{t('Status', 'Trạng thái')}</span>
+            <select value={member.status} onChange={e => changeStatus(e.target.value)} disabled={tierSaving}
+              style={{ ...metaValue, background: 'rgba(212,184,90,0.10)', border: '1px solid rgba(212,184,90,0.35)', borderRadius: 5, padding: '2px 7px', cursor: 'pointer', outline: 'none' }}>
+              {!['Active', 'Provisional', 'Lapsed', 'Pending Signature'].includes(member.status) && <option value={member.status}>{member.status}</option>}
+              {['Active', 'Provisional', 'Lapsed', 'Pending Signature'].map(st => <option key={st} value={st}>{st}</option>)}
+            </select>
+          </div>
+          <div style={metaItem}><span style={metaLabel}>{t('Joined', 'Ngày gia nhập')}</span>
+            <input type="date" value={member.join_date || ''} onChange={e => changeJoin(e.target.value)} disabled={tierSaving}
+              style={{ ...metaValue, background: 'rgba(212,184,90,0.10)', border: '1px solid rgba(212,184,90,0.35)', borderRadius: 5, padding: '2px 7px', outline: 'none' }} />
+          </div>
           {member.birthday && <div style={metaItem}><span style={metaLabel}>{t('Birthday', 'Sinh nhật')}</span><span style={metaValue}>{fmtDate(member.birthday)}</span></div>}
           {member.referred_by && <div style={metaItem}><span style={metaLabel}>{t('Referred by', 'Người giới thiệu')}</span><span style={metaValue}>{member.referred_by}</span></div>}
         </div>
