@@ -88,13 +88,44 @@ function callout(title: string, body: string): string {
   return `<div style="border-left:3px solid ${GOLD};background:rgba(212,184,90,0.06);padding:14px 18px;border-radius:0 8px 8px 0;margin:0 0 24px"><div style="font-family:'Google Sans Code',monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:${GOLD};margin-bottom:6px">${esc(title)}</div><div style="font-size:14px;color:${CREAM};line-height:1.7">${body}</div></div>`
 }
 
+// Weekly P&L — revenue & operating-cost lines from the editable narrative.pl
+// block ({revenue:[{label,amount}], costs:[{label,amount}], note}). Totals and
+// net computed here. Email-safe (table + inline styles); no data source for the
+// cost side by design, so staff enter the week's lines.
+interface PLLine { label: string; amount: number }
+interface PLBlock { revenue?: PLLine[]; costs?: PLLine[]; note?: string }
+function plTable(pl: PLBlock | undefined): string {
+  if (!pl || (!(pl.revenue && pl.revenue.length) && !(pl.costs && pl.costs.length))) return ''
+  const rev = pl.revenue || [], cost = pl.costs || []
+  const totRev = rev.reduce((s, r) => s + (Number(r.amount) || 0), 0)
+  const totCost = cost.reduce((s, r) => s + (Number(r.amount) || 0), 0)
+  const net = totRev - totCost
+  const bd = 'border-bottom:1px solid rgba(229,212,194,0.08)'
+  const line = (label: string, amount: number, o: { color?: string; amt?: string; bold?: boolean; neg?: boolean } = {}) =>
+    `<tr><td style="font-size:13px;color:${o.color || CREAM};padding:7px 0;${bd};${o.bold ? 'font-weight:700' : ''}">${esc(label)}</td>
+     <td style="font-family:'Google Sans Code',monospace;font-size:13px;color:${o.amt || CREAM};text-align:right;padding:7px 0;${bd};${o.bold ? 'font-weight:700' : ''};white-space:nowrap">${o.neg ? '−' : ''}${vnd(Math.abs(amount))}</td></tr>`
+  const grp = (t: string) => `<tr><td colspan="2" style="font-family:${SERIF};font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:${GOLD};padding:16px 0 6px;border-bottom:1px solid rgba(212,184,90,0.28)">${esc(t)}</td></tr>`
+  const inner = `<table role="presentation" style="width:100%;border-collapse:collapse">
+    ${grp('Revenue')}
+    ${rev.map(r => line(r.label, Number(r.amount) || 0)).join('')}
+    ${line('Total revenue', totRev, { bold: true, amt: GOLD })}
+    ${grp('Operating costs')}
+    ${cost.map(r => line(r.label, Number(r.amount) || 0, { color: MUTED, amt: RED, neg: true })).join('')}
+    ${line('Total operating cost', totCost, { bold: true, amt: RED, neg: true })}
+    <tr><td style="font-family:${SERIF};font-size:16px;color:${CREAM};padding:15px 0 0;border-top:2px solid ${GOLD};font-weight:600">Net position</td>
+        <td style="font-family:${SERIF};font-size:21px;color:${net >= 0 ? SAGE : RED};text-align:right;padding:15px 0 0;border-top:2px solid ${GOLD};font-weight:600;white-space:nowrap">${net < 0 ? '−' : ''}${vnd(Math.abs(net))}</td></tr>
+  </table>
+  ${pl.note ? `<div style="font-size:12px;color:${MUTED};font-style:italic;margin-top:12px">${renderProse(pl.note)}</div>` : ''}`
+  return section('Revenue & Weekly Costs', 'Profit & loss for the trading week', inner)
+}
+
 export function renderReportBody(r: ReportRow, mode: Mode): string {
   const d = r.auto_data
   const n = r.narrative || {}
   const u = d.usage
 
   let html = `<div style="margin:0 0 34px">
-    <img src="${site()}/images/library-bar-opt.png" alt="" width="100%" style="display:block;width:100%;border-radius:14px;border:1px solid rgba(212,184,90,0.20)"/>
+    <img src="${site()}/images/DC500693.jpg" alt="" width="100%" style="display:block;width:100%;border-radius:14px;border:1px solid rgba(212,184,90,0.20)"/>
     <div style="text-align:center;margin-top:22px">
       <div style="font-family:'Google Sans Code',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:${GOLD}">The Rampant Club · Weekly Report</div>
       <h1 style="font-family:${SERIF};font-size:33px;color:${CREAM};font-weight:600;margin:12px 0 4px;letter-spacing:0.01em">${esc(r.headline || n.headline || 'The Week at the Club')}</h1>
@@ -104,6 +135,9 @@ export function renderReportBody(r: ReportRow, mode: Mode): string {
   </div>`
 
   if (n.moment_of_week?.trim()) html += callout('Moment of the week', renderProse(n.moment_of_week))
+
+  // Revenue & weekly costs P&L (leads the report — the number Shawn wants first)
+  html += plTable((n as unknown as { pl?: PLBlock }).pl)
 
   // Who's been in & how long — attendance + time in the club
   const memberHours = Math.round(u.total_member_minutes / 60)
