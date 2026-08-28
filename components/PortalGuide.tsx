@@ -98,6 +98,22 @@ const GROUPS: Group[] = [
       { icon: 'document', name: { en: 'Terms', vn: 'Điều Khoản' }, what: { en: 'Full terms & conditions.', vn: 'Điều khoản & điều kiện đầy đủ.' }, how: { en: 'Here whenever you need them.', vn: 'Luôn ở đây khi bạn cần.' }, href: '/members/terms' },
       { icon: 'mail', name: { en: 'Contact', vn: 'Liên Hệ' }, what: { en: 'Address and the member hotline.', vn: 'Địa chỉ và đường dây nóng hội viên.' }, how: { en: 'For anything the Concierge can’t cover.', vn: 'Cho những gì Quản gia không thể giải quyết.' }, href: '/members/contact' },
     ] },
+  { key: 'ask', icon: 'chat', label: { en: 'Questions?', vn: 'Câu Hỏi?' },
+    blurb: { en: 'Not sure about something? Ask away — I’ll point you to the right spot. For anything personal, the Concierge has you.', vn: 'Chưa rõ điều gì? Cứ hỏi — tôi sẽ chỉ bạn đúng chỗ. Việc riêng tư, hãy nhờ Quản gia.' },
+    items: [] },
+]
+
+const SUGGESTED: L[] = [
+  { en: 'How do I find a whisky I’ll like?', vn: 'Làm sao tìm whisky hợp gu tôi?' },
+  { en: 'How do I sign up for a fixture?', vn: 'Làm sao đăng ký thi đấu?' },
+  { en: 'Where do I see my bookings?', vn: 'Xem đặt chỗ của tôi ở đâu?' },
+  { en: 'How do I add photos from an event?', vn: 'Làm sao thêm ảnh từ sự kiện?' },
+]
+const FIRST_MOVES: { icon: string; label: L; href: string }[] = [
+  { icon: 'compass', label: { en: 'Find your dram', vn: 'Tìm ly của bạn' }, href: '/members/whisky/finder' },
+  { icon: 'quill', label: { en: 'Leave a tasting note', vn: 'Ghi cảm nhận' }, href: '/members/notes' },
+  { icon: 'calendar', label: { en: 'See what’s on', vn: 'Xem sự kiện' }, href: '/members/events' },
+  { icon: 'bell', label: { en: 'Say hello to the Concierge', vn: 'Chào Quản gia' }, href: '/members/concierge' },
 ]
 
 export default function PortalGuide({ name }: { name?: string }) {
@@ -106,6 +122,23 @@ export default function PortalGuide({ name }: { name?: string }) {
   const [gi, setGi] = useState(0)          // group index; -1 shown as intro handled by gi===0 'start'
   const [lang, setLang] = useState<Lang>('en')
   const t = (l: L) => (lang === 'vn' && l.vn ? l.vn : l.en)
+  // Ask-a-question state.
+  const [q, setQ] = useState('')
+  const [answer, setAnswer] = useState('')
+  const [asking, setAsking] = useState(false)
+  const [qErr, setQErr] = useState('')
+  const ask = async (question: string) => {
+    const text = question.trim()
+    if (!text || asking) return
+    setAsking(true); setAnswer(''); setQErr(''); setQ(text)
+    try {
+      const r = await fetch('/api/members/portal-help', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: text }) })
+      const j = await r.json()
+      if (!r.ok) { setQErr(j.error || 'Try again.'); return }
+      setAnswer(j.answer || '')
+    } catch { setQErr(t({ en: 'Couldn’t reach the guide — try the Concierge.', vn: 'Không kết nối được — hãy nhờ Quản gia.' })) }
+    finally { setAsking(false) }
+  }
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -177,6 +210,20 @@ export default function PortalGuide({ name }: { name?: string }) {
         .pg-fn-how { font-family:'Google Sans Code',monospace; font-size:11px; color:#8FA58C; line-height:1.5; }
         .pg-open { display:inline-block; margin-top:6px; font-family:'Google Sans Code',monospace; font-size:10.5px; letter-spacing:0.04em; color:#052E20;
           background:#D4B85A; border:none; border-radius:6px; padding:5px 12px; cursor:pointer; font-weight:700; }
+        .pg-chip { font-family:'Google Sans Code',monospace; font-size:10.5px; color:#E5D4C2; background:rgba(212,184,90,0.08); border:1px solid rgba(212,184,90,0.28);
+          border-radius:999px; padding:5px 11px; cursor:pointer; text-align:left; }
+        .pg-chip:hover { border-color:rgba(212,184,90,0.6); background:rgba(212,184,90,0.14); }
+        .pg-input { flex:1; min-width:0; box-sizing:border-box; background:rgba(5,46,32,0.55); color:#E5D4C2; border:1px solid rgba(229,212,194,0.16);
+          border-radius:8px; padding:10px 12px; font-family:'Google Sans Code',monospace; font-size:12.5px; outline:none; }
+        .pg-answer { margin-top:12px; background:rgba(212,184,90,0.06); border:1px solid rgba(212,184,90,0.22); border-radius:10px; padding:13px 15px;
+          font-family:'Rampant Sans',serif; font-size:14.5px; line-height:1.6; color:#E5D4C2; white-space:pre-wrap; }
+        .pg-typing { display:inline-flex; gap:5px; align-items:center; }
+        .pg-typing i { width:6px; height:6px; border-radius:50%; background:#D4B85A; opacity:0.5; animation:pg-blink 1.1s infinite; }
+        .pg-typing i:nth-child(2){ animation-delay:0.2s } .pg-typing i:nth-child(3){ animation-delay:0.4s }
+        @keyframes pg-blink { 0%,80%,100%{ opacity:0.25; transform:translateY(0) } 40%{ opacity:1; transform:translateY(-3px) } }
+        .pg-move { display:inline-flex; align-items:center; gap:7px; font-family:'Google Sans Code',monospace; font-size:11px; color:#E5D4C2;
+          background:rgba(229,212,194,0.04); border:1px solid rgba(229,212,194,0.16); border-radius:8px; padding:8px 13px; cursor:pointer; }
+        .pg-move:hover { border-color:rgba(212,184,90,0.5); background:rgba(212,184,90,0.08); }
         .pg-foot { display:flex; align-items:center; gap:10px; padding:14px 22px 18px; border-top:1px solid rgba(229,212,194,0.10); }
         .pg-dots { display:flex; gap:5px; margin-right:auto; }
         .pg-dot { width:7px; height:7px; border-radius:50%; background:rgba(229,212,194,0.2); cursor:pointer; }
@@ -212,7 +259,39 @@ export default function PortalGuide({ name }: { name?: string }) {
 
         <div className="pg-blurb">{t(g.blurb)}</div>
         <div className="pg-body">
-          {g.items.map((f, i) => (
+          {g.key === 'ask' ? (
+            <div style={{ padding: '4px 6px 6px' }}>
+              {/* Suggested questions */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                {SUGGESTED.map((s, i) => (
+                  <button key={i} className="pg-chip" onClick={() => ask(t(s))}>{t(s)}</button>
+                ))}
+              </div>
+              {/* Ask box */}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input className="pg-input" value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') ask(q) }}
+                  placeholder={t({ en: 'Ask anything about the portal…', vn: 'Hỏi bất cứ điều gì về cổng…' })} maxLength={500} />
+                <button className="pg-btn gold" onClick={() => ask(q)} disabled={asking || q.trim().length < 2} style={{ opacity: asking || q.trim().length < 2 ? 0.5 : 1 }}>
+                  {asking ? t({ en: 'Thinking…', vn: 'Đang nghĩ…' }) : t({ en: 'Ask', vn: 'Hỏi' })}
+                </button>
+              </div>
+              {qErr && <div style={{ fontFamily: "'Google Sans Code',monospace", fontSize: 11, color: '#C27070', marginTop: 10 }}>{qErr}</div>}
+              {(asking || answer) && (
+                <div className="pg-answer">
+                  {asking ? <span className="pg-typing"><i /><i /><i /></span> : answer}
+                </div>
+              )}
+              {/* Encourage first moves */}
+              <div style={{ fontFamily: "'Google Sans Code',monospace", fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#D4B85A', margin: '20px 0 8px' }}>{t({ en: 'Your first moves', vn: 'Bước đầu tiên' })}</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {FIRST_MOVES.map((m, i) => (
+                  <button key={i} className="pg-move" onClick={() => goto(m.href)}>
+                    <span style={{ display: 'flex', color: '#D4B85A' }}><Icon n={m.icon} size={14} /></span>{t(m.label)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : g.items.map((f, i) => (
             <div key={i} className="pg-fn">
               <span className="pg-ic"><Icon n={f.icon} /></span>
               <div style={{ minWidth: 0 }}>
