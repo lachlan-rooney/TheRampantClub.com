@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import TonightPanel from '@/components/TonightPanel'
-import WelcomeTour from '@/components/WelcomeTour'
+import PortalGuide from '@/components/PortalGuide'
 import AnticipationCard from '@/components/members/AnticipationCard'
 import ReturnCard from '@/components/members/ReturnCard'
 
@@ -569,7 +569,7 @@ export default function MembersPage() {
         }
       ` }} />
 
-      <WelcomeTour name={firstName} />
+      <PortalGuide name={firstName} />
 
       <div className="members-page">
         <div className="members-grain" />
@@ -577,6 +577,10 @@ export default function MembersPage() {
           <h1 className="members-greeting">{greeting}</h1>
           {summary && <p className="members-email">{summary}</p>}
           {!summary && <p className="members-email">{email}</p>}
+          <button
+            onClick={() => window.dispatchEvent(new Event('open-portal-guide'))}
+            style={{ background: 'none', border: '1px solid rgba(212,184,90,0.35)', color: '#D4B85A', fontFamily: "'Google Sans Code', monospace", fontSize: 10, letterSpacing: '0.06em', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', marginBottom: 8 }}
+          >◇ Portal guide</button>
 
           <AnticipationCard />
           <ReturnCard />
