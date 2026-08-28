@@ -46,7 +46,9 @@ export async function GET(req: NextRequest) {
     if (!dm.member_no) continue
     const existing = identity.get(dm.member_no)
     if (existing) {
-      if (!existing.tier && dm.tier) existing.tier = dm.tier
+      // The members table is where tier is edited on the member record, so it's
+      // authoritative over the sheet's tier.
+      if (dm.tier) existing.tier = dm.tier
       if (!existing.full_name && dm.full_name) existing.full_name = dm.full_name
     } else {
       identity.set(dm.member_no, { member_no: dm.member_no, full_name: dm.full_name || '', tier: dm.tier || '' })

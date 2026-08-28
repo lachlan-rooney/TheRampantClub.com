@@ -53,10 +53,16 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  // Members created via the pipeline (in the members table, not the sheet).
+  // Overlay the members table: it holds pipeline-created members AND is where
+  // tier is edited on the member record, so its tier is authoritative here.
   const { data: dbMembers } = await supabase.from('members').select('member_no, full_name, tier')
   for (const dm of dbMembers || []) {
-    if (!dm.member_no || seen.has(dm.member_no)) continue
+    if (!dm.member_no) continue
+    if (seen.has(dm.member_no)) {
+      const row = members.find(m => m.member_number === dm.member_no)
+      if (row && dm.tier) row.tier = dm.tier
+      continue
+    }
     seen.add(dm.member_no)
     members.push({
       member_number: dm.member_no,
