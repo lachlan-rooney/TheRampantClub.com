@@ -105,17 +105,28 @@ export function renderReportBody(r: ReportRow, mode: Mode): string {
 
   if (n.moment_of_week?.trim()) html += callout('Moment of the week', renderProse(n.moment_of_week))
 
-  // Usage
-  html += section('Club Usage', 'Members through the doors this week', `
+  // Who's been in & how long — attendance + time in the club
+  const memberHours = Math.round(u.total_member_minutes / 60)
+  const guestHours = Math.round(u.guest_minutes / 60)
+  const attendanceLine = (() => {
+    const parts: string[] = []
+    if (memberHours > 0) parts.push(`Members spent <span style="color:${CREAM}">~${memberHours}h</span> in the club`)
+    if (u.guest_heads > 0) parts.push(`<span style="color:${CREAM}">${u.guest_heads}</span> guest${u.guest_heads === 1 ? '' : 's'} logged${guestHours > 0 ? ` (~${guestHours}h)` : ''}`)
+    else if (u.guest_proxy > 0) parts.push(`~${u.guest_proxy} guests (estimated from party sizes)`)
+    const line = parts.join(' · ')
+    const note = n.guests_note ? (line ? ' · ' : '') + esc(n.guests_note) : ''
+    return (line || note) ? `<div style="font-size:12.5px;color:${MUTED};margin-top:8px">${line}${note}</div>` : ''
+  })()
+  html += section('Who’s Been In', 'Attendance & time in the club this week', `
     <table role="presentation" style="width:100%;border-collapse:collapse"><tr>
-      ${stat(String(u.visits), 'visits', delta(d.deltas.visits))}
+      ${stat(String(u.visits), 'member visits', delta(d.deltas.visits))}
       ${stat(String(u.unique_members), 'unique members', delta(d.deltas.unique_members))}
-      ${stat(String(u.footfall_unique), 'footfall (taps)', delta(d.deltas.footfall_unique))}
       ${stat(`${u.avg_minutes}m`, 'avg stay')}
+      ${stat(u.guest_heads > 0 ? String(u.guest_heads) : String(u.footfall_unique), u.guest_heads > 0 ? 'guests in' : 'footfall (taps)', u.guest_heads > 0 ? undefined : delta(d.deltas.footfall_unique))}
     </tr></table>
     ${chartBlock(mode, lineChart(u.visits_by_day.map(x => ({ label: x.label, count: x.count })), 'dark'), barsHtml(u.visits_by_day.map(x => ({ label: x.label, value: x.count }))))}
+    ${attendanceLine}
     ${d.member_of_week ? `<div style="font-size:13px;color:${MUTED};margin-top:6px">Member of the week: <span style="color:${CREAM}">${esc(d.member_of_week.name)}</span> — ${d.member_of_week.visits} visits.</div>` : ''}
-    ${u.guest_proxy > 0 ? `<div style="font-size:12px;color:${MUTED};margin-top:4px;font-style:italic">~${u.guest_proxy} guests (estimated from party sizes)${n.guests_note ? ' · ' + esc(n.guests_note) : ''}</div>` : (n.guests_note ? `<div style="font-size:12px;color:${MUTED};margin-top:4px;font-style:italic">${esc(n.guests_note)}</div>` : '')}
   `)
 
   // Events

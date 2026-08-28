@@ -26,6 +26,10 @@ export interface WeekMetrics {
   visits: number
   unique_members: number
   avg_minutes: number
+  total_member_minutes: number   // sum of closed member-visit durations
+  guest_visits: number           // guest-attendance records logged
+  guest_heads: number            // actual guests (sum of party sizes)
+  guest_minutes: number          // sum of guest durations
   visits_by_day: { day: string; label: string; count: number }[]
   footfall_unique: number
   footfall_by_day: { day: string; count: number }[]
@@ -58,6 +62,8 @@ async function windowMetrics(sb: SupabaseClient, start: string, end: string): Pr
     sb.from('card_presence').select('member_number, seen_at').gte('seen_at', start).lte('seen_at', end + 'T23:59:59'), [])
   const bookings = await safe<{ party_size: number; status: string; arrived_at: string | null }[]>(
     sb.from('bookings').select('party_size, status, arrived_at').gte('booking_date', start).lte('booking_date', end), [])
+  const guests = await safe<{ duration_min: number | null; party_size: number | null }[]>(
+    sb.from('guest_visits').select('duration_min, party_size').gte('visit_date', start).lte('visit_date', end), [])
   const newMembers = await safe<{ member_no: string }[]>(
     sb.from('members').select('member_no').gte('join_date', start).lte('join_date', end), [])
   const signed = await safe<{ id: string }[]>(
@@ -71,10 +77,15 @@ async function windowMetrics(sb: SupabaseClient, start: string, end: string): Pr
   const footfallSet = new Set(presence.map(p => `${p.member_number}|${p.seen_at.slice(0, 10)}`))
   const footfallByDay = days.map(d => ({ day: d, count: new Set(presence.filter(p => p.seen_at.slice(0, 10) === d).map(p => p.member_number)).size }))
 
+  const memberMinutes = closed.reduce((s, v) => s + (v.duration_min || 0), 0)
   return {
     visits: visits.length,
     unique_members: new Set(visits.map(v => v.member_no)).size,
-    avg_minutes: closed.length ? Math.round(closed.reduce((s, v) => s + (v.duration_min || 0), 0) / closed.length) : 0,
+    avg_minutes: closed.length ? Math.round(memberMinutes / closed.length) : 0,
+    total_member_minutes: memberMinutes,
+    guest_visits: guests.length,
+    guest_heads: guests.reduce((s, g) => s + (g.party_size || 1), 0),
+    guest_minutes: guests.reduce((s, g) => s + (g.duration_min || 0), 0),
     visits_by_day: visitsByDay,
     footfall_unique: new Set(presence.map(p => p.member_number)).size,
     footfall_by_day: footfallByDay,

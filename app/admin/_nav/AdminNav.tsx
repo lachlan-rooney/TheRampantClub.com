@@ -28,6 +28,7 @@ const GROUPS: Group[] = [
       { href: '/admin/concierge', label: 'Concierge', icon: 'bell' },
       { href: '/admin/notices', label: 'Notices', icon: 'megaphone' },
       { href: '/admin/calendar', label: 'Calendar', icon: 'calendar' },
+      { href: '/admin/attendance', label: 'Guest Attendance', icon: 'users' },
       { href: '/admin/harmony', label: 'Harmony Log', icon: 'heart' },
       { href: '/admin/snug', label: 'The Snug', icon: 'cup' },
       { href: '/admin/introductions', label: 'Introductions', icon: 'people' },
