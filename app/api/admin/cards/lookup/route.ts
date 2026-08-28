@@ -31,6 +31,15 @@ export async function GET(req: NextRequest) {
   // Demo override — surface hardcoded demo members so admin sees the right name.
   if (!member) member = demoAsSheetMember(link.member_number)
 
+  // Members-table fallback — pipeline-created members aren't in the Google Sheet
+  // (this is the "sheet lookup fail"); resolve their name/tier from the DB, and
+  // let the DB tier (edited on the member record) override the sheet's.
+  const { data: dbm } = await supabase.from('members').select('member_no, full_name, nickname, tier').eq('member_no', link.member_number).maybeSingle()
+  if (dbm) {
+    if (!member) member = { 'Member No.': dbm.member_no, 'Full Name': dbm.full_name || '', 'Nickname': dbm.nickname || '', 'Tier': dbm.tier || '' }
+    else if (dbm.tier) member['Tier'] = dbm.tier
+  }
+
   // Recent transactions (last 10)
   const { data: transactions } = await supabase
     .from('card_transactions')
