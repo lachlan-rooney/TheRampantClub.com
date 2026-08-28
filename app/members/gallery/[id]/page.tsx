@@ -50,12 +50,17 @@ export default function EventDetailPage() {
   const onPickFiles = async (files: FileList | null) => {
     if (!files || !files.length) return
     setError(null)
+    // Upload into THIS member's own sub-folder so the server can bind each
+    // object to its uploader (see the media route) — nobody can register a row
+    // over someone else's photo.
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setError('Please sign in again.'); return }
     const list = Array.from(files).filter(f => f.type.startsWith('image/'))
     setUploading(u => u + list.length)
     for (const file of list) {
       try {
         const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
-        const path = `${id}/${crypto.randomUUID()}.${ext}`
+        const path = `${id}/${user.id}/${crypto.randomUUID()}.${ext}`
         const up = await supabase.storage.from('event-media').upload(path, file, { contentType: file.type, upsert: false })
         if (up.error) { setError('Upload failed — try again.'); continue }
         const pub = supabase.storage.from('event-media').getPublicUrl(path).data.publicUrl

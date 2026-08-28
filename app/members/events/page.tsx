@@ -130,7 +130,9 @@ export default function WhatsOnPage() {
   // Merge upcoming fixtures + happenings into one chronological timeline.
   const upcoming: Item[] = useMemo(() => {
     const fx: Item[] = fixtures.filter(f => new Date(f.date).getTime() >= nowTs).map(f => ({ type: 'fixture', ms: new Date(f.date).getTime(), f }))
-    const ev: Item[] = entries.map(e => ({ type: 'entry', ms: new Date(`${e.entry_date}T${(e.start_time || '12:00')}:00+07:00`).getTime(), e }))
+    // start_time is a Postgres `time` → "HH:MM:SS"; slice to HH:MM or the extra
+    // seconds group makes an invalid Date (NaN) that never sorts into place.
+    const ev: Item[] = entries.map(e => ({ type: 'entry', ms: new Date(`${e.entry_date}T${(e.start_time ? e.start_time.slice(0, 5) : '12:00')}:00+07:00`).getTime(), e }))
     return [...fx, ...ev].sort((a, b) => a.ms - b.ms)
   }, [fixtures, entries, nowTs])
   const pastFixtures = useMemo(() => fixtures.filter(f => new Date(f.date).getTime() < nowTs), [fixtures, nowTs])

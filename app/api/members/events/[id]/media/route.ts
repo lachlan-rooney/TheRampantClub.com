@@ -30,14 +30,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if ('error' in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 })
     url = parsed.url
   } else {
-    // Uploaded image: TRUST ONLY the storage_path, and only within THIS event's
-    // own folder. Deriving the public URL server-side means a crafted `url`
-    // (e.g. a javascript: URI) can never be stored (kills the stored-XSS), and
-    // confining the path to `${id}/` stops a member referencing — and later
-    // deleting — another event's object (kills the IDOR). The client `url` is
-    // ignored entirely.
+    // Uploaded image: TRUST ONLY the storage_path, and only within THIS
+    // member's own sub-folder of THIS event: `${eventId}/${actorId}/…`.
+    //  • Deriving the public URL server-side means a crafted `url` (e.g. a
+    //    javascript: URI) can never be stored — kills the stored-XSS.
+    //  • Binding the path to the caller's id means a member can only ever
+    //    reference (and later delete) their OWN uploaded objects — events are
+    //    shared spaces, so an event-level prefix alone was NOT enough to stop
+    //    one member registering a row over another's photo and deleting it.
     const sp = typeof p?.storage_path === 'string' ? p.storage_path : ''
-    if (!sp.startsWith(`${id}/`) || sp.includes('..')) return NextResponse.json({ error: 'Bad image.' }, { status: 400 })
+    if (!sp.startsWith(`${id}/${actor.id}/`) || sp.includes('..')) return NextResponse.json({ error: 'Bad image.' }, { status: 400 })
     storage_path = sp
     url = a.storage.from('event-media').getPublicUrl(sp).data.publicUrl
   }
