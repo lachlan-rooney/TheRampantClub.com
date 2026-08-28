@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { isAdmin } from '@/lib/admin'
 import { DEMO_MEMBERS } from '@/lib/demo-members'
-import { fetchMemberSheet } from '@/lib/member-sheet'
+import { fetchMembers } from '@/lib/member-roster'
 
-// GET /api/admin/membership/roster → every member (Google Sheet roster +
+// GET /api/admin/membership/roster → every member (members table roster +
 // demo entries) overlaid with their latest membership period + last payment,
 // classified paid / due-soon / grace / overdue / never. Plus per-tier default
 // fees (from tier_budgets) for the record form's prefill. Admin-gated.
@@ -20,10 +20,10 @@ export async function GET(req: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const sb = svc()
 
-  // 1. Roster identity from the Google Sheet (+ demo overlay), like the cards picker.
+  // 1. Roster identity from the members table (+ demo overlay), like the cards picker.
   let sheet: Record<string, string>[] = []
   try {
-    sheet = await fetchMemberSheet()
+    sheet = await fetchMembers()
   } catch { /* empty fallback */ }
 
   const identity = new Map<string, { member_no: string; full_name: string; tier: string }>()
@@ -35,23 +35,6 @@ export async function GET(req: NextRequest) {
   for (const dm of DEMO_MEMBERS) {
     if (!identity.has(dm.member_number)) {
       identity.set(dm.member_number, { member_no: dm.member_number, full_name: dm.full_name, tier: dm.tier })
-    }
-  }
-
-  // Also include members created via the PIPELINE — they live in the members
-  // table but aren't in the manually-maintained Google Sheet, so without this
-  // a freshly-converted member never appears in the membership dropdown/roster.
-  const { data: dbMembers } = await sb.from('members').select('member_no, full_name, tier')
-  for (const dm of dbMembers || []) {
-    if (!dm.member_no) continue
-    const existing = identity.get(dm.member_no)
-    if (existing) {
-      // The members table is where tier is edited on the member record, so it's
-      // authoritative over the sheet's tier.
-      if (dm.tier) existing.tier = dm.tier
-      if (!existing.full_name && dm.full_name) existing.full_name = dm.full_name
-    } else {
-      identity.set(dm.member_no, { member_no: dm.member_no, full_name: dm.full_name || '', tier: dm.tier || '' })
     }
   }
 

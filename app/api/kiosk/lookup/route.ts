@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { DEMO_MEMBERS_BY_NUMBER } from '@/lib/demo-members'
-import { fetchMemberSheet } from '@/lib/member-sheet'
+import { fetchMembers } from '@/lib/member-roster'
 
 // Public-ish kiosk endpoint. Anyone with the physical card UID can fetch the
 // associated member's display name + balance. No admin auth — by the time a UID
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   let displayName: string | null = null
   try {
     {
-      const all = await fetchMemberSheet()
+      const all = await fetchMembers()
       const m = all.find(x => x['Member No.'] === link.member_number)
       if (m) {
         const first = m['First Name'] || ''

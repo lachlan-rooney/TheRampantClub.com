@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
-import { fetchMemberSheet } from '@/lib/member-sheet'
+import { fetchMembers } from '@/lib/member-roster'
 
 // Lists member_cards rows whose member_number is no longer present in the
-// Google Sheet roster — i.e. credit accounts attached to ex-members.
+// members-table roster — i.e. credit accounts attached to ex-members.
 export async function GET(req: NextRequest) {
   if (!(await isAdmin())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   // Sheet roster
   let sheetNumbers = new Set<string>()
   try {
-    const all = await fetchMemberSheet()
+    const all = await fetchMembers()
     for (const m of all) if (m['Member No.']) sheetNumbers.add(m['Member No.'])
   } catch { /* fall through; treat all rows as orphans */ }
 

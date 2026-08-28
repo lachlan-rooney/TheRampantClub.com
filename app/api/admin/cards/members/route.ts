@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
 import { DEMO_MEMBERS } from '@/lib/demo-members'
-import { fetchMemberSheet } from '@/lib/member-sheet'
+import { fetchMembers } from '@/lib/member-roster'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,10 +11,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // 1. Sheet members
+  // 1. Roster members (members table)
   let sheetMembers: Record<string, string>[] = []
   try {
-    sheetMembers = await fetchMemberSheet()
+    sheetMembers = await fetchMembers()
   } catch { /* empty fallback */ }
 
   // 2. Card links
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
       credit_vnd: linkByNumber.get(m['Member No.'])?.credit_vnd ?? 0,
     }))
 
-  // 3. Demo members — hardcoded, not in the Sheet. Appended so admins can
+  // 3. Demo members — hardcoded, not in the roster. Appended so admins can
   //    link a card to them without touching the real roster.
   const seen = new Set(members.map(m => m.member_number))
   for (const dm of DEMO_MEMBERS) {
@@ -50,26 +50,6 @@ export async function GET(req: NextRequest) {
       tier: dm.tier,
       card_uid: linkByNumber.get(dm.member_number)?.card_uid || null,
       credit_vnd: linkByNumber.get(dm.member_number)?.credit_vnd ?? 0,
-    })
-  }
-
-  // Overlay the members table: it holds pipeline-created members AND is where
-  // tier is edited on the member record, so its tier is authoritative here.
-  const { data: dbMembers } = await supabase.from('members').select('member_no, full_name, tier')
-  for (const dm of dbMembers || []) {
-    if (!dm.member_no) continue
-    if (seen.has(dm.member_no)) {
-      const row = members.find(m => m.member_number === dm.member_no)
-      if (row && dm.tier) row.tier = dm.tier
-      continue
-    }
-    seen.add(dm.member_no)
-    members.push({
-      member_number: dm.member_no,
-      full_name: dm.full_name || '',
-      tier: dm.tier || '',
-      card_uid: linkByNumber.get(dm.member_no)?.card_uid || null,
-      credit_vnd: linkByNumber.get(dm.member_no)?.credit_vnd ?? 0,
     })
   }
 

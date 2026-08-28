@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
 import { demoAsSheetMember } from '@/lib/demo-members'
-import { fetchMemberSheet } from '@/lib/member-sheet'
+import { fetchMembers } from '@/lib/member-roster'
 
 export async function GET(req: NextRequest) {
   if (!(await isAdmin())) {
@@ -21,24 +21,15 @@ export async function GET(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!link) return NextResponse.json({ link: null, member: null, transactions: [] })
 
-  // Sheet member
+  // Roster member (members table)
   let member: Record<string, string> | null = null
   try {
-    const all = await fetchMemberSheet()
+    const all = await fetchMembers()
     member = all.find(m => m['Member No.'] === link.member_number) || null
   } catch { /* leave member null */ }
 
   // Demo override — surface hardcoded demo members so admin sees the right name.
   if (!member) member = demoAsSheetMember(link.member_number)
-
-  // Members-table fallback — pipeline-created members aren't in the Google Sheet
-  // (this is the "sheet lookup fail"); resolve their name/tier from the DB, and
-  // let the DB tier (edited on the member record) override the sheet's.
-  const { data: dbm } = await supabase.from('members').select('member_no, full_name, nickname, tier').eq('member_no', link.member_number).maybeSingle()
-  if (dbm) {
-    if (!member) member = { 'Member No.': dbm.member_no, 'Full Name': dbm.full_name || '', 'Nickname': dbm.nickname || '', 'Tier': dbm.tier || '' }
-    else if (dbm.tier) member['Tier'] = dbm.tier
-  }
 
   // Recent transactions (last 10)
   const { data: transactions } = await supabase
