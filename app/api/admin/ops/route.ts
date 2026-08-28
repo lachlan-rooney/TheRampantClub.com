@@ -10,7 +10,7 @@ import { dispatchPendingEmails } from '@/lib/ops/notify-dispatch'
 // a flush error here is swallowed (never blocks the write's response).
 const NOTIFYING_ACTIONS = new Set([
   'ops_create_task', 'ops_assign_task', 'ops_move_task',
-  'ops_create_shift', 'ops_update_shift', 'ops_delete_shift',
+  'ops_create_shift', 'ops_update_shift', 'ops_move_shift', 'ops_delete_shift',
 ])
 
 function svc() {
@@ -54,6 +54,7 @@ const ALLOWED_ACTIONS = new Set([
   'ops_set_template_active',
   'ops_create_shift',
   'ops_update_shift',
+  'ops_move_shift',
   'ops_delete_shift',
   'ops_link_task',
   'ops_unlink_task',
