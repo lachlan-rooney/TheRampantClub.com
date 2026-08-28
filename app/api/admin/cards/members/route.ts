@@ -40,15 +40,30 @@ export async function GET(req: NextRequest) {
 
   // 3. Demo members — hardcoded, not in the Sheet. Appended so admins can
   //    link a card to them without touching the real roster.
-  const sheetNumbers = new Set(members.map(m => m.member_number))
+  const seen = new Set(members.map(m => m.member_number))
   for (const dm of DEMO_MEMBERS) {
-    if (sheetNumbers.has(dm.member_number)) continue
+    if (seen.has(dm.member_number)) continue
+    seen.add(dm.member_number)
     members.push({
       member_number: dm.member_number,
       full_name: dm.full_name,
       tier: dm.tier,
       card_uid: linkByNumber.get(dm.member_number)?.card_uid || null,
       credit_vnd: linkByNumber.get(dm.member_number)?.credit_vnd ?? 0,
+    })
+  }
+
+  // Members created via the pipeline (in the members table, not the sheet).
+  const { data: dbMembers } = await supabase.from('members').select('member_no, full_name, tier')
+  for (const dm of dbMembers || []) {
+    if (!dm.member_no || seen.has(dm.member_no)) continue
+    seen.add(dm.member_no)
+    members.push({
+      member_number: dm.member_no,
+      full_name: dm.full_name || '',
+      tier: dm.tier || '',
+      card_uid: linkByNumber.get(dm.member_no)?.card_uid || null,
+      credit_vnd: linkByNumber.get(dm.member_no)?.credit_vnd ?? 0,
     })
   }
 

@@ -69,6 +69,7 @@ export default function AdminCards() {
   const [listening, setListening] = useState(true)
   const [orphans, setOrphans] = useState<{ member_number: string; card_uid: string | null; credit_vnd: number; expires_at: string | null; updated_at: string }[]>([])
   const [showOrphans, setShowOrphans] = useState(false)
+  const [cardSearch, setCardSearch] = useState('')
 
   const bufferRef = useRef('')
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -564,6 +565,36 @@ export default function AdminCards() {
           )}
         </div>
       )}
+
+      {/* All member cards — every member with their number, card status + balance */}
+      <div style={{ marginTop: 36 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+          <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2' }}>
+            {t('All member cards', 'Tất cả thẻ hội viên')} <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#B2AA98' }}>· {members.length}</span>
+          </div>
+          <input
+            value={cardSearch} onChange={e => setCardSearch(e.target.value)}
+            placeholder={t('Search name or number…', 'Tìm tên hoặc số…')}
+            style={{ background: 'rgba(5,46,32,0.5)', color: '#E5D4C2', border: '1px solid rgba(229,212,194,0.14)', borderRadius: 7, padding: '8px 12px', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, outline: 'none', minWidth: 200 }}
+          />
+        </div>
+        <div style={{ border: '1px solid rgba(229,212,194,0.08)', borderRadius: 10, overflow: 'hidden' }}>
+          {members
+            .filter(m => { const q = cardSearch.trim().toLowerCase(); return !q || `${m.member_number} ${m.full_name}`.toLowerCase().includes(q) })
+            .sort((a, b) => a.member_number.localeCompare(b.member_number, undefined, { numeric: true }))
+            .map(m => (
+              <div key={m.member_number} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '11px 14px', borderTop: '1px solid rgba(229,212,194,0.06)', flexWrap: 'wrap' }}>
+                <span style={{ minWidth: 52, fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: '#B2AA98' }}>{m.member_number.replace(/^TRC-M/i, '#')}</span>
+                <span style={{ flex: 1, minWidth: 120, fontFamily: "'Rampant Sans', serif", fontSize: 14, color: '#E5D4C2' }}>{m.full_name || '—'}{m.tier ? <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 9, color: '#7E7864' }}> · {m.tier}</span> : null}</span>
+                <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: m.card_uid ? '#D4B85A' : '#7E7864' }}>
+                  {m.card_uid ? `${t('card', 'thẻ')} ${m.card_uid}` : t('no card linked', 'chưa gắn thẻ')}
+                </span>
+                <span style={{ minWidth: 100, textAlign: 'right', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: m.credit_vnd > 0 ? '#7AB07A' : '#B2AA98' }}>{fmt(m.credit_vnd)}</span>
+              </div>
+            ))}
+          {members.length === 0 && <div style={{ padding: 16, fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: '#B2AA98', opacity: 0.6 }}>{t('No members.', 'Không có hội viên.')}</div>}
+        </div>
+      </div>
 
       {toast && (
         <div style={{
