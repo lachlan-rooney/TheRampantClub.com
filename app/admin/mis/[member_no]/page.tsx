@@ -136,9 +136,26 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
   const [saving, setSaving] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [startingVisit, setStartingVisit] = useState(false)
+  const [tierSaving, setTierSaving] = useState(false)
   const { showToast, toastNode } = useToast()
   // Confirm modal — invalidate a preference.
   const [confirmInvalidate, setConfirmInvalidate] = useState<Preference | null>(null)
+
+  // Change the member's tier (the conversion tier is only a default).
+  const changeTier = useCallback(async (tier: string) => {
+    if (!member || tier === member.tier || tierSaving) return
+    const prev = member.tier
+    setTierSaving(true)
+    setMember(m => m ? { ...m, tier } : m)
+    try {
+      const r = await fetch(`/api/admin/mis/members/${member_no}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tier }) })
+      if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error || 'failed') }
+      showToast(`${t('Tier changed to', 'Đổi hạng thành')} ${tier}`, 'success')
+    } catch {
+      setMember(m => m ? { ...m, tier: prev } : m)
+      showToast(t('Could not change tier.', 'Không thể đổi hạng.'), 'error')
+    } finally { setTierSaving(false) }
+  }, [member, member_no, tierSaving, showToast, t])
 
   const startVisit = useCallback(async () => {
     if (startingVisit) return
@@ -265,7 +282,13 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
           {member.nickname && <div style={nicknameText}>“{member.nickname}”</div>}
         </div>
         <div style={metaPanel}>
-          <div style={metaItem}><span style={metaLabel}>{t('Tier', 'Hạng')}</span><span style={metaValue}>{member.tier}</span></div>
+          <div style={metaItem}><span style={metaLabel}>{t('Tier', 'Hạng')}</span>
+            <select value={member.tier} onChange={e => changeTier(e.target.value)} disabled={tierSaving}
+              style={{ ...metaValue, background: 'rgba(212,184,90,0.10)', border: '1px solid rgba(212,184,90,0.35)', borderRadius: 5, padding: '2px 7px', cursor: 'pointer', outline: 'none' }}>
+              {!['Founding', 'Legacy', 'Pioneer', 'Corporate', 'Honorary'].includes(member.tier) && <option value={member.tier}>{member.tier}</option>}
+              {['Founding', 'Legacy', 'Pioneer', 'Corporate', 'Honorary'].map(tr => <option key={tr} value={tr}>{tr}</option>)}
+            </select>
+          </div>
           <div style={metaItem}><span style={metaLabel}>{t('Status', 'Trạng thái')}</span><span style={metaValue}>{member.status}</span></div>
           <div style={metaItem}><span style={metaLabel}>{t('Joined', 'Ngày gia nhập')}</span><span style={metaValue}>{fmtDate(member.join_date)}</span></div>
           {member.birthday && <div style={metaItem}><span style={metaLabel}>{t('Birthday', 'Sinh nhật')}</span><span style={metaValue}>{fmtDate(member.birthday)}</span></div>}

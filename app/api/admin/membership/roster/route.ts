@@ -38,6 +38,21 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Also include members created via the PIPELINE — they live in the members
+  // table but aren't in the manually-maintained Google Sheet, so without this
+  // a freshly-converted member never appears in the membership dropdown/roster.
+  const { data: dbMembers } = await sb.from('members').select('member_no, full_name, tier')
+  for (const dm of dbMembers || []) {
+    if (!dm.member_no) continue
+    const existing = identity.get(dm.member_no)
+    if (existing) {
+      if (!existing.tier && dm.tier) existing.tier = dm.tier
+      if (!existing.full_name && dm.full_name) existing.full_name = dm.full_name
+    } else {
+      identity.set(dm.member_no, { member_no: dm.member_no, full_name: dm.full_name || '', tier: dm.tier || '' })
+    }
+  }
+
   // 2. Latest period + latest payment per member.
   const { data: periods } = await sb.from('membership_periods')
     .select('member_no, start_date, end_date, status, complimentary').order('end_date', { ascending: false })
