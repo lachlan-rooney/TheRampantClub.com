@@ -33,8 +33,9 @@ const MEMBER_GROUPS: { label: string; links: { href: string; en: string; vn: str
     { href: '/members/messages',      icon: 'chat',      en: 'Messages',      vn: 'Tin Nhắn' },
   ] },
   { label: 'You', links: [
-    { href: '/members/profile',       icon: 'card',  en: 'My Membership',  vn: 'Tư Cách Thành Viên' },
-    { href: '/members/visits',        icon: 'clock', en: 'Your Visits',    vn: 'Những Lần Ghé Thăm' },
+    { href: '/members/profile',       icon: 'card',     en: 'My Membership',  vn: 'Tư Cách Thành Viên' },
+    { href: '/members/calendar',      icon: 'calendar', en: 'My Calendar',    vn: 'Lịch Của Bạn' },
+    { href: '/members/visits',        icon: 'clock',    en: 'Your Visits',    vn: 'Những Lần Ghé Thăm' },
   ] },
   { label: 'Info', links: [
     { href: '/members/rules',         icon: 'book',     en: 'House Rules',  vn: 'Nội Quy' },
