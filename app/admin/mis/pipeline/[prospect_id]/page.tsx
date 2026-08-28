@@ -120,6 +120,8 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
   const [sendResult, setSendResult] = useState<{ ok: boolean; msg: string } | null>(null)
   const [showOverride, setShowOverride] = useState(false)
   const [converting, setConverting] = useState(false)
+  const [memberStatus, setMemberStatus] = useState<string | null>(null)
+  const [activating, setActivating] = useState(false)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -129,6 +131,7 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
         if (d.prospect) setProspect(d.prospect)
         if (d.activity) setActivity(d.activity)
         if (d.invitations) setInvitations(d.invitations)
+        setMemberStatus(d.member_status ?? null)
         setLoading(false)
       })
       .catch(() => setLoading(false))
@@ -264,6 +267,29 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
       setConverting(false)
     }
   }, [prospect_id, load])
+
+  // Activate — promote a provisional member (allocated but not yet a full
+  // member) straight to Active, stamping today's join date. This is the
+  // in-app replacement for the old manual sheet step: once the committee has
+  // approved and the member's been onboarded, one click makes them Active.
+  const activate = useCallback(async () => {
+    if (!prospect?.converted_member_no) return
+    setActivating(true); setError(null)
+    try {
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date())
+      const r = await fetch(`/api/admin/mis/members/${prospect.converted_member_no}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'Active', join_date: today }),
+      })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error || t('Activation failed', 'Kích hoạt thất bại'))
+      load()
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setActivating(false)
+    }
+  }, [prospect, load])
 
   // Branded confirm modal — one state covers all destructive paths.
   type Pending =
@@ -471,6 +497,26 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
                 {t('Allocate provisional member no.', 'Cấp số hội viên tạm thời')}
               </button>
             )}
+            {/* Activate — promote an allocated *provisional* member to a full
+                Active member (stamps today's join date). This is the in-app
+                path that retired the manual Google-Sheet activation step. */}
+            {prospect.converted_member_no && memberStatus === 'Provisional' && (
+              <button
+                onClick={activate}
+                disabled={activating}
+                style={{
+                  ...btnPrimary,
+                  background: 'rgba(122,176,122,0.22)',
+                  border: '1px solid rgba(122,176,122,0.55)',
+                  color: '#7AB07A',
+                }}
+              >
+                {activating
+                  ? t('Activating…', 'Đang kích hoạt…')
+                  : `✓ ${t('Activate member', 'Kích hoạt hội viên')} (${prospect.converted_member_no})`}
+              </button>
+            )}
+
             {/* Un-convert — the inverse of allocate/convert. Shown only while a
                 provisional member is linked but the prospect isn't yet Onboarded;
                 the route + DB guard refuse on a real Active member. */}

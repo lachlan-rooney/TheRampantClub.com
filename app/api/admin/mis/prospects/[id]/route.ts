@@ -46,7 +46,17 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   ])
   if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 })
   if (!prospect) return NextResponse.json({ error: 'not found' }, { status: 404 })
-  return NextResponse.json({ prospect, activity: activity || [], invitations: invitations || [] })
+
+  // Live status of the linked member (if any) — so the pipeline can offer an
+  // "Activate" action for a provisional member without a second round-trip.
+  let member_status: string | null = null
+  let member_join_date: string | null = null
+  if (prospect.converted_member_no) {
+    const { data: m } = await sb.from('members')
+      .select('status, join_date').eq('member_no', prospect.converted_member_no).maybeSingle()
+    if (m) { member_status = m.status ?? null; member_join_date = m.join_date ?? null }
+  }
+  return NextResponse.json({ prospect, activity: activity || [], invitations: invitations || [], member_status, member_join_date })
 }
 
 const TEXT_FIELDS = [
