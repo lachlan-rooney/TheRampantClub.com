@@ -15,12 +15,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ member
   const p = await req.json().catch(() => null)
   if (!p) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
 
-  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  // NOTE: the members table has no updated_at column — don't set one.
+  const patch: Record<string, unknown> = {}
   if ('tier' in p) {
     if (!TIERS.includes(p.tier)) return NextResponse.json({ error: 'Invalid tier.' }, { status: 400 })
     patch.tier = p.tier
   }
-  if (Object.keys(patch).length === 1) return NextResponse.json({ error: 'Nothing to update.' }, { status: 400 })
+  if (Object.keys(patch).length === 0) return NextResponse.json({ error: 'Nothing to update.' }, { status: 400 })
 
   const { data, error } = await svc().from('members').update(patch).eq('member_no', member_no).select('member_no, tier').single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
