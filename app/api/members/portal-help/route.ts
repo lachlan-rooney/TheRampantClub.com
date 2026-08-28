@@ -30,11 +30,28 @@ Rules:
 PORTAL MAP:
 ${PORTAL_MAP}`
 
+// Per-actor rate limit (module-scope; survives warm invocations). A help chat
+// needs only a handful of asks — cap a burst and an hourly total so a scripted
+// loop or a stolen cookie can't turn this into an open Anthropic-cost faucet.
+const HITS = new Map<string, number[]>()
+const BURST = { n: 6, ms: 20_000 }      // 6 in 20s
+const HOURLY = { n: 40, ms: 3_600_000 } // 40 per hour
+function rateLimited(actorId: string): boolean {
+  const now = Date.now()
+  const arr = (HITS.get(actorId) || []).filter(t => now - t < HOURLY.ms)
+  const burst = arr.filter(t => now - t < BURST.ms).length
+  if (burst >= BURST.n || arr.length >= HOURLY.n) { HITS.set(actorId, arr); return true }
+  arr.push(now); HITS.set(actorId, arr)
+  if (HITS.size > 5000) for (const [k, v] of HITS) if (!v.some(t => now - t < HOURLY.ms)) HITS.delete(k)
+  return false
+}
+
 export async function POST(req: Request) {
   const actor = await getActor()
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
   if (!actor.memberNo && !actor.isAdmin) return NextResponse.json({ error: 'Members only.' }, { status: 403 })
   if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ error: 'Help is unavailable right now.' }, { status: 503 })
+  if (rateLimited(actor.id)) return NextResponse.json({ error: 'A few too many questions at once — give it a moment, or ask the Concierge.' }, { status: 429 })
 
   const p = await req.json().catch(() => null)
   const question = typeof p?.question === 'string' ? p.question.trim().slice(0, 500) : ''

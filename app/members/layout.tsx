@@ -2,6 +2,7 @@ import NavOverlay from '@/components/NavOverlay'
 import LoginTicker from '@/components/LoginTicker'
 import BottomTabBar from '@/components/members/BottomTabBar'
 import InstallNudge from '@/components/members/InstallNudge'
+import PortalGuide from '@/components/PortalGuide'
 
 export default function MembersLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -41,6 +42,9 @@ export default function MembersLayout({ children }: { children: React.ReactNode 
       {children}
       <BottomTabBar />
       <InstallNudge />
+      {/* Available on every member page — opens on first login, replayable via
+          the menu / the dashboard button / ?guide=1 / the open-portal-guide event. */}
+      <PortalGuide />
     </>
   )
 }

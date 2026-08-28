@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import TonightPanel from '@/components/TonightPanel'
-import PortalGuide from '@/components/PortalGuide'
 import AnticipationCard from '@/components/members/AnticipationCard'
 import ReturnCard from '@/components/members/ReturnCard'
 
@@ -98,7 +97,9 @@ export default function MembersPage() {
           const name = profile?.display_name
           if (name) {
             setGreeting(`${timeGreeting}, ${name}`)
-            setFirstName(name.split(' ')[0])
+            // The whole display name (e.g. "Mr Rooney") — the first word alone
+            // can be just an honorific, so greet with the full name.
+            setFirstName(name)
           } else {
             setGreeting(timeGreeting)
           }
@@ -569,7 +570,6 @@ export default function MembersPage() {
         }
       ` }} />
 
-      <PortalGuide name={firstName} />
 
       <div className="members-page">
         <div className="members-grain" />

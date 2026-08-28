@@ -527,7 +527,14 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
                 </Fragment>
               )
             })}
-            <button className="nav-link nav-link-withicon" onClick={handleSignOut} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', marginTop: 12 }}>
+            <button className="nav-link nav-link-withicon" onClick={() => { setOpen(false); window.dispatchEvent(new Event('open-portal-guide')) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', marginTop: 12 }}>
+              <NavIcon name="compass" />
+              <span className="nav-link-text">
+                <div className="nav-link-en">Portal Guide</div>
+                <div className="nav-link-vn">Hướng Dẫn</div>
+              </span>
+            </button>
+            <button className="nav-link nav-link-withicon" onClick={handleSignOut} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', marginTop: 4 }}>
               <NavIcon name="signout" />
               <span className="nav-link-text">
                 <div className="nav-link-en">Sign Out</div>
