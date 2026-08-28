@@ -123,8 +123,11 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
   const [memberStatus, setMemberStatus] = useState<string | null>(null)
   const [activating, setActivating] = useState(false)
 
-  const load = useCallback(() => {
-    setLoading(true)
+  // load(silent) — a silent refresh leaves the page mounted and just swaps the
+  // data in underneath (used after every inline save), so editing a field never
+  // flashes the "Loading…" screen. Only the first load shows the spinner.
+  const load = useCallback((silent = false) => {
+    if (!silent) setLoading(true)
     fetch(`/api/admin/mis/prospects/${prospect_id}`, { cache: 'no-store' })
       .then(r => r.json())
       .then(d => {
@@ -142,6 +145,20 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
     const key = Object.keys(patchBody).join(',')
     setSavingMap(m => ({ ...m, [key]: true }))
     setError(null)
+    // Optimistic: apply the change locally at once so the control responds
+    // instantly (no reload). Recompute overall_score here too — it's the mean
+    // of the populated dimensions server-side, so the bar can move immediately
+    // rather than waiting for the round-trip.
+    setProspect(prev => {
+      if (!prev) return prev
+      const next = { ...prev, ...patchBody } as Prospect
+      const scores = SCORE_FIELDS
+        .map(f => (next as unknown as Record<string, unknown>)[f.key])
+        .filter((v): v is number => typeof v === 'number')
+      ;(next as { overall_score: number | null }).overall_score =
+        scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 100) / 100 : null
+      return next
+    })
     try {
       const r = await fetch(`/api/admin/mis/prospects/${prospect_id}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -149,9 +166,10 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
       })
       const j = await r.json()
       if (!r.ok) throw new Error(j.error || t('Save failed', 'Lưu thất bại'))
-      load()
+      load(true) // silent reconcile — authoritative overall + fresh activity, no flash
     } catch (e) {
       setError((e as Error).message)
+      load(true) // revert the optimistic change to server truth
     } finally {
       setSavingMap(m => ({ ...m, [key]: false }))
     }
@@ -163,7 +181,7 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
       const r = await fetch(`/api/admin/mis/prospects/${prospect_id}/allocate-member`, { method: 'POST' })
       const j = await r.json()
       if (!r.ok) throw new Error(j.error || t('Failed to allocate', 'Không thể cấp số hội viên'))
-      load()
+      load(true)
       return j.member_no as string
     } catch (e) {
       setError((e as Error).message)
@@ -198,7 +216,7 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
           : `${t('Invitation row created but email failed:', 'Đã tạo bản ghi lời mời nhưng gửi email thất bại:')} ${j.email_error}. ${t('Link:', 'Liên kết:')} ${j.link}`,
       })
       setShowInvite(false)
-      load()
+      load(true)
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -216,7 +234,7 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
       const j = await r.json()
       if (!r.ok) throw new Error(j.error || t('Convert failed', 'Chuyển đổi thất bại'))
       setShowOverride(false)
-      load()
+      load(true)
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -235,7 +253,7 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
         const j = await r.json().catch(() => ({}))
         throw new Error(j.error || t('Revoke failed', 'Thu hồi thất bại'))
       }
-      load()
+      load(true)
     } catch (e) {
       setError((e as Error).message)
     }
@@ -260,7 +278,7 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
       const r = await fetch(`/api/admin/mis/prospects/${prospect_id}/unconvert`, { method: 'POST' })
       const j = await r.json()
       if (!r.ok) throw new Error(j.error || t('Un-convert failed', 'Hoàn tác chuyển đổi thất bại'))
-      load()
+      load(true)
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -292,7 +310,7 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
           body: JSON.stringify({ stage: 'Onboarded' }),
         }).catch(() => {})
       }
-      load()
+      load(true)
     } catch (e) {
       setError((e as Error).message)
     } finally {
