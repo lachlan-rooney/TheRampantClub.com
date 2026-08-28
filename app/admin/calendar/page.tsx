@@ -301,7 +301,7 @@ export default function CalendarPage() {
                             {o.kind === 'public_holiday' ? (o.note || t(TO_META.public_holiday.en, TO_META.public_holiday.vi)) : (o.member_name || t('Staff', 'Nhân viên'))}
                             <span style={{ color: '#B2AA98', opacity: 0.7 }}> · {t(meta.en, meta.vi)}</span>
                           </span>
-                          {o.start_date === iso && (
+                          {iso === (o.start_date >= from ? o.start_date : from) && (
                             <button onClick={() => deleteTimeOff(o.id)} title={t('Remove', 'Xoá')} style={{ background: 'none', border: 'none', color: '#B2AA98', cursor: 'pointer', fontSize: 11, lineHeight: 1, padding: 0 }}>×</button>
                           )}
                         </div>

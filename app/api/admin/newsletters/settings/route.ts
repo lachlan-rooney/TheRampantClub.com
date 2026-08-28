@@ -20,7 +20,8 @@ export async function PATCH(req: Request) {
   if (!body) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString(), updated_by: user?.id || null }
-  if ('approver_profile' in body) patch.approver_profile = body.approver_profile || null
+  // 'me' claims the approver role for the current owner (there's no admin-picker UI).
+  if ('approver_profile' in body) patch.approver_profile = body.approver_profile === 'me' ? (user?.id || null) : (body.approver_profile || null)
   if ('send_enabled' in body) patch.send_enabled = !!body.send_enabled
   if (typeof body.from_name === 'string' && body.from_name.trim()) patch.from_name = body.from_name.trim().slice(0, 80)
   if (typeof body.from_email === 'string' && body.from_email.trim()) patch.from_email = body.from_email.trim().slice(0, 120)

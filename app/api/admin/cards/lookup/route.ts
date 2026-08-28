@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
 import { demoAsSheetMember } from '@/lib/demo-members'
+import { fetchMemberSheet } from '@/lib/member-sheet'
 
 export async function GET(req: NextRequest) {
   if (!(await isAdmin())) {
@@ -23,12 +24,8 @@ export async function GET(req: NextRequest) {
   // Sheet member
   let member: Record<string, string> | null = null
   try {
-    const url = new URL('/api/member-profiles', req.nextUrl.origin)
-    const r = await fetch(url, { cache: 'no-store' })
-    if (r.ok) {
-      const all = await r.json() as Record<string, string>[]
-      member = all.find(m => m['Member No.'] === link.member_number) || null
-    }
+    const all = await fetchMemberSheet()
+    member = all.find(m => m['Member No.'] === link.member_number) || null
   } catch { /* leave member null */ }
 
   // Demo override — surface hardcoded demo members so admin sees the right name.

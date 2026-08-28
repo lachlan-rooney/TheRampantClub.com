@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { isAdmin } from '@/lib/admin'
 import { DEMO_MEMBERS } from '@/lib/demo-members'
+import { fetchMemberSheet } from '@/lib/member-sheet'
 
 // GET /api/admin/membership/roster → every member (Google Sheet roster +
 // demo entries) overlaid with their latest membership period + last payment,
@@ -22,8 +23,7 @@ export async function GET(req: NextRequest) {
   // 1. Roster identity from the Google Sheet (+ demo overlay), like the cards picker.
   let sheet: Record<string, string>[] = []
   try {
-    const r = await fetch(new URL('/api/member-profiles', req.nextUrl.origin), { cache: 'no-store' })
-    if (r.ok) sheet = await r.json()
+    sheet = await fetchMemberSheet()
   } catch { /* empty fallback */ }
 
   const identity = new Map<string, { member_no: string; full_name: string; tier: string }>()

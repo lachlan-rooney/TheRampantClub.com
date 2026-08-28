@@ -79,10 +79,16 @@ export default function AdminNewslettersPage() {
 
       {showSettings && settings && (
         <div style={{ border: '1px solid rgba(229,212,194,0.14)', borderRadius: 12, padding: 18, marginBottom: 22 }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: MONO, fontSize: 12, color: '#E5D4C2', marginBottom: 14, cursor: 'pointer' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: MONO, fontSize: 12, color: '#E5D4C2', marginBottom: 12, cursor: 'pointer' }}>
             <input type="checkbox" checked={settings.send_enabled} onChange={e => saveSettings({ send_enabled: e.target.checked })} />
             {t('Master send switch — allow live sends to all members', 'Công tắc gửi chính — cho phép gửi thật đến tất cả hội viên')}
           </label>
+          <div style={{ fontFamily: MONO, fontSize: 11, color: settings.approver_profile ? '#7AB07A' : '#E58F4A', marginBottom: 14 }}>
+            {settings.approver_profile
+              ? `✓ ${t('Approver is set — only they can approve.', 'Đã đặt người duyệt — chỉ họ mới được duyệt.')}`
+              : <>⚠ {t('No approver set — any admin can approve.', 'Chưa có người duyệt — bất kỳ admin nào cũng có thể duyệt.')}{' '}
+                  <button onClick={() => saveSettings({ approver_profile: 'me' } as unknown as Partial<Settings>)} style={{ fontFamily: MONO, fontSize: 10, background: 'rgba(212,184,90,0.15)', color: '#E7C766', border: '1px solid rgba(212,184,90,0.4)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>{t('Set me as approver', 'Đặt tôi làm người duyệt')}</button></>}
+          </div>
           <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#B2AA98', margin: '0 0 4px' }}>{t('From name / email', 'Tên / email người gửi')}</div>
           <input style={input} defaultValue={settings.from_name} onBlur={e => saveSettings({ from_name: e.target.value })} />
           <input style={input} defaultValue={settings.from_email} onBlur={e => saveSettings({ from_email: e.target.value })} />

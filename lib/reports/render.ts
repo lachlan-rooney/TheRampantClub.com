@@ -26,7 +26,11 @@ export interface ReportRow {
 type Mode = 'svg' | 'email'
 const GREEN = '#052E20', CARD = '#0A3526', CREAM = '#E5D4C2', GOLD = '#D4B85A', MUTED = '#B2AA98', SAGE = '#7AB07A', RED = '#C27070'
 const SERIF = "Georgia, 'Times New Roman', serif"
-const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+// Escapes " and ' too — renderProse interpolates the captured URL into an
+// href="…" attribute, so an unescaped quote would let staff-authored narrative
+// break out of the attribute and inject an event handler (stored XSS on the
+// public /reports/[token] page + the emailed report).
+const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 // Staff can add clickable links in any narrative section with markdown syntax:
 // [label](https://…). Everything else is escaped; only http(s) links become <a>.
 const LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g

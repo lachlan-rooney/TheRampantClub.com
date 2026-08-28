@@ -99,6 +99,7 @@ interface HouseEntry {
   tables?: string[]
 }
 const HOUSE_KIND_LABEL: Record<string, string> = {
+  meeting: 'Meeting', interview: 'Interview', event: 'Event', reminder: 'Reminder',
   closure: 'Closure', private_hire: 'Private hire', supplier: 'Distiller / supplier', tasting: 'Tasting', other: 'House',
 }
 

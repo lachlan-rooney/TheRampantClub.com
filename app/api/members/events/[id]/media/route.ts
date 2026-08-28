@@ -30,12 +30,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if ('error' in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 })
     url = parsed.url
   } else {
-    // Uploaded image: the url must be one of OUR Storage objects, and we keep
-    // the path so it can be deleted later. Guards against storing arbitrary URLs.
-    if (typeof p?.url !== 'string' || !p.url.includes('/event-media/')) return NextResponse.json({ error: 'Bad image.' }, { status: 400 })
-    if (typeof p?.storage_path !== 'string' || !p.storage_path) return NextResponse.json({ error: 'Bad image.' }, { status: 400 })
-    url = p.url
-    storage_path = p.storage_path
+    // Uploaded image: TRUST ONLY the storage_path, and only within THIS event's
+    // own folder. Deriving the public URL server-side means a crafted `url`
+    // (e.g. a javascript: URI) can never be stored (kills the stored-XSS), and
+    // confining the path to `${id}/` stops a member referencing — and later
+    // deleting — another event's object (kills the IDOR). The client `url` is
+    // ignored entirely.
+    const sp = typeof p?.storage_path === 'string' ? p.storage_path : ''
+    if (!sp.startsWith(`${id}/`) || sp.includes('..')) return NextResponse.json({ error: 'Bad image.' }, { status: 400 })
+    storage_path = sp
+    url = a.storage.from('event-media').getPublicUrl(sp).data.publicUrl
   }
 
   // Rate-limit: 60 contributions/hour per member (a photo dump is fine, spam is not).

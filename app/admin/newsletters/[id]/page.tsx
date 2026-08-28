@@ -63,7 +63,6 @@ export default function NewsletterEditor() {
       setMsg(okMsg); await load()
     } finally { setBusy(null) }
   }
-  const preview = () => window.open(`/api/admin/newsletters/${id}/send?dry=1`, '_blank')
   const previewPost = async () => {
     const r = await fetch(`/api/admin/newsletters/${id}/send?dry=1`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
     const html = await r.text(); const w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close() }
@@ -128,7 +127,7 @@ export default function NewsletterEditor() {
           <button onClick={() => act('revert', t('Back to draft.', 'Trở lại nháp.'))} disabled={busy === 'revert'} style={btn}>{t('Revert to draft', 'Trả về nháp')}</button>
         </>}
         {nl.status === 'approved' && <>
-          <button onClick={preview} style={btn}>{t('Preview email ↗', 'Xem trước ↗')}</button>
+          <button onClick={previewPost} style={btn}>{t('Preview email ↗', 'Xem trước ↗')}</button>
           <button onClick={testSend} disabled={busy === 'test'} style={btn}>{t('Send a test', 'Gửi thử')}</button>
           <button onClick={() => setConfirmSend(true)} style={{ ...gold, background: sendEnabled ? '#D4B85A' : 'rgba(212,184,90,0.3)' }}>{t('Send to all members', 'Gửi đến tất cả hội viên')}</button>
           <button onClick={() => act('revert', t('Back to draft.', 'Trở lại nháp.'))} disabled={busy === 'revert'} style={btn}>{t('Revert', 'Trả về')}</button>

@@ -62,15 +62,26 @@ export async function sendNewsletter(svc: SupabaseClient, id: string, opts: Send
     } catch { failed++ }
   }
 
-  await svc.from('newsletters').update({
-    status: 'sent', sent_at: new Date().toISOString(), sent_to: sentEmails,
-    recipient_count: sentEmails.length, updated_at: new Date().toISOString(),
-  }).eq('id', id)
-  await svc.from('newsletter_activity').insert({
-    newsletter_id: id, actor: opts.actor || null, event_type: 'sent',
-    from_status: 'approved', to_status: 'sent',
-    note: `Sent to ${sentEmails.length} member${sentEmails.length === 1 ? '' : 's'}${failed ? `, ${failed} failed` : ''}.`,
-  })
+  // Only flip to 'sent' if at least one email actually went out. A TOTAL failure
+  // (bad domain, Resend outage) must leave the issue 'approved' so it stays
+  // resendable — otherwise it'd lock as 'sent' having reached nobody.
+  if (sentEmails.length > 0) {
+    await svc.from('newsletters').update({
+      status: 'sent', sent_at: new Date().toISOString(), sent_to: sentEmails,
+      recipient_count: sentEmails.length, updated_at: new Date().toISOString(),
+    }).eq('id', id)
+    await svc.from('newsletter_activity').insert({
+      newsletter_id: id, actor: opts.actor || null, event_type: 'sent',
+      from_status: 'approved', to_status: 'sent',
+      note: `Sent to ${sentEmails.length} member${sentEmails.length === 1 ? '' : 's'}${failed ? `, ${failed} failed` : ''}.`,
+    })
+    return { ok: true, sent: sentEmails.length, failed }
+  }
 
-  return { ok: sentEmails.length > 0, sent: sentEmails.length, failed }
+  await svc.from('newsletter_activity').insert({
+    newsletter_id: id, actor: opts.actor || null, event_type: 'send_failed',
+    from_status: 'approved', to_status: 'approved',
+    note: `Send failed — 0 delivered, ${failed} failed. Left approved for retry.`,
+  })
+  return { ok: false, error: `Delivery failed for all ${failed} recipients — the issue is still approved, try again.`, sent: 0, failed }
 }

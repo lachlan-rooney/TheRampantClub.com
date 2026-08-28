@@ -125,10 +125,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Sheet already sealed; edits not permitted.' }, { status: 409 })
   }
 
-  // Server-side required-fields check before sealing. The client also
-  // gates this, but the server is the source of truth.
+  // Server-side checks before sealing. The client also gates these, but the
+  // server is the source of truth.
+  let sealName = submittedName
   if (submit) {
-    if (!submittedName) return NextResponse.json({ error: 'submitted_by required when submitting' }, { status: 400 })
+    // If a roster signer + PIN are supplied, VERIFY the PIN server-side and take
+    // the signer's name from the verified team member — so a permanent seal
+    // can't be forged by posting an arbitrary submitted_by. (The no-roster
+    // fallback still seals on a name alone.)
+    const signerId = typeof body.signer_id === 'string' ? body.signer_id.trim() : ''
+    const pin = typeof body.pin === 'string' ? body.pin.trim() : ''
+    if (signerId || pin) {
+      if (!signerId || !pin) return NextResponse.json({ error: 'PIN required to sign.' }, { status: 400 })
+      const { data: verifiedId } = await sb.rpc('kiosk_verify_pin', { p_team_member: signerId, p_pin: pin })
+      if (!verifiedId) return NextResponse.json({ error: 'Wrong PIN.' }, { status: 401 })
+      const { data: tm } = await sb.from('team_members').select('display_name').eq('id', verifiedId as string).maybeSingle()
+      sealName = tm?.display_name?.slice(0, 100) || submittedName
+    }
+    if (!sealName) return NextResponse.json({ error: 'submitted_by required when submitting' }, { status: 400 })
     const missing: string[] = []
     for (const it of items) {
       if (!it.required) continue
@@ -158,7 +172,7 @@ export async function POST(req: NextRequest) {
     payload.template_version_at = body.template_version_at
   }
   if (submit) {
-    payload.submitted_by = submittedName
+    payload.submitted_by = sealName
     payload.submitted_at = new Date().toISOString()
   }
 

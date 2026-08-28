@@ -1,0 +1,45 @@
+// Shared, SERVER-ONLY fetch+parse of the club's published member roster sheet.
+// Internal server routes import this directly (no HTTP round-trip); the public
+// /api/member-profiles HTTP route is admin-gated. Never expose this roster to an
+// unauthenticated caller — it carries member numbers + full names.
+
+const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTrnzXhnbicxCBOQYdoAN4zwzucMXvfsUAoMqjWsfUeT6fnmo-ZjgRCvnHBJHHwSRX1DB85n37kGjyM/pub?gid=900697544&single=true&output=csv'
+
+function parseCSV(text: string): string[][] {
+  const rows: string[][] = []
+  let row: string[] = []
+  let field = ''
+  let inQuotes = false
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+    if (inQuotes) {
+      if (ch === '"' && text[i + 1] === '"') { field += '"'; i++ }
+      else if (ch === '"') { inQuotes = false }
+      else { field += ch }
+    } else {
+      if (ch === '"') { inQuotes = true }
+      else if (ch === ',') { row.push(field.trim()); field = '' }
+      else if (ch === '\n') { row.push(field.trim()); rows.push(row); row = []; field = '' }
+      else if (ch !== '\r') { field += ch }
+    }
+  }
+  if (field || row.length) { row.push(field.trim()); rows.push(row) }
+  return rows
+}
+
+export async function fetchMemberSheet(): Promise<Record<string, string>[]> {
+  const res = await fetch(SHEET_URL, { next: { revalidate: 60 } })
+  const csv = await res.text()
+  const rows = parseCSV(csv)
+  if (rows.length < 2) return []
+  const headers = rows[0]
+  const isSheetError = (v: string) => /^#(REF|NAME|VALUE|N\/A|DIV\/0|NUM|ERROR)/.test(v || '')
+  return rows.slice(1)
+    .filter(r => r[1] && r[1].length > 0)
+    .map(r => {
+      const obj: Record<string, string> = {}
+      headers.forEach((h, i) => { obj[h] = r[i] || '' })
+      return obj
+    })
+    .filter(m => m['Member No.'] && !isSheetError(m['Member No.']) && !isSheetError(m['Full Name']))
+}

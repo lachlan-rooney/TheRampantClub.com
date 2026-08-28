@@ -160,6 +160,7 @@ export default function ChecklistsPage() {
     item_values: Record<string, string>,
     free_notes: string | null,
     submit = false,
+    pin = '',
   ) => {
     setBusy(kind); setError(null); setMissingNotice(null)
     try {
@@ -169,6 +170,10 @@ export default function ChecklistsPage() {
           shift_date: date, kind, items, item_values, free_notes,
           submit,
           submitted_by: submit ? initials : undefined,
+          // The server re-verifies the PIN and derives the signer name from the
+          // verified team member — a seal can't be forged by posting a name.
+          signer_id: submit && signerId ? signerId : undefined,
+          pin: submit && pin ? pin : undefined,
         }),
       })
       const j = await r.json()
@@ -186,7 +191,7 @@ export default function ChecklistsPage() {
     } finally {
       setBusy(null)
     }
-  }, [date, initials])
+  }, [date, initials, signerId])
 
   // ── Mutations ──────────────────────────────────────────────────────
   const toggleItem = useCallback((sheet: Sheet, itemId: string) => {
@@ -252,8 +257,9 @@ export default function ChecklistsPage() {
       }
     }
 
+    const pin = sealPin.trim()
     setConfirmSheet(null); setSealPin(''); setSealErr(null)
-    upsert(sheet.kind, sheet.items, sheet.item_values || {}, sheet.free_notes, true)
+    upsert(sheet.kind, sheet.items, sheet.item_values || {}, sheet.free_notes, true, pin)
   }, [confirmSheet, initials, signerId, sealPin, upsert])
 
   // ── Derived: progress + required-readiness ──────────────────────────

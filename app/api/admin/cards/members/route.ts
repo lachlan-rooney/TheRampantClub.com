@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
 import { DEMO_MEMBERS } from '@/lib/demo-members'
+import { fetchMemberSheet } from '@/lib/member-sheet'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,9 +14,7 @@ export async function GET(req: NextRequest) {
   // 1. Sheet members
   let sheetMembers: Record<string, string>[] = []
   try {
-    const url = new URL('/api/member-profiles', req.nextUrl.origin)
-    const r = await fetch(url, { cache: 'no-store' })
-    if (r.ok) sheetMembers = await r.json()
+    sheetMembers = await fetchMemberSheet()
   } catch { /* empty fallback */ }
 
   // 2. Card links

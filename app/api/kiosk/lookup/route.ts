@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { DEMO_MEMBERS_BY_NUMBER } from '@/lib/demo-members'
+import { fetchMemberSheet } from '@/lib/member-sheet'
 
 // Public-ish kiosk endpoint. Anyone with the physical card UID can fetch the
 // associated member's display name + balance. No admin auth — by the time a UID
@@ -30,10 +31,8 @@ export async function GET(req: NextRequest) {
   // Look up the member name from the Google Sheet — same source used elsewhere.
   let displayName: string | null = null
   try {
-    const url = new URL('/api/member-profiles', req.nextUrl.origin)
-    const r = await fetch(url, { cache: 'no-store' })
-    if (r.ok) {
-      const all = await r.json() as Record<string, string>[]
+    {
+      const all = await fetchMemberSheet()
       const m = all.find(x => x['Member No.'] === link.member_number)
       if (m) {
         const first = m['First Name'] || ''

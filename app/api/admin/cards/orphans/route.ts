@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
+import { fetchMemberSheet } from '@/lib/member-sheet'
 
 // Lists member_cards rows whose member_number is no longer present in the
 // Google Sheet roster — i.e. credit accounts attached to ex-members.
@@ -12,12 +13,8 @@ export async function GET(req: NextRequest) {
   // Sheet roster
   let sheetNumbers = new Set<string>()
   try {
-    const url = new URL('/api/member-profiles', req.nextUrl.origin)
-    const r = await fetch(url, { cache: 'no-store' })
-    if (r.ok) {
-      const all = await r.json() as Record<string, string>[]
-      for (const m of all) if (m['Member No.']) sheetNumbers.add(m['Member No.'])
-    }
+    const all = await fetchMemberSheet()
+    for (const m of all) if (m['Member No.']) sheetNumbers.add(m['Member No.'])
   } catch { /* fall through; treat all rows as orphans */ }
 
   const supabase = await createServerSupabaseClient()
