@@ -165,7 +165,7 @@ export function renderReportBody(r: ReportRow, mode: Mode): string {
   const u = d.usage
 
   let html = `<div style="margin:0 0 34px">
-    <img src="${site()}/images/DC500693.jpg" alt="" width="100%" style="display:block;width:100%;border-radius:14px;border:1px solid rgba(212,184,90,0.20)"/>
+    <img src="${site()}/images/${mode === 'email' ? 'DC500693-opt.jpg' : 'DC500693.jpg'}" alt="" width="100%" style="display:block;width:100%;border-radius:14px;border:1px solid rgba(212,184,90,0.20)"/>
     <div style="text-align:center;margin-top:22px">
       <div style="font-family:'Google Sans Code',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:${GOLD}">The Rampant Club · Weekly Report</div>
       <h1 style="font-family:${SERIF};font-size:33px;color:${CREAM};font-weight:600;margin:12px 0 4px;letter-spacing:0.01em">${esc(r.headline || n.headline || 'The Week at the Club')}</h1>
