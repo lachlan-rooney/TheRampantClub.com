@@ -283,13 +283,22 @@ export default function ProspectDetail({ params }: { params: Promise<{ prospect_
       })
       const j = await r.json()
       if (!r.ok) throw new Error(j.error || t('Activation failed', 'Kích hoạt thất bại'))
+      // Mirror the convert flow's end-state: an Active member's prospect is
+      // Onboarded. This also hides the un-convert button (which the DB now
+      // rightly refuses on a real Active member).
+      if (prospect.stage !== 'Onboarded') {
+        await fetch(`/api/admin/mis/prospects/${prospect_id}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ stage: 'Onboarded' }),
+        }).catch(() => {})
+      }
       load()
     } catch (e) {
       setError((e as Error).message)
     } finally {
       setActivating(false)
     }
-  }, [prospect, load])
+  }, [prospect, prospect_id, load])
 
   // Branded confirm modal — one state covers all destructive paths.
   type Pending =
