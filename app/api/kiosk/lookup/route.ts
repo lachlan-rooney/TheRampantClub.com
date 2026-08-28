@@ -16,7 +16,11 @@ export async function GET(req: NextRequest) {
   const uid = req.nextUrl.searchParams.get('uid')
   if (!uid) return NextResponse.json({ error: 'uid required' }, { status: 400 })
 
-  const normalised = uid.toUpperCase().replace(/[^A-F0-9]/g, '')
+  // Normalise the SAME way the admin link/lookup does (upper-case, no
+  // character stripping) so a card linked via the admin always resolves here.
+  // (Previously this stripped to hex only, which would miss a UID containing
+  // any non-hex character.)
+  const normalised = uid.toUpperCase().trim()
   if (!normalised) return NextResponse.json({ error: 'invalid uid' }, { status: 400 })
 
   const supabase = await createServerSupabaseClient()

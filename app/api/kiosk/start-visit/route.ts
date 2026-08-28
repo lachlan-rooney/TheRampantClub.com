@@ -28,7 +28,9 @@ export async function POST(req: NextRequest) {
   try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
 
   const raw = typeof body.uid === 'string' ? body.uid : ''
-  const uid = raw.toUpperCase().replace(/[^A-F0-9]/g, '')
+  // Match the admin link/lookup normalisation (upper-case, no character
+  // stripping) so kiosk resolves exactly what the admin stored.
+  const uid = raw.toUpperCase().trim()
   if (!uid) return NextResponse.json({ error: 'uid required' }, { status: 400 })
 
   const sb = svc()

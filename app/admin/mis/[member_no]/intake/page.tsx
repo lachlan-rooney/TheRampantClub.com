@@ -105,7 +105,7 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
   const [usage, setUsage] = useState<Usage | null>(null)
   const [reconciled, setReconciled] = useState<ReconciledPayload | null>(null)
   const [errMsg, setErrMsg] = useState<string | null>(null)
-  const [saved, setSaved] = useState<{ inserted: number; medicalReforced: number; permanentReforced: number } | null>(null)
+  const [saved, setSaved] = useState<{ inserted: number; medicalReforced: number; identityReforced: number; permanentReforced: number } | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const resultsRef = useRef<HTMLDivElement | null>(null)
 
@@ -296,6 +296,7 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
       setSaved({
         inserted: Number(j.inserted) || payload.length,
         medicalReforced: Number(j.medicalReforced) || 0,
+        identityReforced: Number(j.identityReforced) || 0,
         permanentReforced: Number(j.permanentReforced) || 0,
       })
       setPhase('saved')
@@ -519,6 +520,7 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
               <span style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#7AB07A' }}>
                 ✓ {t('Saved', 'Đã lưu')} {saved.inserted} {t('preference', 'sở thích')}{saved.inserted === 1 ? '' : 's'}
                 {saved.medicalReforced   > 0 && ` · ${saved.medicalReforced} ${t('medical re-forced at save', 'bắt buộc y tế lại khi lưu')}`}
+                {saved.identityReforced  > 0 && ` · ${saved.identityReforced} ${t('identity re-forced at save', 'bắt buộc danh tính lại khi lưu')}`}
                 {saved.permanentReforced > 0 && ` · ${saved.permanentReforced} ${t('permanent re-locked at save', 'khóa vĩnh viễn lại khi lưu')}`}
               </span>
             )}
