@@ -119,6 +119,46 @@ function plTable(pl: PLBlock | undefined): string {
   return section('Revenue & Weekly Costs', 'Profit & loss for the trading week', inner)
 }
 
+// Structured extras carried on narrative jsonb (edited via seed / future editor
+// fields; the string-keyed editor leaves them untouched).
+interface ColBlock { heading: string; items: string[] }
+interface MomentumItem { source: string; note: string; url?: string }
+interface ActionItem { owner: string; title: string; detail: string }
+interface NarrativeX {
+  pl?: PLBlock; ops?: ColBlock[]; retail?: ColBlock[];
+  momentum?: MomentumItem[]; actions?: ActionItem[]; events_note?: string
+}
+
+// Two-column (or single) card block — used for the ops reset & whisky retail plan.
+function cardsSection(title: string, sub: string, blocks: ColBlock[] | undefined): string {
+  if (!blocks || !blocks.length) return ''
+  const w = blocks.length > 1 ? '50%' : '100%'
+  const card = (c: ColBlock) => `<td style="width:${w};vertical-align:top;padding:5px">
+    <div style="background:${CARD};border:1px solid rgba(212,184,90,0.16);border-radius:10px;padding:16px 18px">
+      <div style="font-family:${SERIF};font-size:15px;color:${CREAM};font-weight:600;margin-bottom:6px">${esc(c.heading)}</div>
+      ${c.items.map((it, i) => `<div style="font-size:13px;color:${MUTED};line-height:1.55;padding:6px 0 6px 15px;position:relative${i ? ';border-top:1px solid rgba(229,212,194,0.07)' : ''}"><span style="position:absolute;left:1px;top:12px;width:5px;height:5px;background:${GOLD};transform:rotate(45deg)"></span>${renderProse(it)}</div>`).join('')}
+    </div></td>`
+  return section(title, sub, `<table role="presentation" style="width:100%;border-collapse:collapse"><tr>${blocks.map(card).join('')}</tr></table>`)
+}
+
+function momentumSection(items: MomentumItem[] | undefined): string {
+  if (!items || !items.length) return ''
+  const rows = items.map(m => `<div style="border-left:3px solid ${GOLD};background:rgba(212,184,90,0.05);padding:11px 14px;margin:0 0 9px;border-radius:0 6px 6px 0">
+    <span style="font-family:${SERIF};font-size:14px;color:${GOLD};font-weight:600">${esc(m.source)}</span>
+    <span style="font-size:13px;color:${CREAM};margin-left:8px">${m.url ? `<a href="${esc(m.url)}" style="color:${CREAM};text-decoration:underline">${esc(m.note)}</a>` : esc(m.note)}</span>
+  </div>`).join('')
+  return section('Brand Momentum', 'Press & reach this week', rows)
+}
+
+function actionsSection(items: ActionItem[] | undefined): string {
+  if (!items || !items.length) return ''
+  const rows = items.map((a, i) => `<tr>
+    <td style="font-family:'Google Sans Code',monospace;font-size:11px;color:${GOLD};text-transform:uppercase;letter-spacing:0.05em;padding:11px 14px 11px 0;white-space:nowrap;vertical-align:top${i ? ';border-top:1px solid rgba(229,212,194,0.08)' : ''}">${esc(a.owner)}</td>
+    <td style="padding:11px 0${i ? ';border-top:1px solid rgba(229,212,194,0.08)' : ''}"><div style="font-size:14px;color:${CREAM};font-weight:600">${esc(a.title)}</div><div style="font-size:12.5px;color:${MUTED};margin-top:2px">${renderProse(a.detail)}</div></td>
+  </tr>`).join('')
+  return section('Actions This Week', 'Owned & moving', `<table role="presentation" style="width:100%;border-collapse:collapse">${rows}</table>`)
+}
+
 export function renderReportBody(r: ReportRow, mode: Mode): string {
   const d = r.auto_data
   const n = r.narrative || {}
@@ -136,8 +176,10 @@ export function renderReportBody(r: ReportRow, mode: Mode): string {
 
   if (n.moment_of_week?.trim()) html += callout('Moment of the week', renderProse(n.moment_of_week))
 
+  // Structured extras carried on the narrative jsonb.
+  const nx = n as unknown as NarrativeX
   // Revenue & weekly costs P&L (leads the report — the number Shawn wants first)
-  html += plTable((n as unknown as { pl?: PLBlock }).pl)
+  html += plTable(nx.pl)
 
   // Who's been in & how long — attendance + time in the club
   const memberHours = Math.round(u.total_member_minutes / 60)
@@ -166,11 +208,12 @@ export function renderReportBody(r: ReportRow, mode: Mode): string {
   // Events
   const evF = d.events.fixtures || []
   const calKinds = Object.entries(d.events.calendar_by_kind || {})
-  if (evF.length || calKinds.length) {
+  const eventsNote = nx.events_note
+  if (evF.length || calKinds.length || (eventsNote && eventsNote.trim())) {
     html += section('Events', 'Fixtures, tastings & house events', `
+      ${eventsNote && eventsNote.trim() ? `<div style="font-size:14px;color:${CREAM};line-height:1.7;white-space:pre-wrap;margin-bottom:${(evF.length || calKinds.length) ? '12px' : '0'}">${renderProse(eventsNote)}</div>` : ''}
       ${evF.length ? chartBlock(mode, hbars(evF.map(f => ({ label: f.title, value: f.signups, max: f.max })), 'dark'), barsHtml(evF.map(f => ({ label: f.title, value: f.signups, max: f.max })))) : ''}
       ${calKinds.length ? `<div style="font-size:13px;color:${CREAM};margin-top:8px">${calKinds.map(([k, v]) => `${v}× ${esc(k.replace(/_/g, ' '))}`).join(' · ')}</div>` : ''}
-      ${!evF.length && !calKinds.length ? `<div style="font-size:13px;color:${MUTED}">A quieter week on the events calendar.</div>` : ''}
     `)
   }
 
@@ -191,7 +234,11 @@ export function renderReportBody(r: ReportRow, mode: Mode): string {
 
   html += narrative('Marketing Initiatives', n.marketing)
   html += narrative('Cost-Cutting', n.cost_cutting)
+  html += cardsSection('Team & Operations', 'The changes in place now', nx.ops)
+  html += cardsSection('Whisky Retail · Quy & Tai', 'Low-cost, high-visibility improvements', nx.retail)
   html += narrative('Successes', n.successes)
+  html += momentumSection(nx.momentum)
+  html += actionsSection(nx.actions)
 
   // Financials
   if (r.include_financials && r.financials && 'total_revenue' in r.financials) {
