@@ -31,7 +31,10 @@ export async function GET(req: Request) {
   // Fixtures in the window + the member's own signups (to flag "you're in").
   const [{ data: fixtures }, { data: signups }, { data: entries }] = await Promise.all([
     a.from('fixtures').select('id, sport, title, date, location, max_signups, signup_deadline')
-      .gte('date', from).lte('date', to + 'T23:59:59').order('date', { ascending: true }),
+      // fixtures.date is timestamptz — anchor BOTH bounds to VN (+07:00) so an
+      // early-morning fixture on the first/last VN day isn't dropped by a UTC
+      // interpretation of the bare date.
+      .gte('date', from + 'T00:00:00+07:00').lte('date', to + 'T23:59:59+07:00').order('date', { ascending: true }),
     a.from('fixture_signups').select('fixture_id').eq('user_id', actor.id),
     a.from('calendar_entries').select('id, title, entry_date, start_time, end_time, session_label, space, kind')
       .eq('visibility', 'member').gte('entry_date', from).lte('entry_date', to),

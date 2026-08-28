@@ -47,17 +47,29 @@ export default function AttendancePage() {
     } finally { setBusy(false) }
   }
   const remove = async (id: string) => {
+    const prev = guests
     setGuests(g => g.filter(x => x.id !== id))
-    try { await fetch(`/api/admin/guest-visits/${id}`, { method: 'DELETE' }) } catch { /* */ }
+    try {
+      const r = await fetch(`/api/admin/guest-visits/${id}`, { method: 'DELETE' })
+      if (!r.ok) throw new Error()
+    } catch {
+      // Delete failed — restore the row and tell the operator.
+      setGuests(prev); setError(t('Could not remove that guest — try again.', 'Không thể xoá khách đó — thử lại.'))
+    }
   }
 
-  // This-week (VN Mon–Sun) rollup.
+  // This-week (VN Mon–Sun) rollup. Compute the boundary PURELY in VN space via
+  // UTC accessors — browser-local getDay()/getDate() would be a day off for
+  // admins west of ~UTC-5.
   const weekTotals = useMemo(() => {
-    const now = new Date(vnDateString() + 'T12:00:00+07:00')
-    const dow = (now.getDay() + 6) % 7
-    const mon = new Date(now); mon.setDate(now.getDate() - dow)
-    const from = vnDateString(mon)
-    const wk = guests.filter(g => g.visit_date >= from)
+    const [y, m, d] = vnDateString().split('-').map(Number)
+    const base = new Date(Date.UTC(y, m - 1, d))
+    const dow = (base.getUTCDay() + 6) % 7            // Mon=0
+    const mon = new Date(base); mon.setUTCDate(base.getUTCDate() - dow)
+    const sun = new Date(mon); sun.setUTCDate(mon.getUTCDate() + 6)
+    const from = mon.toISOString().slice(0, 10)
+    const to = sun.toISOString().slice(0, 10)
+    const wk = guests.filter(g => g.visit_date >= from && g.visit_date <= to)
     return { heads: wk.reduce((s, g) => s + (g.party_size || 1), 0), hours: Math.round(wk.reduce((s, g) => s + (g.duration_min || 0), 0) / 60), count: wk.length }
   }, [guests])
 
