@@ -515,6 +515,55 @@ async function runLoad() {
   console.log('done.')
 }
 
+// TAG-GAPS — the SAFE, additive-only alternative to `load` for a v2 re-tag.
+// The blanket `load` above is a merge-upsert with confirmed=true: running it over
+// an already-ratified catalogue would OVERWRITE every existing spoke (silently
+// undoing human adjudication). tag-gaps instead inserts ONLY spokes for the
+// families the OLD prompt structurally could not fully find, ONLY where the
+// bottle has no row for that family (resolution=ignore-duplicates → never
+// overwrites an existing or confirmed=true row), as confirmed=false → they land
+// in the review queue for human ratification. Existing/confirmed rows are never
+// touched under any circumstance.
+const GAP_FAMILIES = new Set(['buttery_creamy', 'meaty_sulphury', 'tropical_citrus', 'pepper_tannin'])
+
+async function sbInsertIgnore(table, conflict, rows) {
+  for (let i = 0; i < rows.length; i += 500) {
+    const chunk = rows.slice(i, i + 500)
+    const r = await fetch(`${SB_URL}/rest/v1/${table}?on_conflict=${conflict}`, {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json',
+                 Prefer: 'resolution=ignore-duplicates,return=minimal' },   // ON CONFLICT DO NOTHING — never overwrites
+      body: JSON.stringify(chunk),
+    })
+    if (!r.ok) throw new Error(`${table} ${r.status}: ${await r.text()}`)
+  }
+}
+
+async function runTagGaps() {
+  if (!SB_URL || !SB_KEY) throw new Error('Supabase env not set')
+  const path = 'data/whisky_flavour_full.json'
+  if (!existsSync(path)) throw new Error(`${path} not found — run \`tag-all\` first (v2 prompt) to produce it`)
+  const results = JSON.parse(readFileSync(path, 'utf8'))
+  const intensities = []
+  for (const r of results) {
+    if (r.error) continue
+    for (const c of (r.categories || [])) {
+      if (!GAP_FAMILIES.has(c.category_slug)) continue          // gap families only — everything else is already tagged
+      intensities.push({ whisky_id: r.id, category_slug: c.category_slug, intensity: c.intensity,
+        confidence: c.confidence, source: 'llm', model: MODEL, evidence: (c.evidence || '').slice(0, 300),
+        confirmed: false })                                     // → review queue, NOT auto-trusted
+    }
+  }
+  const dedupe = (rows, keyFn) => { const m = new Map(); for (const r of rows) { const k = keyFn(r); const p = m.get(k); if (!p || r.confidence > p.confidence) m.set(k, r) } return [...m.values()] }
+  const ints = dedupe(intensities, r => `${r.whisky_id}|${r.category_slug}`)
+  const byFam = {}; for (const r of ints) byFam[r.category_slug] = (byFam[r.category_slug] || 0) + 1
+  console.log(`tag-gaps: ${ints.length} candidate spokes across the gap families:`)
+  for (const f of [...GAP_FAMILIES]) console.log(`  ${f}: ${byFam[f] || 0}`)
+  console.log('inserting (resolution=ignore-duplicates — existing/confirmed rows untouched), confirmed=false → review queue…')
+  await sbInsertIgnore('whisky_flavour_intensities', 'whisky_id,category_slug', ints)
+  console.log('done — new gap-family spokes are in the Radar-spokes review queue. Ratify them like the migration spokes.')
+}
+
 // Part-A honesty gate — stats + no-hallucination spot-check, to stdout.
 function printVerify(results) {
   const by = b => results.filter(r => r.bucket === b)
@@ -605,4 +654,5 @@ if (cmd === 'emit-sql') emitSchemaAndSeed()
 else if (cmd === 'tag') runTagging().catch(e => { console.error(e); process.exit(1) })
 else if (cmd === 'tag-all') runAll().catch(e => { console.error(e); process.exit(1) })
 else if (cmd === 'load') runLoad().catch(e => { console.error(e); process.exit(1) })
-else { console.error('usage: node scripts/whisky-flavour-tags.mjs [emit-sql|tag|tag-all|load]'); process.exit(1) }
+else if (cmd === 'tag-gaps') runTagGaps().catch(e => { console.error(e); process.exit(1) })
+else { console.error('usage: node scripts/whisky-flavour-tags.mjs [emit-sql|tag|tag-all|load|tag-gaps]'); process.exit(1) }
