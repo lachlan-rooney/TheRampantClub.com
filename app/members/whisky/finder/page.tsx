@@ -58,7 +58,7 @@ export default function FlavourFinderPage() {
               </button>
               {anySet && <button onClick={reset} style={ghostBtn}>Reset</button>}
             </div>
-            {!anySet && <div style={{ ...muted, textAlign: 'center' }}>Tap the wheel above to begin.</div>}
+            {!anySet && <div style={{ ...muted, textAlign: 'center' }}>Tap the compass above to begin.</div>}
           </>
         )}
 

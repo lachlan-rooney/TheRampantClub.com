@@ -4,7 +4,7 @@
 -- single source of truth in that file; regenerate, don't hand-edit the seed.
 --
 -- Three tables:
---   flavour_categories      — tier 1, the 12 broad families.
+--   flavour_categories      — tier 1, the 16 Compass families (+ quadrant).
 --   flavour_descriptors     — tier 2, finer notes under each family.
 --   whisky_flavour_intensities — per-(bottle, broad-category) INTENSITY 1-4 +
 --       confidence. These are the radar/spider spoke lengths (absent = spoke 0).
@@ -18,8 +18,10 @@ create table if not exists flavour_categories (
   slug        text primary key,
   name        text not null,
   description text,
+  quadrant    text,
   sort_order  int  not null default 0
 );
+alter table flavour_categories add column if not exists quadrant text;
 
 create table if not exists flavour_descriptors (
   slug          text primary key,
@@ -96,184 +98,168 @@ create policy "admins write whisky_flavour_tags" on whisky_flavour_tags for all
   with check (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.is_admin = true));
 
 -- ── Taxonomy seed (generated from TAXONOMY) ──
-insert into flavour_categories (slug, name, description, sort_order) values ('young_spritely', 'Young & Spritely', 'Fresh, vibrant, cereal-led; little cask influence.', 1)
-  on conflict (slug) do update set name = excluded.name, description = excluded.description, sort_order = excluded.sort_order;
-insert into flavour_categories (slug, name, description, sort_order) values ('sweet_fruity_mellow', 'Sweet, Fruity & Mellow', 'Soft orchard/stone fruit, honey and vanilla; rounded and easy.', 2)
-  on conflict (slug) do update set name = excluded.name, description = excluded.description, sort_order = excluded.sort_order;
-insert into flavour_categories (slug, name, description, sort_order) values ('spicy_sweet', 'Spicy & Sweet', 'Warming baking spice over a sweet base.', 3)
-  on conflict (slug) do update set name = excluded.name, description = excluded.description, sort_order = excluded.sort_order;
-insert into flavour_categories (slug, name, description, sort_order) values ('spicy_dry', 'Spicy & Dry', 'Drying oak spice, pepper, tannin, tobacco/leather.', 4)
-  on conflict (slug) do update set name = excluded.name, description = excluded.description, sort_order = excluded.sort_order;
-insert into flavour_categories (slug, name, description, sort_order) values ('rich_dried_fruits', 'Deep, Rich & Dried Fruits', 'Classic sherry cask: raisin, fig, dark chocolate, christmas cake.', 5)
-  on conflict (slug) do update set name = excluded.name, description = excluded.description, sort_order = excluded.sort_order;
-insert into flavour_categories (slug, name, description, sort_order) values ('old_dignified', 'Old & Dignified', 'Mature, polished oak; beeswax, old leather, dried herbs.', 6)
-  on conflict (slug) do update set name = excluded.name, description = excluded.description, sort_order = excluded.sort_order;
-insert into flavour_categories (slug, name, description, sort_order) values ('light_delicate', 'Light & Delicate', 'Gentle, floral, light honey and lemon; subtle malt.', 7)
-  on conflict (slug) do update set name = excluded.name, description = excluded.description, sort_order = excluded.sort_order;
-insert into flavour_categories (slug, name, description, sort_order) values ('juicy_oak_vanilla', 'Juicy, Oak & Vanilla', 'Bourbon-cask sweetness: vanilla, coconut, toasted oak, custard.', 8)
-  on conflict (slug) do update set name = excluded.name, description = excluded.description, sort_order = excluded.sort_order;
-insert into flavour_categories (slug, name, description, sort_order) values ('oily_coastal', 'Oily & Coastal', 'Maritime: brine, sea salt, seaweed, oily texture, minerality.', 9)
-  on conflict (slug) do update set name = excluded.name, description = excluded.description, sort_order = excluded.sort_order;
-insert into flavour_categories (slug, name, description, sort_order) values ('lightly_peated', 'Lightly Peated', 'A gentle wisp of smoke over a non-peaty base.', 10)
-  on conflict (slug) do update set name = excluded.name, description = excluded.description, sort_order = excluded.sort_order;
-insert into flavour_categories (slug, name, description, sort_order) values ('peated', 'Peated', 'Clear peat smoke: bonfire, soot, tar, smoked meat, ash.', 11)
-  on conflict (slug) do update set name = excluded.name, description = excluded.description, sort_order = excluded.sort_order;
-insert into flavour_categories (slug, name, description, sort_order) values ('heavily_peated', 'Heavily Peated', 'Intense, medicinal peat: iodine, TCP, creosote, kippers.', 12)
-  on conflict (slug) do update set name = excluded.name, description = excluded.description, sort_order = excluded.sort_order;
-insert into flavour_categories (slug, name, description, sort_order) values ('grain_rye', 'Grain & Rye', 'Grain-whisky and rye character: rye spice, corn, cereal sweetness, raw wood.', 13)
-  on conflict (slug) do update set name = excluded.name, description = excluded.description, sort_order = excluded.sort_order;
+insert into flavour_categories (slug, name, description, quadrant, sort_order) values ('cereal_biscuit', 'Cereal & Biscuit', 'Malt loaf, biscuit, porridge, rye bread, corn.', 'field', 1)
+  on conflict (slug) do update set name = excluded.name, description = excluded.description, quadrant = excluded.quadrant, sort_order = excluded.sort_order;
+insert into flavour_categories (slug, name, description, quadrant, sort_order) values ('green_grassy', 'Green & Grassy', 'Cut grass, hay, green apple skin, leafy freshness.', 'field', 2)
+  on conflict (slug) do update set name = excluded.name, description = excluded.description, quadrant = excluded.quadrant, sort_order = excluded.sort_order;
+insert into flavour_categories (slug, name, description, quadrant, sort_order) values ('orchard_fruit', 'Orchard Fruit', 'Apple, pear, plum, apricot.', 'still', 3)
+  on conflict (slug) do update set name = excluded.name, description = excluded.description, quadrant = excluded.quadrant, sort_order = excluded.sort_order;
+insert into flavour_categories (slug, name, description, quadrant, sort_order) values ('tropical_citrus', 'Tropical & Citrus', 'Banana, pineapple, mango, lemon zest.', 'still', 4)
+  on conflict (slug) do update set name = excluded.name, description = excluded.description, quadrant = excluded.quadrant, sort_order = excluded.sort_order;
+insert into flavour_categories (slug, name, description, quadrant, sort_order) values ('floral_honeyed', 'Floral & Honeyed', 'Heather honey, rose, elderflower, beeswax.', 'still', 5)
+  on conflict (slug) do update set name = excluded.name, description = excluded.description, quadrant = excluded.quadrant, sort_order = excluded.sort_order;
+insert into flavour_categories (slug, name, description, quadrant, sort_order) values ('buttery_creamy', 'Buttery & Creamy', 'Butter, cream, custard, fudge.', 'still', 6)
+  on conflict (slug) do update set name = excluded.name, description = excluded.description, quadrant = excluded.quadrant, sort_order = excluded.sort_order;
+insert into flavour_categories (slug, name, description, quadrant, sort_order) values ('meaty_sulphury', 'Meaty & Sulphury', 'Struck match, broth, cooked meat, gunpowder.', 'still', 7)
+  on conflict (slug) do update set name = excluded.name, description = excluded.description, quadrant = excluded.quadrant, sort_order = excluded.sort_order;
+insert into flavour_categories (slug, name, description, quadrant, sort_order) values ('vanilla_coconut', 'Vanilla & Coconut', 'Vanilla, coconut, toasted-oak sweetness.', 'cask', 8)
+  on conflict (slug) do update set name = excluded.name, description = excluded.description, quadrant = excluded.quadrant, sort_order = excluded.sort_order;
+insert into flavour_categories (slug, name, description, quadrant, sort_order) values ('baking_spice', 'Baking Spice', 'Cinnamon, clove, nutmeg, ginger.', 'cask', 9)
+  on conflict (slug) do update set name = excluded.name, description = excluded.description, quadrant = excluded.quadrant, sort_order = excluded.sort_order;
+insert into flavour_categories (slug, name, description, quadrant, sort_order) values ('pepper_tannin', 'Pepper & Tannin', 'Black pepper, oak tannin, black tea, rye pepper.', 'cask', 10)
+  on conflict (slug) do update set name = excluded.name, description = excluded.description, quadrant = excluded.quadrant, sort_order = excluded.sort_order;
+insert into flavour_categories (slug, name, description, quadrant, sort_order) values ('dried_fruit_walnut', 'Dried Fruit & Walnut', 'Raisin, fig, date, walnut.', 'cask', 11)
+  on conflict (slug) do update set name = excluded.name, description = excluded.description, quadrant = excluded.quadrant, sort_order = excluded.sort_order;
+insert into flavour_categories (slug, name, description, quadrant, sort_order) values ('treacle_roast', 'Treacle & Roast', 'Toffee, treacle, coffee, dark chocolate, char.', 'cask', 12)
+  on conflict (slug) do update set name = excluded.name, description = excluded.description, quadrant = excluded.quadrant, sort_order = excluded.sort_order;
+insert into flavour_categories (slug, name, description, quadrant, sort_order) values ('leather_polished_oak', 'Leather & Polished Oak', 'Old leather, tobacco, waxed wood, dried herbs.', 'cask', 13)
+  on conflict (slug) do update set name = excluded.name, description = excluded.description, quadrant = excluded.quadrant, sort_order = excluded.sort_order;
+insert into flavour_categories (slug, name, description, quadrant, sort_order) values ('woodsmoke', 'Woodsmoke', 'Bonfire, ash, smoked meat, embers.', 'shore', 14)
+  on conflict (slug) do update set name = excluded.name, description = excluded.description, quadrant = excluded.quadrant, sort_order = excluded.sort_order;
+insert into flavour_categories (slug, name, description, quadrant, sort_order) values ('tar_iodine', 'Tar & Iodine', 'Tar, iodine, antiseptic, creosote, kippers.', 'shore', 15)
+  on conflict (slug) do update set name = excluded.name, description = excluded.description, quadrant = excluded.quadrant, sort_order = excluded.sort_order;
+insert into flavour_categories (slug, name, description, quadrant, sort_order) values ('brine_shoreline', 'Brine & Shoreline', 'Sea salt, seaweed, oyster shell, wet stone.', 'shore', 16)
+  on conflict (slug) do update set name = excluded.name, description = excluded.description, quadrant = excluded.quadrant, sort_order = excluded.sort_order;
 
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('cereal__young_spritely', 'young_spritely', 'Cereal', 0)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('malt_loaf__cereal_biscuit', 'cereal_biscuit', 'Malt Loaf', 0)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('grassy__young_spritely', 'young_spritely', 'Grassy', 1)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('biscuit__cereal_biscuit', 'cereal_biscuit', 'Biscuit', 1)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('green_apple__young_spritely', 'young_spritely', 'Green Apple', 2)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('porridge__cereal_biscuit', 'cereal_biscuit', 'Porridge', 2)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('citrus_zest__young_spritely', 'young_spritely', 'Citrus Zest', 3)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('rye_bread__cereal_biscuit', 'cereal_biscuit', 'Rye Bread', 3)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('floral__young_spritely', 'young_spritely', 'Floral', 4)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('corn__cereal_biscuit', 'cereal_biscuit', 'Corn', 4)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('fresh_malt__young_spritely', 'young_spritely', 'Fresh Malt', 5)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('cut_grass__green_grassy', 'green_grassy', 'Cut Grass', 0)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('vanilla__sweet_fruity_mellow', 'sweet_fruity_mellow', 'Vanilla', 0)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('hay__green_grassy', 'green_grassy', 'Hay', 1)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('honey__sweet_fruity_mellow', 'sweet_fruity_mellow', 'Honey', 1)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('green_apple_skin__green_grassy', 'green_grassy', 'Green Apple Skin', 2)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('orchard_fruit__sweet_fruity_mellow', 'sweet_fruity_mellow', 'Orchard Fruit', 2)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('leafy__green_grassy', 'green_grassy', 'Leafy', 3)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('caramel__sweet_fruity_mellow', 'sweet_fruity_mellow', 'Caramel', 3)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('apple__orchard_fruit', 'orchard_fruit', 'Apple', 0)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('stone_fruit__sweet_fruity_mellow', 'sweet_fruity_mellow', 'Stone Fruit', 4)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('pear__orchard_fruit', 'orchard_fruit', 'Pear', 1)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('toffee__sweet_fruity_mellow', 'sweet_fruity_mellow', 'Toffee', 5)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('plum__orchard_fruit', 'orchard_fruit', 'Plum', 2)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('cinnamon__spicy_sweet', 'spicy_sweet', 'Cinnamon', 0)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('apricot__orchard_fruit', 'orchard_fruit', 'Apricot', 3)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('ginger__spicy_sweet', 'spicy_sweet', 'Ginger', 1)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('banana__tropical_citrus', 'tropical_citrus', 'Banana', 0)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('nutmeg__spicy_sweet', 'spicy_sweet', 'Nutmeg', 2)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('pineapple__tropical_citrus', 'tropical_citrus', 'Pineapple', 1)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('baking_spice__spicy_sweet', 'spicy_sweet', 'Baking Spice', 3)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('mango__tropical_citrus', 'tropical_citrus', 'Mango', 2)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('clove__spicy_sweet', 'spicy_sweet', 'Clove', 4)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('lemon_zest__tropical_citrus', 'tropical_citrus', 'Lemon Zest', 3)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('honeyed_spice__spicy_sweet', 'spicy_sweet', 'Honeyed Spice', 5)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('heather_honey__floral_honeyed', 'floral_honeyed', 'Heather Honey', 0)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('black_pepper__spicy_dry', 'spicy_dry', 'Black Pepper', 0)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('rose__floral_honeyed', 'floral_honeyed', 'Rose', 1)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('oak_tannin__spicy_dry', 'spicy_dry', 'Oak Tannin', 1)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('elderflower__floral_honeyed', 'floral_honeyed', 'Elderflower', 2)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('dry_spice__spicy_dry', 'spicy_dry', 'Dry Spice', 2)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('beeswax__floral_honeyed', 'floral_honeyed', 'Beeswax', 3)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('tobacco__spicy_dry', 'spicy_dry', 'Tobacco', 3)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('butter__buttery_creamy', 'buttery_creamy', 'Butter', 0)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('leather__spicy_dry', 'spicy_dry', 'Leather', 4)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('cream__buttery_creamy', 'buttery_creamy', 'Cream', 1)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('char__spicy_dry', 'spicy_dry', 'Char', 5)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('custard__buttery_creamy', 'buttery_creamy', 'Custard', 2)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('clove__spicy_dry', 'spicy_dry', 'Clove', 6)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('fudge__buttery_creamy', 'buttery_creamy', 'Fudge', 3)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('raisin__rich_dried_fruits', 'rich_dried_fruits', 'Raisin', 0)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('struck_match__meaty_sulphury', 'meaty_sulphury', 'Struck Match', 0)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('fig__rich_dried_fruits', 'rich_dried_fruits', 'Fig', 1)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('broth__meaty_sulphury', 'meaty_sulphury', 'Broth', 1)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('date__rich_dried_fruits', 'rich_dried_fruits', 'Date', 2)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('cooked_meat__meaty_sulphury', 'meaty_sulphury', 'Cooked Meat', 2)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('dark_chocolate__rich_dried_fruits', 'rich_dried_fruits', 'Dark Chocolate', 3)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('gunpowder__meaty_sulphury', 'meaty_sulphury', 'Gunpowder', 3)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('christmas_cake__rich_dried_fruits', 'rich_dried_fruits', 'Christmas Cake', 4)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('vanilla__vanilla_coconut', 'vanilla_coconut', 'Vanilla', 0)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('walnut__rich_dried_fruits', 'rich_dried_fruits', 'Walnut', 5)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('coconut__vanilla_coconut', 'vanilla_coconut', 'Coconut', 1)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('dried_fruit__rich_dried_fruits', 'rich_dried_fruits', 'Dried Fruit', 6)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('toasted_oak_sweetness__vanilla_coconut', 'vanilla_coconut', 'Toasted Oak Sweetness', 2)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('polished_oak__old_dignified', 'old_dignified', 'Polished Oak', 0)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('cinnamon__baking_spice', 'baking_spice', 'Cinnamon', 0)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('beeswax__old_dignified', 'old_dignified', 'Beeswax', 1)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('clove__baking_spice', 'baking_spice', 'Clove', 1)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('old_leather__old_dignified', 'old_dignified', 'Old Leather', 2)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('nutmeg__baking_spice', 'baking_spice', 'Nutmeg', 2)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('dried_herbs__old_dignified', 'old_dignified', 'Dried Herbs', 3)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('ginger__baking_spice', 'baking_spice', 'Ginger', 3)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('sandalwood__old_dignified', 'old_dignified', 'Sandalwood', 4)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('black_pepper__pepper_tannin', 'pepper_tannin', 'Black Pepper', 0)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('antique_wood__old_dignified', 'old_dignified', 'Antique Wood', 5)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('oak_tannin__pepper_tannin', 'pepper_tannin', 'Oak Tannin', 1)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('floral__light_delicate', 'light_delicate', 'Floral', 0)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('black_tea__pepper_tannin', 'pepper_tannin', 'Black Tea', 2)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('light_honey__light_delicate', 'light_delicate', 'Light Honey', 1)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('rye_pepper__pepper_tannin', 'pepper_tannin', 'Rye Pepper', 3)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('lemon__light_delicate', 'light_delicate', 'Lemon', 2)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('raisin__dried_fruit_walnut', 'dried_fruit_walnut', 'Raisin', 0)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('hay__light_delicate', 'light_delicate', 'Hay', 3)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('fig__dried_fruit_walnut', 'dried_fruit_walnut', 'Fig', 1)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('delicate_malt__light_delicate', 'light_delicate', 'Delicate Malt', 4)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('date__dried_fruit_walnut', 'dried_fruit_walnut', 'Date', 2)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('meadow__light_delicate', 'light_delicate', 'Meadow', 5)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('walnut__dried_fruit_walnut', 'dried_fruit_walnut', 'Walnut', 3)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('vanilla__juicy_oak_vanilla', 'juicy_oak_vanilla', 'Vanilla', 0)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('toffee__treacle_roast', 'treacle_roast', 'Toffee', 0)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('coconut__juicy_oak_vanilla', 'juicy_oak_vanilla', 'Coconut', 1)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('treacle__treacle_roast', 'treacle_roast', 'Treacle', 1)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('toasted_oak__juicy_oak_vanilla', 'juicy_oak_vanilla', 'Toasted Oak', 2)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('coffee__treacle_roast', 'treacle_roast', 'Coffee', 2)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('butterscotch__juicy_oak_vanilla', 'juicy_oak_vanilla', 'Butterscotch', 3)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('dark_chocolate__treacle_roast', 'treacle_roast', 'Dark Chocolate', 3)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('custard__juicy_oak_vanilla', 'juicy_oak_vanilla', 'Custard', 4)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('char__treacle_roast', 'treacle_roast', 'Char', 4)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('banana__juicy_oak_vanilla', 'juicy_oak_vanilla', 'Banana', 5)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('old_leather__leather_polished_oak', 'leather_polished_oak', 'Old Leather', 0)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('brine__oily_coastal', 'oily_coastal', 'Brine', 0)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('tobacco__leather_polished_oak', 'leather_polished_oak', 'Tobacco', 1)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('sea_salt__oily_coastal', 'oily_coastal', 'Sea Salt', 1)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('waxed_wood__leather_polished_oak', 'leather_polished_oak', 'Waxed Wood', 2)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('seaweed__oily_coastal', 'oily_coastal', 'Seaweed', 2)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('dried_herbs__leather_polished_oak', 'leather_polished_oak', 'Dried Herbs', 3)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('oily_texture__oily_coastal', 'oily_coastal', 'Oily Texture', 3)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('bonfire__woodsmoke', 'woodsmoke', 'Bonfire', 0)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('mineral__oily_coastal', 'oily_coastal', 'Mineral', 4)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('ash__woodsmoke', 'woodsmoke', 'Ash', 1)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('smoked_fish__oily_coastal', 'oily_coastal', 'Smoked Fish', 5)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('smoked_meat__woodsmoke', 'woodsmoke', 'Smoked Meat', 2)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('gentle_smoke__lightly_peated', 'lightly_peated', 'Gentle Smoke', 0)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('embers__woodsmoke', 'woodsmoke', 'Embers', 3)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('soft_peat__lightly_peated', 'lightly_peated', 'Soft Peat', 1)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('tar__tar_iodine', 'tar_iodine', 'Tar', 0)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('ember__lightly_peated', 'lightly_peated', 'Ember', 2)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('iodine__tar_iodine', 'tar_iodine', 'Iodine', 1)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('light_bonfire__lightly_peated', 'lightly_peated', 'Light Bonfire', 3)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('antiseptic__tar_iodine', 'tar_iodine', 'Antiseptic', 2)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('bonfire_smoke__peated', 'peated', 'Bonfire Smoke', 0)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('creosote__tar_iodine', 'tar_iodine', 'Creosote', 3)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('soot__peated', 'peated', 'Soot', 1)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('kippers__tar_iodine', 'tar_iodine', 'Kippers', 4)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('tar__peated', 'peated', 'Tar', 2)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('sea_salt__brine_shoreline', 'brine_shoreline', 'Sea Salt', 0)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('smoked_meat__peated', 'peated', 'Smoked Meat', 3)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('seaweed__brine_shoreline', 'brine_shoreline', 'Seaweed', 1)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('ash__peated', 'peated', 'Ash', 4)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('oyster_shell__brine_shoreline', 'brine_shoreline', 'Oyster Shell', 2)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('campfire__peated', 'peated', 'Campfire', 5)
-  on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('medicinal__heavily_peated', 'heavily_peated', 'Medicinal', 0)
-  on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('iodine__heavily_peated', 'heavily_peated', 'Iodine', 1)
-  on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('tcp__heavily_peated', 'heavily_peated', 'Tcp', 2)
-  on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('creosote__heavily_peated', 'heavily_peated', 'Creosote', 3)
-  on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('intense_smoke__heavily_peated', 'heavily_peated', 'Intense Smoke', 4)
-  on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('kippers__heavily_peated', 'heavily_peated', 'Kippers', 5)
-  on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('rye_spice__grain_rye', 'grain_rye', 'Rye Spice', 0)
-  on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('corn__grain_rye', 'grain_rye', 'Corn', 1)
-  on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('grain__grain_rye', 'grain_rye', 'Grain', 2)
-  on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('sawdust__grain_rye', 'grain_rye', 'Sawdust', 3)
-  on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;
-insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('cereal_sweetness__grain_rye', 'grain_rye', 'Cereal Sweetness', 4)
+insert into flavour_descriptors (slug, category_slug, name, sort_order) values ('wet_stone__brine_shoreline', 'brine_shoreline', 'Wet Stone', 3)
   on conflict (slug) do update set category_slug = excluded.category_slug, name = excluded.name, sort_order = excluded.sort_order;

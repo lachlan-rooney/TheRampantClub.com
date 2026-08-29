@@ -39,7 +39,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!VIS.includes(p.visibility)) return NextResponse.json({ error: 'Pick private or the Snug.' }, { status: 400 })
     patch.visibility = p.visibility
   }
-  if (Array.isArray(p.flavour_tags)) patch.flavour_tags = p.flavour_tags.filter((t: unknown): t is string => typeof t === 'string').slice(0, 13)
+  if (Array.isArray(p.flavour_tags)) patch.flavour_tags = p.flavour_tags.filter((t: unknown): t is string => typeof t === 'string').slice(0, 16)
   if (!Object.keys(patch).length) return NextResponse.json({ error: 'Nothing to update.' }, { status: 400 })
 
   const { error } = await a.from('tasting_notes').update(patch).eq('id', id)

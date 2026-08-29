@@ -1,6 +1,6 @@
 // Whisky flavour-tagging foundation — Phase 0 (taxonomy + calibration batch).
 //
-// SINGLE SOURCE OF TRUTH for the SMWS-style flavour taxonomy. This one file:
+// SINGLE SOURCE OF TRUTH for the Flavour Compass taxonomy. This one file:
 //   • holds the canonical 12 broad categories + their finer descriptors,
 //   • `emit-sql`  → writes db/whisky_flavour_tags.sql (schema + RLS + taxonomy seed),
 //   • `tag`       → tags a CALIBRATION SPREAD (rich + thin + empty notes) via the
@@ -29,47 +29,62 @@ import { writeFileSync, readFileSync, existsSync } from 'node:fs'
 
 const MODEL = 'claude-opus-4-7'  // matches the MIS extraction model
 
-// ─── THE TAXONOMY — SMWS-style flavour wheel, two-tier ──────────────────────
+// ─── THE TAXONOMY — the Flavour Compass, two-tier (16 families, 4 quadrants) ──
+// Quadrant (field | still | cask | shore) is a production-origin grouping —
+// metadata only, invisible to the match maths (the radius 0–4 alone is intensity).
 export const TAXONOMY = [
-  { slug: 'young_spritely', name: 'Young & Spritely', order: 1,
-    desc: 'Fresh, vibrant, cereal-led; little cask influence.',
-    descriptors: ['cereal', 'grassy', 'green_apple', 'citrus_zest', 'floral', 'fresh_malt'] },
-  { slug: 'sweet_fruity_mellow', name: 'Sweet, Fruity & Mellow', order: 2,
-    desc: 'Soft orchard/stone fruit, honey and vanilla; rounded and easy.',
-    descriptors: ['vanilla', 'honey', 'orchard_fruit', 'caramel', 'stone_fruit', 'toffee'] },
-  { slug: 'spicy_sweet', name: 'Spicy & Sweet', order: 3,
-    desc: 'Warming baking spice over a sweet base.',
-    descriptors: ['cinnamon', 'ginger', 'nutmeg', 'baking_spice', 'clove', 'honeyed_spice'] },
-  { slug: 'spicy_dry', name: 'Spicy & Dry', order: 4,
-    desc: 'Drying oak spice, pepper, tannin, tobacco/leather.',
-    descriptors: ['black_pepper', 'oak_tannin', 'dry_spice', 'tobacco', 'leather', 'char', 'clove'] },
-  { slug: 'rich_dried_fruits', name: 'Deep, Rich & Dried Fruits', order: 5,
-    desc: 'Classic sherry cask: raisin, fig, dark chocolate, christmas cake.',
-    descriptors: ['raisin', 'fig', 'date', 'dark_chocolate', 'christmas_cake', 'walnut', 'dried_fruit'] },
-  { slug: 'old_dignified', name: 'Old & Dignified', order: 6,
-    desc: 'Mature, polished oak; beeswax, old leather, dried herbs.',
-    descriptors: ['polished_oak', 'beeswax', 'old_leather', 'dried_herbs', 'sandalwood', 'antique_wood'] },
-  { slug: 'light_delicate', name: 'Light & Delicate', order: 7,
-    desc: 'Gentle, floral, light honey and lemon; subtle malt.',
-    descriptors: ['floral', 'light_honey', 'lemon', 'hay', 'delicate_malt', 'meadow'] },
-  { slug: 'juicy_oak_vanilla', name: 'Juicy, Oak & Vanilla', order: 8,
-    desc: 'Bourbon-cask sweetness: vanilla, coconut, toasted oak, custard.',
-    descriptors: ['vanilla', 'coconut', 'toasted_oak', 'butterscotch', 'custard', 'banana'] },
-  { slug: 'oily_coastal', name: 'Oily & Coastal', order: 9,
-    desc: 'Maritime: brine, sea salt, seaweed, oily texture, minerality.',
-    descriptors: ['brine', 'sea_salt', 'seaweed', 'oily_texture', 'mineral', 'smoked_fish'] },
-  { slug: 'lightly_peated', name: 'Lightly Peated', order: 10,
-    desc: 'A gentle wisp of smoke over a non-peaty base.',
-    descriptors: ['gentle_smoke', 'soft_peat', 'ember', 'light_bonfire'] },
-  { slug: 'peated', name: 'Peated', order: 11,
-    desc: 'Clear peat smoke: bonfire, soot, tar, smoked meat, ash.',
-    descriptors: ['bonfire_smoke', 'soot', 'tar', 'smoked_meat', 'ash', 'campfire'] },
-  { slug: 'heavily_peated', name: 'Heavily Peated', order: 12,
-    desc: 'Intense, medicinal peat: iodine, TCP, creosote, kippers.',
-    descriptors: ['medicinal', 'iodine', 'tcp', 'creosote', 'intense_smoke', 'kippers'] },
-  { slug: 'grain_rye', name: 'Grain & Rye', order: 13,
-    desc: 'Grain-whisky and rye character: rye spice, corn, cereal sweetness, raw wood.',
-    descriptors: ['rye_spice', 'corn', 'grain', 'sawdust', 'cereal_sweetness'] },
+  // FIELD — the raw material
+  { slug: 'cereal_biscuit', name: 'Cereal & Biscuit', order: 1, quadrant: 'field',
+    desc: 'Malt loaf, biscuit, porridge, rye bread, corn.',
+    descriptors: ['malt_loaf', 'biscuit', 'porridge', 'rye_bread', 'corn'] },
+  { slug: 'green_grassy', name: 'Green & Grassy', order: 2, quadrant: 'field',
+    desc: 'Cut grass, hay, green apple skin, leafy freshness.',
+    descriptors: ['cut_grass', 'hay', 'green_apple_skin', 'leafy'] },
+  // STILL — the spirit off the still
+  { slug: 'orchard_fruit', name: 'Orchard Fruit', order: 3, quadrant: 'still',
+    desc: 'Apple, pear, plum, apricot.',
+    descriptors: ['apple', 'pear', 'plum', 'apricot'] },
+  { slug: 'tropical_citrus', name: 'Tropical & Citrus', order: 4, quadrant: 'still',
+    desc: 'Banana, pineapple, mango, lemon zest.',
+    descriptors: ['banana', 'pineapple', 'mango', 'lemon_zest'] },
+  { slug: 'floral_honeyed', name: 'Floral & Honeyed', order: 5, quadrant: 'still',
+    desc: 'Heather honey, rose, elderflower, beeswax.',
+    descriptors: ['heather_honey', 'rose', 'elderflower', 'beeswax'] },
+  { slug: 'buttery_creamy', name: 'Buttery & Creamy', order: 6, quadrant: 'still',
+    desc: 'Butter, cream, custard, fudge.',
+    descriptors: ['butter', 'cream', 'custard', 'fudge'] },
+  { slug: 'meaty_sulphury', name: 'Meaty & Sulphury', order: 7, quadrant: 'still',
+    desc: 'Struck match, broth, cooked meat, gunpowder.',
+    descriptors: ['struck_match', 'broth', 'cooked_meat', 'gunpowder'] },
+  // CASK — what the wood gives
+  { slug: 'vanilla_coconut', name: 'Vanilla & Coconut', order: 8, quadrant: 'cask',
+    desc: 'Vanilla, coconut, toasted-oak sweetness.',
+    descriptors: ['vanilla', 'coconut', 'toasted_oak_sweetness'] },
+  { slug: 'baking_spice', name: 'Baking Spice', order: 9, quadrant: 'cask',
+    desc: 'Cinnamon, clove, nutmeg, ginger.',
+    descriptors: ['cinnamon', 'clove', 'nutmeg', 'ginger'] },
+  { slug: 'pepper_tannin', name: 'Pepper & Tannin', order: 10, quadrant: 'cask',
+    desc: 'Black pepper, oak tannin, black tea, rye pepper.',
+    descriptors: ['black_pepper', 'oak_tannin', 'black_tea', 'rye_pepper'] },
+  { slug: 'dried_fruit_walnut', name: 'Dried Fruit & Walnut', order: 11, quadrant: 'cask',
+    desc: 'Raisin, fig, date, walnut.',
+    descriptors: ['raisin', 'fig', 'date', 'walnut'] },
+  { slug: 'treacle_roast', name: 'Treacle & Roast', order: 12, quadrant: 'cask',
+    desc: 'Toffee, treacle, coffee, dark chocolate, char.',
+    descriptors: ['toffee', 'treacle', 'coffee', 'dark_chocolate', 'char'] },
+  { slug: 'leather_polished_oak', name: 'Leather & Polished Oak', order: 13, quadrant: 'cask',
+    desc: 'Old leather, tobacco, waxed wood, dried herbs.',
+    descriptors: ['old_leather', 'tobacco', 'waxed_wood', 'dried_herbs'] },
+  // SHORE — smoke & sea
+  { slug: 'woodsmoke', name: 'Woodsmoke', order: 14, quadrant: 'shore',
+    desc: 'Bonfire, ash, smoked meat, embers.',
+    descriptors: ['bonfire', 'ash', 'smoked_meat', 'embers'] },
+  { slug: 'tar_iodine', name: 'Tar & Iodine', order: 15, quadrant: 'shore',
+    desc: 'Tar, iodine, antiseptic, creosote, kippers.',
+    descriptors: ['tar', 'iodine', 'antiseptic', 'creosote', 'kippers'] },
+  { slug: 'brine_shoreline', name: 'Brine & Shoreline', order: 16, quadrant: 'shore',
+    desc: 'Sea salt, seaweed, oyster shell, wet stone.',
+    descriptors: ['sea_salt', 'seaweed', 'oyster_shell', 'wet_stone'] },
 ]
 
 const CAT_BY_SLUG = Object.fromEntries(TAXONOMY.map(c => [c.slug, c]))
@@ -85,7 +100,7 @@ function emitSchemaAndSeed() {
 -- single source of truth in that file; regenerate, don't hand-edit the seed.
 --
 -- Three tables:
---   flavour_categories      — tier 1, the 12 broad families.
+--   flavour_categories      — tier 1, the 16 Compass families (+ quadrant).
 --   flavour_descriptors     — tier 2, finer notes under each family.
 --   whisky_flavour_intensities — per-(bottle, broad-category) INTENSITY 1-4 +
 --       confidence. These are the radar/spider spoke lengths (absent = spoke 0).
@@ -99,8 +114,10 @@ create table if not exists flavour_categories (
   slug        text primary key,
   name        text not null,
   description text,
+  quadrant    text,
   sort_order  int  not null default 0
 );
+alter table flavour_categories add column if not exists quadrant text;
 
 create table if not exists flavour_descriptors (
   slug          text primary key,
@@ -162,7 +179,7 @@ alter table whisky_flavour_tags         enable row level security;
 
   L.push(`\n-- ── Taxonomy seed (generated from TAXONOMY) ──`)
   for (const c of TAXONOMY) {
-    L.push(`insert into flavour_categories (slug, name, description, sort_order) values (${sqlStr(c.slug)}, ${sqlStr(c.name)}, ${sqlStr(c.desc)}, ${c.order})\n  on conflict (slug) do update set name = excluded.name, description = excluded.description, sort_order = excluded.sort_order;`)
+    L.push(`insert into flavour_categories (slug, name, description, quadrant, sort_order) values (${sqlStr(c.slug)}, ${sqlStr(c.name)}, ${sqlStr(c.desc)}, ${sqlStr(c.quadrant)}, ${c.order})\n  on conflict (slug) do update set name = excluded.name, description = excluded.description, quadrant = excluded.quadrant, sort_order = excluded.sort_order;`)
   }
   L.push('')
   for (const c of TAXONOMY) {
@@ -260,7 +277,20 @@ ABSOLUTE RULES:
 3. If the notes are empty, or carry no flavour information (e.g. just "Ireland", or an operational note like "broken while sorting"), return notes_quality "none" with EMPTY categories AND empty descriptors. A sparse/empty radar is the honest answer — never pad it.
 4. A bottle may carry several categories (several spokes) and several descriptors. Every descriptor's category_slug must also appear in your categories list (so the radar has that spoke).
 5. descriptor_slug must belong to the category_slug you pair it with. Use the bare descriptor word.
-6. Be honest with both numbers — low confidence and low intensity are useful signals, not failures.`
+6. Be honest with both numbers — low confidence and low intensity are useful signals, not failures.
+
+FAMILY CUES (to place a named flavour in the right family — NOT a licence to infer; the prose must still say it):
+  • Fruity esters → orchard_fruit (apple, pear, plum, apricot) or tropical_citrus (banana, pineapple, mango, citrus zest).
+  • Vanillin & oak lactones (vanilla, coconut, toasted-oak sweetness) → vanilla_coconut.
+  • Diacetyl / dairy (butter, cream, custard, fudge) → buttery_creamy.
+  • Eugenol / warm baking spice (cinnamon, clove, nutmeg, ginger) → baking_spice.
+  • Dry oak spice, pepper, tannin, black tea → pepper_tannin; old leather, tobacco, waxed wood, dried herbs → leather_polished_oak.
+  • Sherry-cask dried fruit (raisin, fig, date, walnut) → dried_fruit_walnut; toffee, treacle, coffee, dark chocolate, char → treacle_roast.
+  • Sulphur volatiles (struck match, gunpowder, cooked meat, broth) → meaty_sulphury.
+  • Brine, sea salt, seaweed, oyster shell, wet stone → brine_shoreline.
+  • TWO SMOKES — split by CHARACTER, not by strength (a dram may score BOTH; route each named note to the smoke it actually is):
+      – guaiacol / wood-smoke (bonfire, ash, embers, smoked meat, soot, campfire) → woodsmoke.
+      – phenol / cresol / medicinal (tar, iodine, TCP, antiseptic, creosote, kippers) → tar_iodine.`
 }
 
 async function tagOne(anthropic, w) {
@@ -533,7 +563,7 @@ function writeReport(results) {
 
   const L = []
   L.push(`# Whisky flavour-tagging — Phase 0 calibration report\n`)
-  L.push(`Model: \`${MODEL}\` · taxonomy: SMWS-style two-tier (12 categories) · two signals: **confidence** (present?) + **intensity 1-4** (how strong — the radar spokes) · all rows \`confirmed=false\`.\n`)
+  L.push(`Model: \`${MODEL}\` · taxonomy: Flavour Compass two-tier (16 families, 4 quadrants) · two signals: **confidence** (present?) + **intensity 1-4** (how strong — the radar spokes) · all rows \`confirmed=false\`.\n`)
   L.push(`## Summary`)
   L.push(`- Calibration batch: **${results.length}** bottles — rich ${byBucket('rich').length}, thin ${byBucket('thin').length}, empty ${byBucket('empty').length}.`)
   L.push(`- **Rich** notes that produced a radar: **${richTagged}/${byBucket('rich').length}**.`)

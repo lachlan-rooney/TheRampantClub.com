@@ -83,7 +83,7 @@ export async function POST(req: Request) {
   if (note.length < 1 || note.length > 8000) return NextResponse.json({ error: 'Keep it between 1 and 8000 characters.' }, { status: 400 })
   if (!VIS.includes(visibility)) return NextResponse.json({ error: 'Pick private or the Snug.' }, { status: 400 })
   let tags: string[] = []
-  try { const parsed = typeof tagsRaw === 'string' ? JSON.parse(tagsRaw) : []; if (Array.isArray(parsed)) tags = parsed.filter((t): t is string => typeof t === 'string').slice(0, 13) } catch { /* no tags */ }
+  try { const parsed = typeof tagsRaw === 'string' ? JSON.parse(tagsRaw) : []; if (Array.isArray(parsed)) tags = parsed.filter((t): t is string => typeof t === 'string').slice(0, 16) } catch { /* no tags */ }
 
   const a = svc()
   // Rate-limit note spam (count-rows, generous).
