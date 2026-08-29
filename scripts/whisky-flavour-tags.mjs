@@ -1,7 +1,7 @@
 // Whisky flavour-tagging foundation — Phase 0 (taxonomy + calibration batch).
 //
 // SINGLE SOURCE OF TRUTH for the Flavour Compass taxonomy. This one file:
-//   • holds the canonical 12 broad categories + their finer descriptors,
+//   • holds the canonical 16 broad categories + their finer descriptors,
 //   • `emit-sql`  → writes db/whisky_flavour_tags.sql (schema + RLS + taxonomy seed),
 //   • `tag`       → tags a CALIBRATION SPREAD (rich + thin + empty notes) via the
 //                   same model the MIS uses (claude-opus-4-7), reading ONLY the
@@ -526,7 +526,7 @@ function printVerify(results) {
   const intHist = [0,0,0,0,0]; allCats.forEach(c => intHist[c.intensity]++)
   // VIOLATIONS: empty/thin bottles that got any spoke
   const halluc = results.filter(r => r.bucket !== 'rich' && (r.categories?.length))
-  const grainHits = results.filter(r => (r.categories||[]).some(c => c.category_slug === 'grain_rye'))
+  const smokeHits = results.filter(r => (r.categories||[]).some(c => c.category_slug === 'woodsmoke' || c.category_slug === 'tar_iodine'))
   const P = console.log
   P(`\n──────── PART A — full-run verification ────────`)
   P(`bottles: ${results.length}  (rich ${by('rich').length} / thin ${by('thin').length} / empty ${by('empty').length})  errors ${errs.length}`)
@@ -535,11 +535,11 @@ function printVerify(results) {
   P(`spokes: ${allCats.length}   intensity 1/2/3/4 = ${intHist[1]}/${intHist[2]}/${intHist[3]}/${intHist[4]}`)
   P(`descriptors (pre-trim): ${allDesc.length}  → trusted(≥0.7) ${disp.trusted} / review(0.6-0.7) ${disp.review} / dropped(<0.6) ${disp.dropped}`)
   P(`HALLUCINATION CHECK — empty/thin bottles with spokes: ${halluc.length}${halluc.length?'  ⚠ '+halluc.map(h=>h.name.slice(0,30)).join(', '):'  ✓'}`)
-  P(`GRAIN & RYE hits: ${grainHits.length} bottles — ${grainHits.slice(0,12).map(g=>g.name.slice(0,28)).join(' · ')}`)
+  P(`SMOKE (woodsmoke/tar_iodine) hits: ${smokeHits.length} bottles — ${smokeHits.slice(0,12).map(g=>g.name.slice(0,28)).join(' · ')}`)
   if (errs.length) P(`ERRORS: ${errs.map(e=>e.name.slice(0,30)+' ('+e.error+')').join(' | ')}`)
 }
 
-// Compact radar print: 12 spokes, intensity 0-4 as a bar.
+// Compact radar print: 16 spokes, intensity 0-4 as a bar.
 function radarLines(cats) {
   const byCat = Object.fromEntries(cats.map(c => [c.category_slug, c]))
   return TAXONOMY.map(c => {

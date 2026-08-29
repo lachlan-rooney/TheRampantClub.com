@@ -3,15 +3,34 @@ import { createClient } from '@supabase/supabase-js'
 import { matchWhiskies, type IndexRow, type SetSpokes } from '@/lib/whisky/flavour-match'
 
 // POST /api/whisky/flavour-match  — Flavour Finder match.
-// Body: { set: { <category_slug>: 1..4, … } }  (only the spokes the member raised)
+// Body: { set: { <category_slug>: 1..4, … }, in_stock_only?: boolean }
 // Returns the top 3 closest MAPPED whiskies + honest match strength. Pure math
 // on the existing intensity spokes — no LLM, no per-search cost.
+// PUBLIC + unauthenticated (the members' finder and the public /cup kiosk both
+// hit it), so it's IP rate-limited to blunt scripted abuse of the service-role
+// query. Public surfaces pass in_stock_only to hard-filter to pourable bottles.
 
 export const dynamic = 'force-dynamic'
 
+// Simple in-memory sliding-window limiter (per instance) — enough to stop a
+// tight loop hammering the unauthenticated endpoint. 40 matches / minute / IP.
+const HITS = new Map<string, number[]>()
+const LIMIT = { n: 40, ms: 60_000 }
+function rateLimited(ip: string): boolean {
+  const now = Date.now()
+  const arr = (HITS.get(ip) || []).filter(t => now - t < LIMIT.ms)
+  arr.push(now); HITS.set(ip, arr)
+  if (HITS.size > 5000) for (const [k, v] of HITS) if (!v.some(t => now - t < LIMIT.ms)) HITS.delete(k)
+  return arr.length > LIMIT.n
+}
+
 export async function POST(req: NextRequest) {
-  let body: { set?: unknown }
+  const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown'
+  if (rateLimited(ip)) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+
+  let body: { set?: unknown; in_stock_only?: unknown }
   try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
+  const inStockOnly = body.in_stock_only === true
   const raw = (body.set && typeof body.set === 'object') ? body.set as Record<string, unknown> : {}
   const set: SetSpokes = {}
   for (const [k, v] of Object.entries(raw)) {
@@ -38,6 +57,7 @@ export async function POST(req: NextRequest) {
   for (const [id, spokes] of Object.entries(byW)) {
     const meta = nameById[id]
     if (!meta || seen.has(meta.name)) continue
+    if (inStockOnly && !meta.in_stock) continue      // public surfaces: only what the bar can pour
     seen.add(meta.name)
     index.push({ id, name: meta.name, in_stock: meta.in_stock, spokes })
   }
