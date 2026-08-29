@@ -13,6 +13,10 @@ create table if not exists flavour_family_migration (
   note       text, created_at timestamptz not null default now()
 );
 
+-- Idempotent: clear before re-inserting so re-running this snapshot restores
+-- exactly these 19 rows rather than appending duplicates.
+truncate flavour_family_migration restart identity;
+
 insert into flavour_family_migration (old_slug, new_slug, rule, note) values
   ('young_spritely', 'green_grassy', 'deterministic', null),
   ('sweet_fruity_mellow', 'orchard_fruit', 'deterministic', null),
