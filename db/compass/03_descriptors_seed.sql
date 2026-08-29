@@ -48,10 +48,10 @@ insert into flavour_descriptors (slug, category_slug, name, sort_order) values
 on conflict (slug) do update set category_slug=excluded.category_slug, name=excluded.name, sort_order=excluded.sort_order;
 
 -- ── VERIFICATION ──────────────────────────────────────────────────────────
--- EXPECTED: 70 new descriptors, all FK-valid to the 16 new families.
+-- EXPECTED: 66 new descriptors, all FK-valid to the 16 new families.
 select count(*) as new_descriptors from flavour_descriptors
   where category_slug in ('cereal_biscuit','green_grassy','orchard_fruit','tropical_citrus',
     'floral_honeyed','buttery_creamy','meaty_sulphury','vanilla_coconut','baking_spice',
     'pepper_tannin','dried_fruit_walnut','treacle_roast','leather_polished_oak',
     'woodsmoke','tar_iodine','brine_shoreline');
--- EXPECTED: 70
+-- EXPECTED: 66

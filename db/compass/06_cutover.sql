@@ -48,11 +48,11 @@ delete from flavour_categories where quadrant is null;
 commit;
 
 -- ── VERIFICATION (post-cutover) ────────────────────────────────────────────
--- EXPECTED: categories 16 · descriptors 70 · intensities 1604 · tags 880,
+-- EXPECTED: categories 16 · descriptors 66 · intensities 1604 · tags 880,
 -- and ZERO rows on any legacy slug.
 select
   (select count(*) from flavour_categories)                                                     as categories,       -- 16
-  (select count(*) from flavour_descriptors)                                                    as descriptors,      -- 70
+  (select count(*) from flavour_descriptors)                                                    as descriptors,      -- 66
   (select count(*) from whisky_flavour_intensities)                                             as intensities,      -- 1604
   (select count(*) from whisky_flavour_tags)                                                     as tags,            -- 880
   (select count(*) from flavour_categories where quadrant is null)                              as leftover_old_cats; -- 0
