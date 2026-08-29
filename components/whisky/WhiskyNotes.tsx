@@ -37,7 +37,7 @@ export default function WhiskyNotes({ whiskyId }: { whiskyId: string }) {
   useEffect(() => {
     if (!open || loaded) return
     load()
-    createBrowserSupabaseClient().from('flavour_categories').select('slug, name').order('sort_order')
+    createBrowserSupabaseClient().from('flavour_categories').select('slug, name').not('quadrant', 'is', null).order('sort_order')
       .then(({ data }) => { if (data) setFamilies(data) })
   }, [open, loaded, load])
 

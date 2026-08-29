@@ -13,9 +13,10 @@ export const dynamic = 'force-dynamic'
 const svc = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } })
 
 const FAMILY_WORD: Record<string, string> = {
-  rich_dried_fruits: 'sherried', peated: 'peated', heavily_peated: 'heavily-peated', lightly_peated: 'lightly-peated',
-  oily_coastal: 'coastal', spicy_sweet: 'spiced', spicy_dry: 'peppery', sweet_fruity_mellow: 'orchard-fruit',
-  juicy_oak_vanilla: 'oak-and-vanilla', old_dignified: 'old-and-deep', light_delicate: 'delicate', young_spritely: 'bright', grain_rye: 'grain-and-rye',
+  dried_fruit_walnut: 'sherried', tar_iodine: 'peated', woodsmoke: 'smoky', brine_shoreline: 'coastal',
+  baking_spice: 'spiced', pepper_tannin: 'peppery', orchard_fruit: 'orchard-fruit', tropical_citrus: 'tropical',
+  floral_honeyed: 'honeyed', vanilla_coconut: 'oak-and-vanilla', buttery_creamy: 'creamy', treacle_roast: 'roasted',
+  leather_polished_oak: 'old-and-deep', cereal_biscuit: 'malty', green_grassy: 'grassy', meaty_sulphury: 'savoury',
 }
 
 interface Signal { date: string; fams: string[] }

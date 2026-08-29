@@ -27,7 +27,7 @@ export interface DerivedTaste {
 
 export async function deriveTasteForMember(sb: SupabaseClient, memberNo: string): Promise<DerivedTaste> {
   const [{ data: cats }, { data: ws }, { data: ints }] = await Promise.all([
-    sb.from('flavour_categories').select('slug').order('sort_order'),
+    sb.from('flavour_categories').select('slug').not('quadrant', 'is', null).order('sort_order'),
     sb.from('whiskies').select('id, name, distillery'),
     sb.from('whisky_flavour_intensities').select('whisky_id, category_slug, intensity'),
   ])

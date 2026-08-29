@@ -15,7 +15,9 @@ export const RADAR_SAGE = '#7AB07A'
 let _catsCache: Cat[] | null = null
 export async function fetchCategories(supabase: SupabaseClient): Promise<Cat[]> {
   if (_catsCache) return _catsCache
-  const { data } = await supabase.from('flavour_categories').select('slug,name,sort_order').order('sort_order')
+  // Compass 16 only — the migration seeds carry a quadrant; the legacy 13
+  // families have quadrant NULL and are filtered out so the map isn't doubled.
+  const { data } = await supabase.from('flavour_categories').select('slug,name,sort_order').not('quadrant', 'is', null).order('sort_order')
   _catsCache = (data || []) as Cat[]
   return _catsCache
 }

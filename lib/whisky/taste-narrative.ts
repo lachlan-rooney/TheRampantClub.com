@@ -4,21 +4,24 @@
 
 import type { ShapeValues } from '@/components/whisky/flavour-data'
 
-// The 13 SMWS families → a descriptive phrase the club would speak.
+// The 16 Compass families → a descriptive phrase the club would speak.
 const FAMILY_PHRASE: Record<string, string> = {
-  young_spritely:      'bright, youthful drams',
-  sweet_fruity_mellow: 'sweet, mellow orchard fruit',
-  spicy_sweet:         'warm baking spice',
-  spicy_dry:           'dry, peppery spice',
-  rich_dried_fruits:   'rich, sherried dried-fruit depth',
-  old_dignified:       'old, dignified complexity',
-  light_delicate:      'light, delicate styles',
-  juicy_oak_vanilla:   'juicy oak and vanilla',
-  oily_coastal:        'an oily, coastal brine',
-  lightly_peated:      'a gentle wisp of peat',
-  peated:              'smoky, peated whisky',
-  heavily_peated:      'bold, heavy smoke',
-  grain_rye:           'crisp grain and rye',
+  cereal_biscuit:       'malty, cereal-led drams',
+  green_grassy:         'fresh, green and grassy notes',
+  orchard_fruit:        'sweet, mellow orchard fruit',
+  tropical_citrus:      'bright tropical fruit and citrus',
+  floral_honeyed:       'a floral, honeyed lift',
+  buttery_creamy:       'a buttery, creamy texture',
+  meaty_sulphury:       'savoury, meaty depth',
+  vanilla_coconut:      'juicy vanilla and coconut',
+  baking_spice:         'warm baking spice',
+  pepper_tannin:        'dry, peppery tannin',
+  dried_fruit_walnut:   'rich, sherried dried-fruit depth',
+  treacle_roast:        'treacle, coffee and roast',
+  leather_polished_oak: 'old, dignified oak and leather',
+  woodsmoke:            'wood-smoke and embers',
+  tar_iodine:           'bold, medicinal peat',
+  brine_shoreline:      'an oily, coastal brine',
 }
 
 export interface TasteVector { [slug: string]: number }

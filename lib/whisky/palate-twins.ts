@@ -18,11 +18,12 @@ export function cosineSimilarity(a: Vec, b: Vec): number {
 
 // A FAMILY-level hook from the families BOTH score in — never a specific bottle.
 const SHARED_PHRASE: Record<string, string> = {
-  rich_dried_fruits: 'sherried, dried-fruit drams', peated: 'peated whisky', heavily_peated: 'big, smoky drams',
-  lightly_peated: 'a gentle wisp of peat', oily_coastal: 'oily, coastal styles', spicy_sweet: 'warm baking spice',
-  spicy_dry: 'dry, peppery spice', sweet_fruity_mellow: 'mellow orchard fruit', juicy_oak_vanilla: 'juicy oak & vanilla',
-  old_dignified: 'old, dignified malts', light_delicate: 'light, delicate styles', young_spritely: 'bright, youthful drams',
-  grain_rye: 'crisp grain & rye',
+  dried_fruit_walnut: 'sherried, dried-fruit drams', tar_iodine: 'big, medicinal peat', woodsmoke: 'wood-smoke',
+  brine_shoreline: 'oily, coastal styles', baking_spice: 'warm baking spice', pepper_tannin: 'dry, peppery spice',
+  orchard_fruit: 'mellow orchard fruit', tropical_citrus: 'bright tropical fruit', floral_honeyed: 'floral, honeyed drams',
+  vanilla_coconut: 'juicy oak & vanilla', buttery_creamy: 'buttery, creamy textures', treacle_roast: 'treacle & roast',
+  leather_polished_oak: 'old, dignified malts', cereal_biscuit: 'malty, cereal notes', green_grassy: 'fresh, grassy styles',
+  meaty_sulphury: 'savoury, meaty notes',
 }
 
 export function sharedNote(a: Vec, b: Vec): string {

@@ -3,10 +3,11 @@
 // Returns a gentle placeholder when the palate is still taking shape (never empty).
 
 const SHORT: Record<string, string> = {
-  young_spritely: 'bright', sweet_fruity_mellow: 'orchard-sweet', spicy_sweet: 'spiced',
-  spicy_dry: 'peppery', rich_dried_fruits: 'sherried', old_dignified: 'old & deep',
-  light_delicate: 'delicate', juicy_oak_vanilla: 'oaky-vanilla', oily_coastal: 'coastal',
-  lightly_peated: 'lightly peated', peated: 'peated', heavily_peated: 'heavily peated', grain_rye: 'grainy',
+  cereal_biscuit: 'malty', green_grassy: 'grassy', orchard_fruit: 'orchard-sweet',
+  tropical_citrus: 'tropical', floral_honeyed: 'honeyed', buttery_creamy: 'creamy',
+  meaty_sulphury: 'savoury', vanilla_coconut: 'vanilla-rich', baking_spice: 'spiced',
+  pepper_tannin: 'peppery', dried_fruit_walnut: 'sherried', treacle_roast: 'rich & roasted',
+  leather_polished_oak: 'old & deep', woodsmoke: 'smoky', tar_iodine: 'peated', brine_shoreline: 'coastal',
 }
 
 export function paletteSignature(vector: Record<string, number> | null | undefined): string {
