@@ -55,6 +55,17 @@ export function buildEntryPatch(body: Record<string, unknown>): { patch?: Record
   if ('kind' in body) patch.kind = KINDS.includes(String(body.kind)) ? body.kind : 'other'
   if ('visibility' in body) { if (!VIS.includes(String(body.visibility))) return { error: "visibility must be 'member' or 'staff'" }; patch.visibility = body.visibility }
   if ('blocks_space' in body) patch.blocks_space = !!body.blocks_space
+
+  // ── THE KIOSK BOARD (Phase 2) ──────────────────────────────────────────
+  // show_on_board is an explicit opt-in: a member-visible entry is not
+  // automatically something to put on a screen facing the room. board_note is the
+  // welcome line in TRC voice — distinct from `description`, which is an internal
+  // operational note and must never reach the board.
+  if ('show_on_board' in body) patch.show_on_board = !!body.show_on_board
+  if ('doors_open_at' in body) patch.doors_open_at = typeof body.doors_open_at === 'string' && /^\d{2}:\d{2}/.test(body.doors_open_at) ? body.doors_open_at : null
+  if ('board_note' in body) patch.board_note = body.board_note ? String(body.board_note).slice(0, 400) : null
+  if ('board_note_vn' in body) patch.board_note_vn = body.board_note_vn ? String(body.board_note_vn).slice(0, 400) : null
+  if ('title_vn' in body) patch.title_vn = body.title_vn ? String(body.title_vn).trim().slice(0, 200) : null
   return { patch }
 }
 
