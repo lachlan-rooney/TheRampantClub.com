@@ -37,6 +37,19 @@ const nextConfig = {
           { key: 'X-DNS-Prefetch-Control', value: 'on' },
         ],
       },
+      {
+        // THE KIOSK IS NEVER STORED. The middleware sets this too; it was being
+        // replaced by the framework's own Cache-Control on the rendered response,
+        // so it is asserted here as well. Two layers on purpose: the tablets are
+        // shared and bolted to a room, and a member's view must not outlive them
+        // in a disk cache or a back-forward cache.
+        source: '/kiosk/:path*',
+        headers: [{ key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, private' }],
+      },
+      {
+        source: '/kiosk',
+        headers: [{ key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, private' }],
+      },
     ]
   },
 }
