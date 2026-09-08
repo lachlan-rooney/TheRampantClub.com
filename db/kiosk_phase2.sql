@@ -477,6 +477,18 @@ begin
   v_doors := ((e.entry_date + coalesce(e.doors_open_at, e.start_time - interval '1 hour', '17:00'::time))::timestamp) at time zone 'Asia/Ho_Chi_Minh';
   v_end   := ((e.entry_date + coalesce(e.end_time, '23:59'::time))::timestamp) at time zone 'Asia/Ho_Chi_Minh';
 
+  -- ── TWO MIDNIGHT GUARDS. This is a club; its evenings do not respect dates. ──
+  -- 1. An event running 21:00–01:00 has end_time < start_time, so the naive
+  --    subtraction puts the end BEFORE the start and every state collapses to
+  --    no_event the moment the event actually begins. Roll the end into the next
+  --    day, which is what "til one" means to everyone except a date type.
+  if v_end <= v_start then v_end := v_end + interval '1 day'; end if;
+
+  -- 2. The doors fallback is start minus an hour, and `time` arithmetic WRAPS:
+  --    a 00:30 start yields doors at 23:30 — an hour after the event, not before.
+  --    Doors can never be later than the start.
+  if v_doors > v_start then v_doors := v_start; end if;
+
   return query select
     v_room,
     case
