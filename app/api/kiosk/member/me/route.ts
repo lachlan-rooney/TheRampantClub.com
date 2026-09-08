@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { svc, memberSession, memberClient, DEVICE_COOKIE } from '@/lib/kiosk/server'
+import { fetchCategories } from '@/components/whisky/flavour-data'
+import { vectorToShape, type TasteVector } from '@/lib/whisky/taste-narrative'
 
 // The member landing payload — read AS THE MEMBER, through the member-own RLS
 // proven in S0–S2d. Nothing here is filtered by hand: `profiles` returns one row
@@ -14,9 +16,13 @@ export async function GET() {
   if (!session) return NextResponse.json({ member: null }, { status: 401 })
 
   const mc = memberClient(session.profileId)
-  const [{ data: profile }, { data: taste }] = await Promise.all([
+  // Everything the FIXED column needs, in one call — the greeting and the palate
+  // paint together so the member's own name lands before anything is still loading.
+  // The radar is composed exactly as /members/taste composes it, server-side.
+  const [{ data: profile }, { data: taste }, cats] = await Promise.all([
     mc.from('profiles').select('display_name').eq('id', session.profileId).maybeSingle(),
     mc.from('member_taste_profiles').select('vector').maybeSingle(),
+    fetchCategories(mc).catch(() => []),
   ])
 
   // Top palate families, from the member's own vector. Slugs only — the page
@@ -39,6 +45,10 @@ export async function GET() {
       palate,
       room,
       expires_at: session.expiresAt,
+      // RadarChart's own inputs, so the kiosk renders the SAME component rather
+      // than a second radar that would not inherit f5d2c90.
+      cats,
+      shape: v && typeof v === 'object' ? vectorToShape(v as TasteVector) : null,
     },
   })
 }

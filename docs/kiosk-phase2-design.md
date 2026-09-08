@@ -504,3 +504,37 @@ regression. Check before believing a failure; it has earned its keep three times
 3. **The calendar form UI for the board fields** — the API accepts
    `show_on_board`, `doors_open_at`, `board_note`, `board_note_vn`, `title_vn`;
    the admin form does not offer them yet. Last build item.
+
+---
+
+## 14 · Phase 3 — why the week view has its own route
+
+`/members/events` reads `calendar_entries` and `fixtures` **client-side, under the
+browser's own Supabase session**. The kiosk has no such session and never will: the
+member identity is an opaque cookie exchanged server-side for a 60-second JWT that
+never reaches the browser, which is the whole Phase 2 design.
+
+So Phase 3 reuses the **presentation** wholesale — `RadarChart`, `EmptyState`,
+`Skeleton`, and `/members/events`' day-grouping — and cannot reuse the **fetch**.
+`/api/kiosk/member/week` resolves the session, mints, and reads under member RLS.
+This is written here rather than only in a report because "why is there a second
+fetch for the same data" is exactly the question a later reader asks before
+deleting one of them.
+
+**Column discipline, for the same reason the PIN screen shows a first name.**
+Everything on that screen is readable by whoever is standing behind the member, so
+the route selects `id, title, title_vn, entry_date, start_time, end_time, space,
+kind` and, for fixtures, `id, sport, title, date, location`. Not
+`calendar_entries.description` (an internal operational note), not `attendee`
+(names who an entry is with), not `fixtures.description`, `results`,
+`max_signups` or `signup_deadline`. **`fixture_signups` is never queried at all** —
+who is playing is the same problem as `attendee`, so the table is not touched.
+
+**Seven INCLUSIVE days**, today plus six. That is exactly one of each weekday, so a
+day label can never repeat; an eighth day would reintroduce the duplicate.
+Confirmed rather than assumed.
+
+**The evening runs to 05:00.** The club routinely runs past midnight, so the
+greeting treats 18:00–04:59 as evening — "Good morning" to someone three drinks
+into a Thursday reads as broken. Same lesson as the board's midnight guards: the
+day boundary is not where the evening ends.
