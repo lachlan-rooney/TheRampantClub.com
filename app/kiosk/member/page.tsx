@@ -131,13 +131,13 @@ export default function KioskMember() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', maxWidth: 460 }}>
         {tap?.first_name
           ? <div style={{ fontFamily: SERIF, fontSize: 'clamp(28px,4.2vw,46px)' }}>Good evening, {tap.first_name}</div>
-          : <div style={{ fontFamily: SERIF, fontSize: 'clamp(24px,3.4vw,38px)' }}>Your membership number</div>}
+          : <div style={{ fontFamily: SERIF, fontSize: 'clamp(24px,3.4vw,38px)' }}>Your surname</div>}
 
         {!tap && (
           <input
-            value={num} onChange={e => { setNum(e.target.value.toUpperCase()); bumpAbandon() }}
-            placeholder="TRC-M000" autoComplete="off" spellCheck={false}
-            style={{ ...field, marginTop: 18, letterSpacing: '.14em' }}
+            value={num} onChange={e => { setNum(e.target.value); bumpAbandon() }}
+            placeholder="Your surname" autoCapitalize="words" autoComplete="off" spellCheck={false}
+            style={{ ...field, marginTop: 18 }}
           />
         )}
 

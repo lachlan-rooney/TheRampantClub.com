@@ -249,7 +249,7 @@ export default function KioskBoard() {
             {!tap && (
               <input
                 value={num} onChange={e => { setNum(e.target.value.toUpperCase()); bump() }}
-                placeholder="Membership no. — e.g. 1" inputMode="numeric"
+                placeholder="Your surname" autoCapitalize="words"
                 autoComplete="off" spellCheck={false} style={numField}
               />
             )}
