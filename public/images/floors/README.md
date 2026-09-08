@@ -4,11 +4,20 @@ The kiosk board shows the logo for the room its tablet stands in. Nothing else i
 needed: name the file after the floor slug and it renders. If the file is absent the
 board simply shows no logo — never a broken image.
 
-    library-bar.svg        (or .png)   Floor 1 · The Library Bar
-    studio.svg             (or .png)   Floor 2 · The Studio
-    dining-room.svg        (or .png)   Floor 3 · The Dining Room
-    rampant-room.svg       (or .png)   Floor 4 · The Rampant Room
-    source-origin-lab.svg  (or .png)   Floor 5 · Source & Origin Lab
+    library-bar.png        Floor 1 · The Library Bar     — open book + monocle
+    studio.png             Floor 2 · The Studio          — artwork on a plinth
+    dining-room.png        Floor 3 · The Dining Room     — lit candle
+    rampant-room.png       Floor 4 · The Rampant Room    — cut-crystal tumbler
+    source-origin-lab.png  Floor 5 · Source & Origin Lab — conical flask
+
+The office lion (holding a folder) is not a floor — it is the admin portal mark,
+at /images/logo-office-cream.png.
+
+These were supplied as Canva SVGs wrapping a raster of club-green art on OPAQUE
+BLACK. Dropped straight onto the board they would have been a black slab with
+near-invisible art, since the board's ground is the same green. They were recovered
+by treating brightness as coverage to rebuild the alpha, then painted cream
+(#E5D4C2). Any replacement should be cream-on-transparent for the same reason.
 
 SVG is preferred — the tablets are high-DPI and the board scales the logo with the
 viewport. Cream (#E5D4C2) or white on transparent reads best against the dark green

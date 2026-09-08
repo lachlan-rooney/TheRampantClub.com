@@ -38,7 +38,7 @@ export default function KioskBoard() {
   // The room's logo, if one has been added. Try SVG, fall back to PNG, and if
   // neither exists show nothing at all — never a broken image on a bar top.
   // See public/images/floors/README.md: drop a file in, no code change needed.
-  const [logoExt, setLogoExt] = useState<'svg' | 'png' | null>('svg')
+  const [logoExt, setLogoExt] = useState<'png' | 'svg' | null>('png')
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const scanning = useRef(false)
 
@@ -189,7 +189,7 @@ export default function KioskBoard() {
             <img
               src={`/images/floors/${SPACE_TO_FLOOR[b.room]}.${logoExt}`}
               alt=""
-              onError={() => setLogoExt(e => (e === 'svg' ? 'png' : null))}
+              onError={() => setLogoExt(e => (e === 'png' ? 'svg' : null))}
               style={{ height: 'clamp(26px,5vh,52px)', width: 'auto', opacity: .92 }}
             />
           )}

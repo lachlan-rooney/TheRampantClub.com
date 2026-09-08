@@ -165,7 +165,7 @@ export default function AdminNav() {
   return (
     <nav style={navWrap}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/images/logo-mark-cream.svg" alt="" style={logoMark} />
+      <img src="/images/logo-office-cream.png" alt="" style={logoMark} />
       <div style={brandTitle}>Admin</div>
 
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 16 }}>
