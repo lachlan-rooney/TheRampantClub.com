@@ -95,30 +95,94 @@ alter table kiosk_member_sessions enable row level security;
 --   HARD LOCKOUT  10 fails / 24 hours → locked until an admin clears it
 
 
--- ═══ PART 4 · ADMIN: ISSUE / RESET / INSPECT A MEMBER PIN ══════════════════
--- Issuance and reset live in the admin portal. No engineer required.
-create or replace function set_member_kiosk_pin(p_member_no varchar, p_pin text, p_must_change boolean default false)
+-- ═══ PART 4 · THE PIN IS THE MEMBER'S, AND ONLY THE MEMBER'S ═════════════
+-- CHANGED 2026-09-08. The original design had an admin function that ACCEPTED a
+-- plaintext PIN. That is wrong: an admin-issued PIN is known to staff at the
+-- moment of issuance, gets spoken across a bar or sent over Zalo, and it is the
+-- same staff who hold the tablet. Nobody at the club should ever know a member's
+-- six digits.
+--
+-- NO FUNCTION HERE ACCEPTS OR RETURNS A PLAINTEXT PIN except the member's own
+-- set-my-pin, called as the member, from the member portal, where they are
+-- already authenticated. Admin keeps exactly two powers: clear a lockout, and
+-- reset to no-PIN-set. Neither sets a value; neither reveals one.
+
+-- Weak-PIN rejection, applied at the member's own entry point. Six digits is the
+-- only barrier on an enumerable membership number, so the obvious ones are out:
+-- all-same, ascending/descending runs, repeated pairs/triples, and a blocklist.
+create or replace function kiosk_pin_is_weak(p_pin text)
+  returns boolean language plpgsql immutable set search_path = public as $fn$
+declare i int; v_asc boolean := true; v_desc boolean := true;
+begin
+  if p_pin is null or p_pin !~ '^[0-9]{6}$' then return true; end if;
+  if p_pin ~ '^(.)\1{5}$' then return true; end if;                    -- 111111
+  if p_pin ~ '^(..)\1{2}$' then return true; end if;                   -- 121212
+  if p_pin ~ '^(...)\1{1}$' then return true; end if;                  -- 123123
+  for i in 1..5 loop                                                   -- 123456 / 654321
+    if ascii(substr(p_pin, i+1, 1)) <> ascii(substr(p_pin, i, 1)) + 1 then v_asc  := false; end if;
+    if ascii(substr(p_pin, i+1, 1)) <> ascii(substr(p_pin, i, 1)) - 1 then v_desc := false; end if;
+  end loop;
+  if v_asc or v_desc then return true; end if;
+  if p_pin in ('000000','696969','420420','112233','102030','123321','159753') then return true; end if;
+  return false;
+end $fn$;
+grant execute on function kiosk_pin_is_weak(text) to authenticated, service_role;
+
+-- THE MEMBER SETS THEIR OWN PIN. Called as the member (not service role) from the
+-- member portal. It derives the member from auth.uid() — a caller cannot set a PIN
+-- for anybody but themselves, because the member_no is never a parameter.
+create or replace function set_my_kiosk_pin(p_pin text)
+  returns void language plpgsql security definer set search_path = public, extensions as $fn$
+declare v_member_no varchar(12);
+begin
+  select pr.member_no into v_member_no from profiles pr where pr.id = auth.uid();
+  if v_member_no is null then raise exception 'no member linked to this account'; end if;
+  if p_pin !~ '^[0-9]{6}$' then raise exception 'pin must be exactly 6 digits'; end if;
+  if kiosk_pin_is_weak(p_pin) then raise exception 'pin too easily guessed'; end if;
+
+  insert into member_kiosk_pins (member_no, pin_hash, set_at, set_by, must_change)
+  values (v_member_no, crypt(p_pin, gen_salt('bf')), now(), auth.uid(), false)
+  on conflict (member_no) do update
+    set pin_hash = excluded.pin_hash, set_at = now(),
+        set_by = excluded.set_by, must_change = false;
+
+  -- Setting your own PIN clears any standing lockout on your number.
+  update member_pin_attempts a set cleared_at = now()
+   where a.member_no = v_member_no and a.cleared_at is null;
+end $fn$;
+revoke all on function set_my_kiosk_pin(text) from public;
+grant execute on function set_my_kiosk_pin(text) to authenticated;
+
+-- Does the logged-in member have a PIN set? Drives the portal prompt. Boolean only.
+create or replace function my_kiosk_pin_state()
+  returns table (has_pin boolean, set_at timestamptz)
+  language plpgsql security definer set search_path = public stable as $fn$
+declare v_member_no varchar(12);
+begin
+  select pr.member_no into v_member_no from profiles pr where pr.id = auth.uid();
+  if v_member_no is null then return; end if;
+  return query
+    select (k.member_no is not null), k.set_at
+      from (select v_member_no as mn) z
+      left join member_kiosk_pins k on k.member_no = z.mn;
+end $fn$;
+revoke all on function my_kiosk_pin_state() from public;
+grant execute on function my_kiosk_pin_state() to authenticated;
+
+-- ADMIN POWER 1 — reset to NO-PIN-SET. Clears the hash; sets no value. The member
+-- is then prompted in the portal to set a new one. Admin never learns a PIN.
+create or replace function reset_member_kiosk_pin(p_member_no varchar)
   returns void language plpgsql security definer set search_path = public, extensions as $fn$
 begin
   if not is_admin_uid(auth.uid()) then raise exception 'admin only'; end if;
-  if p_pin !~ '^[0-9]{6}$' then raise exception 'pin must be exactly 6 digits'; end if;
-  -- Refuse the obvious ones; a 6-digit PIN is the only barrier on an enumerable number.
-  if p_pin in ('000000','111111','123456','654321','222222','999999') then
-    raise exception 'pin too weak';
-  end if;
-  insert into member_kiosk_pins (member_no, pin_hash, set_at, set_by, must_change)
-  values (p_member_no, crypt(p_pin, gen_salt('bf')), now(), auth.uid(), p_must_change)
-  on conflict (member_no) do update
-    set pin_hash = excluded.pin_hash, set_at = now(),
-        set_by = excluded.set_by, must_change = excluded.must_change;
-  -- Re-issuing a PIN clears any standing lockout.
+  delete from member_kiosk_pins k where k.member_no = p_member_no;
   update member_pin_attempts a set cleared_at = now()
    where a.member_no = p_member_no and a.cleared_at is null;
 end $fn$;
-revoke all on function set_member_kiosk_pin(varchar, text, boolean) from public;
-grant execute on function set_member_kiosk_pin(varchar, text, boolean) to authenticated;
+revoke all on function reset_member_kiosk_pin(varchar) from public;
+grant execute on function reset_member_kiosk_pin(varchar) to authenticated;
 
--- Clear a lockout without changing the PIN.
+-- ADMIN POWER 2 — clear a lockout without touching the PIN.
 create or replace function clear_member_kiosk_lockout(p_member_no varchar)
   returns void language plpgsql security definer set search_path = public, extensions as $fn$
 begin
@@ -130,7 +194,7 @@ revoke all on function clear_member_kiosk_lockout(varchar) from public;
 grant execute on function clear_member_kiosk_lockout(varchar) to authenticated;
 
 -- The admin portal's view of PIN state + live lockouts. Metadata only —
--- pin_hash is never returned by anything.
+-- pin_hash is returned by nothing, ever.
 create or replace function member_kiosk_pin_status()
   returns table (member_no varchar, full_name text, has_pin boolean, set_at timestamptz,
                  must_change boolean, fails_15m int, fails_24h int, locked boolean, hard_locked boolean)
@@ -155,6 +219,10 @@ begin
 end $fn$;
 revoke all on function member_kiosk_pin_status() from public;
 grant execute on function member_kiosk_pin_status() to authenticated;
+
+-- Dropped by this change: set_member_kiosk_pin(varchar, text, boolean) — the
+-- admin-sets-a-plaintext-PIN function. Safe to run whether or not it was created.
+drop function if exists set_member_kiosk_pin(varchar, text, boolean);
 
 
 -- ═══ PART 5 · THE PIN → SESSION MINT ═══════════════════════════════════════
@@ -422,3 +490,181 @@ grant execute on function kiosk_board(text) to service_role;
 -- create policy "members read own visits" on visits for select using (
 --   member_no = (select member_no from profiles where id = auth.uid())
 -- );
+
+
+-- ═══ PART 8 · CONSENT (schema only — capture UI is Phase 3) ════════════════
+-- There is no terms/privacy consent capture anywhere today: members are admitted
+-- by invitation and their accounts are activated, so there has never been a
+-- member-facing sign-up screen to hang one on. The schema lands now, while the
+-- member portal is already being opened for PIN setting.
+--
+-- CONSENT AS SCHEMA, not a checkbox that gates a button. A tick that isn't stored
+-- proves nothing once terms change, and makes selective re-consent impossible.
+--
+-- APPEND-ONLY. Withdrawal inserts a new row with granted=false; nothing is ever
+-- mutated or deleted, so the history is the evidence. Current state is the latest
+-- row per (member_no, doc_key).
+--
+-- NO COPY IS SEEDED HERE. The terms and privacy text is written in TRC voice once
+-- TNJ Law confirms what Vietnam's regime currently requires, and the privacy notice
+-- must describe the MIS honestly — preference profiles with confidence scoring and
+-- decay, and Harmony Log entries that include grievances about the member.
+
+create table if not exists terms_versions (
+  id             uuid primary key default gen_random_uuid(),
+  doc_key        text not null check (doc_key in ('membership_terms','privacy','marketing')),
+  version        text not null,                 -- e.g. '2026.1'
+  effective_date date not null,
+  body           text,                          -- inline copy, or…
+  body_url       text,                          -- …a pointer to it
+  created_by     uuid references profiles(id),
+  created_at     timestamptz not null default now(),
+  unique (doc_key, version)
+);
+create index if not exists idx_terms_versions_current on terms_versions(doc_key, effective_date desc);
+
+-- THREE SEPARATE CONSENTS, NEVER BUNDLED INTO ONE TICK:
+--   membership_terms — membership terms and club rules
+--   privacy          — privacy and data processing
+--   marketing        — OPT-IN, and separately withdrawable without disturbing the other two
+create table if not exists member_consents (
+  id               uuid primary key default gen_random_uuid(),
+  member_no        varchar(12) not null references members(member_no) on delete cascade,
+  terms_version_id uuid not null references terms_versions(id),
+  doc_key          text not null check (doc_key in ('membership_terms','privacy','marketing')),
+  granted          boolean not null,             -- false = withdrawn
+  given_at         timestamptz not null default now(),
+  method           text not null check (method in ('portal','paper','import','staff_recorded')),
+  -- HOW consent was given, kept as evidence. 'kiosk' is deliberately NOT a method:
+  -- nobody agrees to terms on a bar-top tablet with a queue behind them.
+  user_agent       text,
+  recorded_by      uuid references profiles(id), -- set only for staff_recorded/import
+  created_at       timestamptz not null default now()
+);
+create index if not exists idx_member_consents_current
+  on member_consents(member_no, doc_key, given_at desc);
+
+alter table terms_versions  enable row level security;
+alter table member_consents enable row level security;
+
+-- Any authenticated member may READ the documents — they have to be able to read
+-- what they are agreeing to. Admins write them.
+drop policy if exists "authenticated read terms_versions" on terms_versions;
+create policy "authenticated read terms_versions" on terms_versions for select
+  using (auth.uid() is not null);
+drop policy if exists "admins write terms_versions" on terms_versions;
+create policy "admins write terms_versions" on terms_versions for all
+  using (is_admin_uid(auth.uid())) with check (is_admin_uid(auth.uid()));
+
+-- A member reads their OWN consent history; admins read all. There is NO member
+-- INSERT policy at all — writes go through record_my_consent() below, so a member
+-- cannot forge given_at, method, or another member's row. That is structural, not
+-- a validation rule someone can forget.
+drop policy if exists "members read own consents" on member_consents;
+create policy "members read own consents" on member_consents for select using (
+  member_no = (select member_no from profiles where id = auth.uid())
+);
+drop policy if exists "admins read all consents" on member_consents;
+create policy "admins read all consents" on member_consents for select
+  using (is_admin_uid(auth.uid()));
+
+-- The current version of a document (latest effective on or before today).
+create or replace function current_terms_version(p_doc_key text)
+  returns uuid language sql security definer set search_path = public stable as $fn$
+  select tv.id from terms_versions tv
+   where tv.doc_key = p_doc_key
+     and tv.effective_date <= (now() at time zone 'Asia/Ho_Chi_Minh')::date
+   order by tv.effective_date desc, tv.created_at desc
+   limit 1;
+$fn$;
+grant execute on function current_terms_version(text) to authenticated, service_role;
+
+-- The member records their OWN consent, derived from auth.uid() — the member_no is
+-- never a parameter, so a caller cannot consent on anyone else's behalf.
+-- Withdrawal is the same call with p_granted = false.
+create or replace function record_my_consent(p_doc_key text, p_granted boolean, p_user_agent text default null)
+  returns void language plpgsql security definer set search_path = public as $fn$
+declare v_member_no varchar(12); v_version uuid;
+begin
+  if p_doc_key not in ('membership_terms','privacy','marketing') then
+    raise exception 'unknown document';
+  end if;
+  select pr.member_no into v_member_no from profiles pr where pr.id = auth.uid();
+  if v_member_no is null then raise exception 'no member linked to this account'; end if;
+  v_version := current_terms_version(p_doc_key);
+  if v_version is null then raise exception 'no current version of %', p_doc_key; end if;
+
+  insert into member_consents (member_no, terms_version_id, doc_key, granted, method, user_agent)
+  values (v_member_no, v_version, p_doc_key, p_granted, 'portal', p_user_agent);
+end $fn$;
+revoke all on function record_my_consent(text, boolean, text) from public;
+grant execute on function record_my_consent(text, boolean, text) to authenticated;
+
+-- Consent currency for the logged-in member: what they hold, what is current, and
+-- whether they are behind. THE KIOSK READS THIS AND NEVER WRITES CONSENT.
+-- Each doc_key is answered independently — withdrawing marketing cannot disturb
+-- the other two, because they are separate rows with separate latest-state.
+create or replace function my_consent_state()
+  returns table (doc_key text, held_version_id uuid, held_version text, granted boolean,
+                 given_at timestamptz, current_version_id uuid, current_version text,
+                 needs_action boolean)
+  language plpgsql security definer set search_path = public stable as $fn$
+declare v_member_no varchar(12);
+begin
+  select pr.member_no into v_member_no from profiles pr where pr.id = auth.uid();
+  if v_member_no is null then return; end if;
+  return query
+  select d.k,
+         h.terms_version_id, hv.version, h.granted, h.given_at,
+         c.id, cv.version,
+         -- behind, never consented, or actively withdrawn → needs action.
+         -- Marketing is opt-in: never having answered is NOT a pending action.
+         case
+           when d.k = 'marketing' then false
+           else (h.terms_version_id is null or h.granted = false or h.terms_version_id <> c.id)
+         end
+    from (values ('membership_terms'),('privacy'),('marketing')) as d(k)
+    left join lateral (select current_terms_version(d.k) as id) c on true
+    left join terms_versions cv on cv.id = c.id
+    left join lateral (
+      select mc.terms_version_id, mc.granted, mc.given_at
+        from member_consents mc
+       where mc.member_no = v_member_no and mc.doc_key = d.k
+       order by mc.given_at desc limit 1
+    ) h on true
+    left join terms_versions hv on hv.id = h.terms_version_id;
+end $fn$;
+revoke all on function my_consent_state() from public;
+grant execute on function my_consent_state() to authenticated;
+
+-- Admin: who is behind on what. Metadata only.
+create or replace function member_consent_gaps()
+  returns table (member_no varchar, full_name text, doc_key text,
+                 held_version text, current_version text, granted boolean, given_at timestamptz)
+  language plpgsql security definer set search_path = public stable as $fn$
+begin
+  if not is_admin_uid(auth.uid()) then raise exception 'admin only'; end if;
+  return query
+  select m.member_no, m.full_name, d.k, hv.version, cv.version, h.granted, h.given_at
+    from members m
+   cross join (values ('membership_terms'),('privacy')) as d(k)
+    left join lateral (select current_terms_version(d.k) as id) c on true
+    left join terms_versions cv on cv.id = c.id
+    left join lateral (
+      select mc.terms_version_id, mc.granted, mc.given_at
+        from member_consents mc
+       where mc.member_no = m.member_no and mc.doc_key = d.k
+       order by mc.given_at desc limit 1
+    ) h on true
+    left join terms_versions hv on hv.id = h.terms_version_id
+   where h.terms_version_id is null or h.granted = false or h.terms_version_id <> c.id
+   order by m.member_no, d.k;
+end $fn$;
+revoke all on function member_consent_gaps() from public;
+grant execute on function member_consent_gaps() to authenticated;
+
+-- BIOMETRICS: the entrance facial recognition on the equipment list, if it is ever
+-- deployed, CANNOT ride on a general privacy consent — it is a separate, explicit,
+-- separately-withdrawable purpose under Vietnam's regime. Nothing is built for it
+-- here, and no doc_key is reserved for it, deliberately: adding one later should be
+-- a considered act with counsel, not an enum value someone finds already waiting.

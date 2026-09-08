@@ -78,10 +78,24 @@ session held server-side with the refresh token discarded.
 
 ## 3 · Member PIN and lockout
 
-`member_kiosk_pins` — bcrypt, 6 digits, plaintext never stored. Admin issues and
-resets via `set_member_kiosk_pin` (rejects `123456`, `000000` and similar; re-issuing
-clears any standing lockout). All three new tables carry **RLS enabled with zero
-policies** — unreadable by anon *and* authenticated; definer functions only.
+`member_kiosk_pins` — bcrypt, 6 digits, plaintext never stored. All three new tables
+carry **RLS enabled with zero policies** — unreadable by anon *and* authenticated;
+definer functions only.
+
+**The PIN is the member's, and only the member's** (amended 2026-09-08). No function
+accepts or returns a plaintext PIN except `set_my_kiosk_pin`, called *as the member*
+from the member portal where they are already authenticated. It derives the member
+from `auth.uid()` — `member_no` is never a parameter, so a caller cannot set a PIN for
+anyone but themselves. An admin-issued PIN would be known to staff at the moment of
+issuance, spoken across a bar or sent over Zalo, and it is the same staff who hold the
+tablet. Nobody at the club should ever know a member's six digits.
+
+Admin keeps exactly two powers, neither of which sets or reveals a value:
+`reset_member_kiosk_pin` (clears the hash → "no PIN set") and
+`clear_member_kiosk_lockout`. The original `set_member_kiosk_pin` is dropped.
+
+Weak-PIN rejection (`kiosk_pin_is_weak`) is applied at the member's own entry point:
+all-same, repeated pairs and triples, ascending and descending runs, and a blocklist.
 
 Lockout is keyed on **membership number, not device**, so walking to the next tablet
 gains nothing:
@@ -234,8 +248,16 @@ The landing therefore reads **`profiles.display_name`** and
 Phase 2 proves the identity model against **zero new member RLS**, which is a stronger
 proof than adding policies to make it work.
 
-`db/kiosk_phase2.sql` Part 7 carries a commented-out member-own policy on `visits` if
-the visit line is wanted.
+**The `visits` policy stays commented out, permanently** — not merely deferred. There
+is a second reason beyond the clean proof: `visits` carries the Ritual —
+`data_for_next_overture`, `last_continuum_note`, phase state, and the join to
+`harmony_observations`. A member-own policy on that table gives a member row-level
+access to the machinery of how they are handled, including grievance context. That is
+the line between invisible personalisation and surveillance.
+
+When the visit line is wanted in Phase 3 it comes from a **view or definer function
+returning date and room and nothing else** — never a policy on `visits`. Recorded here
+so it is not relitigated.
 
 The full on-site portal is **Phase 3**, built on this proven session.
 
@@ -280,10 +302,11 @@ overnight NFC tap from §4.
 
 ## 9 · Open decisions
 
-1. ~~The room list.~~ **RESOLVED — see §11.** No new space is needed.
-2. **`SUPABASE_JWT_SECRET`** — add it for the mint probe, or plan on the GoTrue fallback?
-3. **The `visits` line** on the member landing — worth the new policy, or land Phase 2
-   with zero new member RLS?
+1. ~~The room list.~~ **Closed — see §11.** Five rooms, no new space.
+2. **`SUPABASE_JWT_SECRET`** — **STILL OPEN, and it is the hard gate.** Not present in
+   `.env.local` as of 2026-09-08; `scripts/probe-jwt-mint.mjs` exits 2 (BLOCKED) and the
+   session layer stays unbuilt until it passes or fails explicitly.
+3. ~~The `visits` line.~~ **Closed — zero new member RLS. See §6.**
 
 ## 10 · Decisions locked
 
@@ -292,7 +315,15 @@ overnight NFC tap from §4.
 - PIN screen: **first name only**, nothing else; clears on abandon
 - Public `/kiosk/[floor]` unchanged, name and credit balance included
 - Membership numbers typed or tapped, never listed
-- Room list resolved: DT Gallery was renamed **The Studio**; no new space (2026-09-08)
+- Members set their own PIN; no admin function accepts or reveals one (2026-09-08)
+- Member landing reads `profiles` + `member_taste_profiles` only — zero new member RLS
+- Rooms: five spaces, no new one needed — **confirmed by Lachlan, 2026-09-08** (§11)
+
+**A note on how one of these was reached.** The room resolution was written into this
+doc as a locked decision before it had been confirmed. The conclusion was right, but
+the framing turned a reading of incomplete seed data into something load-bearing.
+Where a name cannot be matched to seed data in future: **report the gap, do not resolve
+it.** Absent seed data is at least as likely as an unrecorded rename.
 
 ---
 
@@ -317,14 +348,100 @@ Storing the display name would silently join nothing and the board would sit on
 `select distinct space from space_tables` and stores that value verbatim; it never
 accepts free text and never stores a display name.
 
-**Naming notes**
+**Naming notes — confirmed by Lachlan, 2026-09-08**
 
-- *DT Gallery* is the former name of **The Studio** (floor 2). Not a new room.
-- *Private Dining Room* in the original brief is **The Dining Room** (floor 3).
+- *DT Gallery* is a name of the past: that room is now **The Studio** (floor 2).
+- *Private Dining Room* is a name of the past: it is now **The Dining Room** (floor 3).
+- The five seeded spaces are correct and complete. No space is missing.
+
+**Canonical string: `The Dining Room`.** It is what members and staff say out loud, it
+is what all three admin pickers and `VisitsPanel` already use, and `board_note` copy
+reads under it — "Tonight in The Dining Room" is the sentence people say. *Private
+Dining Room* survives only in one stale legacy array (§11a) and is not canonical.
 - `Sports Club` is a valid `bookings.space` value but is deliberately unseeded in
   `space_tables` (zero bookable units). It takes no kiosk.
 
-**Optional cleanup, not scheduled.** Normalising `Library Bar` → `The Library Bar`
-would remove the trap permanently, but it is a data migration across `space_tables`,
-`bookings.space` and `calendar_entries.space` plus three hardcoded `SPACES` arrays,
-against live booking rows. Not part of Phase 2 unless asked.
+**Deferred, not scheduled.** Normalising `Library Bar` → `The Library Bar` would remove
+the trap permanently, but see §11a — the reference surface is wider than three arrays.
+The enrol picker reading `space_tables` verbatim removes the trap for Phase 2 without
+touching a single booking row.
+
+---
+
+## 11a · Every reference to a space string (enumerated before any rename)
+
+**Decision: ALIAS/display-layer, NOT rename.** The rename is *not* clean — it crosses
+four tables and five hardcoded arrays carrying **two divergent vocabularies**.
+
+**Tables with a space column**
+
+| Table | Column | Vocabulary |
+|---|---|---|
+| `space_tables` | `space` | current (the seed, and the source of truth) |
+| `bookings` | `space varchar(40)` | current — but its column comment still documents the legacy list |
+| `calendar_entries` | `space` | current — the board's join |
+| `visits` | `space` | **mixed** — free text, written by two different pickers |
+
+**Hardcoded arrays in the app**
+
+| File | Vocabulary |
+|---|---|
+| `app/admin/calendar/page.tsx:53` | current |
+| `app/admin/bookings/new/page.tsx:25` | current |
+| `app/admin/bookings/[id]/edit/page.tsx:15` | current |
+| `app/admin/mis/VisitsPanel.tsx:26` | current, plus `''` and `Other` |
+| `app/admin/mis/visits/[id]/page.tsx:109` | **LEGACY** — `Lounge · Library · Bar · Cigar Terrace · Private Dining` |
+
+**The finding that settles it.** `app/admin/mis/visits/[id]/page.tsx` still offers the
+pre-refit vocabulary, and `visits.space` is free text, so historical rows hold strings
+from a set that no longer matches any room. *That* is where "Private Dining Room" in
+the brief came from — a legacy `visits` value, not a missing space.
+
+A rename would therefore have to reconcile a third vocabulary in live historical data
+to be honest, and a half-renamed space silently orphans bookings. Out of scope for
+Phase 2. `kiosk_devices.room` reads `space_tables` verbatim and joins
+`calendar_entries.space` — both current-vocabulary — so the board is correct without
+touching any of this.
+
+**Separate task, not scheduled:** reconcile `app/admin/mis/visits/[id]/page.tsx` onto
+the current vocabulary and decide what to do with legacy `visits.space` values.
+
+---
+
+## 12 · Consent (schema now, capture UI is Phase 3)
+
+There is no terms or privacy consent capture anywhere today: members are admitted by
+invitation and their accounts are activated, so there has never been a member-facing
+sign-up screen to hang one on. The schema lands now, while the portal is already being
+opened for PIN setting.
+
+**Consent as schema, not a checkbox that gates a button.** A tick that isn't stored
+proves nothing once terms change, and makes selective re-consent impossible.
+
+- `terms_versions` — doc key, version, effective date, body or a pointer to it
+- `member_consents` — **append-only**; withdrawal inserts `granted = false` rather than
+  mutating, so the history is the evidence. Current state = latest row per
+  `(member_no, doc_key)`
+- **Three separate consents, never bundled:** `membership_terms`, `privacy`, and
+  `marketing` — opt-in, and withdrawable without disturbing the other two, because they
+  are separate rows with separate latest-state
+- `my_consent_state()` flags a member holding a superseded version. Marketing is opt-in,
+  so never having answered is not a pending action
+- **No member INSERT policy exists.** Writes go through `record_my_consent()`, which
+  derives `member_no` from `auth.uid()`, so a member cannot forge `given_at`, `method`,
+  or another member's row. Structural, not a validation rule someone can forget
+- `'kiosk'` is deliberately **not** a valid `method`. The kiosk reads consent currency
+  and never captures it — nobody agrees to terms on a bar-top tablet with a queue behind
+  them
+
+**No copy is seeded.** The terms and privacy text is written in TRC voice once TNJ Law
+confirms what Vietnam's regime currently requires (Decree 13 and anything since), and
+the privacy notice has to describe the MIS honestly — preference profiles with
+confidence scoring and decay, and Harmony Log entries that include grievances about the
+member.
+
+**Biometrics.** The entrance facial recognition on the equipment list, if it is ever
+deployed, cannot ride on a general privacy consent — it is a separate, explicit,
+separately-withdrawable purpose. Nothing is built for it, and **no `doc_key` is reserved
+for it deliberately**: adding one later should be a considered act with counsel, not an
+enum value someone finds already waiting.
