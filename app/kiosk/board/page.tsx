@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { menuForSpace } from '@/lib/kiosk/floors'
+import { menuForSpace, SPACE_TO_FLOOR } from '@/lib/kiosk/floors'
 
 // THE EVENT BOARD — the idle state, and the only way into either other mode.
 // No identity, no PII. Everything shown comes from kiosk_board(), which returns a
@@ -35,6 +35,10 @@ export default function KioskBoard() {
   const [b, setB] = useState<Board | null>(null)
   const [clock, setClock] = useState('')
   const [nfc, setNfc] = useState<Nfc>('idle')
+  // The room's logo, if one has been added. Try SVG, fall back to PNG, and if
+  // neither exists show nothing at all — never a broken image on a bar top.
+  // See public/images/floors/README.md: drop a file in, no code change needed.
+  const [logoExt, setLogoExt] = useState<'svg' | 'png' | null>('svg')
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const scanning = useRef(false)
 
@@ -180,7 +184,17 @@ export default function KioskBoard() {
   return (
     <div style={{ height: '100dvh', background: GROUND, color: INK, display: 'flex', flexDirection: 'column', padding: 'clamp(14px,3.5vh,40px) clamp(16px,6vw,64px)', overflow: 'hidden', gap: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontFamily: MONO, fontSize: 13, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(229,212,194,.55)' }}>
-        <span>{b?.room ?? ''}</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          {b?.room && SPACE_TO_FLOOR[b.room] && logoExt && (
+            <img
+              src={`/images/floors/${SPACE_TO_FLOOR[b.room]}.${logoExt}`}
+              alt=""
+              onError={() => setLogoExt(e => (e === 'svg' ? 'png' : null))}
+              style={{ height: 'clamp(26px,5vh,52px)', width: 'auto', opacity: .92 }}
+            />
+          )}
+          {b?.room ?? ''}
+        </span>
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 20 }}>
           {clock}
           {/* Staff live in the corner. This screen belongs to members; the staff
