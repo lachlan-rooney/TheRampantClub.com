@@ -5,10 +5,14 @@ needed: name the file after the floor slug and it renders. If the file is absent
 board simply shows no logo — never a broken image.
 
     library-bar.png        Floor 1 · The Library Bar     — open book + monocle
-    studio.png             Floor 2 · The Studio          — artwork on a plinth
-    dining-room.png        Floor 3 · The Dining Room     — lit candle
+    studio.png             Floor 2 · The Studio          — artist's paintbrush
+    dining-room.png        Floor 3 · The Dining Room     — dinner plate
     rampant-room.png       Floor 4 · The Rampant Room    — cut-crystal tumbler
     source-origin-lab.png  Floor 5 · Source & Origin Lab — conical flask
+
+All five confirmed by Lachlan. The paintbrush and the plate were originally read
+the wrong way round — a paintbrush at that size resembles a lit candle, and the
+plate edge-on resembles a plinth. Check the object, not the silhouette.
 
 The office lion (holding a folder) is not a floor — it is the admin portal mark,
 at /images/logo-office-cream.png.
