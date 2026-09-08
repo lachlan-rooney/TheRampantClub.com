@@ -51,10 +51,11 @@ export default function KioskBoard() {
   const [pin, setPin] = useState('')
   const [err, setErr] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [sent, setSent] = useState('')
   const abandon = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const closePanel = useCallback(() => {
-    setPanel(false); setTap(null); setNum(''); setPin(''); setErr(false)
+    setPanel(false); setTap(null); setNum(''); setPin(''); setErr(false); setSent('')
   }, [])
 
   // Everything clears on abandon — the name never sits on the bar unattended.
@@ -281,7 +282,28 @@ export default function KioskBoard() {
                 <span style={{ color: 'rgba(229,212,194,.4)' }}>Not set a code yet? You can set one in your member portal.</span>
               </div>
             )}
-            <button onClick={closePanel} style={{ ...staffCorner, marginTop: 18, fontSize: 12 }}>Cancel</button>
+            <div style={{ display: 'flex', gap: 18, marginTop: 18, alignItems: 'center', flexWrap: 'wrap' }}>
+              <button onClick={closePanel} style={{ ...staffCorner, fontSize: 12 }}>Cancel</button>
+              {/* Same answer whether or not there is a member behind it. */}
+              <button
+                onClick={async () => {
+                  const who = (tap?.member_no || num).trim()
+                  if (!who) return
+                  bump()
+                  const r = await fetch('/api/kiosk/member/reset', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ who }),
+                  })
+                  const j = await r.json().catch(() => ({}))
+                  setSent(j.message || 'If that matches a member, a link has been sent.')
+                }}
+                style={{ ...staffCorner, fontSize: 12 }}
+              >Forgot your code?</button>
+            </div>
+            {sent && (
+              <div style={{ fontFamily: MONO, fontSize: 12, color: 'rgba(229,212,194,.6)', marginTop: 12, lineHeight: 1.7, maxWidth: 380 }}>
+                {sent}
+              </div>
+            )}
           </div>
 
           {/* The keypad. A fullscreen PWA can't rely on a soft keyboard appearing. */}

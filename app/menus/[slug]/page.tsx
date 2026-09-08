@@ -119,8 +119,8 @@ export default function FloorMenuPage({ params }: { params: Promise<{ slug: stri
           margin: 0 auto;
           padding: 0 16px 60px;
         }
-        /* Inline PDF (desktop). <object> renders reliably on desktop browsers;
-           its inner fallback covers any that can't. */
+        /* Layout for the menu link card. There is no inline PDF — see the note
+           in the markup; object-src 'none' rules it out on every browser. */
         .menu-embed {
           width: 100%;
           height: 80vh;
@@ -166,7 +166,7 @@ export default function FloorMenuPage({ params }: { params: Promise<{ slug: stri
         @media (max-width: 768px) {
           .menu-head { padding-top: 80px; }
           .menu-embed { display: none; }
-          .menu-mobile { display: block; }
+          .menu-mobile { display: block; }   /* the same card, sized for a phone */
         }
       ` }} />
 
@@ -189,12 +189,15 @@ export default function FloorMenuPage({ params }: { params: Promise<{ slug: stri
         </div>
 
         <div className="menu-frame">
-          <object data={menu.pdf} type="application/pdf" className="menu-embed" aria-label={`${menu.name} menu`}>
-            <div className="menu-cta">
-              <p className="menu-cta-text">The menu opens best in your PDF viewer.</p>
-              <a href={menu.pdf} target="_blank" rel="noopener noreferrer" className="menu-action primary">View the menu →</a>
-            </div>
-          </object>
+          {/* A LINK CARD — not an embed with a fallback.
+              The CSP sets object-src 'none', so <object> never rendered a PDF here
+              either: 93e035a swapped a broken <iframe> for a broken <object>, and
+              what actually shipped both times was this card. It is the right
+              surface — it just was not what the code claimed to be. */}
+          <div className="menu-cta menu-embed">
+            <p className="menu-cta-text">The menu opens in your PDF viewer.</p>
+            <a href={menu.pdf} target="_blank" rel="noopener noreferrer" className="menu-action primary">View the menu →</a>
+          </div>
           <div className="menu-mobile">
             <p className="menu-cta-text">Tap to view the full menu.</p>
             <a href={menu.pdf} target="_blank" rel="noopener noreferrer" className="menu-action primary">View the menu →</a>
