@@ -1,10 +1,17 @@
 # Kiosk Phase 2 — modes, member session, event board
 
 Design record for branch `kiosk-phase2-modes-board`. SQL lives in `db/kiosk_phase2.sql`.
-Status: **BUILT AND VERIFIED — 34 checks, no failures, no skips. NOT MERGED.**
-The single remaining gate is the **overnight NFC cold tap on the actual tablet**
-(§4). Everything else can pass in the morning and still be wrong about the one
-thing that cannot be tested in daylight. Do not merge before it.
+Status: **MERGED AND LIVE (2026-09-08).** 34 checks, no failures, no skips.
+Merged ahead of the overnight NFC cold tap at the owner's instruction, so that test
+(§4) is now a **production assumption rather than a gate**. Still outstanding.
+
+**What the tablet found that 34 checks did not.** Nothing landed on `/kiosk/board` —
+the PWA still started at `/kiosk/staff`; the menu sat on a page nobody opened any
+more; and member sign-in rendered ONLY when NFC reported failure, so whenever the
+scanner believed it worked there was no way in at all. Every check exercised
+`/kiosk/board` directly; not one asked whether anyone could *reach* it. **Test the
+front door, not just the room.** The board is now home, member-first, with card tap
+answered on the board itself and staff reduced to a corner affordance.
 
 Phase 1 shipped the enrolled device session (`kiosk_devices`), the staff picker
 (PIN → `logged_by` / `guardian_staff_id`) and the gated `/kiosk/staff` shell.
