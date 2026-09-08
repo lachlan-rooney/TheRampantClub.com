@@ -345,9 +345,10 @@ export default function KioskPage({ params }: { params: Promise<{ floor: string 
           background: #1a1a1a;
           display: block;
         }
-        /* The <object> fallback: shown when the browser can't render a PDF inline. */
+        /* The menu link card. There is no inline embed — see the note in the markup. */
         .k-menu-card {
-          height: 100%; display: flex; flex-direction: column;
+          text-decoration: none; color: inherit;
+          min-height: 46vh; display: flex; flex-direction: column;
           align-items: center; justify-content: center; gap: 20px;
           background: rgba(229,212,194,0.03);
           border-radius: 12px; padding: 48px 24px; text-align: center;
@@ -517,15 +518,16 @@ export default function KioskPage({ params }: { params: Promise<{ floor: string 
               </div>
             )}
           </div>
+          {/* A LINK CARD — not an embed with a fallback. The CSP in next.config.js
+              sets object-src 'none', so <object> can never render a PDF here and the
+              "fallback" was always the entire feature. Named honestly so nobody loses
+              an hour wondering why the embed does not fire. Do NOT loosen object-src
+              to make one work: a PDF viewer on a shared tablet is not worth it. */}
           {floor.menuPdf ? (
-            <object data={floor.menuPdf} type="application/pdf" aria-label={`${floor.name} menu`} className="k-menu-frame">
-              {/* Rendered only when the browser cannot display a PDF inline —
-                  Android Chrome, i.e. these tablets. A real card, not a broken box. */}
-              <div className="k-menu-card">
-                <div className="k-menu-card-title">Tonight&rsquo;s menu</div>
-                <a href={floor.menuPdf} target="_blank" rel="noopener noreferrer" className="k-menu-card-btn">Open the menu ↗</a>
-              </div>
-            </object>
+            <a href={floor.menuPdf} target="_blank" rel="noopener noreferrer" className="k-menu-card">
+              <span className="k-menu-card-title">Tonight&rsquo;s menu</span>
+              <span className="k-menu-card-btn">Open the menu ↗</span>
+            </a>
           ) : (
             <div className="k-menu-empty">
               Menu for {floor.name} hasn&rsquo;t been added yet.
