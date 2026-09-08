@@ -2,7 +2,7 @@
   "name": "Rampant Kiosk",
   "short_name": "Kiosk",
   "description": "The Rampant Club \u2014 in-club floor kiosk",
-  "start_url": "/kiosk/board",
+  "start_url": "/kiosk",
   "scope": "/kiosk",
   "display": "fullscreen",
   "orientation": "landscape",

@@ -16,7 +16,13 @@ export default function KioskPair() {
     setBusy(true); setErr('')
     try {
       const r = await fetch('/api/kiosk/pair', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) })
-      if (r.ok) window.location.href = '/kiosk/staff'
+      if (r.ok) {
+        // Land on this tablet's own floor. Falls back to the board when the device
+        // has no room set yet — never onto the staff sign-in.
+        const j = await r.json().catch(() => ({}))
+        window.location.href = j.next || '/kiosk/board'
+        return
+      }
       else setErr((await r.json().catch(() => ({})))?.error || 'Could not pair.')
     } finally { setBusy(false) }
   }
