@@ -1,7 +1,10 @@
 # Kiosk Phase 2 — modes, member session, event board
 
 Design record for branch `kiosk-phase2-modes-board`. SQL lives in `db/kiosk_phase2.sql`.
-Status: **design approved in part — three decisions still open (§9). Nothing run, no app code yet.**
+Status: **BUILT AND VERIFIED — 34 checks, no failures, no skips. NOT MERGED.**
+The single remaining gate is the **overnight NFC cold tap on the actual tablet**
+(§4). Everything else can pass in the morning and still be wrong about the one
+thing that cannot be tested in daylight. Do not merge before it.
 
 Phase 1 shipped the enrolled device session (`kiosk_devices`), the staff picker
 (PIN → `logged_by` / `guardian_staff_id`) and the gated `/kiosk/staff` shell.
@@ -450,3 +453,47 @@ deployed, cannot ride on a general privacy consent — it is a separate, explici
 separately-withdrawable purpose. Nothing is built for it, and **no `doc_key` is reserved
 for it deliberately**: adding one later should be a considered act with counsel, not an
 enum value someone finds already waiting.
+
+---
+
+## 13 · Verification results (2026-09-08)
+
+`scripts/verify-kiosk-phase2.mjs` — **34 checks, no failures, no skips**, run with
+the dev server up so the HTTP checks were real rather than deferred. `tsc` clean.
+ZZ-K2 throwaway fixtures only, removed in a `finally` block.
+
+**The three that decide the model**
+
+| | Result |
+|---|---|
+| **1 · data-layer boundary** | A member-mode identity is refused on `visits`, `harmony_observations`, `preferences`, `team_members`, `members` and `bookings`. Tested against PostgREST, not the screen. |
+| **2 · no lateral escape** | The login response carries `trc_kiosk_staff=` with `Max-Age=0` — entering member mode destroys the staff session in the same response. |
+| **3 · own data only** | A sees exactly one taste profile, theirs; zero rows when asking for B by name. |
+| **8 · the back-gesture** | `GET /kiosk/staff` → **307 → /kiosk/board** under a live member session, **against a baseline in the same run where the same route returns 200 with only a device cookie**. The control is what makes this "the member session causes it" rather than "it redirects". |
+
+Also proven: lockout follows the membership number **across tablets** (correct PIN
+refused on tablet 1 after five failures on tablet 2); wrong-PIN and unknown-member
+are byte-identical; revoking the device kills the live session and records
+`device_revoked`; a 21:00–01:00 board entry ends after it starts; the board payload
+is exactly ten non-PII columns; the old admin plaintext-PIN function is gone (404);
+Phase 1 device session and staff roster unbroken and still device-gated.
+
+**Three failures during this phase turned out to be the harness, not the system** —
+an expiry test tighter than the ~60s skew leeway, an assertion calling the
+deliberately non-mutating liveness check, and a missing `Content-Type` that made
+PostgREST read the body as an unnamed text parameter and look like a Phase 1
+regression. Check before believing a failure; it has earned its keep three times.
+
+### Still to do before merge
+
+1. **The overnight NFC cold tap** — set the board, leave the tablet, return in the
+   morning, tap a card with no prior touch. The permission-state check is the one
+   assumption in the §4 mitigation and only the tablet can settle it. Use
+   `db/kiosk_phase2_tonight.sql`; its timings cross WIND DOWN into NO EVENT
+   overnight, so a board still showing WIND DOWN in the morning is a real finding.
+2. **A cold walk-through by a floor member** (Mr Sy or Miss Châu), *not* told the
+   flow. If the hand-over from staff mode to member mode is not obvious to the
+   person doing it fifty times a night, that is worth knowing before merge.
+3. **The calendar form UI for the board fields** — the API accepts
+   `show_on_board`, `doors_open_at`, `board_note`, `board_note_vn`, `title_vn`;
+   the admin form does not offer them yet. Last build item.
