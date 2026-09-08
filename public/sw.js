@@ -5,7 +5,7 @@
 //
 // Bump CACHE_VERSION whenever you change the precache list or cache strategy.
 
-const CACHE_VERSION = 'rampant-v1';
+const CACHE_VERSION = 'rampant-v2';
 const PRECACHE = [
   '/offline',
   '/icon-192.png',
@@ -26,7 +26,21 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_VERSION).map((k) => caches.delete(k)))
+      Promise.all([
+        // Drop superseded caches…
+        ...keys.filter((k) => k !== CACHE_VERSION).map((k) => caches.delete(k)),
+        // …and evict any kiosk page an earlier version already stored, so a tablet
+        // that ran the old worker does not keep serving what it cached.
+        caches.open(CACHE_VERSION).then((cache) =>
+          cache.keys().then((reqs) =>
+            Promise.all(
+              reqs
+                .filter((r) => new URL(r.url).pathname.startsWith('/kiosk'))
+                .map((r) => cache.delete(r))
+            )
+          )
+        ),
+      ])
     )
   );
   self.clients.claim();
@@ -42,7 +56,15 @@ self.addEventListener('fetch', (event) => {
   if (
     url.pathname.startsWith('/api/') ||
     url.pathname.startsWith('/auth/') ||
-    url.hostname.includes('supabase.co')
+    url.hostname.includes('supabase.co') ||
+    // THE KIOSK IS NEVER CACHED. The tablets are shared and bolted to a room, so
+    // anything stored here outlives the member who put it there and is served to
+    // whoever is next. Today's kiosk pages are client-rendered and their HTML
+    // carries no member data — but that is a rendering choice, and a rendering
+    // choice can be changed by someone who never reads this file. The exclusion
+    // is mechanical so it holds regardless.
+    url.pathname === '/kiosk' ||
+    url.pathname.startsWith('/kiosk/')
   ) return;
 
   // Navigation: network-first, fall back to a cached page or the offline shell.

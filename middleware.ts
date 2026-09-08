@@ -30,6 +30,27 @@ export async function middleware(request: NextRequest) {
   // a personal login. No valid device → bounced to pairing. The public display
   // /kiosk/[floor] is unaffected (not in the matcher).
   const p = request.nextUrl.pathname
+
+  // ── NOTHING UNDER /kiosk IS EVER STORED ────────────────────────────────────
+  // The second half of the cache boundary (the first is the /kiosk exclusion in
+  // public/sw.js). This one covers a DIFFERENT cache: the browser's HTTP disk
+  // cache and the back-forward cache, neither of which the service worker touches.
+  // A bolted-down shared tablet must not keep a member's view anywhere.
+  const noStore = <T extends NextResponse>(res: T): T => {
+    if (p === '/kiosk' || p.startsWith('/kiosk/')) {
+      res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, private')
+      res.headers.set('Pragma', 'no-cache')
+    }
+    return res
+  }
+
+  // Public floor kiosks (/kiosk/[floor]) and /kiosk/pair are NOT device-gated —
+  // gating them would break the public display. They still get no-store.
+  if (p === '/kiosk' || (p.startsWith('/kiosk/')
+      && !p.startsWith('/kiosk/staff') && !p.startsWith('/kiosk/board') && !p.startsWith('/kiosk/member'))) {
+    return noStore(supabaseResponse)
+  }
+
   if (p.startsWith('/kiosk/staff') || p.startsWith('/kiosk/board') || p.startsWith('/kiosk/member')) {
     const token = request.cookies.get('trc_kiosk_device')?.value
     let active = false
@@ -37,7 +58,7 @@ export async function middleware(request: NextRequest) {
     if (!active) {
       const url = request.nextUrl.clone()
       url.pathname = '/kiosk/pair'; url.search = ''
-      return NextResponse.redirect(url)
+      return noStore(NextResponse.redirect(url))
     }
 
     // ── THE PHASE 2 MODE BOUNDARY ──────────────────────────────────────────
@@ -59,11 +80,11 @@ export async function middleware(request: NextRequest) {
         if (live === true) {
           const url = request.nextUrl.clone()
           url.pathname = '/kiosk/board'; url.search = ''
-          return NextResponse.redirect(url)
+          return noStore(NextResponse.redirect(url))
         }
       }
     }
-    return supabaseResponse   // device valid → allow; the staff picker is app-side (attribution)
+    return noStore(supabaseResponse)   // device valid → allow; the staff picker is app-side (attribution)
   }
 
   const {
@@ -134,6 +155,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/members/:path*', '/admin/:path*', '/login',
-            '/kiosk/staff/:path*', '/kiosk/board/:path*', '/kiosk/member/:path*'],
+  // /kiosk/:path* covers every kiosk surface so the no-store header reaches the
+  // public floor pages too; the device gate inside applies only to staff/board/member.
+  matcher: ['/members/:path*', '/admin/:path*', '/login', '/kiosk', '/kiosk/:path*'],
 }

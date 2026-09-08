@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { svc, deviceOk, DEVICE_COOKIE, MEMBER_COOKIE, STAFF_COOKIE, memberCookieOpts } from '@/lib/kiosk/server'
-import { normaliseName, nameTokens } from '@/lib/kiosk/names'
+import { resolveMember, SENTINEL } from '@/lib/kiosk/resolve'
 
 // PIN → member session. The DB function returns the opaque token, or null for
 // EVERY failure: wrong PIN, unknown member, no PIN set, locked out, dead device,
@@ -9,14 +9,6 @@ import { normaliseName, nameTokens } from '@/lib/kiosk/names'
 // so there is exactly one error message and one status code.
 
 export const dynamic = 'force-dynamic'
-
-/** Members should not have to type "TRC-M". Accepts 1 · 001 · M1 · TRC-M001. */
-export function normaliseMemberNo(raw: string): string {
-  const v = raw.trim().toUpperCase().replace(/\s+/g, '')
-  const digits = v.replace(/^TRC-?M?/, '').replace(/^M/, '')
-  if (/^\d{1,3}$/.test(digits)) return `TRC-M${digits.padStart(3, '0')}`
-  return v
-}
 
 export async function POST(req: Request) {
   if (!(await deviceOk())) return NextResponse.json({ error: 'Device not enrolled.' }, { status: 403 })
@@ -30,39 +22,17 @@ export async function POST(req: Request) {
   const device = (await cookies()).get(DEVICE_COOKIE)!.value
   const a = svc()
 
-  // Resolve who to check the PIN against. A bare number still works; otherwise the
-  // typed word is matched against any token of a member's name.
-  let candidates: string[] = []
-  const asNo = normaliseMemberNo(who)
-  if (/^TRC-M\d{3}$/.test(asNo)) {
-    candidates = [asNo]
-  } else {
-    const needle = normaliseName(who)
-    if (needle.length >= 2) {
-      const { data: all } = await a.from('members').select('member_no, full_name, nickname')
-      candidates = (all || [])
-        .filter(m => nameTokens(m.full_name, m.nickname).includes(needle))
-        .map(m => m.member_no)
-    }
-    // Last resort: treat what they typed as a literal membership number. Real
-    // numbers are TRC-M### and handled above, but this covers any that aren't
-    // rather than failing on a shape assumption.
-    if (candidates.length === 0) {
-      const literal = who.trim().toUpperCase()
-      if (/^[A-Z0-9-]{1,12}$/.test(literal)) candidates = [literal]
-    }
-  }
+  // ── RESOLUTION BEFORE VERIFICATION, AND IT WRITES NOTHING ──────────────
+  // resolveMember returns EXACTLY ONE member or nothing; see lib/kiosk/resolve.ts
+  // for why an ambiguous name must resolve to nothing rather than to a list.
+  const member_no = await resolveMember(who, a)
 
-  // Try each candidate. A shared surname is common here, so more than one is normal;
-  // the PIN decides. Every failure is recorded against that member's own number, so
-  // lockout stays keyed to the membership number and not to the device.
-  let token: string | null = null
-  for (const member_no of candidates) {
-    const { data: t } = await a.rpc('kiosk_member_login', {
-      p_device_token: device, p_member_no: member_no, p_pin: pin,
-    })
-    if (t) { token = t as string; break }
-  }
+  // ONE attempt, ONE row, whatever the name matched. An unresolved name still goes
+  // through kiosk_member_login so the failure costs the same bcrypt and is
+  // indistinguishable from outside — it is simply pointed at a key no member holds.
+  const { data: token } = await a.rpc('kiosk_member_login', {
+    p_device_token: device, p_member_no: member_no ?? SENTINEL, p_pin: pin,
+  })
 
   // ONE generic failure. Never "no PIN set", never "no such member" — the tablet
   // must not confirm which membership numbers are live. The set-a-PIN guidance is
