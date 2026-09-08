@@ -280,10 +280,7 @@ overnight NFC tap from §4.
 
 ## 9 · Open decisions
 
-1. **The room list.** The brief names *DT Gallery* and *Private Dining Room*. Neither
-   exists. `space_tables` seeds **Library Bar · The Studio · The Dining Room · The
-   Rampant Room · Source & Origin Lab** (Sports Club is intentionally unseeded). The
-   board joins on these strings exactly. Rename in the DB, or add DT Gallery as a new space?
+1. ~~The room list.~~ **RESOLVED — see §11.** No new space is needed.
 2. **`SUPABASE_JWT_SECRET`** — add it for the mint probe, or plan on the GoTrue fallback?
 3. **The `visits` line** on the member landing — worth the new policy, or land Phase 2
    with zero new member RLS?
@@ -295,3 +292,39 @@ overnight NFC tap from §4.
 - PIN screen: **first name only**, nothing else; clears on abandon
 - Public `/kiosk/[floor]` unchanged, name and credit balance included
 - Membership numbers typed or tapped, never listed
+- Room list resolved: DT Gallery was renamed **The Studio**; no new space (2026-09-08)
+
+---
+
+## 11 · The rooms
+
+One tablet per room. `kiosk_devices.room` stores the **join key** — the exact string in
+`bookings.space` / `calendar_entries.space`. The floor and the display name are
+presentation only.
+
+| Floor | Display name | `room` (join key) | Seeded in `space_tables` |
+|---|---|---|---|
+| 1 | The Library Bar | `Library Bar` | yes |
+| 2 | The Studio | `The Studio` | yes |
+| 3 | The Dining Room | `The Dining Room` | yes |
+| 4 | The Rampant Room | `The Rampant Room` | yes |
+| 5 | Source & Origin Lab | `Source & Origin Lab` | yes |
+
+**Floor 1 is the one trap.** It displays as "The Library Bar" but its space string is
+`Library Bar`, with no "The" — the only one of the five where display and key differ.
+Storing the display name would silently join nothing and the board would sit on
+`no_event` forever. The admin enrol picker therefore reads
+`select distinct space from space_tables` and stores that value verbatim; it never
+accepts free text and never stores a display name.
+
+**Naming notes**
+
+- *DT Gallery* is the former name of **The Studio** (floor 2). Not a new room.
+- *Private Dining Room* in the original brief is **The Dining Room** (floor 3).
+- `Sports Club` is a valid `bookings.space` value but is deliberately unseeded in
+  `space_tables` (zero bookable units). It takes no kiosk.
+
+**Optional cleanup, not scheduled.** Normalising `Library Bar` → `The Library Bar`
+would remove the trap permanently, but it is a data migration across `space_tables`,
+`bookings.space` and `calendar_entries.space` plus three hardcoded `SPACES` arrays,
+against live booking rows. Not part of Phase 2 unless asked.
