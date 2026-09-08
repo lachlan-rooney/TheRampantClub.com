@@ -64,6 +64,11 @@ export default function KioskStaff() {
         <div style={muted}>The floor is yours. The briefing, the Accord and the Continuum arrive here next.</div>
         <div style={shellNote}>Phase 1 · secure shell · the Ritual surfaces land in Phase 2</div>
         <button onClick={logout} style={switchBtn}>I’m done · switch user</button>
+        {/* The hand-back. Exiting staff mode returns the tablet to the BOARD, which
+            is where a member picks it up — and where they enter their own PIN. */}
+        <button onClick={async () => { await fetch('/api/kiosk/staff/logout', { method: 'POST' }); window.location.href = '/kiosk/board' }} style={boardBtn}>
+          Hand over · back to the board
+        </button>
       </div>
     </Center>
   )
@@ -118,6 +123,7 @@ const kicker: React.CSSProperties = { fontFamily: MONO, fontSize: 11, color: '#D
 const muted: React.CSSProperties = { fontFamily: MONO, fontSize: 13, color: '#B2AA98', opacity: 0.8, lineHeight: 1.7, maxWidth: 420, margin: '0 auto' }
 const shellNote: React.CSSProperties = { fontFamily: MONO, fontSize: 10, color: '#7E7864', letterSpacing: '0.06em', marginTop: 24 }
 const switchBtn: React.CSSProperties = { marginTop: 28, background: 'transparent', border: '1px solid rgba(178,170,152,0.3)', borderRadius: 24, padding: '12px 28px', fontFamily: MONO, fontSize: 13, color: '#B2AA98', cursor: 'pointer' }
+const boardBtn: React.CSSProperties = { display: 'block', margin: '14px auto 0', background: 'transparent', border: '1px solid rgba(229,212,194,0.28)', borderRadius: 8, padding: '10px 20px', fontFamily: MONO, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#E5D4C2', cursor: 'pointer' }
 const grid: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14 }
 const nameBtn: React.CSSProperties = { padding: '24px 16px', background: 'rgba(229,212,194,0.04)', border: '1px solid rgba(212,184,90,0.25)', borderRadius: 14, cursor: 'pointer' }
 const backBtn: React.CSSProperties = { background: 'transparent', border: 'none', color: '#B2AA98', fontFamily: MONO, fontSize: 12, cursor: 'pointer', marginBottom: 8 }
