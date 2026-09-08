@@ -44,6 +44,13 @@ export async function POST(req: Request) {
         .filter(m => nameTokens(m.full_name, m.nickname).includes(needle))
         .map(m => m.member_no)
     }
+    // Last resort: treat what they typed as a literal membership number. Real
+    // numbers are TRC-M### and handled above, but this covers any that aren't
+    // rather than failing on a shape assumption.
+    if (candidates.length === 0) {
+      const literal = who.trim().toUpperCase()
+      if (/^[A-Z0-9-]{1,12}$/.test(literal)) candidates = [literal]
+    }
   }
 
   // Try each candidate. A shared surname is common here, so more than one is normal;
