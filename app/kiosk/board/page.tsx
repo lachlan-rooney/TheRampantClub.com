@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { SPACE_TO_FLOOR } from '@/lib/kiosk/floors'
 
 // THE EVENT BOARD — the idle state, and the only way into either other mode.
 // No identity, no PII. Everything shown comes from kiosk_board(), which returns a
@@ -161,26 +162,51 @@ export default function KioskBoard() {
         )}
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 20 }}>
-        <div style={{ fontFamily: MONO, fontSize: 13, color: 'rgba(229,212,194,.6)', lineHeight: 1.7 }}>
-          {nfc === 'scanning' ? (
-            <>Hold your member card to the tablet<br /><span style={{ color: 'rgba(229,212,194,.35)' }}>Chạm thẻ hội viên vào máy</span></>
-          ) : nfc === 'unsupported' ? (
-            <button onClick={() => router.push('/kiosk/member')} style={linkBtn}>Enter your membership number</button>
-          ) : nfc === 'denied' ? (
-            <button onClick={() => router.push('/kiosk/member')} style={linkBtn}>Enter your membership number</button>
-          ) : (
-            // Honest: it is NOT listening yet, and says so rather than implying it is.
-            <>Touch the screen to begin<br /><span style={{ color: 'rgba(229,212,194,.35)' }}>Chạm màn hình để bắt đầu</span></>
+      {/* ── THE ACTIONS ────────────────────────────────────────────────────
+          Member sign-in is ALWAYS here. It used to appear only when NFC reported
+          unsupported or denied, which meant that whenever the scanner believed it
+          was working there was no way in at all — and no way in for a member who
+          simply hasn't their card on them. The card tap is a shortcut, never the
+          only door. Big targets: this is a bar top, not a desk. */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 18, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          <button onClick={() => router.push('/kiosk/member')} style={primaryBtn}>
+            Member sign in
+          </button>
+          {b?.room && SPACE_TO_FLOOR[b.room] && (
+            <a href={`/kiosk/${SPACE_TO_FLOOR[b.room]}`} style={menuBtn}>Tonight&rsquo;s menu ↗</a>
           )}
         </div>
-        <button onClick={() => router.push('/kiosk/staff')} style={{ ...linkBtn, fontSize: 11, opacity: .4 }}>Staff</button>
+
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 18 }}>
+          <div style={{ fontFamily: MONO, fontSize: 12, color: 'rgba(229,212,194,.5)', textAlign: 'right', lineHeight: 1.7, maxWidth: 260 }}>
+            {nfc === 'scanning'
+              ? <>Or hold your card to the tablet<br /><span style={{ color: 'rgba(229,212,194,.3)' }}>Hoặc chạm thẻ vào máy</span></>
+              : nfc === 'unsupported' ? 'Card tap unavailable on this device'
+              : nfc === 'denied' ? 'Card tap blocked — allow NFC in browser settings'
+              : <>Touch the screen to enable card tap<br /><span style={{ color: 'rgba(229,212,194,.3)' }}>Chạm màn hình để bật thẻ</span></>}
+          </div>
+          <button onClick={() => router.push('/kiosk/staff')} style={staffBtn}>Staff</button>
+        </div>
       </div>
     </div>
   )
 }
 
-const linkBtn: React.CSSProperties = {
-  background: 'none', border: 'none', color: 'rgba(229,212,194,.6)', fontFamily: MONO,
-  fontSize: 13, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer', padding: 0,
+const primaryBtn: React.CSSProperties = {
+  background: '#E5D4C2', color: '#052E20', border: 'none', borderRadius: 8,
+  fontFamily: MONO, fontSize: 14, letterSpacing: '.08em', textTransform: 'uppercase',
+  padding: '18px 34px', cursor: 'pointer', minHeight: 56,
+}
+const staffBtn: React.CSSProperties = {
+  background: 'none', border: '1px solid rgba(229,212,194,.22)', borderRadius: 8,
+  color: 'rgba(229,212,194,.55)', fontFamily: MONO, fontSize: 12,
+  letterSpacing: '.1em', textTransform: 'uppercase',
+  padding: '14px 22px', cursor: 'pointer', minHeight: 48,
+}
+const menuBtn: React.CSSProperties = {
+  fontFamily: MONO, fontSize: 14, letterSpacing: '.08em', textTransform: 'uppercase',
+  color: '#D4B85A', textDecoration: 'none',
+  border: '1px solid rgba(212,184,90,.45)', borderRadius: 8,
+  padding: '17px 30px', minHeight: 56, display: 'flex', alignItems: 'center',
 }
