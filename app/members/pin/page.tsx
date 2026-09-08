@@ -59,13 +59,25 @@ export default function MemberPin() {
 
       {msg && <div style={{ marginTop: 16, fontSize: 13, color: msg.ok ? '#2E7D52' : '#B4463F' }}>{msg.text}</div>}
 
-      <p style={{ fontSize: 12, opacity: .5, marginTop: 26, lineHeight: 1.7 }}>
-        Avoid runs and repeats — 123456, 111111, 121212 and the like are refused.
+      <div style={warn}>
+        <strong style={{ fontWeight: 600 }}>Please don&rsquo;t use your date of birth.</strong> It is the
+        first code anyone tries, and unlike a password it isn&rsquo;t private — it is on your membership
+        record and often on your social media. Codes matching your date of birth are refused.
+      </div>
+
+      <p style={{ fontSize: 12, opacity: .5, marginTop: 18, lineHeight: 1.7 }}>
+        Runs and repeats are refused too — 123456, 111111, 121212 and the like.
+        Avoid anything a guest at your table could guess: a house number, a year, an anniversary.
       </p>
     </div>
   )
 }
 
+const warn: React.CSSProperties = {
+  marginTop: 26, padding: '14px 16px', fontSize: 13, lineHeight: 1.7,
+  background: 'rgba(212,184,90,0.10)', border: '1px solid rgba(212,184,90,0.45)',
+  borderRadius: 6,
+}
 const lbl: React.CSSProperties = { display: 'block', fontSize: 12, letterSpacing: '.1em', textTransform: 'uppercase', opacity: .6, marginBottom: 6 }
 const field: React.CSSProperties = { width: '100%', padding: '12px 14px', fontSize: 22, letterSpacing: '.4em', border: '1px solid rgba(0,0,0,.18)', borderRadius: 4, outline: 'none' }
 const btn: React.CSSProperties = { marginTop: 22, padding: '12px 26px', fontSize: 13, letterSpacing: '.1em', textTransform: 'uppercase', background: '#052E20', color: '#E5D4C2', border: 'none', borderRadius: 4, cursor: 'pointer' }

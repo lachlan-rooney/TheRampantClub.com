@@ -1,5 +1,20 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { svc } from '@/lib/kiosk/server'
+
+/** The six-digit codes a birthday yields. A date of birth is the first thing
+ *  anyone guesses, and unlike a weak-pattern PIN it is specific to the member —
+ *  it is also written on the membership record, so it is not even a secret. */
+function birthdayCodes(iso: string): string[] {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+  if (!m) return []
+  const [, yyyy, mm, dd] = m
+  const yy = yyyy.slice(2)
+  return [
+    `${dd}${mm}${yy}`, `${mm}${dd}${yy}`, `${yy}${mm}${dd}`,
+    `${yyyy}${mm}`,    `${mm}${yyyy}`,    `${dd}${mm}${yyyy}`.slice(0, 6),
+  ]
+}
 
 // The member's kiosk PIN — set and changed BY THE MEMBER, here, where they are
 // already authenticated. Deliberately NOT service-role: both calls run as the
@@ -31,6 +46,18 @@ export async function POST(req: Request) {
   if (typeof pin !== 'string' || !/^[0-9]{6}$/.test(pin)) {
     return NextResponse.json({ error: 'Your PIN must be exactly six digits.' }, { status: 400 })
   }
+  // Refuse the member's own date of birth. Checked against their own record only,
+  // resolved from their authenticated session — never a value anyone supplies.
+  const { data: prof } = await sb.from('profiles').select('member_no').eq('id', user.id).maybeSingle()
+  if (prof?.member_no) {
+    const { data: mem } = await svc().from('members').select('birthday').eq('member_no', prof.member_no).maybeSingle()
+    if (mem?.birthday && birthdayCodes(String(mem.birthday)).includes(pin)) {
+      return NextResponse.json({
+        error: 'That is your date of birth — the first code anyone would try. Please choose something else.',
+      }, { status: 400 })
+    }
+  }
+
   const { error } = await sb.rpc('set_my_kiosk_pin', { p_pin: pin })
   if (error) {
     // The DB is the authority on weak PINs; surface its judgement, not a second
