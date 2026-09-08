@@ -42,7 +42,7 @@ const FLOORS: Record<string, FloorConfig> = {
   },
   'dining-room': {
     slug: 'dining-room', floor: 3, name: 'The Dining Room', vn: 'Phòng Ăn Riêng',
-    accent: '#C27070',
+    accent: '#C27070', menuPdf: '/documents/menus/nam-friends-tonight.pdf',
     feature: {
       type: 'static',
       eyebrow: '◆ Tonight’s pick',
@@ -52,7 +52,7 @@ const FLOORS: Record<string, FloorConfig> = {
   },
   'rampant-room': {
     slug: 'rampant-room', floor: 4, name: 'The Rampant Room', vn: 'Phòng Rampant',
-    accent: '#D4B85A',
+    accent: '#D4B85A', menuPdf: '/documents/menus/nam-friends-tonight.pdf',
     feature: {
       type: 'whisky',
       eyebrow: '◆ Featured pour',
@@ -342,6 +342,24 @@ export default function KioskPage({ params }: { params: Promise<{ floor: string 
           border: 1px solid rgba(229,212,194,0.10);
           border-radius: 12px;
           background: #1a1a1a;
+          display: block;
+        }
+        /* The <object> fallback: shown when the browser can't render a PDF inline. */
+        .k-menu-card {
+          height: 100%; display: flex; flex-direction: column;
+          align-items: center; justify-content: center; gap: 20px;
+          background: rgba(229,212,194,0.03);
+          border-radius: 12px; padding: 48px 24px; text-align: center;
+        }
+        .k-menu-card-title {
+          font-family: 'Rampant Sans', serif; font-size: 22px; letter-spacing: 0.03em;
+        }
+        .k-menu-card-btn {
+          font-family: 'Google Sans Code', monospace; font-size: 13px;
+          letter-spacing: 0.08em; text-transform: uppercase;
+          color: ${floor.accent}; text-decoration: none;
+          border: 1px solid ${floor.accent}; border-radius: 8px;
+          padding: 14px 28px;
         }
         .k-menu-empty {
           padding: 60px 24px; text-align: center;
@@ -499,7 +517,14 @@ export default function KioskPage({ params }: { params: Promise<{ floor: string 
             )}
           </div>
           {floor.menuPdf ? (
-            <iframe src={floor.menuPdf} title={`${floor.name} menu`} className="k-menu-frame" />
+            <object data={floor.menuPdf} type="application/pdf" aria-label={`${floor.name} menu`} className="k-menu-frame">
+              {/* Rendered only when the browser cannot display a PDF inline —
+                  Android Chrome, i.e. these tablets. A real card, not a broken box. */}
+              <div className="k-menu-card">
+                <div className="k-menu-card-title">Tonight&rsquo;s menu</div>
+                <a href={floor.menuPdf} target="_blank" rel="noopener noreferrer" className="k-menu-card-btn">Open the menu ↗</a>
+              </div>
+            </object>
           ) : (
             <div className="k-menu-empty">
               Menu for {floor.name} hasn&rsquo;t been added yet.
