@@ -178,7 +178,7 @@ export default function KioskBoard() {
     : s === 'wind_down' ? ['Drawing to a close', 'Sắp kết thúc'] : null
 
   return (
-    <div style={{ minHeight: '100vh', background: GROUND, color: INK, display: 'flex', flexDirection: 'column', padding: '5vh 6vw', overflow: 'hidden' }}>
+    <div style={{ height: '100dvh', background: GROUND, color: INK, display: 'flex', flexDirection: 'column', padding: 'clamp(14px,3.5vh,40px) clamp(16px,6vw,64px)', overflow: 'hidden', gap: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontFamily: MONO, fontSize: 13, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(229,212,194,.55)' }}>
         <span>{b?.room ?? ''}</span>
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 20 }}>
@@ -189,8 +189,10 @@ export default function KioskBoard() {
         </span>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-        {s === 'no_event' ? (
+      {/* While the keypad is open the event yields the room it needs — the panel
+          must never push itself off the bottom of a phone. */}
+      <div style={{ flex: panel ? '0 1 auto' : 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 0, overflow: 'hidden' }}>
+        {panel ? null : s === 'no_event' ? (
           <>
             <div style={{ fontFamily: SERIF, fontSize: 'clamp(30px,5vw,58px)', lineHeight: 1.15 }}>The room is yours</div>
             <div style={{ fontFamily: SERIF, fontSize: 'clamp(18px,2.6vw,30px)', color: 'rgba(229,212,194,.5)', marginTop: 6 }}>Căn phòng là của bạn</div>
@@ -241,13 +243,14 @@ export default function KioskBoard() {
       ) : (
         <div style={panelWrap} onPointerDown={bump}>
           <div style={{ flex: 1, minWidth: 240 }}>
-            <div style={{ fontFamily: SERIF, fontSize: 'clamp(24px,3.2vw,38px)' }}>
+            <div style={{ fontFamily: SERIF, fontSize: 'clamp(20px,3.4vh,38px)' }}>
               {tap?.first_name ? <>Welcome, {tap.first_name}</> : 'Member sign in'}
             </div>
             {!tap && (
               <input
                 value={num} onChange={e => { setNum(e.target.value.toUpperCase()); bump() }}
-                placeholder="TRC-M000" autoComplete="off" spellCheck={false} style={numField}
+                placeholder="Membership no. — e.g. 1" inputMode="numeric"
+                autoComplete="off" spellCheck={false} style={numField}
               />
             )}
             <div style={{ fontFamily: MONO, fontSize: 12, letterSpacing: '.14em', textTransform: 'uppercase', color: 'rgba(229,212,194,.5)', marginTop: 16 }}>
@@ -288,8 +291,10 @@ const staffCorner: React.CSSProperties = {
   color: 'rgba(229,212,194,.3)',
 }
 const panelWrap: React.CSSProperties = {
-  display: 'flex', gap: 'clamp(24px,4vw,56px)', alignItems: 'flex-start', flexWrap: 'wrap',
-  borderTop: '1px solid rgba(229,212,194,.14)', paddingTop: 26,
+  display: 'flex', gap: 'clamp(16px,3.5vw,56px)', alignItems: 'center',
+  flexWrap: 'wrap', justifyContent: 'space-between',
+  borderTop: '1px solid rgba(229,212,194,.14)', paddingTop: 'clamp(14px,2.5vh,26px)',
+  minHeight: 0,
 }
 const numField: React.CSSProperties = {
   background: 'rgba(229,212,194,.07)', border: '1px solid rgba(229,212,194,.2)', borderRadius: 6,
@@ -297,15 +302,18 @@ const numField: React.CSSProperties = {
   padding: '12px 14px', marginTop: 14, width: 'min(260px, 100%)', outline: 'none',
 }
 const dot: React.CSSProperties = {
-  width: 16, height: 16, borderRadius: '50%', border: '1px solid rgba(229,212,194,.45)',
+  width: 'clamp(12px,1.7vh,16px)', height: 'clamp(12px,1.7vh,16px)',
+  borderRadius: '50%', border: '1px solid rgba(229,212,194,.45)',
 }
 const pad: React.CSSProperties = {
-  display: 'grid', gridTemplateColumns: 'repeat(3, 84px)', gap: 12,
+  display: 'grid',
+  gridTemplateColumns: 'repeat(3, clamp(58px, 19vw, 84px))',
+  gap: 'clamp(7px, 1.4vh, 12px)',
 }
 const padKey: React.CSSProperties = {
-  height: 72, borderRadius: 10, cursor: 'pointer',
+  height: 'clamp(46px, 8.2vh, 72px)', borderRadius: 10, cursor: 'pointer',
   background: 'rgba(229,212,194,.06)', border: '1px solid rgba(229,212,194,.18)',
-  color: '#E5D4C2', fontFamily: MONO, fontSize: 26,
+  color: '#E5D4C2', fontFamily: MONO, fontSize: 'clamp(18px, 3.4vh, 26px)',
 }
 const primaryBtn: React.CSSProperties = {
   background: '#E5D4C2', color: '#052E20', border: 'none', borderRadius: 8,

@@ -9,6 +9,14 @@ import { svc, deviceOk, DEVICE_COOKIE, MEMBER_COOKIE, STAFF_COOKIE, memberCookie
 
 export const dynamic = 'force-dynamic'
 
+/** Members should not have to type "TRC-M". Accepts 1 · 001 · M1 · TRC-M001. */
+export function normaliseMemberNo(raw: string): string {
+  const v = raw.trim().toUpperCase().replace(/\s+/g, '')
+  const digits = v.replace(/^TRC-?M?/, '').replace(/^M/, '')
+  if (/^\d{1,3}$/.test(digits)) return `TRC-M${digits.padStart(3, '0')}`
+  return v
+}
+
 export async function POST(req: Request) {
   if (!(await deviceOk())) return NextResponse.json({ error: 'Device not enrolled.' }, { status: 403 })
   const { member_no, pin } = await req.json().catch(() => ({}))
@@ -17,7 +25,7 @@ export async function POST(req: Request) {
   }
   const device = (await cookies()).get(DEVICE_COOKIE)!.value
   const { data: token } = await svc().rpc('kiosk_member_login', {
-    p_device_token: device, p_member_no: member_no.toUpperCase().trim(), p_pin: pin,
+    p_device_token: device, p_member_no: normaliseMemberNo(member_no), p_pin: pin,
   })
 
   // ONE generic failure. Never "no PIN set", never "no such member" — the tablet
