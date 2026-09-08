@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState, useCallback } from 'react'
 import { notFound } from 'next/navigation'
+import { FLOOR_MENUS } from '@/lib/kiosk/floors'
 
 interface FloorConfig {
   slug: string
@@ -22,7 +23,7 @@ interface FloorConfig {
 const FLOORS: Record<string, FloorConfig> = {
   'library-bar': {
     slug: 'library-bar', floor: 1, name: 'The Library Bar', vn: 'Quầy Bar Thư Viện',
-    accent: '#D4B85A', menuPdf: '/documents/menus/library-bar.pdf',
+    accent: '#D4B85A', menuPdf: FLOOR_MENUS['library-bar'],
     feature: {
       type: 'static',
       eyebrow: '◆ Bartender’s Pick',
@@ -42,7 +43,7 @@ const FLOORS: Record<string, FloorConfig> = {
   },
   'dining-room': {
     slug: 'dining-room', floor: 3, name: 'The Dining Room', vn: 'Phòng Ăn Riêng',
-    accent: '#C27070', menuPdf: '/documents/menus/nam-friends-tonight.pdf',
+    accent: '#C27070', menuPdf: FLOOR_MENUS['dining-room'],
     feature: {
       type: 'static',
       eyebrow: '◆ Tonight’s pick',
@@ -52,7 +53,7 @@ const FLOORS: Record<string, FloorConfig> = {
   },
   'rampant-room': {
     slug: 'rampant-room', floor: 4, name: 'The Rampant Room', vn: 'Phòng Rampant',
-    accent: '#D4B85A', menuPdf: '/documents/menus/nam-friends-tonight.pdf',
+    accent: '#D4B85A', menuPdf: FLOOR_MENUS['rampant-room'],
     feature: {
       type: 'whisky',
       eyebrow: '◆ Featured pour',

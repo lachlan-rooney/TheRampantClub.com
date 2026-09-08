@@ -39,9 +39,18 @@ export default function KioskMember() {
     router.replace('/kiosk/board')
   }, [router])
 
-  // The tap hands over a first name through sessionStorage, never the URL. Read it
-  // once and clear it immediately — it must not survive this screen.
+  // Sign-in now happens ON THE BOARD, so the usual arrival here is with a session
+  // already minted. Ask first; only fall back to the PIN screen if there isn't one
+  // (someone deep-linking here, or a session that expired on the way).
+  const [checked, setChecked] = useState(false)
   useEffect(() => {
+    ;(async () => {
+      try {
+        const r = await fetch('/api/kiosk/member/me', { cache: 'no-store' })
+        if (r.ok) setMe((await r.json()).member)
+      } catch {}
+      setChecked(true)
+    })()
     try {
       const raw = sessionStorage.getItem('trc_kiosk_tap')
       if (raw) { const j = JSON.parse(raw); setTap({ member_no: j.member_no, first_name: j.first_name }); setNum(j.member_no || '') }
@@ -113,7 +122,10 @@ export default function KioskMember() {
     </div>
   )
 
-  // ── THE PIN SCREEN ──────────────────────────────────────────────────────
+  // Don't flash a PIN screen while the session check is still in flight.
+  if (!checked) return <div style={wrap} />
+
+  // ── THE PIN SCREEN (fallback — normal entry is from the board) ───────────
   return (
     <div style={wrap} onPointerDown={bumpAbandon}>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', maxWidth: 460 }}>

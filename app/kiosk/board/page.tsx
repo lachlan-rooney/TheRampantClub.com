@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { SPACE_TO_FLOOR } from '@/lib/kiosk/floors'
+import { menuForSpace } from '@/lib/kiosk/floors'
 
 // THE EVENT BOARD — the idle state, and the only way into either other mode.
 // No identity, no PII. Everything shown comes from kiosk_board(), which returns a
@@ -22,6 +22,9 @@ interface Board {
   next_transition_at: string | null; now_at: string
 }
 type Nfc = 'idle' | 'scanning' | 'gesture' | 'unsupported' | 'denied'
+interface Tap { member_no: string; first_name: string | null }
+
+const ABANDON_MS = 15_000  // a tap-and-walk-away must not leave a name on the bar
 
 const hhmm = (iso: string | null) => iso
   ? new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh', hour12: false })
@@ -34,6 +37,50 @@ export default function KioskBoard() {
   const [nfc, setNfc] = useState<Nfc>('idle')
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const scanning = useRef(false)
+
+  // ── SIGN-IN, ON THE BOARD ────────────────────────────────────────────────
+  // The greeting and the keypad live here rather than behind a navigation: a card
+  // tap should be answered on the screen the member is already looking at.
+  const [panel, setPanel] = useState(false)
+  const [tap, setTap] = useState<Tap | null>(null)
+  const [num, setNum] = useState('')
+  const [pin, setPin] = useState('')
+  const [err, setErr] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const abandon = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const closePanel = useCallback(() => {
+    setPanel(false); setTap(null); setNum(''); setPin(''); setErr(false)
+  }, [])
+
+  // Everything clears on abandon — the name never sits on the bar unattended.
+  const bump = useCallback(() => {
+    if (abandon.current) clearTimeout(abandon.current)
+    abandon.current = setTimeout(closePanel, ABANDON_MS)
+  }, [closePanel])
+  useEffect(() => { if (panel) bump(); return () => { if (abandon.current) clearTimeout(abandon.current) } }, [panel, pin, num, bump])
+
+  const submit = useCallback(async (code: string) => {
+    if (code.length !== 6 || busy) return
+    setBusy(true); setErr(false)
+    const r = await fetch('/api/kiosk/member/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ member_no: (tap?.member_no || num).trim(), pin: code }),
+    })
+    setBusy(false)
+    if (!r.ok) { setErr(true); setPin(''); bump(); return }
+    router.push('/kiosk/member')
+  }, [busy, tap, num, router, bump])
+
+  const key = (d: string) => {
+    if (d === 'del') { setPin(p => p.slice(0, -1)); setErr(false); bump(); return }
+    setPin(p => {
+      const next = (p + d).slice(0, 6)
+      if (next.length === 6) setTimeout(() => submit(next), 60)
+      return next
+    })
+    setErr(false); bump()
+  }
 
   // ── the board itself ────────────────────────────────────────────────────
   // Re-fetch at next_transition_at, so a tablet left on for days advances with no
@@ -69,8 +116,9 @@ export default function KioskBoard() {
       if (!j.found) return
       // The first name goes through sessionStorage, not the URL — a name in the
       // address bar would sit in history long after the member has walked away.
-      sessionStorage.setItem('trc_kiosk_tap', JSON.stringify({ member_no: j.member_no, first_name: j.first_name, has_pin: j.has_pin }))
-      router.push('/kiosk/member')
+      // Answer the tap here: greet them, open the keypad, pre-fill the number.
+      setTap({ member_no: j.member_no, first_name: j.first_name })
+      setNum(j.member_no); setPin(''); setErr(false); setPanel(true)
     } catch { /* silent — the board is not a place for error text */ }
   }, [router])
 
@@ -132,7 +180,13 @@ export default function KioskBoard() {
   return (
     <div style={{ minHeight: '100vh', background: GROUND, color: INK, display: 'flex', flexDirection: 'column', padding: '5vh 6vw', overflow: 'hidden' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontFamily: MONO, fontSize: 13, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(229,212,194,.55)' }}>
-        <span>{b?.room ?? ''}</span><span>{clock}</span>
+        <span>{b?.room ?? ''}</span>
+        <span style={{ display: 'flex', alignItems: 'baseline', gap: 20 }}>
+          {clock}
+          {/* Staff live in the corner. This screen belongs to members; the staff
+              shell is somewhere they go, not something the room looks at. */}
+          <button onClick={() => router.push('/kiosk/staff')} style={staffCorner}>Staff</button>
+        </span>
       </div>
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
@@ -162,47 +216,101 @@ export default function KioskBoard() {
         )}
       </div>
 
-      {/* ── THE ACTIONS ────────────────────────────────────────────────────
-          Member sign-in is ALWAYS here. It used to appear only when NFC reported
-          unsupported or denied, which meant that whenever the scanner believed it
-          was working there was no way in at all — and no way in for a member who
-          simply hasn't their card on them. The card tap is a shortcut, never the
-          only door. Big targets: this is a bar top, not a desk. */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 18, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-          <button onClick={() => router.push('/kiosk/member')} style={primaryBtn}>
-            Member sign in
-          </button>
-          {b?.room && SPACE_TO_FLOOR[b.room] && (
-            <a href={`/kiosk/${SPACE_TO_FLOOR[b.room]}`} style={menuBtn}>Tonight&rsquo;s menu ↗</a>
+      {/* ── SIGN IN, ON THE BOARD ─────────────────────────────────────────
+          Optimised for members, with the sign-in opportunity always visible. The
+          card tap is a shortcut that pre-fills the number and greets them by first
+          name; the button opens the same keypad for anyone without a card to hand.
+          First name only, and nothing else — this panel sits open on a bar top
+          while six digits are entered, in a room with other people. */}
+      {!panel ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <button onClick={() => { setPanel(true); bump() }} style={primaryBtn}>Member sign in</button>
+          {menuForSpace(b?.room) && (
+            <a href={menuForSpace(b?.room)!} target="_blank" rel="noopener noreferrer" style={menuBtn}>
+              Tonight&rsquo;s menu ↗
+            </a>
           )}
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 18 }}>
-          <div style={{ fontFamily: MONO, fontSize: 12, color: 'rgba(229,212,194,.5)', textAlign: 'right', lineHeight: 1.7, maxWidth: 260 }}>
+          <div style={{ fontFamily: MONO, fontSize: 12, color: 'rgba(229,212,194,.45)', lineHeight: 1.7, marginLeft: 4 }}>
             {nfc === 'scanning'
-              ? <>Or hold your card to the tablet<br /><span style={{ color: 'rgba(229,212,194,.3)' }}>Hoặc chạm thẻ vào máy</span></>
-              : nfc === 'unsupported' ? 'Card tap unavailable on this device'
-              : nfc === 'denied' ? 'Card tap blocked — allow NFC in browser settings'
-              : <>Touch the screen to enable card tap<br /><span style={{ color: 'rgba(229,212,194,.3)' }}>Chạm màn hình để bật thẻ</span></>}
+              ? <>or hold your card to the tablet<br /><span style={{ color: 'rgba(229,212,194,.3)' }}>hoặc chạm thẻ vào máy</span></>
+              : nfc === 'denied' ? 'card tap blocked — allow NFC in browser settings'
+              : nfc === 'unsupported' ? ''
+              : <>touch the screen to enable card tap<br /><span style={{ color: 'rgba(229,212,194,.3)' }}>chạm màn hình để bật thẻ</span></>}
           </div>
-          <button onClick={() => router.push('/kiosk/staff')} style={staffBtn}>Staff</button>
         </div>
-      </div>
+      ) : (
+        <div style={panelWrap} onPointerDown={bump}>
+          <div style={{ flex: 1, minWidth: 240 }}>
+            <div style={{ fontFamily: SERIF, fontSize: 'clamp(24px,3.2vw,38px)' }}>
+              {tap?.first_name ? <>Welcome, {tap.first_name}</> : 'Member sign in'}
+            </div>
+            {!tap && (
+              <input
+                value={num} onChange={e => { setNum(e.target.value.toUpperCase()); bump() }}
+                placeholder="TRC-M000" autoComplete="off" spellCheck={false} style={numField}
+              />
+            )}
+            <div style={{ fontFamily: MONO, fontSize: 12, letterSpacing: '.14em', textTransform: 'uppercase', color: 'rgba(229,212,194,.5)', marginTop: 16 }}>
+              {busy ? 'One moment' : 'Enter your six-digit code'}
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+              {[0,1,2,3,4,5].map(i => (
+                <div key={i} style={{ ...dot, background: i < pin.length ? '#E5D4C2' : 'transparent' }} />
+              ))}
+            </div>
+            {err && (
+              <div style={{ fontFamily: MONO, fontSize: 12, color: '#C27070', marginTop: 14, lineHeight: 1.7 }}>
+                That didn&rsquo;t match. Please try again.<br />
+                <span style={{ color: 'rgba(229,212,194,.4)' }}>Not set a code yet? You can set one in your member portal.</span>
+              </div>
+            )}
+            <button onClick={closePanel} style={{ ...staffCorner, marginTop: 18, fontSize: 12 }}>Cancel</button>
+          </div>
+
+          {/* The keypad. A fullscreen PWA can't rely on a soft keyboard appearing. */}
+          <div style={pad}>
+            {['1','2','3','4','5','6','7','8','9'].map(d => (
+              <button key={d} onClick={() => key(d)} style={padKey}>{d}</button>
+            ))}
+            <div />
+            <button onClick={() => key('0')} style={padKey}>0</button>
+            <button onClick={() => key('del')} style={{ ...padKey, fontSize: 20 }}>←</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
+const staffCorner: React.CSSProperties = {
+  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+  fontFamily: MONO, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase',
+  color: 'rgba(229,212,194,.3)',
+}
+const panelWrap: React.CSSProperties = {
+  display: 'flex', gap: 'clamp(24px,4vw,56px)', alignItems: 'flex-start', flexWrap: 'wrap',
+  borderTop: '1px solid rgba(229,212,194,.14)', paddingTop: 26,
+}
+const numField: React.CSSProperties = {
+  background: 'rgba(229,212,194,.07)', border: '1px solid rgba(229,212,194,.2)', borderRadius: 6,
+  color: '#E5D4C2', fontFamily: MONO, fontSize: 20, letterSpacing: '.12em',
+  padding: '12px 14px', marginTop: 14, width: 'min(260px, 100%)', outline: 'none',
+}
+const dot: React.CSSProperties = {
+  width: 16, height: 16, borderRadius: '50%', border: '1px solid rgba(229,212,194,.45)',
+}
+const pad: React.CSSProperties = {
+  display: 'grid', gridTemplateColumns: 'repeat(3, 84px)', gap: 12,
+}
+const padKey: React.CSSProperties = {
+  height: 72, borderRadius: 10, cursor: 'pointer',
+  background: 'rgba(229,212,194,.06)', border: '1px solid rgba(229,212,194,.18)',
+  color: '#E5D4C2', fontFamily: MONO, fontSize: 26,
+}
 const primaryBtn: React.CSSProperties = {
   background: '#E5D4C2', color: '#052E20', border: 'none', borderRadius: 8,
   fontFamily: MONO, fontSize: 14, letterSpacing: '.08em', textTransform: 'uppercase',
   padding: '18px 34px', cursor: 'pointer', minHeight: 56,
-}
-const staffBtn: React.CSSProperties = {
-  background: 'none', border: '1px solid rgba(229,212,194,.22)', borderRadius: 8,
-  color: 'rgba(229,212,194,.55)', fontFamily: MONO, fontSize: 12,
-  letterSpacing: '.1em', textTransform: 'uppercase',
-  padding: '14px 22px', cursor: 'pointer', minHeight: 48,
 }
 const menuBtn: React.CSSProperties = {
   fontFamily: MONO, fontSize: 14, letterSpacing: '.08em', textTransform: 'uppercase',
