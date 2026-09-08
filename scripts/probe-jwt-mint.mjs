@@ -97,9 +97,31 @@ const bad = (() => {
 const rBad = await rest(`profiles?select=id&id=eq.${A.id}`, bad)
 check(rBad.status === 401, 'a wrongly-signed token is refused', `HTTP ${rBad.status}`)
 
-// 4 — an EXPIRED token must be refused (the TTL is load-bearing).
-const rExp = await rest(`profiles?select=id&id=eq.${A.id}`, mint(A.id, { ttlSeconds: -30 }))
-check(rExp.status === 401, 'an expired token is refused', `HTTP ${rExp.status}`)
+// 4 — an EXPIRED token must be refused. NOTE: verification allows ~60s of clock
+//     skew leeway, so this must test well beyond it. At -30s the token is still
+//     ACCEPTED, which is correct behaviour, not a defect.
+const rExp = await rest(`profiles?select=id&id=eq.${A.id}`, mint(A.id, { ttlSeconds: -180 }))
+check(rExp.status === 401, 'a token expired beyond the skew window is refused', `HTTP ${rExp.status}`)
+
+const rSkew = await rest(`profiles?select=id&id=eq.${A.id}`, mint(A.id, { ttlSeconds: -30 }))
+console.log(`  · leeway: exp 30s in the past → HTTP ${rSkew.status} (~60s skew tolerance; expected 200)`)
+
+// 5 — THE ONE THAT BITES. A token carrying NO exp claim is accepted, and never
+//     expires. So the mint must ALWAYS set exp — it can never be optional.
+const noExp = (() => {
+  const now = Math.floor(Date.now() / 1000)
+  const h = b64u(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
+  const p = b64u(JSON.stringify({ sub: A.id, aud: 'authenticated', role: 'authenticated', iat: now }))
+  return `${h}.${p}.${b64u(createHmac('sha256', SECRET).update(`${h}.${p}`).digest())}`
+})()
+const rNoExp = await rest(`profiles?select=id&id=eq.${A.id}`, noExp)
+console.log(`  · a token with NO exp claim → HTTP ${rNoExp.status}` +
+            (rNoExp.status === 200 ? '  ⚠ never expires — mint() must always set exp' : ''))
+
+// …so assert our own mint always does. exp is not an option on this code path.
+const decoded = JSON.parse(Buffer.from(mint(A.id).split('.')[1], 'base64url').toString())
+check(typeof decoded.exp === 'number' && decoded.exp > Math.floor(Date.now() / 1000),
+      'our mint always sets a future exp', `exp in ${decoded.exp - Math.floor(Date.now() / 1000)}s`)
 
 // 5 — member-own RLS holds under a minted token: A cannot read B's taste profile.
 if (linked.length > 1) {
