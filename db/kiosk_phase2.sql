@@ -37,6 +37,28 @@ comment on column kiosk_devices.room is
   'Room this tablet stands in. Must match bookings.space / calendar_entries.space exactly.';
 create index if not exists idx_kiosk_devices_room on kiosk_devices(room) where revoked_at is null;
 
+-- …and ENFORCE it, rather than trusting the enrol UI to pick correctly. A comment
+-- is not a constraint: a hardcoded list in a form drifts from the seed the moment
+-- someone edits one and not the other, and the failure is SILENT — the board joins
+-- nothing and sits on `no_event` with no indication why. This makes an invalid room
+-- impossible to store at all, whatever writes it.
+-- (A CHECK constraint cannot hold a subquery, hence a trigger.)
+create or replace function kiosk_devices_room_guard()
+  returns trigger language plpgsql set search_path = public as $fn$
+begin
+  if new.room is not null
+     and not exists (select 1 from space_tables st where st.space = new.room) then
+    raise exception 'room % is not a space in space_tables', new.room
+      using hint = 'Pick from: select distinct space from space_tables';
+  end if;
+  return new;
+end $fn$;
+
+drop trigger if exists trg_kiosk_devices_room_guard on kiosk_devices;
+create trigger trg_kiosk_devices_room_guard
+  before insert or update of room on kiosk_devices
+  for each row execute function kiosk_devices_room_guard();
+
 
 -- ═══ PART 2 · MEMBER PIN STORAGE ═══════════════════════════════════════════
 -- 6 digits, bcrypt-hashed, never plaintext. RLS is enabled with NO POLICIES:
@@ -479,17 +501,31 @@ revoke all on function kiosk_board(text) from public;
 grant execute on function kiosk_board(text) to service_role;
 
 
--- ═══ PART 7 · OPTIONAL — member-own read on `visits` ═══════════════════════
--- ONLY NEEDED IF the member landing should show "your most recent visit".
--- `visits` today is admin-only; there is no member-own policy. The Phase 2
--- landing does NOT require this: display_name comes from `profiles` and the
--- palate signature from `member_taste_profiles`, both already member-own and
--- both proven in S0–S2d. Run this block only if you want the visit line.
+-- ═══ PART 7 · REJECTED — do NOT add a member-own policy to `visits` ════════
+-- ───────────────────────────────────────────────────────────────────────────
+-- THIS IS NOT PENDING WORK. It is a decision, recorded here so it is not
+-- relitigated and so nobody uncomments it believing it was merely unfinished.
+-- DECIDED 2026-09-08.
 --
--- drop policy if exists "members read own visits" on visits;
--- create policy "members read own visits" on visits for select using (
---   member_no = (select member_no from profiles where id = auth.uid())
--- );
+-- `visits` carries the Ritual: data_for_next_overture, last_continuum_note,
+-- phase state, and the join to harmony_observations. A member-own policy on
+-- that table would give a member row-level access to the machinery of how they
+-- are handled — including grievance context recorded about them. That is the
+-- line between invisible personalisation and surveillance, and it is the wrong
+-- side of it.
+--
+-- The Phase 2 landing does not need it: display_name comes from `profiles` and
+-- the palate signature from `member_taste_profiles`, both already member-own
+-- and both proven in S0–S2d. Phase 2 therefore adds ZERO new member RLS.
+--
+-- WHEN the visit line is wanted in Phase 3, it comes from a VIEW or a DEFINER
+-- FUNCTION returning visit date and room and NOTHING ELSE — never a policy on
+-- this table. Write that; do not enable the policy below.
+--
+-- Kept only to name precisely what was rejected:
+--   create policy "members read own visits" on visits for select using (
+--     member_no = (select member_no from profiles where id = auth.uid())
+--   );
 
 
 -- ═══ PART 8 · CONSENT (schema only — capture UI is Phase 3) ════════════════
