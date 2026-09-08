@@ -419,7 +419,12 @@ opened for PIN setting.
 proves nothing once terms change, and makes selective re-consent impossible.
 
 - `terms_versions` — doc key, version, effective date, body or a pointer to it
-- `member_consents` — **append-only**; withdrawal inserts `granted = false` rather than
+- **The table is `member_terms_consents`, not `member_consents`.** That name is taken:
+  the social substrate already has `member_consents (member, feature, enabled)` backing
+  the discoverable / palate-twin opt-ins. `create table if not exists` is silent on a
+  collision, so the first run skipped the create and failed downstream on `member_no`.
+  Legal consent and feature opt-ins are different concepts and now read as such
+- `member_terms_consents` — **append-only**; withdrawal inserts `granted = false` rather than
   mutating, so the history is the evidence. Current state = latest row per
   `(member_no, doc_key)`
 - **Three separate consents, never bundled:** `membership_terms`, `privacy`, and

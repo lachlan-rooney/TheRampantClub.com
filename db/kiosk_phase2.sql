@@ -559,11 +559,22 @@ create table if not exists terms_versions (
 );
 create index if not exists idx_terms_versions_current on terms_versions(doc_key, effective_date desc);
 
+-- ⚠ NAME COLLISION, FOUND ON THE FIRST RUN (2026-09-08). This table was first
+-- written as `member_consents` — which ALREADY EXISTS, from the social substrate
+-- (db/social_substrate.sql): (member uuid, feature text, enabled bool) backing the
+-- discoverable / palate-twin opt-ins in /members/members. Because
+-- `create table if not exists` is SILENT on a collision, the create was skipped
+-- and the next statement failed with a confusing 42703 on member_no.
+-- The near-miss worth naming: had the shapes been merely similar rather than
+-- incompatible, this feature would have written legal consent rows into a feature-
+-- flag table with no error at all. Renamed to member_terms_consents — a different
+-- concept from feature opt-ins, and now named like one. See the Part 9 self-check.
+--
 -- THREE SEPARATE CONSENTS, NEVER BUNDLED INTO ONE TICK:
 --   membership_terms — membership terms and club rules
 --   privacy          — privacy and data processing
 --   marketing        — OPT-IN, and separately withdrawable without disturbing the other two
-create table if not exists member_consents (
+create table if not exists member_terms_consents (
   id               uuid primary key default gen_random_uuid(),
   member_no        varchar(12) not null references members(member_no) on delete cascade,
   terms_version_id uuid not null references terms_versions(id),
@@ -577,11 +588,11 @@ create table if not exists member_consents (
   recorded_by      uuid references profiles(id), -- set only for staff_recorded/import
   created_at       timestamptz not null default now()
 );
-create index if not exists idx_member_consents_current
-  on member_consents(member_no, doc_key, given_at desc);
+create index if not exists idx_member_terms_consents_current
+  on member_terms_consents(member_no, doc_key, given_at desc);
 
 alter table terms_versions  enable row level security;
-alter table member_consents enable row level security;
+alter table member_terms_consents enable row level security;
 
 -- Any authenticated member may READ the documents — they have to be able to read
 -- what they are agreeing to. Admins write them.
@@ -596,12 +607,12 @@ create policy "admins write terms_versions" on terms_versions for all
 -- INSERT policy at all — writes go through record_my_consent() below, so a member
 -- cannot forge given_at, method, or another member's row. That is structural, not
 -- a validation rule someone can forget.
-drop policy if exists "members read own consents" on member_consents;
-create policy "members read own consents" on member_consents for select using (
+drop policy if exists "members read own consents" on member_terms_consents;
+create policy "members read own consents" on member_terms_consents for select using (
   member_no = (select member_no from profiles where id = auth.uid())
 );
-drop policy if exists "admins read all consents" on member_consents;
-create policy "admins read all consents" on member_consents for select
+drop policy if exists "admins read all consents" on member_terms_consents;
+create policy "admins read all consents" on member_terms_consents for select
   using (is_admin_uid(auth.uid()));
 
 -- The current version of a document (latest effective on or before today).
@@ -630,7 +641,7 @@ begin
   v_version := current_terms_version(p_doc_key);
   if v_version is null then raise exception 'no current version of %', p_doc_key; end if;
 
-  insert into member_consents (member_no, terms_version_id, doc_key, granted, method, user_agent)
+  insert into member_terms_consents (member_no, terms_version_id, doc_key, granted, method, user_agent)
   values (v_member_no, v_version, p_doc_key, p_granted, 'portal', p_user_agent);
 end $fn$;
 revoke all on function record_my_consent(text, boolean, text) from public;
@@ -664,7 +675,7 @@ begin
     left join terms_versions cv on cv.id = c.id
     left join lateral (
       select mc.terms_version_id, mc.granted, mc.given_at
-        from member_consents mc
+        from member_terms_consents mc
        where mc.member_no = v_member_no and mc.doc_key = d.k
        order by mc.given_at desc limit 1
     ) h on true
@@ -688,7 +699,7 @@ begin
     left join terms_versions cv on cv.id = c.id
     left join lateral (
       select mc.terms_version_id, mc.granted, mc.given_at
-        from member_consents mc
+        from member_terms_consents mc
        where mc.member_no = m.member_no and mc.doc_key = d.k
        order by mc.given_at desc limit 1
     ) h on true
@@ -704,3 +715,47 @@ grant execute on function member_consent_gaps() to authenticated;
 -- separately-withdrawable purpose under Vietnam's regime. Nothing is built for it
 -- here, and no doc_key is reserved for it, deliberately: adding one later should be
 -- a considered act with counsel, not an enum value someone finds already waiting.
+
+
+-- ═══ PART 9 · SELF-CHECK ═══════════════════════════════════════════════════
+-- `create table if not exists` is SILENT when the name is already taken by a
+-- table with a different shape: the create is skipped, and either the next
+-- statement fails somewhere confusing, or — far worse — nothing fails and the
+-- feature quietly reads and writes the wrong table. That is exactly what happened
+-- to Part 8 on the first run of this file.
+--
+-- This block converts that class of failure into a named, readable one. It is a
+-- post-condition, not a migration: it changes nothing and is safe to re-run.
+do $check$
+declare v_missing text[] := '{}'; r record;
+begin
+  for r in
+    select * from (values
+      ('kiosk_devices','room'),
+      ('member_kiosk_pins','member_no'),        ('member_kiosk_pins','pin_hash'),
+      ('member_pin_attempts','member_no'),      ('member_pin_attempts','cleared_at'),
+      ('kiosk_member_sessions','token_hash'),   ('kiosk_member_sessions','expires_at'),
+      ('kiosk_member_sessions','last_seen_at'),
+      ('calendar_entries','show_on_board'),     ('calendar_entries','doors_open_at'),
+      ('calendar_entries','board_note'),        ('calendar_entries','board_note_vn'),
+      ('calendar_entries','title_vn'),
+      ('terms_versions','doc_key'),             ('terms_versions','effective_date'),
+      ('member_terms_consents','member_no'),    ('member_terms_consents','doc_key'),
+      ('member_terms_consents','granted'),      ('member_terms_consents','terms_version_id')
+    ) as t(tbl, col)
+  loop
+    if not exists (select 1 from information_schema.columns c
+                    where c.table_schema = 'public'
+                      and c.table_name = r.tbl and c.column_name = r.col) then
+      v_missing := v_missing || (r.tbl || '.' || r.col);
+    end if;
+  end loop;
+
+  if array_length(v_missing, 1) > 0 then
+    raise exception 'kiosk_phase2 self-check FAILED — missing: %', array_to_string(v_missing, ', ')
+      using hint = 'A table of that name likely already exists with a different shape, '
+                   'so create-if-not-exists silently skipped it. Check before renaming.';
+  end if;
+
+  raise notice 'kiosk_phase2 self-check passed — every expected table and column is present.';
+end $check$;
