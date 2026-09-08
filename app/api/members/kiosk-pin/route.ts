@@ -52,8 +52,21 @@ export async function POST(req: Request) {
   if (prof?.member_no) {
     const { data: mem } = await svc().from('members').select('birthday').eq('member_no', prof.member_no).maybeSingle()
     if (mem?.birthday && birthdayCodes(String(mem.birthday)).includes(pin)) {
+      // THE REFUSAL LINE. It only appears once they have actually tried it, which
+      // is the moment it means something — pre-emptively it would be written in the
+      // wrong tense, warning about a thing they had not done.
+      //
+      // It lands on the GUESSER, not on the club's records. "We know that's your
+      // birthday" would be a strange thing for a club with an MIS behind it to say
+      // to a member: the comedy is meant to be about how predictable the choice is,
+      // not about how much we hold on them. This is the first time the MIS speaks
+      // to a member in its own voice, and that tone sets the expectation for
+      // everything Phase 3 puts in front of them.
+      //
+      // TODO (Miss Châu): the Vietnamese half. The dryness will not survive a
+      // literal rendering — it wants an ear, not a translation.
       return NextResponse.json({
-        error: 'That is your date of birth — the first code anyone would try. Please choose something else.',
+        error: 'Someone else will guess that too. Try again.',
       }, { status: 400 })
     }
   }
