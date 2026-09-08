@@ -29,7 +29,8 @@ export async function middleware(request: NextRequest) {
   // enrolled, non-revoked DEVICE SESSION (the tablet's device-token cookie) — NOT
   // a personal login. No valid device → bounced to pairing. The public display
   // /kiosk/[floor] is unaffected (not in the matcher).
-  if (request.nextUrl.pathname.startsWith('/kiosk/staff')) {
+  const p = request.nextUrl.pathname
+  if (p.startsWith('/kiosk/staff') || p.startsWith('/kiosk/board') || p.startsWith('/kiosk/member')) {
     const token = request.cookies.get('trc_kiosk_device')?.value
     let active = false
     if (token) { const { data } = await supabase.rpc('kiosk_device_active', { p_token: token }); active = data === true }
@@ -37,6 +38,30 @@ export async function middleware(request: NextRequest) {
       const url = request.nextUrl.clone()
       url.pathname = '/kiosk/pair'; url.search = ''
       return NextResponse.redirect(url)
+    }
+
+    // ── THE PHASE 2 MODE BOUNDARY ──────────────────────────────────────────
+    // Phase 1 gated /kiosk/staff on the DEVICE TOKEN ALONE. In member mode that
+    // cookie is still perfectly valid, so a back-gesture from the member view
+    // reached the staff shell. The staff picker meant it showed a picker rather
+    // than PII — but the requirement is that a member's thumb CANNOT ARRIVE
+    // THERE, not that it finds little when it does.
+    //
+    // While a member session is live on this tablet, /kiosk/staff does not exist.
+    // Boolean-only RPC, and it deliberately does NOT touch the idle clock — a
+    // redirect check must never keep a session alive. One extra round trip, and
+    // only when a member cookie is actually present.
+    if (p.startsWith('/kiosk/staff')) {
+      const ms = request.cookies.get('trc_kiosk_member')?.value
+      if (ms) {
+        const { data: live } = await supabase.rpc('kiosk_member_session_live',
+          { p_device_token: token, p_session_token: ms })
+        if (live === true) {
+          const url = request.nextUrl.clone()
+          url.pathname = '/kiosk/board'; url.search = ''
+          return NextResponse.redirect(url)
+        }
+      }
     }
     return supabaseResponse   // device valid → allow; the staff picker is app-side (attribution)
   }
@@ -109,5 +134,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/members/:path*', '/admin/:path*', '/login', '/kiosk/staff/:path*'],
+  matcher: ['/members/:path*', '/admin/:path*', '/login',
+            '/kiosk/staff/:path*', '/kiosk/board/:path*', '/kiosk/member/:path*'],
 }
