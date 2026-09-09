@@ -53,9 +53,15 @@ function Thumb({ a }: { a?: { id: string; kind: string; filename: string } }) {
       </a>
     )
   }
+  // An invitation is meant to be READ. A 76px square crop showed a corner of one
+  // and nothing else, so: show the whole image, bigger, and open it full size on
+  // tap. contain, not cover — cropping a poster is the wrong operation.
   return (
-    /* eslint-disable-next-line @next/next/no-img-element */
-    <img className="wo-thumb" src={`/api/entries/attachment/${a.id}`} alt="" loading="lazy" />
+    <a href={`/api/entries/attachment/${a.id}`} target="_blank" rel="noreferrer"
+       className="wo-thumb-link" aria-label="Open the full image">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="wo-thumb" src={`/api/entries/attachment/${a.id}`} alt="" loading="lazy" />
+    </a>
   )
 }
 const KIND_META: Record<string, { label: string; tint: string; ring: string }> = {
@@ -283,7 +289,8 @@ export default function WhatsOnPage() {
         .wo-in { font-family: 'Google Sans Code', monospace; font-size: 9px; letter-spacing: 0.06em; color: #052E20; background: #7AB07A; padding: 2px 8px; border-radius: 999px; }
         .wo-title { font-family: 'Rampant Sans', serif; font-size: 18px; color: #E5D4C2; line-height: 1.2; }
         .wo-meta { font-family: 'Google Sans Code', monospace; font-size: 11px; color: #B2AA98; margin-top: 4px; }
-        .wo-thumb { width: 76px; height: 76px; object-fit: cover; border-radius: 8px; flex-shrink: 0; border: 1px solid rgba(229,212,194,0.12); background: rgba(229,212,194,0.04); }
+        .wo-thumb-link { flex-shrink: 0; display: block; line-height: 0; }
+        .wo-thumb { width: 150px; height: auto; max-height: 210px; object-fit: contain; border-radius: 8px; border: 1px solid rgba(229,212,194,0.12); background: rgba(229,212,194,0.04); }
         .wo-pdf { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'Google Sans Code', monospace; font-size: 10px; color: #B2AA98; text-decoration: none; border: 1px solid rgba(229,212,194,0.16); border-radius: 8px; padding: 8px 10px; }
         .wo-pdf:hover { color: #D4B85A; border-color: rgba(212,184,90,0.4); }
         .wo-desc { font-family: 'Google Sans Code', monospace; font-size: 11.5px; color: #B2AA98; opacity: 0.85; line-height: 1.6; margin: 10px 0 0; white-space: pre-line; }
@@ -294,7 +301,12 @@ export default function WhatsOnPage() {
         .wo-closed { font-family: 'Google Sans Code', monospace; font-size: 10px; color: #B2AA98; opacity: 0.6; }
         .wo-empty { font-family: 'Google Sans Code', monospace; font-size: 12px; color: #B2AA98; opacity: 0.6; font-style: italic; padding: 30px 0; text-align: center; }
         .wo-results { font-family: 'Google Sans Code', monospace; font-size: 11px; color: #B2AA98; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(229,212,194,0.08); }
-        @media (max-width: 560px) { .wo-row { flex-direction: column; } .wo-action { text-align: left; align-items: flex-start; flex-direction: row; gap: 14px; } }
+        @media (max-width: 560px) {
+          .wo-row { flex-direction: column; }
+          .wo-action { text-align: left; align-items: flex-start; flex-direction: row; gap: 14px; }
+          .wo-thumb-link { width: 100%; }
+          .wo-thumb { width: 100%; max-height: 380px; }
+        }
       ` }} />
       <div className="wo-page">
         <div className="wo-inner">
