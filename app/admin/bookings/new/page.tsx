@@ -69,6 +69,18 @@ export default function NewBookingPage() {
   const [visibility, setVisibility] = useState<'member' | 'staff'>('staff')
   const [blocksSpace, setBlocksSpace] = useState(true)
 
+  // ── ROOM-TABLET (kiosk board) fields ──────────────────────────────────────
+  // The board reads calendar_entries, so these have existed in the schema and the
+  // API since Phase 2 with no way to set them. boardRooms is the set of rooms that
+  // actually have a live tablet — read from the devices, never a hardcoded list,
+  // because a tick against a room with no tablet does nothing and says nothing.
+  const [showOnBoard, setShowOnBoard] = useState(false)
+  const [titleVn, setTitleVn] = useState('')
+  const [doorsOpenAt, setDoorsOpenAt] = useState('')
+  const [boardNote, setBoardNote] = useState('')
+  const [boardNoteVn, setBoardNoteVn] = useState('')
+  const [boardRooms, setBoardRooms] = useState<string[] | null>(null)
+
   // Table units (member booking)
   const [rooms, setRooms] = useState<string[]>([])
   const [unitIds, setUnitIds] = useState<string[]>([])
@@ -82,6 +94,17 @@ export default function NewBookingPage() {
     fetch('/api/admin/bookings/availability', { cache: 'no-store' })
       .then(r => r.json())
       .then(d => { if (Array.isArray(d.rooms) && d.rooms.length) { setRooms(d.rooms); setSpace(s => d.rooms.includes(s) ? s : d.rooms[0]) } })
+    // Rooms with a paired, non-revoked tablet. Failure leaves boardRooms null,
+    // which suppresses the "no tablet" warning rather than crying wolf.
+    fetch('/api/admin/kiosk-devices', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => {
+        if (!Array.isArray(d.devices)) return
+        setBoardRooms([...new Set(d.devices
+          .filter((x: { status?: string; room?: string | null }) => x.status !== 'revoked' && x.room)
+          .map((x: { room: string }) => x.room))] as string[])
+      })
+      .catch(() => {})
   }, [])
 
   // Edit mode: load the existing house entry, switch to house mode, prefill.
@@ -102,6 +125,10 @@ export default function NewBookingPage() {
         setSessionLabel(entry.session_label || '')
         setSpace(entry.space || '')
         setUnitIds(Array.isArray(d.unit_ids) ? d.unit_ids : [])
+        setShowOnBoard(!!entry.show_on_board)
+        setTitleVn(entry.title_vn || '')
+        setDoorsOpenAt(entry.doors_open_at ? entry.doors_open_at.slice(0, 5) : '')
+        setBoardNote(entry.board_note || ''); setBoardNoteVn(entry.board_note_vn || '')
       })
   }, [editId])  // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -148,12 +175,27 @@ export default function NewBookingPage() {
 
   const submitHouse = useCallback(async () => {
     if (!title.trim()) { setError(t('A title is required.', 'Cần có tiêu đề.')); return }
+    // A board tick with no room can never display: kiosk_board() joins the entry's
+    // space to the tablet's room. Refuse it here rather than saving something that
+    // looks set and does nothing.
+    if (visibility === 'member' && showOnBoard && !space) {
+      setError(t('Pick the room the tablet stands in, or untick the room tablets.',
+                 'Hãy chọn phòng đặt máy tính bảng, hoặc bỏ chọn màn hình phòng.')); return
+    }
     setSaving(true); setError(null)
     try {
       const payload = {
         title: title.trim(), description: description || null, entry_date: bookingDate,
         start_time: startTime || null, end_time: endTime || null, session_label: sessionLabel || null,
         space: space || null, kind, attendee: attendee.trim() || null, visibility, blocks_space: space ? blocksSpace : false,
+        // Board fields ride along. show_on_board is ANDed with visibility so a
+        // staff-only entry can never carry a stale tick from an earlier edit —
+        // the board requires both, and the form must not disagree with it.
+        show_on_board: visibility === 'member' && showOnBoard,
+        title_vn: titleVn.trim() || null,
+        doors_open_at: visibility === 'member' && showOnBoard ? (doorsOpenAt || null) : null,
+        board_note: boardNote.trim() || null,
+        board_note_vn: boardNoteVn.trim() || null,
         // Tables this entry occupies (only meaningful for a blocking, room-scoped
         // entry). Empty = closes the whole room (or, if not blocking, nothing).
         unit_ids: space && blocksSpace ? unitIds : [],
@@ -166,7 +208,8 @@ export default function NewBookingPage() {
       if (!r.ok) throw new Error(j.error || t('Save failed', 'Lưu thất bại'))
       router.push('/admin/calendar')
     } catch (e) { setError((e as Error).message); setSaving(false) }
-  }, [editId, title, description, bookingDate, startTime, endTime, sessionLabel, space, kind, attendee, visibility, blocksSpace, unitIds, router])
+  }, [editId, title, description, bookingDate, startTime, endTime, sessionLabel, space, kind, attendee, visibility, blocksSpace, unitIds, router,
+      showOnBoard, titleVn, doorsOpenAt, boardNote, boardNoteVn, t])
 
   return (
     <>
@@ -234,6 +277,68 @@ export default function NewBookingPage() {
               </select>
             </div>
           </div>
+
+          {/* ── THE ROOM TABLETS ───────────────────────────────────────────
+              Only shown once the entry is member-visible, because the board
+              requires BOTH flags — surfacing it earlier would offer a tick that
+              cannot take effect. The naming warning sits here, at the point of
+              decision, rather than only at the top of the calendar page. */}
+          {visibility === 'member' && (
+            <div style={{ marginTop: 18, padding: '14px 16px', background: 'rgba(212,184,90,0.06)', border: '1px solid rgba(212,184,90,0.20)', borderRadius: 6 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                <input type="checkbox" checked={showOnBoard} onChange={e => setShowOnBoard(e.target.checked)} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#E5D4C2' }}>
+                    {t('Show on the room tablets', 'Hiển thị trên màn hình phòng')}
+                  </div>
+                  <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', marginTop: 4, lineHeight: 1.6 }}>
+                    {t('Off = members see it in What\u2019s On only. On = the title also stands on the screen in that room all evening, where anyone nearby can read it \u2014 so title it as you would want it read aloud in a full room, never with a member\u2019s name.',
+                       'Tắt = thành viên chỉ thấy trong What\u2019s On. Bật = tiêu đề cũng hiện trên màn hình phòng đó suốt buổi tối, ai đứng gần cũng đọc được — hãy đặt tiêu đề như khi đọc to trong phòng đông người, không bao giờ dùng tên hội viên.')}
+                  </div>
+                </div>
+              </label>
+
+              {showOnBoard && (
+                <div style={{ marginTop: 14, borderTop: '1px solid rgba(212,184,90,0.18)', paddingTop: 14 }}>
+                  {/* The two ways a tick silently does nothing, said plainly. */}
+                  {!space && (
+                    <div style={{ ...hintText, color: '#D4B85A', marginBottom: 12 }}>
+                      {t('Pick a Space below \u2014 the board matches the entry\u2019s room to the tablet standing in it. With no room it can never appear.',
+                         'Hãy chọn Không gian bên dưới \u2014 bảng điện tử khớp phòng của mục với máy tính bảng đặt trong phòng đó. Không có phòng thì không bao giờ hiện.')}
+                    </div>
+                  )}
+                  {space && boardRooms && !boardRooms.includes(space) && (
+                    <div style={{ ...hintText, color: '#D4B85A', marginBottom: 12 }}>
+                      {t(`No tablet is paired in ${space}, so this will not appear anywhere yet. The entry still saves.`,
+                         `Chưa có máy tính bảng nào ở ${space}, nên mục này chưa hiện ở đâu cả. Mục vẫn được lưu.`)}
+                    </div>
+                  )}
+
+                  <div style={metaGrid}>
+                    <div style={fieldRow}>
+                      <div style={editLabel}>{t('Title in Vietnamese', 'Tiêu đề tiếng Việt')}</div>
+                      <input value={titleVn} onChange={e => setTitleVn(e.target.value)} placeholder={t('optional \u2014 the board is bilingual', 'tùy chọn \u2014 bảng song ngữ')} style={inputStyle} />
+                    </div>
+                    <div style={fieldRow}>
+                      <div style={editLabel}>{t('Doors open', 'Mở cửa')}</div>
+                      <input type="time" value={doorsOpenAt} onChange={e => setDoorsOpenAt(e.target.value)} style={inputStyle} />
+                      <div style={hintText}>{t('Blank = an hour before the start time.', 'Bỏ trống = một giờ trước giờ bắt đầu.')}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ ...fieldRow, marginTop: 12 }}>
+                    <div style={editLabel}>{t('Welcome line on the board', 'Dòng chào trên bảng')}</div>
+                    <input value={boardNote} onChange={e => setBoardNote(e.target.value)} placeholder={t('e.g. Doors at seven. Bar open throughout.', 'ví dụ: Mở cửa lúc bảy giờ. Quầy bar mở suốt buổi.')} style={inputStyle} />
+                    <div style={hintText}>{t('Shown under the title. The Description above is an internal note and never reaches the board.', 'Hiển thị dưới tiêu đề. Mục Mô tả ở trên là ghi chú nội bộ và không bao giờ lên bảng.')}</div>
+                  </div>
+                  <div style={{ ...fieldRow, marginTop: 12 }}>
+                    <div style={editLabel}>{t('Welcome line in Vietnamese', 'Dòng chào tiếng Việt')}</div>
+                    <input value={boardNoteVn} onChange={e => setBoardNoteVn(e.target.value)} style={inputStyle} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           <div style={fieldRow}>
             <div style={editLabel}>{t('Who it’s with (member or guest)', 'Với ai (thành viên hoặc khách)')}</div>
             <input value={attendee} onChange={e => setAttendee(e.target.value)} placeholder={t('e.g. Mr Nguyen (member) · Jane Smith (interview) · Fergus (distiller)', 'ví dụ: Ông Nguyễn (thành viên) · Jane Smith (phỏng vấn) · Fergus (nhà chưng cất)')} style={inputStyle} />

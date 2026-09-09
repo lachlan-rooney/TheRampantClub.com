@@ -256,12 +256,15 @@ export default function CalendarPage() {
             {t("Who's coming in, which room, when. Tap-to-start auto-links the booking when a member scans their card; from here you can start the visit manually if needed.", 'Ai đang đến, phòng nào, khi nào. Chạm-để-bắt-đầu tự động liên kết đặt chỗ khi hội viên quét thẻ; từ đây bạn có thể bắt đầu lượt ghé thủ công nếu cần.')}
           </p>
           {/* The prompt at the point of decision. Marking an entry member-visible
-              puts its TITLE in front of members — in the portal's What's On and on
-              the tablets in each room, where anyone standing nearby can read it.
-              Private bookings are habitually titled with a person's name. */}
+              puts its TITLE in front of members in the portal's What's On; ticking
+              "Show on the room tablets" in the entry form ALSO stands it on the
+              screen in that room, where anyone nearby can read it all evening.
+              Private bookings are habitually titled with a person's name.
+              Both flags are offered on the entry form, so this describes something
+              staff can actually reach — see app/admin/bookings/new/page.tsx. */}
           <p style={{ ...lede, marginTop: 8, color: '#D4B85A', opacity: .85 }}>
-            {t('An entry set to member-visible appears in the members\u2019 What\u2019s On and on the room tablets \u2014 title it as you would want it read aloud in a full room, not with a member\u2019s name.',
-               'M\u1ee5c \u0111\u1eb7t \u1edf ch\u1ebf \u0111\u1ed9 hi\u1ec3n th\u1ecb cho h\u1ed9i vi\u00ean s\u1ebd xu\u1ea5t hi\u1ec7n trong What\u2019s On v\u00e0 tr\u00ean m\u00e0n h\u00ecnh c\u00e1c ph\u00f2ng \u2014 h\u00e3y \u0111\u1eb7t ti\u00eau \u0111\u1ec1 nh\u01b0 khi \u0111\u1ecdc to trong ph\u00f2ng \u0111\u00f4ng ng\u01b0\u1eddi, kh\u00f4ng d\u00f9ng t\u00ean h\u1ed9i vi\u00ean.')}
+            {t('A member-visible entry puts its title in the members\u2019 What\u2019s On; tick \u201cShow on the room tablets\u201d and it also stands on the screen in that room. Either way \u2014 title it as you would want it read aloud in a full room, not with a member\u2019s name.',
+               'M\u1ee5c hi\u1ec3n th\u1ecb cho h\u1ed9i vi\u00ean s\u1ebd \u0111\u01b0a ti\u00eau \u0111\u1ec1 v\u00e0o What\u2019s On; ch\u1ecdn \u201cHi\u1ec3n th\u1ecb tr\u00ean m\u00e0n h\u00ecnh ph\u00f2ng\u201d th\u00ec ti\u00eau \u0111\u1ec1 c\u0169ng hi\u1ec7n tr\u00ean m\u00e0n h\u00ecnh ph\u00f2ng \u0111\u00f3. D\u00f9 c\u00e1ch n\u00e0o \u2014 h\u00e3y \u0111\u1eb7t ti\u00eau \u0111\u1ec1 nh\u01b0 khi \u0111\u1ecdc to trong ph\u00f2ng \u0111\u00f4ng ng\u01b0\u1eddi, kh\u00f4ng d\u00f9ng t\u00ean h\u1ed9i vi\u00ean.')}
           </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
