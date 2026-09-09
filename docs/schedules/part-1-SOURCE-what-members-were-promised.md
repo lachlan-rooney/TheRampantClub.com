@@ -58,7 +58,27 @@ is ordinary usage and unrelated.
 So the Annual Dram was an idea that never reached the members or the system.
 **Part 1 does not mention it.** Nothing was deleted because nothing existed.
 
-## 4 · Locker terms — **ONE SENTENCE, NO TERMS**
+## 4 · Locker terms — **MOSTLY SETTLED** (2026-09-09)
+
+Decided, and enough to write the section:
+
+| Question | Answer |
+|---|---|
+| Cost | **Free** |
+| Capacity | **Roughly six bottles** |
+| On leaving | Bottles are **returned to the member**, and **held until collected** |
+| Liability | The club takes **no responsibility**; a **waiver is signed on entry** |
+| Mid-membership | A member may **remove bottles at any time** |
+| **Still open** | **Does every member get a locker, or is it allocated?** |
+
+That last one is the only thing standing between this and a finished section.
+It also decides how the rest reads: "your locker" if every member has one,
+"a locker" if they are allocated — and if allocated, on what basis, because a
+scarce free benefit needs a rule or it becomes a favour.
+
+### What the source document actually said
+
+
 
 The entire text is:
 
@@ -97,11 +117,9 @@ first right of refusal — and a schedule is where limits belong if there are an
 ## What Part 1 still needs a human decision on
 
 1. ~~The Annual Dram~~ — settled: it exists nowhere and Part 1 omits it.
-2. Locker terms — **partly settled**. Decided: bottles are returned when a
-   member leaves and held until collected; the club takes no responsibility,
-   with a waiver signed on entry; a member may remove bottles mid-membership.
-   **Still needed: does a locker cost anything, how many bottles does it hold,
-   and does every member get one?** Three answers and the section writes itself.
+2. Locker terms — **one answer left**: does every member get a locker, or is
+   it allocated? Free and roughly six bottles are settled, as is what happens
+   on departure and who carries the risk. See section 4.
 3. Limits on the unbounded promises above, or an explicit statement there are none.
 4. The consequence, if any, of missing the two-event expectation.
 5. Whether the castle promise survives as written now the date is upon it.
