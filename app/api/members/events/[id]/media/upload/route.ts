@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import sharp from 'sharp'
 import { randomUUID } from 'crypto'
 import { getActor, svc } from '@/lib/social/server'
 import { sniff, MAX_BYTES, REFUSAL } from '@/lib/attachments/verify'
+import { getSharp, imagePipelineDownMember } from '@/lib/attachments/image'
 
 // POST /api/members/events/[id]/media/upload   (multipart: file)
 //
@@ -53,6 +53,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // .rotate() applies the orientation tag and then discards it; sharp drops all
     // other metadata unless explicitly told to keep it. Everything lands as JPEG,
     // so there is one output type rather than three.
+    const { sharp } = await getSharp()
+    if (!sharp) return NextResponse.json({ error: imagePipelineDownMember }, { status: 503 })
     bytes = await sharp(Buffer.from(original)).rotate().jpeg({ quality: 82 }).toBuffer()
   } catch {
     return NextResponse.json({ error: REFUSAL.unreadable }, { status: 400 })

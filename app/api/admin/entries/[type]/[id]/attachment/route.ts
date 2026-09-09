@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import sharp from 'sharp'
 import { PDFDocument } from 'pdf-lib'
 import { randomUUID } from 'crypto'
 import { isAdmin } from '@/lib/admin'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { sniff, MIME_OF, EXT_OF, MAX_BYTES, REFUSAL } from '@/lib/attachments/verify'
+import { sniff, looksHeic, MIME_OF, EXT_OF, MAX_BYTES, REFUSAL } from '@/lib/attachments/verify'
+import { getSharp, imagePipelineDown } from '@/lib/attachments/image'
 
 // POST   /api/admin/entries/[type]/[id]/attachment   — replace the entry's file
 // DELETE /api/admin/entries/[type]/[id]/attachment   — remove it
@@ -47,7 +47,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ type: stri
 
   // ── THE CONTENT CHECK. Extension and declared Content-Type are both ignored.
   const kind = sniff(original)
-  if (!kind) return NextResponse.json({ error: REFUSAL.wrongKind }, { status: 400 })
+  if (!kind) {
+    return NextResponse.json({ error: looksHeic(original) ? REFUSAL.heic : REFUSAL.wrongKind }, { status: 400 })
+  }
 
   let bytes: Uint8Array = original
   if (kind === 'pdf') {
@@ -60,6 +62,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ type: stri
     // Re-encode through sharp. Two jobs at once: it STRIPS EXIF (a phone photo
     // carries GPS and a timestamp — sharp drops all metadata unless told to keep
     // it) and it proves the bytes really decode as an image.
+    const { sharp, error: sharpErr } = await getSharp()
+    if (!sharp) return NextResponse.json({ error: imagePipelineDown(sharpErr) }, { status: 503 })
     try {
       const img = sharp(Buffer.from(original)).rotate()
       bytes = new Uint8Array(

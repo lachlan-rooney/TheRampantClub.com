@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLang } from '@/lib/lang'
+import { MAX_BYTES } from '@/lib/attachments/verify'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE EVENT'S FILE — one image or PDF, on a fixture or a calendar entry.
@@ -42,15 +43,33 @@ export default function AttachmentField({
   const set = useCallback((a: Attachment | null) => { setAtt(a); onChange?.(a) }, [onChange])
 
   const upload = async (file: File) => {
+    // CHECK THE SIZE HERE, not only on the server. A file over the platform's
+    // body limit is rejected by the host before our route runs, so the server
+    // never gets to explain itself — the staff member just sees a failure with
+    // no reason. Catching it locally is the only way that message is honest.
+    if (file.size > MAX_BYTES) {
+      setError(t(
+        `That file is ${(file.size / 1048576).toFixed(1)}MB. The limit is 4MB — ask for a smaller export, or a JPEG rather than a PDF.`,
+        `Tệp này ${(file.size / 1048576).toFixed(1)}MB. Giới hạn là 4MB — xin bản xuất nhỏ hơn, hoặc JPEG thay vì PDF.`))
+      if (fileRef.current) fileRef.current.value = ''
+      return
+    }
     setBusy(true); setError(null)
     try {
       const fd = new FormData(); fd.append('file', file)
       const r = await fetch(base, { method: 'POST', body: fd })
-      const j = await r.json().catch(() => ({}))
+      const j = await r.json().catch(() => null)
       // The server's refusal is written for a staff member to act on — show it
-      // rather than replacing it with "upload failed".
-      if (!r.ok) { setError(j.error || t('Could not upload that file.', 'Không thể tải tệp lên.')); return }
-      set(j.attachment)
+      // rather than replacing it with "upload failed". When the body is NOT ours
+      // (a host-level 413, a gateway timeout, an HTML error page) say the status
+      // out loud: an opaque failure is the one thing nobody can act on.
+      if (!r.ok) {
+        setError(j?.error || t(
+          `The upload was refused (${r.status}). If the file is large, try a smaller one.`,
+          `Tải lên bị từ chối (${r.status}). Nếu tệp lớn, hãy thử tệp nhỏ hơn.`))
+        return
+      }
+      set(j!.attachment)
     } catch { setError(t('Could not upload that file.', 'Không thể tải tệp lên.')) }
     finally { setBusy(false); if (fileRef.current) fileRef.current.value = '' }
   }
@@ -117,7 +136,7 @@ export default function AttachmentField({
         onChange={e => { const f = e.target.files?.[0]; if (f) upload(f) }}
       />
       <div style={{ ...meta, marginTop: 8, opacity: .55 }}>
-        {t('JPEG, PNG, WebP or PDF · up to 5MB · one per event', 'JPEG, PNG, WebP hoặc PDF · tối đa 5MB · một tệp cho mỗi sự kiện')}
+        {t('JPEG, PNG, WebP or PDF · up to 4MB · one per event', 'JPEG, PNG, WebP hoặc PDF · tối đa 4MB · một tệp cho mỗi sự kiện')}
       </div>
       {error && <div style={{ ...meta, color: '#C27070', marginTop: 6 }}>{error}</div>}
     </div>

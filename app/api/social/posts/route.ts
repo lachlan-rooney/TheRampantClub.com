@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
-import sharp from 'sharp'
 import { getActor, svc, socialEmit } from '@/lib/social/server'
+import { getSharp, imagePipelineDownMember } from '@/lib/attachments/image'
 
 // Create a Snug post. Members post as author_kind='member'; staff (admins) post
 // as 'house' — the member side renders house posts as "The Club", never a staff
@@ -39,6 +39,8 @@ export async function POST(req: Request) {
     const f = photo as File
     if (f.size > 8 * 1024 * 1024) return NextResponse.json({ error: 'Photo is too large (8MB max).' }, { status: 400 })
     try {
+      const { sharp } = await getSharp()
+      if (!sharp) return NextResponse.json({ error: imagePipelineDownMember }, { status: 503 })
       const cleaned = await sharp(Buffer.from(await f.arrayBuffer())).rotate().jpeg({ quality: 82 }).toBuffer()
       media_path = `${actor.id}/${randomUUID()}.jpg`
       const up = await a.storage.from(BUCKET).upload(media_path, cleaned, { contentType: 'image/jpeg', upsert: false })
