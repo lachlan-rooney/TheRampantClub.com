@@ -181,6 +181,15 @@ export default function AdminFixtures() {
             <div style={{ flex: 1 }}>
               <label style={labelStyle}>{t('Max Sign-ups', 'Số lượt đăng ký tối đa')}</label>
               <input type="number" style={inputStyle} value={maxSignups} onChange={e => setMaxSignups(e.target.value)} />
+              {/* The prompt at the moment you are already here. "Worth doing next
+                  time" is the shape of a thing that never gets done; a capped
+                  fixture is the one moment the cap can actually be exercised. */}
+              {maxSignups && (
+                <p style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10.5, color: '#D4B85A', opacity: .85, margin: '6px 0 0', lineHeight: 1.65 }}>
+                  {t('Once it\u2019s live: sign yourself up, then have someone else try when it\u2019s full. Read the refusal as a member would \u2014 one minute, and it is the only time the cap gets tested.',
+                     'Khi \u0111\u00e3 ho\u1ea1t \u0111\u1ed9ng: t\u1ef1 \u0111\u0103ng k\u00fd, r\u1ed3i nh\u1edd ng\u01b0\u1eddi kh\u00e1c th\u1eed khi \u0111\u00e3 \u0111\u1ee7. \u0110\u1ecdc th\u00f4ng b\u00e1o t\u1eeb ch\u1ed1i nh\u01b0 m\u1ed9t h\u1ed9i vi\u00ean \u2014 m\u1ed9t ph\u00fat, v\u00e0 \u0111\u00f3 l\u00e0 l\u1ea7n duy nh\u1ea5t gi\u1edbi h\u1ea1n \u0111\u01b0\u1ee3c ki\u1ec3m tra.')}
+                </p>
+              )}
             </div>
             <div style={{ flex: 1 }}>
               <label style={labelStyle}>{t('Sign-up Deadline', 'Hạn chót đăng ký')}</label>
