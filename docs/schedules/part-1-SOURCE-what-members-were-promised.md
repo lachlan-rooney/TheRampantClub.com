@@ -45,11 +45,18 @@ Not answered:
 - What follows if a member does **not** attend two events. "Expected to" carries no stated consequence.
 - Whether guests may attend events, or only the clubhouse.
 
-## 3 · The Annual Dram — **NOT IN THIS DOCUMENT**
+## 3 · The Annual Dram — **DECIDED: REMOVED** (2026-09-09)
 
-The word "dram" does not appear anywhere in the 8 pages. Whatever the Annual
-Dram is, members were not promised it here. Part 1 cannot describe it from this
-source; it needs a decision or another document.
+The word "dram" does not appear anywhere in the 8 pages. Members were not
+promised it here.
+
+A search of the whole system found **nothing to remove**: no code, no database
+row, no reference in the signed Membership Agreement. The only occurrence
+anywhere is the phrase "the drams you've enjoyed" in the Privacy Notice, which
+is ordinary usage and unrelated.
+
+So the Annual Dram was an idea that never reached the members or the system.
+**Part 1 does not mention it.** Nothing was deleted because nothing existed.
 
 ## 4 · Locker terms — **ONE SENTENCE, NO TERMS**
 
@@ -89,8 +96,12 @@ first right of refusal — and a schedule is where limits belong if there are an
 
 ## What Part 1 still needs a human decision on
 
-1. The Annual Dram — absent entirely.
-2. Locker terms — all of them.
+1. ~~The Annual Dram~~ — settled: it exists nowhere and Part 1 omits it.
+2. Locker terms — **partly settled**. Decided: bottles are returned when a
+   member leaves and held until collected; the club takes no responsibility,
+   with a waiver signed on entry; a member may remove bottles mid-membership.
+   **Still needed: does a locker cost anything, how many bottles does it hold,
+   and does every member get one?** Three answers and the section writes itself.
 3. Limits on the unbounded promises above, or an explicit statement there are none.
 4. The consequence, if any, of missing the two-event expectation.
 5. Whether the castle promise survives as written now the date is upon it.

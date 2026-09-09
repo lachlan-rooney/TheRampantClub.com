@@ -119,6 +119,7 @@ export default function CalendarPage() {
   const [spaceFilter, setSpaceFilter] = useState<string>('All spaces')
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
+  const [marking, setMarking] = useState<string | null>(null)
   const [starting, setStarting] = useState<string | null>(null)
   const [hovered, setHovered] = useState<string | null>(null)
   const [hoveredEntry, setHoveredEntry] = useState<string | null>(null)
@@ -211,6 +212,31 @@ export default function CalendarPage() {
     const res = await fetch(`/api/admin/time-off/${id}`, { method: 'DELETE' })
     if (!res.ok) { showToast(t('Remove failed', 'Xoá thất bại'), 'error'); return }
     load()
+  }
+
+  // ── DID THEY COME? ───────────────────────────────────────────────────────
+  // The API already stamps arrived_at when status becomes 'arrived', and
+  // 'no_show' is already a valid status — but every booking in the data sits at
+  // 'confirmed', so a no-show and an attendance are identical rows and
+  // booked-versus-attended cannot be computed at all.
+  //
+  // The reason is friction, not capability: "Start visit" only appears on TODAY,
+  // and the habit is correcting a booking AFTER the member has left, often the
+  // next day. So a past booking still sitting at confirmed gets the two buttons
+  // here, where staff are already fixing the times.
+  const markAttendance = async (booking: Booking, status: 'arrived' | 'no_show') => {
+    if (marking) return
+    setMarking(booking.booking_id)
+    try {
+      const r = await fetch(`/api/admin/bookings/${booking.booking_id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      if (!r.ok) throw new Error((await r.json().catch(() => ({})))?.error || t('Could not save', 'Không thể lưu'))
+      await load()
+    } catch (e) {
+      showToast((e as Error).message, 'error')
+    } finally { setMarking(null) }
   }
 
   const startVisit = async (booking: Booking) => {
@@ -444,6 +470,16 @@ export default function CalendarPage() {
                           <Link href={`/admin/mis/visits/${b.linked_visit_id}`} style={visitLink}>
                             {t('→ open visit', '→ mở lượt ghé')}
                           </Link>
+                        )}
+                        {(b.status === 'confirmed' || b.status === 'pending') && iso < todayIso && (
+                          <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                            <button onClick={() => markAttendance(b, 'arrived')} disabled={marking === b.booking_id} style={cameBtn}>
+                              {t('Came', 'Đã đến')}
+                            </button>
+                            <button onClick={() => markAttendance(b, 'no_show')} disabled={marking === b.booking_id} style={noShowBtn}>
+                              {t('No-show', 'Không đến')}
+                            </button>
+                          </div>
                         )}
                         {(b.status === 'confirmed' || b.status === 'pending') && iso === todayIso && (
                           <button
@@ -737,6 +773,14 @@ const tipNotesBox: React.CSSProperties = {
   lineHeight: 1.6, whiteSpace: 'pre-wrap',
   background: 'rgba(229,212,194,0.05)', border: '1px solid rgba(229,212,194,0.10)',
   borderRadius: 4, padding: '8px 10px', maxHeight: 220, overflowY: 'auto',
+}
+const cameBtn: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9, letterSpacing: '.04em',
+  padding: '4px 10px', borderRadius: 5, border: '1px solid rgba(122,176,122,0.45)',
+  background: 'transparent', color: '#7AB07A', cursor: 'pointer',
+}
+const noShowBtn: React.CSSProperties = {
+  ...cameBtn, border: '1px solid rgba(194,112,112,0.4)', color: '#C27070',
 }
 const visitLink: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 9,
