@@ -2,6 +2,7 @@
 
 import { ReactNode } from 'react'
 import Link from 'next/link'
+import { useLang } from '@/lib/lang'
 
 export default function MemberPage({
   title, subtitle, description, icon, children,
@@ -12,6 +13,22 @@ export default function MemberPage({
   icon?: string
   children: ReactNode
 }) {
+  const { lang } = useLang()
+  // ── ONLY SWAP WHEN THE SUBTITLE IS ACTUALLY VIETNAMESE ───────────────────
+  // Most pages pair an English title with a Vietnamese subtitle, but not all:
+  // The Snug's is "THE CLUB, IN CONVERSATION" and the concierge's is "A LINE TO
+  // THE CLUB". Promoting those gives a Vietnamese reader an English heading over
+  // an English subtitle — worse than not switching at all.
+  //
+  // DETECTED BY COMBINING MARKS, not by a hand-written alphabet. The first
+  // version listed accented characters and missed the UPPERCASE forms, so it
+  // declared "TIN NHẮN" and "HÀNH TRÌNH CỦA BẠN" to be English. Decomposing to
+  // NFD and looking for any tone mark catches every case regardless of case,
+  // and `đ` is checked separately because it carries no combining mark.
+  const isVietnamese = (s: string) =>
+    /[\u0300-\u0323]/.test(s.normalize('NFD')) || /[đĐ]/.test(s)
+  const showVn = lang === 'vn' && !!subtitle && isVietnamese(subtitle)
+
   // Reveal is a single CSS mount animation (`both` fill) — it begins at
   // opacity 0 and animates in immediately, with NO artificial blank delay and
   // no re-trigger when the page's own data later loads. This replaced a pair of
@@ -62,12 +79,21 @@ export default function MemberPage({
           <h1 style={{
             fontFamily: "'Rampant Sans', serif", fontSize: 28, fontWeight: 500,
             color: '#E5D4C2', textAlign: 'center', letterSpacing: '0.04em', marginBottom: 6,
-          }}>{title}</h1>
+          }}>{showVn ? subtitle : title}</h1>
+          {/* ── WHAT THE EN/VN SWITCH ACTUALLY DOES ─────────────────────────
+              Member pages were already bilingual by STACKING: an English title
+              with a Vietnamese subtitle under it, both always shown. So a
+              toggle had nothing to toggle — on a laptop it changed nothing at
+              all, because the only wired surface was the mobile tab bar.
+              Switching to VN now promotes the Vietnamese to the heading and
+              demotes the English, on all 19 pages that use this component, from
+              one edit. If a page has no Vietnamese subtitle it keeps the
+              English in both slots rather than rendering an empty heading. */}
           <p style={{
             fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11,
             color: '#B2AA98', textAlign: 'center', letterSpacing: '0.04em',
             marginBottom: description ? 24 : 48,
-          }}>{subtitle}</p>
+          }}>{showVn ? title : subtitle}</p>
           {description && (
             <p style={{
               fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12,

@@ -38,11 +38,28 @@ async function handle(req: NextRequest) {
   const sb = svc()
   const { data, error } = await sb.rpc('ops_materialise_due')   // defaults to VN today
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // ── WEEKLY SHIFT TASKS ride on this job rather than a second scheduler ────
+  // shift_materialise_week() is idempotent (unique on template_task + week), so
+  // calling it daily is harmless and Monday is simply the first day it creates
+  // anything. Generating lazily on first view was the alternative and is worse:
+  // a week nobody opens never exists, so carry-over silently skips it and the
+  // Monday review is short a person with no error raised anywhere.
+  //
+  // A failure here must NOT fail the ops materialiser — they are independent
+  // jobs sharing a trigger, and one going down should not take the other with it.
+  let shifts: number | null = null
+  let shiftsError: string | null = null
+  try {
+    const r = await sb.rpc('shift_materialise_week')
+    if (r.error) shiftsError = r.error.message
+    else shifts = r.data as number
+  } catch (e) { shiftsError = (e as Error).message }
   // Flush emails for any recurring-task assignments just materialised. At 00:05 VN
   // this is quiet hours → dispatch defers them (the daily 09:00 cron sweeps them).
   let flush
   try { flush = await dispatchPendingEmails(sb) } catch { /* daily sweep backstop */ }
-  return NextResponse.json({ ok: true, summary: data, flush })
+  return NextResponse.json({ ok: true, summary: data, flush, shift_instances_created: shifts, shift_error: shiftsError })
 }
 
 export async function POST(req: NextRequest) { return handle(req) }

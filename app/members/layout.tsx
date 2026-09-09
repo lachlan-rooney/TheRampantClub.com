@@ -39,15 +39,16 @@ export default function MembersLayout({ children }: { children: React.ReactNode 
         }
       ` }} />
       <NavOverlay variant="members" dark />
-      {/* EN / VN on every member page. Fixed top-right, clear of the nav trigger
-          on the left and the bottom tab bar on mobile. It reads the one shared
-          language context, so the choice follows the member across the portal,
-          the consent pages and the welcome guide. */}
+      {/* Same position as the admin portal: a right-aligned strip at the top
+          of the content area (app/admin/layout.tsx puts LangToggle in exactly
+          this spot, in flow, before the page). Member pages own their full-page
+          backgrounds and top padding, so this sits above them rather than
+          inside — same place on screen, without disturbing every page's rhythm. */}
       <div style={{
-        position: 'fixed', top: 'calc(14px + env(safe-area-inset-top, 0px))', right: 16,
-        zIndex: 60,
+        position: 'absolute', top: 'calc(16px + env(safe-area-inset-top, 0px))', right: 24,
+        zIndex: 60, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12,
       }}>
-        <LangToggle compact />
+        <LangToggle />
       </div>
       <LoginTicker />
       {children}
