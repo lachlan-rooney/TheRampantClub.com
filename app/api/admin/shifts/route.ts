@@ -53,8 +53,40 @@ export async function GET(req: NextRequest) {
 
   const { data: team } = await sb.from('team_members').select('id, display_name, is_shift_supervisor').eq('active', true)
 
+  // ═══ LAPSE WATCH ═══════════════════════════════════════════════════════
+  // A task lapsing three weeks running is a DESIGN FAULT, not a discipline
+  // problem. Either it gets a name against it or it stops existing.
+  //
+  // "Daily Open Check" reached 95 cards and one completion before anyone looked,
+  // because nothing ever put it in front of a person. This does — on the one
+  // screen a supervisor opens every Monday. Counted in WEEKS, not cards, so a
+  // daily task and a weekly one are judged the same way.
+  const since = new Date(Date.now() - 28 * 864e5).toISOString().slice(0, 10)
+  const [{ data: recurring }, { data: cards }] = await Promise.all([
+    sb.from('task_templates').select('id, title, default_assignee').eq('active', true),
+    sb.from('tasks').select('template_id, status, due_date').gte('due_date', since).not('template_id', 'is', null),
+  ])
+
+  const weekKey = (d: string) => mondayOf(d)
+  const lastThree = [1, 2, 3].map(n =>
+    mondayOf(new Date(Date.now() - n * 7 * 864e5).toISOString().slice(0, 10)))
+
+  const lapsing = (recurring || []).map(tpl => {
+    const mine = (cards || []).filter(c => c.template_id === tpl.id)
+    // Every one of the last three COMPLETE weeks must have produced a card and
+    // finished none of them. A single completion breaks the run, as it should.
+    const weeks = lastThree.filter(w => {
+      const inWeek = mine.filter(c => weekKey(c.due_date) === w)
+      return inWeek.length > 0 && inWeek.every(c => c.status === 'lapsed')
+    })
+    return {
+      id: tpl.id, title: tpl.title, has_owner: !!tpl.default_assignee,
+      weeks: weeks.length, cards: mine.filter(c => c.status === 'lapsed').length,
+    }
+  }).filter(r => r.weeks >= 3)
+
   return NextResponse.json({
-    week, acting, templates: templates || [], tasks: tasks || [],
+    week, acting, lapsing, templates: templates || [], tasks: tasks || [],
     instances: instances || [], events: events || [], notes: notes || [],
     objectives: objectives || [], team: team || [],
   })

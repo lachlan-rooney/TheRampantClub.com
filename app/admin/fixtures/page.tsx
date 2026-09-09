@@ -9,6 +9,7 @@ import type { Fixture } from '@/lib/types'
 import { FIXTURE_TYPES, TYPE_COLOR, typeLabel } from '@/lib/fixtures'
 import ShareBox from '@/components/admin/ShareBox'
 import AttachmentField from '@/components/admin/AttachmentField'
+import { vnInputValue, vnInputToISO, vnEventLabel } from '@/lib/datetime'
 
 const inputStyle: React.CSSProperties = {
   background: 'rgba(229,212,194,0.06)', color: '#E5D4C2',
@@ -89,9 +90,9 @@ export default function AdminFixtures() {
 
   const startEdit = (f: Fixture) => {
     setType(f.type); setTitle(f.title); setDescription(f.description || '')
-    setDate(f.date ? new Date(f.date).toISOString().slice(0, 16) : '')
+    setDate(vnInputValue(f.date))
     setLocation(f.location || ''); setMaxSignups(f.max_signups?.toString() || '')
-    setSignupDeadline(f.signup_deadline ? new Date(f.signup_deadline).toISOString().slice(0, 16) : '')
+    setSignupDeadline(vnInputValue(f.signup_deadline))
     setResults(f.results || ''); setOpsProjectId(f.ops_project_id || '')
     setEditing(f); setShowForm(true)
   }
@@ -99,9 +100,11 @@ export default function AdminFixtures() {
   const handleSubmit = async () => {
     const payload = {
       type, title, description: description || null,
-      date: new Date(date).toISOString(), location: location || null,
+      // Read as VIETNAM wall-clock. Reading it as the browser's clock is what
+      // moved every fixture 7 hours earlier on each save.
+      date: vnInputToISO(date), location: location || null,
       max_signups: maxSignups ? parseInt(maxSignups) : null,
-      signup_deadline: signupDeadline ? new Date(signupDeadline).toISOString() : null,
+      signup_deadline: vnInputToISO(signupDeadline),
       results: results || null,
       ops_project_id: opsProjectId || null,
     }
@@ -227,7 +230,7 @@ export default function AdminFixtures() {
                 }}>{typeLabel(f.type, lang)}</span>
                 <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 14, color: '#E5D4C2' }}>{f.title}</span>
                 <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>
-                  {new Date(f.date).toLocaleDateString()} · {f.location || '—'}
+                  {vnEventLabel(f.date)} · {f.location || '—'}
                 </span>
                 <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>
                   {signupCounts[f.id] || 0} {t('signed up', 'đã đăng ký')}

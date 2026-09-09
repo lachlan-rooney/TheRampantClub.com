@@ -364,6 +364,13 @@ insert into shift_template_tasks (template_id, sort, title_en, title_vi, is_pros
 select t.id, 8, 'Send the week''s plan to Shawn before leaving.', 'Gửi kế hoạch tuần cho Shawn trước khi về.', false from shift_templates t where t.slug = 'operations_stock'
   and not exists (select 1 from shift_template_tasks x where x.template_id = t.id and x.sort = 8);
 
+-- #9 arrives with db/retire_daily_open_check.sql: the Ops board's "Daily Open
+-- Check" lapsed 93 times with no assignee, so verifying the checklist moved here
+-- where a person is attached by construction.
+insert into shift_template_tasks (template_id, sort, title_en, title_vi, is_prospect_task)
+select t.id, 9, 'Check last week''s opening checklists were completed and sealed. Any day missing, find out why before the review.', 'Kiểm tra các phiếu mở cửa tuần trước đã hoàn thành và niêm phong. Ngày nào thiếu, tìm hiểu nguyên nhân trước buổi rà soát.', false from shift_templates t where t.slug = 'operations_stock'
+  and not exists (select 1 from shift_template_tasks x where x.template_id = t.id and x.sort = 9);
+
 insert into shift_templates (slug, day_of_week, title_en, assignee_team_member_id, charter_en, measure_en, sort)
 select 'member_care', 2, 'Member Care & Correspondence',
        (select id from team_members where display_name = 'Tiên' limit 1),
@@ -554,7 +561,8 @@ begin
   if v_t <> 5 then raise exception 'SELF-CHECK: expected 5 shifts, found %', v_t; end if;
 
   select count(*) into v_tasks from shift_template_tasks;
-  if v_tasks <> 44 then raise exception 'SELF-CHECK: expected 44 template tasks, found %', v_tasks; end if;
+  -- 45 = the seeded 44 + Mr Sĩ #9, the verification that replaced Daily Open Check.
+  if v_tasks <> 45 then raise exception 'SELF-CHECK: expected 45 template tasks, found %', v_tasks; end if;
 
   select count(*) into v_prospect from shift_template_tasks where is_prospect_task;
   if v_prospect <> 4 then raise exception 'SELF-CHECK: the prospect rule is 4 shifts, not %', v_prospect; end if;

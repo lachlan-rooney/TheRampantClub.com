@@ -23,6 +23,7 @@ interface Inst { id: string; template_task_id: string; template_id: string; stat
   blocked_reason: string | null; blocked_unblocker: string | null; carried_over_count: number; evidence: string | null }
 interface Member { id: string; display_name: string; is_shift_supervisor: boolean }
 interface Obj { template_id: string; objective_en: string }
+interface Lapse { id: string; title: string; has_owner: boolean; weeks: number; cards: number }
 interface P { prospect_id: string; full_name: string; stage: string; decision: string | null
   created_at: string; archived_at: string | null }
 
@@ -34,7 +35,7 @@ export default function ReviewPage() {
   const thisWeek = mondayOf(new Date(Date.now() + 7 * 3600e3))
   const [week, setWeek] = useState(addDays(thisWeek, -7))     // LAST week by default
   const [d, setD] = useState<{ acting: Member | null; templates: Tpl[]; tasks: Task[]; instances: Inst[]
-    team: Member[]; objectives: Obj[] } | null>(null)
+    team: Member[]; objectives: Obj[]; lapsing: Lapse[] } | null>(null)
   const [prospects, setProspects] = useState<P[]>([])
   // The grid looks BACK at `week`; the five objectives look FORWARD at `thisWeek`.
   // They are different weeks, so they need different reads — otherwise the field
@@ -179,6 +180,26 @@ export default function ReviewPage() {
             </div>
           ))}
       </Section>
+
+      {/* ── LAPSING. The check that would have caught Daily Open Check. ───── */}
+      {(d.lapsing?.length ?? 0) > 0 && (
+        <Section title={`${t('Lapsing', 'Việc bỏ trôi')} · ${d.lapsing.length}`}>
+          <div style={{ ...meta, marginBottom: 8 }}>
+            {t('Three weeks running with nothing completed. Give it a name or retire it — it is a design fault, not a discipline problem.',
+               'Ba tuần liên tiếp không có gì hoàn thành. Giao cho một người hoặc bỏ hẳn — đây là lỗi thiết kế, không phải lỗi kỷ luật.')}
+          </div>
+          {d.lapsing.map(l => (
+            <div key={l.id} style={line}>
+              <span style={{ ...pill, background: 'rgba(194,112,112,.22)', color: '#C27070' }}>
+                {l.weeks}{t('w', ' tuần')}
+              </span>
+              <span style={{ ...meta, color: '#E5D4C2' }}>{l.title}</span>
+              <span style={meta}>{l.cards} {t('lapsed cards', 'thẻ bỏ trôi')}</span>
+              {!l.has_owner && <span style={{ ...meta, color: '#C27070' }}>{t('no owner', 'không có người phụ trách')}</span>}
+            </div>
+          ))}
+        </Section>
+      )}
 
       {/* ── THE FIVE OBJECTIVES, which land on each person's shift view. ──── */}
       <Section title={`${t('The five for', 'Năm việc cho tuần')} ${thisWeek}`}>

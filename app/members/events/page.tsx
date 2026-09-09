@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
-import { vnDateString } from '@/lib/datetime'
+import { vnDateString, vnEventLabel } from '@/lib/datetime'
 import type { Fixture, FixtureSignup } from '@/lib/types'
 import { typeLabel, isSport } from '@/lib/fixtures'
 
@@ -70,9 +70,9 @@ const KIND_META: Record<string, { label: string; tint: string; ring: string }> =
   other:        { label: 'Notice',         tint: 'rgba(178,170,152,0.16)', ring: 'rgba(178,170,152,0.45)' },
 }
 
-const fmtFixtureDate = (d: string) =>
-  new Date(d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
-  + ' · ' + new Date(d).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true })
+// Pinned to Vietnam, NOT the viewer's browser. A member reading from Scotland or
+// a reciprocal club must see the time the event actually starts here.
+const fmtFixtureDate = (d: string) => vnEventLabel(d)
 const fmtEntryDate = (iso: string) =>
   new Date(`${iso}T12:00:00+07:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Ho_Chi_Minh' })
 const fmtEntryTime = (e: Entry) => {
