@@ -109,15 +109,31 @@ export default function WhatsOnPage() {
 
   const isSignedUp = (id: string) => signups.some(s => s.fixture_id === id && s.user_id === userId)
   const deadlinePassed = (f: Fixture) => f.signup_deadline ? new Date(f.signup_deadline).getTime() < nowTs : false
+  const REFUSAL: Record<string, string> = {
+    full: 'That one filled up while you were looking.',
+    closed: 'Sign-ups for that one have closed.',
+    already: 'You’re already down for that one.',
+    unknown: 'That fixture is no longer listed.',
+    auth: 'Please sign in again.',
+  }
 
   const toggleSignup = async (fixtureId: string) => {
     if (!userId) return
     setBusyId(fixtureId); setErrorMsg(null)
-    const op = isSignedUp(fixtureId)
-      ? supabase.from('fixture_signups').delete().eq('fixture_id', fixtureId).eq('user_id', userId)
-      : supabase.from('fixture_signups').insert({ fixture_id: fixtureId, user_id: userId })
-    const { error } = await op
+    const signingUp = !isSignedUp(fixtureId)
+    // The cap and the deadline are decided in the DATABASE now, in one transaction:
+    // a direct insert could overfill on two simultaneous taps, and a stale tab could
+    // sign up after close. The function returns WHY it refused so we can say it.
+    const op = signingUp
+      ? supabase.rpc('fixture_signup', { p_fixture_id: fixtureId })
+      : supabase.from('fixture_signups').delete().eq('fixture_id', fixtureId).eq('user_id', userId)
+    const { data: reason, error } = await op
     if (error) { setErrorMsg(error.message || 'Could not update signup.'); setBusyId(null); return }
+    if (signingUp && reason) {
+      setErrorMsg(REFUSAL[reason as string] || 'Could not sign you up.')
+      // Still refresh: 'full' means somebody else took the seat, and the count on
+      // screen is now wrong in a way the member can see.
+    }
     const [{ data }, { data: c }] = await Promise.all([
       supabase.from('fixture_signups').select('*'),
       supabase.rpc('fixture_signup_counts'),

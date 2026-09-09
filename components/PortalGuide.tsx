@@ -66,7 +66,7 @@ const SLIDES: Slide[] = [
   { key: 'whatson', icon: 'calendar', image: 'cocktails', title: { en: "What’s On", vn: 'Sự Kiện' },
     blurb: { en: 'Everything happening — and the photos afterwards.', vn: 'Mọi thứ đang diễn ra — và ảnh sau đó.' },
     items: [
-      { icon: 'calendar', name: { en: 'Events & Fixtures', vn: 'Sự Kiện & Thi Đấu' }, line: { en: 'What’s coming up — tap “Sign me up” to join a match.', vn: 'Sắp tới — chạm “Cho tôi tham gia” để dự trận.' } },
+      { icon: 'calendar', name: { en: "What's On", vn: 'Sự Kiện & Thi Đấu' }, line: { en: 'What’s coming up — tap “Sign me up” to join a match.', vn: 'Sắp tới — chạm “Cho tôi tham gia” để dự trận.' } },
       { icon: 'image', name: { en: 'Event Gallery', vn: 'Thư Viện Sự Kiện' }, line: { en: 'Photos from events — add your own too.', vn: 'Ảnh từ sự kiện — thêm ảnh của bạn.' } },
       { icon: 'pin', name: { en: 'Notice Board', vn: 'Bảng Tin' }, line: { en: 'Short club announcements, every week.', vn: 'Thông báo ngắn, hàng tuần.' } },
     ] },
