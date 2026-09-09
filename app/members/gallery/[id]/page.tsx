@@ -59,11 +59,16 @@ export default function EventDetailPage() {
     setUploading(u => u + list.length)
     for (const file of list) {
       try {
-        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
-        const path = `${id}/${user.id}/${crypto.randomUUID()}.${ext}`
-        const up = await supabase.storage.from('event-media').upload(path, file, { contentType: file.type, upsert: false })
-        if (up.error) { setError('Upload failed — try again.'); continue }
-        const pub = supabase.storage.from('event-media').getPublicUrl(path).data.publicUrl
+        // THROUGH THE SERVER, not straight to storage. The route re-encodes with
+        // sharp, which strips EXIF — a photo taken at home carries the member's
+        // GPS coordinates — and proves the bytes really are an image. The old
+        // client-direct upload set Content-Type from `file.type`, i.e. from
+        // whatever the browser claimed.
+        const fd = new FormData()
+        fd.append('file', file)
+        const upRes = await fetch(`/api/members/events/${id}/media/upload`, { method: 'POST', body: fd })
+        if (!upRes.ok) { setError((await upRes.json().catch(() => ({})))?.error || 'Upload failed — try again.'); continue }
+        const { storage_path: path, url: pub } = await upRes.json()
         const res = await fetch(`/api/members/events/${id}/media`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ kind: 'image', url: pub, storage_path: path }),

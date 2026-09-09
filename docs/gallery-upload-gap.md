@@ -1,7 +1,19 @@
 # Known gap: the Event Gallery's upload path
 
-**Status:** pre-existing, not caused by the attachments work. Not urgent today.
-Worth its own small piece **before members use the gallery much**.
+**Status:** the two content problems are FIXED (2026-09-09). Uploads now go
+through `/api/members/events/[id]/media/upload`, which re-encodes with sharp —
+stripping EXIF and proving the bytes decode as an image — and sets
+`Content-Type` from what the bytes are.
+
+Verified end to end: a photo carrying 238 bytes of EXIF including GPS uploads
+and the stored file carries none; HTML declared `image/jpeg` is refused 400.
+
+**Still to run:** `db/gallery_upload_server_side.sql`, which drops the member
+INSERT policy on the bucket. Until that lands the old unchecked path is still
+reachable by any client holding the anon key — the code no longer uses it, but
+nothing yet prevents it.
+
+The bucket remains PUBLIC, deliberately — see the last section.
 
 ## What it is
 
