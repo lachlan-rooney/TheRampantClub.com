@@ -1,0 +1,224 @@
+'use client'
+
+import { useCallback, useEffect, useState } from 'react'
+import { useLang } from '@/lib/lang'
+import type { Tracker } from '@/lib/reports/tracker'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WHERE WE ARE AGAINST THE MONTH — cash in, weekly, rolling to a close.
+// ───────────────────────────────────────────────────────────────────────────
+// TWO REFERENCE LINES, NOT ONE. The target is what we are aiming at; BREAKEVEN
+// is what the month actually costs. They are different numbers, and a tracker
+// showing green at target while the month loses money is worse than no tracker.
+//
+// "CASH IN" on the face of it, never "revenue" — top-ups are prepayment and
+// dues land a year at once.
+const usd = (n: number) => '$' + Math.round(n).toLocaleString()
+const vnd = (n: number) => (n / 1e6).toFixed(1) + 'm'
+
+export default function WeeklyTracker() {
+  const { t } = useLang()
+  const [d, setD] = useState<Tracker | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const [edit, setEdit] = useState(false)
+
+  const load = useCallback(() => {
+    fetch('/api/admin/tracker', { cache: 'no-store' }).then(r => r.json())
+      .then(j => setD(j.tracker ?? null)).catch(() => {})
+  }, [])
+  useEffect(load, [load])
+
+  const saveWhisky = async (week: string, amount: string) => {
+    setBusy(true); setErr(null)
+    const r = await fetch('/api/admin/tracker', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ week_start: week, amount_vnd: Number(amount) * 1e6 }) })
+    if (!r.ok) setErr((await r.json().catch(() => ({})))?.error || 'Could not save.')
+    else load()
+    setBusy(false)
+  }
+  const saveSettings = async (p: Record<string, unknown>) => {
+    setBusy(true); setErr(null)
+    const r = await fetch('/api/admin/tracker', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) })
+    if (!r.ok) setErr((await r.json().catch(() => ({})))?.error || 'Could not save.')
+    else { setEdit(false); load() }
+    setBusy(false)
+  }
+
+  if (!d) return null
+  const ahead = d.mtd_cash_usd - d.mtd_target_usd
+  const close = d.projected_close
+
+  return (
+    <div style={wrap}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
+        <div style={h1}>{t('Cash in', 'Tiền vào')} · {d.month_label}</div>
+        <button onClick={() => setEdit(e => !e)} style={ghost}>{t('Cost base', 'Cơ sở chi phí')}</button>
+      </div>
+      <div style={sub}>
+        {t('Cash received against cash spent. Top-ups are prepayment and dues land a year at once — this is not revenue.',
+           'Tiền nhận được so với tiền chi ra. Nạp thẻ là trả trước và phí niên liễm vào một lần cả năm — đây không phải doanh thu.')}
+      </div>
+
+      {/* ── the two lines ─────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', margin: '14px 0 6px' }}>
+        <Stat label={t('Month to date', 'Từ đầu tháng')} value={usd(d.mtd_cash_usd)}
+              note={`${ahead >= 0 ? '+' : ''}${usd(ahead)} ${t('vs pro-rata', 'so với tỷ lệ')}`} tone={ahead >= 0 ? 'good' : 'bad'} />
+        <Stat label={t('Target', 'Mục tiêu')} value={usd(d.target_usd)} note={t('monthly', 'hàng tháng')} />
+        <Stat label={t('Breakeven', 'Hòa vốn')} value={usd(d.cost_base_usd)}
+              note={t('what the month costs', 'chi phí thực của tháng')} tone="warn" />
+        <Stat label={t('Projected close', 'Dự kiến chốt tháng')} value={usd(close.surplus_usd)}
+              note={close.surplus_usd >= 0 ? t('surplus', 'thặng dư') : t('deficit', 'thâm hụt')}
+              tone={close.surplus_usd >= 0 ? 'good' : 'bad'} />
+      </div>
+
+      {edit && (
+        <SettingsPanel d={d} busy={busy} onSave={saveSettings} onCancel={() => setEdit(false)} t={t} />
+      )}
+
+      {/* ── week by week ──────────────────────────────────────────────────── */}
+      <table style={table}>
+        <thead>
+          <tr>
+            {[t('Week', 'Tuần'), t('Cash in', 'Tiền vào'), t('Target', 'Mục tiêu'), t('Joined', 'Gia nhập'),
+              t('Whisky', 'Whisky'), t('Visits', 'Lượt ghé'), t('Members', 'Thành viên')].map(hd =>
+              <th key={hd} style={th}>{hd}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {d.weeks.map(w => (
+            <tr key={w.week_start}>
+              <td style={td}>{w.week_start.slice(5)}–{w.week_end.slice(5)}</td>
+              <td style={{ ...td, color: '#E5D4C2' }}>{usd(w.cash_in_usd)}</td>
+              <td style={{ ...td, opacity: .6 }}>{usd(w.target_usd)}</td>
+              <td style={td}>
+                {/* HOW MANY AND AT WHAT TIER, beside the cash — four Legacy and
+                    four Pioneer are very different months with similar shapes.
+                    The amount is what was COLLECTED, so a discount shows. */}
+                {w.joins.length === 0 ? <span style={{ opacity: .35 }}>—</span>
+                  : w.joins.map((j, i) => <span key={i} style={pill}>{j.tier} {vnd(j.amount_vnd)}</span>)}
+              </td>
+              <td style={td}>
+                {w.whisky_vnd === null
+                  ? <WhiskyEntry week={w.whisky_week_key} busy={busy} onSave={saveWhisky} t={t} />
+                  : <span style={{ color: '#E5D4C2' }}>{vnd(w.whisky_vnd)}</span>}
+              </td>
+              <td style={td}>{w.visits || <span style={{ opacity: .35 }}>—</span>}</td>
+              <td style={td}>{w.distinct_members || <span style={{ opacity: .35 }}>—</span>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {d.whisky.weeks_missing.length > 0 && (
+        <div style={warnBox}>
+          {t(`Whisky sales not entered for ${d.whisky.weeks_missing.length} week(s) this month`,
+             `Chưa nhập doanh số whisky cho ${d.whisky.weeks_missing.length} tuần trong tháng`)}
+          {d.whisky.days_since_entry != null && ` · ${t('last entry', 'lần nhập gần nhất')} ${d.whisky.days_since_entry} ${t('days ago', 'ngày trước')}`}
+          {'. '}
+          {t('A missing week is missing, not zero.', 'Tuần chưa nhập là thiếu dữ liệu, không phải bằng không.')}
+        </div>
+      )}
+
+      {/* ── the half no cash line shows ───────────────────────────────────── */}
+      <div style={h2}>{t('Usage and members', 'Mức sử dụng & thành viên')}</div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <Stat label={t('Visits', 'Lượt ghé')} value={String(d.usage.visits)} note={d.month_label} />
+        <Stat label={t('Distinct members', 'Thành viên khác nhau')} value={String(d.usage.distinct_members)}
+              note={t('ten visits from three is a different club', 'mười lượt từ ba người là câu lạc bộ khác')} />
+        <Stat label={t('Credit used', 'Tín dụng đã dùng')} value={vnd(d.usage.credit_consumed_vnd)}
+              note={t('usage — not cash in', 'mức sử dụng — không phải tiền vào')} />
+        <Stat label={t('No visit in 30 days', 'Không ghé 30 ngày')} value={`${d.dormancy.no_visit_30}/${d.dormancy.active_members}`}
+              note={`${d.dormancy.never_visited} ${t('never visited', 'chưa từng ghé')}`}
+              tone={d.dormancy.no_visit_30 > d.dormancy.active_members / 2 ? 'bad' : undefined} />
+      </div>
+      <div style={{ ...sub, marginTop: 8 }}>
+        {/* Honest about the data rather than confident about a number. */}
+        {t(`Time in club is staff-recorded, on ${d.usage.duration_coverage_pct}% of visits`,
+           `Thời gian tại câu lạc bộ do nhân viên ghi, trên ${d.usage.duration_coverage_pct}% lượt ghé`)}
+        {d.usage.median_duration_min != null && ` · ${t('median', 'trung vị')} ${d.usage.median_duration_min} ${t('min', 'phút')}`}
+        {'. '}
+        {t('Departure times are recorded too rarely to compute a dwell time from, so none is shown.',
+           'Giờ ra về được ghi quá ít nên không tính thời gian lưu lại.')}
+      </div>
+
+      {err && <div style={{ ...warnBox, color: '#C27070' }}>{err}</div>}
+    </div>
+  )
+}
+
+function WhiskyEntry({ week, busy, onSave, t }: {
+  week: string; busy: boolean; onSave: (w: string, a: string) => void; t: (a: string, b: string) => string
+}) {
+  const [v, setV] = useState('')
+  return (
+    <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+      <input value={v} onChange={e => setV(e.target.value)} placeholder={t('not entered', 'chưa nhập')}
+             inputMode="decimal" style={miniInput} />
+      <span style={{ fontSize: 9, opacity: .5 }}>m</span>
+      {v && <button disabled={busy} onClick={() => onSave(week, v)} style={miniBtn}>{t('Save', 'Lưu')}</button>}
+    </span>
+  )
+}
+
+function SettingsPanel({ d, busy, onSave, onCancel, t }: {
+  d: Tracker; busy: boolean; onSave: (p: Record<string, unknown>) => void; onCancel: () => void
+  t: (a: string, b: string) => string
+}) {
+  const [target, setTarget] = useState(String(d.target_usd))
+  const [cost, setCost] = useState(String(d.cost_base_usd))
+  const [rate, setRate] = useState(String(d.rate))
+  const [note, setNote] = useState(d.cost_base_note ?? '')
+  return (
+    <div style={panel}>
+      <div style={{ ...sub, marginBottom: 10 }}>
+        {t('Entered every few months, not every week. Breakeven is the cost base, so it moves when you change it. The rate is stored so past months do not shift.',
+           'Nhập vài tháng một lần, không phải hàng tuần. Hòa vốn lấy từ cơ sở chi phí nên sẽ đổi theo. Tỷ giá được lưu lại để các tháng trước không thay đổi.')}
+      </div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <Field label={t('Monthly target US$', 'Mục tiêu tháng US$')} v={target} set={setTarget} />
+        <Field label={t('Monthly cost base US$', 'Cơ sở chi phí tháng US$')} v={cost} set={setCost} />
+        <Field label={t('VND per US$', 'VND mỗi US$')} v={rate} set={setRate} />
+      </div>
+      <input value={note} onChange={e => setNote(e.target.value)} style={{ ...miniInput, width: '100%', marginTop: 8 }}
+             placeholder={t('what the cost base covers', 'cơ sở chi phí gồm những gì')} />
+      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+        <button disabled={busy} style={btn} onClick={() => onSave({
+          monthly_target_usd: Number(target), monthly_cost_base_usd: Number(cost),
+          usd_vnd_rate: Number(rate), cost_base_note: note,
+        })}>{t('Save', 'Lưu')}</button>
+        <button style={ghost} onClick={onCancel}>{t('Cancel', 'Huỷ')}</button>
+      </div>
+    </div>
+  )
+}
+
+const Field = ({ label, v, set }: { label: string; v: string; set: (s: string) => void }) => (
+  <div><div style={{ ...sub, marginBottom: 4 }}>{label}</div>
+    <input value={v} onChange={e => set(e.target.value)} inputMode="numeric" style={miniInput} /></div>
+)
+
+const Stat = ({ label, value, note, tone }: { label: string; value: string; note?: string; tone?: 'good' | 'bad' | 'warn' }) => (
+  <div style={{ ...statBox, borderColor: tone === 'bad' ? 'rgba(194,112,112,.35)' : tone === 'good' ? 'rgba(122,176,122,.35)' : tone === 'warn' ? 'rgba(212,184,90,.35)' : 'rgba(229,212,194,0.10)' }}>
+    <div style={{ ...sub, marginBottom: 3 }}>{label}</div>
+    <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 21, color: tone === 'bad' ? '#C27070' : tone === 'good' ? '#7AB07A' : '#E5D4C2' }}>{value}</div>
+    {note && <div style={{ ...sub, marginTop: 2, opacity: .6 }}>{note}</div>}
+  </div>
+)
+
+const MONO = "'Google Sans Code', monospace"
+const wrap: React.CSSProperties = { padding: '18px 20px', borderRadius: 12, background: 'rgba(229,212,194,0.03)', border: '1px solid rgba(229,212,194,0.10)', marginBottom: 22 }
+const h1: React.CSSProperties = { fontFamily: "'Rampant Sans', serif", fontSize: 17, color: '#E5D4C2' }
+const h2: React.CSSProperties = { ...h1, fontSize: 14, margin: '22px 0 10px' }
+const sub: React.CSSProperties = { fontFamily: MONO, fontSize: 10, color: '#B2AA98', lineHeight: 1.7 }
+const statBox: React.CSSProperties = { flex: 1, minWidth: 132, padding: '10px 12px', borderRadius: 8, border: '1px solid rgba(229,212,194,0.10)', background: 'rgba(5,46,32,0.35)' }
+const table: React.CSSProperties = { width: '100%', borderCollapse: 'collapse', marginTop: 14 }
+const th: React.CSSProperties = { ...sub, textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid rgba(229,212,194,0.12)', textTransform: 'uppercase', letterSpacing: '.06em' }
+const td: React.CSSProperties = { fontFamily: MONO, fontSize: 11, color: '#B2AA98', padding: '8px', borderBottom: '1px solid rgba(229,212,194,0.06)' }
+const pill: React.CSSProperties = { fontFamily: MONO, fontSize: 9, background: 'rgba(212,184,90,.14)', color: '#E7C766', borderRadius: 999, padding: '2px 8px', marginRight: 4 }
+const warnBox: React.CSSProperties = { ...sub, color: '#D4B85A', marginTop: 10, padding: '8px 10px', borderRadius: 6, background: 'rgba(212,184,90,0.06)', border: '1px solid rgba(212,184,90,0.2)' }
+const panel: React.CSSProperties = { marginTop: 12, padding: '14px 16px', borderRadius: 8, background: 'rgba(5,46,32,0.4)', border: '1px solid rgba(229,212,194,0.12)' }
+const miniInput: React.CSSProperties = { fontFamily: MONO, fontSize: 11, width: 92, padding: '5px 8px', borderRadius: 6, background: 'rgba(5,46,32,0.6)', color: '#E5D4C2', border: '1px solid rgba(229,212,194,0.16)' }
+const miniBtn: React.CSSProperties = { fontFamily: MONO, fontSize: 9, padding: '4px 8px', borderRadius: 5, border: 'none', background: '#D4B85A', color: '#052E20', cursor: 'pointer', fontWeight: 700 }
+const btn: React.CSSProperties = { fontFamily: MONO, fontSize: 11, padding: '6px 14px', borderRadius: 6, border: 'none', background: '#D4B85A', color: '#052E20', fontWeight: 700, cursor: 'pointer' }
+const ghost: React.CSSProperties = { fontFamily: MONO, fontSize: 10, padding: '5px 12px', borderRadius: 6, border: '1px solid rgba(229,212,194,0.22)', background: 'transparent', color: '#B2AA98', cursor: 'pointer' }

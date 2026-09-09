@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { useLang } from '@/lib/admin-lang'
+import WeeklyTracker from '@/components/admin/WeeklyTracker'
 
 // Admin → Weekly Report (Operations). Lists reports + generates this week's draft.
 
@@ -73,6 +74,11 @@ export default function AdminReports() {
         </button>
       </div>
       {msg && <div style={{ fontFamily: MONO, fontSize: 11, color: '#C27070', marginBottom: 12 }}>{msg}</div>}
+
+      {/* Above the report list on purpose: this is the number the report exists
+          to move, and it lives on a page someone already opens every Monday —
+          which is also where the one weekly input belongs. */}
+      <WeeklyTracker />
 
       <div style={card}>
         {loading ? <div style={{ fontFamily: MONO, fontSize: 11, color: '#7E7864' }}>{t('Loading…', 'Đang tải…')}</div> : rows.length === 0 ? (
