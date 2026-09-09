@@ -23,8 +23,13 @@ import { isSport } from '@/lib/fixtures'
 
 /** One emoji, at the head. Mapped from `type` so staff learn to recognise them,
  *  never generated per event. */
+// TODO (Miss Châu, or whoever runs the padel side): padel is 🏓 as a placeholder
+// — the sport is played with a solid paddle, so it reads as "paddle" rather than
+// as table tennis. It shared 🎾 with tennis, which defeats the point of the map:
+// two sports on one glyph is not recognition. The right answer is whatever reads
+// as padel to a VIETNAMESE member, and they are the audience, not me. One line.
 export const TYPE_EMOJI: Record<string, string> = {
-  golf: '⛳', tennis: '🎾', padel: '🎾', hash: '🏃',
+  golf: '⛳', tennis: '🎾', padel: '🏓', hash: '🏃',
   dinner: '🍽️', tasting: '🥃', social: '🥂', other: '✨',
   // calendar_entries.kind — only the member-visible kinds can ever reach here
   supplier: '🥃', event: '✨', meeting: '✨', reminder: '✨',
