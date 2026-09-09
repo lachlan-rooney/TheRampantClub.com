@@ -90,14 +90,16 @@ export default function LoginTicker() {
     return () => clearInterval(id)
   }, [])
 
-  // Real temperature from Open-Meteo
+  // Real temperature, through OUR OWN /api/weather — never the vendor directly.
+  // connect-src does not allow api.open-meteo.com, so the browser call was blocked
+  // every time and the catch quietly substituted 31°. The page looked right and
+  // was simply wrong, which is the worst way for a thing to fail. The proxy
+  // already existed and already caches for ten minutes; it just was not used.
   useEffect(() => {
-    fetch(
-      'https://api.open-meteo.com/v1/forecast?latitude=10.776&longitude=106.701&current_weather=true'
-    )
+    fetch('/api/weather')
       .then(r => r.json())
-      .then(d => setTemp(Math.round(d.current_weather.temperature)))
-      .catch(() => setTemp(31))
+      .then(d => { if (typeof d?.temp === 'number') setTemp(d.temp) })
+      .catch(() => {})
   }, [])
 
   // Rotate quips every 12 seconds with fade
