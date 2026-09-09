@@ -106,6 +106,27 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
+  // ── DOCUMENTS OUTSTANDING ───────────────────────────────────────────────
+  // Same shape as the must_change_password gate above, and for the same reason: a
+  // member behind on a REQUIRED document cannot reach the portal until they agree.
+  //
+  // my_consent_state() decides, not this file — it reads terms_documents, so a
+  // document published later is gated without touching middleware. Signed
+  // documents and optional ones are never pending, so marketing can never gate.
+  //
+  // THE PORTAL ONLY. Nothing under /kiosk is checked here, deliberately: nobody
+  // agrees to a contract on a bar-top tablet with a queue behind them, and the
+  // schema refuses it anyway ('kiosk' is not a valid consent method).
+  if (user && request.nextUrl.pathname.startsWith('/members')
+      && request.nextUrl.pathname !== '/members/agree') {
+    const { data: consent } = await supabase.rpc('my_consent_state')
+    if ((consent || []).some((r: { needs_action?: boolean }) => r.needs_action)) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/members/agree'; url.search = ''
+      return NextResponse.redirect(url)
+    }
+  }
+
   // Protect /members/* and /admin/* routes — must be signed in.
   if ((request.nextUrl.pathname.startsWith('/members') || request.nextUrl.pathname.startsWith('/admin')) && !user) {
     const url = request.nextUrl.clone()
