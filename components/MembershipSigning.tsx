@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import agreementData from '@/data/membership-agreement-content.json'
+import { useLang } from '@/lib/lang'
 
 interface PrefillData {
   fullName: string
@@ -33,7 +34,9 @@ const GOLD = '#C9A84C'
 const MUTED = '#B2AA98'
 
 export default function MembershipSigning({ token, prefill }: Props) {
-  const [lang, setLang] = useState<'en' | 'vi'>('en')
+  // Shared context, and canonical 'vn' — this was the last holdout still
+  // spelling Vietnamese 'vi'.
+  const { lang, setLang } = useLang()
   const [form, setForm] = useState({
     ...prefill,
     dateOfBirth: prefill.dateOfBirth || '',
@@ -287,7 +290,7 @@ export default function MembershipSigning({ token, prefill }: Props) {
 
           {/* Language toggle */}
           <div style={{ display: 'flex', justifyContent: 'center', gap: 0, marginBottom: 36 }}>
-            {(['en', 'vi'] as const).map(l => (
+            {(['en', 'vn'] as const).map(l => (
               <button key={l} onClick={() => setLang(l)} style={{
                 fontFamily: "'Rampant Sans', serif", fontSize: 12,
                 letterSpacing: '0.08em', padding: '8px 20px', cursor: 'pointer',
@@ -295,7 +298,7 @@ export default function MembershipSigning({ token, prefill }: Props) {
                 color: lang === l ? CREAM : MUTED,
                 border: `1px solid rgba(229,212,194,0.12)`,
                 borderRadius: l === 'en' ? '4px 0 0 4px' : '0 4px 4px 0',
-                borderLeft: l === 'vi' ? 'none' : undefined,
+                borderLeft: l === 'vn' ? 'none' : undefined,
                 textTransform: 'uppercase',
               }}>
                 {l === 'en' ? 'English' : 'Tiếng Việt'}

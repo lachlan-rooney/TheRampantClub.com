@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import FooterGate from '@/components/FooterGate'
 import PWARegistrar from '@/components/PWARegistrar'
+import { LangProvider } from '@/lib/lang'
 
 export const metadata: Metadata = {
   title: 'The Rampant Club',
@@ -68,6 +69,10 @@ export default function RootLayout({
         ` }} />
       </head>
       <body>
+        {/* ONE language context for every surface — admin, the member portal,
+            the signing flow and the portal guide. Three implementations had grown;
+            see lib/lang.tsx. */}
+        <LangProvider>
         <style dangerouslySetInnerHTML={{ __html: `
           /* ─── Typography scale ─────────────────────────────────────
              10 stops. Snap any new font-size to one of these tokens.
@@ -127,6 +132,7 @@ export default function RootLayout({
         <PWARegistrar />
         {children}
         <FooterGate />
+        </LangProvider>
       </body>
     </html>
   )

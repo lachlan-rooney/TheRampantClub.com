@@ -9,7 +9,7 @@ export default function LangToggle() {
   const { lang, setLang } = useLang()
   return (
     <div style={{ display: 'inline-flex', border: '1px solid rgba(229,212,194,0.16)', borderRadius: 20, overflow: 'hidden' }}>
-      {(['en', 'vi'] as const).map(l => {
+      {(['en', 'vn'] as const).map(l => {
         const on = lang === l
         return (
           <button

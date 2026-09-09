@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useLang } from '@/lib/lang'
 
 interface Doc {
   doc_key: string; name_en: string; name_vn: string | null
@@ -15,7 +16,11 @@ interface Doc {
 export default function AgreePage() {
   const router = useRouter()
   const [docs, setDocs] = useState<Doc[] | null>(null)
-  const [lang, setLang] = useState<'en' | 'vn'>('en')
+  // Folded onto the shared context. BEHAVIOUR IS UNCHANGED: `lang` still drives
+  // what is rendered AND what goes into the consent payload, so `evidence` keeps
+  // recording the language actually read — which is the whole point of capturing
+  // it. Reading one language still suffices; that decision is untouched.
+  const { lang, setLang } = useLang()
   const [reached, setReached] = useState<Record<string, boolean>>({})
   const [busy, setBusy] = useState<string | null>(null)
   const [msg, setMsg] = useState('')

@@ -45,9 +45,10 @@ export const TYPE_RING: Record<string, string> = {
 
 /** Display name for a type, falling back to the raw value so an unknown type
  *  shows something rather than an empty badge. */
-// NOTE: the admin language context uses 'vi' and lib/members/surfaces.ts uses
-// 'vn'. Both are accepted here so neither caller has to translate its own
-// language code on the way in.
+// NOTE: everything now speaks canonical 'vn' (lib/lang.tsx). 'vi' is still
+// ACCEPTED rather than rejected, because a stale caller passing it should get
+// Vietnamese rather than silently falling back to English — tolerant on the way
+// in, canonical on the way out.
 export const typeLabel = (t: string | null | undefined, lang: 'en' | 'vi' | 'vn' = 'en'): string => {
   const k = t || 'other'
   const vi = lang === 'vi' || lang === 'vn'

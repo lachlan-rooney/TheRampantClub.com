@@ -5,6 +5,7 @@ import { surfaceName } from '@/lib/members/surfaces'
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
+import { useLang } from '@/lib/lang'
 
 // The members' portal training — a clean, linear flow. Mounted in the member
 // layout so it's on every page: opens automatically the first time, replayable
@@ -13,8 +14,10 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 // members step through it all, then jump in from the final screen.
 
 const SEEN_KEY = 'rampant.portalguide.v2'
-const LANG_KEY = 'rampant.welcome.lang.v1'
-type Lang = 'en' | 'vn'
+// The language now comes from the ONE shared context (lib/lang.tsx). This
+// component used to carry its own Lang type and its own localStorage key —
+// a third implementation of the same idea. The old key is migrated on read by
+// the provider, so a member who chose Vietnamese here keeps it.
 interface L { en: string; vn: string }
 const IMG = (n: string) => `/images/social/${n}.webp`
 
@@ -122,7 +125,7 @@ export default function PortalGuide({ name }: { name?: string }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [i, setI] = useState(0)
-  const [lang, setLang] = useState<Lang>('en')
+  const { lang, setLang } = useLang()
   const [who, setWho] = useState<string | undefined>(name)
   const t = (l: L) => (lang === 'vn' && l.vn ? l.vn : l.en)
 
@@ -159,8 +162,6 @@ export default function PortalGuide({ name }: { name?: string }) {
   useEffect(() => {
     if (typeof window === 'undefined') return
     try {
-      const sl = window.localStorage.getItem(LANG_KEY) as Lang | null
-      if (sl === 'vn' || sl === 'en') setLang(sl)
       const url = new URL(window.location.href)
       // NEVER auto-open over the consent gate. A first-time member is redirected to
       // /members/agree, and this opened on top of it — an aria-modal dialog touring
@@ -180,7 +181,6 @@ export default function PortalGuide({ name }: { name?: string }) {
   const markSeen = useCallback(() => { try { window.localStorage.setItem(SEEN_KEY, '1') } catch { /* */ } }, [])
   const close = useCallback(() => { setOpen(false); markSeen() }, [markSeen])
   const goto = (href: string) => { markSeen(); setOpen(false); router.push(href) }
-  const setLangPersist = (l: Lang) => { setLang(l); try { window.localStorage.setItem(LANG_KEY, l) } catch { /* */ } }
   const next = useCallback(() => setI(v => Math.min(SLIDES.length - 1, v + 1)), [])
   const prev = useCallback(() => setI(v => Math.max(0, v - 1)), [])
 
@@ -254,8 +254,8 @@ export default function PortalGuide({ name }: { name?: string }) {
           <img src={IMG(s.image)} alt="" />
           <div className="pg-progress"><div className="pg-progress-fill" style={{ width: `${((i + 1) / SLIDES.length) * 100}%` }} /></div>
           <div className="pg-lang">
-            <button className={lang === 'en' ? 'on' : ''} onClick={() => setLangPersist('en')}>EN</button>
-            <button className={lang === 'vn' ? 'on' : ''} onClick={() => setLangPersist('vn')}>VN</button>
+            <button className={lang === 'en' ? 'on' : ''} onClick={() => setLang('en')}>EN</button>
+            <button className={lang === 'vn' ? 'on' : ''} onClick={() => setLang('vn')}>VN</button>
           </div>
           <button className="pg-close" onClick={close} aria-label="Close">✕</button>
           <div className="pg-headwrap">

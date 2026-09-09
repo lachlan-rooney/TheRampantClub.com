@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useLang } from '@/lib/lang'
 import MemberPage from '@/components/MemberPage'
 import { Skeleton } from '@/components/members/Skeleton'
 
@@ -27,7 +28,7 @@ interface Doc {
 }
 
 export default function TermsPage() {
-  const [lang, setLang] = useState<'en' | 'vn'>('en')
+  const { lang, setLang } = useLang()
   const [doc, setDoc] = useState<Doc | null>(null)
   const [loading, setLoading] = useState(true)
 

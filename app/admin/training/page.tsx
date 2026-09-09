@@ -843,9 +843,9 @@ const SECTIONS: SectionDef[] = [
 
 export default function TrainingPage() {
   // Follow the site-wide admin language toggle (top bar) rather than a separate
-  // per-page switch — the global provider uses 'vi', this page's blocks use 'vn'.
+  // The provider is canonical 'vn' now, so this no longer translates anything.
   const { t, lang: adminLang } = useLang()
-  const lang: Lang = adminLang === 'vi' ? 'vn' : 'en'
+  const lang: Lang = adminLang
   const [openIds, setOpenIds] = useState<Set<string>>(new Set([SECTIONS[0].id]))
   const [q, setQ] = useState('')
 
