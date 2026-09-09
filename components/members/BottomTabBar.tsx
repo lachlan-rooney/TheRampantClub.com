@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
+import { useLang } from '@/lib/lang'
+import { surfaceName } from '@/lib/members/surfaces'
 
 // Persistent bottom navigation for phone widths — so the four most-used member
 // destinations are one tap away instead of three (diamond → group → link). The
@@ -22,7 +24,10 @@ const ICONS: Record<string, ReactNode> = {
 }
 
 const TABS = [
-  { href: '/members',            icon: 'home',      label: 'Home' },
+  // Labels come from lib/members/surfaces.ts so they cannot drift from the rest
+  // of the portal, and they follow the EN/VN switch. 'Home' is not a surface in
+  // that registry — it is the dashboard — so it carries its own pair.
+  { href: '/members',            icon: 'home',      label: 'Home', vn: 'Trang Chính' },
   { href: '/members/whisky',     icon: 'library',   label: 'Library' },
   { href: '/members/snug',       icon: 'snug',      label: 'Snug' },
   { href: '/members/concierge',  icon: 'concierge', label: 'Concierge' },
@@ -30,6 +35,11 @@ const TABS = [
 
 export default function BottomTabBar() {
   const pathname = usePathname() || ''
+  const { lang } = useLang()
+  // The registry holds both languages; 'Home' is the dashboard and is not a
+  // surface in it, so it carries its own pair inline above.
+  const labelFor = (t: { href: string; label: string; vn?: string }) =>
+    lang === 'vn' ? (t.vn || surfaceName(t.href, 'vn') || t.label) : (surfaceName(t.href, 'en') || t.label)
   const [conciergeUnread, setConciergeUnread] = useState(0)
 
   useEffect(() => {
@@ -86,7 +96,7 @@ export default function BottomTabBar() {
           {TABS.map(t => (
             <Link key={t.href} href={t.href} className={`mtab ${isActive(t.href) ? 'is-active' : ''}`}>
               <span className="mtab-icon" aria-hidden>{ICONS[t.icon]}</span>
-              <span className="mtab-label">{t.label}</span>
+              <span className="mtab-label">{labelFor(t)}</span>
               {t.href === '/members/concierge' && conciergeUnread > 0 && (
                 <span className="mtab-dot">{conciergeUnread > 9 ? '9+' : conciergeUnread}</span>
               )}

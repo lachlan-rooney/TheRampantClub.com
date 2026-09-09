@@ -3,6 +3,7 @@ import LoginTicker from '@/components/LoginTicker'
 import BottomTabBar from '@/components/members/BottomTabBar'
 import InstallNudge from '@/components/members/InstallNudge'
 import PortalGuide from '@/components/PortalGuide'
+import LangToggle from '@/components/LangToggle'
 
 export default function MembersLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -38,6 +39,16 @@ export default function MembersLayout({ children }: { children: React.ReactNode 
         }
       ` }} />
       <NavOverlay variant="members" dark />
+      {/* EN / VN on every member page. Fixed top-right, clear of the nav trigger
+          on the left and the bottom tab bar on mobile. It reads the one shared
+          language context, so the choice follows the member across the portal,
+          the consent pages and the welcome guide. */}
+      <div style={{
+        position: 'fixed', top: 'calc(14px + env(safe-area-inset-top, 0px))', right: 16,
+        zIndex: 60,
+      }}>
+        <LangToggle compact />
+      </div>
       <LoginTicker />
       {children}
       <BottomTabBar />
