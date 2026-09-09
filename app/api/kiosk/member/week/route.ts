@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { memberSession, memberClient } from '@/lib/kiosk/server'
+import { memberSession, memberClient, svc } from '@/lib/kiosk/server'
 import { vnDateString } from '@/lib/datetime'
 
 // WHAT'S ON — the next seven days, across every room, read AS THE MEMBER.
@@ -46,9 +46,37 @@ export async function GET() {
       .order('date'),
   ])
 
+  // ── THE EVENT'S PICTURE ──────────────────────────────────────────────────
+  // Attachment IDS only, and only for rows the member client ALREADY returned —
+  // so RLS still decides what exists and this only asks "does that one have a
+  // file". entry_attachments has no member policy, hence the service client for
+  // this lookup and nothing else.
+  //
+  // A PRIVATE HIRE gets no picture, for the same reason its title is replaced: a
+  // bar-top tablet stands in a public room, and an invitation is exactly the
+  // kind of artwork that carries the name the title masking removes.
+  const shown = [
+    ...(entries.data || []).filter(e => e.kind !== 'private_hire').map(e => ['calendar_entry', e.id] as const),
+    ...(fixtures.data || []).map(f => ['fixture', f.id] as const),
+  ]
+  const art: Record<string, { id: string; kind: string }> = {}
+  if (shown.length) {
+    const { data: rows } = await svc().from('entry_attachments')
+      .select('id, entity_type, entity_id, verified_kind')
+      .in('entity_id', shown.map(([, id]) => id))
+    for (const r of rows || []) {
+      // Images only. A PDF cannot render inline anywhere on this site and a
+      // download makes no sense on a bolted-down tablet.
+      if (r.verified_kind === 'pdf') continue
+      if (!shown.some(([t, id]) => t === r.entity_type && id === r.entity_id)) continue
+      art[`${r.entity_type}:${r.entity_id}`] = { id: r.id, kind: r.verified_kind }
+    }
+  }
+
   return NextResponse.json({
     week: {
       from, to,
+      art,
       // A private hire is titled by whoever booked it, and that title is often a
       // person or a group. `kind` is shown instead so a name is not left standing
       // on a screen in a public room. See the note in the report: the corpus is

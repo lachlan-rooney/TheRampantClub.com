@@ -31,7 +31,9 @@ interface Me {
 interface Entry { id: string; title: string; title_vn: string | null; entry_date: string
                   start_time: string | null; end_time: string | null; space: string | null; kind: string }
 interface Fixture { id: string; type: string; title: string; date: string; location: string | null }
-interface Week { from: string; to: string; entries: Entry[]; fixtures: Fixture[] }
+interface Week { from: string; to: string; entries: Entry[]; fixtures: Fixture[]
+  // Attachment ids for the rows above, images only, private hires excluded.
+  art?: Record<string, { id: string; kind: string }> }
 
 const VN = 'Asia/Ho_Chi_Minh'
 const vnNow = () => new Date(new Date().toLocaleString('en-US', { timeZone: VN }))
@@ -150,8 +152,8 @@ export default function KioskMember() {
   // Left column FIXED: who they are, and it never scrolls. Right column scrolls,
   // and scrolling resets the idle clock — a member who scrolls is still present.
   if (me) {
-    const days: Array<{ iso: string; items: Array<{ ms: number; time: string; title: string; title_vn?: string | null; where: string | null; tag: string }> }> = []
-    const push = (iso: string, item: { ms: number; time: string; title: string; title_vn?: string | null; where: string | null; tag: string }) => {
+    const days: Array<{ iso: string; items: Array<{ ms: number; time: string; title: string; title_vn?: string | null; where: string | null; tag: string; art?: string }> }> = []
+    const push = (iso: string, item: { ms: number; time: string; title: string; title_vn?: string | null; where: string | null; tag: string; art?: string }) => {
       let d = days.find(x => x.iso === iso)
       if (!d) { d = { iso, items: [] }; days.push(d) }
       d.items.push(item)
@@ -160,6 +162,7 @@ export default function KioskMember() {
       push(e.entry_date, {
         ms: new Date(`${e.entry_date}T${e.start_time ? e.start_time.slice(0,5) : '12:00'}:00+07:00`).getTime(),
         time: hhmm(e.start_time), title: e.title, title_vn: e.title_vn, where: e.space, tag: e.kind,
+        art: week?.art?.[`calendar_entry:${e.id}`]?.id,
       })
     }
     for (const f of week?.fixtures || []) {
@@ -168,6 +171,7 @@ export default function KioskMember() {
         ms: new Date(f.date).getTime(),
         time: new Date(f.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: VN }),
         title: f.title, where: f.location, tag: typeLabel(f.type),
+        art: week?.art?.[`fixture:${f.id}`]?.id,
       })
     }
     days.sort((a, b) => a.iso.localeCompare(b.iso))
@@ -224,6 +228,18 @@ export default function KioskMember() {
                   {d.items.map((it, i) => (
                     <div key={i} style={row}>
                       <div style={rowTime}>{it.time}</div>
+                      {/* The event's picture. Nothing here is member data, and the
+                          fetch is excluded from the service worker twice over —
+                          /api/* and the supabase.co host both short-circuit before
+                          the static-asset rule that would otherwise cache a .jpg.
+                          Verified against real Cache Storage, not assumed. */}
+                      {it.art && (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={`/api/entries/attachment/${it.art}`} alt=""
+                             style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 6,
+                                      flexShrink: 0, marginRight: 12,
+                                      border: '1px solid rgba(229,212,194,.14)' }} />
+                      )}
                       <div>
                         <div style={{ fontFamily: SERIF, fontSize: 'clamp(17px,2.4vh,24px)', lineHeight: 1.25 }}>{it.title}</div>
                         {it.title_vn && <div style={{ fontFamily: SERIF, fontSize: 15, color: 'rgba(229,212,194,.45)', marginTop: 2 }}>{it.title_vn}</div>}
