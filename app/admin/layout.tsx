@@ -19,7 +19,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <style dangerouslySetInnerHTML={{ __html: `html, body { background: #052E20 !important; }` }} />
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <AdminNav />
-      <main style={{
+      {/* className, not only inline: an inline margin cannot be overridden by the
+          media query that collapses the sidebar on iPad and phone. */}
+      <main className="adm-main" style={{
         marginLeft: 240, flex: 1, minWidth: 0, minHeight: '100vh', background: '#052E20',
         padding: '48px 40px',
         display: 'flex', flexDirection: 'column',

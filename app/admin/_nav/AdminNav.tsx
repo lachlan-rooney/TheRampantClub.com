@@ -60,7 +60,11 @@ const GROUPS: Group[] = [
   },
   {
     id: 'sports',
-    label: 'Sports & Events',
+    // Named for what members see it as. The member portal calls this "What's On",
+    // and staff looking for the thing a member just asked about should not have to
+    // translate. /admin/calendar also feeds it, but it stays under On-Site because
+    // it is mostly a bookings tool used every shift.
+    label: "What's On",
     items: [
       { href: '/admin/fixtures', label: 'Fixtures', icon: 'trophy' },
       { href: '/admin/gallery', label: 'Event Gallery', icon: 'image' },
@@ -136,6 +140,16 @@ function NavIcon({ name }: { name: string }) {
 
 export default function AdminNav() {
   const pathname = usePathname() || ''
+  // Off-canvas below 1024px. The sidebar was fixed at 240px with no media query
+  // anywhere, so on an iPad it permanently ate a quarter of the screen and on a
+  // phone it sat on top of the content.
+  const [navOpen, setNavOpen] = useState(false)
+  useEffect(() => { setNavOpen(false) }, [pathname])          // close on navigate
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setNavOpen(false) }
+    window.addEventListener('keydown', esc)
+    return () => window.removeEventListener('keydown', esc)
+  }, [])
 
   // Default: all groups open. Persist per-group collapse.
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
@@ -163,7 +177,32 @@ export default function AdminNav() {
   const isActive = (href: string) => href === bestMatch
 
   return (
-    <nav style={navWrap}>
+    <>
+      <style dangerouslySetInnerHTML={{ __html: `
+        .adm-burger { display: none; }
+        .adm-scrim  { display: none; }
+        @media (max-width: 1024px) {
+          /* iPad and phone: the sidebar slides in, the content gets the full width. */
+          .adm-nav { transform: translateX(-100%); transition: transform .22s ease; z-index: 9100; }
+          .adm-nav.is-open { transform: translateX(0); box-shadow: 0 0 40px rgba(0,0,0,.45); }
+          .adm-main { margin-left: 0 !important; padding: 64px 20px 40px !important; }
+          .adm-burger {
+            display: flex; align-items: center; justify-content: center;
+            position: fixed; top: 12px; left: 12px; z-index: 9200;
+            width: 44px; height: 44px; border-radius: 10px; cursor: pointer;
+            background: rgba(5,46,32,.92); border: 1px solid rgba(229,212,194,.28);
+            color: #E5D4C2; font-size: 19px; line-height: 1;
+            -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+          }
+          .adm-scrim.is-open { display: block; position: fixed; inset: 0; z-index: 9050; background: rgba(0,0,0,.45); }
+        }
+      ` }} />
+      <button
+        className="adm-burger" aria-label="Menu" aria-expanded={navOpen}
+        onClick={() => setNavOpen(o => !o)}
+      >{navOpen ? '✕' : '☰'}</button>
+      <div className={`adm-scrim ${navOpen ? 'is-open' : ''}`} onClick={() => setNavOpen(false)} aria-hidden />
+    <nav className={`adm-nav ${navOpen ? 'is-open' : ''}`} style={navWrap}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/images/logo-office-cream.png" alt="" style={logoMark} />
       <div style={brandTitle}>Admin</div>
@@ -212,6 +251,7 @@ export default function AdminNav() {
         ← Back to Members
       </Link>
     </nav>
+    </>
   )
 }
 

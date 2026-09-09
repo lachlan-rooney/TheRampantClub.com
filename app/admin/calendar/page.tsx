@@ -255,6 +255,14 @@ export default function CalendarPage() {
           <p style={lede}>
             {t("Who's coming in, which room, when. Tap-to-start auto-links the booking when a member scans their card; from here you can start the visit manually if needed.", 'Ai đang đến, phòng nào, khi nào. Chạm-để-bắt-đầu tự động liên kết đặt chỗ khi hội viên quét thẻ; từ đây bạn có thể bắt đầu lượt ghé thủ công nếu cần.')}
           </p>
+          {/* The prompt at the point of decision. Marking an entry member-visible
+              puts its TITLE in front of members — in the portal's What's On and on
+              the tablets in each room, where anyone standing nearby can read it.
+              Private bookings are habitually titled with a person's name. */}
+          <p style={{ ...lede, marginTop: 8, color: '#D4B85A', opacity: .85 }}>
+            {t('An entry set to member-visible appears in the members\u2019 What\u2019s On and on the room tablets \u2014 title it as you would want it read aloud in a full room, not with a member\u2019s name.',
+               'M\u1ee5c \u0111\u1eb7t \u1edf ch\u1ebf \u0111\u1ed9 hi\u1ec3n th\u1ecb cho h\u1ed9i vi\u00ean s\u1ebd xu\u1ea5t hi\u1ec7n trong What\u2019s On v\u00e0 tr\u00ean m\u00e0n h\u00ecnh c\u00e1c ph\u00f2ng \u2014 h\u00e3y \u0111\u1eb7t ti\u00eau \u0111\u1ec1 nh\u01b0 khi \u0111\u1ecdc to trong ph\u00f2ng \u0111\u00f4ng ng\u01b0\u1eddi, kh\u00f4ng d\u00f9ng t\u00ean h\u1ed9i vi\u00ean.')}
+          </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
           <Link href="/admin/bookings/new" style={btnPrimary}>{t('＋ New booking', '＋ Đặt chỗ mới')}</Link>
