@@ -23,6 +23,9 @@ const GROUPS: Group[] = [
       { href: '/admin/tonight', label: 'Tonight', icon: 'moon' },
       { href: '/admin/mx-daily', label: 'MX Daily', icon: 'clipboard' },
       { href: '/admin/checklists', label: 'Checklists', icon: 'checklist' },
+      // Beside Checklists deliberately: that is opening/closing per shift, this
+      // is the standing weekly list. Same team, same part of the day.
+      { href: '/admin/shifts', label: 'Weekly Shifts', icon: 'clipboard' },
       { href: '/admin/quickref', label: 'Quick Reference', icon: 'book' },
       { href: '/admin/cards', label: 'Member Cards', icon: 'card' },
       { href: '/admin/concierge', label: 'Concierge', icon: 'bell' },

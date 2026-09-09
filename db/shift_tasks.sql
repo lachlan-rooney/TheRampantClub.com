@@ -241,7 +241,7 @@ begin
   return v_made;
 end $fn$;
 revoke all on function shift_materialise_week(date) from public;
-grant execute on function shift_materialise_week(date) to service_role, authenticated;
+grant execute on function shift_materialise_week(date) to service_role;   -- system action, never a client
 
 -- ═══ 8 · THE ONE PLACE OWNERSHIP IS ENFORCED ═══════════════════════════════
 -- Takes the ACTING team member (PIN-verified, from the trc_admin_staff cookie)
@@ -315,7 +315,12 @@ exception when check_violation then
   return case when p_status = 'done' then 'needs_evidence' else 'needs_reason' end;
 end $fn$;
 revoke all on function shift_task_update(uuid,uuid,text,text,text,text,text,text,text) from public;
-grant execute on function shift_task_update(uuid,uuid,text,text,text,text,text,text,text) to service_role, authenticated;
+-- SERVICE ROLE ONLY. NEVER grant this to `authenticated`: the function takes the
+-- acting team member as a PARAMETER, so anyone able to call it can pass anyone's
+-- id and act as them. That hole was open once and was proven live — see
+-- db/shift_tasks_lock_actor.sql. The server route derives the actor from the
+-- httpOnly trc_admin_staff cookie, which a client cannot forge.
+grant execute on function shift_task_update(uuid,uuid,text,text,text,text,text,text,text) to service_role;
 
 -- ═══ 9 · SEED ══════════════════════════════════════════════════════════════
 -- Charters seed with *_vi NULL. Vietnamese is supplied separately; the UI

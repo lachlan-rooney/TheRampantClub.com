@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 import { isAdmin } from '@/lib/admin'
+import { actingStaffId } from '@/lib/admin-acting'
 
 // GET  /api/admin/shifts?week=YYYY-MM-DD   — the week: shifts, tasks, events
 // POST /api/admin/shifts                   — update one task instance
@@ -17,7 +17,7 @@ import { isAdmin } from '@/lib/admin'
 
 export const dynamic = 'force-dynamic'
 const svc = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-const ACTING = 'trc_admin_staff'
+// Identity comes from the signed helper — never straight off the cookie.
 
 const mondayOf = (d: string) => {
   const x = new Date(d + 'T00:00:00Z')
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   const sb = svc()
   const week = mondayOf(req.nextUrl.searchParams.get('week') || vnToday())
 
-  const actingId = (await cookies()).get(ACTING)?.value || null
+  const actingId = await actingStaffId()
   const { data: acting } = actingId
     ? await sb.from('team_members').select('id, display_name, is_shift_supervisor').eq('id', actingId).maybeSingle()
     : { data: null }
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
   const b = await req.json().catch(() => ({}))
   const sb = svc()
 
-  const actingId = (await cookies()).get(ACTING)?.value
+  const actingId = await actingStaffId()
   if (!actingId) return NextResponse.json({ error: REFUSAL.no_actor }, { status: 400 })
 
   // A revert is SIGNED. The cookie says who is at the desk; the PIN proves who
@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Staff only.' }, { status: 403 })
   const sb = svc()
-  const actingId = (await cookies()).get(ACTING)?.value
+  const actingId = await actingStaffId()
   const { data: acting } = actingId
     ? await sb.from('team_members').select('is_shift_supervisor').eq('id', actingId).maybeSingle()
     : { data: null }

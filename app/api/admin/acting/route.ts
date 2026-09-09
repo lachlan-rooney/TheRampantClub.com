@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { isAdmin } from '@/lib/admin'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { svc } from '@/lib/kiosk/server'
+import { signActor, verifyActor } from '@/lib/admin-acting'
 
 // The admin "who are you?" acting-staff identity (ATTRIBUTION on the shared staff
 // login; the personal login + is_admin remains the access boundary).
@@ -22,7 +23,7 @@ export async function GET() {
   const sb = await createServerSupabaseClient()
   const { data: { user } } = await sb.auth.getUser()
   const { data: prof } = await a.from('profiles').select('requires_staff_pick').eq('id', user!.id).maybeSingle()
-  const id = (await cookies()).get(ADMIN_STAFF_COOKIE)?.value
+  const id = verifyActor((await cookies()).get(ADMIN_STAFF_COOKIE)?.value)
   let staff = null
   if (id) { const { data: tm } = await a.from('team_members').select('id, display_name, role_title').eq('id', id).maybeSingle(); staff = tm || null }
   return NextResponse.json({ staff, required: !!prof?.requires_staff_pick })
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
     if (!id) return NextResponse.json({ error: 'Wrong PIN, or too many tries — wait a moment.' }, { status: 401 })
     const { data: tm } = await a.from('team_members').select('display_name').eq('id', id).maybeSingle()
     const res = NextResponse.json({ ok: true, name: tm?.display_name || 'Staff' })
-    res.cookies.set(ADMIN_STAFF_COOKIE, id as string, opts)
+    res.cookies.set(ADMIN_STAFF_COOKIE, signActor(id as string), opts)
     return res
   }
   return NextResponse.json({ error: 'Bad action.' }, { status: 400 })
