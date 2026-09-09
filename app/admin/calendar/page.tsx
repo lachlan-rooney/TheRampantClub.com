@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { vnDateString } from '@/lib/datetime'
 import { useLang } from '@/lib/admin-lang'
+import ShareBox from '@/components/admin/ShareBox'
+import { isShareable } from '@/lib/share/draft'
 
 // Admin / Floor / Calendar
 //
@@ -48,6 +50,12 @@ interface CalendarEntry {
   visibility: 'member' | 'staff'
   blocks_space: boolean
   tables?: string[]
+  // Member-facing fields. board_note is the welcome line written FOR members;
+  // `description` above is the internal operational note and is not the same
+  // thing — that distinction is what keeps a staff note out of a group chat.
+  title_vn?: string | null
+  board_note?: string | null
+  board_note_vn?: string | null
 }
 
 const SPACES = ['Library Bar', 'The Studio', 'The Dining Room', 'The Rampant Room', 'Source & Origin Lab', 'Sports Club']
@@ -327,6 +335,12 @@ export default function CalendarPage() {
                     {dayEntries.map(e => (
                       <div
                         key={e.id}
+                        // Addressable for verification: asserting "a staff-only
+                        // entry shows no share box" needs to bind to THE CARD, not
+                        // to any ancestor div that happens to contain the text —
+                        // which silently matches the whole day column.
+                        data-entry-id={e.id}
+                        data-visibility={e.visibility}
                         style={{ ...houseCard, position: 'relative' }}
                         onMouseEnter={() => setHoveredEntry(e.id)}
                         onMouseLeave={() => setHoveredEntry(h => h === e.id ? null : h)}
@@ -362,6 +376,28 @@ export default function CalendarPage() {
                           <Link href={`/admin/bookings/new?entry=${e.id}`} style={cardActionLink}>{t('Edit', 'Sửa')}</Link>
                           <button onClick={() => setConfirmDeleteEntry(e)} style={cardActionBtn}>{t('Remove', 'Xoá')}</button>
                         </div>
+
+                        {/* A STAFF-ONLY ENTRY GETS NO BOX — not a disabled one.
+                            Every private booking here is titled with a member's
+                            name, and `attendee` is prompted with "e.g. Mr Nguyen
+                            (member)". A share box on one of these is a one-tap
+                            route to putting that name in a group chat.
+                            Note what is passed: board_note, the line written FOR
+                            members — never `description` (internal) and never
+                            `attendee`. ShareInput has no field for either. */}
+                        {isShareable(e.visibility) && (
+                          <ShareBox entry={{
+                            type: e.kind,
+                            title: e.title,
+                            title_vn: e.title_vn,
+                            blurb: e.board_note,
+                            blurb_vn: e.board_note_vn,
+                            date: e.entry_date,
+                            time: e.start_time,
+                            where: e.space,
+                            url: 'https://therampantclub.com/members/events',
+                          }} />
+                        )}
                       </div>
                     ))}
                     {dayBookings.map(b => (

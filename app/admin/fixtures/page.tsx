@@ -7,6 +7,7 @@ import { useLang } from '@/lib/admin-lang'
 import type { Fixture } from '@/lib/types'
 
 import { FIXTURE_TYPES, TYPE_COLOR, typeLabel } from '@/lib/fixtures'
+import ShareBox from '@/components/admin/ShareBox'
 
 const inputStyle: React.CSSProperties = {
   background: 'rgba(229,212,194,0.06)', color: '#E5D4C2',
@@ -239,6 +240,21 @@ export default function AdminFixtures() {
                 <button onClick={() => requestRemove(f)} style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.5, cursor: 'pointer' }}>{t('Delete', 'Xóa')}</button>
               </div>
             </div>
+            {/* The share draft. Every fixture is member-visible by RLS, so there is
+                no visibility condition here — unlike calendar entries, where a
+                staff-only row must get no box at all.
+                The roster BELOW is admin-only and deliberately not passed in:
+                ShareInput has no field for it. */}
+            <ShareBox entry={{
+              type: f.type,
+              title: f.title,
+              blurb: f.description,          // fixtures.description IS member-visible
+              date: f.date,
+              where: f.location,
+              capped: f.max_signups != null,
+              url: 'https://therampantclub.com/members/events',
+            }} />
+
             {/* ADMIN-ONLY roster — who signed up (member view + public /sports stay counts-only) */}
             {roster[f.id]?.length > 0 && (
               <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#8B8576', paddingLeft: 2 }}>
