@@ -5,6 +5,29 @@ const nextConfig = {
   // runtime (fixes SVG→PNG chart rasterisation for the weekly report email).
   serverExternalPackages: ['sharp'],
 
+  // ── AND the shared object it dlopens at runtime. ──────────────────────────
+  // serverExternalPackages keeps sharp out of the bundle so it loads from
+  // node_modules. That traces `sharp` and `@img/sharp-<platform>` correctly,
+  // but NOT `@img/sharp-libvips-<platform>`: the .so is opened with dlopen at
+  // runtime, and file tracing follows static requires, so it cannot see it.
+  //
+  // The result in production was:
+  //   ERR_DLOPEN_FAILED: libvips-cpp.so.8.18.3: cannot open shared object file
+  //
+  // …which failed at IMPORT time, so every route importing sharp returned 500
+  // — including GETs that never touch an image. Naming the packages explicitly
+  // is the only way the .so reaches the serverless bundle.
+  //
+  // linux-x64 is the deploy target. The darwin entries are absent on the build
+  // machine and a glob matching nothing is simply skipped, so this is safe to
+  // keep in one list.
+  outputFileTracingIncludes: {
+    '/api/**/*': [
+      './node_modules/@img/sharp-linux-x64/**/*',
+      './node_modules/@img/sharp-libvips-linux-x64/**/*',
+    ],
+  },
+
   images: {
     remotePatterns: [
       {
