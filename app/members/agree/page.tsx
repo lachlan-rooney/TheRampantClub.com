@@ -46,7 +46,11 @@ export default function AgreePage() {
   const signed = (docs || []).filter(d => d.satisfied_by === 'signature')
 
   return (
-    <div style={{ maxWidth: 760 }}>
+    // paddingBottom clears the fixed BottomTabBar (70px, z-index 8998). The layout
+    // pads the document, but an element scrolled to the viewport's bottom EDGE can
+    // still land under the bar — which is exactly what intercepted a real tap on the
+    // agree control during verification.
+    <div style={{ maxWidth: 760, paddingBottom: 96 }}>
       <h1 style={h1}>Before you go on</h1>
       <p style={intro}>
         Two documents, read at your own pace. You can keep a copy of either without agreeing to it,
@@ -74,7 +78,7 @@ export default function AgreePage() {
       {pending.map(d => (
         <DocumentBlock key={d.doc_key} doc={d} lang={lang} busy={busy === d.doc_key}
           reached={!!reached[d.doc_key]}
-          onReached={() => setReached(s => ({ ...s, [d.doc_key]: true }))}
+          onReached={() => setReached(s => (s[d.doc_key] ? s : { ...s, [d.doc_key]: true }))}
           onAgree={() => agree(d, true)} />
       ))}
 
@@ -122,6 +126,13 @@ function DocumentBlock({ doc, lang, reached, onReached, onAgree, busy }: {
   doc: Doc; lang: 'en' | 'vn'; reached: boolean; onReached: () => void; onAgree: () => void; busy: boolean
 }) {
   const sentinel = useRef<HTMLDivElement | null>(null)
+  const box = useRef<HTMLDivElement | null>(null)
+  // onReached is a new closure on every parent render. Depending on it re-created
+  // the observer each pass, which fired again, which set state again — a render
+  // loop that never let the control settle. Hold it in a ref so the effect depends
+  // only on the language.
+  const reachedCb = useRef(onReached)
+  reachedCb.current = onReached
 
   // THE SCROLL GATE. IntersectionObserver on a sentinel at the foot of the body —
   // NOT scrollTop/scrollHeight arithmetic, which is unreliable on mobile browsers
@@ -133,11 +144,17 @@ function DocumentBlock({ doc, lang, reached, onReached, onAgree, busy }: {
   useEffect(() => {
     const el = sentinel.current
     if (!el) return
-    const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { onReached(); io.disconnect() } },
-      { root: null, threshold: 0.01 })
+    // ROOT IS THE SCROLLING BOX, not the viewport — and the sentinel lives INSIDE
+    // it. It was a sibling of the box at first, which meant scrolling the document
+    // to its end never moved the sentinel and the control stayed disabled forever:
+    // precisely the "member who cannot enable the button has no way forward"
+    // failure. Caught by driving it in a real browser rather than reasoning about it.
+    const io = new IntersectionObserver(
+      es => { if (es.some(e => e.isIntersecting)) { reachedCb.current(); io.disconnect() } },
+      { root: box.current ?? null, threshold: 0.01 })
     io.observe(el)
     return () => io.disconnect()
-  }, [onReached, lang])
+  }, [lang])
 
   const html = lang === 'vn' ? (doc.html_vn || doc.html_en) : doc.html_en
   const markdown = lang === 'vn' ? (doc.markdown_vn || doc.markdown_en) : doc.markdown_en
@@ -160,9 +177,13 @@ function DocumentBlock({ doc, lang, reached, onReached, onAgree, busy }: {
         </div>
       </div>
 
-      <div style={body} dangerouslySetInnerHTML={{ __html: html || '' }} />
-      {/* The foot of the document. Reaching it is what the observer watches for. */}
-      <div ref={sentinel} aria-hidden style={{ height: 1 }} />
+      <div ref={box} style={body}>
+        <div dangerouslySetInnerHTML={{ __html: html || '' }} />
+        {/* The foot of the document, INSIDE the scrolling box. A short document
+            leaves this already intersecting, so the control enables on the first
+            observer callback with no special case. */}
+        <div ref={sentinel} aria-hidden style={{ height: 1 }} />
+      </div>
 
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 18, flexWrap: 'wrap' }}>
         <button onClick={onAgree} disabled={!reached || busy}

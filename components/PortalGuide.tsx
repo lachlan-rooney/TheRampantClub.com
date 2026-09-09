@@ -160,7 +160,15 @@ export default function PortalGuide({ name }: { name?: string }) {
       const sl = window.localStorage.getItem(LANG_KEY) as Lang | null
       if (sl === 'vn' || sl === 'en') setLang(sl)
       const url = new URL(window.location.href)
-      if (!window.localStorage.getItem(SEEN_KEY) || url.searchParams.get('guide') === '1') { setI(0); reset(); setOpen(true) }
+      // NEVER auto-open over the consent gate. A first-time member is redirected to
+      // /members/agree, and this opened on top of it — an aria-modal dialog touring
+      // a portal they cannot reach yet, covering the one control they need. It
+      // intercepted a real tap during verification. Explicit replay (?guide=1 or the
+      // open-portal-guide event) still works; only the automatic open is suppressed.
+      const onConsentGate = url.pathname.startsWith('/members/agree')
+      if (!onConsentGate && (!window.localStorage.getItem(SEEN_KEY) || url.searchParams.get('guide') === '1')) {
+        setI(0); reset(); setOpen(true)
+      }
     } catch { /* */ }
     const onOpen = () => { setI(0); reset(); setOpen(true) }
     window.addEventListener('open-portal-guide', onOpen)
