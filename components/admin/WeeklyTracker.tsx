@@ -51,8 +51,41 @@ export default function WeeklyTracker() {
 
   return (
     <div style={wrap}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
-        <div style={h1}>{t('Cash in', 'Tiền vào')} · {d.month_label}</div>
+      <div style={h1}>{d.month_label}</div>
+
+      {/* ── MEMBERS AND USAGE, FIRST AND DELIBERATELY ─────────────────────────
+          This half is the half that can be acted on THIS WEEK. Eight members
+          unseen in thirty days is a list of calls to make; the deficit is real
+          and cannot be moved by Friday. A report that opens on the actionable
+          half gets opened weekly. One that opens on a number nobody can shift
+          gets opened once. */}
+      <div style={{ ...sub, marginTop: 4 }}>
+        {t('The half you can act on this week.', 'Phần bạn có thể xử lý ngay trong tuần này.')}
+      </div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', margin: '12px 0 0' }}>
+        <Stat label={t('No visit in 30 days', 'Không ghé 30 ngày')}
+              value={`${d.dormancy.no_visit_30}/${d.dormancy.active_members}`}
+              note={`${d.dormancy.never_visited} ${t('never visited', 'chưa từng ghé')} · ${d.dormancy.no_visit_60} ${t('past 60', 'quá 60 ngày')}`}
+              tone={d.dormancy.no_visit_30 > d.dormancy.active_members / 2 ? 'bad' : undefined} />
+        <Stat label={t('Distinct members', 'Thành viên khác nhau')} value={String(d.usage.distinct_members)}
+              note={t('ten visits from three is a different club', 'mười lượt từ ba người là câu lạc bộ khác')} />
+        <Stat label={t('Visits', 'Lượt ghé')} value={String(d.usage.visits)} note={d.month_label} />
+        <Stat label={t('Credit used', 'Tín dụng đã dùng')} value={vnd(d.usage.credit_consumed_vnd)}
+              note={t('usage — not cash in', 'mức sử dụng — không phải tiền vào')} />
+      </div>
+      <div style={{ ...sub, marginTop: 8 }}>
+        {/* Honest about the data rather than confident about a number. */}
+        {t(`Time in club is staff-recorded, on ${d.usage.duration_coverage_pct}% of visits`,
+           `Thời gian tại câu lạc bộ do nhân viên ghi, trên ${d.usage.duration_coverage_pct}% lượt ghé`)}
+        {d.usage.median_duration_min != null && ` · ${t('median', 'trung vị')} ${d.usage.median_duration_min} ${t('min', 'phút')}`}
+        {'. '}
+        {t('Departure times are recorded too rarely to compute a dwell time from, so none is shown.',
+           'Giờ ra về được ghi quá ít nên không tính thời gian lưu lại.')}
+      </div>
+
+      {/* ── CASH IN ───────────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8, marginTop: 26 }}>
+        <div style={h2}>{t('Cash in', 'Tiền vào')}</div>
         <button onClick={() => setEdit(e => !e)} style={ghost}>{t('Cost base', 'Cơ sở chi phí')}</button>
       </div>
       <div style={sub}>
@@ -60,8 +93,7 @@ export default function WeeklyTracker() {
            'Tiền nhận được so với tiền chi ra. Nạp thẻ là trả trước và phí niên liễm vào một lần cả năm — đây không phải doanh thu.')}
       </div>
 
-      {/* ── the two lines ─────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', margin: '14px 0 6px' }}>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', margin: '12px 0 6px' }}>
         <Stat label={t('Month to date', 'Từ đầu tháng')} value={usd(d.mtd_cash_usd)}
               note={`${ahead >= 0 ? '+' : ''}${usd(ahead)} ${t('vs pro-rata', 'so với tỷ lệ')}`} tone={ahead >= 0 ? 'good' : 'bad'} />
         <Stat label={t('Target', 'Mục tiêu')} value={usd(d.target_usd)} note={t('monthly', 'hàng tháng')} />
@@ -76,7 +108,6 @@ export default function WeeklyTracker() {
         <SettingsPanel d={d} busy={busy} onSave={saveSettings} onCancel={() => setEdit(false)} t={t} />
       )}
 
-      {/* ── week by week ──────────────────────────────────────────────────── */}
       <table style={table}>
         <thead>
           <tr>
@@ -119,28 +150,6 @@ export default function WeeklyTracker() {
           {t('A missing week is missing, not zero.', 'Tuần chưa nhập là thiếu dữ liệu, không phải bằng không.')}
         </div>
       )}
-
-      {/* ── the half no cash line shows ───────────────────────────────────── */}
-      <div style={h2}>{t('Usage and members', 'Mức sử dụng & thành viên')}</div>
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <Stat label={t('Visits', 'Lượt ghé')} value={String(d.usage.visits)} note={d.month_label} />
-        <Stat label={t('Distinct members', 'Thành viên khác nhau')} value={String(d.usage.distinct_members)}
-              note={t('ten visits from three is a different club', 'mười lượt từ ba người là câu lạc bộ khác')} />
-        <Stat label={t('Credit used', 'Tín dụng đã dùng')} value={vnd(d.usage.credit_consumed_vnd)}
-              note={t('usage — not cash in', 'mức sử dụng — không phải tiền vào')} />
-        <Stat label={t('No visit in 30 days', 'Không ghé 30 ngày')} value={`${d.dormancy.no_visit_30}/${d.dormancy.active_members}`}
-              note={`${d.dormancy.never_visited} ${t('never visited', 'chưa từng ghé')}`}
-              tone={d.dormancy.no_visit_30 > d.dormancy.active_members / 2 ? 'bad' : undefined} />
-      </div>
-      <div style={{ ...sub, marginTop: 8 }}>
-        {/* Honest about the data rather than confident about a number. */}
-        {t(`Time in club is staff-recorded, on ${d.usage.duration_coverage_pct}% of visits`,
-           `Thời gian tại câu lạc bộ do nhân viên ghi, trên ${d.usage.duration_coverage_pct}% lượt ghé`)}
-        {d.usage.median_duration_min != null && ` · ${t('median', 'trung vị')} ${d.usage.median_duration_min} ${t('min', 'phút')}`}
-        {'. '}
-        {t('Departure times are recorded too rarely to compute a dwell time from, so none is shown.',
-           'Giờ ra về được ghi quá ít nên không tính thời gian lưu lại.')}
-      </div>
 
       {err && <div style={{ ...warnBox, color: '#C27070' }}>{err}</div>}
     </div>
