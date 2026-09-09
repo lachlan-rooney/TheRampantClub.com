@@ -116,7 +116,10 @@ create table if not exists shift_task_instances (
   blocked_reason    text,
   blocked_unblocker text,
   note              text,
-  prospect_id       uuid references prospects(prospect_id),
+  -- varchar(20), NOT uuid: prospects are keyed by a human id ("TRC-001"), which
+  -- is why the first version of this file was refused outright. Matches the
+  -- pattern already used by db/mis_signing_loop.sql.
+  prospect_id       varchar(20) references prospects(prospect_id),
   carried_over_count int not null default 0,
   completed_at      timestamptz,
   completed_by      uuid references team_members(id),
@@ -254,7 +257,7 @@ create or replace function shift_task_update(
   p_blocked_unblocker text default null,
   p_note     text default null,
   p_revert_note text default null,
-  p_prospect uuid default null
+  p_prospect text default null
 ) returns text language plpgsql security definer set search_path = public as $fn$
 declare
   v_row shift_task_instances%rowtype;
@@ -311,8 +314,8 @@ exception when check_violation then
   -- The DB constraints are the backstop for the UI rules; report which one.
   return case when p_status = 'done' then 'needs_evidence' else 'needs_reason' end;
 end $fn$;
-revoke all on function shift_task_update(uuid,uuid,text,text,text,text,text,text,uuid) from public;
-grant execute on function shift_task_update(uuid,uuid,text,text,text,text,text,text,uuid) to service_role, authenticated;
+revoke all on function shift_task_update(uuid,uuid,text,text,text,text,text,text,text) from public;
+grant execute on function shift_task_update(uuid,uuid,text,text,text,text,text,text,text) to service_role, authenticated;
 
 -- ═══ 9 · SEED ══════════════════════════════════════════════════════════════
 -- Charters seed with *_vi NULL. Vietnamese is supplied separately; the UI
