@@ -13,6 +13,31 @@
 -- row instead of one per member sharing a surname.
 -- ═══════════════════════════════════════════════════════════════════════════
 
+
+-- ═══ PREREQUISITES — fail loudly, before touching anything ═════════════════
+-- Run AFTER: db/kiosk_phase2.sql
+-- A file that assumes an earlier one has landed builds on air. This asserts what
+-- it needs FIRST, so running out of order stops here rather than half-applying.
+do $prereq$
+declare v_missing text[] := '{}'; v_x text;
+begin
+  foreach v_x in array array['member_kiosk_pins', 'member_pin_attempts', 'kiosk_member_sessions', 'members'] loop
+    if not exists (select 1 from information_schema.tables
+                    where table_schema='public' and table_name=v_x)
+      then v_missing := v_missing || ('table ' || v_x); end if;
+  end loop;
+  foreach v_x in array array['kiosk_pin_is_weak', 'is_admin_uid'] loop
+    if not exists (select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+                    where n.nspname='public' and p.proname=v_x)
+      then v_missing := v_missing || ('function ' || v_x); end if;
+  end loop;
+  if array_length(v_missing,1) > 0 then
+    raise exception 'KIOSK AUTH FIXES: PREREQUISITES MISSING — %', array_to_string(v_missing, ', ')
+      using hint = 'Run db/kiosk_phase2.sql first. Nothing in this file has been applied.';
+  end if;
+end $prereq$;
+
+
 -- ═══ 1 · THE SHARED VALIDATOR ══════════════════════════════════════════════
 -- Returns null when the code is acceptable, or a reason the caller can map to
 -- copy. Every path that sets a code calls this — there is no second copy of the
