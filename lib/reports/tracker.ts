@@ -48,10 +48,29 @@ export interface Tracker {
   whisky: { weeks_missing: string[]; last_entered_week: string | null; days_since_entry: number | null }
   usage: {
     visits: number; distinct_members: number
-    duration_recorded: number; duration_coverage_pct: number; median_duration_min: number | null
     credit_consumed_vnd: number
+    /** STAFF-RECORDED, NOT MEASURED. Kept separate from anything measured so it
+     *  is never quoted back as a metric. */
+    staff_recorded_median_min: number | null
+    staff_recorded_coverage_pct: number
   }
-  dormancy: { active_members: number; no_visit_30: number; no_visit_60: number; never_visited: number }
+  /** Dormancy reads BOOKINGS, not card taps. A tap is a habit the member may not
+   *  have; a booking is an intention they made. Honorary members are counted
+   *  apart — they are complimentary, so mixing them into a renewal-risk figure
+   *  measures the wrong population. */
+  dormancy: {
+    paying_members: number; paying_no_booking_30: number; paying_no_booking_60: number; paying_never_booked: number
+    honorary_members: number; honorary_never_booked: number
+  }
+  /** What booked-versus-attended can actually be computed from, today. */
+  attendance: {
+    bookings_in_month: number
+    arrival_recorded: number
+    end_time_recorded: number
+    walk_in_visits: number
+    booked_times_preserved: number
+    measurable: boolean
+  }
 }
 
 const iso = (d: Date) => d.toISOString().slice(0, 10)
@@ -80,8 +99,18 @@ export async function buildTracker(sb: SupabaseClient, asOfDate: string): Promis
       .gte('created_at', first).lte('created_at', last + 'T23:59:59'),
     sb.from('visits').select('visit_date, member_no, duration_min').is('archived_at', null),
     sb.from('whisky_weekly_sales').select('week_start, amount_vnd, entered_at'),
-    sb.from('members').select('member_no, status'),
+    sb.from('members').select('member_no, status, tier'),
   ])
+  // Base columns only. `booked_start_time` arrives with
+  // db/bookings_booked_vs_actual.sql, and selecting a column that does not exist
+  // yet fails the WHOLE query — which silently returned no bookings at all and
+  // reported every paying member as never having booked. A wrong dormancy figure
+  // is worse than a missing one: it sends someone to call members who were in
+  // last week.
+  const { data: bookings } = await sb.from('bookings')
+    .select('member_no, booking_date, start_time, end_time, status, arrived_at')
+  // Asked for separately so its absence costs nothing.
+  const { data: preserved } = await sb.from('bookings').select('booking_date, booked_start_time')
 
   const whiskyBy = new Map((whisky || []).map(w => [w.week_start as string, Number(w.amount_vnd) || 0]))
 
@@ -149,28 +178,53 @@ export async function buildTracker(sb: SupabaseClient, asOfDate: string): Promis
   const usage = {
     visits: monthVisits.length,
     distinct_members: new Set(monthVisits.map(v => v.member_no)).size,
-    duration_recorded: durs.length,
-    duration_coverage_pct: monthVisits.length ? Math.round((durs.length / monthVisits.length) * 100) : 0,
-    median_duration_min: durs.length ? durs[Math.floor(durs.length / 2)] : null,
     credit_consumed_vnd: weeks.reduce((s, w) => s + w.credit_consumed_vnd, 0),
+    staff_recorded_median_min: durs.length ? durs[Math.floor(durs.length / 2)] : null,
+    staff_recorded_coverage_pct: monthVisits.length ? Math.round((durs.length / monthVisits.length) * 100) : 0,
   }
 
-  // ── Dormancy: the signal no cash line shows ──────────────────────────────
-  const lastVisit = new Map<string, string>()
-  for (const v of visits || []) {
-    const k = String(v.member_no), d = String(v.visit_date)
-    if (!lastVisit.has(k) || d > lastVisit.get(k)!) lastVisit.set(k, d)
+  // ── Dormancy, from BOOKINGS ──────────────────────────────────────────────
+  // Not from card taps. A tap is a habit the member may simply not have — one
+  // member here has booked within the month and last tapped in June — so a tap
+  // figure sends someone to call members who have been in every week. A booking
+  // is an intention the member made, and the club would rather they booked.
+  const lastBooking = new Map<string, string>()
+  for (const b of bookings || []) {
+    if (b.status === 'cancelled') continue
+    const k = String(b.member_no), d = String(b.booking_date)
+    if (!lastBooking.has(k) || d > lastBooking.get(k)!) lastBooking.set(k, d)
   }
   const active = (members || []).filter(m => m.status === 'Active')
-  const ageDays = (mn: string) => {
-    const l = lastVisit.get(mn)
+  const paying = active.filter(m => String(m.tier).toLowerCase() !== 'honorary')
+  const honorary = active.filter(m => String(m.tier).toLowerCase() === 'honorary')
+  const bookingAge = (mn: string) => {
+    const l = lastBooking.get(mn)
     return l ? (new Date(today + 'T00:00:00Z').getTime() - new Date(l + 'T00:00:00Z').getTime()) / 864e5 : Infinity
   }
   const dormancy = {
-    active_members: active.length,
-    no_visit_30: active.filter(m => ageDays(String(m.member_no)) > 30).length,
-    no_visit_60: active.filter(m => ageDays(String(m.member_no)) > 60).length,
-    never_visited: active.filter(m => !lastVisit.has(String(m.member_no))).length,
+    paying_members: paying.length,
+    paying_no_booking_30: paying.filter(m => bookingAge(String(m.member_no)) > 30).length,
+    paying_no_booking_60: paying.filter(m => bookingAge(String(m.member_no)) > 60).length,
+    paying_never_booked: paying.filter(m => !lastBooking.has(String(m.member_no))).length,
+    honorary_members: honorary.length,
+    honorary_never_booked: honorary.filter(m => !lastBooking.has(String(m.member_no))).length,
+  }
+
+  // ── Booked versus attended: what is measurable TODAY ─────────────────────
+  // arrived_at exists on the table and is filled on none of the bookings, and
+  // every row's status is 'confirmed', so a no-show is indistinguishable from an
+  // attendance. Reporting the gap would mean reporting zero and calling it good
+  // news. So the tracker reports the COVERAGE instead, until the inputs exist.
+  const monthBookings = (bookings || []).filter(b => String(b.booking_date) >= first && String(b.booking_date) <= last)
+  const bookedDays = new Set((bookings || []).map(b => `${b.member_no}|${b.booking_date}`))
+  const attendance = {
+    bookings_in_month: monthBookings.length,
+    arrival_recorded: monthBookings.filter(b => b.arrived_at).length,
+    end_time_recorded: monthBookings.filter(b => b.end_time).length,
+    walk_in_visits: monthVisits.filter(v => !bookedDays.has(`${v.member_no}|${v.visit_date}`)).length,
+    booked_times_preserved: (preserved || [])
+      .filter(b => b.booked_start_time && String(b.booking_date) >= first && String(b.booking_date) <= last).length,
+    measurable: monthBookings.length > 0 && monthBookings.some(b => b.arrived_at),
   }
 
   const closeCash = weeks.reduce((s, w) => s + w.cash_in_usd, 0)
@@ -188,6 +242,6 @@ export async function buildTracker(sb: SupabaseClient, asOfDate: string): Promis
       delta_usd: lastWeek ? (thisWeek?.cash_in_usd ?? 0) - lastWeek.cash_in_usd : null,
     },
     whisky: { weeks_missing: weeksMissing, last_entered_week: (entered?.week_start as string) ?? null, days_since_entry: daysSince },
-    usage, dormancy,
+    usage, dormancy, attendance,
   }
 }

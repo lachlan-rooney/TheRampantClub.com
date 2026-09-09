@@ -63,24 +63,35 @@ export default function WeeklyTracker() {
         {t('The half you can act on this week.', 'Phần bạn có thể xử lý ngay trong tuần này.')}
       </div>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', margin: '12px 0 0' }}>
-        <Stat label={t('No visit in 30 days', 'Không ghé 30 ngày')}
-              value={`${d.dormancy.no_visit_30}/${d.dormancy.active_members}`}
-              note={`${d.dormancy.never_visited} ${t('never visited', 'chưa từng ghé')} · ${d.dormancy.no_visit_60} ${t('past 60', 'quá 60 ngày')}`}
-              tone={d.dormancy.no_visit_30 > d.dormancy.active_members / 2 ? 'bad' : undefined} />
+        {/* BOOKINGS, NOT CARD TAPS. A tap is a habit a member may not have; a
+            booking is an intention they made. And HONORARY members are counted
+            separately below — they are complimentary, so putting them in a
+            renewal-risk figure measures the wrong people. */}
+        <Stat label={t('Paying members not booked in 30 days', 'Hội viên trả phí chưa đặt chỗ 30 ngày')}
+              value={`${d.dormancy.paying_no_booking_30}/${d.dormancy.paying_members}`}
+              note={`${d.dormancy.paying_never_booked} ${t('never booked', 'chưa từng đặt')} · ${d.dormancy.paying_no_booking_60} ${t('past 60', 'quá 60 ngày')}`}
+              tone={d.dormancy.paying_no_booking_30 > d.dormancy.paying_members / 2 ? 'bad' : undefined} />
         <Stat label={t('Distinct members', 'Thành viên khác nhau')} value={String(d.usage.distinct_members)}
               note={t('ten visits from three is a different club', 'mười lượt từ ba người là câu lạc bộ khác')} />
         <Stat label={t('Visits', 'Lượt ghé')} value={String(d.usage.visits)} note={d.month_label} />
         <Stat label={t('Credit used', 'Tín dụng đã dùng')} value={vnd(d.usage.credit_consumed_vnd)}
               note={t('usage — not cash in', 'mức sử dụng — không phải tiền vào')} />
       </div>
-      <div style={{ ...sub, marginTop: 8 }}>
-        {/* Honest about the data rather than confident about a number. */}
-        {t(`Time in club is staff-recorded, on ${d.usage.duration_coverage_pct}% of visits`,
-           `Thời gian tại câu lạc bộ do nhân viên ghi, trên ${d.usage.duration_coverage_pct}% lượt ghé`)}
-        {d.usage.median_duration_min != null && ` · ${t('median', 'trung vị')} ${d.usage.median_duration_min} ${t('min', 'phút')}`}
-        {'. '}
-        {t('Departure times are recorded too rarely to compute a dwell time from, so none is shown.',
-           'Giờ ra về được ghi quá ít nên không tính thời gian lưu lại.')}
+      {/* ── WHAT THIS DOES NOT MEASURE ────────────────────────────────────────
+          Deliberately below the numbers and visibly apart from them, so a soft
+          figure is never read as a measured one and quoted back later. */}
+      <div style={{ ...sub, marginTop: 10, paddingTop: 10, borderTop: '1px dashed rgba(229,212,194,0.14)' }}>
+        <span style={{ color: '#D4B85A' }}>{t('Not measured:', 'Chưa đo được:')}</span>{' '}
+        {t(`there is no dependable time-in-club figure. Card taps are optional and departure is rarely recorded; booking end times are filled on ${d.attendance.end_time_recorded} of ${d.attendance.bookings_in_month} bookings this month.`,
+           `chưa có số liệu đáng tin về thời gian ở câu lạc bộ. Quẹt thẻ là tuỳ chọn và giờ ra về hiếm khi được ghi; giờ kết thúc đặt chỗ chỉ có ở ${d.attendance.end_time_recorded}/${d.attendance.bookings_in_month} lượt đặt trong tháng.`)}
+        {d.usage.staff_recorded_median_min != null &&
+          ` ${t('A staff-recorded median of', 'Trung vị do nhân viên ghi là')} ${d.usage.staff_recorded_median_min} ${t('min exists on', 'phút, trên')} ${d.usage.staff_recorded_coverage_pct}% ${t('of visits — an account, not a measurement.', 'lượt ghé — là ghi chép, không phải phép đo.')}`}
+        {' '}
+        {d.attendance.arrival_recorded === 0 && d.attendance.bookings_in_month > 0 &&
+          t(`Booked-versus-attended cannot be shown either: arrival is recorded on 0 of ${d.attendance.bookings_in_month} bookings, so a no-show and an attendance look identical.`,
+            `Cũng chưa thể so sánh đặt chỗ với thực đến: không lượt đặt nào trong ${d.attendance.bookings_in_month} có ghi nhận đến, nên vắng mặt và có mặt là như nhau.`)}
+        {d.attendance.walk_in_visits > 0 &&
+          ` ${d.attendance.walk_in_visits} ${t('recorded visit(s) this month had no booking.', 'lượt ghé trong tháng không có đặt chỗ.')}`}
       </div>
 
       {/* ── CASH IN ───────────────────────────────────────────────────────── */}
