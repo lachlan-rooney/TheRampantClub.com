@@ -1,3 +1,6 @@
+-- SUPERSEDED by db/terms_documents.sql, which folds this in. Do not run.
+-- Kept only so the history of the evidence column is legible.
+
 -- ═══════════════════════════════════════════════════════════════════════════
 -- CONSENT: record that they reached the bottom  ·  REVIEW, then run
 -- ───────────────────────────────────────────────────────────────────────────

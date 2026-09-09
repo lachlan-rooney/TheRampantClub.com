@@ -21,6 +21,25 @@
 --     exception in the middleware.
 -- ═══════════════════════════════════════════════════════════════════════════
 
+-- ═══ 0 · WHAT THIS SUPERSEDES, AND WHAT MUST BE REMOVED ════════════════════
+-- db/consent_scroll_evidence.sql was written but never run. It is FOLDED IN here
+-- so there is one file to run, from a clean state, in either order.
+alter table member_terms_consents add column if not exists evidence jsonb not null default '{}'::jsonb;
+comment on column member_terms_consents.evidence is
+  'How the consent was obtained. e.g. {"scrolled_to_end": true, "language": "en"}. '
+  'Weak evidence, deliberately kept: a record that cannot say how it was obtained is a tick.';
+
+-- THE STALE OVERLOAD MUST GO. kiosk_phase2.sql created record_my_consent(text,
+-- boolean, text). Adding the 4-arg version alongside it would leave the 3-arg one
+-- live — carrying the OLD hardcoded document list and no signature refusal — as a
+-- quiet bypass of everything below. PostgREST would happily route to it.
+drop function if exists record_my_consent(text, boolean, text);
+
+-- my_consent_state gains columns, and Postgres will not let CREATE OR REPLACE
+-- change a function's OUT-parameter row type. Drop it first.
+drop function if exists my_consent_state();
+
+
 -- ═══ 1 · THE DOCUMENT REGISTER ═════════════════════════════════════════════
 create table if not exists terms_documents (
   doc_key      text primary key,
@@ -216,6 +235,13 @@ begin
   if not exists (select 1 from information_schema.columns
                   where table_schema='public' and table_name='terms_versions' and column_name='body_vn')
     then v_missing := v_missing || 'terms_versions.body_vn'; end if;
+  if not exists (select 1 from information_schema.columns
+                  where table_schema='public' and table_name='member_terms_consents' and column_name='evidence')
+    then v_missing := v_missing || 'member_terms_consents.evidence'; end if;
+  -- the 3-arg overload must be GONE, not merely shadowed
+  if (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname='public' and p.proname='record_my_consent') <> 1
+    then v_missing := v_missing || 'exactly one record_my_consent (a stale overload survives)'; end if;
   if array_length(v_missing,1) > 0 then
     raise exception 'terms_documents self-check FAILED — %', array_to_string(v_missing, ', ');
   end if;
