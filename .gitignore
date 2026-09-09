@@ -2,6 +2,11 @@ node_modules
 .next
 .env.local
 .env*.local
+# ...and any BACKUP of one. `.env*.local` does not match `.env.local.bak-<ts>`,
+# which is how a backup full of live API keys reached a commit once. Only
+# GitHub's push protection stopped it.
+.env.local*
+.env.*.bak*
 tsconfig.tsbuildinfo
 scripts/import-whiskies.sql
 # Member data — never commit. Source CSVs / extracts for MIS migration go here.
