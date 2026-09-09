@@ -88,7 +88,7 @@ export default function AdminNotices() {
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 24, fontWeight: 500, color: '#E5D4C2', letterSpacing: '0.04em' }}>
-          {t('Notices', 'Thông báo')}
+          {t('Notice Board', 'Bảng Thông Báo')}
         </h1>
         {!showForm && (
           <button onClick={() => { resetForm(); setShowForm(true) }} style={btnStyle}>{t('+ New Notice', '+ Thông báo mới')}</button>

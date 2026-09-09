@@ -26,7 +26,7 @@ const GROUPS: Group[] = [
       { href: '/admin/quickref', label: 'Quick Reference', icon: 'book' },
       { href: '/admin/cards', label: 'Member Cards', icon: 'card' },
       { href: '/admin/concierge', label: 'Concierge', icon: 'bell' },
-      { href: '/admin/notices', label: 'Notices', icon: 'megaphone' },
+      { href: '/admin/notices', label: 'Notice Board', icon: 'megaphone' },
       { href: '/admin/calendar', label: 'Calendar', icon: 'calendar' },
       { href: '/admin/attendance', label: 'Guest Attendance', icon: 'users' },
       { href: '/admin/harmony', label: 'Harmony Log', icon: 'heart' },
