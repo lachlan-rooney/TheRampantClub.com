@@ -39,6 +39,9 @@ export async function GET(req: NextRequest) {
 
 interface CreatePayload {
   full_name?: unknown
+  /** Override the duplicate block, for two genuinely different people who
+   *  share a name. The shift prospect form never sends it. */
+  allow_duplicate?: boolean
   nickname?: unknown
   stage?: unknown
   referred_by_name?: unknown
@@ -78,6 +81,34 @@ export async function POST(req: NextRequest) {
     ? String(body.source_channel) : null
 
   const sb = svc()
+
+  // ── DUPLICATE BLOCK ──────────────────────────────────────────────────────
+  // Against the WHOLE prospects table and the member roster — not against this
+  // week. The point is catching a name someone already proposed in March, or a
+  // person who is already a member. Case- and accent-insensitive, because
+  // "Nguyen Van Binh" and "Nguyễn Văn Bình" are the same person to everyone
+  // except a string comparison.
+  //
+  // Passing allow_duplicate:true overrides it, for the genuine case of two
+  // different people sharing a name. The shift form never sends it.
+  if (!body.allow_duplicate) {
+    const norm = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()
+    const target = norm(full_name)
+    const [{ data: allProspects }, { data: allMembers }] = await Promise.all([
+      sb.from('prospects').select('prospect_id, full_name, stage, created_at'),
+      sb.from('members').select('member_no, full_name'),
+    ])
+    const dupP = (allProspects || []).find(r => norm(String(r.full_name || '')) === target)
+    if (dupP) return NextResponse.json({
+      error: `${full_name} was already proposed — ${dupP.prospect_id}, stage ${dupP.stage}, added ${String(dupP.created_at).slice(0, 10)}.`,
+      duplicate: { kind: 'prospect', id: dupP.prospect_id },
+    }, { status: 409 })
+    const dupM = (allMembers || []).find(r => norm(String(r.full_name || '')) === target)
+    if (dupM) return NextResponse.json({
+      error: `${full_name} is already a member — ${dupM.member_no}.`,
+      duplicate: { kind: 'member', id: dupM.member_no },
+    }, { status: 409 })
+  }
 
   // Mint the next P-xxx ID — find the current max and add 1. Locked to the
   // single-row insert so two concurrent creates produce different IDs.
