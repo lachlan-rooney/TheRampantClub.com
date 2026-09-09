@@ -1,0 +1,58 @@
+-- ═══════════════════════════════════════════════════════════════════════════
+-- PRIVACY NOTICE · STAND THE GATE DOWN  (applied 2026-09-09) — and how to
+-- put it back up when v1.1 with Miss Châu's Vietnamese is published.
+-- ───────────────────────────────────────────────────────────────────────────
+-- WHY. Every member was behind on the Privacy Notice, so my_consent_state()
+-- returned needs_action=true for all of them and middleware bounced every
+-- /members/* request to /members/agree. The notice is English-only (0% VN).
+-- A Vietnamese-speaking founding member's next login was therefore a forced
+-- English-only agreement with no read-later path — on the club's first ask.
+--
+-- ═══ WHY NOT "DELETE THE VERSION" ══════════════════════════════════════════
+-- Unpublishing by deleting the terms_versions row does NOT stand the gate down.
+-- It makes it worse. The gate's condition is:
+--
+--   when not d.required then false
+--   else (h.terms_version_id is null or h.granted = false or h.terms_version_id <> c.id)
+--
+-- A member with no consent row satisfies `h.terms_version_id is null` whether or
+-- not a version exists. Delete the version and every member is STILL redirected
+-- to /members/agree — now with nothing to agree to. A locked door with the
+-- handle taken off. The immutability trigger is BEFORE UPDATE only, so nothing
+-- would have stopped the delete either.
+--
+-- `required` is the field that actually opens it, and it leaves v1.0 published
+-- and intact for the day it is required again.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- ═══ WHAT WAS APPLIED ══════════════════════════════════════════════════════
+update terms_documents set required = false where doc_key = 'privacy';
+
+-- Verified against three real members either side of the change:
+--   before → privacy needs_action = true, true, true
+--   after  → privacy needs_action = false, false, false
+-- and in a browser: a member who has NEVER consented now lands on
+-- /members/terms instead of being redirected to /members/agree.
+--
+-- The notice is still published and still reachable at /members/agree for
+-- anyone who wants to read or accept it. It simply no longer blocks the portal.
+
+-- ═══ PUTTING IT BACK UP — run this WITH the v1.1 publish, not before ═══════
+-- Requiring it again with the English-only v1.0 current would recreate exactly
+-- the situation this stood down, so the two go together in one transaction.
+--
+--   begin;
+--     select set_config('request.jwt.claims',
+--       json_build_object('sub','3e1583db-b881-42ec-aadb-6f69a22fad80','role','authenticated')::text, true);
+--     select publish_terms_version('privacy','1.1', current_date,
+--              'Privacy Notice','Thông Báo Quyền Riêng Tư',
+--              $en$...$en$, $vn$...Miss Châu's Vietnamese...$vn$);
+--     update terms_documents set required = true where doc_key = 'privacy';
+--   commit;
+--
+-- A guard worth keeping: never set required = true for a consent document whose
+-- current version has a null body_vn.
+--   select doc_key from terms_documents d
+--    where d.required and d.satisfied_by = 'consent'
+--      and (select body_vn from terms_versions v where v.id = current_terms_version(d.doc_key)) is null;
+-- Anything this returns will gate members in English only.
