@@ -10,7 +10,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 // people → your account → the fine print.
 const MEMBER_GROUPS: { label: string; links: { href: string; en: string; vn: string; icon: string }[] }[] = [
   { label: 'What’s On', links: [
-    { href: '/members/events',        icon: 'calendar', en: 'Events & Fixtures', vn: 'Sự Kiện & Thi Đấu' },
+    { href: '/members/events',        icon: 'calendar', en: "What's On",         vn: 'Sự Kiện & Thi Đấu' },
     { href: '/members/gallery',       icon: 'image',    en: 'Event Gallery',  vn: 'Thư Viện Sự Kiện' },
     { href: '/members/notices',       icon: 'pin',      en: 'Notice Board',   vn: 'Bảng Tin' },
   ] },

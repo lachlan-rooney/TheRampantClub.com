@@ -148,7 +148,7 @@ export default function MembersPage() {
     {
       href: '/members/events',
       img: IMG('cocktails'),
-      en: 'Events & Fixtures',
+      en: "What's On",
       vn: 'S\u1ef1 Ki\u1ec7n & Thi \u0110\u1ea5u',
       icon: 'calendar',
       primary: nextFixture ? nextFixture.sport.charAt(0).toUpperCase() + nextFixture.sport.slice(1) : undefined,
