@@ -147,6 +147,8 @@ export default function Footer() {
           <div className="trc-footer-hours">
             <div className="trc-footer-heading">Opening Times</div>
             <div className="trc-footer-address">Four &rsquo;til Last Pour</div>
+            <div className="trc-footer-address">Mon&ndash;Sat</div>
+            <div className="trc-footer-address">Sundays on request</div>
           </div>
 
           {/* Address logo */}
