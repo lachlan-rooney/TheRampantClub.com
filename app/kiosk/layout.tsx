@@ -1,4 +1,22 @@
-import type { Viewport } from 'next'
+import type { Metadata, Viewport } from 'next'
+
+// ── WHAT INSTALLS ON THE TABLET ────────────────────────────────────────────
+// The site has ONE manifest (public/manifest.json, start_url "/"), so adding the
+// site to a tablet's home screen installed the PUBLIC HOME PAGE. On a bolted-down
+// in-room tablet that is the wrong app.
+//
+// It is fixed with a SECOND manifest rather than by editing the first, because
+// the first is what a MEMBER installs on their phone — pointing that at /kiosk
+// would break the member install to fix the tablet one. A nested layout's
+// `manifest` overrides the root's for these routes only.
+//
+// start_url is /kiosk/board: an unpaired tablet is bounced to /kiosk/pair by
+// middleware, so a fresh install opens the pairing screen and every install after
+// pairing opens the board. scope keeps the standalone window inside /kiosk.
+export const metadata: Metadata = {
+  manifest: '/kiosk.webmanifest',
+  appleWebApp: { capable: true, title: 'Rampant Kiosk', statusBarStyle: 'black-translucent' },
+}
 
 // ── THE KIOSK BOUNDARY ─────────────────────────────────────────────────────
 // NOTE, because it is the obvious assumption and it is wrong: this layout CANNOT

@@ -5,6 +5,17 @@ for (const l of readFileSync('.env.local','utf8').split('\n')) { const m=l.match
 const U=env.NEXT_PUBLIC_SUPABASE_URL, S=env.SUPABASE_SERVICE_ROLE_KEY
 const h={apikey:S,Authorization:`Bearer ${S}`,'Content-Type':'application/json'}
 const PASS='ZZ-Probe-Pass-2691'
+const dismissGuide = async page => {
+  // The guide mounts a beat AFTER domcontentloaded, so sampling once races it and
+  // the backdrop then swallows every later click. Wait for it, then wait for it to go.
+  const root = page.locator('.pg-root')
+  await root.waitFor({ state: 'visible', timeout: 4000 }).catch(() => {})
+  if (await root.count()) {
+    await page.locator('.pg-close').first().click().catch(() => {})
+    await root.waitFor({ state: 'detached', timeout: 5000 }).catch(() => {})
+  }
+}
+
 let fails=0; const ok=(c,l,d='')=>{console.log(`${c?'✓':'✗'} ${l}${d?' — '+d:''}`); if(!c)fails++}
 const id=(await (await fetch(`${U}/auth/v1/admin/users`,{method:'POST',headers:h,body:JSON.stringify({email:'zz-look@example.invalid',password:PASS,email_confirm:true})})).json()).id
 const browser=await chromium.launch({channel:'chrome'})
@@ -14,7 +25,7 @@ try{
   await page.fill('input[type="email"]','zz-look@example.invalid'); await page.fill('input[type="password"]',PASS)
   await page.click('button[type="submit"]'); await page.waitForURL(/\/members/,{timeout:20000})
   await page.goto('http://localhost:3001/members/events',{waitUntil:'domcontentloaded'})
-  const close=page.locator('.pg-close'); if(await close.count() && await close.first().isVisible().catch(()=>false)) await close.first().click()
+  await dismissGuide(page)
   const card=page.locator('.wo-card',{hasText:'An Evening with Ken Grier'})
   await card.waitFor({timeout:15000})
   const txt=await card.innerText()
@@ -32,6 +43,6 @@ try{
   console.log('\n  CARD AS A MEMBER SEES IT\n  ' + '-'.repeat(56))
   console.log(txt.split('\n').map(l=>'  '+l).join('\n'))
   console.log('  ' + '-'.repeat(56))
-}catch(e){ ok(false,'render check threw',e.message.split('\n')[0]) }
+}catch(e){ ok(false,'render check threw','\n'+e.message.split('\n').slice(0,12).join('\n')) }
 finally{ await browser.close(); await fetch(`${U}/auth/v1/admin/users/${id}`,{method:'DELETE',headers:h}) }
 console.log(fails===0?'\nPASS\n':`\nFAIL — ${fails}\n`); process.exit(fails?1:0)

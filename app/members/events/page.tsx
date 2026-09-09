@@ -252,7 +252,7 @@ export default function WhatsOnPage() {
         .wo-in { font-family: 'Google Sans Code', monospace; font-size: 9px; letter-spacing: 0.06em; color: #052E20; background: #7AB07A; padding: 2px 8px; border-radius: 999px; }
         .wo-title { font-family: 'Rampant Sans', serif; font-size: 18px; color: #E5D4C2; line-height: 1.2; }
         .wo-meta { font-family: 'Google Sans Code', monospace; font-size: 11px; color: #B2AA98; margin-top: 4px; }
-        .wo-desc { font-family: 'Google Sans Code', monospace; font-size: 11.5px; color: #B2AA98; opacity: 0.85; line-height: 1.6; margin: 10px 0 0; }
+        .wo-desc { font-family: 'Google Sans Code', monospace; font-size: 11.5px; color: #B2AA98; opacity: 0.85; line-height: 1.6; margin: 10px 0 0; white-space: pre-line; }
         .wo-action { flex-shrink: 0; text-align: right; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
         .wo-count { font-family: 'Google Sans Code', monospace; font-size: 10px; color: #B2AA98; }
         .wo-btn { font-family: 'Google Sans Code', monospace; font-size: 11px; letter-spacing: 0.04em; padding: 8px 14px; border-radius: 8px; cursor: pointer; background: #D4B85A; color: #052E20; border: none; font-weight: 700; }

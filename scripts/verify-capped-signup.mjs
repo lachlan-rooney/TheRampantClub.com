@@ -69,9 +69,12 @@ try {
   // The portal guide auto-opens for a member who has not seen it, and its backdrop
   // swallows clicks. A real member dismisses it; so does this.
   const dismissGuide = async () => {
-    const close = page.locator('.pg-close')
-    if (await close.count() && await close.first().isVisible().catch(() => false)) {
-      await close.first().click(); await page.locator('.pg-root').waitFor({ state: 'detached', timeout: 5000 }).catch(() => {})
+    // Mounts a beat AFTER domcontentloaded — sampling once races it.
+    const root = page.locator('.pg-root')
+    await root.waitFor({ state: 'visible', timeout: 4000 }).catch(() => {})
+    if (await root.count()) {
+      await page.locator('.pg-close').first().click().catch(() => {})
+      await root.waitFor({ state: 'detached', timeout: 5000 }).catch(() => {})
     }
   }
   await dismissGuide()
