@@ -1,3 +1,16 @@
+// The sharp native binary AND the libvips shared object it dlopens. Both, always
+// together: including the first without the second is the exact failure that
+// took down four routes — the .node loads, then cannot find libvips-cpp.so.
+// linux-x64 is the deploy target; the darwin pair is here so a local or
+// self-hosted build traces correctly too. A glob that matches nothing is simply
+// skipped, so listing every platform costs nothing on the platform that is not it.
+const SHARP_NATIVE = [
+  './node_modules/@img/sharp-linux-x64/**/*',
+  './node_modules/@img/sharp-libvips-linux-x64/**/*',
+  './node_modules/@img/sharp-darwin-arm64/**/*',
+  './node_modules/@img/sharp-libvips-darwin-arm64/**/*',
+]
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // sharp ships a native binary that Next's file tracing can miss in the
@@ -21,11 +34,19 @@ const nextConfig = {
   // linux-x64 is the deploy target. The darwin entries are absent on the build
   // machine and a glob matching nothing is simply skipped, so this is safe to
   // keep in one list.
+  // The keys are matched against ROUTE paths, and a key that matches nothing
+  // fails silently — the build succeeds and production breaks exactly as before.
+  // So the four routes that call sharp are named explicitly AND covered by a
+  // glob, rather than trusting one pattern to be right.
   outputFileTracingIncludes: {
-    '/api/**/*': [
-      './node_modules/@img/sharp-linux-x64/**/*',
-      './node_modules/@img/sharp-libvips-linux-x64/**/*',
-    ],
+    '/api/**/*': SHARP_NATIVE,
+    '/api/admin/entries/[type]/[id]/attachment': SHARP_NATIVE,
+    '/api/members/events/[id]/media/upload': SHARP_NATIVE,
+    '/api/social/posts': SHARP_NATIVE,
+    '/api/social/tasting-notes': SHARP_NATIVE,
+    // The weekly report rasterises its charts through sharp too.
+    '/api/cron/report-draft': SHARP_NATIVE,
+    '/api/cron/report-send': SHARP_NATIVE,
   },
 
   images: {
