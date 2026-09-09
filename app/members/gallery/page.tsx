@@ -21,7 +21,7 @@ interface EventCard {
   cover: string | null
   mine: boolean
 }
-interface FixtureLite { id: string; title: string; sport: string; date: string }
+interface FixtureLite { id: string; title: string; type: string; date: string }
 
 const fmtDate = (d: string | null) =>
   d ? new Date(d + 'T12:00:00+07:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
@@ -53,7 +53,7 @@ export default function GalleryPage() {
   useEffect(() => { load() }, [load])
 
   useEffect(() => {
-    supabase.from('fixtures').select('id, title, sport, date').order('date', { ascending: false }).limit(80)
+    supabase.from('fixtures').select('id, title, type, date').order('date', { ascending: false }).limit(80)
       .then(({ data }) => { if (data) setFixtures(data as FixtureLite[]) })
   }, [supabase])
 

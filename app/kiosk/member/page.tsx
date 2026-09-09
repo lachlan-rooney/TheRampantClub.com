@@ -6,6 +6,7 @@ import RadarChart from '@/components/whisky/RadarChart'
 import { RADAR_GOLD, type Cat, type ShapeValues } from '@/components/whisky/flavour-data'
 import EmptyState from '@/components/members/EmptyState'
 import { SkeletonLines } from '@/components/members/Skeleton'
+import { typeLabel } from '@/lib/fixtures'
 
 // MEMBER MODE — the PIN screen, then the member's own view.
 //
@@ -29,7 +30,7 @@ interface Me {
 }
 interface Entry { id: string; title: string; title_vn: string | null; entry_date: string
                   start_time: string | null; end_time: string | null; space: string | null; kind: string }
-interface Fixture { id: string; sport: string; title: string; date: string; location: string | null }
+interface Fixture { id: string; type: string; title: string; date: string; location: string | null }
 interface Week { from: string; to: string; entries: Entry[]; fixtures: Fixture[] }
 
 const VN = 'Asia/Ho_Chi_Minh'
@@ -166,7 +167,7 @@ export default function KioskMember() {
       push(iso, {
         ms: new Date(f.date).getTime(),
         time: new Date(f.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: VN }),
-        title: f.title, where: f.location, tag: f.sport,
+        title: f.title, where: f.location, tag: typeLabel(f.type),
       })
     }
     days.sort((a, b) => a.iso.localeCompare(b.iso))

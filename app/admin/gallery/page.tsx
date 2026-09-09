@@ -15,7 +15,7 @@ interface Media {
   id: string; kind: 'image' | 'link'; url: string; caption: string | null
   submitter_name: string | null; source: 'club' | 'member'; status: 'visible' | 'hidden'; provider: string | null
 }
-interface FixtureLite { id: string; title: string; sport: string; date: string }
+interface FixtureLite { id: string; title: string; type: string; date: string }
 
 const fmtDate = (d: string | null) =>
   d ? new Date(d + 'T12:00:00+07:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'

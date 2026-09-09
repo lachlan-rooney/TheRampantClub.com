@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { vnDateString } from '@/lib/datetime'
 import type { Fixture, FixtureSignup } from '@/lib/types'
+import { typeLabel, isSport } from '@/lib/fixtures'
 
 // "What's On" — ONE surface for everything happening at the club. Sports
 // fixtures (from `fixtures`, with RSVP) and house happenings (from
@@ -25,13 +26,19 @@ interface Entry {
   kind: string
 }
 
-const SPORT_META: Record<string, { label: string; tint: string; ring: string }> = {
-  golf:   { label: 'Golf',   tint: 'rgba(94,102,80,0.30)',   ring: 'rgba(94,102,80,0.6)' },
-  tennis: { label: 'Tennis', tint: 'rgba(40,72,60,0.34)',    ring: 'rgba(40,72,60,0.7)' },
-  padel:  { label: 'Padel',  tint: 'rgba(178,170,152,0.26)', ring: 'rgba(178,170,152,0.55)' },
-  hash:   { label: 'Hash',   tint: 'rgba(229,212,194,0.16)', ring: 'rgba(229,212,194,0.45)' },
-  other:  { label: 'Sport',  tint: 'rgba(212,184,90,0.18)',  ring: 'rgba(212,184,90,0.45)' },
+// Tints stay local (they are this page's visual language); the LABELS come from
+// lib/fixtures.ts so a type added there is never nameless here.
+const TYPE_META: Record<string, { tint: string; ring: string }> = {
+  golf:    { tint: 'rgba(94,102,80,0.30)',   ring: 'rgba(94,102,80,0.6)' },
+  tennis:  { tint: 'rgba(40,72,60,0.34)',    ring: 'rgba(40,72,60,0.7)' },
+  padel:   { tint: 'rgba(178,170,152,0.26)', ring: 'rgba(178,170,152,0.55)' },
+  hash:    { tint: 'rgba(229,212,194,0.16)', ring: 'rgba(229,212,194,0.45)' },
+  dinner:  { tint: 'rgba(110,74,46,0.28)',   ring: 'rgba(199,154,107,0.55)' },
+  tasting: { tint: 'rgba(122,92,46,0.26)',   ring: 'rgba(212,184,90,0.55)' },
+  social:  { tint: 'rgba(74,58,94,0.28)',    ring: 'rgba(158,143,196,0.55)' },
+  other:   { tint: 'rgba(212,184,90,0.18)',  ring: 'rgba(212,184,90,0.45)' },
 }
+const metaOf = (t: string) => TYPE_META[t] || TYPE_META.other
 const KIND_META: Record<string, { label: string; tint: string; ring: string }> = {
   event:        { label: 'Event',          tint: 'rgba(212,184,90,0.20)',  ring: 'rgba(212,184,90,0.55)' },
   meeting:      { label: 'Meeting',        tint: 'rgba(178,170,152,0.16)', ring: 'rgba(178,170,152,0.45)' },
@@ -155,8 +162,10 @@ export default function WhatsOnPage() {
 
   const shownUpcoming = upcoming.filter(it =>
     filter === 'all' ? true
-    : filter === 'happenings' ? it.type === 'entry'
-    : it.type === 'fixture' && it.f.sport === filter)
+    // A house event (dinner/tasting/social) is a happening, not a sport — without
+    // this it would match no tab at all and be reachable only from All.
+    : filter === 'happenings' ? it.type === 'entry' || (it.type === 'fixture' && !isSport(it.f.type))
+    : it.type === 'fixture' && it.f.type === filter)
   const myUpcoming = upcoming.filter(it => it.type === 'fixture' && isSignedUp(it.f.id)).length
 
   const tabs: { key: string; label: string }[] = [
@@ -167,7 +176,7 @@ export default function WhatsOnPage() {
   ]
 
   const renderFixture = (f: Fixture) => {
-    const meta = SPORT_META[f.sport] || SPORT_META.other
+    const meta = metaOf(f.type)
     const signed = isSignedUp(f.id)
     const closed = deadlinePassed(f)
     const count = counts[f.id] || 0
@@ -179,7 +188,7 @@ export default function WhatsOnPage() {
         <div className="wo-row">
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="wo-tags">
-              <span className="wo-tag" style={{ background: meta.tint }}>{meta.label}</span>
+              <span className="wo-tag" style={{ background: meta.tint }}>{typeLabel(f.type)}</span>
               {rel && <span className="wo-rel">{rel}</span>}
               {signed && <span className="wo-in">You&apos;re in</span>}
             </div>
@@ -285,11 +294,11 @@ export default function WhatsOnPage() {
               {filter !== 'happenings' && pastFixtures.length > 0 && (
                 <>
                   <div className="wo-sec">Past results</div>
-                  {pastFixtures.filter(f => filter === 'all' || f.sport === filter).map(f => {
-                    const meta = SPORT_META[f.sport] || SPORT_META.other
+                  {pastFixtures.filter(f => filter === 'all' || f.type === filter).map(f => {
+                    const meta = metaOf(f.type)
                     return (
                       <div key={`p-${f.id}`} className="wo-card" style={{ borderLeftColor: meta.ring, opacity: 0.8 }}>
-                        <div className="wo-tags"><span className="wo-tag" style={{ background: meta.tint }}>{meta.label}</span></div>
+                        <div className="wo-tags"><span className="wo-tag" style={{ background: meta.tint }}>{typeLabel(f.type)}</span></div>
                         <div className="wo-title">{f.title}</div>
                         <div className="wo-meta">{fmtFixtureDate(f.date)}{f.location ? ' · ' + f.location : ''}</div>
                         {f.results && <div className="wo-results">{f.results}</div>}

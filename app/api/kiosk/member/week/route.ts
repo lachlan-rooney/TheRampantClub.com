@@ -41,7 +41,7 @@ export async function GET() {
       .gte('entry_date', from).lte('entry_date', to)
       .order('entry_date').order('start_time', { ascending: true, nullsFirst: true }),
     mc.from('fixtures')
-      .select('id, sport, title, date, location')
+      .select('id, type, title, date, location')
       .gte('date', `${from}T00:00:00+07:00`).lte('date', `${to}T23:59:59+07:00`)
       .order('date'),
   ])

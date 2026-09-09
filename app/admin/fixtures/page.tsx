@@ -6,10 +6,7 @@ import { ConfirmModal, useToast } from '@/components/admin/dialogs'
 import { useLang } from '@/lib/admin-lang'
 import type { Fixture } from '@/lib/types'
 
-const SPORTS = ['golf', 'tennis', 'padel', 'hash', 'other'] as const
-const SPORT_COLORS: Record<string, string> = {
-  golf: '#5E6650', tennis: '#28483C', padel: '#B2AA98', hash: '#052E20', other: '#221E20',
-}
+import { FIXTURE_TYPES, TYPE_COLOR, typeLabel } from '@/lib/fixtures'
 
 const inputStyle: React.CSSProperties = {
   background: 'rgba(229,212,194,0.06)', color: '#E5D4C2',
@@ -28,13 +25,13 @@ const btnStyle: React.CSSProperties = {
 }
 
 export default function AdminFixtures() {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const [fixtures, setFixtures] = useState<Fixture[]>([])
   const [signupCounts, setSignupCounts] = useState<Record<string, number>>({})
   const [roster, setRoster] = useState<Record<string, string[]>>({})   // ADMIN-ONLY: fixture_id → member names
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Fixture | null>(null)
-  const [sport, setSport] = useState<Fixture['sport']>('golf')
+  const [type, setType] = useState<Fixture['type']>('golf')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [date, setDate] = useState('')
@@ -83,13 +80,13 @@ export default function AdminFixtures() {
   useEffect(() => { load() }, [])
 
   const resetForm = () => {
-    setSport('golf'); setTitle(''); setDescription(''); setDate(''); setLocation('')
+    setType('golf'); setTitle(''); setDescription(''); setDate(''); setLocation('')
     setMaxSignups(''); setSignupDeadline(''); setResults(''); setOpsProjectId('')
     setEditing(null); setShowForm(false)
   }
 
   const startEdit = (f: Fixture) => {
-    setSport(f.sport); setTitle(f.title); setDescription(f.description || '')
+    setType(f.type); setTitle(f.title); setDescription(f.description || '')
     setDate(f.date ? new Date(f.date).toISOString().slice(0, 16) : '')
     setLocation(f.location || ''); setMaxSignups(f.max_signups?.toString() || '')
     setSignupDeadline(f.signup_deadline ? new Date(f.signup_deadline).toISOString().slice(0, 16) : '')
@@ -99,7 +96,7 @@ export default function AdminFixtures() {
 
   const handleSubmit = async () => {
     const payload = {
-      sport, title, description: description || null,
+      type, title, description: description || null,
       date: new Date(date).toISOString(), location: location || null,
       max_signups: maxSignups ? parseInt(maxSignups) : null,
       signup_deadline: signupDeadline ? new Date(signupDeadline).toISOString() : null,
@@ -153,9 +150,9 @@ export default function AdminFixtures() {
           </div>
           <div style={{ display: 'flex', gap: 16 }}>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>{t('Sport', 'Môn thể thao')}</label>
-              <select style={inputStyle} value={sport} onChange={e => setSport(e.target.value as Fixture['sport'])}>
-                {SPORTS.map(s => <option key={s} value={s}>{s}</option>)}
+              <label style={labelStyle}>{t('Type', 'Loại')}</label>
+              <select style={inputStyle} value={type} onChange={e => setType(e.target.value as Fixture['type'])}>
+                {FIXTURE_TYPES.map(s => <option key={s} value={s}>{typeLabel(s, lang)}</option>)}
               </select>
             </div>
             <div style={{ flex: 2 }}>
@@ -223,9 +220,9 @@ export default function AdminFixtures() {
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{
                   fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10,
-                  color: '#E5D4C2', background: SPORT_COLORS[f.sport] || '#5E6650',
+                  color: '#E5D4C2', background: TYPE_COLOR[f.type] || '#5E6650',
                   borderRadius: 4, padding: '2px 10px',
-                }}>{f.sport}</span>
+                }}>{typeLabel(f.type, lang)}</span>
                 <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 14, color: '#E5D4C2' }}>{f.title}</span>
                 <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>
                   {new Date(f.date).toLocaleDateString()} · {f.location || '—'}

@@ -8,6 +8,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import TonightPanel from '@/components/TonightPanel'
 import AnticipationCard from '@/components/members/AnticipationCard'
 import ReturnCard from '@/components/members/ReturnCard'
+import { typeLabel } from '@/lib/fixtures'
 
 interface Notice {
   id: string
@@ -19,7 +20,7 @@ interface Notice {
 
 interface NextFixture {
   id: string
-  sport: string
+  type: string
   title: string
   date: string
   location: string | null
@@ -85,7 +86,7 @@ export default function MembersPage() {
 
     // Fetch next upcoming fixture
     supabase.from('fixtures')
-      .select('id, sport, title, date, location')
+      .select('id, type, title, date, location')
       .gte('date', new Date().toISOString())
       .order('date', { ascending: true })
       .limit(1)
@@ -153,7 +154,7 @@ export default function MembersPage() {
       en: surfaceName('/members/events', 'en'),
       vn: surfaceName('/members/events', 'vn'),
       icon: 'calendar',
-      primary: nextFixture ? nextFixture.sport.charAt(0).toUpperCase() + nextFixture.sport.slice(1) : undefined,
+      primary: nextFixture ? typeLabel(nextFixture.type) : undefined,
       secondary: nextFixture ? fmtDate(nextFixture.date) : "What's on \u00b7 sign-ups \u00b7 sports",
     },
     {
@@ -171,7 +172,7 @@ export default function MembersPage() {
       en: surfaceName('/members/fixtures', 'en'),
       vn: surfaceName('/members/fixtures', 'vn'),
       icon: 'trophy',
-      primary: nextFixture ? nextFixture.sport.charAt(0).toUpperCase() + nextFixture.sport.slice(1) : 'No upcoming',
+      primary: nextFixture ? typeLabel(nextFixture.type) : 'No upcoming',
       secondary: nextFixture ? fmtDate(nextFixture.date) : 'Check the schedule',
     },
     {

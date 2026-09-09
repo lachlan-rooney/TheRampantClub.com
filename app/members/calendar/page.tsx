@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { typeLabel, TYPE_RING } from '@/lib/fixtures'
 
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
 const SERIF = "'Rampant Sans', serif"
 
 interface Booking { booking_id: string; booking_date: string; start_time: string | null; end_time: string | null; session_label: string | null; space: string | null; party_size: number | null; status: string }
-interface Fixture { id: string; sport: string; title: string; date: string; location: string | null; signed_up: boolean }
+interface Fixture { id: string; type: string; title: string; date: string; location: string | null; signed_up: boolean }
 interface Entry { id: string; title: string; entry_date: string; start_time: string | null; end_time: string | null; session_label: string | null; space: string | null; kind: string }
 
 type Item =
@@ -15,7 +16,7 @@ type Item =
   | { kind: 'fixture'; day: string; label: string; sub: string; tint: string; ring: string; signed: boolean; href: string }
   | { kind: 'entry'; day: string; label: string; sub: string; tint: string; ring: string }
 
-const SPORT_RING: Record<string, string> = { golf: '#5E6650', tennis: '#28483C', padel: '#B2AA98', hash: '#E5D4C2', other: '#D4B85A' }
+
 const KIND_LABEL: Record<string, string> = { closure: 'Club closed', private_hire: 'Private event', supplier: 'Distiller visit', tasting: 'Tasting', event: 'Event', other: 'Notice' }
 
 const iso = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
@@ -57,7 +58,7 @@ export default function MemberCalendarPage() {
     const m: Record<string, Item[]> = {}
     const push = (it: Item) => { (m[it.day] ||= []).push(it) }
     for (const b of bookings) push({ kind: 'booking', day: b.booking_date, label: b.space || 'Your booking', sub: timeStr(b.start_time, b.end_time, b.session_label), tint: 'rgba(212,184,90,0.16)', ring: '#D4B85A' })
-    for (const f of fixtures) { const ring = SPORT_RING[f.sport] || SPORT_RING.other; push({ kind: 'fixture', day: vnDayOf(f.date), label: f.title, sub: (f.sport[0].toUpperCase() + f.sport.slice(1)) + (f.signed_up ? ' · you’re in' : ''), tint: 'rgba(94,102,80,0.22)', ring, signed: f.signed_up, href: '/members/events' }) }
+    for (const f of fixtures) { const ring = TYPE_RING[f.type] || TYPE_RING.other; push({ kind: 'fixture', day: vnDayOf(f.date), label: f.title, sub: typeLabel(f.type) + (f.signed_up ? ' · you’re in' : ''), tint: 'rgba(94,102,80,0.22)', ring, signed: f.signed_up, href: '/members/events' }) }
     for (const e of entries) push({ kind: 'entry', day: e.entry_date, label: e.title, sub: KIND_LABEL[e.kind] || 'Notice', tint: 'rgba(178,170,152,0.16)', ring: '#B2AA98' })
     return m
   }, [bookings, fixtures, entries])

@@ -1,3 +1,4 @@
+import type { FixtureType } from './fixtures'
 export interface Profile {
   id: string
   display_name: string | null
@@ -50,7 +51,7 @@ export interface Whisky {
 
 export interface Fixture {
   id: string
-  sport: 'golf' | 'tennis' | 'padel' | 'hash' | 'other'
+  type: FixtureType          // was `sport` — see lib/fixtures.ts / db/fixtures_type.sql
   title: string
   description: string | null
   date: string
