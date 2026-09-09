@@ -9,6 +9,7 @@ import TonightPanel from '@/components/TonightPanel'
 import AnticipationCard from '@/components/members/AnticipationCard'
 import ReturnCard from '@/components/members/ReturnCard'
 import { typeLabel } from '@/lib/fixtures'
+import { Skeleton } from '@/components/members/Skeleton'
 
 interface Notice {
   id: string
@@ -68,12 +69,18 @@ export default function MembersPage() {
   const [notices, setNotices] = useState<Notice[]>([])
   const [activeNotice, setActiveNotice] = useState(0)
   const [nextFixture, setNextFixture] = useState<NextFixture | null>(null)
+  const [profileLoaded, setProfileLoaded] = useState(false)
 
   useEffect(() => {
     const hour = new Date().getHours()
     let timeGreeting = 'Good evening'
     if (hour < 12) timeGreeting = 'Good morning'
     else if (hour < 17) timeGreeting = 'Good afternoon'
+
+    // Show the time greeting AT ONCE. It needs no network, and waiting for the
+    // profile left the heading empty for two chained round trips — which reads
+    // as a missing greeting rather than a loading one.
+    setGreeting(timeGreeting)
 
     const supabase = createBrowserSupabaseClient()
 
@@ -93,7 +100,7 @@ export default function MembersPage() {
       .then(({ data }) => { if (data && data.length) setNextFixture(data[0] as NextFixture) })
 
     supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) return
+      if (!data.user) { setProfileLoaded(true); return }
       setEmail(data.user.email || '')
       supabase.from('profiles').select('display_name, member_no, preferred_dram, locker_number').eq('id', data.user.id).single()
         .then(({ data: profile }) => {
@@ -114,7 +121,8 @@ export default function MembersPage() {
           if (profile?.locker_number) parts.push(`Locker ${profile.locker_number}`)
           if (profile?.preferred_dram) parts.push(`Dram of choice: ${profile.preferred_dram}`)
           setSummary(parts.join(' · '))
-        })
+          setProfileLoaded(true)
+        }, () => setProfileLoaded(true))
     })
   }, [])
 
@@ -578,8 +586,9 @@ export default function MembersPage() {
         <div className="members-grain" />
         <div className="members-container">
           <h1 className="members-greeting">{greeting}</h1>
-          {summary && <p className="members-email">{summary}</p>}
-          {!summary && <p className="members-email">{email}</p>}
+          {!profileLoaded
+            ? <div style={{ marginBottom: 56, paddingTop: 3 }}><Skeleton width={230} height={11} radius={4} /></div>
+            : <p className="members-email">{summary || email}</p>}
           <button
             onClick={() => window.dispatchEvent(new Event('open-portal-guide'))}
             style={{ background: 'none', border: '1px solid rgba(212,184,90,0.35)', color: '#D4B85A', fontFamily: "'Google Sans Code', monospace", fontSize: 10, letterSpacing: '0.06em', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', marginBottom: 8 }}
