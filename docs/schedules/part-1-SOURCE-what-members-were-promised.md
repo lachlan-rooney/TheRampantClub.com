@@ -88,24 +88,37 @@ looking like a favour, and members compare notes.
 locker holds **6 bottles**, three hold exactly 6, the median is 2, across 53
 bottles in 23 lockers. "Roughly six" is right.
 
-### ⚠ A gap that blocks the promise as written
+### ⚠ The wall is mostly NOT members' bottles
 
-The promise is that **bottles are returned to the member when they leave**.
-The data cannot currently say whose bottles they are.
+The promise is that **bottles are returned to the member when they leave**. On
+the current data that clause describes almost nothing on the wall.
 
-- 24 lockers are marked occupied
-- **1** carries a `member_no`
-- 19 carry a free-text label instead — `"LACHLAN"`, `"SHAWN"`, `"Brandon"`
+- 24 lockers are marked occupied; **1** carries a `member_no`
+- The other 23 hold **52 bottles**, and **none of them is attributable to a
+  member**: 18 carry the labels `LACHLAN`, `SHAWN` or `MERCH` — no member of
+  those names is on the roster — and 5 carry no label at all
 - `profiles.locker_number` exists and is **empty for every member** — a dead field
 
-So a first name written on a locker is the only record of ownership for 23 of
-24. That is fine while there are nine members and everyone knows everyone. It
-stops being fine at the first departure, the first dispute, or the first member
-who shares a first name with another — and it is the kind of thing that is much
-cheaper to fix before it matters than after.
+So the locker wall is largely **staff and owner stock, plus merchandise**, not
+member property. Two consequences for the drafting:
 
-Linking each occupied locker to a `member_no` is a short piece of work and
-should happen before Part 1 promises a return.
+1. The return clause needs to say what happens to **member** bottles, and should
+   not imply the wall is a members' facility in full. Nine active members and one
+   linked locker is the actual position.
+2. Before the clause means anything operationally, occupied lockers need linking
+   to a `member_no`. The admin locker page already supports assignment — it has
+   simply not been used — so this is data entry by someone who knows the wall,
+   not a build.
+
+**There is no waiver record anywhere in the system** (`locker_waivers`,
+`waivers`, `locker_agreements` all absent), so the signed waiver cannot bridge a
+label to a member either. It is paper.
+
+> **A note on how this was established.** A first pass matched every label to a
+> member, including one reading `MERCH`, because a null nickname normalises to an
+> empty string and every string contains it. The corrected matcher requires a
+> whole name token and returns **zero** matches. The wrong version was more
+> reassuring and completely false — worth remembering if anyone re-runs this.
 
 ### What the source document actually said
 
