@@ -1,5 +1,7 @@
 'use client'
 
+import { surfaceName } from '@/lib/members/surfaces'
+
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
@@ -66,9 +68,9 @@ const SLIDES: Slide[] = [
   { key: 'whatson', icon: 'calendar', image: 'cocktails', title: { en: "What’s On", vn: 'Sự Kiện' },
     blurb: { en: 'Everything happening — and the photos afterwards.', vn: 'Mọi thứ đang diễn ra — và ảnh sau đó.' },
     items: [
-      { icon: 'calendar', name: { en: "What's On", vn: 'Sự Kiện & Thi Đấu' }, line: { en: 'What’s coming up — tap “Sign me up” to join a match.', vn: 'Sắp tới — chạm “Cho tôi tham gia” để dự trận.' } },
-      { icon: 'image', name: { en: 'Event Gallery', vn: 'Thư Viện Sự Kiện' }, line: { en: 'Photos from events — add your own too.', vn: 'Ảnh từ sự kiện — thêm ảnh của bạn.' } },
-      { icon: 'pin', name: { en: 'Notice Board', vn: 'Bảng Tin' }, line: { en: 'Short club announcements, every week.', vn: 'Thông báo ngắn, hàng tuần.' } },
+      { icon: 'calendar', name: { en: surfaceName('/members/events', 'en'), vn: surfaceName('/members/events', 'vn') }, line: { en: 'What’s coming up — tap “Sign me up” to join a match.', vn: 'Sắp tới — chạm “Cho tôi tham gia” để dự trận.' } },
+      { icon: 'image', name: { en: surfaceName('/members/gallery', 'en'), vn: surfaceName('/members/gallery', 'vn') }, line: { en: 'Photos from events — add your own too.', vn: 'Ảnh từ sự kiện — thêm ảnh của bạn.' } },
+      { icon: 'pin', name: { en: surfaceName('/members/notices', 'en'), vn: surfaceName('/members/notices', 'vn') }, line: { en: 'Short club announcements, every week.', vn: 'Thông báo ngắn, hàng tuần.' } },
     ] },
   { key: 'club', icon: 'building', image: 'gala-table', title: { en: 'The Club', vn: 'Câu Lạc Bộ' },
     blurb: { en: 'The rooms, the menus, a members’ chat, and staff.', vn: 'Các phòng, thực đơn, trò chuyện hội viên, và nhân viên.' },

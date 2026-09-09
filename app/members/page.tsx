@@ -1,5 +1,7 @@
 'use client'
 
+import { surfaceName } from '@/lib/members/surfaces'
+
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
@@ -148,8 +150,8 @@ export default function MembersPage() {
     {
       href: '/members/events',
       img: IMG('cocktails'),
-      en: "What's On",
-      vn: 'S\u1ef1 Ki\u1ec7n & Thi \u0110\u1ea5u',
+      en: surfaceName('/members/events', 'en'),
+      vn: surfaceName('/members/events', 'vn'),
       icon: 'calendar',
       primary: nextFixture ? nextFixture.sport.charAt(0).toUpperCase() + nextFixture.sport.slice(1) : undefined,
       secondary: nextFixture ? fmtDate(nextFixture.date) : "What's on \u00b7 sign-ups \u00b7 sports",
@@ -157,8 +159,8 @@ export default function MembersPage() {
     {
       href: '/members/profile',
       img: IMG('lion-crest'),
-      en: 'My Membership',
-      vn: 'T\u01b0 C\u00e1ch Th\u00e0nh Vi\u00ean',
+      en: surfaceName('/members/profile', 'en'),
+      vn: surfaceName('/members/profile', 'vn'),
       icon: 'card',
       primary: memberNo ? '#' + memberNo.replace(/^TRC-M/i, '') : '\u2014',
       secondary: lockerNumber ? 'Locker ' + lockerNumber : (preferredDram ? 'Dram: ' + preferredDram : 'Your details'),
@@ -166,8 +168,8 @@ export default function MembersPage() {
     {
       href: '/members/fixtures',
       img: IMG('tennis-visor'),
-      en: 'Sports Fixtures',
-      vn: 'L\u1ecbch Thi \u0110\u1ea5u',
+      en: surfaceName('/members/fixtures', 'en'),
+      vn: surfaceName('/members/fixtures', 'vn'),
       icon: 'trophy',
       primary: nextFixture ? nextFixture.sport.charAt(0).toUpperCase() + nextFixture.sport.slice(1) : 'No upcoming',
       secondary: nextFixture ? fmtDate(nextFixture.date) : 'Check the schedule',
@@ -175,32 +177,32 @@ export default function MembersPage() {
     {
       href: '/members/journal',
       img: IMG('springbank'),
-      en: "Cellarmaster's Journal",
-      vn: 'Nhật Ký Cellarmaster',
+      en: surfaceName('/members/journal', 'en'),
+      vn: surfaceName('/members/journal', 'vn'),
       icon: 'quill',
       secondary: 'Tasting notes & long-form whisky writing',
     },
     {
       href: '/members/spaces',
       img: IMG('gala-table'),
-      en: 'Spaces & Menus',
-      vn: 'Kh\u00f4ng gian & Th\u1ef1c \u0111\u01a1n',
+      en: surfaceName('/members/spaces', 'en'),
+      vn: surfaceName('/members/spaces', 'vn'),
       icon: 'building',
       secondary: 'Library Bar \u00b7 Studio \u00b7 Rampant Room',
     },
     {
       href: '/members/rules',
       img: IMG('lion-crest'),
-      en: 'House Rules',
-      vn: 'N\u1ed9i Quy',
+      en: surfaceName('/members/rules', 'en'),
+      vn: surfaceName('/members/rules', 'vn'),
       icon: 'book',
       secondary: "The club's operating principles",
     },
     {
       href: '/members/contact',
       img: IMG('saigon-street'),
-      en: 'Contact',
-      vn: 'Li\u00ean h\u1ec7',
+      en: surfaceName('/members/contact', 'en'),
+      vn: surfaceName('/members/contact', 'vn'),
       icon: 'mail',
       secondary: 'Address & member hotline',
     },
@@ -210,17 +212,17 @@ export default function MembersPage() {
   // Whisky Library is the prominent first Explore tile (it had none before).
   const byHref = Object.fromEntries(buckets.map(b => [b.href, b])) as Record<string, Bucket>
   const extra: Record<string, Bucket> = {
-    snug:   { href: '/members/snug', img: IMG('whisky-lounge'),          en: 'The Snug',       vn: 'Ph\u00f2ng Kh\u00e1ch',       icon: 'sofa', secondary: 'The club in conversation \u2014 drams, moments, a word between members' },
-    concierge: { href: '/members/concierge', img: IMG('ao-dai'), en: 'The Concierge',  vn: 'Qu\u1ea3n Gia',          icon: 'bell', secondary: 'A line to the Club \u2014 requests, bottles, a word about the evening' },
-    whisky: { href: '/members/whisky', img: IMG('whisky-library'),        en: 'Whisky Library', vn: 'Th\u01b0 Vi\u1ec7n Whisky', icon: 'glass', secondary: 'The shelf \u00b7 radar \u00b7 300+ drams' },
-    finder: { href: '/members/whisky/finder', img: IMG('art-bottles'), en: 'Flavour Finder', vn: 'T\u00ecm Ly C\u1ee7a B\u1ea1n', icon: 'compass', secondary: 'Match a dram to your taste' },
-    menus:  { href: '/menus', img: IMG('gala-table'),                 en: 'The Menus',      vn: 'Th\u1ef1c \u0110\u01a1n',     icon: 'menu', secondary: 'Food & drink lists' },
-    terms:  { href: '/members/terms', img: IMG('springbank'),         en: 'Terms',          vn: '\u0110i\u1ec1u Kho\u1ea3n',   icon: 'document', secondary: 'Full terms & conditions' },
-    taste:  { href: '/members/taste', img: IMG('bottle-collection'),         en: 'Your Palate',    vn: 'Kh\u1ea9u V\u1ecb C\u1ee7a B\u1ea1n', icon: 'radar', secondary: 'Your taste \u00b7 radar \u00b7 loved drams' },
-    journey: { href: '/members/journey', img: IMG('saigon-street'),      en: 'Your Journey',   vn: 'H\u00e0nh Tr\u00ecnh', icon: 'flag', secondary: 'Your whisky story over time \u00b7 milestones \u00b7 palate drift' },
-    visits: { href: '/members/visits', img: IMG('market'),        en: 'Your Visits',    vn: 'Nh\u1eefng L\u1ea7n Gh\u00e9 Th\u0103m', icon: 'pin', secondary: 'Your record at the club' },
-    gifts:  { href: '/members/gifts', img: IMG('brass-pin'),         en: 'Gifts',          vn: 'Qu\u00e0 T\u1eb7ng',          icon: 'gift', secondary: 'Gifts from the club' },
-    gallery: { href: '/members/gallery', img: IMG('gala-table'),     en: 'Event Gallery',  vn: 'Th\u01b0 Vi\u1ec7n S\u1ef1 Ki\u1ec7n', icon: 'image', secondary: 'Photos & video from fixtures, dinners & socials' },
+    snug:   { href: '/members/snug', img: IMG('whisky-lounge'),          en: surfaceName('/members/snug', 'en'),       vn: surfaceName('/members/snug', 'vn'),       icon: 'sofa', secondary: 'The club in conversation \u2014 drams, moments, a word between members' },
+    concierge: { href: '/members/concierge', img: IMG('ao-dai'), en: surfaceName('/members/concierge', 'en'),  vn: surfaceName('/members/concierge', 'vn'),          icon: 'bell', secondary: 'A line to the Club \u2014 requests, bottles, a word about the evening' },
+    whisky: { href: '/members/whisky', img: IMG('whisky-library'),        en: surfaceName('/members/whisky', 'en'), vn: surfaceName('/members/whisky', 'vn'), icon: 'glass', secondary: 'The shelf \u00b7 radar \u00b7 300+ drams' },
+    finder: { href: '/members/whisky/finder', img: IMG('art-bottles'), en: surfaceName('/members/whisky/finder', 'en'), vn: surfaceName('/members/whisky/finder', 'vn'), icon: 'compass', secondary: 'Match a dram to your taste' },
+    menus:  { href: '/menus', img: IMG('gala-table'),                 en: surfaceName('/menus', 'en'),      vn: surfaceName('/menus', 'vn'),     icon: 'menu', secondary: 'Food & drink lists' },
+    terms:  { href: '/members/terms', img: IMG('springbank'),         en: surfaceName('/members/terms', 'en'),          vn: surfaceName('/members/terms', 'vn'),   icon: 'document', secondary: 'Full terms & conditions' },
+    taste:  { href: '/members/taste', img: IMG('bottle-collection'),         en: surfaceName('/members/taste', 'en'),    vn: surfaceName('/members/taste', 'vn'), icon: 'radar', secondary: 'Your taste \u00b7 radar \u00b7 loved drams' },
+    journey: { href: '/members/journey', img: IMG('saigon-street'),      en: surfaceName('/members/journey', 'en'),   vn: surfaceName('/members/journey', 'vn'), icon: 'flag', secondary: 'Your whisky story over time \u00b7 milestones \u00b7 palate drift' },
+    visits: { href: '/members/visits', img: IMG('market'),        en: surfaceName('/members/visits', 'en'),    vn: surfaceName('/members/visits', 'vn'), icon: 'pin', secondary: 'Your record at the club' },
+    gifts:  { href: '/members/gifts', img: IMG('brass-pin'),         en: surfaceName('/members/gifts', 'en'),          vn: surfaceName('/members/gifts', 'vn'),          icon: 'gift', secondary: 'Gifts from the club' },
+    gallery: { href: '/members/gallery', img: IMG('gala-table'),     en: surfaceName('/members/gallery', 'en'),  vn: surfaceName('/members/gallery', 'vn'), icon: 'image', secondary: 'Photos & video from fixtures, dinners & socials' },
   }
   // Tile groups mirror the nav's groups exactly (Whisky · What's On · The Club ·
   // You · Info) so the dashboard and the menu tell the same story. Events and

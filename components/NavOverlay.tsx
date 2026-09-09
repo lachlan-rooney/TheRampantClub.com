@@ -1,5 +1,7 @@
 'use client'
 
+import { surfaceName } from '@/lib/members/surfaces'
+
 import { useState, useCallback, useEffect, useRef, Fragment } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
@@ -8,39 +10,43 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 // a consistent line icon (same visual language as the admin sidebar). Order is
 // intentional: whisky (the heart of the club) → what's on → the physical club →
 // people → your account → the fine print.
+// Labels come from lib/members/surfaces.ts — this file decides ORDER and GROUPING,
+// never what a thing is called.
+const L = (href: string) => ({ href, en: surfaceName(href, 'en'), vn: surfaceName(href, 'vn') })
+
 const MEMBER_GROUPS: { label: string; links: { href: string; en: string; vn: string; icon: string }[] }[] = [
   { label: 'What’s On', links: [
-    { href: '/members/events',        icon: 'calendar', en: "What's On",         vn: 'Sự Kiện & Thi Đấu' },
-    { href: '/members/gallery',       icon: 'image',    en: 'Event Gallery',  vn: 'Thư Viện Sự Kiện' },
-    { href: '/members/notices',       icon: 'pin',      en: 'Notice Board',   vn: 'Bảng Tin' },
+    { ...L('/members/events'), icon: 'calendar' },
+    { ...L('/members/gallery'), icon: 'image' },
+    { ...L('/members/notices'), icon: 'pin' },
   ] },
   { label: 'The Club', links: [
-    { href: '/members/spaces',        icon: 'building', en: 'Our Spaces',     vn: 'Không gian' },
-    { href: '/menus',                 icon: 'menu',     en: 'The Menus',      vn: 'Thực Đơn' },
-    { href: '/members/snug',          icon: 'sofa',     en: 'The Snug',       vn: 'Phòng Khách' },
-    { href: '/members/concierge',     icon: 'bell',     en: 'The Concierge',  vn: 'Quản Gia' },
+    { ...L('/members/spaces'), icon: 'building' },
+    { ...L('/menus'), icon: 'menu' },
+    { ...L('/members/snug'), icon: 'sofa' },
+    { ...L('/members/concierge'), icon: 'bell' },
   ] },
   { label: 'Whisky', links: [
-    { href: '/members/whisky',        icon: 'glass',   en: 'Whisky Library',  vn: 'Thư Viện Whisky' },
-    { href: '/members/whisky/finder', icon: 'compass', en: 'Flavour Finder',  vn: 'Tìm Ly Của Bạn' },
-    { href: '/members/taste',         icon: 'radar',   en: 'Your Palate',     vn: 'Khẩu Vị Của Bạn' },
-    { href: '/members/notes',         icon: 'quill',   en: 'Your Notes',      vn: 'Nhật Ký Nếm Thử' },
-    { href: '/members/journey',       icon: 'flag',    en: 'Your Journey',    vn: 'Hành Trình Của Bạn' },
+    { ...L('/members/whisky'), icon: 'glass' },
+    { ...L('/members/whisky/finder'), icon: 'compass' },
+    { ...L('/members/taste'), icon: 'radar' },
+    { ...L('/members/notes'), icon: 'quill' },
+    { ...L('/members/journey'), icon: 'flag' },
   ] },
   { label: 'Community', links: [
-    { href: '/members/members',       icon: 'people',    en: 'The Members',   vn: 'Thành Viên' },
-    { href: '/members/introductions', icon: 'introduce', en: 'Introductions', vn: 'Lời Giới Thiệu' },
-    { href: '/members/messages',      icon: 'chat',      en: 'Messages',      vn: 'Tin Nhắn' },
+    { ...L('/members/members'), icon: 'people' },
+    { ...L('/members/introductions'), icon: 'introduce' },
+    { ...L('/members/messages'), icon: 'chat' },
   ] },
   { label: 'You', links: [
-    { href: '/members/profile',       icon: 'card',     en: 'My Membership',  vn: 'Tư Cách Thành Viên' },
-    { href: '/members/calendar',      icon: 'calendar', en: 'My Calendar',    vn: 'Lịch Của Bạn' },
-    { href: '/members/visits',        icon: 'clock',    en: 'Your Visits',    vn: 'Những Lần Ghé Thăm' },
+    { ...L('/members/profile'), icon: 'card' },
+    { ...L('/members/calendar'), icon: 'calendar' },
+    { ...L('/members/visits'), icon: 'clock' },
   ] },
   { label: 'Info', links: [
-    { href: '/members/rules',         icon: 'book',     en: 'House Rules',  vn: 'Nội Quy' },
-    { href: '/members/terms',         icon: 'document', en: 'Terms',        vn: 'Điều Khoản' },
-    { href: '/members/contact',       icon: 'mail',     en: 'Contact',      vn: 'Liên hệ' },
+    { ...L('/members/rules'), icon: 'book' },
+    { ...L('/members/terms'), icon: 'document' },
+    { ...L('/members/contact'), icon: 'mail' },
   ] },
 ]
 
