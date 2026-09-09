@@ -69,12 +69,43 @@ Decided, and enough to write the section:
 | On leaving | Bottles are **returned to the member**, and **held until collected** |
 | Liability | The club takes **no responsibility**; a **waiver is signed on entry** |
 | Mid-membership | A member may **remove bottles at any time** |
-| **Still open** | **Does every member get a locker, or is it allocated?** |
+| Allocation | **Not every member — allocated from a fixed stock.** The admin locker system holds **42 physical lockers** (grid-positioned, A-01 …), 24 currently occupied and 18 empty |
 
-That last one is the only thing standing between this and a finished section.
-It also decides how the rest reads: "your locker" if every member has one,
-"a locker" if they are allocated — and if allocated, on what basis, because a
-scarce free benefit needs a rule or it becomes a favour.
+### The number that decides the wording: 42 lockers, 99 members
+
+The signed agreement caps membership at **99**. There are **42 lockers**. So a
+locker cannot be a membership benefit in the way the brochure sentence implies —
+at anything above 42 members it is a **finite allocation**, and the section must
+say "a locker" rather than "your locker".
+
+It is not scarce yet (9 active members), which is exactly why it is worth
+writing the rule now. **Part 1 needs to state how one is allocated** — first
+come, on request, by tier, or at the club's discretion — because a free benefit
+that runs out without a stated rule stops looking like a benefit and starts
+looking like a favour, and members compare notes.
+
+**Capacity is confirmed by the data, not just by recollection:** the fullest
+locker holds **6 bottles**, three hold exactly 6, the median is 2, across 53
+bottles in 23 lockers. "Roughly six" is right.
+
+### ⚠ A gap that blocks the promise as written
+
+The promise is that **bottles are returned to the member when they leave**.
+The data cannot currently say whose bottles they are.
+
+- 24 lockers are marked occupied
+- **1** carries a `member_no`
+- 19 carry a free-text label instead — `"LACHLAN"`, `"SHAWN"`, `"Brandon"`
+- `profiles.locker_number` exists and is **empty for every member** — a dead field
+
+So a first name written on a locker is the only record of ownership for 23 of
+24. That is fine while there are nine members and everyone knows everyone. It
+stops being fine at the first departure, the first dispute, or the first member
+who shares a first name with another — and it is the kind of thing that is much
+cheaper to fix before it matters than after.
+
+Linking each occupied locker to a `member_no` is a short piece of work and
+should happen before Part 1 promises a return.
 
 ### What the source document actually said
 
@@ -117,9 +148,11 @@ first right of refusal — and a schedule is where limits belong if there are an
 ## What Part 1 still needs a human decision on
 
 1. ~~The Annual Dram~~ — settled: it exists nowhere and Part 1 omits it.
-2. Locker terms — **one answer left**: does every member get a locker, or is
-   it allocated? Free and roughly six bottles are settled, as is what happens
-   on departure and who carries the risk. See section 4.
+2. Locker terms — **the terms are settled**; two things remain and neither is a
+   drafting question. (a) The ALLOCATION RULE, because 42 lockers cannot cover
+   99 members. (b) Linking occupied lockers to a `member_no` — 23 of 24 record
+   only a first name, so "returned to the member" cannot currently be executed
+   from the data. See section 4.
 3. Limits on the unbounded promises above, or an explicit statement there are none.
 4. The consequence, if any, of missing the two-event expectation.
 5. Whether the castle promise survives as written now the date is upon it.
