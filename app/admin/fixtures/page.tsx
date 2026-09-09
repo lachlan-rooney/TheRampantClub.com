@@ -48,7 +48,7 @@ export default function AdminFixtures() {
   const supabase = createBrowserSupabaseClient()
 
   const { showToast, toastNode } = useToast()
-  // Confirm modal — single destructive path (delete fixture).
+  // Confirm modal — single destructive path (delete event).
   const [confirmFixture, setConfirmFixture] = useState<Fixture | null>(null)
   const [confirmBusy, setConfirmBusy] = useState(false)
 
@@ -135,21 +135,21 @@ export default function AdminFixtures() {
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 24, fontWeight: 500, color: '#E5D4C2', letterSpacing: '0.04em' }}>
-          {t('Fixtures', 'Lịch thi đấu')}
+          {t('Events', 'Sự Kiện')}
         </h1>
         <p style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#B2AA98', opacity: .75, margin: '4px 0 0', lineHeight: 1.7 }}>
-          {t('Fixtures appear in the members\u2019 What\u2019s On, alongside member-visible calendar entries.',
-             'Lịch thi đấu hiển thị trong mục What\u2019s On của hội viên, cùng với các mục lịch dành cho hội viên.')}
+          {t('Events appear in the members\u2019 What\u2019s On, alongside member-visible calendar entries.',
+             'Sự kiện hiển thị trong mục What\u2019s On của hội viên, cùng với các mục lịch dành cho hội viên.')}
         </p>
         {!showForm && (
-          <button onClick={() => { resetForm(); setShowForm(true) }} style={btnStyle}>{t('+ New Fixture', '+ Trận đấu mới')}</button>
+          <button onClick={() => { resetForm(); setShowForm(true) }} style={btnStyle}>{t('+ New Event', '+ Sự kiện mới')}</button>
         )}
       </div>
 
       {showForm && (
         <div style={{ padding: 24, background: 'rgba(229,212,194,0.03)', borderRadius: 8, marginBottom: 32, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2' }}>
-            {editing ? `${t('Editing:', 'Đang sửa:')} ${editing.title}` : t('New Fixture', 'Trận đấu mới')}
+            {editing ? `${t('Editing:', 'Đang sửa:')} ${editing.title}` : t('New Event', 'Sự kiện mới')}
           </div>
           <div style={{ display: 'flex', gap: 16 }}>
             <div style={{ flex: 1 }}>
@@ -255,12 +255,12 @@ export default function AdminFixtures() {
       <ConfirmModal
         open={!!confirmFixture}
         eyebrow={t('⚠ PERMANENT', '⚠ VĨNH VIỄN')}
-        title={t('Delete fixture?', 'Xóa trận đấu?')}
+        title={t('Delete event?', 'Xóa sự kiện?')}
         subject={confirmFixture?.title}
         body={confirmFixture
-          ? `${t('Removes the fixture permanently, along with all', 'Xóa vĩnh viễn trận đấu, cùng với toàn bộ')} ${signupCounts[confirmFixture.id] || 0} ${t('sign-up', 'lượt đăng ký')}${(signupCounts[confirmFixture.id] || 0) === 1 ? '' : 's'}. ${t('Members can no longer see or join it. Cannot be undone.', 'Hội viên sẽ không còn thấy hoặc tham gia được. Không thể hoàn tác.')}`
+          ? `${t('Removes the event permanently, along with all', 'Xóa vĩnh viễn sự kiện, cùng với toàn bộ')} ${signupCounts[confirmFixture.id] || 0} ${t('sign-up', 'lượt đăng ký')}${(signupCounts[confirmFixture.id] || 0) === 1 ? '' : 's'}. ${t('Members can no longer see or join it. Cannot be undone.', 'Hội viên sẽ không còn thấy hoặc tham gia được. Không thể hoàn tác.')}`
           : ''}
-        confirmLabel={t('Delete fixture', 'Xóa trận đấu')}
+        confirmLabel={t('Delete event', 'Xóa sự kiện')}
         busyLabel={t('Deleting…', 'Đang xóa…')}
         busy={confirmBusy}
         onCancel={closeConfirm}

@@ -249,7 +249,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
       </div>
       {!canEdit && <div style={{ ...metaText, color: '#D4B85A', marginBottom: 8 }}>{t('View-only — you’re a viewer on this board.', 'Chỉ xem — bạn là người xem trên bảng này.')}</div>}
       {linkedFixtures.map(fx => (
-        <Link key={fx.id} href="/admin/fixtures" style={{ ...metaText, color: '#9E8FC4', textDecoration: 'none', display: 'inline-block', marginBottom: 8 }} title={t('Open the linked member fixture', 'Mở lịch thi đấu hội viên đã liên kết')}>🏌 {t('Member fixture:', 'Lịch thi đấu hội viên:')} {fx.title} →</Link>
+        <Link key={fx.id} href="/admin/fixtures" style={{ ...metaText, color: '#9E8FC4', textDecoration: 'none', display: 'inline-block', marginBottom: 8 }} title={t('Open the linked member event', 'Mở sự kiện hội viên đã liên kết')}>🏌 {t('Member event:', 'Sự kiện hội viên:')} {fx.title} →</Link>
       ))}
 
       {showRecurring && (

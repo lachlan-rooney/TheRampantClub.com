@@ -66,7 +66,7 @@ const GROUPS: Group[] = [
     // it is mostly a bookings tool used every shift.
     label: "What's On",
     items: [
-      { href: '/admin/fixtures', label: 'Fixtures', icon: 'trophy' },
+      { href: '/admin/fixtures', label: 'Events', icon: 'trophy' },
       { href: '/admin/gallery', label: 'Event Gallery', icon: 'image' },
     ],
   },
