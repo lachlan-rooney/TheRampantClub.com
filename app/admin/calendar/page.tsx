@@ -8,6 +8,7 @@ import { vnDateString } from '@/lib/datetime'
 import { useLang } from '@/lib/admin-lang'
 import ShareBox from '@/components/admin/ShareBox'
 import { isShareable } from '@/lib/share/draft'
+import AttachmentField from '@/components/admin/AttachmentField'
 
 // Admin / Floor / Calendar
 //
@@ -377,6 +378,13 @@ export default function CalendarPage() {
                           <button onClick={() => setConfirmDeleteEntry(e)} style={cardActionBtn}>{t('Remove', 'Xoá')}</button>
                         </div>
 
+                        {/* Attachable whatever the visibility — a staff-only
+                            entry's file is served only to admins. The prompt
+                            inside changes with visibility, because what happens
+                            to the file changes with it. */}
+                        <AttachmentField entityType="calendar_entry" entityId={e.id}
+                                         memberVisible={e.visibility === 'member'} />
+
                         {/* A STAFF-ONLY ENTRY GETS NO BOX — not a disabled one.
                             Every private booking here is titled with a member's
                             name, and `attendee` is prompted with "e.g. Mr Nguyen
@@ -386,7 +394,7 @@ export default function CalendarPage() {
                             members — never `description` (internal) and never
                             `attendee`. ShareInput has no field for either. */}
                         {isShareable(e.visibility) && (
-                          <ShareBox entry={{
+                          <ShareBox entityType="calendar_entry" entityId={e.id} entry={{
                             type: e.kind,
                             title: e.title,
                             title_vn: e.title_vn,

@@ -24,6 +24,15 @@ const BUCKET = 'entry-attachments'
 const svc = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 const TYPES = ['fixture', 'calendar_entry'] as const
 
+export async function GET(_req: NextRequest, ctx: { params: Promise<{ type: string; id: string }> }) {
+  if (!(await isAdmin())) return NextResponse.json({ error: 'Staff only.' }, { status: 403 })
+  const { type, id } = await ctx.params
+  const { data } = await svc().from('entry_attachments')
+    .select('id, mime, filename, bytes, verified_kind, created_at')
+    .eq('entity_type', type).eq('entity_id', id).maybeSingle()
+  return NextResponse.json({ attachment: data ?? null })
+}
+
 export async function POST(req: NextRequest, ctx: { params: Promise<{ type: string; id: string }> }) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Staff only.' }, { status: 403 })
   const { type, id } = await ctx.params

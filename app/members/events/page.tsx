@@ -39,6 +39,25 @@ const TYPE_META: Record<string, { tint: string; ring: string }> = {
   other:   { tint: 'rgba(212,184,90,0.18)',  ring: 'rgba(212,184,90,0.45)' },
 }
 const metaOf = (t: string) => TYPE_META[t] || TYPE_META.other
+
+// The event's picture, where one was supplied. An image renders; a PDF gets a
+// LINK CARD and never an embed — the CSP sets object-src 'none', so an inline
+// PDF fires nowhere on this site, and a broken frame is worse than an honest
+// label. Named a link card here so nobody rebuilds the embed later.
+function Thumb({ a }: { a?: { id: string; kind: string; filename: string } }) {
+  if (!a) return null
+  if (a.kind === 'pdf') {
+    return (
+      <a href={`/api/entries/attachment/${a.id}`} target="_blank" rel="noreferrer" className="wo-pdf">
+        <span aria-hidden>📄</span> {a.filename}
+      </a>
+    )
+  }
+  return (
+    /* eslint-disable-next-line @next/next/no-img-element */
+    <img className="wo-thumb" src={`/api/entries/attachment/${a.id}`} alt="" loading="lazy" />
+  )
+}
 const KIND_META: Record<string, { label: string; tint: string; ring: string }> = {
   event:        { label: 'Event',          tint: 'rgba(212,184,90,0.20)',  ring: 'rgba(212,184,90,0.55)' },
   meeting:      { label: 'Meeting',        tint: 'rgba(178,170,152,0.16)', ring: 'rgba(178,170,152,0.45)' },
@@ -81,6 +100,10 @@ export default function WhatsOnPage() {
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  // Which entries have a file. IDS ONLY — the file itself is fetched through
+  // /api/entries/attachment/[id], which re-checks visibility. A staff-only
+  // entry is never listed, so this page never learns one exists.
+  const [attachments, setAttachments] = useState<Record<string, { id: string; kind: string; filename: string }>>({})
   const [filter, setFilter] = useState<string>('all')
   const [busyId, setBusyId] = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -91,6 +114,12 @@ export default function WhatsOnPage() {
   useEffect(() => {
     let cancelled = false
     const load = async () => {
+      // Separate from the Promise.all below on purpose: that array is
+      // DESTRUCTURED POSITIONALLY, so slipping a differently-shaped call into it
+      // silently re-binds every result after it.
+      fetch('/api/members/entries/attachments', { cache: 'no-store' })
+        .then(r => r.json()).then(d => { if (!cancelled) setAttachments(d.attachments || {}) })
+        .catch(() => {})
       const { data: { user } } = await supabase.auth.getUser()
       if (cancelled) return
       if (user) setUserId(user.id)
@@ -186,6 +215,7 @@ export default function WhatsOnPage() {
     return (
       <div key={`f-${f.id}`} className="wo-card" style={{ borderLeftColor: meta.ring }}>
         <div className="wo-row">
+          <Thumb a={attachments[`fixture:${f.id}`]} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="wo-tags">
               <span className="wo-tag" style={{ background: meta.tint }}>{typeLabel(f.type)}</span>
@@ -214,6 +244,7 @@ export default function WhatsOnPage() {
     return (
       <div key={`e-${e.id}`} className="wo-card" style={{ borderLeftColor: meta.ring }}>
         <div className="wo-row">
+          <Thumb a={attachments[`calendar_entry:${e.id}`]} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="wo-tags">
               <span className="wo-tag" style={{ background: meta.tint }}>{meta.label}</span>
@@ -252,6 +283,9 @@ export default function WhatsOnPage() {
         .wo-in { font-family: 'Google Sans Code', monospace; font-size: 9px; letter-spacing: 0.06em; color: #052E20; background: #7AB07A; padding: 2px 8px; border-radius: 999px; }
         .wo-title { font-family: 'Rampant Sans', serif; font-size: 18px; color: #E5D4C2; line-height: 1.2; }
         .wo-meta { font-family: 'Google Sans Code', monospace; font-size: 11px; color: #B2AA98; margin-top: 4px; }
+        .wo-thumb { width: 76px; height: 76px; object-fit: cover; border-radius: 8px; flex-shrink: 0; border: 1px solid rgba(229,212,194,0.12); background: rgba(229,212,194,0.04); }
+        .wo-pdf { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'Google Sans Code', monospace; font-size: 10px; color: #B2AA98; text-decoration: none; border: 1px solid rgba(229,212,194,0.16); border-radius: 8px; padding: 8px 10px; }
+        .wo-pdf:hover { color: #D4B85A; border-color: rgba(212,184,90,0.4); }
         .wo-desc { font-family: 'Google Sans Code', monospace; font-size: 11.5px; color: #B2AA98; opacity: 0.85; line-height: 1.6; margin: 10px 0 0; white-space: pre-line; }
         .wo-action { flex-shrink: 0; text-align: right; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
         .wo-count { font-family: 'Google Sans Code', monospace; font-size: 10px; color: #B2AA98; }

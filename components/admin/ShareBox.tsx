@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { buildDraft, type ShareInput } from '@/lib/share/draft'
 import { useLang } from '@/lib/admin-lang'
 
@@ -22,12 +22,20 @@ import { useLang } from '@/lib/admin-lang'
 // pretending. When attachments land, pass `attachment` and the Web Share path
 // below gains `files` — no rewrite.
 export default function ShareBox({
-  entry, attachment = null,
+  entry, entityType, entityId,
 }: {
   entry: ShareInput
-  attachment?: { url: string; mime: string; name: string } | null
+  /** Where the entry's file lives, if it has one. */
+  entityType?: 'fixture' | 'calendar_entry'
+  entityId?: string
 }) {
   const { t } = useLang()
+  const [attachment, setAttachment] = useState<{ id: string; filename: string; verified_kind: string } | null>(null)
+  useEffect(() => {
+    if (!entityType || !entityId) return
+    fetch(`/api/admin/entries/${entityType}/${entityId}/attachment`, { cache: 'no-store' })
+      .then(r => r.json()).then(d => setAttachment(d.attachment ?? null)).catch(() => {})
+  }, [entityType, entityId])
   const draft = useMemo(() => buildDraft(entry), [entry])
   const [open, setOpen] = useState(false)
   const [en, setEn] = useState(draft.en)
@@ -107,12 +115,50 @@ export default function ShareBox({
         {pane('vn', vn, setVn, t('Vietnamese', 'Tiếng Việt'))}
       </div>
 
-      <div style={{ ...note, marginTop: 12, marginBottom: 0 }}>
-        {attachment
-          ? t('The attachment goes separately: save it, then add it to the message.',
-              'Tệp đính kèm gửi riêng: lưu lại rồi thêm vào tin nhắn.')
-          : t('No image yet — event artwork is not built. Text-only for now.',
-              'Chưa có hình ảnh — chức năng ảnh sự kiện chưa được xây dựng. Hiện chỉ có văn bản.')}
+      {/* THE PICTURE THAT GOES WITH IT. A share preview that doesn't show the
+          image isn't a preview. Text and an image cannot go on the clipboard
+          together reliably, so it is Copy for the words and Save for the file —
+          two taps, predictable, works everywhere. */}
+      <div style={{ marginTop: 14, borderTop: '1px solid rgba(212,184,90,0.18)', paddingTop: 12 }}>
+        {!attachment ? (
+          <div style={{ ...note, marginBottom: 0 }}>
+            {t('No artwork on this entry. The message goes out as text — add a file above if a partner sent one.',
+               'Mục này chưa có hình. Tin nhắn sẽ gửi dạng văn bản — hãy thêm tệp ở trên nếu đối tác đã gửi.')}
+          </div>
+        ) : attachment.verified_kind === 'pdf' ? (
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <div style={{ fontSize: 20 }}>📄</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ ...note, marginBottom: 2, color: '#E5D4C2' }}>{attachment.filename}</div>
+              {/* No thumbnail, deliberately: a PDF cannot render inline anywhere on
+                  this site (CSP object-src 'none'), and a broken preview is worse
+                  than an honest label. It shares as a FILE. */}
+              <div style={{ ...note, marginBottom: 0 }}>
+                {t('A PDF shares as a file, not a picture — there is no preview.',
+                   'PDF được gửi dưới dạng tệp, không phải ảnh — không có bản xem trước.')}
+              </div>
+            </div>
+            <a href={`/api/entries/attachment/${attachment.id}`} target="_blank" rel="noreferrer" style={btnGhost}>
+              {t('Save file', 'Lưu tệp')}
+            </a>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`/api/entries/attachment/${attachment.id}`} alt={attachment.filename}
+                 style={{ width: 84, height: 84, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(229,212,194,0.14)' }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ ...note, marginBottom: 2, color: '#E5D4C2' }}>{attachment.filename}</div>
+              <div style={{ ...note, marginBottom: 0 }}>
+                {t('Copy the words, save the picture, then send both.',
+                   'Sao chép lời nhắn, lưu ảnh, rồi gửi cả hai.')}
+              </div>
+            </div>
+            <a href={`/api/entries/attachment/${attachment.id}`} download={attachment.filename} style={btnGhost}>
+              {t('Save image', 'Lưu ảnh')}
+            </a>
+          </div>
+        )}
       </div>
     </div>
   )
