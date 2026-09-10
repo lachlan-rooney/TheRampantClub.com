@@ -74,7 +74,7 @@ export default function StudioIndex({ collaborations, images }: {
   }
 
   return (
-    <main style={{ background: SAGE, minHeight: '100vh', color: INK, overflowX: 'hidden' }}>
+    <main style={{ background: SAGE, minHeight: '100vh', color: INK, overflowX: 'hidden', position: 'relative' }}>
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes rise { from { opacity: 0; transform: translateY(22px) } to { opacity: 1; transform: none } }
         @keyframes wipe { from { transform: scaleX(0) } to { transform: scaleX(1) } }
@@ -94,21 +94,42 @@ export default function StudioIndex({ collaborations, images }: {
         .st-card:hover .st-thumb img { transform: scale(1.05); }
         .st-go { display: inline-block; transition: transform .35s ease; }
         .st-card:hover .st-go, .st-cta:hover .st-go { transform: translateX(7px); }
+        @keyframes drift { from { transform: rotate(6deg) translateY(0) } to { transform: rotate(4deg) translateY(-16px) } }
+        .st-lion { animation: drift 7s ease-in-out infinite alternate; }
+        @media (max-width: 760px) { .st-lion { top: 12px; opacity: .55; } }
         @media (prefers-reduced-motion: reduce) {
+          .st-lion { animation: none !important; }
           .st-rise, .st-hero img, .st-thumb img, .st-tab::after, .st-go { animation: none !important; transition: none !important; }
         }
       ` }} />
 
       {/* ══ THE ROOM ═══════════════════════════════════════════════════ */}
-      <div style={{ maxWidth: 1180, margin: '0 auto', padding: '96px 24px 0' }}>
+      {/* ══ THE LION, PASTED ═══════════════════════════════════════════
+          Toni's painting inside the club's rampant mark. It lives here
+          permanently rather than belonging to his exhibition — the room keeps
+          it. Off the right edge and slightly askew, like something stuck to a
+          studio wall, and it drifts a little as the page scrolls. Behind
+          everything and unselectable, so it never gets in the way of reading. */}
+      <img src="/images/studio/rizal/00-lion.png" alt="" aria-hidden="true"
+           className="st-lion"
+           style={{ position: 'absolute', top: 40, right: 'clamp(-190px, -12vw, -60px)',
+                    width: 'clamp(280px, 42vw, 620px)', opacity: .92, pointerEvents: 'none',
+                    transform: 'rotate(6deg)', zIndex: 0 }} />
+
+      <div style={{ position: 'relative', zIndex: 1, maxWidth: 1180, margin: '0 auto', padding: '96px 24px 0' }}>
         <Link href="/" style={{ fontFamily: MONO, fontSize: 11, color: INK, opacity: .55, textDecoration: 'none' }}>
           ← The Rampant Club
         </Link>
         <div className={entered ? 'st-rise' : ''} style={{ animationDelay: '.05s' }}>
           <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '.24em',
                         textTransform: 'uppercase', opacity: .55, marginTop: 36 }}>Floor Two</div>
-          <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(54px, 14vw, 168px)', lineHeight: .86,
-                       letterSpacing: '-.02em', margin: '8px 0 0' }}>The Studio</h1>
+          {/* The Studio's own wordmark, with the set name as the accessible
+              heading behind it. */}
+          <h1 style={{ margin: '10px 0 0' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/studio/studio-wordmark.png" alt="The Studio"
+                 style={{ width: 'min(560px, 78vw)', height: 'auto', display: 'block' }} />
+          </h1>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, flexWrap: 'wrap', marginTop: 12 }}>
             <span style={{ fontFamily: SERIF, fontSize: 'clamp(18px, 3.4vw, 30px)', opacity: .5 }}>Phòng Studio</span>
             <span style={{ height: 2, flex: 1, minWidth: 60, background: INK, opacity: .22,
@@ -179,7 +200,8 @@ export default function StudioIndex({ collaborations, images }: {
             <div style={{ display: 'grid', gap: 12, marginTop: 30,
                           gridTemplateColumns: `repeat(${Math.min(4, stripOf(c).length)}, 1fr)` }}>
               {stripOf(c).map(im => (
-                <div key={im.id} className="st-thumb" style={{ aspectRatio: '3 / 4' }}>
+                <div key={im.id} className="st-thumb" style={{ aspectRatio: '3 / 4', borderRadius: 12,
+                                boxShadow: '0 12px 30px rgba(5,46,32,0.16)' }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={srcOf(im.storage_path)} alt="" loading="lazy"
                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
@@ -207,7 +229,8 @@ export default function StudioIndex({ collaborations, images }: {
             <Link key={x.id} href={`/studio/${x.slug}`} className="st-card"
                   style={{ textDecoration: 'none', color: INK, display: 'block' }}>
               {heroOf(x) && (
-                <div className="st-thumb" style={{ width: '100%', aspectRatio: '4 / 5' }}>
+                <div className="st-thumb" style={{ width: '100%', aspectRatio: '4 / 5', borderRadius: 14,
+                              boxShadow: '0 16px 38px rgba(5,46,32,0.18)' }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={srcOf(heroOf(x)!)} alt="" loading="lazy"
                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />

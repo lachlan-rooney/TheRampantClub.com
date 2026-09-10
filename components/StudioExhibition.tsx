@@ -181,10 +181,15 @@ export default function StudioExhibition({ collaboration, images }: {
 // never cropped to fit a grid, which is the one rule a gallery page cannot break.
 function Figure({ im, wide }: { im: CollabImage; wide?: boolean }) {
   return (
-    <figure style={{ margin: wide ? '72px 0' : '64px 0', maxWidth: wide ? '100%' : 780 }}>
+    // CAPPED AND ROUNDED. Uncapped, a portrait at full column width ran past a
+    // thousand pixels tall and filled the screen. And squared-off photographs
+    // are not this site's language — the floor panels on /spaces are rounded
+    // with a soft shadow, so these match rather than inventing a third look.
+    <figure style={{ margin: wide ? '64px 0' : '56px 0', maxWidth: wide ? 1000 : 680 }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={srcOf(im.storage_path)} alt={im.caption_en || ''} loading="lazy"
-           style={{ width: '100%', height: 'auto', display: 'block' }} />
+           style={{ maxWidth: '100%', maxHeight: '74vh', width: 'auto', height: 'auto', display: 'block',
+                    borderRadius: 14, boxShadow: '0 18px 44px rgba(5,46,32,0.20)' }} />
       {im.caption_en && (
         <figcaption style={{ fontFamily: MONO, fontSize: 11, opacity: .68, marginTop: 12, maxWidth: 560 }}>
           {im.caption_en}
