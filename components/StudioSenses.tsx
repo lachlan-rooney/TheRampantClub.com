@@ -15,10 +15,11 @@ import { useEffect, useRef, useState } from 'react'
 // that exhibition's own food and drinks prose; repeating them here would be a
 // worse version of what is already written.
 //
-// EVERY ENGLISH LINE BELOW IS THE CLUB'S OWN, quoted from
-// "The Studio x Octave Launch F&B Brief" — checked against the source, not
-// paraphrased. Their provenance is noted per line. If you add a sense line,
-// quote the brief; don't compose one.
+// EVERY ENGLISH LINE BELOW IS THE CLUB'S OWN. Four are quoted from "The Studio
+// x Octave Launch F&B Brief", checked against the source rather than
+// paraphrased; the fifth is Lachlan's own wording, because the brief has no
+// real description of the scent. Provenance is noted per line. If you add or
+// change one, quote the brief or ask him — don't compose it.
 const INK = '#052E20'
 const SAGE = '#B0C18E'   // the hub's ground; the phone bubble inverts against it
 const SERIF = "'Rampant Sans', serif"
@@ -27,7 +28,9 @@ const MONO = "'Google Sans Code', 'DM Mono', monospace"
 interface Sense {
   en: string
   vn: string          // the fixed Sino-Vietnamese term, not a rendering choice
-  line: string | null // null renders NOTHING — see Scent
+  line: string | null // null renders NOTHING at all — kept so a future sense can
+                      // be added mute rather than guessed at, which is how Scent
+                      // shipped while it was waiting for real words
   path: string        // one stroke, drawn once
 }
 
@@ -53,15 +56,16 @@ const SENSES: Sense[] = [
   { en: 'Sound', vn: 'Thính giác', line: 'Soft ambient. Soundscape controlled.',
     path: 'M32 12 L52 32 L32 52 L12 32 Z M32 2 L62 32 L32 62 L2 32 Z' },
 
-  // SCENT HAS NO LINE, AND THAT IS THE POINT.
-  // The club really does pump a composed aroma into this room — but the only
-  // words anyone has written for it are "Aroma controlled", which is a plant
-  // instruction, not a description. The other four earn their place by being
-  // specific. A placeholder here — petrichor, "the scent after rain", anything
-  // borrowed from the artist's notes — would be precisely the invention the
-  // rest of this avoids. The mark stands alone until Lachlan supplies the
-  // words. A mark with no words is honest; a mark with invented words is not.
-  { en: 'Scent', vn: 'Khứu giác', line: null,
+  // SCENT IS THE ODD ONE OUT, AND IT IS THE STRONGEST OF THE FIVE.
+  // This line is NOT from the brief — the brief says only "Aroma controlled",
+  // which reads as a plant setting and badly understates what actually happens.
+  // These are Lachlan's own words, given 2026-09-10: the aroma is composed per
+  // exhibition, tailored to the artist or to a particular piece, decided WITH
+  // the artist. Held deliberately blank until he supplied them rather than
+  // filled with a plausible guess; do not "improve" it now without asking him,
+  // for the same reason it was blank before.
+  { en: 'Scent', vn: 'Khứu giác',
+    line: 'Composed with the artist. A place, a memory, an environment.',
     path: 'M32 6 L58 32 L32 58 L6 32 Z M32 58 C 24 44, 40 38, 32 22' },
 ]
 
