@@ -90,6 +90,7 @@ const SPACES: Space[] = [
   {
     id: 'sports',
     mark: '/images/floors/sports-club.svg',
+    backdrop: '/images/floors/sports-backdrop.jpg',
     floor: '—',
     en: 'T.R.C Sports Club',
     vn: 'Câu Lạc Bộ Thể Thao',
