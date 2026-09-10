@@ -18,7 +18,14 @@ function saigonHour(): number {
 }
 
 function tintFor(hour: number): { bg: string; opacity: number } {
-  if (hour >= 21 || hour < 5)  return { bg: 'rgba(5,46,32,0.18)',     opacity: 1 }   // night
+  // Night was 0.18 and it was flattening the ground it sat on: multiply against
+  // the club's own bottle green took #B0C18E from rgb(176,193,142) to
+  // rgb(145,164,121) — 31 points, on a colour chosen carefully. Halved. The tint
+  // itself stays: a club that goes dark and quiet in the evening is the
+  // building's character, and the page should carry that. Dusk and morning are
+  // left alone — they were already subtle, and warm amber does not flatten the
+  // way bottle-green-on-green does.
+  if (hour >= 21 || hour < 5)  return { bg: 'rgba(5,46,32,0.09)',     opacity: 1 }   // night
   if (hour >= 17)              return { bg: 'rgba(212,140,80,0.10)',  opacity: 1 }   // dusk
   if (hour >= 11)              return { bg: 'rgba(0,0,0,0)',          opacity: 0 }   // afternoon — no tint
   if (hour >= 5)               return { bg: 'rgba(180,200,210,0.06)', opacity: 1 }   // morning

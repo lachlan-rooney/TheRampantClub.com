@@ -645,10 +645,14 @@ export default function HomePage() {
           background-repeat: repeat; background-size: 300px;
         }
 
-        /* ── Subtle vignette (warm, not dark) ── */
+        /* ── Subtle vignette (warm, not dark) ──
+           Halved from 0.25. On its own it read as intended, but stacked under
+           the night tint's multiply the two compounded and the homepage lost its
+           colour — the same sage renders exact on /studio and 31 points darker
+           here. Both were halved together; neither was removed. */
         .trc-vignette {
           position: fixed; inset: 0; pointer-events: none; z-index: 9997;
-          background: radial-gradient(ellipse at center, transparent 50%, rgba(178, 170, 152, 0.25) 100%);
+          background: radial-gradient(ellipse at center, transparent 50%, rgba(178, 170, 152, 0.125) 100%);
         }
 
         .trc-empty {
