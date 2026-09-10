@@ -57,6 +57,7 @@ const SPACES: Space[] = [
   {
     id: 'dining',
     mark: '/images/floors/dining-room.png',
+    backdrop: '/images/floors/dining-room-backdrop.jpg',
     floor: '3',
     en: 'The Dining Room',
     vn: 'Phòng Ăn',
@@ -67,6 +68,7 @@ const SPACES: Space[] = [
   {
     id: 'studio',
     mark: '/images/floors/studio.png',
+    backdrop: '/images/floors/studio-backdrop.jpg',
     floor: '2',
     en: 'The Studio',
     vn: 'Phòng Studio',
@@ -159,7 +161,11 @@ export default function SpacesShowcase({ variant }: { variant: 'internal' | 'pub
         }
         .floor-rail {
           position: fixed;
-          top: 50%; right: 28px;
+          /* LEFT, not right: the floors alternate left/right down the page, and
+             on the right the rail landed on top of the picture half as often as
+             not. Already hidden below 768px — a fixed rail on a phone is a
+             thumb-sized target sitting over the content it navigates. */
+          top: 50%; left: 28px;
           transform: translateY(-50%);
           z-index: 20;
           display: flex; flex-direction: column; gap: 10px;
