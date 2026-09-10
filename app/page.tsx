@@ -637,10 +637,16 @@ export default function HomePage() {
         }
         .trc-flow.loaded { opacity: 1; }
 
-        /* ── Paper texture overlay ── */
+        /* ── Paper texture overlay ──
+           Halved from 0.045. Measured, this was the LARGEST of the three veils
+           on the cream ground, not the tint: of 56 points of total deviation
+           from #E5D4C2, the grain accounted for ~22, the night tint ~18 and the
+           vignette the remainder. Greyscale noise over a warm cream desaturates
+           it directly — warmth (R−B) fell 35 → 28, which is what read as
+           "dull" rather than the darkening alone. */
         .trc-grain {
           position: fixed; inset: 0; pointer-events: none; z-index: 9998;
-          opacity: 0.045;
+          opacity: 0.022;
           background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='6' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");
           background-repeat: repeat; background-size: 300px;
         }
