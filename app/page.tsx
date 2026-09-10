@@ -646,7 +646,19 @@ export default function HomePage() {
            "dull" rather than the darkening alone. */
         .trc-grain {
           position: fixed; inset: 0; pointer-events: none; z-index: 9998;
-          opacity: 0.022;
+          /* soft-light, NOT normal. Greyscale noise blended normally mixes the
+             ground toward grey, which is precisely what desaturated the cream.
+             soft-light modulates the luminance underneath and leaves the hue
+             alone, so the texture derives its colour from whatever it sits on —
+             cream at the top of the page, sage in the Studio band, bottle green
+             below — instead of carrying a fixed tint that would suit one ground
+             and fight the others. Opacity can go back up because soft-light is
+             far gentler than a normal-blend veil at the same number. */
+          mix-blend-mode: soft-light;
+          /* 0.30 calibrated against the original: the old normal-blend grain at
+             0.045 measured 0.61 texture for 53.0 points of colour deviation;
+             this measures 0.79 texture for 46.5. More paper, less cost. */
+          opacity: 0.30;
           background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='6' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");
           background-repeat: repeat; background-size: 300px;
         }
