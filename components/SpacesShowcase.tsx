@@ -81,6 +81,7 @@ const SPACES: Space[] = [
   },
   {
     id: 'sports',
+    mark: '/images/floors/sports-club.svg',
     floor: '—',
     en: 'T.R.C Sports Club',
     vn: 'Câu Lạc Bộ Thể Thao',
@@ -411,6 +412,23 @@ export default function SpacesShowcase({ variant }: { variant: 'internal' | 'pub
                   <Link href="/sports" className="floor-cta">
                     Sports calendar →
                   </Link>
+                )}
+
+                {/* The Rampant Cup film. Same block as the Studio's — the CSS is
+                    shared rather than duplicated, so the two stay in step. */}
+                {s.id === 'sports' && (
+                  <div className="floor-studio-extra">
+                    <h3 className="floor-studio-title">The Rampant Cup</h3>
+                    <div className="floor-studio-sub">The Bluffs, Hồ Tràm</div>
+                    <div className="floor-studio-video">
+                      <iframe
+                        src="https://www.youtube.com/embed/n7D-p3hGh-c"
+                        title="The Rampant Cup"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                  </div>
                 )}
 
                 {s.id === 'studio' && (
