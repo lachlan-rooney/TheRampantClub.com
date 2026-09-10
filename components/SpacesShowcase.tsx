@@ -26,6 +26,10 @@ interface Space {
   // evening, someone who can handle low light — THAT is the moment to swap, and
   // the swap is this one field.
   mark?: string
+  // A room behind the mark. Dimmed and sat UNDER the lion rather than replacing
+  // it, so the panel still reads as one of the set. Not `photo`: that field is
+  // the eventual full swap to photography, and this is the interim.
+  backdrop?: string
 }
 
 const SPACES: Space[] = [
@@ -72,6 +76,7 @@ const SPACES: Space[] = [
   {
     id: 'library-bar',
     mark: '/images/floors/library-bar.png',
+    backdrop: '/images/floors/library-bar-backdrop.jpg',
     floor: '1',
     en: 'The Library Bar',
     vn: 'Quầy Bar Thư Viện',
@@ -207,7 +212,18 @@ export default function SpacesShowcase({ variant }: { variant: 'internal' | 'pub
         /* A MARK IS NOT A PHOTOGRAPH. object-fit cover would crop the lion — it
            is roughly 3:4 inside a 4:5 panel — so contain, inset and centred.
            Specificity beats the rule above rather than relying on source order. */
+        /* The room, UNDER the mark. Dimmed hard: the cream lion has to stay
+           legible over a warm, busy interior, and the panel must still look like
+           one of the set rather than becoming a photo tile. */
+        .floor-image img.floor-backdrop {
+          position: absolute; inset: 0;
+          width: 100%; height: 100%;
+          object-fit: cover;
+          opacity: 0.38;
+        }
         .floor-image img.floor-mark {
+          position: relative; z-index: 1;
+          filter: drop-shadow(0 2px 14px rgba(5,46,32,0.55));
           object-fit: contain;
           padding: 13% 15%;
           box-sizing: border-box;
@@ -365,6 +381,10 @@ export default function SpacesShowcase({ variant }: { variant: 'internal' | 'pub
           >
             <div className="floor-inner">
               <div className="floor-image" style={{ ['--accent' as string]: s.accent } as React.CSSProperties}>
+                {s.backdrop && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className="floor-backdrop" src={s.backdrop} alt="" loading="lazy" />
+                )}
                 {s.photo
                   ? // eslint-disable-next-line @next/next/no-img-element
                     <img src={s.photo} alt={s.en} />

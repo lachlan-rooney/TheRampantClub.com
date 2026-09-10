@@ -974,37 +974,31 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* ══════ 3. MOODBOARD ══════ */}
-        <div className={`trc-flow ${loaded ? 'loaded' : ''}`}>
-          <Spotlight size={420} />
-          {images.length === 0 && loaded && (
-            <div className="trc-empty">
-              <p>Nothing here yet</p>
-              <p>The walls are bare. Someone fetch the curator.</p>
-            </div>
-          )}
-
-          {images.map((img, i) => {
-            const baseSize = isMobile ? 46 : 64
-            // Three modest sizes (small · medium · large) — small pinned thumbnails.
-            const LARGE = new Set(['whisky-lounge', 'porsche'])
-            const MEDIUM = new Set(['whisky-library', 'gala-table', 'saigon-street', 'cup-deco'])
-            const size = img.id === 'lion-painting' ? baseSize * 1.5      // legacy fallback ids, tamed
-              : img.id === 'library-bar' ? baseSize * 1.35
-              : LARGE.has(img.id) ? baseSize * 1.3                        // ~83px
-              : MEDIUM.has(img.id) ? baseSize * 1.0                       // ~64px
-              : baseSize * 0.72                                           // ~46px
-            return (
-              <DraggableImage
-                key={img.id}
-                img={img}
-                index={i}
-                itemSize={size}
-                multiplier={multiplier}
-                maxZRef={maxZRef}
+        {/* ══════ 3. THE GOLF DAY ══════════════════════════════════════════
+            Replaces the draggable moodboard. That was fed by member uploads and
+            had never been used — the empty state read "The walls are bare."
+            YouTube, unlisted: frame-src already allows it, so no CSP change, and
+            it does not depend on a Drive share that breaks silently when
+            somebody tidies a folder. /members/upload and /api/moodboard are left
+            in place; nothing else on the site renders them. */}
+        <div className="trc-section">
+          <div className="trc-section-diamond" />
+          <div className="trc-section-title">The Rampant Cup</div>
+          <div className="trc-section-subtitle">Ngày Hội Golf</div>
+          <div style={{ maxWidth: 900, margin: '28px auto 0', padding: '0 20px' }}>
+            <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0,
+                          borderRadius: 12, overflow: 'hidden',
+                          border: '1px solid rgba(229,212,194,0.12)',
+                          boxShadow: '0 24px 56px rgba(0,0,0,0.4)' }}>
+              <iframe
+                src="https://www.youtube.com/embed/qaKKajPODfk"
+                title="The Rampant Cup — golf day"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
               />
-            )
-          })}
+            </div>
+          </div>
         </div>
 
         {/* ══════ 4. THE FIVE FLOORS ══════ */}
