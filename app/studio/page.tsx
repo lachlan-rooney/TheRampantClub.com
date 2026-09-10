@@ -1,16 +1,14 @@
 import { createClient } from '@supabase/supabase-js'
 import NavOverlay from '@/components/NavOverlay'
-import StudioShowcase, { type Collaboration, type CollabImage } from '@/components/StudioShowcase'
+import StudioIndex, { type Collaboration, type CollabImage } from '@/components/StudioIndex'
 
 // ═══════════════════════════════════════════════════════════════════════════
-// THE STUDIO — the club's gallery floor, one collaboration at a time.
+// /studio — THE ROOM. Not an exhibition.
 // ───────────────────────────────────────────────────────────────────────────
-// Server-rendered. Public read is allowed by RLS for status live/past only, so
-// a draft exhibition cannot leak before it opens — the anon key sees exactly
-// what a visitor should see, and nothing is filtered in the page.
-//
-// DATA, NOT CODE. The third collaboration is a row in `collaborations`. Nothing
-// on this page knows either artist's name.
+// This page is about The Studio itself: the gallery floor, what it is, and what
+// has hung in it. An exhibition gets its OWN page at /studio/[slug], because a
+// gallery's landing page is not a monograph on whoever is showing this quarter
+// — and because with eight collaborations a single scrolling page is unusable.
 export const revalidate = 300
 
 const anon = () => createClient(
@@ -21,7 +19,7 @@ const anon = () => createClient(
 
 export const metadata = {
   title: 'The Studio — The Rampant Club',
-  description: 'The club’s gallery floor. One collaboration at a time.',
+  description: 'The club’s gallery floor. A quarterly rotating art space, made with the artist.',
 }
 
 export default async function StudioPage() {
@@ -36,7 +34,7 @@ export default async function StudioPage() {
   return (
     <>
       <NavOverlay variant="public" />
-      <StudioShowcase
+      <StudioIndex
         collaborations={(collabs || []) as Collaboration[]}
         images={(images || []) as CollabImage[]}
       />

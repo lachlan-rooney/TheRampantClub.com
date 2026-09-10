@@ -408,6 +408,7 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
 
         /* ── Dark variant (for green backgrounds) ── */
         .nav-dark .nav-diamond { background: #E5D4C2; }
+        .nav-inv .nav-diamond { background: #E5D4C2; }
         .nav-dark .nav-link-en { color: #E5D4C2; }
         .nav-dark .nav-link-vn { color: #B2AA98; }
         .nav-dark .nav-group-label { color: #D4B85A; opacity: 0.6; }
@@ -437,7 +438,11 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
         }
       ` }} />
 
-      <div className={dark ? 'nav-dark' : ''}>
+      {/* nav-inv follows the SAME runtime detection as the logo. The diamond used
+          to take its colour from the `dark` prop alone, so on a page that never
+          passes it — /spaces, which is #052E20 — the diamond stayed #052E20 and
+          was invisible against the page. Two mechanisms answering one question. */}
+      <div className={`${dark ? 'nav-dark' : ''} ${logoInverted ? 'nav-inv' : ''}`}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <a href="/" style={{ position: 'fixed', top: '50%', right: 24, transform: 'translateY(-50%)', zIndex: 9000, cursor: 'pointer', lineHeight: 0 }}>
         <img

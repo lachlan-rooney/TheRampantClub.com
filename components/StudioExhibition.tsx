@@ -66,21 +66,11 @@ const dateRange = (a: string | null, b: string | null) => {
   return b && b !== a ? `${f(a)} — ${f(b)}` : f(a)
 }
 
-export default function StudioShowcase({ collaborations, images }: {
-  collaborations: Collaboration[]; images: CollabImage[]
+export default function StudioExhibition({ collaboration, images }: {
+  collaboration: Collaboration; images: CollabImage[]
 }) {
-  const live = collaborations.filter(c => c.status === 'live')
-  const past = collaborations.filter(c => c.status === 'past')
-  const [active, setActive] = useState(0)
-  const chip = useRef<Record<string, HTMLButtonElement | null>>({})
-  const ordered = useMemo(() => [...live, ...past], [collaborations]) // eslint-disable-line react-hooks/exhaustive-deps
-  const c = ordered[active]
+  const c = collaboration
 
-  // The names index scrolls the current one into view — the day-chips pattern,
-  // which is the one already proven on a phone.
-  useEffect(() => {
-    if (c) chip.current[c.id]?.scrollIntoView({ inline: 'center', block: 'nearest' })
-  }, [c])
 
   const mine = images.filter(i => i.collaboration_id === c?.id)
 
@@ -120,18 +110,6 @@ export default function StudioShowcase({ collaborations, images }: {
     return out
   }, [c, mine])
 
-  if (!ordered.length) {
-    return (
-      <main style={{ background: SAGE, minHeight: '100vh', padding: '120px 24px' }}>
-        <div style={{ maxWidth: 720, margin: '0 auto' }}>
-          <h1 style={{ fontFamily: SERIF, fontSize: 44, color: INK, margin: 0 }}>The Studio</h1>
-          <p style={{ fontFamily: MONO, fontSize: 13, color: INK, opacity: .75, marginTop: 14 }}>
-            The next exhibition is being prepared.
-          </p>
-        </div>
-      </main>
-    )
-  }
 
   return (
     <main style={{ background: SAGE, minHeight: '100vh', color: INK }}>
@@ -155,23 +133,6 @@ export default function StudioShowcase({ collaborations, images }: {
           ← The Rampant Club
         </Link>
 
-        {/* ══ THE INDEX — names, not tabs ═════════════════════════════════ */}
-        <div style={{ display: 'flex', gap: 30, overflowX: 'auto', margin: '30px 0 0',
-                      paddingBottom: 12, scrollbarWidth: 'none' }}>
-          {ordered.map((x, i) => (
-            <button key={x.id} ref={el => { chip.current[x.id] = el }} onClick={() => setActive(i)}
-              style={{ background: 'none', border: 'none', padding: '0 0 10px', cursor: 'pointer',
-                       flexShrink: 0, textAlign: 'left', fontFamily: SERIF,
-                       fontSize: 'clamp(17px, 3.2vw, 22px)', color: INK,
-                       opacity: i === active ? 1 : 0.38,
-                       borderBottom: i === active ? `2px solid ${INK}` : '2px solid transparent' }}>
-              {x.artist_name}
-              {tenseOf(x.opens_on, x.closes_on) === 'Forthcoming' &&
-                <span style={{ fontFamily: MONO, fontSize: 10, opacity: .7 }}> · soon</span>}
-            </button>
-          ))}
-        </div>
-        <div style={{ height: 1, background: INK, opacity: .16 }} />
 
         {c && (
           <article>
