@@ -2,6 +2,29 @@
 
 import { useEffect } from 'react'
 
+// ═══════════════════════════════════════════════════════════════════════════
+// NOT MOUNTED ANYWHERE. This is a record, not a plan.
+// ───────────────────────────────────────────────────────────────────────────
+// This was the homepage's time-of-day tint until 2026-09-10. It is kept because
+// it is a genuine idea someone built on purpose, and deleting it would lose the
+// reasoning — not because it is expected back.
+//
+// WHY IT CAME OFF: the homepage now shows plain block colour, matching /studio
+// and the admin portal — authored colour with nothing on top. This overlay,
+// with the vignette and the paper grain, took #E5D4C2 to rgb(208,196,179) and
+// its warmth from 35 to 28. Multiplying bottle green over a warm cream
+// desaturates it, which reads as dull rather than dark.
+//
+// BE CLEAR ABOUT WHAT WAS RETIRED: the tint switched off between 11:00 and
+// 16:00 Sài Gòn, so the page genuinely changed character through the day and
+// nothing on screen said why. On a plain homepage that idea has nowhere left to
+// live. It is retired, not parked. If a future surface wants it — a room
+// display, a kiosk, something that is meant to feel the hour — this file is
+// where it starts, and it works as written.
+//
+// TO RESTORE: import it and mount it in app/page.tsx; see the note there.
+// ═══════════════════════════════════════════════════════════════════════════
+
 // Subtle warm/cool tint overlay that shifts with the local hour in Sài Gòn.
 // - 05–10 (morning):    cool, slightly desaturated
 // - 11–16 (afternoon):  neutral

@@ -5,7 +5,6 @@ import NavOverlay from '@/components/NavOverlay'
 import LiveTicker from '@/components/LiveTicker'
 import TonightPanel from '@/components/TonightPanel'
 import Spotlight from '@/components/Spotlight'
-import TimeOfDayTint from '@/components/TimeOfDayTint'
 import useEasterEggs from '@/hooks/useEasterEggs'
 import Link from 'next/link'
 
@@ -637,7 +636,7 @@ export default function HomePage() {
         }
         .trc-flow.loaded { opacity: 1; }
 
-        /* ── Paper texture overlay ──
+        /* ── Paper texture overlay — NOT MOUNTED, see the note in the JSX ──
            Halved from 0.045. Measured, this was the LARGEST of the three veils
            on the cream ground, not the tint: of 56 points of total deviation
            from #E5D4C2, the grain accounted for ~22, the night tint ~18 and the
@@ -663,7 +662,7 @@ export default function HomePage() {
           background-repeat: repeat; background-size: 300px;
         }
 
-        /* ── Subtle vignette (warm, not dark) ──
+        /* ── Subtle vignette — NOT MOUNTED, see the note in the JSX ──
            Halved from 0.25. On its own it read as intended, but stacked under
            the night tint's multiply the two compounded and the homepage lost its
            colour — the same sage renders exact on /studio and 31 points darker
@@ -849,12 +848,26 @@ export default function HomePage() {
 
       <NavOverlay variant="public" />
       <LiveTicker />
-      <TimeOfDayTint />
       {easterEggs}
 
+      {/* ── THE THREE VEILS ARE OFF. ───────────────────────────────────────
+          <TimeOfDayTint />, <div className="trc-vignette" /> and
+          <div className="trc-grain" /> used to mount here. Between them they
+          took this page's ground from its authored #E5D4C2 to rgb(208,196,179)
+          — and, more to the point, its warmth (R−B) from 35 to 28, which is why
+          it read dull rather than merely dark. Nothing on screen explained why,
+          and the tint changed the answer through the day, so the page never
+          looked the same twice.
+
+          The homepage now shows plain block colour, like /studio and the admin
+          portal: authored colour, nothing on top.
+
+          TO PUT THEM BACK: re-add the three lines above and re-import
+          TimeOfDayTint from '@/components/TimeOfDayTint'. The CSS for
+          .trc-vignette and .trc-grain is deliberately left in place below, with
+          the tuning that was measured, so this is one edit and not a rebuild. */}
+
       <div className="trc-page" onMouseMove={onMouseMove}>
-        <div className="trc-vignette" />
-        <div className="trc-grain" />
 
         {/* Dev grid overlay — toggle with G key */}
         {showGrid && (
