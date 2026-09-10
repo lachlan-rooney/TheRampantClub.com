@@ -27,6 +27,7 @@ const GROUPS: Group[] = [
       // Beside Checklists deliberately: that is opening/closing per shift, this
       // is the standing weekly list. Same team, same part of the day.
       { href: '/admin/shifts', label: ADMIN_SURFACE['/admin/shifts'].en, icon: 'clipboard' },
+      { href: '/admin/studio', label: 'The Studio', icon: 'image' },
       { href: '/admin/quickref', label: 'Quick Reference', icon: 'book' },
       { href: '/admin/cards', label: 'Member Cards', icon: 'card' },
       { href: '/admin/concierge', label: 'Concierge', icon: 'bell' },
