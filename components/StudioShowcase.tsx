@@ -44,6 +44,20 @@ export interface CollabImage {
 const srcOf = (p: string) =>
   p.startsWith('/') || p.startsWith('http') ? p : `/api/entries/attachment/${p}`
 
+// ═══ TENSE COMES FROM THE DATES, NOT FROM A STORED WORD ════════════════════
+// "Now Showing" went stale on /spaces because a human had to remember to change
+// it. Storing 'live' for a forthcoming exhibition would make the same mistake in
+// reverse — the page would announce something as current before it opened.
+// `status` decides VISIBILITY; the dates decide how it reads.
+const tenseOf = (a: string | null, b: string | null) => {
+  if (!a) return null
+  const today = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10)  // Vietnam
+  const end = b || a
+  if (today < a)   return 'Forthcoming'
+  if (today > end) return 'Past'
+  return 'On now'
+}
+
 const dateRange = (a: string | null, b: string | null) => {
   if (!a) return null
   const f = (d: string) => new Date(d + 'T12:00:00+07:00')
@@ -111,8 +125,8 @@ export default function StudioShowcase({ collaborations, images }: {
                        color: INK, opacity: i === active ? 1 : 0.42,
                        borderBottom: i === active ? `2px solid ${INK}` : '2px solid transparent' }}>
               {x.artist_name}
-              {x.status === 'past' && (
-                <span style={{ fontFamily: MONO, fontSize: 10, opacity: .7 }}> · past</span>
+              {tenseOf(x.opens_on, x.closes_on) === 'Forthcoming' && (
+                <span style={{ fontFamily: MONO, fontSize: 10, opacity: .7 }}> · soon</span>
               )}
             </button>
           ))}
@@ -129,6 +143,12 @@ export default function StudioShowcase({ collaborations, images }: {
             <div style={{ fontFamily: MONO, fontSize: 12, opacity: .72, marginTop: 8 }}>
               {[c.artist_name, dateRange(c.opens_on, c.closes_on)].filter(Boolean).join('  ·  ')}
             </div>
+            {tenseOf(c.opens_on, c.closes_on) && (
+              <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.16em',
+                            textTransform: 'uppercase', marginTop: 10, opacity: .9 }}>
+                {tenseOf(c.opens_on, c.closes_on)}
+              </div>
+            )}
 
             {/* The hero sits in a FIXED-RATIO FRAME on the ground, never behind
                 text. That is why there is no scrim: nothing is laid over the
