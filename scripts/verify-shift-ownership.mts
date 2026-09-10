@@ -52,7 +52,7 @@ const asUser = (sub: string) => createClient(URL_, ANON, {
   auth: { persistSession: false }, global: { headers: { Authorization: `Bearer ${mint(sub)}` } },
 })
 
-const made: { staff: string[]; tpl?: string; task?: string; inst?: string } = { staff: [] }
+const made: { staff: string[]; tpl?: string; task?: string; inst?: string; oneOff?: string } = { staff: [] }
 
 // ── setup ──────────────────────────────────────────────────────────────────
 async function staff(name: string, supervisor: boolean) {
@@ -117,15 +117,25 @@ try {
   check(verifyActor(`${OWNER}.`) === null && verifyActor('') === null && verifyActor(undefined) === null,
         'empty and malformed values are REFUSED')
 
-  // ── OWNERSHIP ───────────────────────────────────────────────────────────
-  console.log("\n── ownership: nobody ticks anyone else's box ──")
-  let r = await upd(OTHER, { p_status: 'done', p_evidence: 'FORGED — not the owner' })
-  check(r.refusal === 'not_yours', 'a colleague cannot complete your task', `refusal=${r.refusal ?? 'NONE'}`)
-  check((await statusNow())?.status === 'not_started', '…and the row did not move')
+  // ── COVER ───────────────────────────────────────────────────────────────
+  // The roster is the EXPECTATION, not the permission. This block asserted the
+  // opposite until 2026-09-10 — a rule invented here, never asked for, which
+  // stopped anyone covering a colleague's day from ticking anything at all.
+  console.log('\n── cover: the roster is the expectation, not the permission ──')
+  let r = await upd(OTHER, { p_status: 'done', p_evidence: 'Covered Tuesday for the owner' })
+  check(r.refusal === null && !r.error, "a colleague CAN complete a task they are covering",
+        `refusal=${r.refusal ?? 'none'}`)
+  const covered = await sb.from('shift_task_instances').select('status, completed_by').eq('id', made.inst).single()
+  check(covered.data?.status === 'done', '…the row moved to done')
+  check(covered.data?.completed_by === OTHER,
+        'completed_by records WHO DID IT, not who was rostered',
+        covered.data?.completed_by === OTHER ? 'the coverer' : 'WRONG PERSON')
 
-  r = await upd(SUPER, { p_status: 'in_progress' })
-  check(r.refusal === 'not_yours', "a supervisor cannot do ordinary work on someone's open task",
+  // Put it back for the rest of the run — and prove a revert costs a note.
+  r = await upd(OTHER, { p_status: 'not_started' })
+  check(r.refusal === 'revert_needs_note', 'turning back a done costs a note, from anyone',
         `refusal=${r.refusal ?? 'NONE'}`)
+  await upd(OTHER, { p_status: 'not_started', p_revert_note: 'resetting the probe' })
 
   r = await upd(OWNER, { p_status: 'done', p_evidence: '   ' })
   check(!!r.error || r.refusal !== null, 'done with blank evidence is REFUSED',
@@ -135,14 +145,13 @@ try {
   check(r.refusal === null && !r.error, 'the owner CAN complete their own task', 'positive control')
   check((await statusNow())?.status === 'done', '…and the row moved to done')
 
-  // Once a task is DONE, ANY move off it by a supervisor is a revert — including
-  // a quiet nudge to in_progress. That is deliberate: it is the trail that matters.
+  // ANY move off done is a revert — including a quiet nudge to in_progress.
   r = await upd(SUPER, { p_status: 'in_progress' })
-  check(r.refusal === 'revert_needs_note', 'every supervisor move off done is a revert, note required',
+  check(r.refusal === 'revert_needs_note', 'every move off done is a revert, note required',
         `refusal=${r.refusal ?? 'NONE'}`)
 
   r = await upd(SUPER, { p_status: 'not_started' })
-  check(r.refusal === 'revert_needs_note', 'a supervisor revert without a note is REFUSED',
+  check(r.refusal === 'revert_needs_note', 'a revert without a note is REFUSED',
         `refusal=${r.refusal ?? 'NONE'}`)
 
   r = await upd(SUPER, { p_status: 'not_started', p_revert_note: 'Count was of the wrong shelf — redo Friday' })
@@ -150,6 +159,51 @@ try {
   const { data: evs } = await sb.from('shift_task_events').select('*').eq('instance_id', made.inst)
   const revert = (evs || []).find(e => JSON.stringify(e).includes('wrong shelf'))
   check(!!revert, 'the revert is written to shift_task_events', 'the trail is the point')
+
+  // ── NOT REQUIRED — a third state, with provenance ───────────────────────
+  console.log('\n── not required: a third state, not a shade of done ──')
+  r = await upd(OWNER, { p_status: 'not_required', p_note: 'No deliveries this week' })
+  check(r.refusal === null && !r.error, 'a task can be marked not required', `refusal=${r.refusal ?? 'none'}`)
+  const nr = await sb.from('shift_task_instances').select('status, evidence, completed_by').eq('id', made.inst).single()
+  check(nr.data?.status === 'not_required', '…and it is NOT done', `status=${nr.data?.status}`)
+  check(!nr.data?.completed_by, 'not required does not record a completer — nobody completed it')
+  const { data: nrEvents } = await sb.from('shift_task_events').select('*')
+    .eq('instance_id', made.inst).eq('kind', 'not_required')
+  check((nrEvents || []).length === 1, 'it writes a not_required event', 'provenance, not a bare flag')
+  check(!!nrEvents?.[0]?.actor_name && !!nrEvents?.[0]?.created_at, '…carrying who and when',
+        `${nrEvents?.[0]?.actor_name}`)
+
+  r = await upd(OWNER, { p_status: 'not_started' })
+  check(r.refusal === 'revert_needs_note', 'un-marking it costs a note too')
+  r = await upd(OWNER, { p_status: 'not_started', p_revert_note: 'Deliveries are back on' })
+  check(r.refusal === null && (await statusNow())?.status === 'not_started',
+        'reverting restores the task and leaves a trail', 'positive control')
+
+  // ── ONE-OFF — added for a day, and it must NOT come back ────────────────
+  console.log('\n── one-off: added today, gone next week ──')
+  const { data: oneOff, error: ooErr } = await sb.rpc('shift_add_one_off', {
+    p_template: made.tpl, p_week: '2020-01-06', p_actor: OWNER, p_title: 'ZZ One-off — polish the brass',
+  })
+  check(!ooErr && !!oneOff, 'a one-off can be added to a day', ooErr?.message || '')
+  if (oneOff) {
+    made.oneOff = oneOff as string
+    const { data: row } = await sb.from('shift_task_instances')
+      .select('template_task_id, title_en, is_one_off').eq('id', oneOff).single()
+    check(row?.template_task_id === null, 'it has NO template task — which is what stops it recurring')
+    check(row?.is_one_off === true && !!row?.title_en, 'it carries its own title', row?.title_en || '')
+    // Materialise next week and prove it did not follow.
+    await sb.rpc('shift_materialise_week', { p_week_start: '2020-01-13' })
+    const { count: next } = await sb.from('shift_task_instances').select('*', { count: 'exact', head: true })
+      .eq('week_start', '2020-01-13').eq('title_en', 'ZZ One-off — polish the brass')
+    check(next === 0, 'and it does NOT appear the following week', 'structural, not a rule to remember')
+  }
+
+  // ── SNAPSHOT — a past week must not change when the template does ───────
+  console.log('\n── history: a past week is self-contained ──')
+  await sb.from('shift_template_tasks').update({ title_en: 'ZZ Probe Task — REWORDED TODAY' }).eq('id', made.task)
+  const { data: hist } = await sb.from('shift_task_instances').select('title_en').eq('id', made.inst).single()
+  check(hist?.title_en === 'ZZ Probe Task',
+        'rewording the template does NOT change what last week says', `week still reads: ${hist?.title_en}`)
 
   // ── PIN — the binding on a revert ───────────────────────────────────────
   console.log('\n── pin: is a revert bound to a proven person? ──')
@@ -178,6 +232,9 @@ try {
   bad('threw', (e as Error).message)
 } finally {
   console.log('\n── teardown ──')
+  if (made.oneOff) await sb.from('shift_task_events').delete().eq('instance_id', made.oneOff)
+  if (made.oneOff) await sb.from('shift_task_instances').delete().eq('id', made.oneOff)
+  if (made.task) await sb.from('shift_task_instances').delete().eq('template_task_id', made.task)
   if (made.inst) await sb.from('shift_task_events').delete().eq('instance_id', made.inst)
   if (made.inst) await sb.from('shift_task_instances').delete().eq('id', made.inst)
   if (made.task) await sb.from('shift_template_tasks').delete().eq('id', made.task)
