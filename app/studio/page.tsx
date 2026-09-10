@@ -33,7 +33,7 @@ export default async function StudioPage() {
 
   return (
     <>
-      <NavOverlay variant="public" />
+      <NavOverlay variant="public" hideLogo />
       <StudioIndex
         collaborations={(collabs || []) as Collaboration[]}
         images={(images || []) as CollabImage[]}

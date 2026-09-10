@@ -34,7 +34,7 @@ export default async function ExhibitionPage({ params }: { params: Promise<{ slu
 
   return (
     <>
-      <NavOverlay variant="public" />
+      <NavOverlay variant="public" hideLogo />
       <StudioExhibition
         collaboration={c as Collaboration}
         images={(images || []) as CollabImage[]}

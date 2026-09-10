@@ -79,7 +79,6 @@ export default function StudioIndex({ collaborations, images }: {
     <main style={{ background: SAGE, minHeight: '100vh', color: INK, overflowX: 'hidden', position: 'relative' }}>
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes rise { from { opacity: 0; transform: translateY(22px) } to { opacity: 1; transform: none } }
-        @keyframes wipe { from { transform: scaleX(0) } to { transform: scaleX(1) } }
         .st-rise { animation: rise .9s cubic-bezier(.16,.84,.44,1) both; }
         .st-hero img { transition: opacity .85s ease, transform 8s ease-out; }
         .st-hero:hover img.is-on { transform: scale(1.04); }
@@ -123,8 +122,7 @@ export default function StudioIndex({ collaborations, images }: {
           ← The Rampant Club
         </Link>
         <div className={entered ? 'st-rise' : ''} style={{ animationDelay: '.05s' }}>
-          <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '.24em',
-                        textTransform: 'uppercase', opacity: .55, marginTop: 36 }}>Floor Two</div>
+
           {/* The Studio's own wordmark, with the set name as the accessible
               heading behind it. */}
           <h1 style={{ margin: '10px 0 0' }}>
@@ -132,10 +130,8 @@ export default function StudioIndex({ collaborations, images }: {
             <img src="/images/studio/studio-wordmark.png" alt="The Studio"
                  style={{ width: 'min(560px, 78vw)', height: 'auto', display: 'block' }} />
           </h1>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, flexWrap: 'wrap', marginTop: 12 }}>
-            <span style={{ fontFamily: SERIF, fontSize: 'clamp(18px, 3.4vw, 30px)', opacity: .5 }}>Phòng Studio</span>
-            <span style={{ height: 2, flex: 1, minWidth: 60, background: INK, opacity: .22,
-                           transformOrigin: 'left', animation: entered ? 'wipe 1.1s .3s cubic-bezier(.16,.84,.44,1) both' : 'none' }} />
+          <div style={{ fontFamily: SERIF, fontSize: 'clamp(18px, 3.4vw, 30px)', opacity: .5, marginTop: 12 }}>
+            Phòng Studio
           </div>
         </div>
         <p className={entered ? 'st-rise' : ''} style={{ animationDelay: '.18s', fontFamily: MONO, fontSize: 14,
@@ -162,7 +158,6 @@ export default function StudioIndex({ collaborations, images }: {
             </button>
           ))}
         </div>
-        <div style={{ height: 1, background: INK, opacity: .15 }} />
       </div>
 
       {/* ══ THE HERO — crossfades between artists ══════════════════════ */}

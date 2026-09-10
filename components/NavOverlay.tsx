@@ -86,9 +86,12 @@ function NavIcon({ name }: { name: string }) {
 interface NavOverlayProps {
   variant: 'public' | 'members'
   dark?: boolean
+  // Some pages carry their own mark. The fixed logo tracks down the whole
+  // page, and on /studio it rode straight over the lion.
+  hideLogo?: boolean
 }
 
-export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
+export default function NavOverlay({ variant, dark = false, hideLogo = false }: NavOverlayProps) {
   const [open, setOpen] = useState(false)
   const [logoInverted, setLogoInverted] = useState(dark)
   const [isAdminUser, setIsAdminUser] = useState(false)
@@ -444,7 +447,9 @@ export default function NavOverlay({ variant, dark = false }: NavOverlayProps) {
           was invisible against the page. Two mechanisms answering one question. */}
       <div className={`${dark ? 'nav-dark' : ''} ${logoInverted ? 'nav-inv' : ''}`}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <a href="/" style={{ position: 'fixed', top: '50%', right: 24, transform: 'translateY(-50%)', zIndex: 9000, cursor: 'pointer', lineHeight: 0 }}>
+      <a href="/" style={{ position: 'fixed', top: '50%', right: 24, transform: 'translateY(-50%)',
+                           zIndex: 9000, cursor: 'pointer', lineHeight: 0,
+                           display: hideLogo ? 'none' : 'block' }}>
         <img
           ref={logoRef}
           src={logoInverted ? '/images/logo-mark-cream.svg' : '/images/logo-mark.svg'}

@@ -20,16 +20,8 @@ update collaborations
    set hero_path = '/images/studio/rizal/00-portrait.jpg', updated_at = now()
  where slug = 'rizal-fathoni';
 
--- The lion joins his images rather than being dropped: it is his work.
-insert into collaboration_images (collaboration_id, storage_path, caption_en, orientation, sort)
-select c.id, '/images/studio/rizal/00-lion.png',
-       'The club’s rampant mark, filled with his painting.', 'portrait', 0
-  from collaborations c
- where c.slug = 'rizal-fathoni'
-   and not exists (select 1 from collaboration_images i
-                    where i.collaboration_id = c.id
-                      and i.storage_path = '/images/studio/rizal/00-lion.png');
-
+-- The lion is NOT added to his images. It is pasted on the hub permanently, so
+-- putting it in his set as well showed the same picture twice on one page.
 do $check$
 declare v text;
 begin
