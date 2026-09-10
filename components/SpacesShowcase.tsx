@@ -439,9 +439,10 @@ export default function SpacesShowcase({ variant }: { variant: 'internal' | 'pub
                   // eslint-disable-next-line @next/next/no-img-element
                   <img className="floor-crest" src={s.mark} alt="" loading="lazy" />
                 )}
-                <div className="floor-eyebrow">
-                  {s.floor === '—' ? '◆ The Sports Club' : `◆ Floor ${s.floor}`}
-                </div>
+                {/* No eyebrow. "◆ Floor 5" sat directly above a heading that names
+                    the room, beside a rail that numbers the floors, on a page whose
+                    own introduction says it runs top to bottom. Three ways of saying
+                    the same thing is two too many. */}
                 <h2 className="floor-name">{s.en}</h2>
                 <p className="floor-vn">{s.vn}</p>
                 <p className="floor-desc">{s.descEn}</p>
@@ -488,22 +489,28 @@ export default function SpacesShowcase({ variant }: { variant: 'internal' | 'pub
 
                 {s.id === 'studio' && (
                   <div className="floor-studio-extra">
-                    <h3 className="floor-studio-title">Now Showing: Terroir of Memories</h3>
+                    {/* NOT "Now Showing". The exhibition ran 6–7 February 2026 and the
+                        April calendar recorded it closing; a stale "Now Showing" in
+                        September reads as neglect, where naming it as the most recent
+                        reads as deliberate. The same question the board's no_event had:
+                        what does a room say when nothing is currently on. */}
+                    <h3 className="floor-studio-title">Most recently: Terroir of Memories</h3>
                     <div className="floor-studio-sub">
                       Quỳnh Anh Lê &times; The Octave by Duncan Taylor
                     </div>
                     <p className="floor-studio-body">
                       A collaboration between Vietnamese contemporary artist Quỳnh Anh Lê and The Octave,
                       exploring how place becomes character — through whisky, through paint, through the
-                      slow work of time. Centred on 88 collaboration bottles carrying the artist&rsquo;s label,
+                      slow work of time. It was centred on 88 collaboration bottles carrying the artist&rsquo;s label,
                       alongside a single hand-painted bottle: the first of three by three Vietnamese artists,
-                      to be auctioned for charity at the series&rsquo; end. The exhibition is a multi-sensory
-                      experience with bespoke soundscape, signature scent, and curated canapés.
+                      to be auctioned for charity at the series&rsquo; end. It was a multi-sensory experience,
+                      with bespoke soundscape, signature scent, and curated canapés.
                     </p>
                     <p className="floor-studio-body">
-                      A members-only whisky has been created for the occasion — available at the bar
-                      while the exhibition is on display.
+                      A members-only whisky was created for the occasion — the Octave Auchentoshan 14,
+                      bottled for the exhibition.
                     </p>
+                    <a className="floor-cta" href="/studio">Past exhibitions →</a>
                     <div className="floor-studio-video">
                       <iframe
                         src="https://www.youtube.com/embed/DOY4fYCpQC0"

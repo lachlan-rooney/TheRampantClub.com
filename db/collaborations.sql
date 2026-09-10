@@ -109,11 +109,11 @@ create policy "admins write collaboration images" on collaboration_images for al
 -- club from using it. Dates come from the printed invitation, not the pack,
 -- where both were still [TBC].
 --
--- ⚠ STATUS SAYS 'live'. The invitation gives 6 & 7 February 2026 and the April
--- calendar page says the exhibition "comes to a close" — so this is very
--- probably 'past' by now. Left as 'live' rather than asserting a fact nobody
--- has confirmed; change one word when Lachlan says. The same doubt applies to
--- "Now Showing" on /spaces.
+-- STATUS 'past'. Confirmed: it ran 6 & 7 February 2026. /spaces no longer says
+-- "Now Showing" either — a stale one reads as neglect where naming it as the
+-- most recent reads as deliberate. This is also what makes the archive on
+-- /studio real rather than theoretical: the first collaboration is already in
+-- it, and Rizal is next.
 --
 -- THE NUMBERS, CORRECTED. The pack says "80 hand-painted bottles" in three
 -- places — the press release, the key-facts table, and a suggested interview
@@ -125,7 +125,7 @@ insert into collaborations (
   slug, artist_name, title_en, status, sort, accent, opens_on, closes_on,
   collaboration_en, inspiration_en, event_en, food_en, drinks_en)
 values (
-  'quynh-anh-le', 'Quỳnh Anh Lê', 'Terroir of Memories', 'live', 1, '#8C5A3C',
+  'quynh-anh-le', 'Quỳnh Anh Lê', 'Terroir of Memories', 'past', 1, '#8C5A3C',
   date '2026-02-06', date '2026-02-07',
   'A collaboration between Vietnamese contemporary artist Quỳnh Anh Lê and The Octave, the single cask range from Duncan Taylor Scotch Whisky. The exhibition brings together two disciplines united by their relationship to place and memory, examining how meaning accumulates through origin, transformation, and the slow work of time.
 
@@ -138,8 +138,30 @@ Centred on 88 collaboration bottles carrying the artist''s label, alongside a si
   'Cocktails developed specifically in response to the works on display, alongside the Octave Auchentoshan 14 bottled for the exhibition.')
 on conflict (slug) do nothing;
 
-insert into collaborations (slug, artist_name, status, sort, accent)
-values ('rizal-fathoni', 'Rizal Fathoni', 'draft', 2, '#3F5546')
+-- Rizal Fathoni's biography, in HIS OWN WORDS, from Downloads/Artist Bio -
+-- Rizal Fathoni.pdf. TRANSCRIBED BY EYE from the rendered pages, not taken from
+-- the text layer: extracting that file drops commas and joins words, and it
+-- produced "Surabaya 1998 is an artist" and "frommemory". A bio is the last
+-- place to accept silent corruption.
+--
+-- The file is titled "Artist Biography — English Rizal Fathoni", which implies
+-- another language version exists. Worth asking him for it rather than
+-- translating this one.
+insert into collaborations (slug, artist_name, status, sort, accent, bio_en)
+values ('rizal-fathoni', 'Rizal Fathoni', 'draft', 2, '#3F5546',
+'Rizal Fathoni, known as Toni (b. Surabaya, 1998), is an artist whose practice emerges from memory, personal experience, anxieties, and the pleasures found within everyday life. Born and raised in Surabaya during a period marked by Indonesia''s economic crisis in the late 1990s, his early life became part of a personal landscape of memory that continues to inform the way he perceives life and approaches his artistic practice.
+
+Toni''s relationship with art began in childhood. From kindergarten, he was already actively involved in art activities and competitions, gradually developing an intuitive relationship with image-making and visual expression. His artistic sensibility was also deeply influenced by his father, an architect with a strong ability to draw. Through this relationship, art was introduced to Toni not merely as an activity, but as a way of seeing, observing, and understanding the world.
+
+In his practice, Toni often finds himself working through what might be described as a process of memory. His works emerge from accumulated experiences, personal anxieties, moments of pleasure, and seemingly ordinary encounters that leave traces within him. As a result, his works can shift between the playful and the contemplative, between spontaneity and seriousness, and at times between intimacy and confrontation.
+
+Play is an essential part of Toni''s creative process. Within his works, he allows himself the freedom to play without having to fully control the outcome. This play can become a form of protest, a reminder, an escape, or simply a way of engaging with things that cannot always be articulated through language. For Toni, seriousness does not necessarily require rigidity. Instead, it can coexist with intuition, freedom, humor, and experimentation.
+
+The making of each work follows its own rhythm. Some works emerge almost instinctively and within a short period of time, while others demand a longer process of repetition, reconsideration, and revision. Rather than imposing a fixed methodology, Toni allows each work to determine its own pace and direction.
+
+At the core of his practice is a commitment to honesty. Toni does not seek to disguise what lies behind each work. For him, making art is inherently difficult because a work is never simply an image or an object; it carries a part of the artist himself. Each piece becomes a personal record of what he has experienced, questioned, remembered, enjoyed, resisted, and perhaps failed to fully understand.
+
+Ultimately, Toni''s practice is an on going attempt to understand himself through art. He does not regard artistic practice as a destination or a finished achievement, but as a continuous process of questioning, refining, and discovering new possibilities. To make art, for Toni, is to remain willing to confront oneself and to keep trying to make something more honest each day.')
 on conflict (slug) do nothing;
 
 -- ═══ SELF-CHECK ════════════════════════════════════════════════════════════
