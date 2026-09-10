@@ -7,6 +7,15 @@ import { isGalleryCategory } from '@/lib/gallery'
 //   POST → create an event {title, category, event_date?, description?, fixture_id?}.
 export const dynamic = 'force-dynamic'
 
+// Deliberately per-category rather than one generic image: a golf tournament
+// and a tasting should not share a placeholder that fits neither.
+const DEFAULT_COVER: Record<string, string> = {
+  tournament: '/images/gallery/tournament.jpg',
+  dinner:     '/images/gallery/dinner.jpg',
+  social:     '/images/gallery/social.jpg',
+  tasting:    '/images/gallery/tasting.jpg',
+}
+
 export async function GET() {
   const actor = await getActor()
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
@@ -37,7 +46,11 @@ export async function GET() {
       description: e.description, source: e.source, creator_name: e.creator_name,
       mine: e.created_by === actor.id,
       media_count: agg.count,
-      cover: e.cover_url || agg.cover,
+      // A card with no picture reads as broken rather than as empty, and the
+      // cover can only be derived from an uploaded IMAGE — an event whose only
+      // contribution is a Drive link has none. So a category default stands in
+      // until someone adds a photograph, at which point theirs takes over.
+      cover: e.cover_url || agg.cover || DEFAULT_COVER[e.category as string] || null,
     }
   })
   return NextResponse.json({ events: out })
@@ -46,7 +59,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const actor = await getActor()
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
-  if (!actor.memberNo) return NextResponse.json({ error: 'Members only.' }, { status: 403 })
+  if (!actor.memberNo) return NextResponse.json({ error: 'This account is not linked to a membership, so it cannot post as a member. Staff accounts need a member number linked in the admin.' }, { status: 403 })
 
   const p = await req.json().catch(() => null)
   const title = typeof p?.title === 'string' ? p.title.trim() : ''

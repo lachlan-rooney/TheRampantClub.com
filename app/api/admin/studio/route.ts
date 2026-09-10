@@ -16,7 +16,7 @@ const svc = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.en
 const BUCKET = 'event-media'   // public: these are published gallery images
 
 const FIELDS = ['artist_name','artist_name_vn','title_en','title_vn','status','opens_on','closes_on',
-  'opening_from','opening_to','auction_on','accent','hero_path','sort',
+  'opening_from','opening_to','auction_on','accent','hero_path','sort','film_url',
   'bio_en','bio_vn','collaboration_en','collaboration_vn','inspiration_en','inspiration_vn',
   'event_en','event_vn','food_en','food_vn','drinks_en','drinks_vn'] as const
 

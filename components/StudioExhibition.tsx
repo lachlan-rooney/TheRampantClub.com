@@ -25,7 +25,7 @@ export interface Collaboration {
   id: string; slug: string; artist_name: string; artist_name_vn: string | null
   title_en: string | null; title_vn: string | null; status: string
   opens_on: string | null; closes_on: string | null; accent: string | null
-  hero_path: string | null; auction_on: string | null
+  hero_path: string | null; film_url: string | null; auction_on: string | null
   opening_from: string | null; opening_to: string | null
   bio_en: string | null; bio_vn: string | null
   collaboration_en: string | null; collaboration_vn: string | null
@@ -74,45 +74,40 @@ export default function StudioExhibition({ collaboration, images }: {
 
   const mine = images.filter(i => i.collaboration_id === c?.id)
 
-  // ══ THE INTERLEAVE ═══════════════════════════════════════════════════════
-  // Prose and pictures alternate rather than prose-then-appendix, so the page
-  // reads as a room. Built from whatever the row happens to have: a
-  // collaboration with one section and two images lays out the same way as one
-  // with six and nine. Nothing here knows an artist's name.
-  type Block =
-    | { kind: 'text'; title: string; body: string | null; quote?: boolean }
-    | { kind: 'img'; im: CollabImage; wide?: boolean }
-  const blocks = useMemo<Block[]>(() => {
-    if (!c) return []
-    const texts: Block[] = ([
-      ['The collaboration', c.collaboration_en, false],
-      ['In the artist’s words', c.inspiration_en, true],
-      ['The event', c.event_en, false],
-      ['The food', c.food_en, false],
-      ['The drinks', c.drinks_en, false],
-      [`About ${c.artist_name}`, c.bio_en, false],
-    ] as const)
-      .filter(([, body]) => !!body && !!String(body).trim())
-      .map(([title, body, quote]) => ({ kind: 'text', title, body: body as string, quote }))
+  const sections = useMemo(() => ([
+    ['The collaboration', c.collaboration_en],
+    ['The event', c.event_en],
+    ['The food', c.food_en],
+    ['The drinks', c.drinks_en],
+    [`About ${c.artist_name}`, c.bio_en],
+  ] as const).filter(([, v]) => !!v && !!String(v).trim()) as [string, string][], [c])
 
-    const pics = [...mine]
-    const out: Block[] = []
-    texts.forEach((t, i) => {
-      out.push(t)
-      // A landscape gets the full width; a portrait sits in the column. The
-      // first picture after the opening section runs wide, because that is the
-      // one doing the work of showing what the exhibition looked like.
-      const im = pics.shift()
-      if (im) out.push({ kind: 'img', im, wide: im.orientation === 'landscape' || i === 0 })
-    })
-    // Anything left over closes the page rather than being dropped.
-    for (const im of pics) out.push({ kind: 'img', im, wide: im.orientation === 'landscape' })
-    return out
-  }, [c, mine])
+  const pics = useMemo(() => [...images], [images])
+
+  // Only a YouTube id is accepted. Anything else is ignored rather than framed,
+  // because a broken frame is worse than no film — and frame-src already allows
+  // YouTube, so nothing about the CSP changes.
+  const filmId = useMemo(() => {
+    const u = c.film_url || ''
+    const m = u.match(/[?&]v=([\w-]{6,})/) || u.match(/youtu\.be\/([\w-]{6,})/) || u.match(/embed\/([\w-]{6,})/)
+    return m ? m[1] : null
+  }, [c.film_url])
+
+
 
 
   return (
     <main style={{ background: SAGE, minHeight: '100vh', color: INK }}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        /* One column on a phone; the label steps aside on a desk and stays with
+           its prose as you scroll past it. */
+        .ex-row { display: grid; grid-template-columns: 1fr; gap: 14px; }
+        .ex-label { position: static; }
+        @media (min-width: 860px) {
+          .ex-row { grid-template-columns: 190px minmax(0, 1fr); gap: 48px; }
+          .ex-label { position: sticky; top: 40px; align-self: start; }
+        }
+      ` }} />
       {/* ══ HERO ═══════════════════════════════════════════════════════════
           Full-bleed, and the title sits UNDER it rather than over it. Type over
           a painting is type competing with a painting, and on this page the work
@@ -157,19 +152,54 @@ export default function StudioExhibition({ collaboration, images }: {
               )}
             </div>
 
-            {/* ══ BLOCKS. Prose and pictures alternate, so the page reads as a
-                room rather than as a document with an appendix of photographs.
-                Built from whatever exists — a collaboration with two images and
-                one section lays out the same way as one with nine. ═════════ */}
-            {blocks.map((b, i) =>
-              b.kind === 'text' ? (
-                <Section key={`t${i}`} title={b.title!} body={b.body!} quote={b.quote} />
-              ) : b.wide ? (
-                <Figure key={`i${i}`} im={b.im!} wide />
-              ) : (
-                <Figure key={`i${i}`} im={b.im!} />
-              )
+            {/* ══ LEAD — the first picture runs full width straight after the
+                masthead, so the work arrives before the reading does. ═════ */}
+            {pics[0] && <Figure im={pics[0]} wide />}
+
+            {/* ══ THE BODY — prose in a column with its label pinned beside it,
+                and a PAIR set two-up between sections so the rhythm changes.
+                A section then a picture, over and over, is a list; this is not
+                that. ═══════════════════════════════════════════════════════ */}
+            {sections.map(([label, body], i) => (
+              <div key={label} className="ex-row" style={{ margin: '72px 0 0' }}>
+                <div className="ex-label" style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.2em',
+                              textTransform: 'uppercase', opacity: .5 }}>{label}</div>
+                <div>
+                  {body.split(/\n{2,}/).map((para, k) => (
+                    <p key={k} style={{ fontFamily: MONO, fontSize: 14, lineHeight: 2,
+                                        margin: '0 0 20px', maxWidth: 640 }}>{para}</p>
+                  ))}
+                  {pics[i * 2 + 1] && (
+                    <div style={{ display: 'grid', gap: 16, marginTop: 36,
+                                  gridTemplateColumns: pics[i * 2 + 2] ? '1fr 1fr' : '1fr' }}>
+                      <Plate im={pics[i * 2 + 1]} />
+                      {pics[i * 2 + 2] && <Plate im={pics[i * 2 + 2]} />}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {/* ══ HER WORDS, on an inverted ground. The change of colour is the
+                point — it stops the page reading as one long column. ═════ */}
+            {c.inspiration_en && <Words body={c.inspiration_en} artist={c.artist_name} />}
+
+            {/* ══ THE FILM ═════════════════════════════════════════════════ */}
+            {filmId && (
+              <div style={{ margin: '86px 0 0' }}>
+                <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.2em',
+                              textTransform: 'uppercase', opacity: .5, marginBottom: 16 }}>The film</div>
+                <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, borderRadius: 14,
+                              overflow: 'hidden', boxShadow: '0 18px 44px rgba(5,46,32,0.20)' }}>
+                  <iframe src={`https://www.youtube.com/embed/${filmId}?rel=0&playsinline=1`}
+                          title="Process film" allowFullScreen
+                          allow="accelerometer; clipboard-write; encrypted-media; picture-in-picture"
+                          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }} />
+                </div>
+              </div>
             )}
+
+            {pics.slice(sections.length * 2 + 1).map(im => <Figure key={im.id} im={im} wide />)}
           </article>
         )}
       </div>
@@ -179,6 +209,44 @@ export default function StudioExhibition({ collaboration, images }: {
 
 // A picture, at its own shape. `contain` inside a generous box: a painting is
 // never cropped to fit a grid, which is the one rule a gallery page cannot break.
+// One of a pair. Fills its half without distorting; the full-size, uncropped
+// version is what the lead and the closers are for.
+function Plate({ im }: { im: CollabImage }) {
+  return (
+    <figure style={{ margin: 0 }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={srcOf(im.storage_path)} alt={im.caption_en || ''} loading="lazy"
+           style={{ width: '100%', aspectRatio: '3 / 4', objectFit: 'cover', display: 'block',
+                    borderRadius: 12, boxShadow: '0 14px 34px rgba(5,46,32,0.18)' }} />
+      {im.caption_en && (
+        <figcaption style={{ fontFamily: MONO, fontSize: 10.5, opacity: .62, marginTop: 10 }}>{im.caption_en}</figcaption>
+      )}
+    </figure>
+  )
+}
+
+// The artist's own words, on the club's green. Inverting the ground mid-page is
+// what breaks the column — and her sentence deserves the room.
+function Words({ body, artist }: { body: string; artist: string }) {
+  const m = body.match(/[“"]([^”"]{40,})[”"]/)
+  const quote = m ? m[1] : body.split(/\n{2,}/)[0]
+  const rest = m ? body.replace(m[0], '').trim() : body.split(/\n{2,}/).slice(1).join('\n\n')
+  return (
+    <section style={{ background: INK, color: SAGE, borderRadius: 18, padding: 'clamp(34px, 6vw, 78px)',
+                      margin: '92px 0 0' }}>
+      <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.2em', textTransform: 'uppercase',
+                    opacity: .6 }}>In the artist’s words</div>
+      <blockquote style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 4.4vw, 46px)', lineHeight: 1.24,
+                           margin: '22px 0 0', maxWidth: 900 }}>{quote}</blockquote>
+      <div style={{ fontFamily: MONO, fontSize: 11.5, opacity: .7, marginTop: 20 }}>— {artist}</div>
+      {rest && rest.split(/\n{2,}/).map((p, i) => (
+        <p key={i} style={{ fontFamily: MONO, fontSize: 13.5, lineHeight: 2, opacity: .85,
+                            margin: '20px 0 0', maxWidth: 640 }}>{p}</p>
+      ))}
+    </section>
+  )
+}
+
 function Figure({ im, wide }: { im: CollabImage; wide?: boolean }) {
   return (
     // CAPPED AND ROUNDED. Uncapped, a portrait at full column width ran past a

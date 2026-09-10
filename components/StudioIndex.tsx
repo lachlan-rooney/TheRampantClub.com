@@ -31,6 +31,8 @@ export interface CollabImage {
   caption_en: string | null; orientation: string; sort: number
 }
 
+// A .png here is a mark with transparency, not a photograph of the work.
+const isMark = (p: string) => /\.png($|\?)/i.test(p)
 const srcOf = (p: string) => (p.startsWith('/') || p.startsWith('http') ? p : `/api/entries/attachment/${p}`)
 const vnToday = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10)
 export const tenseOf = (a: string | null, b: string | null) => {
@@ -174,7 +176,13 @@ export default function StudioIndex({ collaborations, images }: {
             /* eslint-disable-next-line @next/next/no-img-element */
             <img key={x.id} src={srcOf(src)} alt="" className={i === active ? 'is-on' : ''}
                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%',
-                          objectFit: 'cover', opacity: i === active ? 1 : 0 }} />
+                          // A MARK IS NOT A PHOTOGRAPH. A transparent PNG hero —
+                          // an artist's logo rather than a picture of the work —
+                          // gets contained and inset. `cover` blew the lion up to
+                          // a crop of one paw.
+                          objectFit: isMark(src) ? 'contain' : 'cover',
+                          padding: isMark(src) ? 'clamp(18px, 4vw, 54px)' : 0,
+                          opacity: i === active ? 1 : 0 }} />
           ) : null
         })}
         <div style={{ position: 'absolute', inset: 0,
@@ -233,7 +241,9 @@ export default function StudioIndex({ collaborations, images }: {
                               boxShadow: '0 16px 38px rgba(5,46,32,0.18)' }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={srcOf(heroOf(x)!)} alt="" loading="lazy"
-                       style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                       style={{ width: '100%', height: '100%', display: 'block',
+                                objectFit: isMark(heroOf(x)!) ? 'contain' : 'cover',
+                                padding: isMark(heroOf(x)!) ? 18 : 0 }} />
                 </div>
               )}
               <div style={{ fontFamily: SERIF, fontSize: 21, lineHeight: 1.15, marginTop: 14 }}>

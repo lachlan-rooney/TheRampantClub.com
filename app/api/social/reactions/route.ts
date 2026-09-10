@@ -14,7 +14,7 @@ const TYPES = ['post', 'tasting_note']
 export async function POST(req: Request) {
   const actor = await getActor()
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
-  if (!actor.memberNo) return NextResponse.json({ error: 'Members only.' }, { status: 403 })
+  if (!actor.memberNo) return NextResponse.json({ error: 'This account is not linked to a membership, so it cannot post as a member. Staff accounts need a member number linked in the admin.' }, { status: 403 })
 
   const p = await req.json().catch(() => null)
   const item_type: unknown = p?.item_type

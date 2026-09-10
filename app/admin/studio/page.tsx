@@ -119,6 +119,12 @@ export default function StudioAdmin() {
             <Row label={t('Exhibition title', 'Tên triển lãm')}><input style={input} value={String(val('title_en'))}
               onChange={e => setDraft(s => ({ ...s, title_en: e.target.value }))} /></Row>
 
+            <Row label={t('Film (YouTube link)', 'Phim (liên kết YouTube)')}>
+              <input style={input} value={String(val('film_url'))}
+                placeholder="https://www.youtube.com/watch?v=…"
+                onChange={e => setDraft(s => ({ ...s, film_url: e.target.value }))} />
+            </Row>
+
             <Row label={t('Visible', 'Hiển thị')}>
               <select style={input} value={String(val('status'))}
                 onChange={e => setDraft(s => ({ ...s, status: e.target.value }))}>

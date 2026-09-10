@@ -68,7 +68,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const actor = await getActor()
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
-  if (!actor.memberNo) return NextResponse.json({ error: 'Members only.', reason: actor.isAdmin ? 'staff' : 'unlinked' }, { status: 403 })
+  if (!actor.memberNo) return NextResponse.json({ error: 'This account is not linked to a membership, so it cannot post as a member. Staff accounts need a member number linked in the admin.', reason: actor.isAdmin ? 'staff' : 'unlinked' }, { status: 403 })
 
   const form = await req.formData().catch(() => null)
   if (!form) return NextResponse.json({ error: 'Nothing to save.' }, { status: 400 })
