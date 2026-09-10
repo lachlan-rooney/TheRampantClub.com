@@ -5,6 +5,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { ConfirmModal, useToast } from '@/components/admin/dialogs'
 import { useLang } from '@/lib/admin-lang'
 import type { Notice } from '@/lib/types'
+import { SURFACE } from '@/lib/members/surfaces'
 
 const CATEGORIES = ['committee', 'fixture', 'general', 'whisky'] as const
 
@@ -88,7 +89,7 @@ export default function AdminNotices() {
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 24, fontWeight: 500, color: '#E5D4C2', letterSpacing: '0.04em' }}>
-          {t('Notice Board', 'Bảng Thông Báo')}
+          {t(SURFACE['/members/notices'].en, SURFACE['/members/notices'].vn)}
         </h1>
         {!showForm && (
           <button onClick={() => { resetForm(); setShowForm(true) }} style={btnStyle}>{t('+ New Notice', '+ Thông báo mới')}</button>

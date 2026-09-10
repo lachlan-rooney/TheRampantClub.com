@@ -5,6 +5,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import type { Notice } from '@/lib/types'
 import MemberPage from '@/components/MemberPage'
 import EmptyState from '@/components/members/EmptyState'
+import { SURFACE } from '@/lib/members/surfaces'
 
 const CATEGORIES = ['all', 'committee', 'fixture', 'general', 'whisky'] as const
 
@@ -36,7 +37,7 @@ export default function NoticesPage() {
 
   return (
     <>
-      <MemberPage title="The Notice Board" subtitle="Bảng Thông Báo">
+      <MemberPage title="The Notice Board" subtitle={SURFACE['/members/notices'].vn}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 32, justifyContent: 'center' }}>
           {CATEGORIES.map(c => (
             <button

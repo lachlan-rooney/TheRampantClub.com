@@ -17,11 +17,8 @@ export interface SurfaceName { en: string; vn: string }
 export const SURFACE: Record<string, SurfaceName> = {
   '/members/events':         { en: "What's On",      vn: 'Sự Kiện & Thi Đấu' },
   '/members/gallery':        { en: 'Event Gallery',  vn: 'Thư Viện Sự Kiện' },
-  // TODO (Miss Châu): the Vietnamese for the notice board is unsettled — the page
-  // has said 'Bảng Thông Báo' and the nav 'Bảng Tin'. Taking the fuller form for
-  // now because the admin matches it. Settling it is one line HERE, which is the
-  // point of this file: before it, it was four files.
-  '/members/notices':        { en: 'Notice Board',   vn: 'Bảng Thông Báo' },
+  // Settled by Miss Châu, 2026-09-10: Bảng Tin, not Bảng Thông Báo.
+  '/members/notices':        { en: 'Notice Board',   vn: 'Bảng Tin' },
   '/members/spaces':         { en: 'Our Spaces',     vn: 'Không gian' },
   '/menus':                  { en: 'The Menus',      vn: 'Thực Đơn' },
   '/members/snug':           { en: 'The Snug',       vn: 'Phòng Khách' },
