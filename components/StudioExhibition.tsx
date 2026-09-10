@@ -126,10 +126,19 @@ export default function StudioExhibition({ collaboration, images }: {
 
       <div style={{ maxWidth: 1180, margin: '0 auto', padding: c?.hero_path ? '0 24px 140px' : '96px 24px 140px' }}>
 
-        <Link href="/" style={{ fontFamily: MONO, fontSize: 11, color: INK, opacity: .6,
-                                textDecoration: 'none', display: 'inline-block', marginTop: 28 }}>
-          ← The Rampant Club
-        </Link>
+        {/* Back to the ROOM, not to the club homepage. An exhibition is a page
+            inside The Studio, and the only way out was to the front door. */}
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', marginTop: 28 }}>
+          <Link href="/studio" style={{ fontFamily: MONO, fontSize: 11.5, color: INK,
+                                        textDecoration: 'none', borderBottom: `1px solid ${INK}`,
+                                        paddingBottom: 3 }}>
+            ← The Studio
+          </Link>
+          <Link href="/" style={{ fontFamily: MONO, fontSize: 11.5, color: INK, opacity: .5,
+                                  textDecoration: 'none' }}>
+            The Rampant Club
+          </Link>
+        </div>
 
 
         {c && (
@@ -214,6 +223,16 @@ export default function StudioExhibition({ collaboration, images }: {
             )}
 
             {pics.slice(sections.length + 1).map(im => <Figure key={im.id} im={im} wide />)}
+
+            {/* At the bottom as well: after a long page nobody scrolls back up
+                to find the way out. */}
+            <div style={{ marginTop: 96, paddingTop: 26, borderTop: `1px solid ${INK}22` }}>
+              <Link href="/studio" style={{ fontFamily: MONO, fontSize: 12, color: INK,
+                                            textDecoration: 'none', letterSpacing: '.1em',
+                                            textTransform: 'uppercase' }}>
+                ← Back to The Studio
+              </Link>
+            </div>
           </article>
         )}
       </div>

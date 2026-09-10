@@ -24,12 +24,31 @@ update collaborations
    set signature_path = '/images/studio/rizal/signature.png', updated_at = now()
  where slug = 'rizal-fathoni';
 
+-- ── AND THE DUPLICATE ARTWORK ──────────────────────────────────────────────
+-- 01-painting and 03-detail are the SAME PICTURE (mean difference 0.2 on a
+-- 10x10 signature). I sourced one painting twice, from Rizal .svg and from
+-- PHOTO-2026-09-06-09-57-21, and never compared them — so his four-picture
+-- strip showed the same canvas twice. This is the third time in this project
+-- that two files turned out to be one image; comparing pixels takes seconds and
+-- I keep not doing it until somebody notices.
+delete from collaboration_images
+ where collaboration_id = (select id from collaborations where slug = 'rizal-fathoni')
+   and storage_path = '/images/studio/rizal/03-detail.jpg';
+
 do $check$
-declare v text;
+declare v text; v_n int; v_dupe int;
 begin
   select signature_path into v from collaborations where slug = 'rizal-fathoni';
   if v is null then raise exception 'SELF-CHECK: no signature on his row'; end if;
-  raise notice 'Signature set. It renders once, at the foot of his own words.';
+
+  select count(*) into v_n from collaboration_images i
+    join collaborations c on c.id = i.collaboration_id where c.slug = 'rizal-fathoni';
+  select count(*) into v_dupe from collaboration_images i
+    join collaborations c on c.id = i.collaboration_id
+   where c.slug = 'rizal-fathoni' and i.storage_path like '%03-detail%';
+  if v_dupe > 0 then raise exception 'SELF-CHECK: the repeated canvas is still there'; end if;
+
+  raise notice 'Signature set, duplicate canvas removed — % images, each a different picture.', v_n;
 end $check$;
 
 commit;

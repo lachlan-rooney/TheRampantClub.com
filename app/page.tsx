@@ -1161,10 +1161,12 @@ export default function HomePage() {
                               letterSpacing: '.18em', textTransform: 'uppercase', opacity: .7 }}>
                   Floor 2 · Phòng Studio
                 </div>
-                <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 'clamp(30px, 6vw, 46px)',
-                              lineHeight: 1.05, margin: '10px 0 12px' }}>
-                  Check out The Studio
-                </div>
+                {/* The Studio's own wordmark rather than the words set in the
+                    club's face — it is a mark, and the room has one. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/images/studio/studio-wordmark.png" alt="The Studio"
+                     style={{ width: 'min(340px, 62vw)', height: 'auto', display: 'block',
+                              margin: '12px 0 14px' }} />
                 <p style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12.5,
                             lineHeight: 1.85, margin: 0, opacity: .85, maxWidth: 430 }}>
                   A quarterly rotating art space. Each exhibition is made with the artist,
