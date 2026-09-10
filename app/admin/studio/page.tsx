@@ -125,6 +125,16 @@ export default function StudioAdmin() {
                 onChange={e => setDraft(s => ({ ...s, film_url: e.target.value }))} />
             </Row>
 
+            <Row label={t('Signature image (path)', 'Ảnh chữ ký (đường dẫn)')}>
+              <input style={input} value={String(val('signature_path'))}
+                placeholder="/images/studio/…/signature.png"
+                onChange={e => setDraft(s => ({ ...s, signature_path: e.target.value }))} />
+              <div style={{ ...meta, marginTop: 4 }}>
+                {t('Must be on a transparent ground, or it shows as a white box.',
+                   'Phải có nền trong suốt, nếu không sẽ hiện thành ô trắng.')}
+              </div>
+            </Row>
+
             <Row label={t('Visible', 'Hiển thị')}>
               <select style={input} value={String(val('status'))}
                 onChange={e => setDraft(s => ({ ...s, status: e.target.value }))}>

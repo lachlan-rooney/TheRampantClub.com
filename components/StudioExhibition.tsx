@@ -25,7 +25,7 @@ export interface Collaboration {
   id: string; slug: string; artist_name: string; artist_name_vn: string | null
   title_en: string | null; title_vn: string | null; status: string
   opens_on: string | null; closes_on: string | null; accent: string | null
-  hero_path: string | null; film_url: string | null; auction_on: string | null
+  hero_path: string | null; film_url: string | null; signature_path: string | null; auction_on: string | null
   opening_from: string | null; opening_to: string | null
   bio_en: string | null; bio_vn: string | null
   collaboration_en: string | null; collaboration_vn: string | null
@@ -101,11 +101,14 @@ export default function StudioExhibition({ collaboration, images }: {
       <style dangerouslySetInnerHTML={{ __html: `
         /* One column on a phone; the label steps aside on a desk and stays with
            its prose as you scroll past it. */
-        .ex-row { display: grid; grid-template-columns: 1fr; gap: 14px; }
-        .ex-label { position: static; }
-        @media (min-width: 860px) {
-          .ex-row { grid-template-columns: 190px minmax(0, 1fr); gap: 48px; }
-          .ex-label { position: sticky; top: 40px; align-self: start; }
+        .ex-duo { display: grid; grid-template-columns: 1fr; gap: 26px; margin: 78px 0 0; }
+        .ex-words p { max-width: 62ch; }
+        @media (min-width: 900px) {
+          .ex-duo { grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+          /* The swap. Ordering rather than reordering the markup, so the reading
+             order stays words-then-picture for a screen reader either way. */
+          .ex-duo.is-flipped .ex-words { order: 2; }
+          .ex-duo.is-flipped .ex-pic   { order: 1; }
         }
       ` }} />
       {/* ══ HERO ═══════════════════════════════════════════════════════════
@@ -156,33 +159,44 @@ export default function StudioExhibition({ collaboration, images }: {
                 masthead, so the work arrives before the reading does. ═════ */}
             {pics[0] && <Figure im={pics[0]} wide />}
 
-            {/* ══ THE BODY — prose in a column with its label pinned beside it,
-                and a PAIR set two-up between sections so the rhythm changes.
-                A section then a picture, over and over, is a list; this is not
-                that. ═══════════════════════════════════════════════════════ */}
-            {sections.map(([label, body], i) => (
-              <div key={label} className="ex-row" style={{ margin: '72px 0 0' }}>
-                <div className="ex-label" style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.2em',
-                              textTransform: 'uppercase', opacity: .5 }}>{label}</div>
-                <div>
-                  {body.split(/\n{2,}/).map((para, k) => (
-                    <p key={k} style={{ fontFamily: MONO, fontSize: 14, lineHeight: 2,
-                                        margin: '0 0 20px', maxWidth: 640 }}>{para}</p>
-                  ))}
-                  {pics[i * 2 + 1] && (
-                    <div style={{ display: 'grid', gap: 16, marginTop: 36,
-                                  gridTemplateColumns: pics[i * 2 + 2] ? '1fr 1fr' : '1fr' }}>
-                      <Plate im={pics[i * 2 + 1]} />
-                      {pics[i * 2 + 2] && <Plate im={pics[i * 2 + 2]} />}
-                    </div>
+            {/* ══ THE BODY — text and picture side by side, and the sides SWAP
+                each time. Read down the page it zig-zags rather than marching:
+                words left / work right, then work left / words right. On a
+                phone it is one column and the image follows its section, since
+                two narrow columns would be worse than none. ════════════════ */}
+            {sections.map(([label, body], i) => {
+              const im = pics[i + 1]
+              const flip = i % 2 === 1
+              return (
+                <div key={label} className={`ex-duo${flip ? ' is-flipped' : ''}`}>
+                  <div className="ex-words">
+                    <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.2em',
+                                  textTransform: 'uppercase', opacity: .5, marginBottom: 14 }}>{label}</div>
+                    {body.split(/\n{2,}/).map((para, k) => (
+                      <p key={k} style={{ fontFamily: MONO, fontSize: 14, lineHeight: 2, margin: '0 0 20px' }}>{para}</p>
+                    ))}
+                  </div>
+                  {im && (
+                    <figure className="ex-pic" style={{ margin: 0 }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={srcOf(im.storage_path)} alt={im.caption_en || ''} loading="lazy"
+                           style={{ width: '100%', height: 'auto', maxHeight: '76vh', objectFit: 'contain',
+                                    display: 'block', borderRadius: 14,
+                                    boxShadow: '0 18px 44px rgba(5,46,32,0.20)' }} />
+                      {im.caption_en && (
+                        <figcaption style={{ fontFamily: MONO, fontSize: 10.5, opacity: .62, marginTop: 10 }}>
+                          {im.caption_en}
+                        </figcaption>
+                      )}
+                    </figure>
                   )}
                 </div>
-              </div>
-            ))}
+              )
+            })}
 
             {/* ══ HER WORDS, on an inverted ground. The change of colour is the
                 point — it stops the page reading as one long column. ═════ */}
-            {c.inspiration_en && <Words body={c.inspiration_en} artist={c.artist_name} />}
+            {c.inspiration_en && <Words body={c.inspiration_en} artist={c.artist_name} signature={c.signature_path} />}
 
             {/* ══ THE FILM ═════════════════════════════════════════════════ */}
             {filmId && (
@@ -199,7 +213,7 @@ export default function StudioExhibition({ collaboration, images }: {
               </div>
             )}
 
-            {pics.slice(sections.length * 2 + 1).map(im => <Figure key={im.id} im={im} wide />)}
+            {pics.slice(sections.length + 1).map(im => <Figure key={im.id} im={im} wide />)}
           </article>
         )}
       </div>
@@ -227,7 +241,7 @@ function Plate({ im }: { im: CollabImage }) {
 
 // The artist's own words, on the club's green. Inverting the ground mid-page is
 // what breaks the column — and her sentence deserves the room.
-function Words({ body, artist }: { body: string; artist: string }) {
+function Words({ body, artist, signature }: { body: string; artist: string; signature?: string | null }) {
   const m = body.match(/[“"]([^”"]{40,})[”"]/)
   const quote = m ? m[1] : body.split(/\n{2,}/)[0]
   const rest = m ? body.replace(m[0], '').trim() : body.split(/\n{2,}/).slice(1).join('\n\n')
@@ -243,6 +257,14 @@ function Words({ body, artist }: { body: string; artist: string }) {
         <p key={i} style={{ fontFamily: MONO, fontSize: 13.5, lineHeight: 2, opacity: .85,
                             margin: '20px 0 0', maxWidth: 640 }}>{p}</p>
       ))}
+      {/* His actual signature, at the foot of his own words — the way a signed
+          work is signed. Once, small, nowhere else. It is a person's hand, not
+          a motif, so it is not repeated and never used as decoration. */}
+      {signature && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={signature} alt="" aria-hidden="true"
+             style={{ display: 'block', width: 168, height: 'auto', marginTop: 30, opacity: .8 }} />
+      )}
     </section>
   )
 }

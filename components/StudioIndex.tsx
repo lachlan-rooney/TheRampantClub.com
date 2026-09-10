@@ -63,6 +63,15 @@ export default function StudioIndex({ collaborations, images }: {
 
   const heroOf = (x: Collaboration) =>
     x.hero_path || images.find(i => i.collaboration_id === x.id)?.storage_path || null
+
+  // THE DUPLICATE. The hero is shown large at the top AND every artist gets a
+  // card in "Every exhibition" below — so the artist currently selected had the
+  // same picture on screen twice. Not a duplicate ROW: the data was clean, the
+  // page rendered one image in two places. A card therefore prefers a picture
+  // from the set and only falls back to the hero when there is nothing else.
+  const cardOf = (x: Collaboration) =>
+    images.find(i => i.collaboration_id === x.id && i.storage_path !== x.hero_path)?.storage_path
+    || heroOf(x)
   const stripOf = useMemo(() =>
     (x: Collaboration) => images.filter(i => i.collaboration_id === x.id).slice(0, 4), [images])
 
@@ -231,14 +240,14 @@ export default function StudioIndex({ collaborations, images }: {
           {collaborations.map(x => (
             <Link key={x.id} href={`/studio/${x.slug}`} className="st-card"
                   style={{ textDecoration: 'none', color: INK, display: 'block' }}>
-              {heroOf(x) && (
+              {cardOf(x) && (
                 <div className="st-thumb" style={{ width: '100%', aspectRatio: '4 / 5', borderRadius: 14,
                               boxShadow: '0 16px 38px rgba(5,46,32,0.18)' }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={srcOf(heroOf(x)!)} alt="" loading="lazy"
+                  <img src={srcOf(cardOf(x)!)} alt="" loading="lazy"
                        style={{ width: '100%', height: '100%', display: 'block',
-                                objectFit: isMark(heroOf(x)!) ? 'contain' : 'cover',
-                                padding: isMark(heroOf(x)!) ? 18 : 0 }} />
+                                objectFit: isMark(cardOf(x)!) ? 'contain' : 'cover',
+                                padding: isMark(cardOf(x)!) ? 18 : 0 }} />
                 </div>
               )}
               <div style={{ fontFamily: SERIF, fontSize: 21, lineHeight: 1.15, marginTop: 14 }}>
