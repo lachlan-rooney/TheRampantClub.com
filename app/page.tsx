@@ -7,6 +7,7 @@ import TonightPanel from '@/components/TonightPanel'
 import Spotlight from '@/components/Spotlight'
 import TimeOfDayTint from '@/components/TimeOfDayTint'
 import useEasterEggs from '@/hooks/useEasterEggs'
+import Link from 'next/link'
 
 // ═══════════════════════════════════════════════════════════════════
 // THE RAMPANT CLUB — Homepage
@@ -1134,6 +1135,49 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+
+        {/* ══════ 4.5 THE STUDIO — an invitation, not a section ══════════════
+            Full-bleed SAGE against a page that is bottle green everywhere else.
+            That inversion is the whole point: it should read as a door to
+            somewhere separate rather than as another band of homepage.
+
+            The bottle is FRAMED, not cut out. Its raster is a glass bottle with
+            translucent liquid shot against a blurred painting — the background
+            shows through the glass, the warm right edge has almost no
+            separation from the warm background, and the base merges into the
+            barrel. An automatic cutout haloes, and a haloed cutout is worse
+            than no cutout. A frame has neither problem and looks deliberate. */}
+        <Link href="/studio" style={{ display: 'block', textDecoration: 'none' }}>
+          <div style={{ background: '#B0C18E', color: '#052E20', padding: '72px 24px' }}>
+            <div style={{ maxWidth: 880, margin: '0 auto', display: 'flex', gap: 34,
+                          alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/studio/bottle.jpg" alt="" loading="lazy"
+                   style={{ width: 168, height: 240, objectFit: 'cover', flexShrink: 0,
+                            borderRadius: '84px 84px 6px 6px', display: 'block',
+                            boxShadow: '0 18px 40px rgba(5,46,32,0.22)' }} />
+              <div style={{ minWidth: 240, flex: 1 }}>
+                <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10.5,
+                              letterSpacing: '.18em', textTransform: 'uppercase', opacity: .7 }}>
+                  Floor 2 · Phòng Studio
+                </div>
+                <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 'clamp(30px, 6vw, 46px)',
+                              lineHeight: 1.05, margin: '10px 0 12px' }}>
+                  Check out The Studio
+                </div>
+                <p style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12.5,
+                            lineHeight: 1.85, margin: 0, opacity: .85, maxWidth: 430 }}>
+                  A quarterly rotating art space. Each exhibition is made with the artist,
+                  and each one leaves a whisky behind.
+                </p>
+                <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11.5,
+                              marginTop: 18, letterSpacing: '.08em' }}>
+                  Step inside →
+                </div>
+              </div>
+            </div>
+          </div>
+        </Link>
 
         {/* ══════ 5. RECIPROCAL ACCESS ══════ */}
         <ReciprocalSection refProp={reciprocalSec.ref} visible={reciprocalSec.visible} />
