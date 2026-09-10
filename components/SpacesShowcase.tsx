@@ -46,6 +46,7 @@ const SPACES: Space[] = [
   {
     id: 'rampant-room',
     mark: '/images/floors/rampant-room.png',
+    backdrop: '/images/floors/rampant-room-backdrop.jpg',
     floor: '4',
     en: 'The Rampant Room',
     vn: 'Phòng Rampant',
@@ -219,8 +220,22 @@ export default function SpacesShowcase({ variant }: { variant: 'internal' | 'pub
           position: absolute; inset: 0;
           width: 100%; height: 100%;
           object-fit: cover;
-          opacity: 0.38;
+          /* Desaturate and darken the ROOM, not the panel. A single opacity
+             cannot serve both a dark bar and a bright sitting room — the Library
+             Bar sat correctly at 0.38 while the Rampant Room took the panel over.
+             Normalising the image itself makes the set consistent whatever the
+             next photograph turns out to look like. */
+          filter: saturate(0.5) brightness(0.6);
+          opacity: 0.85;
         }
+        /* Tints the room toward the floor's accent so the panel still belongs to
+           the set, and holds the corner label legible over a pale sofa. */
+        .floor-scrim {
+          position: absolute; inset: 0;
+          background: linear-gradient(135deg, var(--accent), rgba(5,46,32,0.9));
+          opacity: 0.5;
+        }
+        .floor-image-floor, .floor-image-num { z-index: 2; }
         .floor-image img.floor-mark {
           position: relative; z-index: 1;
           filter: drop-shadow(0 2px 14px rgba(5,46,32,0.55));
@@ -382,8 +397,11 @@ export default function SpacesShowcase({ variant }: { variant: 'internal' | 'pub
             <div className="floor-inner">
               <div className="floor-image" style={{ ['--accent' as string]: s.accent } as React.CSSProperties}>
                 {s.backdrop && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img className="floor-backdrop" src={s.backdrop} alt="" loading="lazy" />
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img className="floor-backdrop" src={s.backdrop} alt="" loading="lazy" />
+                    <div className="floor-scrim" />
+                  </>
                 )}
                 {s.photo
                   ? // eslint-disable-next-line @next/next/no-img-element
