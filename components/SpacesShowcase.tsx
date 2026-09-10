@@ -19,11 +19,19 @@ interface Space {
   descVn: string
   accent: string
   photo?: string
+  // The floor's own lion, cream on transparent (public/images/floors/README.md).
+  // NOT photography: the marketing shots in social/*.webp already carry /menus,
+  // /membership and /origin, and a member who has seen them twice would notice
+  // them a third time. When the rooms are shot properly — five spaces, one
+  // evening, someone who can handle low light — THAT is the moment to swap, and
+  // the swap is this one field.
+  mark?: string
 }
 
 const SPACES: Space[] = [
   {
     id: 'lab',
+    mark: '/images/floors/source-origin-lab.png',
     floor: '5',
     en: 'The Source & Origin Lab',
     vn: 'Phòng Thí Nghiệm Nguồn Gốc',
@@ -33,6 +41,7 @@ const SPACES: Space[] = [
   },
   {
     id: 'rampant-room',
+    mark: '/images/floors/rampant-room.png',
     floor: '4',
     en: 'The Rampant Room',
     vn: 'Phòng Rampant',
@@ -42,6 +51,7 @@ const SPACES: Space[] = [
   },
   {
     id: 'dining',
+    mark: '/images/floors/dining-room.png',
     floor: '3',
     en: 'The Dining Room',
     vn: 'Phòng Ăn',
@@ -51,6 +61,7 @@ const SPACES: Space[] = [
   },
   {
     id: 'studio',
+    mark: '/images/floors/studio.png',
     floor: '2',
     en: 'The Studio',
     vn: 'Phòng Studio',
@@ -60,6 +71,7 @@ const SPACES: Space[] = [
   },
   {
     id: 'library-bar',
+    mark: '/images/floors/library-bar.png',
     floor: '1',
     en: 'The Library Bar',
     vn: 'Quầy Bar Thư Viện',
@@ -190,6 +202,20 @@ export default function SpacesShowcase({ variant }: { variant: 'internal' | 'pub
         }
         .floor-image img {
           width: 100%; height: 100%; object-fit: cover; display: block;
+        }
+        /* A MARK IS NOT A PHOTOGRAPH. object-fit cover would crop the lion — it
+           is roughly 3:4 inside a 4:5 panel — so contain, inset and centred.
+           Specificity beats the rule above rather than relying on source order. */
+        .floor-image img.floor-mark {
+          object-fit: contain;
+          padding: 13% 15%;
+          box-sizing: border-box;
+          opacity: 0.95;
+        }
+        @media (max-width: 768px) {
+          /* Six panels on a phone is the case that matters: a little tighter so
+             the lion still reads at panel size rather than floating small. */
+          .floor-image img.floor-mark { padding: 10% 12%; }
         }
         .floor-image-floor {
           position: absolute;
@@ -341,11 +367,19 @@ export default function SpacesShowcase({ variant }: { variant: 'internal' | 'pub
                 {s.photo
                   ? // eslint-disable-next-line @next/next/no-img-element
                     <img src={s.photo} alt={s.en} />
+                  : s.mark
+                  ? // eslint-disable-next-line @next/next/no-img-element
+                    <img className="floor-mark" src={s.mark} alt="" loading="lazy" />
                   : null}
                 <div className="floor-image-floor">
                   {s.floor === '—' ? 'Off-site' : `Floor ${s.floor}`}
                 </div>
-                <div className="floor-image-num">{s.floor}</div>
+                {/* The giant numeral is the EMPTY-PANEL treatment. With a mark it
+                    would fight the lion, and the floor is already named twice —
+                    in the corner label and in the eyebrow beside the title. And
+                    an em-dash rendered at 120px is not a number; the off-site
+                    space says "Off-site" and stops there. */}
+                {!s.mark && s.floor !== '—' && <div className="floor-image-num">{s.floor}</div>}
               </div>
 
               <div>
