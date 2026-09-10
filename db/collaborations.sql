@@ -103,7 +103,26 @@ create policy "admins write collaboration images" on collaboration_images for al
   using  (exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin))
   with check (exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin));
 
--- ═══ SEED — two rows, both with NULL bios ══════════════════════════════════
+-- ═══ VIETNAMESE — WHERE IT WILL COME FROM ══════════════════════════════════
+-- Every _vn is NULL here and the page falls back to English. Two findings for
+-- whoever fills them, so the work is REVIEW rather than translation:
+--
+-- 1. The media launch pack is ENGLISH ONLY. It contains zero Vietnamese-language
+--    lines — checked against Vietnamese function words, not against her name,
+--    whose diacritics make English lines look Vietnamese. So her quote does NOT
+--    exist in both languages in that file.
+--
+-- 2. ~/Downloads/"Translated copy of The Studio x Octave Launch F&B Brief.docx"
+--    DOES carry Vietnamese for much of the evening — the exhibition as
+--    "Vùng đất của ký ức", the flagship painting as "Hoàng hôn ở Kobe", plus the
+--    venue, format, capacity and the full run sheet.
+--
+--    NOT seeded from it. It is titled "Translated copy of", and nobody has
+--    established whether that was done by a person or a machine. It is a strong
+--    starting point for Miss Châu to CHECK — which is far less work than
+--    translating from nothing — but it is not a source to publish unread.
+--
+-- ═══ SEED — Quỳnh Anh Lê's bio is absent; Rizal's is his own ═══════════════
 -- Copy lifted from the media launch pack, which the author has confirmed was
 -- the club's own internal wording — so the confidential stamp does not bar the
 -- club from using it. Dates come from the printed invitation, not the pack,
@@ -127,15 +146,52 @@ insert into collaborations (
 values (
   'quynh-anh-le', 'Quỳnh Anh Lê', 'Terroir of Memories', 'past', 1, '#8C5A3C',
   date '2026-02-06', date '2026-02-07',
-  'A collaboration between Vietnamese contemporary artist Quỳnh Anh Lê and The Octave, the single cask range from Duncan Taylor Scotch Whisky. The exhibition brings together two disciplines united by their relationship to place and memory, examining how meaning accumulates through origin, transformation, and the slow work of time.
 
-Centred on 88 collaboration bottles carrying the artist''s label, alongside a single hand-painted bottle — the first of three by three Vietnamese artists, to be auctioned for charity at the series'' end. A commissioned work, Inside the Cask, imagines the view from within: the unseen interior where whisky slowly becomes itself. An accompanying film, shot in the artist''s Hanoi studio, documents how the work came about.',
-  '"What drew me to this collaboration was the idea of terroir — how place becomes character. In whisky, the water, the peat, the wood all leave their mark. In painting, it''s the studio, the light, the accumulated decisions. Memory lives in materials. A cask remembers what it once held. A canvas remembers every layer beneath the surface."
+'In February 2026 The Studio gave its walls to Quỳnh Anh Lê, a Hanoi-based painter, for two evenings and a hundred guests.
 
-— Quỳnh Anh Lê',
-  'Opening night 6 and 7 February 2026, cocktail reception from four until eight, with a meet and greet and live painting. The exhibition was open to the public for two days only.',
-  'Canapés developed specifically in response to the works on display.',
-  'Cocktails developed specifically in response to the works on display, alongside the Octave Auchentoshan 14 bottled for the exhibition.')
+The exhibition was made with Duncan Taylor''s Octave programme, and it carried a whisky of its own: a fourteen-year-old Auchentoshan, triple distilled, finished in Palo Cortado sherry octaves. Delicate and mineral — soft red berries, a gentle sweetness, a herbal finish, and a chalky texture running through it. Chosen to sit beside the work rather than in front of it.
+
+Eighty-eight bottles were released, each label carrying a different fragment of the flagship painting and numbered in sequence. Arranged together, the eighty-eight labels reassemble the whole canvas. Members bought them on the night.
+
+One bottle was painted by hand, live, during the exhibition. It goes to charity auction later this year, to build a school in Vietnam — the first of three by three Vietnamese artists, to be auctioned together when the series closes.
+
+A second work, “Inside the Cask”, was made for the exhibition: the view from inside a maturing cask, the dark interior where whisky slowly becomes itself and no one is watching.',
+
+'The flagship painting is the artist''s own account of the exhibition, and it is better in her words than in ours:
+
+“At the threshold where day meets night, light and shadow dissolve into each other. It evokes a state of balance — neither bright nor dark, neither still nor in motion. All colours blend, as human beings merge with the universe, releasing the boundary between self and all things. In the city of Kobe, where the sea meets the mountains and the man-made meets the natural, I wanted this work to be a metaphor for harmony and a return to origin.”
+
+Everything else in the room followed from that. The lighting, the pace of the service, the flavours — all of it built to be light, refined and contemplative. Elegant rather than bold. Present without dominating.
+
+Restraint over abundance. Sensitivity over spectacle.',
+
+'Two evenings, two sessions a night, twenty-five to thirty guests at a time. An exhibition opening rather than a party.
+
+Doors at four. Guests were met in the Library Bar with the first cocktail and given time to move through the room before anything was asked of them. Canapés came round shortly after.
+
+At half past, Quỳnh Anh spoke in The Studio — the exhibition, her practice, the collaboration — for twenty minutes or so. The whisky was introduced after her, with a small pour for every guest and the thinking behind the second pairing, which arrived twenty minutes later.
+
+Then live painting, and the artist available to talk to for the rest of the evening while the limited edition was open to members. The hand-painted bottle stood on display as it was made.
+
+No smoking on the exhibition floor. Lighting directed, soft and warm — set for the paintings and the whisky''s amber both. Service unhurried and quiet enough to be part of the atmosphere rather than an interruption.',
+
+'Two canapés, each one bite, no cutlery. Muted, natural colours to suit gallery lighting. Nothing heavy, nothing sharp.
+
+Twilight / Threshold — drawn from the flagship painting. Light, mineral, gently umami: a sense of land meeting sea, in stone and blush and dusk tones taken from the canvas itself. White fish and shellfish with a saline edge, a soft herbal note, a gentle sweetness held in check.
+
+Memory & Comfort — drawn from the artist rather than the work. Quỳnh Anh''s own references were cookies, the smell of the air after rain, summer, pagodas. Warmer and quietly playful, but still restrained: toasted grains, a little nutted sweetness, textures that felt calming rather than crisp.
+
+A memory of a cookie, not a dessert.',
+
+'Two cocktails, built to be layered rather than loud, and served clear or lightly hazed.
+
+Dusk Balance — sherry-forward and delicately structured, with a subtle berry note and a herbal lift on the finish. Meant to feel like watching light fade, not like the first sip of the night.
+
+After the Rain — petrichor. Earth, leaves, the air just after a downpour. Fresh without sharpness, herbal and cooling, quietly expressive.
+
+Like standing under a pagoda just after rain, listening rather than speaking.
+
+Both were made in the Source & Origin Lab.')
 on conflict (slug) do nothing;
 
 -- Rizal Fathoni's biography, in HIS OWN WORDS, from Downloads/Artist Bio -
