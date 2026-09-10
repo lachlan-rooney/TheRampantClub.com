@@ -495,8 +495,10 @@ export default function SpacesShowcase({ variant }: { variant: 'internal' | 'pub
                     <p className="floor-studio-body">
                       A collaboration between Vietnamese contemporary artist Quỳnh Anh Lê and The Octave,
                       exploring how place becomes character — through whisky, through paint, through the
-                      slow work of time. Centred on 88 artist-labelled bottles, the exhibition is a
-                      multi-sensory experience with bespoke soundscape, signature scent, and curated canapés.
+                      slow work of time. Centred on 88 collaboration bottles carrying the artist&rsquo;s label,
+                      alongside a single hand-painted bottle: the first of three by three Vietnamese artists,
+                      to be auctioned for charity at the series&rsquo; end. The exhibition is a multi-sensory
+                      experience with bespoke soundscape, signature scent, and curated canapés.
                     </p>
                     <p className="floor-studio-body">
                       A members-only whisky has been created for the occasion — available at the bar

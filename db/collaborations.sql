@@ -104,8 +104,38 @@ create policy "admins write collaboration images" on collaboration_images for al
   with check (exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin));
 
 -- ═══ SEED — two rows, both with NULL bios ══════════════════════════════════
-insert into collaborations (slug, artist_name, title_en, status, sort, accent)
-values ('quynh-anh-le', 'Quỳnh Anh Lê', 'Terroir of Memories', 'live', 1, '#8C5A3C')
+-- Copy lifted from the media launch pack, which the author has confirmed was
+-- the club's own internal wording — so the confidential stamp does not bar the
+-- club from using it. Dates come from the printed invitation, not the pack,
+-- where both were still [TBC].
+--
+-- ⚠ STATUS SAYS 'live'. The invitation gives 6 & 7 February 2026 and the April
+-- calendar page says the exhibition "comes to a close" — so this is very
+-- probably 'past' by now. Left as 'live' rather than asserting a fact nobody
+-- has confirmed; change one word when Lachlan says. The same doubt applies to
+-- "Now Showing" on /spaces.
+--
+-- THE NUMBERS, CORRECTED. The pack says "80 hand-painted bottles" in three
+-- places — the press release, the key-facts table, and a suggested interview
+-- quote ("80 bottles means 80 decisions about when to stop"). That is wrong:
+-- there are 88 COLLABORATION bottles carrying the artist's label, and ONE
+-- hand-painted bottle. The quote is the dangerous one, because it puts the
+-- error in the artist's own mouth.
+insert into collaborations (
+  slug, artist_name, title_en, status, sort, accent, opens_on, closes_on,
+  collaboration_en, inspiration_en, event_en, food_en, drinks_en)
+values (
+  'quynh-anh-le', 'Quỳnh Anh Lê', 'Terroir of Memories', 'live', 1, '#8C5A3C',
+  date '2026-02-06', date '2026-02-07',
+  'A collaboration between Vietnamese contemporary artist Quỳnh Anh Lê and The Octave, the single cask range from Duncan Taylor Scotch Whisky. The exhibition brings together two disciplines united by their relationship to place and memory, examining how meaning accumulates through origin, transformation, and the slow work of time.
+
+Centred on 88 collaboration bottles carrying the artist''s label, alongside a single hand-painted bottle — the first of three by three Vietnamese artists, to be auctioned for charity at the series'' end. A commissioned work, Inside the Cask, imagines the view from within: the unseen interior where whisky slowly becomes itself. An accompanying film, shot in the artist''s Hanoi studio, documents how the work came about.',
+  '"What drew me to this collaboration was the idea of terroir — how place becomes character. In whisky, the water, the peat, the wood all leave their mark. In painting, it''s the studio, the light, the accumulated decisions. Memory lives in materials. A cask remembers what it once held. A canvas remembers every layer beneath the surface."
+
+— Quỳnh Anh Lê',
+  'Opening night 6 and 7 February 2026, cocktail reception from four until eight, with a meet and greet and live painting. The exhibition was open to the public for two days only.',
+  'Canapés developed specifically in response to the works on display.',
+  'Cocktails developed specifically in response to the works on display, alongside the Octave Auchentoshan 14 bottled for the exhibition.')
 on conflict (slug) do nothing;
 
 insert into collaborations (slug, artist_name, status, sort, accent)
