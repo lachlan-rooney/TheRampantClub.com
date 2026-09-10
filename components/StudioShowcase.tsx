@@ -84,6 +84,42 @@ export default function StudioShowcase({ collaborations, images }: {
 
   const mine = images.filter(i => i.collaboration_id === c?.id)
 
+  // ══ THE INTERLEAVE ═══════════════════════════════════════════════════════
+  // Prose and pictures alternate rather than prose-then-appendix, so the page
+  // reads as a room. Built from whatever the row happens to have: a
+  // collaboration with one section and two images lays out the same way as one
+  // with six and nine. Nothing here knows an artist's name.
+  type Block =
+    | { kind: 'text'; title: string; body: string | null; quote?: boolean }
+    | { kind: 'img'; im: CollabImage; wide?: boolean }
+  const blocks = useMemo<Block[]>(() => {
+    if (!c) return []
+    const texts: Block[] = ([
+      ['The collaboration', c.collaboration_en, false],
+      ['In the artist’s words', c.inspiration_en, true],
+      ['The event', c.event_en, false],
+      ['The food', c.food_en, false],
+      ['The drinks', c.drinks_en, false],
+      [`About ${c.artist_name}`, c.bio_en, false],
+    ] as const)
+      .filter(([, body]) => !!body && !!String(body).trim())
+      .map(([title, body, quote]) => ({ kind: 'text', title, body: body as string, quote }))
+
+    const pics = [...mine]
+    const out: Block[] = []
+    texts.forEach((t, i) => {
+      out.push(t)
+      // A landscape gets the full width; a portrait sits in the column. The
+      // first picture after the opening section runs wide, because that is the
+      // one doing the work of showing what the exhibition looked like.
+      const im = pics.shift()
+      if (im) out.push({ kind: 'img', im, wide: im.orientation === 'landscape' || i === 0 })
+    })
+    // Anything left over closes the page rather than being dropped.
+    for (const im of pics) out.push({ kind: 'img', im, wide: im.orientation === 'landscape' })
+    return out
+  }, [c, mine])
+
   if (!ordered.length) {
     return (
       <main style={{ background: SAGE, minHeight: '100vh', padding: '120px 24px' }}>
@@ -99,117 +135,79 @@ export default function StudioShowcase({ collaborations, images }: {
 
   return (
     <main style={{ background: SAGE, minHeight: '100vh', color: INK }}>
-      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '96px 24px 120px' }}>
+      {/* ══ HERO ═══════════════════════════════════════════════════════════
+          Full-bleed, and the title sits UNDER it rather than over it. Type over
+          a painting is type competing with a painting, and on this page the work
+          leads. The image is never cropped tighter than 16/10 on a phone. */}
+      {c?.hero_path && (
+        <div style={{ width: '100%', height: 'min(78vh, 720px)', overflow: 'hidden', position: 'relative' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={srcOf(c.hero_path)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          <div style={{ position: 'absolute', inset: 0,
+                        background: `linear-gradient(to bottom, transparent 55%, ${SAGE} 100%)` }} />
+        </div>
+      )}
 
-        <Link href="/" style={{ fontFamily: MONO, fontSize: 11, color: INK, opacity: .7, textDecoration: 'none' }}>
+      <div style={{ maxWidth: 1180, margin: '0 auto', padding: c?.hero_path ? '0 24px 140px' : '96px 24px 140px' }}>
+
+        <Link href="/" style={{ fontFamily: MONO, fontSize: 11, color: INK, opacity: .6,
+                                textDecoration: 'none', display: 'inline-block', marginTop: 28 }}>
           ← The Rampant Club
         </Link>
 
-        <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(40px, 9vw, 76px)', lineHeight: 1.02,
-                     margin: '26px 0 4px', letterSpacing: '.01em' }}>The Studio</h1>
-        <div style={{ fontFamily: MONO, fontSize: 13, opacity: .72 }}>Phòng Studio</div>
-        <p style={{ fontFamily: MONO, fontSize: 13.5, lineHeight: 1.85, maxWidth: 560, marginTop: 20, opacity: .88 }}>
-          A quarterly rotating art space on the second floor. Each exhibition is made with
-          the artist, and each one leaves a whisky behind.
-        </p>
-
-        {/* ── THE NAMES. An index, not a tab bar — a gallery names its
-            exhibitions, two of them is not navigation, and eight of them wraps
-            to a second line and still reads as a list. ─────────────────── */}
-        <div style={{ display: 'flex', gap: 26, overflowX: 'auto', margin: '44px 0 0',
-                      paddingBottom: 10, scrollbarWidth: 'none' }}>
+        {/* ══ THE INDEX — names, not tabs ═════════════════════════════════ */}
+        <div style={{ display: 'flex', gap: 30, overflowX: 'auto', margin: '30px 0 0',
+                      paddingBottom: 12, scrollbarWidth: 'none' }}>
           {ordered.map((x, i) => (
             <button key={x.id} ref={el => { chip.current[x.id] = el }} onClick={() => setActive(i)}
-              style={{ background: 'none', border: 'none', padding: '0 0 8px', cursor: 'pointer',
-                       flexShrink: 0, textAlign: 'left',
-                       fontFamily: SERIF, fontSize: 'clamp(19px, 3.6vw, 25px)',
-                       color: INK, opacity: i === active ? 1 : 0.42,
+              style={{ background: 'none', border: 'none', padding: '0 0 10px', cursor: 'pointer',
+                       flexShrink: 0, textAlign: 'left', fontFamily: SERIF,
+                       fontSize: 'clamp(17px, 3.2vw, 22px)', color: INK,
+                       opacity: i === active ? 1 : 0.38,
                        borderBottom: i === active ? `2px solid ${INK}` : '2px solid transparent' }}>
               {x.artist_name}
-              {tenseOf(x.opens_on, x.closes_on) === 'Forthcoming' && (
-                <span style={{ fontFamily: MONO, fontSize: 10, opacity: .7 }}> · soon</span>
-              )}
+              {tenseOf(x.opens_on, x.closes_on) === 'Forthcoming' &&
+                <span style={{ fontFamily: MONO, fontSize: 10, opacity: .7 }}> · soon</span>}
             </button>
           ))}
         </div>
-        <div style={{ height: 1, background: INK, opacity: .18 }} />
+        <div style={{ height: 1, background: INK, opacity: .16 }} />
 
         {c && (
-          <article style={{ marginTop: 46 }}>
-            {c.title_en && (
-              <h2 style={{ fontFamily: SERIF, fontSize: 'clamp(28px, 6vw, 46px)', lineHeight: 1.08, margin: 0 }}>
-                {c.title_en}
-              </h2>
-            )}
-            <div style={{ fontFamily: MONO, fontSize: 12, opacity: .72, marginTop: 8 }}>
-              {[c.artist_name, dateRange(c.opens_on, c.closes_on)].filter(Boolean).join('  ·  ')}
+          <article>
+            {/* ══ THE MASTHEAD. This is where the type does the work. ═══════ */}
+            <div style={{ padding: '52px 0 0' }}>
+              <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '.2em',
+                            textTransform: 'uppercase', opacity: .65 }}>
+                {[tenseOf(c.opens_on, c.closes_on), dateRange(c.opens_on, c.closes_on)]
+                  .filter(Boolean).join('  ·  ')}
+              </div>
+              {c.title_en && (
+                <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(42px, 11vw, 132px)', lineHeight: .92,
+                             letterSpacing: '-.01em', margin: '14px 0 0' }}>{c.title_en}</h1>
+              )}
+              <div style={{ fontFamily: SERIF, fontSize: 'clamp(20px, 4vw, 34px)', marginTop: 16, opacity: .78 }}>
+                {c.artist_name}
+              </div>
+              {c.opening_from && (
+                <div style={{ fontFamily: MONO, fontSize: 11.5, opacity: .62, marginTop: 12 }}>
+                  Opening {dateRange(c.opening_from, c.opening_to)}
+                </div>
+              )}
             </div>
-            {/* The RUN is what the dates line shows and what the tense follows;
-                the opening is a separate, shorter thing and says so. */}
-            {c.opening_from && (
-              <div style={{ fontFamily: MONO, fontSize: 11.5, opacity: .68, marginTop: 4 }}>
-                Opening {dateRange(c.opening_from, c.opening_to)}
-              </div>
-            )}
-            {tenseOf(c.opens_on, c.closes_on) && (
-              <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.16em',
-                            textTransform: 'uppercase', marginTop: 10, opacity: .9 }}>
-                {tenseOf(c.opens_on, c.closes_on)}
-              </div>
-            )}
 
-            {/* The hero sits in a FIXED-RATIO FRAME on the ground, never behind
-                text. That is why there is no scrim: nothing is laid over the
-                work, so nothing needs tuning for the next photograph. */}
-            {c.hero_path && (
-              <figure style={{ margin: '34px 0 0' }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={srcOf(c.hero_path)} alt={c.title_en || c.artist_name}
-                     style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 3 }} />
-              </figure>
-            )}
-
-            <Section title="The collaboration" body={c.collaboration_en} />
-
-            {/* The auction date is rendered from a COLUMN, never written into the
-                prose. "Later this year" was true when it was typed and would have
-                been quietly wrong by March, with nothing to prompt anyone. */}
-            {c.auction_on && (
-              <div style={{ fontFamily: MONO, fontSize: 12, opacity: .8, marginTop: 18, maxWidth: 620 }}>
-                The hand-painted bottle goes to charity auction on{' '}
-                {new Date(c.auction_on + 'T12:00:00+07:00').toLocaleDateString('en-GB',
-                  { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' })}.
-              </div>
-            )}
-            <Section title="The inspiration"   body={c.inspiration_en} />
-            <Section title="The event"         body={c.event_en} />
-            <Section title="The food"          body={c.food_en} />
-            <Section title="The drinks"        body={c.drinks_en} />
-
-            {/* THE BIOGRAPHY IS OMITTED WHEN ABSENT — not rendered as an empty
-                heading. Quỳnh Anh Lê's approved bio does not yet exist, and an
-                unapproved one is a discourtesy to the artist as well as a
-                factual risk. The section appears the day she supplies it. */}
-            <Section title={`About ${c.artist_name}`} body={c.bio_en} />
-
-            {/* ── THE WORK. Minimal crop: each image keeps its own shape and is
-                given room, rather than being forced through one ratio. ──── */}
-            {mine.length > 0 && (
-              <div style={{ display: 'grid', gap: 40, marginTop: 56,
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
-                {mine.map(im => (
-                  <figure key={im.id} style={{ margin: 0 }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={srcOf(im.storage_path)} alt={im.caption_en || ''} loading="lazy"
-                         style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 2 }} />
-                    {im.caption_en && (
-                      <figcaption style={{ fontFamily: MONO, fontSize: 11, opacity: .72, marginTop: 10 }}>
-                        {im.caption_en}
-                      </figcaption>
-                    )}
-                  </figure>
-                ))}
-              </div>
+            {/* ══ BLOCKS. Prose and pictures alternate, so the page reads as a
+                room rather than as a document with an appendix of photographs.
+                Built from whatever exists — a collaboration with two images and
+                one section lays out the same way as one with nine. ═════════ */}
+            {blocks.map((b, i) =>
+              b.kind === 'text' ? (
+                <Section key={`t${i}`} title={b.title!} body={b.body!} quote={b.quote} />
+              ) : b.wide ? (
+                <Figure key={`i${i}`} im={b.im!} wide />
+              ) : (
+                <Figure key={`i${i}`} im={b.im!} />
+              )
             )}
           </article>
         )}
@@ -218,15 +216,53 @@ export default function StudioShowcase({ collaborations, images }: {
   )
 }
 
-function Section({ title, body }: { title: string; body: string | null }) {
-  if (!body || !body.trim()) return null      // absent, not empty
+// A picture, at its own shape. `contain` inside a generous box: a painting is
+// never cropped to fit a grid, which is the one rule a gallery page cannot break.
+function Figure({ im, wide }: { im: CollabImage; wide?: boolean }) {
   return (
-    <section style={{ marginTop: 44, maxWidth: 620 }}>
-      <h3 style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '.16em', textTransform: 'uppercase',
-                   opacity: .65, margin: '0 0 12px' }}>{title}</h3>
-      <p style={{ fontFamily: MONO, fontSize: 13.5, lineHeight: 1.95, margin: 0, whiteSpace: 'pre-line' }}>
-        {body}
-      </p>
+    <figure style={{ margin: wide ? '72px 0' : '64px 0', maxWidth: wide ? '100%' : 780 }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={srcOf(im.storage_path)} alt={im.caption_en || ''} loading="lazy"
+           style={{ width: '100%', height: 'auto', display: 'block' }} />
+      {im.caption_en && (
+        <figcaption style={{ fontFamily: MONO, fontSize: 11, opacity: .68, marginTop: 12, maxWidth: 560 }}>
+          {im.caption_en}
+        </figcaption>
+      )}
+    </figure>
+  )
+}
+
+function Section({ title, body, quote }: { title: string; body: string | null; quote?: boolean }) {
+  if (!body || !body.trim()) return null      // absent, not empty
+  // The artist's own words get set as a pull-quote in the display face. Her
+  // sentence about the threshold is the best writing on the page and it should
+  // not be set at the same size as a list of canapés.
+  const [lead, ...rest] = quote ? splitQuote(body) : [null, body]
+  return (
+    <section style={{ marginTop: 56, maxWidth: 700 }}>
+      <h3 style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.2em', textTransform: 'uppercase',
+                   opacity: .55, margin: '0 0 16px' }}>{title}</h3>
+      {lead && (
+        <blockquote style={{ fontFamily: SERIF, fontSize: 'clamp(22px, 3.6vw, 34px)', lineHeight: 1.32,
+                             margin: '0 0 26px', maxWidth: 860 }}>
+          {lead}
+        </blockquote>
+      )}
+      {rest.filter(Boolean).map((para, i) => (
+        <p key={i} style={{ fontFamily: MONO, fontSize: 13.5, lineHeight: 2, margin: '0 0 18px',
+                            whiteSpace: 'pre-line' }}>{para}</p>
+      ))}
     </section>
   )
+}
+
+// Pulls the quoted sentence out of a section so it can be set large. Falls back
+// to leaving the prose alone when there is nothing in quotation marks.
+function splitQuote(body: string): (string | null)[] {
+  const m = body.match(/[“"]([^”"]{40,})[”"]/)
+  if (!m) return [null, body]
+  const before = body.slice(0, m.index).trim()
+  const after = body.slice((m.index || 0) + m[0].length).trim()
+  return [m[1], before || null, after || null]
 }
