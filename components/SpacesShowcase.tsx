@@ -246,13 +246,6 @@ export default function SpacesShowcase({ variant }: { variant: 'internal' | 'pub
           filter: saturate(0.92) brightness(0.94);
           opacity: 1;
         }
-        /* Just enough shade at the top-left for the corner label. A pale sofa
-           swallowing "FLOOR 4" is the kind of thing reported as "the page looks
-           broken" with no clue why, so the label keeps its own ground. */
-        .floor-scrim {
-          position: absolute; inset: 0;
-          background: linear-gradient(160deg, rgba(5,46,32,0.72) 0%, rgba(5,46,32,0.15) 42%, rgba(5,46,32,0) 70%);
-        }
         .floor-image-floor, .floor-image-num { z-index: 2; }
         .floor-image img.floor-mark {
           position: relative; z-index: 1;
@@ -415,19 +408,17 @@ export default function SpacesShowcase({ variant }: { variant: 'internal' | 'pub
             <div className="floor-inner">
               <div className="floor-image" style={{ ['--accent' as string]: s.accent } as React.CSSProperties}>
                 {s.backdrop && (
-                  <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img className="floor-backdrop" src={s.backdrop} alt="" loading="lazy" />
-                    <div className="floor-scrim" />
-                  </>
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className="floor-backdrop" src={s.backdrop} alt="" loading="lazy" />
                 )}
                 {s.photo && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={s.photo} alt={s.en} />
                 )}
-                <div className="floor-image-floor">
-                  {s.floor === '—' ? 'Off-site' : `Floor ${s.floor}`}
-                </div>
+                {/* No corner label on any panel. The floor is already named a
+                    line below, in the eyebrow beside the title, and over a
+                    photograph the label was a caption sitting on the thing it
+                    captions. */}
                 {/* The giant numeral is the EMPTY-PANEL treatment — it exists so a
                     panel with no picture yet still looks deliberate. Once there
                     is a photograph it would just sit on top of it. And an em-dash
