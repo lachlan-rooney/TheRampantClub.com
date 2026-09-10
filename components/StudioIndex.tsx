@@ -56,10 +56,21 @@ export default function StudioIndex({ collaborations, images }: {
   const [active, setActive] = useState(startAt)
   const [entered, setEntered] = useState(false)
   const tabRef = useRef<Record<string, HTMLButtonElement | null>>({})
+  const stripRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { const t = setTimeout(() => setEntered(true), 60); return () => clearTimeout(t) }, [])
   const c = collaborations[active]
-  useEffect(() => { if (c) tabRef.current[c.id]?.scrollIntoView({ inline: 'center', block: 'nearest' }) }, [c])
+  // scrollIntoView walks UP to the nearest scrollable ancestor — and <main>
+  // has overflow-x: hidden, which makes it scrollable even though no scrollbar
+  // shows. So centring a tab slid the WHOLE PAGE sideways, further for the
+  // second artist than the first, which is why it looked like Rizal's content
+  // was pushed off the edge. Scroll the strip itself and nothing else can move.
+  useEffect(() => {
+    const el = c ? tabRef.current[c.id] : null
+    const strip = stripRef.current
+    if (!el || !strip) return
+    strip.scrollTo({ left: el.offsetLeft - (strip.clientWidth - el.clientWidth) / 2, behavior: 'smooth' })
+  }, [c])
 
   const heroOf = (x: Collaboration) =>
     x.hero_path || images.find(i => i.collaboration_id === x.id)?.storage_path || null
@@ -105,8 +116,29 @@ export default function StudioIndex({ collaborations, images }: {
         .st-go { display: inline-block; transition: transform .35s ease; }
         .st-card:hover .st-go, .st-cta:hover .st-go { transform: translateX(7px); }
         @keyframes drift { from { transform: rotate(6deg) translateY(0) } to { transform: rotate(4deg) translateY(-16px) } }
-        .st-lion { animation: drift 7s ease-in-out infinite alternate; }
-        @media (max-width: 760px) { .st-lion { top: 12px; opacity: .55; } }
+        /* On a DESK it sits beside the masthead, in the empty half. It is
+           positioned from the RIGHT EDGE OF THE TEXT COLUMN rather than the
+           viewport, so it cannot creep over the words as the copy grows — and
+           it will grow: Miss Châu's Vietnamese runs longer than the English. */
+        .st-lion {
+          position: absolute; top: 30px; right: -70px;
+          width: clamp(260px, 34vw, 520px);
+          opacity: .92; pointer-events: none; z-index: 0;
+          animation: drift 7s ease-in-out infinite alternate;
+        }
+        /* On a PHONE there is no empty half, so it stops being a background at
+           all and takes a band of its own below the copy — clear of every word
+           rather than faded behind them. A lion at 15% behind a paragraph is
+           still a lion behind a paragraph. */
+        @media (max-width: 900px) {
+          .st-lion {
+            position: static; display: block;
+            width: 78vw; max-width: 360px;
+            margin: 26px -18vw 0 auto;   /* runs off the right edge, clear of text */
+            opacity: .95; animation: none;
+            transform: rotate(5deg);
+          }
+        }
         @media (prefers-reduced-motion: reduce) {
           .st-lion { animation: none !important; }
           .st-rise, .st-hero img, .st-thumb img, .st-tab::after, .st-go { animation: none !important; transition: none !important; }
@@ -120,16 +152,7 @@ export default function StudioIndex({ collaborations, images }: {
           it. Off the right edge and slightly askew, like something stuck to a
           studio wall, and it drifts a little as the page scrolls. Behind
           everything and unselectable, so it never gets in the way of reading. */}
-      <img src="/images/studio/rizal/00-lion.png" alt="" aria-hidden="true"
-           className="st-lion"
-           style={{ position: 'absolute', top: 40, right: 'clamp(-190px, -12vw, -60px)',
-                    width: 'clamp(280px, 42vw, 620px)', opacity: .92, pointerEvents: 'none',
-                    transform: 'rotate(6deg)', zIndex: 0 }} />
-
       <div style={{ position: 'relative', zIndex: 1, maxWidth: 1180, margin: '0 auto', padding: '96px 24px 0' }}>
-        <Link href="/" style={{ fontFamily: MONO, fontSize: 11, color: INK, opacity: .55, textDecoration: 'none' }}>
-          ← The Rampant Club
-        </Link>
         <div className={entered ? 'st-rise' : ''} style={{ animationDelay: '.05s' }}>
 
           {/* The Studio's own wordmark, with the set name as the accessible
@@ -149,11 +172,18 @@ export default function StudioIndex({ collaborations, images }: {
           borrowed from them — an immersive installation, a room built around the work, and a whisky
           created for it that exists nowhere else.
         </p>
+
+        {/* Toni's painting inside the club's mark. On a desk it sits absolutely
+            in the empty half beside the masthead; on a phone the rule above
+            turns it into a block in the flow here, running off the right edge —
+            clear of every word rather than faded behind them. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/studio/rizal/00-lion.png" alt="" aria-hidden="true" className="st-lion" />
       </div>
 
       {/* ══ THE ARTISTS ════════════════════════════════════════════════ */}
       <div style={{ maxWidth: 1180, margin: '58px auto 0', padding: '0 24px' }}>
-        <div style={{ display: 'flex', gap: 30, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }}>
+        <div ref={stripRef} style={{ display: 'flex', gap: 30, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }}>
           {collaborations.map((x, i) => (
             <button key={x.id} ref={el => { tabRef.current[x.id] = el }} onClick={() => setActive(i)}
               className={`st-tab ${i === active ? 'is-on' : ''}`}

@@ -134,10 +134,6 @@ export default function StudioExhibition({ collaboration, images }: {
                                         paddingBottom: 3 }}>
             ← The Studio
           </Link>
-          <Link href="/" style={{ fontFamily: MONO, fontSize: 11.5, color: INK, opacity: .5,
-                                  textDecoration: 'none' }}>
-            The Rampant Club
-          </Link>
         </div>
 
 
