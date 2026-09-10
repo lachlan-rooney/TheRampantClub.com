@@ -26,6 +26,7 @@ export interface Collaboration {
   title_en: string | null; title_vn: string | null; status: string
   opens_on: string | null; closes_on: string | null; accent: string | null
   hero_path: string | null; auction_on: string | null
+  opening_from: string | null; opening_to: string | null
   bio_en: string | null; bio_vn: string | null
   collaboration_en: string | null; collaboration_vn: string | null
   event_en: string | null; event_vn: string | null
@@ -143,6 +144,13 @@ export default function StudioShowcase({ collaborations, images }: {
             <div style={{ fontFamily: MONO, fontSize: 12, opacity: .72, marginTop: 8 }}>
               {[c.artist_name, dateRange(c.opens_on, c.closes_on)].filter(Boolean).join('  ·  ')}
             </div>
+            {/* The RUN is what the dates line shows and what the tense follows;
+                the opening is a separate, shorter thing and says so. */}
+            {c.opening_from && (
+              <div style={{ fontFamily: MONO, fontSize: 11.5, opacity: .68, marginTop: 4 }}>
+                Opening {dateRange(c.opening_from, c.opening_to)}
+              </div>
+            )}
             {tenseOf(c.opens_on, c.closes_on) && (
               <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.16em',
                             textTransform: 'uppercase', marginTop: 10, opacity: .9 }}>
