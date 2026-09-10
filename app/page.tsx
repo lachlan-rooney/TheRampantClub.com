@@ -95,6 +95,63 @@ const TIERS = [
 ]
 
 // ─── Draggable Image Component ───────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// THE GOLF DAY FILM — plays when it reaches you, muted.
+// ───────────────────────────────────────────────────────────────────────────
+// MUTED IS NOT A COMPROMISE, IT IS THE ONLY THING THAT WORKS: every browser
+// blocks autoplay with sound, and an unmuted autoplay does not play quietly —
+// it does not play at all, which reads as broken rather than silent.
+//
+// And not on page LOAD. This sits well below the fold, after the hero, the
+// benefits and the Tonight panel. Starting it on load means streaming video at
+// someone who never scrolls this far, and anyone who does arrive has missed the
+// opening. So it starts when it comes INTO VIEW, and pauses when it leaves
+// rather than playing on behind the footer.
+function GolfFilm() {
+  const wrap = useRef<HTMLDivElement>(null)
+  const frame = useRef<HTMLIFrameElement>(null)
+  const [armed, setArmed] = useState(false)   // only load YouTube once it is near
+
+  useEffect(() => {
+    const el = wrap.current
+    if (!el) return
+    const io = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) {
+        setArmed(true)
+      } else if (frame.current?.contentWindow) {
+        // Leaving the screen: stop, rather than stream behind the rest of the page.
+        frame.current.contentWindow.postMessage(
+          JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), '*')
+      }
+    }, { threshold: 0.35 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
+  return (
+    <div ref={wrap} style={{ maxWidth: 900, margin: '28px auto 0', padding: '0 20px' }}>
+      <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0,
+                    borderRadius: 12, overflow: 'hidden',
+                    border: '1px solid rgba(229,212,194,0.12)',
+                    boxShadow: '0 24px 56px rgba(0,0,0,0.4)',
+                    background: 'rgba(5,46,32,0.6)' }}>
+        {armed && (
+          <iframe
+            ref={frame}
+            // playsinline keeps iOS from taking over the whole screen;
+            // enablejsapi is what lets us pause it on the way out.
+            src="https://www.youtube.com/embed/qaKKajPODfk?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1"
+            title="The Rampant Cup — golf day"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
 function DraggableImage({
   img,
   index,
@@ -985,20 +1042,7 @@ export default function HomePage() {
           <div className="trc-section-diamond" />
           <div className="trc-section-title">The Rampant Cup</div>
           <div className="trc-section-subtitle">Ngày Hội Golf</div>
-          <div style={{ maxWidth: 900, margin: '28px auto 0', padding: '0 20px' }}>
-            <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0,
-                          borderRadius: 12, overflow: 'hidden',
-                          border: '1px solid rgba(229,212,194,0.12)',
-                          boxShadow: '0 24px 56px rgba(0,0,0,0.4)' }}>
-              <iframe
-                src="https://www.youtube.com/embed/qaKKajPODfk"
-                title="The Rampant Cup — golf day"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
-              />
-            </div>
-          </div>
+          <GolfFilm />
         </div>
 
         {/* ══════ 4. THE FIVE FLOORS ══════ */}

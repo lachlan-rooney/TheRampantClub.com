@@ -216,24 +216,36 @@ export default function SpacesShowcase({ variant }: { variant: 'internal' | 'pub
         /* The room, UNDER the mark. Dimmed hard: the cream lion has to stay
            legible over a warm, busy interior, and the panel must still look like
            one of the set rather than becoming a photo tile. */
+        /* The mark, above the name. Sized to the heading rather than to the
+           panel: it is part of the title block now, not a picture. */
+        .floor-crest {
+          display: block;
+          height: 72px; width: auto;
+          margin: 0 0 14px;
+          opacity: 0.95;
+        }
+        .floor.is-flipped .floor-crest { margin-left: auto; }
+        @media (max-width: 768px) {
+          .floor-crest { height: 56px; margin-bottom: 10px; }
+          .floor.is-flipped .floor-crest { margin-left: 0; }
+        }
         .floor-image img.floor-backdrop {
           position: absolute; inset: 0;
           width: 100%; height: 100%;
           object-fit: cover;
-          /* Desaturate and darken the ROOM, not the panel. A single opacity
-             cannot serve both a dark bar and a bright sitting room — the Library
-             Bar sat correctly at 0.38 while the Rampant Room took the panel over.
-             Normalising the image itself makes the set consistent whatever the
-             next photograph turns out to look like. */
-          filter: saturate(0.5) brightness(0.6);
-          opacity: 0.85;
+          /* Now that the lion has moved out of the panel, the room is the
+             content rather than a texture behind a mark — so it is shown as a
+             photograph. Only a light steadying remains, to keep six different
+             rooms from clashing with each other down the page. */
+          filter: saturate(0.92) brightness(0.94);
+          opacity: 1;
         }
-        /* Tints the room toward the floor's accent so the panel still belongs to
-           the set, and holds the corner label legible over a pale sofa. */
+        /* Just enough shade at the top-left for the corner label. A pale sofa
+           swallowing "FLOOR 4" is the kind of thing reported as "the page looks
+           broken" with no clue why, so the label keeps its own ground. */
         .floor-scrim {
           position: absolute; inset: 0;
-          background: linear-gradient(135deg, var(--accent), rgba(5,46,32,0.9));
-          opacity: 0.5;
+          background: linear-gradient(160deg, rgba(5,46,32,0.72) 0%, rgba(5,46,32,0.15) 42%, rgba(5,46,32,0) 70%);
         }
         .floor-image-floor, .floor-image-num { z-index: 2; }
         .floor-image img.floor-mark {
@@ -403,25 +415,32 @@ export default function SpacesShowcase({ variant }: { variant: 'internal' | 'pub
                     <div className="floor-scrim" />
                   </>
                 )}
-                {s.photo
-                  ? // eslint-disable-next-line @next/next/no-img-element
-                    <img src={s.photo} alt={s.en} />
-                  : s.mark
-                  ? // eslint-disable-next-line @next/next/no-img-element
-                    <img className="floor-mark" src={s.mark} alt="" loading="lazy" />
-                  : null}
+                {s.photo && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={s.photo} alt={s.en} />
+                )}
                 <div className="floor-image-floor">
                   {s.floor === '—' ? 'Off-site' : `Floor ${s.floor}`}
                 </div>
-                {/* The giant numeral is the EMPTY-PANEL treatment. With a mark it
-                    would fight the lion, and the floor is already named twice —
-                    in the corner label and in the eyebrow beside the title. And
-                    an em-dash rendered at 120px is not a number; the off-site
-                    space says "Off-site" and stops there. */}
-                {!s.mark && s.floor !== '—' && <div className="floor-image-num">{s.floor}</div>}
+                {/* The giant numeral is the EMPTY-PANEL treatment — it exists so a
+                    panel with no picture yet still looks deliberate. Once there
+                    is a photograph it would just sit on top of it. And an em-dash
+                    set at 120px is not a number, so the off-site space says
+                    "Off-site" and stops there. */}
+                {!s.photo && !s.backdrop && s.floor !== '—' && (
+                  <div className="floor-image-num">{s.floor}</div>
+                )}
               </div>
 
               <div>
+                {s.mark && (
+                  // The floor's own lion, ABOVE its name. Out of the panel now
+                  // that the panel holds a photograph — a mark laid over a room
+                  // was always going to fight it, and a mark reads better as
+                  // part of the naming than as furniture inside a picture.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className="floor-crest" src={s.mark} alt="" loading="lazy" />
+                )}
                 <div className="floor-eyebrow">
                   {s.floor === '—' ? '◆ The Sports Club' : `◆ Floor ${s.floor}`}
                 </div>
