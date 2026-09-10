@@ -37,8 +37,12 @@ export async function GET(req: NextRequest) {
     : { data: null }
 
   const [{ data: templates }, { data: tasks }, { data: instances }, { data: notes }, { data: objectives }] = await Promise.all([
-    sb.from('shift_templates').select('*').eq('active', true).order('day_of_week'),
-    sb.from('shift_template_tasks').select('*').eq('active', true).order('sort'),
+    // NO `active` FILTER. A past week is rendered from ITS OWN instances; these
+    // two are needed for the day's charter/measure and for ORDERING only, never
+    // to decide whether a task existed. Filtering them by what is active TODAY
+    // is precisely how a retired task vanishes from a week somebody did it in.
+    sb.from('shift_templates').select('*').order('day_of_week'),
+    sb.from('shift_template_tasks').select('*').order('sort'),
     sb.from('shift_task_instances').select('*').eq('week_start', week),
     sb.from('shift_shared_notes').select('*'),
     sb.from('shift_week_objectives').select('*').eq('week_start', week),
@@ -85,8 +89,24 @@ export async function GET(req: NextRequest) {
     }
   }).filter(r => r.weeks >= 3)
 
+  // ═══ NOT-REQUIRED FREQUENCY ════════════════════════════════════════════
+  // A task marked not required eight weeks running is a TEMPLATE that wants
+  // changing, and nobody spots that by eye — it looks reasonable every single
+  // week. Counted over the last 8 weeks, keyed by template task (a one-off has
+  // no template task and cannot recur, so it is excluded by construction).
+  const eightWeeksAgo = mondayOf(new Date(Date.now() - 56 * 864e5).toISOString().slice(0, 10))
+  const { data: nrRows } = await sb.from('shift_task_instances')
+    .select('template_task_id, week_start')
+    .eq('status', 'not_required')
+    .gte('week_start', eightWeeksAgo)
+    .not('template_task_id', 'is', null)
+  const nrCounts: Record<string, number> = {}
+  for (const r of nrRows || []) {
+    if (r.template_task_id) nrCounts[r.template_task_id] = (nrCounts[r.template_task_id] || 0) + 1
+  }
+
   return NextResponse.json({
-    week, acting, lapsing, templates: templates || [], tasks: tasks || [],
+    week, acting, lapsing, nrCounts, templates: templates || [], tasks: tasks || [],
     instances: instances || [], events: events || [], notes: notes || [],
     objectives: objectives || [], team: team || [],
   })
@@ -117,6 +137,19 @@ export async function POST(req: NextRequest) {
     }
     const { data: verified } = await sb.rpc('kiosk_verify_pin', { p_team_member: actingId, p_pin: b.pin })
     if (!verified) return NextResponse.json({ error: 'Wrong PIN, or too many tries — wait a moment.' }, { status: 401 })
+  }
+
+  // ADD A TASK — one-off, this day only. The scope is in the button label on the
+  // page; here it is structural, because shift_add_one_off writes an instance
+  // with NO template task and materialise only ever reads template tasks.
+  if (b.action === 'add_one_off') {
+    const title = String(b.title || '').trim()
+    if (!title) return NextResponse.json({ error: 'Give the task a name.' }, { status: 400 })
+    const { data: id, error: addErr } = await sb.rpc('shift_add_one_off', {
+      p_template: b.template_id, p_week: b.week_start, p_actor: actingId, p_title: title.slice(0, 300),
+    })
+    if (addErr) return NextResponse.json({ error: 'Could not add that task.' }, { status: 500 })
+    return NextResponse.json({ ok: true, id })
   }
 
   const { data: refusal, error } = await sb.rpc('shift_task_update', {

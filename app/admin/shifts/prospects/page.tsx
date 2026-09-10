@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useLang } from '@/lib/lang'
+import { ADMIN_SURFACE } from '@/lib/admin/surfaces'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE STANDING PROSPECT RULE — one name per shift, four shifts a week.
@@ -20,7 +21,7 @@ interface P { prospect_id: string; full_name: string; stage: string; profession:
   decision: string | null; notes: string | null; created_at: string }
 
 export default function ShiftProspectsPage() {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const [list, setList] = useState<P[]>([])
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -67,7 +68,7 @@ export default function ShiftProspectsPage() {
 
   return (
     <>
-      <Link href="/admin/shifts" style={back}>← {t('Shifts', 'Ca làm việc')}</Link>
+      <Link href="/admin/shifts" style={back}>← {ADMIN_SURFACE['/admin/shifts'][lang === 'vn' ? 'vn' : 'en']}</Link>
       <h1 style={{ fontFamily: SERIF, fontSize: 24, color: '#E5D4C2', margin: '16px 0 4px' }}>
         {t('Propose a member', 'Đề cử hội viên')}
       </h1>

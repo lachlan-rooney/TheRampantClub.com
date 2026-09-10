@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { ADMIN_SURFACE } from '@/lib/admin/surfaces'
 
 // Grouped admin sidebar. Groups remember their collapsed state in localStorage.
 // The Dashboard sits above the groups as a single landing link.
@@ -25,7 +26,7 @@ const GROUPS: Group[] = [
       { href: '/admin/checklists', label: 'Checklists', icon: 'checklist' },
       // Beside Checklists deliberately: that is opening/closing per shift, this
       // is the standing weekly list. Same team, same part of the day.
-      { href: '/admin/shifts', label: 'Weekly Shifts', icon: 'clipboard' },
+      { href: '/admin/shifts', label: ADMIN_SURFACE['/admin/shifts'].en, icon: 'clipboard' },
       { href: '/admin/quickref', label: 'Quick Reference', icon: 'book' },
       { href: '/admin/cards', label: 'Member Cards', icon: 'card' },
       { href: '/admin/concierge', label: 'Concierge', icon: 'bell' },

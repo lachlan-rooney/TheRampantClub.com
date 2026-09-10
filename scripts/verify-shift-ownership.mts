@@ -88,9 +88,13 @@ try {
     .insert({ template_id: tpl.id, sort: 1, title_en: 'ZZ Probe Task' }).select('id').single()
   if (ke) throw new Error(`task: ${ke.message}`)
   made.task = task.id
+  // title_en is snapshotted onto the instance now (db/day_shifts.sql) and is NOT
+  // NULL — a week must be readable without the template. The probe inserts
+  // directly rather than materialising, so it has to supply it too.
   const { data: inst, error: ie } = await sb.from('shift_task_instances').insert({
     template_task_id: task.id, template_id: tpl.id,
     week_start: '2020-01-06', shift_date: '2020-01-06', assignee_team_member_id: OWNER,
+    title_en: 'ZZ Probe Task',
   }).select('id').single()
   if (ie) throw new Error(`instance: ${ie.message}`)
   made.inst = inst.id

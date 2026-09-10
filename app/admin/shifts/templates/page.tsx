@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useLang } from '@/lib/lang'
+import { ADMIN_SURFACE } from '@/lib/admin/surfaces'
 
 // The standing lists, editable without a deploy — add, edit, reorder,
 // DEACTIVATE (never delete), and reassign a shift when a portfolio rotates.
@@ -16,7 +17,7 @@ interface Task { id: string; template_id: string; sort: number; title_en: string
 interface Member { id: string; display_name: string; is_shift_supervisor: boolean }
 
 export default function TemplatesPage() {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const [d, setD] = useState<{ templates: Tpl[]; tasks: Task[]; team: Member[]; acting: Member | null } | null>(null)
   const [sel, setSel] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -44,7 +45,7 @@ export default function TemplatesPage() {
 
   return (
     <>
-      <Link href="/admin/shifts" style={back}>← {t('Shifts', 'Ca làm việc')}</Link>
+      <Link href="/admin/shifts" style={back}>← {ADMIN_SURFACE['/admin/shifts'][lang === 'vn' ? 'vn' : 'en']}</Link>
       <h1 style={{ fontFamily: SERIF, fontSize: 24, color: '#E5D4C2', margin: '16px 0 4px' }}>
         {t('Standing lists', 'Danh sách cố định')}
       </h1>

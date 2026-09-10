@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useLang } from '@/lib/lang'
+import { ADMIN_SURFACE } from '@/lib/admin/surfaces'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE MONDAY REVIEW — five people, one week, read at 14:00 under time pressure.
@@ -31,7 +32,7 @@ const mondayOf = (d: Date) => { const x = new Date(d); x.setUTCDate(x.getUTCDate
 const addDays = (iso: string, n: number) => new Date(new Date(iso + 'T00:00:00Z').getTime() + n * 864e5).toISOString().slice(0, 10)
 
 export default function ReviewPage() {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const thisWeek = mondayOf(new Date(Date.now() + 7 * 3600e3))
   const [week, setWeek] = useState(addDays(thisWeek, -7))     // LAST week by default
   const [d, setD] = useState<{ acting: Member | null; templates: Tpl[]; tasks: Task[]; instances: Inst[]
@@ -99,7 +100,7 @@ export default function ReviewPage() {
   if (!d.acting?.is_shift_supervisor) {
     return (
       <>
-        <Link href="/admin/shifts" style={back}>← {t('Shifts', 'Ca làm việc')}</Link>
+        <Link href="/admin/shifts" style={back}>← {ADMIN_SURFACE['/admin/shifts'][lang === 'vn' ? 'vn' : 'en']}</Link>
         <div style={warn}>{t('The Monday review is for Mr Sĩ and Miss Chau.', 'Phần rà soát thứ Hai dành cho Mr Sĩ và Miss Chau.')}</div>
       </>
     )
@@ -107,7 +108,7 @@ export default function ReviewPage() {
 
   return (
     <>
-      <Link href="/admin/shifts" style={back}>← {t('Shifts', 'Ca làm việc')}</Link>
+      <Link href="/admin/shifts" style={back}>← {ADMIN_SURFACE['/admin/shifts'][lang === 'vn' ? 'vn' : 'en']}</Link>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 10, margin: '16px 0 4px' }}>
         <h1 style={{ fontFamily: SERIF, fontSize: 24, color: '#E5D4C2' }}>{t('Monday review', 'Rà soát thứ Hai')}</h1>
         <div style={{ display: 'flex', gap: 6 }}>
