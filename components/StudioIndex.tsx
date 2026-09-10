@@ -233,9 +233,11 @@ export default function StudioIndex({ collaborations, images }: {
           <h2 style={{ fontFamily: SERIF, fontSize: 'clamp(34px, 8vw, 88px)', lineHeight: .98, margin: '14px 0 0' }}>
             {c.title_en || c.artist_name}
           </h2>
-          <div style={{ fontFamily: SERIF, fontSize: 'clamp(18px, 3vw, 27px)', opacity: .62, marginTop: 10 }}>
-            {c.artist_name}
-          </div>
+          {c.title_en && (
+            <div style={{ fontFamily: SERIF, fontSize: 'clamp(18px, 3vw, 27px)', opacity: .62, marginTop: 10 }}>
+              {c.artist_name}
+            </div>
+          )}
 
           {/* a glimpse of the work — the door, not the room */}
           {stripOf(c).length > 0 && (
@@ -280,11 +282,14 @@ export default function StudioIndex({ collaborations, images }: {
                                 padding: isMark(cardOf(x)!) ? 18 : 0 }} />
                 </div>
               )}
+              {/* An untitled exhibition falls back to the artist's name — so the
+                  line beneath must not print it a second time. */}
               <div style={{ fontFamily: SERIF, fontSize: 21, lineHeight: 1.15, marginTop: 14 }}>
                 {x.title_en || x.artist_name}
               </div>
               <div style={{ fontFamily: MONO, fontSize: 11, opacity: .62, marginTop: 6 }}>
-                {x.artist_name}{tenseOf(x.opens_on, x.closes_on) ? `  ·  ${tenseOf(x.opens_on, x.closes_on)}` : ''}
+                {[x.title_en ? x.artist_name : null, tenseOf(x.opens_on, x.closes_on)]
+                  .filter(Boolean).join('  ·  ')}
               </div>
               <div style={{ fontFamily: MONO, fontSize: 11, marginTop: 10 }}>
                 View <span className="st-go">→</span>

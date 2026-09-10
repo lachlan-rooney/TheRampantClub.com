@@ -150,9 +150,11 @@ export default function StudioExhibition({ collaboration, images }: {
                 <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(42px, 11vw, 132px)', lineHeight: .92,
                              letterSpacing: '-.01em', margin: '14px 0 0' }}>{c.title_en}</h1>
               )}
-              <div style={{ fontFamily: SERIF, fontSize: 'clamp(20px, 4vw, 34px)', marginTop: 16, opacity: .78 }}>
-                {c.artist_name}
-              </div>
+              {c.title_en && (
+                <div style={{ fontFamily: SERIF, fontSize: 'clamp(20px, 4vw, 34px)', marginTop: 16, opacity: .78 }}>
+                  {c.artist_name}
+                </div>
+              )}
               {c.opening_from && (
                 <div style={{ fontFamily: MONO, fontSize: 11.5, opacity: .62, marginTop: 12 }}>
                   Opening {dateRange(c.opening_from, c.opening_to)}
