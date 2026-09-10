@@ -25,7 +25,7 @@ export interface Collaboration {
   id: string; slug: string; artist_name: string; artist_name_vn: string | null
   title_en: string | null; title_vn: string | null; status: string
   opens_on: string | null; closes_on: string | null; accent: string | null
-  hero_path: string | null
+  hero_path: string | null; auction_on: string | null
   bio_en: string | null; bio_vn: string | null
   collaboration_en: string | null; collaboration_vn: string | null
   event_en: string | null; event_vn: string | null
@@ -142,6 +142,17 @@ export default function StudioShowcase({ collaborations, images }: {
             )}
 
             <Section title="The collaboration" body={c.collaboration_en} />
+
+            {/* The auction date is rendered from a COLUMN, never written into the
+                prose. "Later this year" was true when it was typed and would have
+                been quietly wrong by March, with nothing to prompt anyone. */}
+            {c.auction_on && (
+              <div style={{ fontFamily: MONO, fontSize: 12, opacity: .8, marginTop: 18, maxWidth: 620 }}>
+                The hand-painted bottle goes to charity auction on{' '}
+                {new Date(c.auction_on + 'T12:00:00+07:00').toLocaleDateString('en-GB',
+                  { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' })}.
+              </div>
+            )}
             <Section title="The inspiration"   body={c.inspiration_en} />
             <Section title="The event"         body={c.event_en} />
             <Section title="The food"          body={c.food_en} />
