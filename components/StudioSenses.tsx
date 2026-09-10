@@ -34,27 +34,36 @@ interface Sense {
   path: string        // one stroke, drawn once
 }
 
-// Five variations on the diamond the Studio already uses as a section marker,
-// at different apertures. NOT pictograms: a stock eye, nose and tongue would be
-// the opposite of the drawn lions the rest of the site is built from.
+// THE MARKS ARE OBJECTS, the way the floor lions on /spaces hold an object
+// rather than depict a floor: a book, a flask, a tumbler. So these hold what the
+// room hands you — a candle, a canapé, a dram, a bell, a sprig. Never a sense
+// organ: an eye, a nose or a tongue off an icon set is exactly the generic
+// pictogram this page exists to avoid, and it would sit badly beside drawn lions.
+// Each mark is ONE path (subpaths inside a single `d`) so the stroke-dash reveal
+// runs through it in one continuous draw.
 const SENSES: Sense[] = [
   // "Lighting, directed, soft and warm, designed to complement both the
   //  artworks and the whisky's amber tones." — brief, Practical Requirements
   { en: 'Sight', vn: 'Thị giác', line: 'Lighting, directed, soft and warm.',
-    path: 'M32 6 L58 32 L32 58 L6 32 Z M32 22 L42 32 L32 42 L22 32 Z' },
+    // a candle — "directed, soft and warm" is candlelight, not a lamp icon
+    path: 'M32 12 C 27 18, 28 24, 32 27 C 36 24, 37 18, 32 12 Z M24 31 Q32 28 40 31 L40 52 L24 52 Z' },
 
   // "All canapés must be one-bite, no cutlery required." — brief, F&B Programme
   { en: 'Touch', vn: 'Xúc giác', line: 'One bite. No cutlery.',
-    path: 'M32 6 L58 32 L32 58 L6 32 Z M20 44 L44 20' },
+    // a canapé on its base — the one bite you pick up, no cutlery
+    path: 'M18 51 L46 51 M25 51 C 25 34, 39 34, 39 51 M32 34 L32 26 M32 29 L37 25' },
 
   // "Colour palette in stone, blush, and dusk tones, reminiscent of the piece
   //  of art itself." — brief, Canapé — Twilight / Threshold
   { en: 'Taste', vn: 'Vị giác', line: 'Reminiscent of the piece of art itself.',
-    path: 'M32 6 L58 32 L32 58 L6 32 Z M10 32 L54 32' },
+    // the dram — a rocks glass and the line of whisky in it. A tulip
+    // bowl came out reading as a martini, which is the wrong drink entirely.
+    path: 'M23 17 L26 51 L38 51 L41 17 M24.7 33 L39.3 33' },
 
   // "Soft ambient music." — Programme Flow. "Soundscape controlled." — Environment
   { en: 'Sound', vn: 'Thính giác', line: 'Soft ambient. Soundscape controlled.',
-    path: 'M32 12 L52 32 L32 52 L12 32 Z M32 2 L62 32 L32 62 L2 32 Z' },
+    // a bell — something that SOUNDS, not a speaker that reproduces
+    path: 'M21 46 C 21 29, 25 20, 32 20 C 39 20, 43 29, 43 46 M18 46 L46 46 M32 46 L32 51 M32 20 L32 15' },
 
   // SCENT IS THE ODD ONE OUT, AND IT IS THE STRONGEST OF THE FIVE.
   // This line is NOT from the brief — the brief says only "Aroma controlled",
@@ -66,36 +75,14 @@ const SENSES: Sense[] = [
   // for the same reason it was blank before.
   { en: 'Scent', vn: 'Khứu giác',
     line: 'Composed with the artist. A place, a memory, an environment.',
-    path: 'M32 6 L58 32 L32 58 L6 32 Z M32 58 C 24 44, 40 38, 32 22' },
+    // a sprig, giving off — stem, two leaves, one rising wisp
+    path: 'M32 52 L32 26 M32 38 C 39 38, 43 33, 42 27 C 36 27, 32 32, 32 38 Z M32 46 C 25 46, 21 41, 22 35 C 28 35, 32 40, 32 46 Z M29 21 C 31 17, 35 19, 33 14' },
 ]
 
 export default function StudioSenses() {
   const ref = useRef<HTMLDivElement>(null)
   const [drawn, setDrawn] = useState(false)
 
-  // Phone only: the four lines are worth reading but not worth four permanent
-  // paragraphs — five senses of always-on prose pushed everything below off the
-  // screen. Collapsed to a tap, they cost no layout space at all, because the
-  // bubble is absolutely positioned inside its own item rather than in flow.
-  // Desktop ignores all of this and keeps the lines visible.
-  const [open, setOpen] = useState<number | null>(null)
-
-  // Anchored to .sn-item (position:relative), never position:fixed — a fixed
-  // bubble would be captured by any transformed ancestor and open in the wrong
-  // place, which is a trap this codebase has already been bitten by.
-  useEffect(() => {
-    if (open === null) return
-    const away = (e: PointerEvent) => {
-      if (!(e.target as Element)?.closest?.('.sn-item')) setOpen(null)
-    }
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(null) }
-    document.addEventListener('pointerdown', away)
-    document.addEventListener('keydown', esc)
-    return () => {
-      document.removeEventListener('pointerdown', away)
-      document.removeEventListener('keydown', esc)
-    }
-  }, [open])
 
   // NOTHING MOVES UNTIL IT IS LOOKED AT, and nothing moves again afterwards.
   // If a member never scrolls this far, nothing here has animated at all.
@@ -132,49 +119,19 @@ export default function StudioSenses() {
 
         /* A STACK ON A PHONE, not a squeezed row: five marks across 390px would
            be five smudges. */
-        /* ── the phone's collapsed state ──────────────────────────────────
-           The trigger is a real <button>, reset to look like the text it
-           replaced. Senses with no line get no button, so Scent has nothing to
-           tap and nothing that hints there is something to tap. */
-        .sn-trigger { -webkit-appearance: none; appearance: none; background: none;
-          border: 0; padding: 0; margin: 0; font: inherit; color: inherit;
-          text-align: left; display: block; cursor: pointer; }
-        .sn-trigger:focus-visible { outline: 1.5px solid ${INK}; outline-offset: 4px; border-radius: 3px; }
-        /* the only affordance: a hairline dot after the name */
-        .sn-dot { display: inline-block; width: 4px; height: 4px; border-radius: 50%;
-          background: ${INK}; opacity: .38; vertical-align: middle; margin-left: 7px;
-          transition: opacity .15s; }
-        .sn-item.is-open .sn-dot { opacity: 1; }
-
-        .sn-tip { font-family: ${MONO}; font-size: 11.5px; line-height: 1.75; opacity: .68; margin-top: 9px; }
-
+        /* Always visible, both viewports. The tap-to-open version tested badly:
+           a dot after a word does not say "press me", so the lines simply looked
+           missing. Legibility beat the ~170px it saved; the phone gets the height
+           back by tightening instead. */
+        .sn-line { font-family: ${MONO}; font-size: 11.5px; line-height: 1.7;
+                   opacity: .68; margin-top: 8px; }
         @media (max-width: 879px) {
-          /* Opens IN FLOW, not as an overlay. An absolutely positioned bubble
-             cleared its own row but then sat across the next sense's name while
-             leaving its Vietnamese line showing underneath — which reads as a
-             rendering fault, not a tooltip. Inline, it obscures nothing. The
-             space complaint is answered by the collapsed default (five lines of
-             permanent prose gone); one open bubble is ~50px, briefly, on the one
-             sense being read. */
-          .sn-tip {
-            margin-top: 11px; padding: 11px 14px; border-radius: 10px;
-            background: ${INK}; color: ${SAGE}; opacity: 1;
-            box-shadow: 0 8px 22px rgba(5,46,32,.16);
-          }
-          .sn-item:not(.is-open) .sn-tip { display: none; }
-          /* Centred against the mark while collapsed; top-aligned once the
-             bubble makes the text column the taller of the two. */
-          .sn-item.is-open { align-items: start; }
-        }
-        @media (min-width: 880px) {
-          /* Desktop keeps every line in plain sight — nothing to tap, no dot. */
-          .sn-dot { display: none; }
-          .sn-trigger { cursor: default; }
+          .sn-line { font-size: 11px; line-height: 1.62; margin-top: 6px; }
         }
 
         .sn-row { display: grid; grid-template-columns: 1fr; gap: 18px; }
         .sn-item { display: grid; grid-template-columns: 46px minmax(0,1fr);
-                   gap: 16px; align-items: center; position: relative; }
+                   gap: 15px; align-items: start; position: relative; }
         @media (min-width: 880px) {
           .sn-row { grid-template-columns: repeat(5, 1fr); gap: 22px; }
           /* align-content:start matters: the row is as tall as the wordiest sense,
@@ -209,48 +166,32 @@ export default function StudioSenses() {
       </h2>
       <p style={{ fontFamily: MONO, fontSize: 13, lineHeight: 1.9, opacity: .72,
                   maxWidth: 560, margin: '0 0 48px' }}>
+        {/* Four clauses under a heading that says five made a reader count along
+            and come up one behind — "what you are handed" was quietly doing both
+            touch and taste. Collapsing them on purpose beats listing five. */}
         The work is hung, and then the room is built to answer it — the light it
-        is seen in, what you are handed, what you hear, and the air itself.
+        is seen in, what reaches your hand and your glass, what you hear, and the
+        air itself.
       </p>
 
       <div className={`sn-row${drawn ? ' sn-on' : ''}`}>
-        {SENSES.map((s, i) => {
-          const isOpen = open === i
-          const names = (
-            <>
-              <div style={{ fontFamily: SERIF, fontSize: 17, lineHeight: 1.25 }}>
-                {s.en}
-                {/* No line, no dot: Scent must not look like a tap that failed. */}
-                {s.line && <span className="sn-dot" aria-hidden="true" />}
-              </div>
+        {SENSES.map((s, i) => (
+          <div key={s.en} className="sn-item">
+            <svg className={`sn-mark sn-i${i}`} viewBox="0 0 64 64" width="46" height="46"
+                 aria-hidden="true" style={{ display: 'block', overflow: 'visible' }}>
+              <path d={s.path} pathLength={100} />
+            </svg>
+            <div>
+              <div style={{ fontFamily: SERIF, fontSize: 17, lineHeight: 1.25 }}>{s.en}</div>
               {/* Matches .floor-vn on /spaces: mono, 11px, .06em, no uppercase —
                   which also spares the diacritics being set in caps. */}
               <div style={{ fontFamily: MONO, fontSize: 11, letterSpacing: '.06em',
                             opacity: .55, marginTop: 4 }}>{s.vn}</div>
-            </>
-          )
-          return (
-            <div key={s.en} className={`sn-item${isOpen ? ' is-open' : ''}`}>
-              <svg className={`sn-mark sn-i${i}`} viewBox="0 0 64 64" width="46" height="46"
-                   aria-hidden="true" style={{ display: 'block', overflow: 'visible' }}>
-                <path d={s.path} pathLength={100} />
-              </svg>
-              <div>
-                {s.line ? (
-                  <button type="button" className="sn-trigger"
-                          aria-expanded={isOpen} aria-controls={`sn-tip-${i}`}
-                          onClick={() => setOpen(isOpen ? null : i)}>
-                    {names}
-                  </button>
-                ) : names /* Scent: plain text, nothing to press. */}
-
-                {/* ABSENT, not empty: for Scent there is no element at all — no
-                    bubble, no trigger, no gap, no stray marker. */}
-                {s.line && <div className="sn-tip" id={`sn-tip-${i}`} role="note">{s.line}</div>}
-              </div>
+              {/* Still absent rather than empty when a sense has no words. */}
+              {s.line && <div className="sn-line">{s.line}</div>}
             </div>
-          )
-        })}
+          </div>
+        ))}
       </div>
     </div>
   )
