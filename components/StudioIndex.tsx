@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import StudioSenses from '@/components/StudioSenses'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE STUDIO — a hub for the room, not a page about one exhibition.
@@ -262,6 +263,11 @@ export default function StudioIndex({ collaborations, images }: {
           </Link>
         </div>
       )}
+
+      {/* ══ HOW THE ROOM ANSWERS ═══════════════════════════════════════
+          The method, not one show's detail. It belongs to the hub because it is
+          what The Studio does every time. */}
+      <StudioSenses />
 
       {/* ══ EVERY EXHIBITION ═══════════════════════════════════════════ */}
       <div style={{ maxWidth: 1180, margin: '96px auto 0', padding: '0 24px 130px' }}>
