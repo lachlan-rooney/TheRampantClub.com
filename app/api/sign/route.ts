@@ -3,6 +3,7 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { vnDateString } from '@/lib/datetime'
+import { provisionMemberAccount } from '@/lib/members/provision'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -251,10 +252,43 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    // ═══ 5a · THE ACCOUNT ══════════════════════════════════════════════════
+    // THIS is the moment a person becomes a member: their email is in hand,
+    // typed by them and verified by reaching this page, the member_no is on the
+    // invitation, and it happens exactly once. Before this existed, becoming a
+    // member and being able to sign in were unconnected — a member_no was
+    // stamped onto a profile BY HAND in the database, or not at all, and an
+    // account that was never linked looked exactly like a working one.
+    //
+    // IT MUST NOT FAIL SILENTLY. A member marked Active with no account, and
+    // nobody told, is the failure this is fixing — so a failure here is
+    // recorded on the invitation and shows up as an unlinked account on the
+    // admin dashboard, which is a queue somebody already looks at.
+    //
+    // IDEMPOTENT. Signing twice, or a retry after a timeout, must not make a
+    // second account or refuse the member: an existing account for that email
+    // is adopted and linked rather than treated as an error.
+    let accountNote: string | null = null
+    if (invitation.member_no && email) {
+      const r = await provisionMemberAccount(supabaseAdmin, {
+        email, fullName, memberNo: invitation.member_no,
+      })
+      // Deliberately NOT thrown. The agreement is signed and the member is
+      // Active; unwinding that because an address was already registered would
+      // be worse. It is recorded instead, and the dashboard's unlinked count is
+      // what makes sure a person meets it.
+      if (!r.ok) accountNote = r.error
+    }
+
     // 5b. Now mark invitation as signed.
     await supabaseAdmin
       .from('signing_invitations')
-      .update({ status: 'signed' })
+      .update({
+        status: 'signed',
+        // Carries the reason when an account could not be made, so the failure
+        // is attached to the record rather than living only in a log.
+        ...(accountNote ? { account_error: accountNote } : {}),
+      })
       .eq('id', invitation.id)
 
     // 6. Send email copies with signed PDF
