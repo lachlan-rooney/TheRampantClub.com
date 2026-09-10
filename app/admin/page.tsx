@@ -413,6 +413,35 @@ export default function AdminDashboard() {
 }
 
 // ── KPI tile ───────────────────────────────────────────────────────────
+// Silent until there is something to say. Deliberately not dismissible: it goes
+// away by being dealt with, not by being closed.
+function UnlinkedBanner() {
+  const [n, setN] = useState<number | null>(null)
+  useEffect(() => {
+    fetch('/api/admin/member-link', { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      // Staff accounts are excluded: admin pages never check for a member_no,
+      // so a staff account without one is not a problem, it is the normal case.
+      .then(j => setN(j ? (j.unlinked || []).filter((a: { is_admin: boolean }) => !a.is_admin).length : 0))
+      .catch(() => setN(0))
+  }, [])
+  if (!n) return null
+  return (
+    <Link href="/admin/members/link" style={{
+      display: 'block', textDecoration: 'none', marginBottom: 16, padding: '13px 16px',
+      borderRadius: 8, background: 'rgba(212,184,90,0.08)', border: '1px solid rgba(212,184,90,0.35)',
+    }}>
+      <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#D4B85A' }}>
+        {n === 1 ? '1 account has no membership linked'
+                 : `${n} accounts have no membership linked`}
+      </div>
+      <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10.5, color: '#B2AA98', marginTop: 4 }}>
+        They can sign in, but they have no visits, no palate and cannot post in The Snug. Link them →
+      </div>
+    </Link>
+  )
+}
+
 function KpiTile({ href, label, value, delta, deltaPositive, spark, tone }: {
   href: string
   label: string
