@@ -173,6 +173,10 @@ export default function Footer() {
             <div className="trc-footer-copyright">&copy; {new Date().getFullYear()} The Rampant Club. All rights reserved.</div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 16, marginTop: 8 }}>
               {[
+                // Press belongs here and not on the homepage: it serves
+                // journalists and the occasional curious member, and the
+                // homepage already has The Studio competing for that space.
+                { label: 'Press', href: '/press' },
                 { label: 'Terms', href: '/terms' },
                 { label: 'Privacy', href: '/privacy' },
                 { label: 'Cookies', href: '/cookies' },
