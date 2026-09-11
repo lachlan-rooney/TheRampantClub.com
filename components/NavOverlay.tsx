@@ -498,6 +498,7 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
             </Link>
             <Link href="/studio" className="nav-link" onClick={() => setOpen(false)}>
               <div className="nav-link-en">The Studio</div>
+              <div className="nav-link-vn">Phòng Studio</div>
             </Link>
             <Link href="/sports" className="nav-link" onClick={() => setOpen(false)}>
               <div className="nav-link-en">The Sports Club</div>

@@ -182,6 +182,15 @@ export default function StudioExhibition({ collaboration, images }: {
                     {body.split(/\n{2,}/).map((para, k) => (
                       <p key={k} style={{ fontFamily: MONO, fontSize: 14, lineHeight: 2, margin: '0 0 20px' }}>{para}</p>
                     ))}
+                    {/* The signature closes the artist's OWN words. With no
+                        "in the artist's words" section it closes his bio
+                        instead — it was set for Rizal but never drawn, because
+                        it only lived inside a section his page does not have. */}
+                    {label === `About ${c.artist_name}` && !c.inspiration_en && c.signature_path && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={c.signature_path} alt="" aria-hidden="true"
+                           style={{ display: 'block', width: 180, height: 'auto', marginTop: 12, opacity: .85 }} />
+                    )}
                   </div>
                   {im && (
                     <figure className="ex-pic" style={{ margin: 0 }}>
@@ -279,8 +288,11 @@ function Words({ body, artist, signature }: { body: string; artist: string; sign
           a motif, so it is not repeated and never used as decoration. */}
       {signature && (
         // eslint-disable-next-line @next/next/no-img-element
+        // The file is inked in the club's green; on this green ground it would
+        // vanish, so it is turned light here.
         <img src={signature} alt="" aria-hidden="true"
-             style={{ display: 'block', width: 168, height: 'auto', marginTop: 30, opacity: .8 }} />
+             style={{ display: 'block', width: 168, height: 'auto', marginTop: 30, opacity: .8,
+                      filter: 'brightness(0) invert(1)' }} />
       )}
     </section>
   )
