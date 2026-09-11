@@ -105,7 +105,6 @@ export default function OriginPage() {
         /* the painting, askew in the masthead's empty half */
         .org-paint { position: relative; width: calc(100% + 40px); max-width: 600px; margin-left: -40px; }
         .org-paint .pk-float img { filter: drop-shadow(0 18px 34px rgba(5,46,32,.22)); }
-        .org-paint-glass { position: absolute; left: -6%; bottom: -10%; z-index: 2; }
 
         .org-ch { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 72px; align-items: center; }
         .org-ch.is-flip { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); }
@@ -131,7 +130,6 @@ export default function OriginPage() {
 
         @media (max-width: 860px) {
           .org-paint { width: 100%; max-width: 420px; margin: 0 auto; }
-          .org-paint-glass { left: -2%; }
           .org-ch, .org-ch.is-flip { grid-template-columns: 1fr; gap: 56px; }
           .org-ch.is-flip .org-ch-art { order: 0; }
           .org-ch-body { margin-top: 26px; }
@@ -157,7 +155,6 @@ export default function OriginPage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/images/lion-painting.webp" alt="The Rampant Lion" />
             </div>
-            <InkFloat name="glass" width="22%" rot={-10} dur={7} className="org-paint-glass" />
           </div>
         }
       />
