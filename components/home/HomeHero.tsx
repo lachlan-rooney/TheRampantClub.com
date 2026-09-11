@@ -35,10 +35,8 @@ export default function HomeHero({ onEthos }: { onEthos: () => void }) {
         .hh-rise { opacity: 0; transform: translateY(22px); }
         .hh.is-in .hh-rise { animation: hh-rise .9s cubic-bezier(.16,.84,.44,1) both; }
         @keyframes hh-rise { to { opacity: 1; transform: none } }
-        .hh-eyebrow { font-family: 'Google Sans Code', 'DM Mono', monospace; font-size: 10.5px; letter-spacing: .22em;
-                      text-transform: uppercase; opacity: .6; }
         /* the girl sits on the top of the title, as she always has */
-        .hh-girl { display: block; width: clamp(130px, 13vw, 190px); height: auto; margin: 26px 0 -0.16em 0.1em;
+        .hh-girl { display: block; width: clamp(130px, 13vw, 190px); height: auto; margin: 0 0 -0.16em 0.1em;
                    position: relative; z-index: 1; }
         .hh-title { font-family: 'Rampant Sans', serif; font-weight: 400; margin: 0;
                     font-size: clamp(52px, 7.4vw, 108px); line-height: .92; }
@@ -52,7 +50,7 @@ export default function HomeHero({ onEthos }: { onEthos: () => void }) {
         .hh-cta:hover span { transform: translateX(7px); }
 
         /* the still life */
-        .hh-still { position: relative; aspect-ratio: 1 / 0.92; }
+        .hh-still { position: relative; aspect-ratio: 1 / 0.92; width: 84%; margin-left: auto; }
         .hh-obj { position: absolute; height: auto; opacity: 0; pointer-events: auto;
                   transition: opacity 1s ease; filter: drop-shadow(6px 10px 10px rgba(5,46,32,.14)); }
         .hh.is-in .hh-obj { opacity: 1; }
@@ -78,10 +76,8 @@ export default function HomeHero({ onEthos }: { onEthos: () => void }) {
 
       <div className="hh-grid">
         <div>
-          <div className="hh-eyebrow hh-rise">The Rampant Club · Sài Gòn</div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/whisky-girl-opt.png" alt="" aria-hidden="true" className="hh-girl hh-rise"
-               style={{ animationDelay: '.05s' }} />
+          <img src="/images/whisky-girl-opt.png" alt="" aria-hidden="true" className="hh-girl hh-rise" />
           <h1 className="hh-title hh-rise" style={{ animationDelay: '.08s' }}>A Members&rsquo;<br />Club</h1>
           <div className="hh-sub hh-rise" style={{ animationDelay: '.16s' }}>For kindred spirits</div>
           <p className="hh-lede hh-rise" style={{ animationDelay: '.24s' }}>

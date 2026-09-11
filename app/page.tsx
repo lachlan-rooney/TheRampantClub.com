@@ -8,6 +8,9 @@ import ReciprocalClocks from '@/components/ReciprocalClocks'
 import HomeHero from '@/components/home/HomeHero'
 import { tenseOf, dateRange } from '@/components/StudioIndex'
 import MemberBenefits from '@/components/home/MemberBenefits'
+import Clubhouse from '@/components/home/Clubhouse'
+import StudioInvite from '@/components/home/StudioInvite'
+import EthosLetter from '@/components/home/EthosLetter'
 import Spotlight from '@/components/Spotlight'
 import useEasterEggs from '@/hooks/useEasterEggs'
 import Link from 'next/link'
@@ -62,13 +65,6 @@ function useScrollReveal(threshold = 0.15) {
 
 // ─── Data ────────────────────────────────────────────────────────
 
-const FLOORS = [
-  { num: 5, name: 'Source & Origin Lab', vn: 'Phòng Thí Nghiệm', desc: 'Our in-house culinary innovation lab, bringing cutting-edge beverage experiences exclusively to members.' },
-  { num: 4, name: 'The Rampant Room', vn: 'Phòng Rampant', desc: 'A world-class bottle-share room of global whiskies, enjoyed at your leisure with guests and fellow members. Private lockers available.' },
-  { num: 3, name: 'The Dining Room', vn: 'Phòng Ăn Riêng', desc: 'The ultimate discreet city-centre room for meetings, birthday soir\u00e9es, private dinners, and intimate gatherings.' },
-  { num: 2, name: 'The Studio', vn: 'Phòng Nghệ Thuật', desc: 'A quarterly rotating, curated sensory art space \u2014 interact with, touch, hear, taste, and smell immersive installations.' },
-  { num: 1, name: 'The Library Bar', vn: 'Quầy Bar Thư Viện', desc: 'Your private cocktail bar. Seasonal cocktails, vintage spirits, curated books and games, with resident musicians and DJs.' },
-]
 
 // `short` is the name set large; the description carries the rest.
 const TIERS = [
@@ -318,24 +314,21 @@ export default function HomePage() {
   const [showGrid, setShowGrid] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
   const [isMobile, setIsMobile] = useState(false)
-  const [isPhone, setIsPhone] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [blurbVisible, setBlurbVisible] = useState(false)
   const [ethosOpen, setEthosOpen] = useState(false)
-  const [ethosLang, setEthosLang] = useState<'en' | 'vn'>('en')
+  const closeEthos = useCallback(() => setEthosOpen(false), [])
   const blurbRef = useRef<HTMLDivElement>(null)
   const maxZRef = useRef(50)
 
   const multiplier = isMobile ? 2 : 6
 
   // Scroll-reveal hooks for new sections
-  const floorsSec = useScrollReveal(0.1)
   const tiersSec = useScrollReveal(0.1)
 
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 1024)
-      setIsPhone(window.innerWidth < 768)
     }
     checkMobile()
     window.addEventListener('resize', checkMobile)
@@ -446,7 +439,9 @@ export default function HomePage() {
           min-height: 100vh;
           background: var(--trc-cream);
           font-family: 'Google Sans Code', monospace;
-          overflow-x: hidden;
+          /* clip, not hidden: hidden makes this a scroll container, and
+             position: sticky inside it (the Clubhouse drawing) stops sticking. */
+          overflow-x: clip;
           position: relative;
         }
 
@@ -540,7 +535,7 @@ export default function HomePage() {
         /* ── The Rampant Cup ── */
         .trc-cup { max-width: 1180px; margin: 0 auto; padding: 120px 24px 40px; color: var(--trc-green-deep); }
         .trc-cup-head { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: end; }
-        .trc-cup-head .trc-tiers-eyebrow { margin-top: 26px; }
+        .trc-cup-head .trc-tiers-eyebrow { margin-top: 0; }
         .trc-cup-ink { position: relative; width: clamp(120px, 16vw, 220px); height: clamp(110px, 13vw, 170px); }
         .trc-cup-ink img { position: absolute; height: auto; filter: drop-shadow(5px 8px 8px rgba(5,46,32,.12));
                            transition: transform .6s cubic-bezier(.16,.84,.44,1); }
@@ -570,15 +565,14 @@ export default function HomePage() {
         }
         .trc-tiers-rise { opacity: 0; }
         .trc-tiers.is-in .trc-tiers-rise { animation: trc-rise .9s cubic-bezier(.16,.84,.44,1) both; }
-        .trc-tiers-rule { height: 1px; background: var(--trc-green-deep); opacity: .15; }
         .trc-tiers-head { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: end; }
-        .trc-tiers-lion { width: clamp(120px, 15vw, 210px); height: auto; margin-right: 4%;
+        .trc-tiers-lion { width: clamp(96px, 11vw, 150px); height: auto; margin-right: 4%;
                           transform: rotate(4deg); filter: drop-shadow(6px 10px 10px rgba(5,46,32,.14));
                           transition: transform .6s cubic-bezier(.16,.84,.44,1); }
         .trc-tiers-head:hover .trc-tiers-lion { transform: rotate(-3deg) translateY(-6px); }
         @media (max-width: 600px) {
           .trc-tiers-head { grid-template-columns: 1fr; }
-          .trc-tiers-lion { width: 120px; justify-self: end; margin: -10px 0 0; order: -1; }
+          .trc-tiers-lion { width: 96px; justify-self: end; margin: -10px 0 0; order: -1; }
           .trc-tiers .trc-cta { font-size: 11px; letter-spacing: .06em; }
         }
         .trc-tiers-eyebrow {
@@ -733,7 +727,6 @@ export default function HomePage() {
         <div className="trc-cup">
           <div className="trc-cup-head">
             <div>
-              <div className="trc-tiers-rule" />
               <div className="trc-tiers-eyebrow">
                 {['Ngày Hội Golf', cupTense, dateRange(CUP.opens, CUP.closes)].filter(Boolean).join('  ·  ')}
               </div>
@@ -750,95 +743,9 @@ export default function HomePage() {
           <GolfFilm />
         </div>
 
-        {/* ══════ 4. THE FIVE FLOORS ══════ */}
-        <div ref={floorsSec.ref} className="trc-section">
-          <div className="trc-section-diamond" />
-          <div className="trc-section-title">The Clubhouse</div>
-          <div className="trc-section-subtitle">Năm Tầng</div>
-
-          <div style={{
-            display: 'flex',
-            gap: 8,
-            alignItems: 'stretch',
-            flexWrap: 'wrap',
-          }}>
-            {/* Building visual */}
-            <div style={{
-              flex: '0 0 440px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-            }}>
-              <img
-                src="/images/Club Map.svg"
-                alt="The Clubhouse — five floors"
-                style={{
-                  width: '100%',
-                  height: 'auto',
-                  display: 'block',
-                  opacity: floorsSec.visible ? 1 : 0,
-                  transform: floorsSec.visible ? 'translateY(0)' : 'translateY(10px)',
-                  transition: 'opacity 0.8s ease, transform 0.8s ease',
-                }}
-              />
-            </div>
-
-            {/* Floor legend */}
-            <div style={{ flex: 1, minWidth: 280, paddingTop: 151, display: isPhone ? 'none' : 'block' }}>
-              {FLOORS.map((floor, i) => (
-                <div
-                  key={floor.num}
-                  style={{
-                    padding: '8px 0',
-                    borderBottom: i < FLOORS.length - 1 ? '1px solid rgba(5, 46, 32, 0.08)' : 'none',
-                    opacity: floorsSec.visible ? 1 : 0,
-                    transform: floorsSec.visible ? 'translateY(0)' : 'translateY(10px)',
-                    transition: 'opacity 0.6s ease, transform 0.6s ease',
-                    transitionDelay: `${i * 0.08 + 0.1}s`,
-                  }}
-                >
-                  <div style={{
-                    fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: 'var(--trc-green-deep)',
-                    opacity: 0.3,
-                    marginBottom: 1,
-                  }}>
-                    Floor {floor.num}
-                  </div>
-                  <div style={{
-                    fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-                    fontSize: 12,
-                    fontWeight: 500,
-                    color: 'var(--trc-green-deep)',
-                    marginBottom: 1,
-                  }}>
-                    {floor.name}
-                  </div>
-                  <div style={{
-                    fontFamily: "'Google Sans Code', monospace",
-                    fontSize: 10,
-                    color: 'var(--trc-cream-dim)',
-                    letterSpacing: '0.04em',
-                    marginBottom: 4,
-                  }}>
-                    {floor.vn}
-                  </div>
-                  <div style={{
-                    fontFamily: "'Google Sans Code', monospace",
-                    fontSize: 12,
-                    color: 'var(--trc-green-accent)',
-                    opacity: 0.7,
-                    lineHeight: 1.4,
-                  }}>
-                    {floor.desc}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        {/* ══════ 4. THE CLUBHOUSE — components/home/Clubhouse (interim, until the
+            owner's stacked, clickable SVG building arrives) ══════ */}
+        <Clubhouse />
 
         {/* ══════ 4.5 THE STUDIO — an invitation, not a section ══════════════
             Full-bleed SAGE against a page that is bottle green everywhere else.
@@ -851,39 +758,7 @@ export default function HomePage() {
             separation from the warm background, and the base merges into the
             barrel. An automatic cutout haloes, and a haloed cutout is worse
             than no cutout. A frame has neither problem and looks deliberate. */}
-        <Link href="/studio" style={{ display: 'block', textDecoration: 'none' }}>
-          <div style={{ background: '#B0C18E', color: '#052E20', padding: '72px 24px' }}>
-            <div style={{ maxWidth: 880, margin: '0 auto', display: 'flex', gap: 34,
-                          alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/studio/bottle.jpg" alt="" loading="lazy"
-                   style={{ width: 168, height: 240, objectFit: 'cover', flexShrink: 0,
-                            borderRadius: '84px 84px 6px 6px', display: 'block',
-                            boxShadow: '0 18px 40px rgba(5,46,32,0.22)' }} />
-              <div style={{ minWidth: 240, flex: 1 }}>
-                <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10.5,
-                              letterSpacing: '.18em', textTransform: 'uppercase', opacity: .7 }}>
-                  Floor 2 · Phòng Studio
-                </div>
-                {/* The Studio's own wordmark rather than the words set in the
-                    club's face — it is a mark, and the room has one. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/images/studio/studio-wordmark.png" alt="The Studio"
-                     style={{ width: 'min(340px, 62vw)', height: 'auto', display: 'block',
-                              margin: '12px 0 14px' }} />
-                <p style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12.5,
-                            lineHeight: 1.85, margin: 0, opacity: .85, maxWidth: 430 }}>
-                  A quarterly rotating art space. Each exhibition is made with the artist,
-                  and each one leaves a whisky behind.
-                </p>
-                <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11.5,
-                              marginTop: 18, letterSpacing: '.08em' }}>
-                  Step inside →
-                </div>
-              </div>
-            </div>
-          </div>
-        </Link>
+        <StudioInvite />
 
         {/* ══════ 5. RECIPROCAL ACCESS ══════ */}
         <ReciprocalClocks />
@@ -900,10 +775,17 @@ export default function HomePage() {
           }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
+          {/* DC500693, full resolution (7008px original → 2400/1400 webp), so the
+              full-bleed band is sharp on a large screen. Positioned low so the
+              collar's lettering sits above the fade rather than in it. */}
           <img
-            src="/images/castle-opt.png"
+            src="/images/club-bottle-bag-2400.webp"
+            srcSet="/images/club-bottle-bag-1400.webp 1400w, /images/club-bottle-bag-2400.webp 2400w"
+            sizes="100vw"
             alt="The Rampant Club"
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            loading="lazy"
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+                     objectPosition: '50% 68%', display: 'block' }}
           />
           <div style={{ position: 'absolute', inset: 0,
                         background: 'linear-gradient(to bottom, transparent 58%, var(--trc-cream) 100%)' }} />
@@ -913,7 +795,6 @@ export default function HomePage() {
             Set the way /studio sets itself: left-aligned, one large statement,
             mono for the reading, hairlines instead of boxes. */}
         <div ref={tiersSec.ref} id="tiers" className={`trc-tiers ${tiersSec.visible ? 'is-in' : ''}`}>
-          <div className="trc-tiers-rule" />
           <div className="trc-tiers-head">
             <div>
               <div className="trc-tiers-eyebrow trc-tiers-rise">Membership · Thành Viên</div>
@@ -947,128 +828,8 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* ══════ CLUB ETHOS MODAL ══════ */}
-      {ethosOpen && <style dangerouslySetInnerHTML={{ __html: 'body { overflow: hidden !important; }' }} />}
-      {ethosOpen && (
-        <div
-          onClick={() => setEthosOpen(false)}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 99999,
-            background: 'rgba(229,212,194,0.92)', backdropFilter: 'blur(12px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: 24, overflow: 'auto',
-          }}
-        >
-          <button
-            onClick={() => setEthosOpen(false)}
-            style={{
-              position: 'fixed', top: 28, right: 32,
-              background: 'none', border: 'none', color: '#052E20',
-              fontSize: 14, cursor: 'pointer', opacity: 0.5,
-              fontFamily: "'Rampant Sans', serif",
-              letterSpacing: '0.14em', textTransform: 'uppercase',
-              zIndex: 100000,
-            }}
-          >
-            Close
-          </button>
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              maxWidth: 760, width: 'calc(100% - 48px)', padding: '32px 28px 28px',
-              background: '#052E20',
-              borderRadius: 8,
-              position: 'relative',
-              maxHeight: '85vh', overflowY: 'auto',
-            }}
-          >
-
-            <div style={{
-              display: 'flex', justifyContent: 'center', gap: 0, marginBottom: 28,
-            }}>
-              <button
-                onClick={(e) => { e.stopPropagation(); setEthosLang('en') }}
-                style={{
-                  fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10,
-                  letterSpacing: '0.06em', padding: '6px 16px', cursor: 'pointer',
-                  background: ethosLang === 'en' ? 'rgba(229,212,194,0.12)' : 'transparent',
-                  color: ethosLang === 'en' ? '#E5D4C2' : '#B2AA98',
-                  border: '1px solid rgba(229,212,194,0.1)',
-                  borderRadius: '4px 0 0 4px',
-                  opacity: ethosLang === 'en' ? 1 : 0.5,
-                }}
-              >
-                EN
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); setEthosLang('vn') }}
-                style={{
-                  fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10,
-                  letterSpacing: '0.06em', padding: '6px 16px', cursor: 'pointer',
-                  background: ethosLang === 'vn' ? 'rgba(229,212,194,0.12)' : 'transparent',
-                  color: ethosLang === 'vn' ? '#E5D4C2' : '#B2AA98',
-                  border: '1px solid rgba(229,212,194,0.1)',
-                  borderRadius: '0 4px 4px 0',
-                  borderLeft: 'none',
-                  opacity: ethosLang === 'vn' ? 1 : 0.5,
-                }}
-              >
-                VN
-              </button>
-            </div>
-
-            <div style={{
-              width: 8, height: 8, background: '#E5D4C2',
-              transform: 'rotate(45deg)', opacity: 0.2, margin: '0 auto 28px',
-            }} />
-
-            <h2 style={{
-              fontFamily: "'Rampant Sans', serif", fontSize: 24, fontWeight: 500,
-              color: '#E5D4C2', textAlign: 'center', letterSpacing: '0.04em', marginBottom: 28,
-            }}>
-              {ethosLang === 'en' ? 'Club Ethos' : 'Tinh thần câu lạc bộ'}
-            </h2>
-
-            {(ethosLang === 'en' ? [
-              'The Rampant Club exists to give serious whisky lovers freedoms rarely granted elsewhere. Hundreds of open bottles sit within a private space where members pour for themselves and stay as long as they like. There are no menus, no measures, and no permission required.',
-              'That same philosophy extends beyond the glass. The Club is an exciting base for shared pursuits\u2026 sporting traditions, off-site excursions, private dinners, and events that reach well beyond the clubhouse.',
-              'A discreet cocktail bar and experimental culinary lab sit alongside an immersive art studio and whisky library, giving members the freedom to test ideas, explore technique, and develop personalised flavours without constraint.',
-              'This level of freedom only works because the Club is built on trust. Bottles are shared, not monitored. Spaces are respected, privacy is absolute. Membership is by invitation, renewal is not guaranteed, and belonging is demonstrated through conduct rather than status.',
-              'This is not hospitality for everyone. Rather, it is a club for those who understand why this kind of access is rare.',
-            ] : [
-              'Câu lạc bộ The Rampant ra đời để mang đến cho người yêu thích whisky thực thụ những quyền tự do hiếm khi có được ở những nơi khác. Hàng trăm chai whisky đã mở nắp được đặt trong một không gian riêng tư, nơi các thành viên được quyền tự rót và ở lại thưởng thức bao lâu tùy thích. Không có thực đơn, không cần đong đếm và không cần xin phép.',
-              'Triết lý đó không chỉ giới hạn trong phạm vi câu lạc bộ. The Rampant Club là một địa điểm tuyệt vời cho các hoạt động chung... các truyền thống thể thao, các chuyến du ngoạn ngoại khóa, các bữa tối riêng tư và các sự kiện vượt xa khuôn khổ của một câu lạc bộ.',
-              'Một quầy bar cocktail riêng tư và phòng nghiên cứu ẩm thực nằm cạnh một không gian nghệ thuật độc đáo cùng thư viện rượu whisky, mang đến cho các thành viên sự tự do để thử nghiệm ý tưởng, khám phá kỹ thuật và phát triển hương vị cá nhân mà không bị ràng buộc.',
-              'Sự tự do này ở câu lạc bộ được xây dựng dựa trên niềm tin. Rượu được chia sẻ, không bị kiểm soát. Không gian được tôn trọng, quyền riêng tư tuyệt đối. Việc gia nhập chỉ dành cho những người được mời, chính sách gia hạn và tư cách thành viên được thể hiện qua hành vi, không phải địa vị.',
-              'Điều này không dành cho tất cả mọi người. Thay vào đó, đây là một câu lạc bộ chỉ dành cho những ai hiểu tại sao sự tiếp cận kiểu này lại hiếm có.',
-            ]).map((p, i) => (
-              <p key={`${ethosLang}-${i}`} style={{
-                fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12,
-                color: '#B2AA98', lineHeight: 1.85, marginBottom: 14, letterSpacing: '0.01em',
-                textAlign: 'justify',
-              }}>
-                {p}
-              </p>
-            ))}
-
-            <div style={{ textAlign: 'right', marginTop: 32 }}>
-              <div style={{
-                fontFamily: "'Rampant Sans', serif", fontSize: 12, fontWeight: 500,
-                color: '#E5D4C2', letterSpacing: '0.14em', textTransform: 'uppercase',
-                marginBottom: 12, marginRight: 24,
-              }}>
-                {ethosLang === 'en' ? 'Chairman' : 'Chủ tịch'}
-              </div>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/images/signature (1) (1).png"
-                alt="Chairman signature"
-                style={{ height: 80, width: 'auto', opacity: 0.7, filter: 'brightness(0) invert(1)', marginRight: -20 }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ══════ CLUB ETHOS — the Chairman's letter (components/home/EthosLetter) ══════ */}
+      <EthosLetter open={ethosOpen} onClose={closeEthos} />
     </>
   )
 }

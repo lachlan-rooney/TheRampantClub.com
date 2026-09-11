@@ -182,50 +182,54 @@ export default function ReciprocalClocks() {
     return () => cancelAnimationFrame(raf)
   }, [visible])
 
+  // On a phone the row opens centred on Sài Gòn, not on New York.
+  const wall = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const w = wall.current
+    if (!narrow || !w) return
+    const home = w.querySelector<HTMLElement>('.rc-home')
+    if (home) w.scrollLeft = home.offsetLeft - (w.clientWidth - home.clientWidth) / 2
+  }, [narrow])
+
   const homeOff = info?.[CITIES.indexOf(HOME)].off ?? 0
-  const sizeOf = (isHome: boolean) => narrow ? (isHome ? 60 : 50) : (isHome ? 128 : 96)
+  const sizeOf = (isHome: boolean) => narrow ? (isHome ? 90 : 76) : (isHome ? 96 : 72)
 
   return (
     <section ref={root} className={`rc ${visible ? 'is-in' : ''}`} aria-label="Reciprocal clubs — local times">
       <style dangerouslySetInnerHTML={{ __html: `
         .rc { background: ${INK}; color: ${CREAM}; overflow: hidden; }
-        .rc-inner { max-width: 1180px; margin: 0 auto; padding: 64px 24px 52px; }
+        .rc-inner { max-width: 1180px; margin: 0 auto; padding: 48px 24px 40px; }
         .rc-rise { opacity: 0; transform: translateY(22px); }
         .rc.is-in .rc-rise { animation: rc-rise .9s cubic-bezier(.16,.84,.44,1) both; }
         @keyframes rc-rise { to { opacity: 1; transform: none } }
-        .rc-wall { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 36px; }
+        .rc-wall { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 26px; }
         /* the brass rail they hang from, through every centre */
         .rc-rail {
-          position: absolute; left: -24px; right: -24px; top: 64px; height: 2px;
+          position: absolute; left: -24px; right: -24px; top: 48px; height: 2px;
           background: linear-gradient(90deg, transparent, rgba(212,184,90,.55) 12%, rgba(212,184,90,.55) 88%, transparent);
           transform: scaleX(0); transform-origin: center;
           transition: transform 1.4s cubic-bezier(.16,.84,.44,1) .1s;
         }
         .rc.is-in .rc-rail { transform: scaleX(1); }
         .rc-col { display: flex; flex-direction: column; align-items: center; text-align: center; }
-        .rc-clock { height: 128px; display: flex; align-items: center; justify-content: center; }
-        .rc-city { font-family: ${SERIF}; font-size: 18px; line-height: 1; margin-top: 14px; }
-        .rc-home .rc-city { font-size: 22px; color: ${GOLD}; }
-        .rc-meta { font-family: ${MONO}; font-size: 10.5px; opacity: .62; margin-top: 6px; font-variant-numeric: tabular-nums; }
-        .rc-time { font-family: ${MONO}; font-size: 12px; margin-top: 6px; letter-spacing: .08em; font-variant-numeric: tabular-nums; }
+        .rc-clock { height: 96px; display: flex; align-items: center; justify-content: center; }
+        .rc-city { font-family: ${SERIF}; font-size: 16px; line-height: 1; margin-top: 10px; }
+        .rc-home .rc-city { font-size: 19px; color: ${GOLD}; }
+        .rc-meta { font-family: ${MONO}; font-size: 10px; opacity: .62; margin-top: 4px; font-variant-numeric: tabular-nums; }
+        .rc-time { font-family: ${MONO}; font-size: 11.5px; margin-top: 4px; letter-spacing: .08em; font-variant-numeric: tabular-nums; }
         @media (max-width: 760px) {
-          /* A phone gets a timetable, not a wall: one line per city, the clock
-             small at the left, still west to east with home in the middle. */
-          .rc-inner { padding: 52px 20px 44px; }
-          .rc-wall { grid-template-columns: 1fr; gap: 0; margin-top: 26px; }
+          /* A phone gets the wall as a row you swipe along — clocks at a size
+             where their faces still read — opening centred on home. */
+          .rc-inner { padding: 40px 0 34px; }
+          .rc-inner > :not(.rc-wall) { padding-left: 20px; padding-right: 20px; }
+          .rc-wall { display: flex; gap: 22px; overflow-x: auto; scroll-snap-type: x mandatory;
+                     scrollbar-width: none; margin-top: 22px; padding: 4px 20px 6px; }
+          .rc-wall::-webkit-scrollbar { display: none; }
           .rc-rail { display: none; }
-          .rc-col {
-            display: grid; grid-template-columns: 64px 1fr auto; column-gap: 14px;
-            grid-template-areas: "clock city time" "clock meta time";
-            align-items: center; text-align: left;
-            padding: 10px 0; border-top: 1px solid rgba(229,212,194,.1);
-          }
-          .rc-col:last-child { border-bottom: 1px solid rgba(229,212,194,.1); }
-          .rc-clock { grid-area: clock; height: auto; }
-          .rc-city { grid-area: city; margin: 0; align-self: end; font-size: 18px; }
-          .rc-home .rc-city { font-size: 20px; }
-          .rc-meta { grid-area: meta; margin: 4px 0 0; align-self: start; }
-          .rc-time { grid-area: time; margin: 0; font-size: 15px; }
+          .rc-col { flex: 0 0 auto; width: 104px; scroll-snap-align: center; }
+          .rc-clock { height: 92px; }
+          .rc-city { font-size: 15px; }
+          .rc-home .rc-city { font-size: 17px; }
         }
         @media (prefers-reduced-motion: reduce) {
           .rc-rise, .rc.is-in .rc-rise { opacity: 1; transform: none; animation: none; }
@@ -234,21 +238,20 @@ export default function ReciprocalClocks() {
       ` }} />
 
       <div className="rc-inner">
-        <div className="rc-rise" style={{ height: 1, background: CREAM, opacity: .15 }} />
         <div className="rc-rise" style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '.22em', textTransform: 'uppercase',
-                                           color: GOLD, marginTop: 18, animationDelay: '.05s' }}>
+                                           color: GOLD, animationDelay: '.05s' }}>
           Câu Lạc Bộ Đối Ứng · Reciprocal Clubs
         </div>
-        <h2 className="rc-rise" style={{ fontFamily: SERIF, fontWeight: 400, fontSize: 'clamp(30px, 4.4vw, 54px)',
+        <h2 className="rc-rise" style={{ fontFamily: SERIF, fontWeight: 400, fontSize: 'clamp(26px, 3.4vw, 42px)',
                                           lineHeight: .98, margin: '16px 0 0', animationDelay: '.1s' }}>
           A World Beyond Sài Gòn
         </h2>
-        <p className="rc-rise" style={{ fontFamily: MONO, fontSize: 13, lineHeight: 1.8, maxWidth: 540, margin: '12px 0 0',
+        <p className="rc-rise" style={{ fontFamily: MONO, fontSize: 12.5, lineHeight: 1.7, maxWidth: 540, margin: '8px 0 0',
                                          opacity: .8, animationDelay: '.16s' }}>
           Bespoke reciprocal access to a vetted network of premier private clubs.
         </p>
 
-        <div className="rc-wall">
+        <div ref={wall} className="rc-wall">
           <div className="rc-rail" />
           {CITIES.map((c, i) => {
             const isHome = c === HOME
@@ -272,7 +275,7 @@ export default function ReciprocalClocks() {
           })}
         </div>
 
-        <p className="rc-rise" style={{ fontFamily: MONO, fontSize: 11, opacity: .5, marginTop: 30, animationDelay: '.6s' }}>
+        <p className="rc-rise" style={{ fontFamily: MONO, fontSize: 10.5, opacity: .5, marginTop: 22, animationDelay: '.6s' }}>
           Featured partner cities shown. The full reciprocal list is shared with members upon joining.
         </p>
       </div>

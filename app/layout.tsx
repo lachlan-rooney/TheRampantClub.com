@@ -105,7 +105,13 @@ export default function RootLayout({
              <OverscrollColour /> then matches it to the page's actual edges. */
           html { background-color: #E5D4C2; }
           html { overflow-y: scroll; scrollbar-gutter: auto; }
-          html, body { overflow-x: hidden; }
+          /* body clips rather than hides: with html also setting overflow, a
+             hidden body becomes a scroll container of its own, and every
+             position: sticky on the site silently stops sticking. clip stops
+             the sideways scroll the same way without that; browsers without
+             clip keep the hidden line above it. */
+          html { overflow-x: hidden; }
+          body { overflow-x: hidden; overflow-x: clip; }
           ::-webkit-scrollbar { width: 6px; background: transparent; }
           ::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; transition: background 0.3s; }
           html:hover::-webkit-scrollbar-thumb { background: rgba(94, 102, 80, 0.2); }

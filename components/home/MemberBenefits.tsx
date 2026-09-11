@@ -7,8 +7,8 @@ import { useEffect, useRef, useState } from 'react'
 // ───────────────────────────────────────────────────────────────────────────
 // It was two zig-zag columns of small grey type around a glass — hard to read
 // on cream, and on a phone the alignment flipped left/right line by line. Now
-// it is a numbered grid in the /studio manner: hairline, index, the benefit's
-// own illustration, the name set large, the description in ink.
+// it is a grid in the /studio manner: the benefit's own illustration, the
+// name set large, the description in ink — no numbers, no rules.
 //
 // DATES ARE DATA, NOT PROSE. The castle's line said "slated to open in 2027",
 // a sentence that is wrong the day it opens and nobody is prompted to edit.
@@ -57,20 +57,13 @@ export default function MemberBenefits() {
         .mb-rise { opacity: 0; transform: translateY(22px); }
         .mb.is-in .mb-rise { animation: mb-rise .9s cubic-bezier(.16,.84,.44,1) both; }
         @keyframes mb-rise { to { opacity: 1; transform: none } }
-        .mb-rule { height: 1px; background: var(--trc-green-deep); opacity: .15; }
         .mb-eyebrow { font-family: 'Google Sans Code', 'DM Mono', monospace; font-size: 10.5px; letter-spacing: .22em;
-                      text-transform: uppercase; opacity: .6; margin-top: 26px; }
+                      text-transform: uppercase; opacity: .6; }
         .mb-title { font-family: 'Rampant Sans', serif; font-weight: 400; font-size: clamp(44px, 7.4vw, 92px);
                     line-height: .98; margin: 16px 0 0; }
         .mb-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 56px 36px; margin-top: 64px; }
         .mb-item { position: relative; }
-        .mb-head { display: flex; align-items: center; gap: 12px; }
-        .mb-no { font-family: 'Google Sans Code', monospace; font-size: 11px; letter-spacing: .12em; opacity: .55; }
-        .mb-line { position: relative; flex: 1; height: 1px; background: rgba(5,46,32,.15); overflow: hidden; }
-        .mb-line::after { content: ''; position: absolute; inset: 0; background: var(--trc-green-deep);
-                          transform: scaleX(0); transform-origin: left; transition: transform .6s cubic-bezier(.16,.84,.44,1); }
-        .mb-item:hover .mb-line::after { transform: scaleX(1); }
-        .mb-ink { height: 108px; display: flex; align-items: flex-end; margin: 22px 0 18px; }
+        .mb-ink { height: 108px; display: flex; align-items: flex-end; margin: 0 0 18px; }
         .mb-ink img { max-height: 100%; max-width: 70%; width: auto; height: auto; display: block;
                       transform: rotate(-3deg); transform-origin: bottom center;
                       transition: transform .6s cubic-bezier(.16,.84,.44,1); }
@@ -107,10 +100,9 @@ export default function MemberBenefits() {
              eight stacked tall cards made the section a long scroll. */
           .mb-grid { grid-template-columns: 1fr; gap: 30px; margin-top: 40px; }
           .mb-item { display: grid; grid-template-columns: 64px 1fr; column-gap: 16px; }
-          .mb-head { grid-column: 1 / -1; }
-          .mb-ink { grid-row: 2 / span 3; height: 64px; margin: 16px 0 0; align-items: flex-start; justify-content: center; }
+          .mb-ink { grid-row: 1 / span 3; height: 64px; margin: 0; align-items: flex-start; justify-content: center; }
           .mb-ink img { max-width: 100%; }
-          .mb-name { margin-top: 16px; font-size: 20px; }
+          .mb-name { margin-top: 0; font-size: 20px; }
           .mb-desc { margin-top: 8px; }
           .mb-card { width: 104px; right: 10px; top: -128px; }
         }
@@ -118,7 +110,7 @@ export default function MemberBenefits() {
           .mb-rise, .mb.is-in .mb-rise { opacity: 1; transform: none; animation: none; }
           .mb.is-in .mb-card { animation: none; opacity: 1; }
           .mb-card img { animation: none; }
-          .mb-ink img, .mb-line::after { transition: none; }
+          .mb-ink img { transition: none; }
         }
       ` }} />
 
@@ -127,17 +119,12 @@ export default function MemberBenefits() {
         <img src="/images/member-card-opt.webp" alt="" />
       </div>
 
-      <div className="mb-rule mb-rise" />
       <div className="mb-eyebrow mb-rise" style={{ animationDelay: '.05s' }}>Quyền Lợi Thành Viên</div>
       <h2 className="mb-title mb-rise" style={{ animationDelay: '.1s' }}>Member Benefits</h2>
 
       <div className="mb-grid">
         {BENEFITS.map((b, i) => (
           <div key={b.title} className="mb-item mb-rise" style={{ animationDelay: `${0.18 + (i % 4) * 0.08 + Math.floor(i / 4) * 0.12}s` }}>
-            <div className="mb-head">
-              <span className="mb-no">{String(i + 1).padStart(2, '0')}</span>
-              <span className="mb-line" />
-            </div>
             <div className="mb-ink">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={`/images/ink/${b.ink}.webp`} alt="" loading="lazy" />
