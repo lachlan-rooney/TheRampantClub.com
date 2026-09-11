@@ -132,14 +132,16 @@ export default function NewBookingPage() {
       })
   }, [editId])  // eslint-disable-line react-hooks/exhaustive-deps
 
+  // EVERY member, and search that ignores accents. It used to show only the
+  // first 10 until you typed — with 15 members, five could never be picked from
+  // the list — and "Chau" would not find "Châu Lê". The list scrolls.
   const filteredMembers = useMemo(() => {
-    const q = memberQuery.trim().toLowerCase()
-    if (!q) return members.slice(0, 10)
+    const fold = (s: string | null | undefined) =>
+      (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase()
+    const q = fold(memberQuery.trim())
+    if (!q) return members
     return members.filter(m =>
-      m.full_name.toLowerCase().includes(q) ||
-      m.member_no.toLowerCase().includes(q) ||
-      (m.nickname || '').toLowerCase().includes(q)
-    ).slice(0, 10)
+      fold(m.full_name).includes(q) || fold(m.member_no).includes(q) || fold(m.nickname).includes(q))
   }, [members, memberQuery])
 
   const selectedMember = useMemo(() => members.find(m => m.member_no === memberNo) || null, [members, memberNo])
