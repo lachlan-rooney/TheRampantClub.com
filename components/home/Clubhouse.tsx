@@ -77,9 +77,7 @@ export default function Clubhouse() {
         .ch-rise { opacity: 0; transform: translateY(22px); }
         .ch.is-in .ch-rise { animation: ch-rise .9s cubic-bezier(.16,.84,.44,1) both; }
         @keyframes ch-rise { to { opacity: 1; transform: none } }
-        .ch-eyebrow { font-family: 'Google Sans Code', 'DM Mono', monospace; font-size: 10.5px; letter-spacing: .22em;
-                      text-transform: uppercase; opacity: .6; }
-        .ch-title { font-family: 'Rampant Sans', serif; font-weight: 400; font-size: clamp(44px, 7.4vw, 92px); line-height: .98; margin: 16px 0 0; }
+        .ch-title { font-family: 'Rampant Sans', serif; font-weight: 400; font-size: clamp(44px, 7.4vw, 92px); line-height: .98; margin: 0; }
         .ch-cta { display: inline-block; margin-top: 24px; color: var(--trc-green-deep); text-decoration: none;
                   font-family: 'Google Sans Code', 'DM Mono', monospace; font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
                   border-bottom: 1px solid var(--trc-green-deep); padding-bottom: 6px; }
@@ -89,7 +87,7 @@ export default function Clubhouse() {
 
         /* ── the building ── */
         .ch-building { margin-top: 56px; }
-        .ch-row { display: grid; grid-template-columns: minmax(0, 660px) 1fr; gap: 40px; align-items: center; }
+        .ch-row { display: grid; grid-template-columns: minmax(0, 500px) 1fr; gap: 56px; align-items: center; }
         .ch-strip { all: unset; box-sizing: border-box; display: block; position: relative; width: 100%;
                     aspect-ratio: 2530 / 846; cursor: zoom-in;
                     opacity: 0; transform: translateY(-46px);
@@ -101,19 +99,23 @@ export default function Clubhouse() {
         .ch-strip.is-on { transform: scale(1.012); box-shadow: 0 18px 40px rgba(5,46,32,.16); z-index: 2; }
         .ch-strip.is-ground { cursor: default; }
 
-        .ch-label { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 70px 1fr; gap: 16px; align-items: baseline;
+        .ch-label { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 92px 1fr; gap: 18px; align-items: baseline;
                     cursor: pointer; opacity: 0; transform: translateX(-10px);
                     transition: opacity .5s ease, transform .6s cubic-bezier(.16,.84,.44,1); }
         .ch.is-in .ch-label { opacity: 1; transform: none; }
         .ch-building.has-hover .ch-label:not(.is-on) { opacity: .35; }
-        .ch-no { font-family: 'Rampant Sans', serif; font-size: 46px; line-height: .9; }
-        .ch-name { font-family: 'Rampant Sans', serif; font-size: 26px; line-height: 1.05; }
-        .ch-vn { font-family: 'Google Sans Code', monospace; font-size: 11px; opacity: .6; margin-top: 6px; }
-        .ch-look { font-family: 'Google Sans Code', monospace; font-size: 11px; letter-spacing: .08em; margin-top: 10px;
+        .ch-no { font-family: 'Rampant Sans', serif; font-size: 62px; line-height: .9; }
+        .ch-name { font-family: 'Rampant Sans', serif; font-size: 36px; line-height: 1.02; }
+        .ch-vn { font-family: 'Google Sans Code', monospace; font-size: 12.5px; opacity: .62; margin-top: 7px; }
+        .ch-look { font-family: 'Google Sans Code', monospace; font-size: 12px; letter-spacing: .08em; margin-top: 12px;
                    opacity: 0; transition: opacity .3s ease; }
         .ch-label.is-on .ch-look { opacity: 1; }
-        .ch-street { font-family: 'Google Sans Code', monospace; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; opacity: .55; }
+        .ch-street { font-family: 'Google Sans Code', monospace; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; opacity: .55; }
 
+        @media (max-width: 1100px) {
+          .ch-row { grid-template-columns: minmax(0, 440px) 1fr; gap: 40px; }
+          .ch-no { font-size: 52px; } .ch-name { font-size: 30px; }
+        }
         @media (max-width: 860px) {
           .ch { padding: 84px 20px 90px; }
           .ch-building { margin-top: 30px; }
@@ -127,8 +129,7 @@ export default function Clubhouse() {
         }
       ` }} />
 
-      <div className="ch-eyebrow ch-rise" style={{ animationDelay: '.05s' }}>Năm Tầng</div>
-      <h2 className="ch-title ch-rise" style={{ animationDelay: '.1s' }}>The Clubhouse</h2>
+      <h2 className="ch-title ch-rise" style={{ animationDelay: '.1s' }}>Hai Bà Trưng Clubhouse</h2>
       <Link href="/spaces" className="ch-cta ch-rise" style={{ animationDelay: '.16s' }}>Explore the spaces <span>→</span></Link>
       <p className="ch-hint ch-rise" style={{ animationDelay: '.2s' }}>Tap a floor to look inside.</p>
 
