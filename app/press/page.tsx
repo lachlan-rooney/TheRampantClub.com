@@ -114,7 +114,6 @@ export default function PressPage() {
 
       {/* ══ THE MASTHEAD ═══════════════════════════════════════════════ */}
       <Masthead
-        eyebrow="Báo Chí · Newsroom"
         title="Press"
         lede={<span className="pr-lede">
           Press kits, releases, and selected coverage of The Rampant Club.
@@ -126,7 +125,7 @@ export default function PressPage() {
 
       {/* ══ IN THE PRESS ═══════════════════════════════════════════════ */}
       <section className="pk-wrap" style={{ paddingTop: 40 }}>
-        <SectionHead eyebrow="Selected coverage" title="In the Press" />
+        <SectionHead title="In the Press" />
         {loading ? (
           <p className="pr-empty">Loading…</p>
         ) : mentions.length === 0 ? (
@@ -169,7 +168,7 @@ export default function PressPage() {
 
       {/* ══ PRESS RELEASES ═════════════════════════════════════════════ */}
       <section className="pk-wrap pk-section">
-        <SectionHead eyebrow="Latest first" title="Press Releases"
+        <SectionHead title="Press Releases"
           art={<InkFloat name="cigar" width="clamp(140px, 15vw, 210px)" rot={-8} dur={8.5} className="pr-releases-art" />} />
         {loading ? (
           <p className="pr-empty">Loading…</p>
@@ -197,7 +196,7 @@ export default function PressPage() {
 
       {/* ══ PRESS KITS ═════════════════════════════════════════════════ */}
       <section className="pk-wrap pk-section">
-        <SectionHead eyebrow="Downloadable assets" title="Press Kits" />
+        <SectionHead title="Press Kits" />
         {loading ? (
           <p className="pr-empty">Loading…</p>
         ) : kits.length === 0 ? (

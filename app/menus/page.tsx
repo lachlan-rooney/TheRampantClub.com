@@ -114,7 +114,6 @@ export default function MenusIndex() {
         <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
         <Masthead
-          eyebrow="Thực Đơn · Menus"
           title="The Menus"
           lede={<>Each floor has its own offering. Cocktails by the Library Bar, bottle-share in the Rampant Room, private dining on the third, experimental work in the Source &amp; Origin Lab.</>}
           art={

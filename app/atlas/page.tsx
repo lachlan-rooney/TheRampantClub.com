@@ -90,7 +90,6 @@ export default function AtlasPage() {
   }
 
   const hasStats = (categories.singleMalt + categories.bourbon + categories.blended) > 0
-  const stocked = ATLAS_REGIONS.filter(r => counts[r.key] > 0).length
 
   return (
     <PublicPage>
@@ -212,7 +211,6 @@ export default function AtlasPage() {
 
       <section className="pk-wrap pk-section atl-regions">
         <SectionHead
-          eyebrow={<>{ATLAS_REGIONS.length} regions{stocked > 0 && <> · {stocked} on the shelf</>}</>}
           title="The Regions"
           art={<InkFloat name="lion-reclining" width="clamp(200px, 24vw, 300px)" rot={-3} dur={9} />}
         />

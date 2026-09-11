@@ -4,7 +4,7 @@ import { use } from 'react'
 import Link from 'next/link'
 import NavOverlay from '@/components/NavOverlay'
 import { notFound } from 'next/navigation'
-import { PublicPage, Rise, Eyebrow, BleedImage, InkFloat, MONO, SERIF } from '@/components/public/kit'
+import { PublicPage, Rise, BleedImage, InkFloat, MONO, SERIF } from '@/components/public/kit'
 import InkStill from '@/components/public/menus/InkStill'
 import { FLOOR_MARK, ROOM_PHOTO } from '@/components/public/menus/rooms'
 
@@ -92,7 +92,6 @@ export default function FloorMenuPage({ params }: { params: Promise<{ slug: stri
             <Rise>
               <Link href="/menus" className="mp-back"><span className="pk-go">←</span>All menus</Link>
             </Rise>
-            <Rise delay={.04}><Eyebrow>FLOOR {menu.floor}</Eyebrow></Rise>
             <Rise delay={.08}><h1 className="pk-h1">{menu.name}</h1></Rise>
             <Rise delay={.14}><div className="pk-sub">{menu.vn}</div></Rise>
             <Rise delay={.2}><div className="mp-kind">{menu.kind}</div></Rise>
