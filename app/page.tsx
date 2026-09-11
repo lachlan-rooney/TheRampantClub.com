@@ -76,21 +76,26 @@ const FLOORS = [
   { num: 1, name: 'The Library Bar', vn: 'Quầy Bar Thư Viện', desc: 'Your private cocktail bar. Seasonal cocktails, vintage spirits, curated books and games, with resident musicians and DJs.' },
 ]
 
+// `short` is the name set large; `meta` is the one fact that tells the three
+// apart at a glance, taken from the description rather than added to it.
 const TIERS = [
   {
     name: 'The Legacy Membership',
+    short: 'Legacy',
+    meta: 'The Legacy Membership \u00b7 Established',
     desc: 'For established individuals shaping their communities. Full use of the Club and its shared resources, balanced through mutual consideration rather than formal limits.',
-    highlight: true,
   },
   {
     name: 'The Pioneer Membership',
+    short: 'Pioneer',
+    meta: 'The Pioneer Membership \u00b7 Under 33',
     desc: 'For emerging leaders and rising creatives under 33. Full access to all areas, events, and member privileges at a preferential rate designed to nurture the next generation.',
-    highlight: false,
   },
   {
     name: 'The Corporate Membership',
+    short: 'Corporate',
+    meta: 'The Corporate Membership \u00b7 Three seats',
     desc: 'Three nominated representative seats per company. Access to all spaces, events, and networking opportunities \u2014 ideal for hosting, relationship-building, and representation.',
-    highlight: false,
   },
 ]
 
@@ -710,42 +715,42 @@ export default function HomePage() {
           margin-bottom: 60px;
         }
 
-        /* ── The membership card, floating above Member Benefits ──
-           Small and tilted up to the left, like something held just off the
-           paper. Two parts: the card bobs, and a soft shadow on the ground
-           below tightens and darkens as it comes down — that pairing is what
-           reads as height, where a drop-shadow alone reads as a sticker. */
-        @keyframes trc-card-float {
-          from { transform: rotate(-16deg) translateY(0); }
-          to   { transform: rotate(-13deg) translateY(-12px); }
+        /* ── The membership card, dropped across the seam ──
+           Not a section of its own: it lies ON the page, over the line where
+           the hero ends and Member Benefits begins, tilted up to the left.
+           Its shadow falls behind it onto the paper, which is what lifts it —
+           and it drifts the way the lion does on /studio. The shadow lives on
+           the WRAPPER and the tilt on the image, so the light stays put while
+           the card turns under it. */
+        @keyframes trc-card-land {
+          from { opacity: 0; transform: translate(-14px, -42px) scale(1.12) rotate(-5deg); }
+          to   { opacity: 1; transform: none; }
         }
-        @keyframes trc-card-shadow {
-          from { transform: scaleX(1);   opacity: .55; }
-          to   { transform: scaleX(.8);  opacity: .32; }
+        @keyframes trc-card-drift {
+          from { transform: rotate(-15deg) translateY(0); }
+          to   { transform: rotate(-12deg) translateY(-12px); }
         }
-        .trc-card-float {
-          position: relative;
-          width: 104px; margin: -36px auto 44px;
-          pointer-events: none;
+        .trc-card-drop {
+          position: absolute; z-index: 3; pointer-events: none;
+          left: 2%; top: -190px;
+          width: clamp(150px, 15vw, 210px);
+          opacity: 0;
+          filter: drop-shadow(18px 24px 20px rgba(5, 46, 32, .28))
+                  drop-shadow(4px 6px 5px rgba(5, 46, 32, .18));
         }
-        .trc-card-float img {
+        .trc-card-drop.is-in { animation: trc-card-land 1s cubic-bezier(.16,.84,.44,1) .15s both; }
+        .trc-card-drop img {
           display: block; width: 100%; height: auto;
-          filter: drop-shadow(10px 16px 14px rgba(5, 46, 32, .22));
-          animation: trc-card-float 5.5s ease-in-out infinite alternate;
-        }
-        .trc-card-float::after {
-          content: ''; position: absolute;
-          left: 8%; right: 8%; bottom: -26px; height: 14px;
-          border-radius: 50%;
-          background: radial-gradient(ellipse at center, rgba(5, 46, 32, .35), transparent 70%);
-          animation: trc-card-shadow 5.5s ease-in-out infinite alternate;
+          transform: rotate(-15deg);
+          animation: trc-card-drift 7s ease-in-out infinite alternate;
         }
         @media (max-width: 768px) {
-          .trc-card-float { width: 84px; margin: 8px auto 40px; }
+          /* Runs off the left edge a little, clear of the centred title. */
+          .trc-card-drop { width: 100px; left: 2px; top: -150px; }
         }
         @media (prefers-reduced-motion: reduce) {
-          .trc-card-float img { animation: none; transform: rotate(-15deg); }
-          .trc-card-float::after { animation: none; }
+          .trc-card-drop.is-in { animation: none; opacity: 1; }
+          .trc-card-drop img { animation: none; }
         }
 
         /* ── Scroll-reveal blurb section ── */
@@ -796,46 +801,71 @@ export default function HomePage() {
           letter-spacing: 0.06em; line-height: 1.6;
         }
 
-        .trc-tier-card {
-          background: linear-gradient(180deg, rgba(5,46,32,0.04), rgba(5,46,32,0.10));
-          padding: 32px 28px;
-          border: 1px solid rgba(5, 46, 32, 0.18);
-          border-radius: 16px;
-          box-shadow: 0 14px 36px rgba(5, 46, 32, 0.10);
-          cursor: default;
-          transition: transform 0.35s cubic-bezier(0.22,1,0.36,1), box-shadow 0.35s ease, border-color 0.35s ease;
-        }
-        .trc-tier-card:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 20px 44px rgba(5, 46, 32, 0.16);
-          border-color: rgba(5, 46, 32, 0.28);
-        }
-        .trc-tier-card .trc-tier-name {
-          font-family: 'Rampant Sans', 'Playfair Display', serif;
-          font-size: 20px; font-weight: 500;
+        /* ── Membership, set like /studio ── */
+        @keyframes trc-rise { from { opacity: 0; transform: translateY(22px) } to { opacity: 1; transform: none } }
+        .trc-tiers {
+          max-width: 1180px; margin: 0 auto;
+          padding: 110px 24px 140px;
           color: var(--trc-green-deep);
-          margin-bottom: 12px;
         }
-        .trc-tier-card .trc-tier-desc {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 12px;
-          color: var(--trc-green-accent);
-          opacity: 0.7; line-height: 1.7;
-          margin-bottom: 28px;
+        .trc-tiers-rise { opacity: 0; }
+        .trc-tiers.is-in .trc-tiers-rise { animation: trc-rise .9s cubic-bezier(.16,.84,.44,1) both; }
+        .trc-tiers-rule { height: 1px; background: var(--trc-green-deep); opacity: .15; }
+        .trc-tiers-eyebrow {
+          font-family: 'Google Sans Code', 'DM Mono', monospace;
+          font-size: 10.5px; letter-spacing: .22em; text-transform: uppercase;
+          opacity: .55; margin: 26px 0 0;
         }
-        .trc-tier-card .trc-tier-btn {
-          display: inline-block;
-          font-family: 'Rampant Sans', 'Playfair Display', serif;
-          font-size: 10px; letter-spacing: 0.14em;
-          text-transform: uppercase;
-          color: var(--trc-cream);
-          background: var(--trc-green-deep);
-          padding: 12px 28px;
-          text-decoration: none;
-          transition: opacity 0.4s ease;
+        .trc-tiers-title {
+          font-family: 'Rampant Sans', serif; font-weight: 400;
+          font-size: clamp(44px, 8vw, 96px); line-height: .98;
+          margin: 16px 0 0;
         }
-        .trc-tier-card:hover .trc-tier-btn {
-          opacity: 0.85;
+        .trc-tiers-lede {
+          font-family: 'Google Sans Code', 'DM Mono', monospace;
+          font-size: 14px; line-height: 2; max-width: 560px;
+          margin: 26px 0 0;
+        }
+        .trc-tiers-grid {
+          display: grid; grid-template-columns: repeat(3, 1fr);
+          gap: 48px; margin-top: 72px;
+        }
+        .trc-tier-head { display: flex; align-items: center; gap: 14px; }
+        .trc-tier-no {
+          font-family: 'Google Sans Code', 'DM Mono', monospace;
+          font-size: 11px; letter-spacing: .12em; opacity: .6;
+        }
+        /* A hairline that draws itself across when the tier is hovered —
+           the same gesture as the artist tabs on /studio. */
+        .trc-tier-line { position: relative; flex: 1; height: 1px; background: rgba(5, 46, 32, .15); overflow: hidden; }
+        .trc-tier-line::after {
+          content: ''; position: absolute; inset: 0; background: var(--trc-green-deep);
+          transform: scaleX(0); transform-origin: left;
+          transition: transform .6s cubic-bezier(.16,.84,.44,1);
+        }
+        .trc-tier:hover .trc-tier-line::after { transform: scaleX(1); }
+        .trc-tier-name {
+          font-family: 'Rampant Sans', serif;
+          font-size: clamp(34px, 3.6vw, 48px); line-height: 1;
+          margin-top: 26px;
+        }
+        .trc-tier-meta {
+          font-family: 'Google Sans Code', 'DM Mono', monospace;
+          font-size: 11px; opacity: .62; margin-top: 10px;
+        }
+        .trc-tier-desc {
+          font-family: 'Google Sans Code', 'DM Mono', monospace;
+          font-size: 12px; line-height: 1.9; opacity: .8;
+          margin: 18px 0 0; max-width: 34ch;
+        }
+        @media (max-width: 900px) {
+          .trc-tiers { padding: 72px 20px 96px; }
+          .trc-tiers-grid { grid-template-columns: 1fr; gap: 44px; margin-top: 52px; }
+          .trc-tier-desc { max-width: none; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .trc-tiers-rise, .trc-tiers.is-in .trc-tiers-rise { opacity: 1; animation: none; }
+          .trc-tier-line::after { transition: none; }
         }
 
         @media (max-width: 768px) {
@@ -861,9 +891,6 @@ export default function HomePage() {
           .trc-benefits-right > div:nth-child(even) {
             text-align: right !important;
             padding-left: 20% !important;
-          }
-          .trc-tier-card {
-            min-width: unset !important;
           }
           .trc-hero-title {
             font-size: 32px !important;
@@ -1031,13 +1058,11 @@ export default function HomePage() {
         </div>
 
         {/* ══════ 2. BENEFITS ══════ */}
-        <div ref={benefitsSec.ref} className="trc-section">
-          {/* The membership card in its sleeve — decorative, so hidden from
-              screen readers. Fades in with the section; the float is CSS. */}
-          <div className="trc-card-float" aria-hidden="true" style={{
-            opacity: benefitsSec.visible ? 1 : 0,
-            transition: 'opacity 1s ease',
-          }}>
+        <div ref={benefitsSec.ref} className="trc-section" style={{ position: 'relative' }}>
+          {/* The membership card in its sleeve, lying across the seam between
+              the hero and this section. Decorative, so hidden from screen
+              readers; it lands when the section comes into view. */}
+          <div className={`trc-card-drop ${benefitsSec.visible ? 'is-in' : ''}`} aria-hidden="true">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/images/member-card-opt.webp" alt="" />
           </div>
@@ -1283,45 +1308,30 @@ export default function HomePage() {
           />
         </div>
 
-        {/* ══════ 7. MEMBERSHIP TIERS ══════ */}
-        <div ref={tiersSec.ref} className="trc-section" id="tiers">
-          <div className="trc-section-diamond" />
-          <div className="trc-section-title">Membership</div>
-          <div className="trc-section-subtitle">Thành Viên</div>
-
-          <p style={{
-            fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-            fontSize: 16,
-            color: 'var(--trc-green-deep)',
-            opacity: 0.7,
-            textAlign: 'center',
-            marginBottom: 40,
-            lineHeight: 1.6,
-          }}>
+        {/* ══════ 7. MEMBERSHIP TIERS ══════
+            Set the way /studio sets itself: left-aligned, one large statement,
+            mono for the reading, hairlines instead of boxes. */}
+        <div ref={tiersSec.ref} id="tiers" className={`trc-tiers ${tiersSec.visible ? 'is-in' : ''}`}>
+          <div className="trc-tiers-rule" />
+          <div className="trc-tiers-eyebrow trc-tiers-rise">Membership · Thành Viên</div>
+          <h2 className="trc-tiers-title trc-tiers-rise" style={{ animationDelay: '.06s' }}>By Invitation</h2>
+          <p className="trc-tiers-lede trc-tiers-rise" style={{ animationDelay: '.14s' }}>
             Membership is by invitation or referral only. We do not accept applications.
           </p>
 
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: 32,
-          }}>
+          <div className="trc-tiers-grid">
             {TIERS.map((tier, i) => (
-              <div
-                key={tier.name}
-                className="trc-tier-card"
-                style={{
-                  opacity: tiersSec.visible ? 1 : 0,
-                  transform: tiersSec.visible ? 'translateY(0)' : 'translateY(16px)',
-                  transition: tiersSec.visible ? 'none' : `opacity 0.6s ease ${i * 0.1}s, transform 0.6s ease ${i * 0.1}s`,
-                }}
-              >
-                <div className="trc-tier-name">{tier.name}</div>
+              <div key={tier.name} className="trc-tier trc-tiers-rise" style={{ animationDelay: `${0.24 + i * 0.1}s` }}>
+                <div className="trc-tier-head">
+                  <span className="trc-tier-no">{String(i + 1).padStart(2, '0')}</span>
+                  <span className="trc-tier-line" />
+                </div>
+                <div className="trc-tier-name">{tier.short}</div>
+                <div className="trc-tier-meta">{tier.meta}</div>
                 <p className="trc-tier-desc">{tier.desc}</p>
               </div>
             ))}
           </div>
-
         </div>
       </div>
 
