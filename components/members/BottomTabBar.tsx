@@ -63,25 +63,33 @@ export default function BottomTabBar() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: `
+        /* The house's green, one cream hairline above, and the tab you are on
+           marked the way /studio marks its artists — a gold rule, not a pill. */
         .mtab-bar {
           position: fixed; left: 0; right: 0; bottom: 0; z-index: 8998;
           display: none;
-          background: rgba(4, 38, 26, 0.94);
+          background: rgba(5, 46, 32, 0.96);
           backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-          border-top: 1px solid rgba(229, 212, 194, 0.10);
+          border-top: 1px solid rgba(229, 212, 194, 0.16);
           padding-bottom: env(safe-area-inset-bottom, 0px);
         }
         .mtab-inner { display: flex; }
         .mtab {
-          flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px;
-          padding: 12px 0 11px; text-decoration: none; position: relative;
-          color: #8A8472; transition: color 0.2s ease, transform 0.1s ease;
+          flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 5px;
+          padding: 12px 2px 11px; text-decoration: none; position: relative;
+          color: rgba(229, 212, 194, 0.72); transition: color 0.2s ease, transform 0.1s ease;
           -webkit-tap-highlight-color: transparent;
         }
-        .mtab:active { transform: scale(0.92); }
+        .mtab::before {
+          content: ''; position: absolute; top: -1px; left: 26%; right: 26%; height: 2px; background: #D4B85A;
+          transform: scaleX(0); transition: transform .35s cubic-bezier(.16,.84,.44,1);
+        }
+        .mtab:active { transform: scale(0.94); }
         .mtab.is-active { color: #D4B85A; }
+        .mtab.is-active::before { transform: scaleX(1); }
         .mtab-icon { display: flex; align-items: center; justify-content: center; height: 25px; }
-        .mtab-label { font-family: 'Google Sans Code', 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.06em; }
+        .mtab-label { font-family: 'Google Sans Code', 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.03em;
+                      line-height: 1.25; text-align: center; max-width: 100%; }
         .mtab-dot {
           position: absolute; top: 8px; left: 50%; margin-left: 8px;
           min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px;
@@ -90,6 +98,7 @@ export default function BottomTabBar() {
           display: flex; align-items: center; justify-content: center;
         }
         @media (max-width: 768px) { .mtab-bar { display: block; } }
+        @media (prefers-reduced-motion: reduce) { .mtab, .mtab::before { transition: none; } }
       ` }} />
       <nav className="mtab-bar" aria-label="Member navigation">
         <div className="mtab-inner">

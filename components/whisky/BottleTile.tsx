@@ -50,11 +50,11 @@ export default function BottleTile({ letter, count, onClick }: { letter: string;
         {/* fine gold rule under the letter — editorial restraint */}
         {!empty && <line x1={26} y1={LABEL_Y + 12} x2={38} y2={LABEL_Y + 12} stroke={GOLD} strokeWidth={0.9} opacity={0.7} />}
       </svg>
-      <div style={{ fontFamily: MONO, fontSize: 9, color: empty ? 'rgba(178,170,152,0.4)' : '#B2AA98', letterSpacing: '0.04em' }}>
+      <div style={{ fontFamily: MONO, fontSize: 11, color: '#E5D4C2', opacity: empty ? 0.4 : 0.82, letterSpacing: '0.06em', marginTop: 4 }}>
         {empty ? '—' : count}
       </div>
       {/* shelf ledge — a fine line, not a chunky bar */}
-      <div style={{ width: '100%', height: 1, marginTop: 5, background: 'rgba(229,212,194,0.32)', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }} />
+      <div style={{ width: '100%', height: 1, marginTop: 8, background: 'rgba(229,212,194,0.28)' }} />
     </button>
   )
 }

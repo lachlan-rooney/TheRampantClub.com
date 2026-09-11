@@ -6,6 +6,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import RadarChart from './RadarChart'
 import { type Cat, type ShapeValues, fetchCategories, RADAR_GOLD, RADAR_SAGE } from './flavour-data'
 import { useLang } from '@/lib/lang'
+import { strengthColor, bare, RADAR } from './WhiskyStyle'
 
 // Shared rec-results renderer (staff Suggest-a-pour + member For-You both use it).
 // Each rec card overlays the TARGET taste (gold) vs the whisky's shape (sage) so
@@ -30,6 +31,45 @@ export default function RecResults({ recs, target, bestIsClose, theme = 'dark' }
   useEffect(() => { fetchCategories(createBrowserSupabaseClient()).then(setCats) }, [])
   if (!recs.length) return null
   const targetShape = toShape(target)
+
+  // ── The member's recommendations: a run of pours on hairlines ──────────
+  // The same data and links as the staff card below, in the whisky pages'
+  // vocabulary (WhiskyStyle, loaded by the page). Staff keep their cards.
+  if (theme === 'member') return (
+    <div>
+      {!bestIsClose && (
+        <p className="wl-banner">{t("Nothing's a close match to this profile yet — here's the nearest we pour.", 'Chưa có chai nào thật sự khớp với hồ sơ này — đây là những ly gần nhất chúng tôi có.')}</p>
+      )}
+      <div className="wl-pours">
+        {recs.map(r => (
+          <article key={r.id} className="wl-pour">
+            <div className="wl-pour-head">
+              <h3 className="wl-pour-name">{r.name}</h3>
+              <div className="wl-strength" style={{ color: strengthColor(r.strength) }}>{t(STRENGTH[r.strength] || r.strength, STRENGTH_VN[r.strength] || '')} · {r.pct}%</div>
+            </div>
+            <div className="wl-pour-note">
+              {r.stock_known ? t(`In stock · ~${r.fill_pct}% of the bottle`, `Còn hàng · ~${r.fill_pct}% chai`) : t('Stock not tracked', 'Chưa theo dõi tồn kho')}
+            </div>
+            {cats.length > 0 && (
+              <div className="wl-radar">
+                <RadarChart cats={cats} shapes={[
+                  { values: targetShape, color: RADAR_GOLD, label: t('Their taste', 'Khẩu vị của họ') },
+                  { values: toShape(r.spokes), color: RADAR_SAGE, label: r.name },
+                ]} size={RADAR} />
+              </div>
+            )}
+            <div className="wl-legend">
+              <span className="wl-sw" style={{ background: RADAR_GOLD }} /><span>{t('Their taste', 'Khẩu vị của họ')}</span>
+              <span className="wl-sw" style={{ background: RADAR_SAGE }} /><span>{t('This whisky', 'Chai whisky này')}</span>
+            </div>
+            <Link href={`/members/whisky?focus=${r.id}`} className="wl-link is-gold">
+              {bare(t('See it in the library →', 'Xem trong thư viện →'))} <span className="pk-go" aria-hidden="true">→</span>
+            </Link>
+          </article>
+        ))}
+      </div>
+    </div>
+  )
 
   return (
     <div>

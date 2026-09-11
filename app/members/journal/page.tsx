@@ -39,121 +39,107 @@ export default function MembersJournal() {
   return (
     <>
       <style>{`
-        .jrnl-empty {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 12px; color: #B2AA98; opacity: 0.7;
-          padding: 28px 20px; text-align: center;
-          background: rgba(229,212,194,0.04);
-          border: 1px dashed rgba(229,212,194,0.15);
-          border-radius: 10px;
-          font-style: italic;
-        }
-        .jrnl-list { display: flex; flex-direction: column; gap: 14px; }
-        .jrnl-card {
-          padding: 22px 24px;
-          background: rgba(229,212,194,0.04);
-          border: 1px solid rgba(229,212,194,0.08);
-          border-radius: 12px;
-          cursor: pointer;
-          transition: background 0.25s, border-color 0.25s, transform 0.25s;
-        }
-        .jrnl-card:hover {
-          background: rgba(229,212,194,0.07);
-          border-color: rgba(212,184,90,0.35);
-          transform: translateY(-2px);
-        }
-        .jrnl-meta {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase;
-          color: #D4B85A; opacity: 0.85; margin-bottom: 8px;
-        }
-        .jrnl-title {
-          font-family: 'Rampant Sans', serif;
-          font-size: 24px; font-weight: 500; color: #E5D4C2;
-          margin: 0 0 8px; letter-spacing: 0.02em; line-height: 1.2;
-        }
-        .jrnl-excerpt {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 12px; color: #B2AA98; opacity: 0.85;
-          line-height: 1.7; margin: 0;
-        }
+        .jrnl-empty { font-family: 'Google Sans Code', monospace; font-size: 14px; line-height: 1.95; color: #E5D4C2; opacity: .8;
+                      max-width: 560px; margin: 0; }
+        .jrnl-quiet { font-family: 'Google Sans Code', monospace; font-size: 14px; color: #E5D4C2; opacity: .8; margin: 0; }
 
-        /* Reader modal */
+        /* The entries, as a contents page: the title set large, the excerpt
+           beneath, the date and hand in the margin of the line. */
+        .jrnl-list { max-width: 900px; border-bottom: 1px solid rgba(229,212,194,.18); }
+        .jrnl-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 32px; align-items: baseline;
+                     padding: 30px 0 32px; border-top: 1px solid rgba(229,212,194,.18); cursor: pointer; color: #E5D4C2; }
+        .jrnl-title { grid-column: 1; font-family: 'Rampant Sans', serif; font-weight: 400; font-size: clamp(30px, 3.8vw, 50px);
+                      line-height: 1; margin: 0; transition: color .3s ease; }
+        .jrnl-card:hover .jrnl-title { color: #D4B85A; }
+        .jrnl-go { grid-column: 2; grid-row: 1; font-family: 'Google Sans Code', monospace; font-size: 16px; color: #D4B85A; }
+        .jrnl-meta { grid-column: 1 / -1; font-family: 'Google Sans Code', monospace; font-size: 12px; letter-spacing: .12em;
+                     text-transform: uppercase; color: #D4B85A; margin-top: 6px; }
+        .jrnl-excerpt { grid-column: 1; font-family: 'Google Sans Code', monospace; font-size: 13.5px; line-height: 1.95;
+                        color: #E5D4C2; opacity: .85; margin: 6px 0 0; max-width: 640px; }
+
+        /* The reader: the entry delivered on a sheet of the house paper */
         .jrnl-back {
           position: fixed; inset: 0;
-          background: rgba(5,46,32,0.62);
-          backdrop-filter: blur(8px);
+          background: rgba(5,46,32,0.82);
+          backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
           z-index: 99980;
           display: flex; align-items: flex-start; justify-content: center;
-          padding: 60px 20px 40px; overflow-y: auto;
-          animation: jrnl-fade 0.3s ease;
+          padding: 7vh 16px 9vh; overflow-y: auto; overscroll-behavior: contain;
+          animation: jrnl-fade 0.4s ease;
         }
         @keyframes jrnl-fade { from { opacity: 0 } to { opacity: 1 } }
         .jrnl-reader {
-          background: #052E20;
-          color: #E5D4C2;
-          border: 1px solid rgba(212,184,90,0.32);
-          border-radius: 14px;
-          max-width: 680px; width: 100%;
-          padding: 44px 40px 36px;
+          background: #F3E9DA; color: #052E20;
+          border-radius: 4px;
+          max-width: 720px; width: 100%;
+          padding: clamp(34px, 6vw, 64px) clamp(24px, 6vw, 68px) clamp(34px, 5vw, 56px);
           position: relative;
-          box-shadow: 0 30px 80px rgba(0,0,0,0.5);
-          animation: jrnl-rise 0.4s cubic-bezier(0.22,1,0.36,1);
+          box-shadow: 0 40px 90px rgba(0,0,0,.45), 0 10px 24px rgba(0,0,0,.25);
+          animation: jrnl-rise 0.8s cubic-bezier(.16,.84,.44,1);
         }
+        .jrnl-reader::before { content: ''; position: absolute; inset: 12px; border: 1px solid rgba(5,46,32,.12); border-radius: 2px; pointer-events: none; }
         @keyframes jrnl-rise {
-          from { opacity: 0; transform: translateY(16px); }
+          from { opacity: 0; transform: translateY(40px); }
           to   { opacity: 1; transform: translateY(0); }
         }
         .jrnl-close {
-          position: absolute; top: 14px; right: 14px;
-          background: transparent; color: #B2AA98;
-          border: 1px solid rgba(229,212,194,0.18);
-          border-radius: 50%; width: 32px; height: 32px;
-          cursor: pointer; font-size: 16px;
-          transition: background 0.2s;
+          position: relative; z-index: 1; display: block; margin-left: auto;
+          background: none; border: none; cursor: pointer; color: #052E20; padding: 4px 0;
+          font-family: 'Google Sans Code', monospace; font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
         }
-        .jrnl-close:hover { background: rgba(229,212,194,0.06); color: #E5D4C2; }
-        .jrnl-cover { width: 100%; height: 220px; object-fit: cover; border-radius: 8px; margin-bottom: 22px; }
+        .jrnl-close span { display: inline-block; margin-left: 8px; font-size: 16px; line-height: 1; transition: transform .35s ease; }
+        .jrnl-close:hover span { transform: rotate(90deg); }
+        .jrnl-cover { display: block; width: 100%; height: auto; max-height: 360px; object-fit: cover; border-radius: 3px; margin: 22px 0 6px; }
         .jrnl-r-meta {
           font-family: 'Google Sans Code', monospace;
-          font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
-          color: #D4B85A; margin-bottom: 8px;
+          font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+          opacity: .65; margin: 28px 0 0;
         }
         .jrnl-r-title {
-          font-family: 'Rampant Sans', serif;
-          font-size: 32px; font-weight: 500; color: #E5D4C2;
-          margin: 0 0 22px; letter-spacing: 0.02em; line-height: 1.15;
+          font-family: 'Rampant Sans', serif; font-weight: 400;
+          font-size: clamp(38px, 6vw, 64px); line-height: .96;
+          margin: 14px 0 0;
         }
         .jrnl-r-byline {
           font-family: 'Google Sans Code', monospace;
-          font-size: 11px; color: #B2AA98; opacity: 0.7;
-          margin: 0 0 26px; font-style: italic;
+          font-size: 12px; letter-spacing: .04em; opacity: .7;
+          margin: 16px 0 30px;
         }
         .jrnl-r-body p {
           font-family: 'Google Sans Code', monospace;
-          font-size: 12px; line-height: 1.85;
-          color: #E5D4C2; opacity: 0.9; margin: 0 0 18px;
-          letter-spacing: 0.01em;
+          font-size: 13.5px; line-height: 2;
+          opacity: .92; margin: 0 0 18px;
+        }
+        .jrnl-r-body p:first-child::first-letter { font-family: 'Rampant Sans', serif; float: left; font-size: 64px; line-height: .82; margin: 7px 6px 0 0; }
+        @media (max-width: 600px) {
+          .jrnl-card { grid-template-columns: minmax(0, 1fr); padding: 26px 0 28px; }
+          .jrnl-go { display: none; }
+          .jrnl-reader::before { inset: 8px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .jrnl-back, .jrnl-reader { animation: none; }
+          .jrnl-close span { transition: none; }
         }
       `}</style>
 
       <MemberPage title="The Cellarmaster's Journal" subtitle="Nhật Ký Cellarmaster">
         {loading ? (
-          <p style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#B2AA98', textAlign: 'center' }}>{t('Loading…', 'Đang tải…')}</p>
+          <p className="jrnl-quiet">{t('Loading…', 'Đang tải…')}</p>
         ) : entries.length === 0 ? (
-          <div className="jrnl-empty">
+          <p className="jrnl-empty">
             {t('The Cellarmaster has not yet committed pen to paper. New entries will appear here as they are written.',
               'Cellarmaster vẫn chưa đặt bút. Các bài viết mới sẽ xuất hiện tại đây khi được hoàn thành.')}
-          </div>
+          </p>
         ) : (
           <div className="jrnl-list">
             {entries.map(e => (
               <div key={e.id} className="jrnl-card" onClick={() => setOpen(e)}>
+                <h2 className="jrnl-title">{e.title}</h2>
+                <span className="jrnl-go" aria-hidden="true">→</span>
+                {e.excerpt && <p className="jrnl-excerpt">{e.excerpt}</p>}
                 <div className="jrnl-meta">
                   {e.author_name || t('The Cellarmaster', 'Cellarmaster')} &middot; {fmtDate(e.published_at, lang)}
                 </div>
-                <h2 className="jrnl-title">{e.title}</h2>
-                {e.excerpt && <p className="jrnl-excerpt">{e.excerpt}</p>}
               </div>
             ))}
           </div>
@@ -163,7 +149,7 @@ export default function MembersJournal() {
       {open && (
         <div className="jrnl-back" onClick={() => setOpen(null)}>
           <article className="jrnl-reader" onClick={e => e.stopPropagation()}>
-            <button className="jrnl-close" onClick={() => setOpen(null)} aria-label={t('Close', 'Đóng')}>×</button>
+            <button className="jrnl-close" onClick={() => setOpen(null)} aria-label={t('Close', 'Đóng')}>{t('Close', 'Đóng')}<span aria-hidden="true">×</span></button>
             {open.cover_image_url && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={open.cover_image_url} alt="" className="jrnl-cover" />

@@ -7,6 +7,7 @@ import MemberModal from '@/components/MemberModal'
 import ConfirmModal from '@/components/members/ConfirmModal'
 import { useLang, type Lang } from '@/lib/lang'
 import { surfaceName } from '@/lib/members/surfaces'
+import { CreamInk } from '@/components/public/CreamInk'
 
 // The Snug — a salon, not a timeline. A single unhurried column of house posts,
 // member posts and snug tasting-notes (union-at-read), equal visual weight. No
@@ -99,55 +100,71 @@ export default function Snug() {
   }, [draft, photo, posting, load, t])
 
   return (
-    <MemberPage title={t('The Snug', surfaceName('/members/snug', 'vn'))} subtitle={t('THE CLUB, IN CONVERSATION', 'NƠI CÂU LẠC BỘ TRÒ CHUYỆN')} description={t('Drams worth mentioning, moments from the floor, a word between members. Unhurried — like the room itself.', 'Những ly đáng nhắc đến, khoảnh khắc trong câu lạc bộ, đôi lời giữa các hội viên. Thong thả — như chính căn phòng này.')}>
+    // The room carries its own drawing (beside the feed on a desk, beside the
+    // invitation on a phone), so the masthead goes without one — unless the
+    // room is closed to this login, when the masthead keeps the page's ink.
+    <MemberPage art={gate ? undefined : null} title={t('The Snug', surfaceName('/members/snug', 'vn'))} subtitle={t('THE CLUB, IN CONVERSATION', 'NƠI CÂU LẠC BỘ TRÒ CHUYỆN')} description={t('Drams worth mentioning, moments from the floor, a word between members. Unhurried — like the room itself.', 'Những ly đáng nhắc đến, khoảnh khắc trong câu lạc bộ, đôi lời giữa các hội viên. Thong thả — như chính căn phòng này.')}>
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
       {gate ? (
-        <div style={gateWrap}>
+        <p className="sn-quiet sn-gate">
           {gate === 'staff'
-            ? <>{t('The Snug is the members’ room. You can post house moments from ', 'The Snug là phòng của hội viên. Bạn có thể đăng khoảnh khắc của câu lạc bộ từ ')}<Link href="/admin/snug" style={gateLink}>{t('the admin Snug →', 'trang Snug quản trị →')}</Link></>
+            ? <>{t('The Snug is the members’ room. You can post house moments from ', 'The Snug là phòng của hội viên. Bạn có thể đăng khoảnh khắc của câu lạc bộ từ ')}<Link href="/admin/snug" className="sn-link">{t('the admin Snug →', 'trang Snug quản trị →')}</Link></>
             : <>{t('Your login isn’t linked to a membership yet. A word with the Club will set it right.', 'Tài khoản đăng nhập của bạn chưa được liên kết với tư cách thành viên. Chỉ cần báo với Câu lạc bộ, chúng tôi sẽ sắp xếp ngay.')}</>}
-        </div>
+        </p>
       ) : (
-        <>
-          <button onClick={() => setComposer(true)} style={shareBtn}>✎ {t('Share something', 'Chia sẻ đôi điều')}</button>
+        <div className="sn-grid">
+          {/* The invitation to speak — first on a phone, beside the room on a desk. */}
+          <aside className="sn-aside">
+            <button onClick={() => setComposer(true)} className="sn-share pk-hover">
+              <span>✎ {t('Share something', 'Chia sẻ đôi điều')}</span> <span className="pk-go">→</span>
+            </button>
+            {pending > 0 && (
+              <button onClick={refreshTop} className="sn-nudge">↑ {pending} {t(pending === 1 ? 'new arrival' : 'new arrivals', 'bài mới')} — {t('tap to catch up', 'chạm để xem')}</button>
+            )}
+            <CreamInk name="girl-toast" width="100%" rot={5} dur={10} className="sn-art" />
+          </aside>
 
-          {pending > 0 && (
-            <button onClick={refreshTop} style={nudge}>↑ {pending} {t(pending === 1 ? 'new arrival' : 'new arrivals', 'bài mới')} — {t('tap to catch up', 'chạm để xem')}</button>
-          )}
-
-          {loading ? (
-            <p style={muted}>{t('Settling in…', 'Đang vào phòng…')}</p>
-          ) : items.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '32px 0' }}>
-              <p style={muted}>{t('Quiet in here for the moment. Pour something, and tell the room about it.', 'Lúc này trong phòng còn yên ắng. Hãy rót một ly và kể cho mọi người nghe.')}</p>
-            </div>
-          ) : (
-            <div>
-              {items.map(it => <FeedCard key={`${it.item_type}:${it.id}`} it={it} onChanged={load} />)}
-              {next && <button onClick={loadMore} disabled={loadingMore} style={moreBtn}>{loadingMore ? t('Pouring…', 'Đang rót…') : t('Earlier in the Snug', 'Bài cũ hơn trong The Snug')}</button>}
-            </div>
-          )}
-        </>
+          {/* The room: one unhurried column, house and members at equal weight. */}
+          <div className="sn-feed">
+            {loading ? (
+              <p className="sn-quiet">{t('Settling in…', 'Đang vào phòng…')}</p>
+            ) : items.length === 0 ? (
+              <p className="sn-quiet">{t('Quiet in here for the moment. Pour something, and tell the room about it.', 'Lúc này trong phòng còn yên ắng. Hãy rót một ly và kể cho mọi người nghe.')}</p>
+            ) : (
+              <>
+                {items.map(it => <FeedCard key={`${it.item_type}:${it.id}`} it={it} onChanged={load} />)}
+                {next && (
+                  <button onClick={loadMore} disabled={loadingMore} className="pk-cta sn-more">
+                    {loadingMore ? t('Pouring…', 'Đang rót…') : <>{t('Earlier in the Snug', 'Bài cũ hơn trong The Snug')} <span className="pk-go">→</span></>}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        </div>
       )}
 
       <MemberModal open={composer} onClose={() => { setComposer(false); setPhoto(null) }} title={t('Share with the Snug', 'Chia sẻ lên The Snug')} subtitle={t('THE ROOM WILL SEE THIS', 'MỌI NGƯỜI TRONG PHÒNG SẼ THẤY')}>
-        {error && <div style={{ fontFamily: MONO, fontSize: 11, color: '#C27070', marginBottom: 8 }}>{error}</div>}
-        <textarea value={draft} onChange={e => setDraft(e.target.value.slice(0, 8000))} rows={4} placeholder={t('A dram worth mentioning, a thought, a question for the room…', 'Một ly đáng nhắc đến, một suy nghĩ, một câu hỏi cho mọi người…')} style={textarea} />
-        <div style={{ marginTop: 12 }}>
+        {error && <div className="sn-err">{error}</div>}
+        <textarea value={draft} onChange={e => setDraft(e.target.value.slice(0, 8000))} rows={4} placeholder={t('A dram worth mentioning, a thought, a question for the room…', 'Một ly đáng nhắc đến, một suy nghĩ, một câu hỏi cho mọi người…')} className="sn-field" />
+        <div className="sn-photo-row">
           {photo ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontFamily: MONO, fontSize: 11, color: '#E5D4C2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>{photo.name}</span>
-              <button onClick={() => setPhoto(null)} style={{ ...smallChip, color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}>{t('Remove', 'Gỡ bỏ')}</button>
-            </div>
+            <>
+              <span className="sn-photo-name">{photo.name}</span>
+              <button onClick={() => setPhoto(null)} className="sn-quietbtn is-danger">{t('Remove', 'Gỡ bỏ')}</button>
+            </>
           ) : (
-            <label style={{ ...smallChip, cursor: 'pointer', display: 'inline-block' }}>
-              ＋ {t('Add a photo', 'Thêm ảnh')} <span style={{ opacity: 0.5 }}>{t('(location stripped)', '(đã xoá vị trí)')}</span>
+            <label className="sn-quietbtn sn-add">
+              ＋ {t('Add a photo', 'Thêm ảnh')} <span className="sn-add-note">{t('(location stripped)', '(đã xoá vị trí)')}</span>
               <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) setPhoto(f) }} />
             </label>
           )}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
-          <button onClick={() => { setComposer(false); setPhoto(null) }} style={cancelBtn}>{t('Cancel', 'Huỷ')}</button>
-          <button onClick={post} disabled={posting || !draft.trim()} style={{ ...postBtn, opacity: posting || !draft.trim() ? 0.4 : 1 }}>{posting ? t('Sharing…', 'Đang chia sẻ…') : t('Share', 'Chia sẻ')}</button>
+        <div className="sn-actions">
+          <button onClick={() => { setComposer(false); setPhoto(null) }} className="sn-quietbtn is-plain">{t('Cancel', 'Huỷ')}</button>
+          <button onClick={post} disabled={posting || !draft.trim()} className="pk-cta sn-cta">
+            {posting ? t('Sharing…', 'Đang chia sẻ…') : <>{t('Share', 'Chia sẻ')} <span className="pk-go">→</span></>}
+          </button>
         </div>
       </MemberModal>
     </MemberPage>
@@ -190,40 +207,40 @@ function FeedCard({ it, onChanged }: { it: Item; onChanged: () => void }) {
   }
 
   return (
-    <div style={{ ...card, ...(house ? houseCard : null) }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
-        <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 15, color: house ? '#D4B85A' : '#E5D4C2' }}>
+    <article className={`sn-item ${house ? 'is-house' : ''}`}>
+      <div className="sn-top">
+        <span className="sn-author">
           {it.author_name}{it.is_own && !house ? ` · ${t('you', 'bạn')}` : ''}
         </span>
-        <span style={{ fontFamily: MONO, fontSize: 9, color: '#7E7864' }}>{when(it.created_at, lang)}</span>
+        <span className="sn-when">{when(it.created_at, lang)}</span>
       </div>
 
       {it.kind === 'tasting_note' ? (
         <>
-          <div style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98', marginBottom: 6 }}>
-            {t('noted', 'đã ghi chú về')} <Link href={`/members/whisky/${it.whisky_id}`} style={whiskyLink}>{it.whisky_name}</Link>
+          <div className="sn-noted">
+            {t('noted', 'đã ghi chú về')} <Link href={`/members/whisky/${it.whisky_id}`} className="sn-link">{it.whisky_name}</Link>
           </div>
-          <div style={bodyText}>{it.note}</div>
+          <div className="sn-body">{it.note}</div>
           {(it.flavour_tags?.length ?? 0) > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
-              {it.flavour_tags!.map(tag => <span key={tag} style={tagChip}>{tag.replace(/_/g, ' ')}</span>)}
+            <div className="sn-tags">
+              {it.flavour_tags!.map(tag => <span key={tag} className="sn-tag">{tag.replace(/_/g, ' ')}</span>)}
             </div>
           )}
         </>
       ) : (
-        <div style={bodyText}>{it.body}</div>
+        <div className="sn-body">{it.body}</div>
       )}
 
       {it.photo_url && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={it.photo_url} alt={t('Photograph shared in the Snug', 'Ảnh được chia sẻ trong The Snug')} loading="lazy" decoding="async" style={{ display: 'block', maxWidth: '100%', maxHeight: 320, borderRadius: 8, marginTop: 10, objectFit: 'cover' }} />
+        <img src={it.photo_url} alt={t('Photograph shared in the Snug', 'Ảnh được chia sẻ trong The Snug')} loading="lazy" decoding="async" className="sn-photo" />
       )}
 
-      <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+      <div className="sn-rx">
         {RX.map(r => {
           const on = mine.includes(r.key)
           return (
-            <button key={r.key} onClick={() => toggle(r.key)} title={t(r.label, r.label_vn)} style={{ ...rxBtn, ...(on ? rxOn : null) }}>
+            <button key={r.key} onClick={() => toggle(r.key)} title={t(r.label, r.label_vn)} className={`sn-rxbtn ${on ? 'is-on' : ''}`} aria-pressed={on}>
               <span aria-hidden>{r.emoji}</span> {t(r.label, r.label_vn)}
             </button>
           )
@@ -231,15 +248,15 @@ function FeedCard({ it, onChanged }: { it: Item; onChanged: () => void }) {
       </div>
       {/* QUIET: only the poster sees the tally on their own item. */}
       {it.is_own && summary && (summary.raise_glass + summary.noted + summary.join_me > 0) && (
-        <div style={ownTally}>
+        <div className="sn-tally">
           {RX.filter(r => summary[r.key as keyof typeof summary] > 0).map(r => `${r.emoji} ${summary[r.key as keyof typeof summary]}`).join('  ·  ')}
         </div>
       )}
 
       {canManage && (
-        <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
-          <button onClick={() => { setEditDraft(it.body || ''); setEditing(true) }} style={manageBtn}>{t('Edit', 'Sửa')}</button>
-          <button onClick={() => setConfirmDel(true)} style={{ ...manageBtn, color: '#C27070' }}>{t('Delete', 'Xoá')}</button>
+        <div className="sn-manage">
+          <button onClick={() => { setEditDraft(it.body || ''); setEditing(true) }} className="sn-quietbtn">{t('Edit', 'Sửa')}</button>
+          <button onClick={() => setConfirmDel(true)} className="sn-quietbtn is-danger">{t('Delete', 'Xoá')}</button>
         </div>
       )}
 
@@ -256,32 +273,101 @@ function FeedCard({ it, onChanged }: { it: Item; onChanged: () => void }) {
       />
 
       <MemberModal open={editing} onClose={() => setEditing(false)} title={t('Edit your post', 'Sửa bài đăng')}>
-        <textarea value={editDraft} onChange={e => setEditDraft(e.target.value.slice(0, 8000))} rows={4} style={textarea} />
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 14 }}>
-          <button onClick={() => setEditing(false)} style={cancelBtn}>{t('Cancel', 'Huỷ')}</button>
-          <button onClick={saveEdit} disabled={!editDraft.trim()} style={{ ...postBtn, opacity: editDraft.trim() ? 1 : 0.4 }}>{t('Save', 'Lưu')}</button>
+        <textarea value={editDraft} onChange={e => setEditDraft(e.target.value.slice(0, 8000))} rows={4} className="sn-field" />
+        <div className="sn-actions">
+          <button onClick={() => setEditing(false)} className="sn-quietbtn is-plain">{t('Cancel', 'Huỷ')}</button>
+          <button onClick={saveEdit} disabled={!editDraft.trim()} className="pk-cta sn-cta">{t('Save', 'Lưu')} <span className="pk-go">→</span></button>
         </div>
       </MemberModal>
-    </div>
+    </article>
   )
 }
 
-const muted: React.CSSProperties = { fontFamily: MONO, fontSize: 13, color: '#B2AA98', textAlign: 'center', opacity: 0.7, lineHeight: 1.7 }
-const shareBtn: React.CSSProperties = { display: 'block', width: '100%', background: 'rgba(212,184,90,0.10)', border: '1px solid rgba(212,184,90,0.3)', borderRadius: 12, padding: '12px', fontFamily: MONO, fontSize: 12, letterSpacing: '0.04em', color: '#D4B85A', cursor: 'pointer', marginBottom: 18 }
-const nudge: React.CSSProperties = { display: 'block', width: '100%', background: 'transparent', border: '1px solid rgba(122,176,122,0.4)', borderRadius: 10, padding: '8px', fontFamily: MONO, fontSize: 11, color: '#7AB07A', cursor: 'pointer', marginBottom: 16 }
-const card: React.CSSProperties = { border: '1px solid rgba(229,212,194,0.10)', borderRadius: 14, background: 'rgba(229,212,194,0.03)', padding: '18px 20px', marginBottom: 16 }
-const houseCard: React.CSSProperties = { border: '1px solid rgba(212,184,90,0.3)', background: 'linear-gradient(135deg, rgba(212,184,90,0.08), rgba(212,184,90,0.02))' }
-const bodyText: React.CSSProperties = { fontFamily: MONO, fontSize: 13, color: '#E5D4C2', lineHeight: 1.75, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }
-const whiskyLink: React.CSSProperties = { color: '#D4B85A', textDecoration: 'none', borderBottom: '1px solid rgba(212,184,90,0.35)' }
-const tagChip: React.CSSProperties = { fontFamily: MONO, fontSize: 9, color: '#D4B85A', border: '1px solid rgba(212,184,90,0.3)', borderRadius: 8, padding: '2px 8px' }
-const moreBtn: React.CSSProperties = { display: 'block', margin: '6px auto 0', background: 'transparent', border: '1px solid rgba(178,170,152,0.3)', borderRadius: 20, padding: '8px 20px', fontFamily: MONO, fontSize: 11, color: '#B2AA98', cursor: 'pointer' }
-const rxBtn: React.CSSProperties = { background: 'transparent', border: '1px solid rgba(178,170,152,0.22)', borderRadius: 16, padding: '4px 11px', fontFamily: MONO, fontSize: 10, color: '#B2AA98', cursor: 'pointer', letterSpacing: '0.02em' }
-const rxOn: React.CSSProperties = { border: '1px solid #D4B85A', color: '#D4B85A', background: 'rgba(212,184,90,0.12)' }
-const ownTally: React.CSSProperties = { fontFamily: MONO, fontSize: 10, color: '#7E7864', marginTop: 8, letterSpacing: '0.04em' }
-const manageBtn: React.CSSProperties = { background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: MONO, fontSize: 11, color: '#B2AA98', textDecoration: 'underline' }
-const gateWrap: React.CSSProperties = { border: '1px solid rgba(212,184,90,0.20)', borderRadius: 14, background: 'rgba(229,212,194,0.03)', padding: '40px 28px', textAlign: 'center', fontFamily: MONO, fontSize: 13, color: '#B2AA98', lineHeight: 1.8 }
-const gateLink: React.CSSProperties = { color: '#D4B85A', textDecoration: 'none', borderBottom: '1px solid rgba(212,184,90,0.4)' }
-const textarea: React.CSSProperties = { width: '100%', resize: 'vertical', background: 'rgba(229,212,194,0.06)', border: '1px solid rgba(229,212,194,0.16)', borderRadius: 8, color: '#E5D4C2', fontFamily: MONO, fontSize: 13, lineHeight: 1.6, padding: '10px 12px', outline: 'none', boxSizing: 'border-box' }
-const smallChip: React.CSSProperties = { background: 'transparent', border: '1px solid rgba(178,170,152,0.25)', borderRadius: 16, padding: '5px 12px', fontFamily: MONO, fontSize: 10, color: '#B2AA98' }
-const cancelBtn: React.CSSProperties = { background: 'transparent', border: '1px solid rgba(178,170,152,0.3)', borderRadius: 8, padding: '8px 16px', fontFamily: MONO, fontSize: 12, color: '#B2AA98', cursor: 'pointer' }
-const postBtn: React.CSSProperties = { background: '#D4B85A', color: '#052E20', border: 'none', borderRadius: 8, padding: '8px 20px', fontFamily: MONO, fontSize: 12, fontWeight: 600, letterSpacing: '0.04em', cursor: 'pointer' }
+const SERIF = "'Rampant Sans', serif"
+const LINE = 'rgba(229,212,194,.18)'
+
+// The composer and the edit sheet are portalled to <body>, so every rule here
+// names its own colour rather than inheriting one from the page.
+const CSS = `
+  .sn-grid { display: grid; grid-template-columns: minmax(0, 720px) minmax(200px, 1fr); gap: 80px; align-items: start; }
+  .sn-feed { grid-column: 1; grid-row: 1; min-width: 0; }
+  .sn-aside { grid-column: 2; grid-row: 1; position: sticky; top: 110px; }
+
+  .sn-quiet { font-family: ${MONO}; font-size: 14px; line-height: 1.95; color: #E5D4C2; opacity: .8; max-width: 560px; margin: 0; }
+  .sn-gate { max-width: 620px; }
+  .sn-link { color: #D4B85A; text-decoration: none; border-bottom: 1px solid rgba(212,184,90,.5); padding-bottom: 1px; }
+  .sn-link:hover { border-bottom-color: #D4B85A; }
+
+  .sn-share { display: inline-flex; align-items: baseline; gap: 14px; background: none; border: none; cursor: pointer; text-align: left;
+              padding: 0 0 8px; border-bottom: 1px solid #D4B85A; border-radius: 0; color: #E5D4C2; white-space: nowrap;
+              font-family: ${SERIF}; font-size: clamp(24px, 2.3vw, 32px); line-height: 1.05; }
+  .sn-share .pk-go { font-family: ${MONO}; font-size: 16px; color: #D4B85A; }
+  .sn-nudge { display: block; margin-top: 22px; background: none; border: none; padding: 0; cursor: pointer; text-align: left;
+              font-family: ${MONO}; font-size: 12.5px; line-height: 1.7; color: #D4B85A; }
+  .sn-nudge:hover { text-decoration: underline; text-underline-offset: 4px; }
+  .sn-art { width: min(100%, 240px); margin: 64px 0 0 10%; }
+
+  .sn-item { padding: 30px 0 32px; border-top: 1px solid ${LINE}; }
+  .sn-item.is-house { border-top-color: rgba(212,184,90,.55); }
+  .sn-item:last-of-type { border-bottom: 1px solid ${LINE}; }
+  .sn-top { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 14px; }
+  .sn-author { font-family: ${SERIF}; font-size: clamp(24px, 2.4vw, 30px); line-height: 1.05; color: #E5D4C2; min-width: 0; overflow-wrap: anywhere; }
+  .sn-item.is-house .sn-author { color: #D4B85A; }
+  .sn-when { flex: 0 0 auto; font-family: ${MONO}; font-size: 11.5px; letter-spacing: .06em; color: #E5D4C2; opacity: .65; }
+  .sn-noted { font-family: ${MONO}; font-size: 13px; line-height: 1.7; color: #E5D4C2; opacity: .85; margin-bottom: 10px; }
+  .sn-body { font-family: ${MONO}; font-size: 14px; line-height: 1.95; color: #E5D4C2; white-space: pre-wrap; word-break: break-word; }
+  .sn-tags { display: flex; flex-wrap: wrap; margin-top: 12px; font-family: ${MONO}; font-size: 12px; line-height: 1.8; color: #D4B85A; }
+  .sn-tag + .sn-tag::before { content: '·'; margin: 0 9px; opacity: .6; }
+  .sn-photo { display: block; width: 100%; max-height: 520px; object-fit: cover; border-radius: 6px; margin-top: 18px;
+              box-shadow: 0 14px 34px rgba(0,0,0,.25); }
+
+  .sn-rx { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 20px; }
+  .sn-rxbtn { background: none; border: none; border-bottom: 1px solid transparent; border-radius: 0; padding: 0 0 4px; cursor: pointer;
+              font-family: ${MONO}; font-size: 12px; letter-spacing: .02em; color: #E5D4C2; opacity: .72;
+              transition: opacity .2s ease, color .2s ease, border-color .2s ease; }
+  .sn-rxbtn:hover { opacity: 1; }
+  .sn-rxbtn.is-on { color: #D4B85A; opacity: 1; border-bottom-color: #D4B85A; }
+  .sn-tally { font-family: ${MONO}; font-size: 12px; letter-spacing: .04em; color: #E5D4C2; opacity: .7; margin-top: 12px; }
+  .sn-manage { display: flex; gap: 22px; margin-top: 16px; }
+
+  .sn-quietbtn { background: none; border: none; padding: 0 0 4px; cursor: pointer; color: #E5D4C2; opacity: .78;
+                 font-family: ${MONO}; font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+                 border-bottom: 1px solid rgba(229,212,194,.35); border-radius: 0; transition: opacity .2s ease; }
+  .sn-quietbtn:hover { opacity: 1; }
+  .sn-quietbtn.is-danger { color: #E89B9B; border-bottom-color: rgba(232,155,155,.4); }
+  .sn-quietbtn.is-plain { border-bottom-color: transparent; }
+
+  .pk-cta.sn-more { color: #E5D4C2; margin-top: 34px; }
+  .pk-cta.sn-more:disabled { opacity: .5; cursor: default; }
+  .pk-cta.sn-cta { margin-top: 0; color: #D4B85A; }
+  .pk-cta.sn-cta:disabled { opacity: .4; cursor: not-allowed; }
+  .pk-cta.sn-cta:disabled .pk-go { transform: none; }
+
+  .sn-err { font-family: ${MONO}; font-size: 12.5px; line-height: 1.7; color: #E89B9B; margin-bottom: 10px; }
+  .sn-field { display: block; width: 100%; box-sizing: border-box; resize: vertical; background: transparent; color: #E5D4C2;
+              border: none; border-bottom: 1px solid rgba(229,212,194,.32); border-radius: 0; padding: 12px 0;
+              font-family: ${MONO}; font-size: 14px; line-height: 1.8; outline: none; transition: border-color .25s ease; }
+  .sn-field::placeholder { color: rgba(229,212,194,.5); }
+  .sn-field:focus { border-bottom-color: #D4B85A; }
+  /* beats the portal's keyboard ring (layout: [class*=member] textarea:focus-visible) — the gold underline is the focus mark */
+  .sn-field.sn-field:focus-visible { outline: none; border-radius: 0; }
+  .sn-photo-row { display: flex; align-items: baseline; gap: 16px; margin-top: 18px; min-width: 0; }
+  .sn-photo-name { font-family: ${MONO}; font-size: 12.5px; color: #E5D4C2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px; }
+  .sn-add { display: inline-block; text-transform: none; letter-spacing: .04em; font-size: 12.5px; }
+  .sn-add-note { opacity: .7; }
+  .sn-actions { display: flex; justify-content: flex-end; align-items: baseline; gap: 28px; margin-top: 26px; flex-wrap: wrap; }
+
+  @media (max-width: 960px) {
+    .sn-grid { grid-template-columns: minmax(0, 1fr); gap: 36px; }
+    .sn-feed, .sn-aside { grid-column: 1; grid-row: auto; }
+    /* on a phone the drawing sits beside the invitation, the way the
+       masthead's does beside the way back */
+    .sn-aside { position: static; display: grid; grid-template-columns: minmax(0, 1fr) 92px; align-items: end; gap: 16px; }
+    .sn-share, .sn-nudge { grid-column: 1; justify-self: start; }
+    .sn-art { grid-column: 2; grid-row: 1 / span 2; width: 92px; margin: 0; }
+  }
+  @media (max-width: 760px) {
+    .sn-item { padding: 26px 0 28px; }
+    .sn-field { font-size: 16px; }
+  }
+`

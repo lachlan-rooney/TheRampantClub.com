@@ -8,17 +8,23 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import TonightPanel from '@/components/TonightPanel'
 import AnticipationCard from '@/components/members/AnticipationCard'
 import ReturnCard from '@/components/members/ReturnCard'
+import CorkBoard, { type BoardNotice } from '@/components/members/CorkBoard'
+import EmptyState from '@/components/members/EmptyState'
 import { typeLabel } from '@/lib/fixtures'
 import { Skeleton } from '@/components/members/Skeleton'
 import { useLang } from '@/lib/lang'
+import { PublicPage, type Ink } from '@/components/public/kit'
+import { CreamInk, CreamInkDefs } from '@/components/public/CreamInk'
 
-interface Notice {
-  id: string
-  title: string
-  body: string
-  category: string
-  pinned: boolean
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// THE MEMBER DASHBOARD — the most-seen page in the house.
+// ───────────────────────────────────────────────────────────────────────────
+// It was a stack of boxes: a small greeting, a corkboard carousel in a brown
+// frame, and seventeen photographic tiles under dark veils. Now it is set like
+// the public site: the greeting LARGE, a still life of the house's ink at rest
+// beside it, the Tonight board, the new cork board, and the whole portal as an
+// index — each group under its own drawing, each place a line of type over a
+// hairline, its picture arriving only when you point at it.
 
 interface NextFixture {
   id: string
@@ -28,35 +34,22 @@ interface NextFixture {
   location: string | null
 }
 
-// Monochrome line icons for the dashboard tiles — one consistent set, drawn as
-// strokes (never emoji), matching the admin nav's icon language so the two
-// surfaces feel like one product. viewBox 0 0 16 16.
-const TILE_ICONS: Record<string, string> = {
-  calendar: '<rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.2h12M5.5 2v2M10.5 2v2"/>',
-  card:     '<rect x="2" y="4" width="12" height="8" rx="1.5"/><path d="M2 6.8h12M4.3 9.6h3"/>',
-  trophy:   '<path d="M5 3h6v2.6a3 3 0 01-6 0z"/><path d="M5 3.8H3.4a1.6 1.6 0 001.8 2.4M11 3.8h1.6a1.6 1.6 0 01-1.8 2.4"/><path d="M8 8.4v2.1M6 13.2h4M6.4 13.2c0-1.1.7-2 1.6-2s1.6.9 1.6 2"/>',
-  quill:    '<path d="M13 3C8 3.5 5.5 6 4 10l2 2c4-1.5 6.5-4 7-9z"/><path d="M4 10l-1.4 3.4M6.2 8.4h2.2"/>',
-  building: '<rect x="3.5" y="2.5" width="9" height="11" rx="1"/><path d="M3.5 6h9M3.5 9.5h9M6.6 13.5V11h2.8v2.5"/>',
-  book:     '<path d="M8 4C6.5 3 4 3 2.5 3.7v8.6C4 11.6 6.5 11.6 8 12.6c1.5-1 4-1 5.5-.3V3.7C12 3 9.5 3 8 4z"/><path d="M8 4v8.6"/>',
-  mail:     '<rect x="2.5" y="4" width="11" height="8" rx="1.5"/><path d="M3 5l5 4 5-4"/>',
-  sofa:     '<path d="M4 8V6.6A1.6 1.6 0 015.6 5h4.8A1.6 1.6 0 0112 6.6V8"/><path d="M2.8 8.4A1.4 1.4 0 014.2 9.8V11h7.6V9.8a1.4 1.4 0 011.4-1.4V10a1.5 1.5 0 01-1.5 1.5v.9M4 11.5v.9"/>',
-  bell:     '<path d="M4.2 7a3.8 3.8 0 017.6 0c0 2.8 1 3.7 1 3.7H3.2s1-.9 1-3.7z"/><path d="M6.6 12.6a1.5 1.5 0 002.8 0"/>',
-  glass:    '<path d="M5 3h6l-.55 9.4a1 1 0 01-1 .95H6.55a1 1 0 01-1-.95z"/><path d="M5.25 7.2h5.5"/>',
-  compass:  '<circle cx="8" cy="8" r="5.6"/><path d="M10.3 5.7L8.7 8.7 5.7 10.3 7.3 7.3z"/>',
-  menu:     '<path d="M3.5 4.5h9M3.5 8h9M3.5 11.5h6"/>',
-  document: '<path d="M4 2.5h5l3 3v8H4z"/><path d="M9 2.5v3h3"/><path d="M6 8.2h4M6 10.6h4"/>',
-  radar:    '<circle cx="8" cy="8" r="5.6"/><circle cx="8" cy="8" r="3"/><circle cx="8" cy="8" r="0.7"/>',
-  flag:     '<path d="M4 13.5V2.6"/><path d="M4 3.2h6.5l-1.4 2.1 1.4 2.1H4"/>',
-  star:     '<path d="M8 2.6l1.6 3.2 3.5.5-2.6 2.5.6 3.5L8 10.6l-3.1 1.7.6-3.5L2.9 6.3l3.5-.5z"/>',
-  pin:      '<path d="M8 14s4.4-3.9 4.4-7.4a4.4 4.4 0 10-8.8 0C3.6 10.1 8 14 8 14z"/><circle cx="8" cy="6.5" r="1.6"/>',
-  gift:     '<rect x="2.6" y="6" width="10.8" height="7.4" rx="1"/><path d="M2 6h12M8 6v7.4M5.6 6a1.7 1.7 0 110-3.4C7 2.6 8 6 8 6M10.4 6a1.7 1.7 0 100-3.4C9 2.6 8 6 8 6"/>',
-  image:    '<rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.1"/><path d="M2.5 11.5l3.2-3 2.3 2 2.2-2.4 3.3 3.4"/>',
-}
+// The still life beside the greeting — things left on a table at the end of a
+// good evening (the homepage hero's idea, re-inked for the green).
+const STILL: { name: Ink; w: string; top: string; left: string; rot: number; dur: number; delay: number; z?: number }[] = [
+  { name: 'lion-lounging', w: '66%', top: '34%', left: '18%', rot: -4,  dur: 9,   delay: .25, z: 2 },
+  { name: 'glass',         w: '22%', top: '0%',  left: '66%', rot: 7,   dur: 7.5, delay: .4 },
+  { name: 'cigar',         w: '24%', top: '6%',  left: '16%', rot: -16, dur: 8,   delay: .5 },
+  { name: 'sunglasses',    w: '25%', top: '80%', left: '66%', rot: 10,  dur: 6.5, delay: .6 },
+]
 
-function TileIcon({ name }: { name: string }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: TILE_ICONS[name] || TILE_ICONS.card }} aria-hidden />
-  )
+// Each group of the index hangs under one drawing.
+const GROUP_INK: Record<string, Ink> = {
+  "What's On": 'girl-toast',
+  'The Club':  'butler-tray',
+  'Whisky':    'lion-bottle',
+  'You':       'key',
+  'Info':      'newspaper',
 }
 
 export default function MembersPage() {
@@ -69,8 +62,8 @@ export default function MembersPage() {
   const [memberNo, setMemberNo] = useState<string | null>(null)
   const [lockerNumber, setLockerNumber] = useState<string | null>(null)
   const [preferredDram, setPreferredDram] = useState<string | null>(null)
-  const [notices, setNotices] = useState<Notice[]>([])
-  const [activeNotice, setActiveNotice] = useState(0)
+  const [notices, setNotices] = useState<BoardNotice[]>([])
+  const [noticesLoaded, setNoticesLoaded] = useState(false)
   const [nextFixture, setNextFixture] = useState<NextFixture | null>(null)
   const [profileLoaded, setProfileLoaded] = useState(false)
 
@@ -83,11 +76,11 @@ export default function MembersPage() {
     const supabase = createBrowserSupabaseClient()
 
     // Fetch notices
-    supabase.from('notices').select('id, title, body, category, pinned')
+    supabase.from('notices').select('id, title, body, category, pinned, author, created_at')
       .order('pinned', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(5)
-      .then(({ data }) => { if (data) setNotices(data) })
+      .then(({ data }) => { if (data) setNotices(data as BoardNotice[]); setNoticesLoaded(true) })
 
     // Fetch next upcoming fixture
     supabase.from('fixtures')
@@ -115,16 +108,6 @@ export default function MembersPage() {
         }, () => setProfileLoaded(true))
     })
   }, [])
-
-  // Rotate notices
-  useEffect(() => {
-    if (notices.length <= 1) return
-    const interval = setInterval(() => {
-      setActiveNotice(prev => (prev + 1) % notices.length)
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [notices.length])
-
 
   const timeGreeting = greetHour === null ? ''
     : greetHour < 12 ? t('Good morning', 'Chào buổi sáng')
@@ -248,453 +231,204 @@ export default function MembersPage() {
   ].map(g => ({ ...g, tiles: g.tiles.filter(Boolean) }))
 
   return (
-    <>
+    <PublicPage ground="#052E20" ink="#E5D4C2">
       <style suppressHydrationWarning dangerouslySetInnerHTML={{ __html: `
-        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Playfair+Display:wght@400;500;600;700;800;900&display=swap');
+        .members-page { position: relative; color: #E5D4C2; }
+        /* the fixed lion (NavOverlay) sits at the right edge, mid-height, on a
+           desk wider than 1024 — keep the column clear of it at any width */
+        .md-wrap { max-width: 1180px; margin: 0 auto; box-sizing: border-box;
+                   padding-left: 24px; padding-right: max(24px, calc(150px - (100vw - 1180px) / 2)); }
+        .md-rise { opacity: 0; transform: translateY(22px); animation: pk-rise .9s cubic-bezier(.16,.84,.44,1) both; }
 
-        .members-page {
-          min-height: 100vh;
-          background: #052E20;
-          font-family: 'DM Mono', monospace;
-          position: relative;
-        }
+        /* ── the masthead: the greeting large, the still life beside it ── */
+        .md-mast { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); gap: 40px;
+                   align-items: center; padding-top: 118px; padding-bottom: 72px; }
+        .md-greet { font-family: 'Rampant Sans', serif; font-weight: 400; margin: 0; min-height: .92em;
+                    font-size: clamp(46px, 7vw, 100px); line-height: .96; }
+        .md-summary { font-family: 'Google Sans Code', 'DM Mono', monospace; font-size: 13.5px; line-height: 1.9;
+                      letter-spacing: .02em; opacity: .85; margin: 24px 0 0; }
+        .md-guide-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+        .md-guide { margin-top: 30px; color: #D4B85A; }
+        .md-lion-sm { display: none; }
 
-        .members-grain {
-          position: fixed;
-          inset: 0;
-          pointer-events: none;
-          z-index: 1;
-          opacity: 0.02;
-          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-          background-repeat: repeat;
-          background-size: 200px;
-        }
+        .md-still { position: relative; aspect-ratio: 1 / .82; width: 92%; margin-left: auto; }
+        .md-obj { position: absolute; opacity: 0; transition: opacity 1s ease; }
+        .md-obj.is-in { opacity: 1; }
 
-        .members-container {
-          position: relative;
-          max-width: 1080px;
-          margin: 0 auto;
-          padding: 100px 24px 80px;
-        }
+        /* ── the passive cards, Tonight, and the board ── */
+        .md-cards:empty { display: none; }
+        /* the passive cards each draw the hairline above them; this closes the set */
+        .md-cards { margin-bottom: 64px; border-bottom: 1px solid rgba(229,212,194,.18); }
+        .md-notices { padding-top: 104px; }
+        .md-board-link { display: inline-flex; align-items: baseline; gap: 18px; color: #E5D4C2; text-decoration: none;
+                         font-family: 'Rampant Sans', serif; font-weight: 400; font-size: clamp(36px, 5.6vw, 72px);
+                         line-height: .98; margin: 0 0 34px; }
+        .md-board-link .pk-go { font-family: 'Google Sans Code', monospace; font-size: .42em; color: #D4B85A; }
+        .md-board-link:hover .pk-go { transform: translateX(10px); }
+        .md-board-link:hover { color: #fff4e6; }
+        .md-board { transition: min-height .4s ease; }
 
-        .members-greeting {
-          font-family: 'Rampant Sans', serif;
-          font-size: 32px;
-          font-weight: 600;
-          color: #E5D4C2;
-          letter-spacing: 0.02em;
-          margin-bottom: 4px;
-        }
-        .members-email {
-          font-size: 11px;
-          color: #B2AA98;
-          opacity: 0.4;
-          letter-spacing: 0.04em;
-          margin-bottom: 56px;
-        }
+        /* ── the index: every place in the portal ── */
+        .md-index { padding-top: 120px; padding-bottom: 130px; }
+        .md-group { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 48px; }
+        .md-group + .md-group { margin-top: 88px; }
+        .md-group-head { position: relative; }
+        .md-group-title { font-family: 'Rampant Sans', serif; font-weight: 400; margin: 0;
+                          font-size: clamp(32px, 4vw, 52px); line-height: .96; }
+        .md-group-ink { width: 128px; margin-top: 26px; }
 
-        /* ── Top row: Tonight + Notice Board side by side ── */
-        .members-top-row {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 16px;
-          margin: 32px 0 40px;
-          align-items: stretch;
+        .md-list { list-style: none; margin: 0; padding: 0; border-bottom: 1px solid rgba(229,212,194,.16); }
+        .md-row { position: relative; display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr) 24px;
+                  gap: 24px; align-items: center; padding: 20px 0; color: #E5D4C2; text-decoration: none;
+                  border-top: 1px solid rgba(229,212,194,.16); }
+        .md-name { font-family: 'Rampant Sans', serif; font-size: clamp(24px, 2.4vw, 32px); line-height: 1.02;
+                   display: block; transition: color .3s ease, transform .45s cubic-bezier(.16,.84,.44,1); }
+        .md-alt { font-family: 'Rampant Sans', serif; font-size: 16px; line-height: 1.2; opacity: .55; display: block; margin-top: 6px; }
+        .md-primary { display: block; font-family: 'Rampant Sans', serif; font-size: 20px; line-height: 1.1; color: #D4B85A; margin-bottom: 4px; }
+        .md-secondary { display: block; font-family: 'Google Sans Code', 'DM Mono', monospace; font-size: 12.5px; line-height: 1.75; opacity: .85; }
+        .md-arrow { font-family: 'Google Sans Code', monospace; font-size: 15px; color: #D4B85A; justify-self: end; }
+        /* the place's picture, only when you point at it */
+        /* out of the flow, so it never sets the row's height; it may lap the
+           hairlines, like a photograph laid on a list */
+        .md-pic { position: absolute; right: 48px; top: 50%; z-index: 2; pointer-events: none;
+                  width: 120px; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden;
+                  opacity: 0; transform: translateY(-50%) rotate(-3deg) scale(.9);
+                  box-shadow: 0 12px 26px rgba(0,0,0,.35);
+                  transition: opacity .35s ease, transform .55s cubic-bezier(.16,.84,.44,1); }
+        .md-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+        @media (hover: hover) {
+          .md-info { padding-right: 140px; }
+          .md-row:hover .md-name, .md-row:focus-visible .md-name { color: #D4B85A; transform: translateX(6px); }
+          .md-row:hover .md-pic, .md-row:focus-visible .md-pic { opacity: 1; transform: translateY(-50%) rotate(-3deg) scale(1); }
         }
-        .members-top-cell { min-width: 0; }
-
-        /* ── Notice Board — corkboard with pinned paper ── */
-        .notice-cork {
-          position: relative;
-          padding: 16px 20px 16px;
-          height: 100%;
-          border-radius: 8px;
-          background:
-            radial-gradient(circle at 22% 18%, rgba(255,235,200,0.10), transparent 35%),
-            radial-gradient(circle at 78% 72%, rgba(0,0,0,0.18), transparent 50%),
-            #8B6F47;
-          box-shadow:
-            inset 0 0 22px rgba(0,0,0,0.32),
-            inset 0 0 0 6px #4F3A24,
-            0 4px 14px rgba(0,0,0,0.25);
-          overflow: hidden;
-          isolation: isolate;
-        }
-        .notice-cork::after {
-          /* Faint speckled cork texture */
-          content: '';
-          position: absolute; inset: 8px;
-          background-image:
-            radial-gradient(rgba(0,0,0,0.18) 0.7px, transparent 0.8px),
-            radial-gradient(rgba(255,255,255,0.08) 0.6px, transparent 0.7px);
-          background-size: 7px 7px, 11px 11px;
-          background-position: 0 0, 3px 5px;
-          opacity: 0.6;
-          pointer-events: none;
-          z-index: -1;
-        }
-        .notice-pin {
-          position: absolute;
-          top: 14px; right: 14px;
-          width: 12px; height: 12px;
-          border-radius: 50%;
-          background: radial-gradient(circle at 32% 28%, #F8C16A, #B8862B 65%, #6E4F12);
-          box-shadow:
-            0 1px 2px rgba(0,0,0,0.5),
-            0 0 0 1px rgba(0,0,0,0.25);
-          z-index: 2;
-        }
-        .notice-paper {
-          position: relative;
-          background: linear-gradient(180deg, #F8EFDD 0%, #ECDFC4 100%);
-          border-radius: 4px;
-          padding: 14px 16px 16px;
-          margin-top: 4px;
-          box-shadow:
-            0 2px 4px rgba(0,0,0,0.18),
-            0 6px 14px rgba(0,0,0,0.22);
-          transform: rotate(-0.6deg);
-          transition: transform 0.4s ease;
-          min-height: 64px;
-        }
-        a:hover .notice-paper { transform: rotate(0deg) translateY(-1px); }
-        .notice-chev {
-          background: rgba(248,239,221,0.9);
-          color: #4A3B2E;
-          border: 1px solid rgba(0,0,0,0.15);
-          border-radius: 4px;
-          padding: 2px 8px;
-          font-family: 'Rampant Sans', serif;
-          font-size: 14px;
-          line-height: 1;
-          cursor: pointer;
-          opacity: 0.85;
-          transition: opacity 0.2s, background 0.2s;
-        }
-        .notice-chev:hover { opacity: 1; background: #F8EFDD; }
-        .notice-dot {
-          width: 4px; height: 4px; border-radius: 50%;
-          background: #2A1F18;
-          transition: opacity 0.3s;
-        }
-
-        /* ── Section label (Explore / You / House) — mirrors the nav groups ── */
-        .members-section-label {
-          font-family: 'Google Sans Code', 'DM Mono', monospace;
-          font-size: 10px;
-          letter-spacing: 0.18em;
-          text-transform: uppercase;
-          color: #D4B85A;
-          opacity: 0.7;
-          margin: 28px 0 12px;
-        }
-        .members-section-label:first-of-type { margin-top: 4px; }
-
-        /* ── Bucket grid (desktop) / linear stack (mobile) ── */
-        .members-bucket-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 14px;
-        }
-
-        @keyframes tileRise {
-          from { opacity: 0; transform: translateY(12px); }
-          to   { opacity: 1; transform: none; }
-        }
-        .members-bucket {
-          position: relative;
-          padding: 24px 22px 28px;
-          background: rgba(229, 212, 194, 0.04);
-          border: 1px solid rgba(229, 212, 194, 0.10);
-          border-radius: 14px;
-          animation: tileRise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-          text-decoration: none;
-          color: #E5D4C2;
-          min-height: 168px;
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-          transition:
-            transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
-            background 0.3s ease,
-            border-color 0.3s ease,
-            box-shadow 0.4s ease;
-        }
-        .members-bucket::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: radial-gradient(circle at 30% 0%, rgba(212,184,90,0.08), transparent 60%);
-          opacity: 0;
-          transition: opacity 0.4s ease;
-          pointer-events: none;
-        }
-        .members-bucket:hover {
-          transform: translateY(-4px);
-          background: rgba(229, 212, 194, 0.07);
-          border-color: rgba(212, 184, 90, 0.4);
-          box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
-        }
-        .members-bucket:hover::before { opacity: 1; }
-
-        /* Photographic layer + gradient veil that keeps text legible */
-        .members-bucket-img {
-          position: absolute;
-          inset: 0;
-          background-size: cover;
-          background-position: center;
-          opacity: 0.5;
-          transform: scale(1.04);
-          transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
-          z-index: 0;
-        }
-        .members-bucket-veil {
-          position: absolute;
-          inset: 0;
-          z-index: 1;
-          background: linear-gradient(
-            165deg,
-            rgba(5, 46, 32, 0.58) 0%,
-            rgba(5, 46, 32, 0.74) 52%,
-            rgba(5, 46, 32, 0.92) 100%
-          );
-        }
-        .members-bucket:hover .members-bucket-img {
-          transform: scale(1.1);
-          opacity: 0.66;
-        }
-        .members-bucket-body {
-          position: relative;
-          z-index: 2;
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-        }
-        .members-bucket-body .members-bucket-emblem { color: #E7C766; }
-        .members-bucket-body .members-bucket-en { text-shadow: 0 1px 10px rgba(0,0,0,0.55); }
-        .members-bucket-body .members-bucket-vn,
-        .members-bucket-body .members-bucket-secondary { opacity: 0.82; text-shadow: 0 1px 8px rgba(0,0,0,0.5); }
-        .members-bucket-body .members-bucket-primary { text-shadow: 0 1px 10px rgba(0,0,0,0.5); }
-
-        /* Icon emblem — a hairline-gold medallion so every tile carries the
-           same crest-like mark. Consistent, bordered, never emoji. */
-        .members-bucket-emblem {
-          width: 44px;
-          height: 44px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 50%;
-          color: #D4B85A;
-          background: rgba(212,184,90,0.08);
-          border: 1px solid rgba(212,184,90,0.35);
-          box-shadow: 0 2px 10px rgba(0,0,0,0.28), inset 0 0 0 1px rgba(5,46,32,0.4);
-          margin-bottom: 16px;
-          transition: border-color 0.3s ease, background 0.3s ease, transform 0.4s cubic-bezier(0.22,1,0.36,1);
-        }
-        .members-bucket:hover .members-bucket-emblem {
-          border-color: rgba(231,199,102,0.75);
-          background: rgba(212,184,90,0.14);
-          transform: translateY(-1px);
-        }
-        .members-bucket-en {
-          font-family: 'Rampant Sans', serif;
-          font-size: 20px;
-          font-weight: 600;
-          letter-spacing: 0.02em;
-          line-height: 1.15;
-        }
-        .members-bucket-vn {
-          font-family: 'Google Sans Code', 'DM Mono', monospace;
-          font-size: 10px;
-          color: #B2AA98;
-          opacity: 0.55;
-          letter-spacing: 0.06em;
-          margin-top: 4px;
-        }
-        .members-bucket-primary {
-          font-family: 'Rampant Sans', serif;
-          font-size: 20px;
-          font-weight: 500;
-          color: #D4B85A;
-          letter-spacing: 0.04em;
-          margin-top: auto;
-          padding-top: 14px;
-        }
-        .members-bucket-secondary {
-          font-family: 'Google Sans Code', 'DM Mono', monospace;
-          font-size: 11px;
-          color: #B2AA98;
-          opacity: 0.7;
-          letter-spacing: 0.04em;
-          line-height: 1.5;
-          margin-top: 6px;
-        }
-        .members-bucket-secondary:not(:last-child) { margin-top: 6px; }
-        .members-bucket-primary + .members-bucket-secondary {
-          margin-top: 4px;
-          opacity: 0.55;
-        }
-        /* If there's no primary, push the secondary down to fill the card */
-        .members-bucket > .members-bucket-vn + .members-bucket-secondary {
-          margin-top: auto;
-          padding-top: 18px;
-        }
-        .members-bucket-arrow {
-          position: absolute;
-          top: 22px;
-          right: 22px;
-          font-size: 14px;
-          color: #E5D4C2;
-          opacity: 0.25;
-          transition: opacity 0.3s, transform 0.3s;
-        }
-        .members-bucket:hover .members-bucket-arrow {
-          opacity: 0.7;
-          transform: translateX(3px);
-        }
-
-        .members-diamond {
-          width: 6px;
-          height: 6px;
-          background: #E5D4C2;
-          transform: rotate(45deg);
-          opacity: 0.2;
-          margin: 48px auto 0;
-        }
-
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #052E20; }
-        ::-webkit-scrollbar-thumb { background: rgba(94, 102, 80, 0.2); border-radius: 3px; }
 
         @media (max-width: 1024px) {
-          .members-bucket-grid { grid-template-columns: repeat(2, 1fr); }
+          .md-group { grid-template-columns: 1fr; gap: 22px; }
+          .md-group-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
+          .md-group-ink { width: 92px; margin-top: 0; }
         }
-        @media (max-width: 760px) {
-          .members-top-row { grid-template-columns: 1fr; gap: 12px; }
-        }
-        @media (max-width: 600px) {
-          .members-container { padding: 80px 20px 60px; }
-          .members-greeting { font-size: 28px; }
-          .members-bucket-grid { grid-template-columns: 1fr; gap: 10px; }
-          .members-bucket { min-height: auto; padding: 18px 18px 20px; }
+        @media (max-width: 860px) {
+          .md-wrap { padding-left: 20px; padding-right: 20px; }
+          .md-mast { grid-template-columns: 1fr; gap: 0; padding-top: 112px; padding-bottom: 48px; }
+          .md-greet { font-size: clamp(40px, 11.5vw, 64px); }
+          .md-summary { font-size: 13px; margin-top: 18px; }
+          .md-still { display: none; }
+          .md-lion-sm { display: block; width: 44%; max-width: 190px; margin-right: -8px; flex: 0 0 auto; }
+          .md-guide { margin-top: 22px; }
+          .md-cards { margin-bottom: 48px; }
+          .md-notices { padding-top: 80px; }
+          .md-board-link { margin-bottom: 24px; }
+          .md-index { padding-top: 88px; padding-bottom: 96px; }
+          .md-group + .md-group { margin-top: 64px; }
+          .md-row { grid-template-columns: minmax(0, 1fr) 20px; gap: 6px 14px; padding: 18px 0; }
+          .md-name-cell { grid-column: 1; }
+          .md-info { grid-column: 1; grid-row: 2; padding-right: 0; }
+          .md-pic { display: none; }
+          .md-arrow { grid-column: 2; grid-row: 1 / span 2; }
+          .md-name { font-size: 26px; }
+          .md-alt { font-size: 15px; margin-top: 4px; }
+          .md-primary { font-size: 18px; margin-top: 6px; }
         }
         @media (prefers-reduced-motion: reduce) {
-          .members-bucket { animation: none; }
+          .md-rise { opacity: 1; transform: none; animation: none; }
+          .md-obj { transition: none; opacity: 1; }
+          .md-name, .md-pic { transition: none; }
         }
       ` }} />
-
+      <CreamInkDefs />
 
       <div className="members-page">
-        <div className="members-grain" />
-        <div className="members-container">
-          <h1 className="members-greeting">{greeting}</h1>
-          {!profileLoaded
-            ? <div style={{ marginBottom: 56, paddingTop: 3 }}><Skeleton width={230} height={11} radius={4} /></div>
-            : <p className="members-email">{summary || email}</p>}
-          <button
-            onClick={() => window.dispatchEvent(new Event('open-portal-guide'))}
-            style={{ background: 'none', border: '1px solid rgba(212,184,90,0.35)', color: '#D4B85A', fontFamily: "'Google Sans Code', monospace", fontSize: 10, letterSpacing: '0.06em', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', marginBottom: 8 }}
-          >{t('◇ Portal guide', '◇ Hướng dẫn')}</button>
-
-          <AnticipationCard />
-          <ReturnCard />
-
-          <div className="members-top-row">
-            <div className="members-top-cell">
-              <TonightPanel showClubhouseCount bg="green" />
+        <header className="md-wrap md-mast">
+          <div>
+            <h1 className="md-greet md-rise" style={{ animationDelay: '.04s' }}>{greeting}</h1>
+            <div className="md-rise" style={{ animationDelay: '.12s' }}>
+              {!profileLoaded
+                ? <div style={{ marginTop: 30, paddingBottom: 6 }}><Skeleton width={260} height={12} radius={3} /></div>
+                : <p className="md-summary">{summary || email}</p>}
             </div>
-
-            {notices.length > 0 && (
-              <Link
-                href="/members/notices"
-                style={{ textDecoration: 'none', display: 'block', position: 'relative', zIndex: 9001 }}
-                className="members-top-cell"
-              >
-                <div className="notice-cork">
-                  {/* Brass push-pin */}
-                  <span className="notice-pin" aria-hidden />
-                  <div style={{
-                    fontFamily: "'Rampant Sans', serif", fontSize: 16,
-                    color: '#3E2D1F', letterSpacing: '0.06em',
-                    marginBottom: 12, fontWeight: 600,
-                  }}>
-                    {surfaceName('/members/notices', lang)}
-                  </div>
-                <div className="notice-paper">
-                  {notices.map((n, i) => (
-                    <div key={n.id} style={{
-                      opacity: i === activeNotice ? 1 : 0,
-                      position: i === activeNotice ? 'relative' : 'absolute',
-                      top: i === activeNotice ? undefined : 14,
-                      left: i === activeNotice ? undefined : 14,
-                      right: i === activeNotice ? undefined : 14,
-                      transition: 'opacity 0.6s ease',
-                    }}>
-                      <div style={{
-                        fontFamily: "'Rampant Sans', serif", fontSize: 14, fontWeight: 600,
-                        color: '#2A1F18', marginBottom: 4,
-                      }}>
-                        {n.title}
-                      </div>
-                      <div style={{
-                        fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11,
-                        color: '#4A3B2E', opacity: 0.85, lineHeight: 1.55,
-                        overflow: 'hidden', textOverflow: 'ellipsis',
-                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                      }}>
-                        {n.body}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {notices.length > 1 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, justifyContent: 'flex-end' }}>
-                    <button
-                      onClick={(e) => { e.preventDefault(); setActiveNotice(prev => (prev - 1 + notices.length) % notices.length) }}
-                      className="notice-chev"
-                    >‹</button>
-                    {notices.map((_, i) => (
-                      <div key={i} className="notice-dot" style={{ opacity: i === activeNotice ? 0.7 : 0.2 }} />
-                    ))}
-                    <button
-                      onClick={(e) => { e.preventDefault(); setActiveNotice(prev => (prev + 1) % notices.length) }}
-                      className="notice-chev"
-                    >›</button>
-                  </div>
-                )}
+            <div className="md-guide-row md-rise" style={{ animationDelay: '.2s' }}>
+              <button type="button" className="pk-cta md-guide"
+                      onClick={() => window.dispatchEvent(new Event('open-portal-guide'))}>
+                {t('◇ Portal guide', '◇ Hướng dẫn')} <span className="pk-go">→</span>
+              </button>
+              {/* a phone has no empty half — the lion lounges beside the guide */}
+              <div className="md-lion-sm" aria-hidden="true">
+                <CreamInk name="lion-lounging" width="100%" rot={-4} dur={9} />
               </div>
-            </Link>
-            )}
+            </div>
           </div>
 
-          {bucketGroups.map(group => (
-            <div key={group.label}>
-              <div className="members-section-label">{t(group.label, group.vn)}</div>
-              <div className="members-bucket-grid">
-                {group.tiles.map((b, i) => (
-                  <Link key={b.href} href={b.href} className="members-bucket" style={{ animationDelay: `${i * 45}ms` }}>
-                    {b.img && <span className="members-bucket-img" style={{ backgroundImage: `url(${b.img})` }} aria-hidden />}
-                    <span className="members-bucket-veil" aria-hidden />
-                    <div className="members-bucket-body">
-                      <div className="members-bucket-emblem" aria-hidden><TileIcon name={b.icon} /></div>
-                      {/* VN promotes the Vietnamese name to the heading and demotes the
-                          English beneath it — the same swap MemberPage does. */}
-                      <div className="members-bucket-en">{lang === 'vn' ? b.vn : b.en}</div>
-                      <div className="members-bucket-vn">{lang === 'vn' ? b.en : b.vn}</div>
-                      {b.primary && <div className="members-bucket-primary">{b.primary}</div>}
-                      {b.secondary && <div className="members-bucket-secondary">{b.secondary}</div>}
-                      <div className="members-bucket-arrow">&rarr;</div>
-                    </div>
-                  </Link>
-                ))}
+          <div className="md-still" aria-hidden="true">
+            {STILL.map(o => (
+              <div key={o.name} className={`md-obj ${greetHour !== null ? 'is-in' : ''}`}
+                   style={{ width: o.w, top: o.top, left: o.left, zIndex: o.z ?? 1, transitionDelay: `${o.delay}s` }}>
+                <CreamInk name={o.name} width="100%" rot={o.rot} dur={o.dur} />
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+        </header>
 
-          <div className="members-diamond" />
+        <div className="md-wrap">
+          <div className="md-cards">
+            <AnticipationCard />
+            <ReturnCard />
+          </div>
+
+          <section className="md-rise" style={{ animationDelay: '.26s' }}>
+            <TonightPanel showClubhouseCount bg="green" />
+          </section>
+
+          <section className="md-notices">
+            <Link href="/members/notices" className="md-board-link">
+              {t('The Notice Board', surfaceName('/members/notices', 'vn'))} <span className="pk-go">→</span>
+            </Link>
+            <div className="md-board" style={{ minHeight: noticesLoaded ? 0 : 240 }}>
+              {noticesLoaded && (
+                <CorkBoard notices={notices} compact
+                           empty={<EmptyState title={t('The board is quiet', 'Bảng tin đang yên ắng')} />} />
+              )}
+            </div>
+          </section>
+
+          <div className="md-index">
+            {bucketGroups.map(group => (
+              <section key={group.label} className="md-group">
+                <div className="md-group-head">
+                  <h2 className="md-group-title">{t(group.label, group.vn)}</h2>
+                  {GROUP_INK[group.label] && (
+                    <div className="md-group-ink">
+                      <CreamInk name={GROUP_INK[group.label]} width="100%" rot={-5} dur={8.5} />
+                    </div>
+                  )}
+                </div>
+                <ul className="md-list">
+                  {group.tiles.map(b => (
+                    <li key={b.href}>
+                      <Link href={b.href} className="md-row pk-hover">
+                        <span className="md-name-cell">
+                          {/* VN promotes the Vietnamese name to the heading and demotes the
+                              English beneath it — the same swap MemberPage does. */}
+                          <span className="md-name">{lang === 'vn' ? b.vn : b.en}</span>
+                          <span className="md-alt">{lang === 'vn' ? b.en : b.vn}</span>
+                        </span>
+                        <span className="md-info">
+                          {b.primary && <span className="md-primary">{b.primary}</span>}
+                          {b.secondary && <span className="md-secondary">{b.secondary}</span>}
+                        </span>
+                        <span className="md-pic" aria-hidden="true">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          {b.img && <img src={b.img} alt="" loading="lazy" />}
+                        </span>
+                        <span className="md-arrow pk-go" aria-hidden="true">→</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
         </div>
       </div>
-    </>
+    </PublicPage>
   )
 }

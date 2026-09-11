@@ -57,23 +57,29 @@ export default function InstallNudge() {
     <>
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes inudge-in { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
+        /* A slip of the house's green laid over the page: one hairline, no
+           rounded card, cream type you can read, the action an underlined line. */
         .inudge {
           position: fixed; left: 12px; right: 12px; z-index: 8997;
           bottom: calc(80px + env(safe-area-inset-bottom, 0px));
           max-width: 520px; margin: 0 auto;
-          display: flex; align-items: center; gap: 12px;
-          padding: 12px 14px; border-radius: 12px;
-          background: rgba(10, 53, 38, 0.96);
-          border: 1px solid rgba(212, 184, 90, 0.32);
-          box-shadow: 0 14px 34px rgba(0,0,0,0.4);
+          display: flex; align-items: center; gap: 16px;
+          padding: 14px 16px; border-radius: 4px;
+          background: rgba(5, 46, 32, 0.97);
+          border: 1px solid rgba(229, 212, 194, 0.22);
+          box-shadow: 0 18px 40px rgba(0,0,0,0.45);
           backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
           animation: inudge-in 0.4s cubic-bezier(0.22,1,0.36,1) both;
         }
         @media (min-width: 769px) { .inudge { bottom: 20px; right: 20px; left: auto; } }
-        .inudge-txt { flex: 1; font-family: 'Google Sans Code', monospace; font-size: 11px; color: #E5D4C2; line-height: 1.5; }
-        .inudge-sub { color: #B2AA98; }
-        .inudge-btn { background: #D4B85A; color: #052E20; border: none; border-radius: 18px; padding: 8px 16px; font-family: 'Google Sans Code', monospace; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap; }
-        .inudge-x { background: transparent; border: none; color: #B2AA98; font-size: 18px; cursor: pointer; line-height: 1; padding: 0 2px; }
+        .inudge-txt { flex: 1; font-family: 'Google Sans Code', monospace; font-size: 12.5px; color: #E5D4C2; line-height: 1.7; }
+        .inudge-sub { opacity: .8; }
+        .inudge-btn { background: none; color: #D4B85A; border: none; border-bottom: 1px solid #D4B85A; border-radius: 0;
+                      padding: 0 0 5px; font-family: 'Google Sans Code', monospace; font-size: 11.5px;
+                      letter-spacing: .12em; text-transform: uppercase; cursor: pointer; white-space: nowrap; }
+        .inudge-x { background: transparent; border: none; color: #E5D4C2; opacity: .75; font-size: 20px; cursor: pointer; line-height: 1; padding: 0 2px; }
+        .inudge-x:hover { opacity: 1; }
+        @media (prefers-reduced-motion: reduce) { .inudge { animation: none; } }
       ` }} />
       <div className="inudge" role="dialog" aria-label={t('Add to home screen', 'Thêm vào màn hình chính')}>
         <div className="inudge-txt">

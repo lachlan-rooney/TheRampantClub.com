@@ -41,10 +41,14 @@ export default function AlphabetShelf({ whiskies }: { whiskies: Whisky[] }) {
   return (
     <div>
       <style dangerouslySetInnerHTML={{ __html: `
-        .shelf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); column-gap: 0; row-gap: 26px; }
-        @media (max-width: 460px) { .shelf-grid { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); row-gap: 22px; } }
-        .bottle-tile { transition: transform 0.18s ease, filter 0.18s ease; }
-        .bottle-tile:hover { transform: translateY(-4px); filter: drop-shadow(0 6px 10px rgba(212,184,90,0.25)); }
+        /* Two shelves of thirteen on a desk — the alphabet in two rows, like
+           bottles standing on a back bar — then three, then four on a phone. */
+        .shelf-grid { display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); column-gap: 0; row-gap: 38px; }
+        @media (max-width: 1000px) { .shelf-grid { grid-template-columns: repeat(9, minmax(0, 1fr)); } }
+        @media (max-width: 640px)  { .shelf-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); row-gap: 28px; } }
+        .bottle-tile { transition: transform 0.25s cubic-bezier(.16,.84,.44,1), filter 0.25s ease; }
+        .bottle-tile:hover { transform: translateY(-5px); filter: drop-shadow(0 8px 12px rgba(212,184,90,0.28)); }
+        @media (prefers-reduced-motion: reduce) { .bottle-tile, .bottle-tile:hover { transition: none; transform: none; } }
       ` }} />
 
       <div className="shelf-grid">
@@ -60,11 +64,11 @@ export default function AlphabetShelf({ whiskies }: { whiskies: Whisky[] }) {
         subtitle={openLetter && list.length ? t(`${list.length} whisk${list.length === 1 ? 'y' : 'ies'}`, `${list.length} whisky`) : undefined}
       >
         {list.length === 0 ? (
-          <div style={{ fontFamily: MONO, fontSize: 13, color: '#B2AA98', opacity: 0.7, fontStyle: 'italic', padding: '24px 0' }}>
+          <div style={{ fontFamily: MONO, fontSize: 13, lineHeight: 1.9, color: '#E5D4C2', opacity: 0.78, padding: '24px 0' }}>
             {t(`No whiskies under ${openLetter} yet.`, `Chưa có whisky nào ở chữ ${openLetter}.`)}
           </div>
         ) : (
-          <div>{list.map(w => <WhiskyRow key={w.id} w={w} />)}</div>
+          <div className="wl-list">{list.map(w => <WhiskyRow key={w.id} w={w} />)}</div>
         )}
       </MemberModal>
     </div>

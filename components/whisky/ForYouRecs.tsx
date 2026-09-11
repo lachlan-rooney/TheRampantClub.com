@@ -8,34 +8,45 @@ import { useLang } from '@/lib/lang'
 // (server-resolved) → recs. Honest empty-state when there's no profile (no
 // linked member yet, or no mapped loves) → points to the Flavour Finder rather
 // than inventing a taste. Dormant until profiles link to members.
+//
+// In three parts so the library can place them: the empty line sits beside
+// the Finder's link, a real list of pours takes the page's full width.
 
-const FAMILY = "'Google Sans Code', 'DM Mono', monospace"
 interface RecResp { recs: RecItem[]; target: Record<string, number>; bestIsClose: boolean; profileEmpty: boolean }
 
-export default function ForYouRecs() {
-  const { t } = useLang()
+export function useForYou() {
   const [data, setData] = useState<RecResp | null>(null)
   const [loading, setLoading] = useState(true)
   useEffect(() => {
     fetch('/api/whisky/recommend', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
       .then(r => r.json()).then(d => setData(d)).catch(() => {}).finally(() => setLoading(false))
   }, [])
+  const empty = !loading && (!data || data.profileEmpty || !data.recs?.length)
+  return { loading, data, empty }
+}
 
-  if (loading) return null
-  if (!data || data.profileEmpty || !data.recs?.length) {
-    return (
-      <div style={empty}>
-        {t('Tell us what you love — try the', 'Hãy cho chúng tôi biết bạn yêu thích gì — thử')} <a href="/members/whisky/finder" style={{ color: '#D4B85A', textDecoration: 'none' }}>{t('Flavour Finder', 'Tìm Ly Của Bạn')}</a>{' '}{t("and we'll match you a dram.", 'và chúng tôi sẽ tìm cho bạn một ly phù hợp.')}
-      </div>
-    )
-  }
+export function ForYouEmpty() {
+  const { t } = useLang()
   return (
-    <div style={{ marginBottom: 36 }}>
-      <div style={heading}>{t('Recommended for you', 'Gợi ý dành cho bạn')}</div>
-      <RecResults recs={data.recs} target={data.target} bestIsClose={data.bestIsClose} theme="member" />
-    </div>
+    <p className="wl-text" style={{ margin: 0 }}>
+      {t('Tell us what you love — try the', 'Hãy cho chúng tôi biết bạn yêu thích gì — thử')} <a href="/members/whisky/finder" className="wl-inline">{t('Flavour Finder', 'Tìm Ly Của Bạn')}</a>{' '}{t("and we'll match you a dram.", 'và chúng tôi sẽ tìm cho bạn một ly phù hợp.')}
+    </p>
   )
 }
 
-const heading: React.CSSProperties = { fontFamily: "'Rampant Sans', serif", fontSize: 20, color: '#E5D4C2', textAlign: 'center', marginBottom: 16 }
-const empty: React.CSSProperties = { fontFamily: FAMILY, fontSize: 12, color: '#B2AA98', opacity: 0.8, textAlign: 'center', marginBottom: 28, lineHeight: 1.7 }
+export function ForYouList({ data }: { data: RecResp }) {
+  const { t } = useLang()
+  return (
+    <section>
+      <h2 className="wl-h is-2" style={{ marginBottom: 30 }}>{t('Recommended for you', 'Gợi ý dành cho bạn')}</h2>
+      <RecResults recs={data.recs} target={data.target} bestIsClose={data.bestIsClose} theme="member" />
+    </section>
+  )
+}
+
+export default function ForYouRecs() {
+  const { loading, data, empty } = useForYou()
+  if (loading) return null
+  if (empty || !data) return <ForYouEmpty />
+  return <ForYouList data={data} />
+}

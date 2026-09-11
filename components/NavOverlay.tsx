@@ -514,8 +514,8 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
             <Link href="/members" className="nav-link nav-link-withicon" onClick={() => setOpen(false)}>
               <NavIcon name="home" />
               <span className="nav-link-text">
-                <div className="nav-link-en">{lines('Home', 'Trang chủ')[0]}</div>
-                <div className="nav-link-vn">{lines('Home', 'Trang chủ')[1]}</div>
+                <div className="nav-link-en">{lines('My Dashboard', 'Trang của tôi')[0]}</div>
+                <div className="nav-link-vn">{lines('My Dashboard', 'Trang của tôi')[1]}</div>
               </span>
             </Link>
             {MEMBER_GROUPS.map(g => {

@@ -143,35 +143,36 @@ export default function LoginTicker() {
         right: 0,
         zIndex: 10,
         fontFamily: "'Google Sans Code', 'DM Mono', monospace",
-        fontSize: 11,
+        fontSize: 11.5,
         letterSpacing: '0.06em',
         color: '#E5D4C2',
-        opacity: hidden ? 0 : 0.4,
+        // Readable, not faint: cream at three-quarters, like the rest of the
+        // house's small type. It still steps back once the page scrolls.
+        opacity: hidden ? 0 : 0.78,
         transform: hidden ? 'translateY(-8px)' : 'translateY(0)',
         pointerEvents: hidden ? 'none' : 'auto',
         transition: 'opacity 0.3s ease, transform 0.3s ease',
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        gap: 8,
+        gap: 14,
         padding: '12px 20px',
-        borderBottom: '1px solid rgba(229,212,194,0.08)',
         overflow: 'hidden',
       }}
     >
       {/* Clock + temp */}
-      <span style={{ whiteSpace: 'nowrap' }}>
+      <span style={{ whiteSpace: 'nowrap', color: '#D4B85A' }}>
         {temp !== null ? `${temp}°C` : '—'} &nbsp;|&nbsp; {time || '—'} GMT+7
       </span>
 
-      {/* Diamond separator */}
+      {/* A hairline between the reading and the news — no diamond */}
       <span
+        aria-hidden="true"
         style={{
           display: 'inline-block',
-          width: 4,
-          height: 4,
-          background: '#E5D4C2',
-          transform: 'rotate(45deg)',
+          width: 1,
+          height: 11,
+          background: 'currentColor',
           opacity: 0.4,
           flexShrink: 0,
         }}

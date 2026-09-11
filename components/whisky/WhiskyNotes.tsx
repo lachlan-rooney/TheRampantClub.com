@@ -9,8 +9,8 @@ import { catLabel } from './flavour-data'
 // A member's tasting notes on one whisky — their own (private or shared) + other
 // members' Snug notes. Composer is the shared MemberModal (portal-to-body). Lazy:
 // nothing is fetched until the section is opened. Default visibility is PRIVATE.
-
-const MONO = "'Google Sans Code', 'DM Mono', monospace"
+// Set on hairlines in the whisky pages' vocabulary (WhiskyStyle): no cards, no
+// pills — a name in tracked mono, the note as reading text, choices underlined.
 
 interface Note { id: string; note: string; flavour_tags: string[]; visibility: string; created_at: string; is_own: boolean; author_name: string; photo_url: string | null }
 interface Family { slug: string; name: string }
@@ -66,105 +66,93 @@ export default function WhiskyNotes({ whiskyId }: { whiskyId: string }) {
   const nameOf = (slug: string) => { const f = families.find(x => x.slug === slug); return f ? catLabel(f, lang) : slug }
 
   return (
-    <div style={{ marginTop: 10 }}>
-      <button onClick={() => setOpen(o => !o)} aria-expanded={open} style={toggleBtn}>
+    <div className="wl-notes">
+      <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} className="wl-link is-quiet">
         {open ? t('↑ Hide notes', '↑ Ẩn ghi chú') : t('✒ Your notes & the Snug', '✒ Ghi chú của bạn & Phòng Khách')}
       </button>
 
       {open && (
-        <div style={{ marginTop: 12 }}>
+        <div className="wl-notes-list">
           {!loaded ? (
-            <div style={muted}>{t('Fetching notes…', 'Đang tải ghi chú…')}</div>
+            <div className="wl-notes-empty">{t('Fetching notes…', 'Đang tải ghi chú…')}</div>
           ) : notes.length === 0 ? (
-            <div style={muted}>{t('No notes yet — be the first to record this dram.', 'Chưa có ghi chú — hãy là người đầu tiên ghi lại ly này.')}</div>
+            <div className="wl-notes-empty">{t('No notes yet — be the first to record this dram.', 'Chưa có ghi chú — hãy là người đầu tiên ghi lại ly này.')}</div>
           ) : notes.map(n => (
-            <div key={n.id} style={noteCard}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
-                <span style={{ fontFamily: MONO, fontSize: 11, color: n.is_own ? '#D4B85A' : '#E5D4C2', letterSpacing: '0.04em' }}>
-                  {n.author_name}{n.visibility === 'snug' && !n.is_own ? '' : ''}
-                  {n.is_own && n.visibility === 'snug' && <span style={snugBadge}>{t('Shared', 'Đã chia sẻ')}</span>}
-                  {n.is_own && n.visibility === 'private' && <span style={privBadge}>{t('Private', 'Riêng tư')}</span>}
+            <div key={n.id} className="wl-n">
+              <div className="wl-n-head">
+                <span className={`wl-n-who ${n.is_own ? 'is-own' : ''}`}>
+                  {n.author_name}
+                  {n.is_own && n.visibility === 'snug' && <span className="wl-tag is-shared">{t('Shared', 'Đã chia sẻ')}</span>}
+                  {n.is_own && n.visibility === 'private' && <span className="wl-tag is-private">{t('Private', 'Riêng tư')}</span>}
                 </span>
-                <span style={{ fontFamily: MONO, fontSize: 9, color: '#7E7864' }}>{fmtDate(n.created_at)}</span>
+                <span className="wl-date">{fmtDate(n.created_at)}</span>
               </div>
-              <div style={{ fontFamily: MONO, fontSize: 12, color: '#B2AA98', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{n.note}</div>
+              <div className="wl-n-text">{n.note}</div>
               {n.photo_url && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={n.photo_url} alt="" style={{ display: 'block', maxWidth: '100%', maxHeight: 280, borderRadius: 8, marginTop: 10, objectFit: 'cover' }} />
+                <img src={n.photo_url} alt="" className="wl-photo" />
               )}
               {n.flavour_tags.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 7 }}>
-                  {n.flavour_tags.map(tag => <span key={tag} style={tagChip}>{nameOf(tag)}</span>)}
-                </div>
+                <div className="wl-fams">{n.flavour_tags.map(nameOf).join('  ·  ')}</div>
               )}
             </div>
           ))}
 
-          <button onClick={() => setComposer(true)} style={addBtn}>{t('＋ Add a note', '＋ Thêm ghi chú')}</button>
+          <button type="button" onClick={() => setComposer(true)} className="wl-link is-gold" style={{ marginTop: 14 }}>
+            {t('＋ Add a note', '＋ Thêm ghi chú')}
+          </button>
         </div>
       )}
 
       <MemberModal open={composer} onClose={() => setComposer(false)} title={t('Your tasting note', 'Ghi chú nếm thử của bạn')} subtitle={t('PRIVATE BY DEFAULT — SHARE IF YOU WISH', 'MẶC ĐỊNH RIÊNG TƯ — CHIA SẺ NẾU MUỐN')}>
-        {error && <div style={{ fontFamily: MONO, fontSize: 11, color: '#C27070', marginBottom: 8 }}>{error}</div>}
-        <textarea value={draft} onChange={e => setDraft(e.target.value.slice(0, 8000))} rows={4} placeholder={t('Nose, palate, finish — or simply how it struck you.', 'Hương, vị, hậu vị — hoặc đơn giản là cảm nhận của bạn.')} style={textarea} />
+        <div className="wl-form">
+          {error && <div className="wl-error">{error}</div>}
+          <textarea value={draft} onChange={e => setDraft(e.target.value.slice(0, 8000))} rows={5} placeholder={t('Nose, palate, finish — or simply how it struck you.', 'Hương, vị, hậu vị — hoặc đơn giản là cảm nhận của bạn.')} className="wl-textarea" />
 
-        <div style={{ marginTop: 14 }}>
-          <div style={fieldLabel}>{t('Visibility', 'Chế độ hiển thị')}</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {([['private', t('Keep private', 'Giữ riêng tư')], ['snug', t('Share to the Snug', 'Chia sẻ lên Phòng Khách')]] as const).map(([v, label]) => (
-              <button key={v} onClick={() => setVisibility(v)} style={{ ...pill, ...(visibility === v ? pillOn : null) }}>{label}</button>
-            ))}
-          </div>
-        </div>
-
-        {families.length > 0 && (
-          <div style={{ marginTop: 14 }}>
-            <div style={fieldLabel}>{t('Flavour notes', 'Nhóm hương vị')} <span style={{ opacity: 0.5 }}>{t('(optional)', '(không bắt buộc)')}</span></div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {families.map(f => (
-                <button key={f.slug} onClick={() => toggleTag(f.slug)} style={{ ...chip, ...(tags.includes(f.slug) ? chipOn : null) }}>{catLabel(f, lang)}</button>
+          <div className="wl-field">
+            <div className="wl-field-label">{t('Visibility', 'Chế độ hiển thị')}</div>
+            <div className="wl-choices">
+              {([['private', t('Keep private', 'Giữ riêng tư')], ['snug', t('Share to the Snug', 'Chia sẻ lên Phòng Khách')]] as const).map(([v, label]) => (
+                <button type="button" key={v} onClick={() => setVisibility(v)} aria-pressed={visibility === v} className={`wl-choice ${visibility === v ? 'is-on' : ''}`}>{label}</button>
               ))}
             </div>
           </div>
-        )}
 
-        <div style={{ marginTop: 14 }}>
-          <div style={fieldLabel}>{t('Photo', 'Ảnh')} <span style={{ opacity: 0.5 }}>{t('(optional — location data is stripped)', '(không bắt buộc — dữ liệu vị trí sẽ được xóa)')}</span></div>
-          {photo ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontFamily: MONO, fontSize: 11, color: '#E5D4C2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>{photo.name}</span>
-              <button onClick={() => setPhoto(null)} style={{ ...chip, color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}>{t('Remove', 'Xóa')}</button>
+          {families.length > 0 && (
+            <div className="wl-field">
+              <div className="wl-field-label">{t('Flavour notes', 'Nhóm hương vị')} <span>{t('(optional)', '(không bắt buộc)')}</span></div>
+              <div className="wl-choices">
+                {families.map(f => (
+                  <button type="button" key={f.slug} onClick={() => toggleTag(f.slug)} aria-pressed={tags.includes(f.slug)} className={`wl-choice ${tags.includes(f.slug) ? 'is-on' : ''}`}>{catLabel(f, lang)}</button>
+                ))}
+              </div>
             </div>
-          ) : (
-            <label style={{ ...chip, cursor: 'pointer', display: 'inline-block' }}>
-              {t('＋ Add a photo', '＋ Thêm ảnh')}
-              <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" style={{ display: 'none' }}
-                onChange={e => { const f = e.target.files?.[0]; if (f) setPhoto(f) }} />
-            </label>
           )}
-        </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
-          <button onClick={() => { setComposer(false); setPhoto(null) }} style={cancelBtn}>{t('Cancel', 'Hủy')}</button>
-          <button onClick={save} disabled={saving || !draft.trim()} style={{ ...saveBtn, opacity: saving || !draft.trim() ? 0.4 : 1 }}>{saving ? t('Saving…', 'Đang lưu…') : t('Save note', 'Lưu ghi chú')}</button>
+          <div className="wl-field">
+            <div className="wl-field-label">{t('Photo', 'Ảnh')} <span>{t('(optional — location data is stripped)', '(không bắt buộc — dữ liệu vị trí sẽ được xóa)')}</span></div>
+            {photo ? (
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 18, flexWrap: 'wrap' }}>
+                <span className="wl-file">{photo.name}</span>
+                <button type="button" onClick={() => setPhoto(null)} className="wl-link is-danger">{t('Remove', 'Xóa')}</button>
+              </div>
+            ) : (
+              <label className="wl-link is-quiet">
+                {t('＋ Add a photo', '＋ Thêm ảnh')}
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" style={{ display: 'none' }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) setPhoto(f) }} />
+              </label>
+            )}
+          </div>
+
+          <div className="wl-form-actions">
+            <button type="button" onClick={() => { setComposer(false); setPhoto(null) }} className="wl-link is-quiet">{t('Cancel', 'Hủy')}</button>
+            <button type="button" onClick={save} disabled={saving || !draft.trim()} className="wl-link is-gold is-big" style={{ opacity: saving || !draft.trim() ? 0.4 : 1 }}>
+              {saving ? t('Saving…', 'Đang lưu…') : <>{t('Save note', 'Lưu ghi chú')} <span className="pk-go" aria-hidden="true">→</span></>}
+            </button>
+          </div>
         </div>
       </MemberModal>
     </div>
   )
 }
-
-const toggleBtn: React.CSSProperties = { background: 'transparent', cursor: 'pointer', border: '1px solid rgba(178,170,152,0.3)', borderRadius: 20, padding: '5px 14px', fontFamily: MONO, fontSize: 10, letterSpacing: '0.06em', color: '#B2AA98' }
-const muted: React.CSSProperties = { fontFamily: MONO, fontSize: 11, color: '#B2AA98', opacity: 0.6, fontStyle: 'italic', padding: '6px 0' }
-const noteCard: React.CSSProperties = { border: '1px solid rgba(229,212,194,0.08)', borderRadius: 10, background: 'rgba(229,212,194,0.03)', padding: '11px 13px', marginBottom: 8 }
-const snugBadge: React.CSSProperties = { fontFamily: MONO, fontSize: 8, color: '#052E20', background: '#7AB07A', padding: '1px 6px', borderRadius: 7, marginLeft: 8, letterSpacing: '0.06em' }
-const privBadge: React.CSSProperties = { fontFamily: MONO, fontSize: 8, color: '#B2AA98', border: '1px solid rgba(178,170,152,0.3)', padding: '1px 6px', borderRadius: 7, marginLeft: 8, letterSpacing: '0.06em' }
-const tagChip: React.CSSProperties = { fontFamily: MONO, fontSize: 9, color: '#D4B85A', border: '1px solid rgba(212,184,90,0.3)', borderRadius: 8, padding: '2px 8px' }
-const addBtn: React.CSSProperties = { marginTop: 4, background: 'rgba(212,184,90,0.10)', cursor: 'pointer', border: '1px solid rgba(212,184,90,0.3)', borderRadius: 20, padding: '6px 16px', fontFamily: MONO, fontSize: 10, letterSpacing: '0.06em', color: '#D4B85A' }
-const textarea: React.CSSProperties = { width: '100%', resize: 'vertical', background: 'rgba(229,212,194,0.06)', border: '1px solid rgba(229,212,194,0.16)', borderRadius: 8, color: '#E5D4C2', fontFamily: MONO, fontSize: 13, lineHeight: 1.6, padding: '10px 12px', outline: 'none', boxSizing: 'border-box' }
-const fieldLabel: React.CSSProperties = { fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#B2AA98', marginBottom: 7 }
-const pill: React.CSSProperties = { background: 'transparent', cursor: 'pointer', border: '1px solid rgba(178,170,152,0.3)', borderRadius: 18, padding: '6px 14px', fontFamily: MONO, fontSize: 11, color: '#B2AA98' }
-const pillOn: React.CSSProperties = { border: '1px solid #D4B85A', color: '#D4B85A', background: 'rgba(212,184,90,0.10)' }
-const chip: React.CSSProperties = { background: 'transparent', cursor: 'pointer', border: '1px solid rgba(178,170,152,0.25)', borderRadius: 16, padding: '4px 11px', fontFamily: MONO, fontSize: 10, color: '#B2AA98' }
-const chipOn: React.CSSProperties = { border: '1px solid #D4B85A', color: '#D4B85A', background: 'rgba(212,184,90,0.10)' }
-const cancelBtn: React.CSSProperties = { background: 'transparent', border: '1px solid rgba(178,170,152,0.3)', borderRadius: 8, padding: '8px 16px', fontFamily: MONO, fontSize: 12, color: '#B2AA98', cursor: 'pointer' }
-const saveBtn: React.CSSProperties = { background: '#D4B85A', color: '#052E20', border: 'none', borderRadius: 8, padding: '8px 18px', fontFamily: MONO, fontSize: 12, fontWeight: 600, letterSpacing: '0.04em', cursor: 'pointer' }

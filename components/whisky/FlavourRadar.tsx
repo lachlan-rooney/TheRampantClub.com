@@ -28,21 +28,21 @@ export default function FlavourRadar({ whiskyId, size = 300 }: { whiskyId: strin
     return () => { active = false }
   }, [whiskyId])  // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!cats || values === null) return <div style={stateBox}>…</div>
+  if (!cats || values === null) return <div style={stateBox} aria-busy="true">…</div>
   if (Object.keys(values).length === 0) return (
     <div style={stateBox}>
-      <div style={{ color: '#B2AA98' }}>{t('Flavour profile not yet mapped', 'Chưa có hồ sơ hương vị')}</div>
-      <div style={{ fontSize: 10, opacity: 0.55, marginTop: 4 }}>{t('Not yet tagged for the flavour map', 'Chưa được gắn thẻ trên bản đồ hương vị')}</div>
+      <div style={{ opacity: 0.9 }}>{t('Flavour profile not yet mapped', 'Chưa có hồ sơ hương vị')}</div>
+      <div style={{ fontSize: 11.5, opacity: 0.66, marginTop: 6 }}>{t('Not yet tagged for the flavour map', 'Chưa được gắn thẻ trên bản đồ hương vị')}</div>
     </div>
   )
 
   return <RadarChart cats={cats} shapes={[{ values, color: RADAR_GOLD, label: '' }]} size={size} />
 }
 
+// The honest empty state: a hairline and a line of mono, not a dashed box.
 const stateBox: React.CSSProperties = {
-  width: '100%', maxWidth: 360, height: 120, margin: '0 auto',
-  display: 'flex', flexDirection: 'column',
-  alignItems: 'center', justifyContent: 'center', textAlign: 'center',
-  fontFamily: FAMILY, fontSize: 12, color: '#B2AA98',
-  border: '1px dashed rgba(229,212,194,0.12)', borderRadius: 8,
+  width: '100%', maxWidth: 360, minHeight: 96, margin: 0, boxSizing: 'border-box',
+  display: 'flex', flexDirection: 'column', justifyContent: 'center',
+  fontFamily: FAMILY, fontSize: 12.5, lineHeight: 1.7, color: '#E5D4C2',
+  borderTop: '1px solid rgba(229,212,194,0.16)', padding: '16px 0',
 }

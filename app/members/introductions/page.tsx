@@ -39,75 +39,116 @@ export default function Introductions() {
 
   return (
     <MemberPage title="Introductions" subtitle="LỜI GIỚI THIỆU" description={t('The club makes the introduction — you decide. A decline is quiet; no one is ever told no.', 'Câu lạc bộ đứng ra giới thiệu — quyết định là ở bạn. Lời từ chối luôn kín đáo; không ai phải nghe một lời “không”.')}>
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
       {loading ? (
-        <p style={muted}>{t('Reading the room…', 'Đang xem qua…')}</p>
+        <p className="in-quiet">{t('Reading the room…', 'Đang xem qua…')}</p>
       ) : (
-        <>
-          <div style={sectionLabel}>{t('Awaiting your word', 'Chờ bạn hồi đáp')}</div>
-          {incoming.length === 0 ? (
-            <p style={{ ...muted, marginBottom: 28 }}>{t('No introductions awaiting you just now.', 'Hiện chưa có lời giới thiệu nào chờ bạn.')}</p>
-          ) : incoming.map(i => (
-            <div key={i.id} style={card}>
-              {i.via === 'palate_match' ? (
-                <div style={{ marginBottom: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                    <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 26, fontWeight: 600, color: '#D4B85A' }}>{i.match_pct}%</span>
-                    <span style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98' }}>{t('palate match', 'hợp khẩu vị')}</span>
-                  </div>
-                  <div style={{ fontFamily: MONO, fontSize: 12, color: '#E5D4C2', lineHeight: 1.6, marginTop: 6 }}>
-                    {lang === 'vn'
-                      ? <>Một hội viên có khẩu vị giống bạn {i.match_pct}% muốn được làm quen — hai bạn cùng thích {i.shared_note}. Chấp nhận để biết đó là ai.</>
-                      : <>A member whose palate is {i.match_pct}% yours would like to meet — you share {i.shared_note}. Accept to see who.</>}
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: i.context ? 8 : 10 }}>
-                    <div style={sigil}>{(i.from_name || '?').charAt(0).toUpperCase()}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2' }}>{i.from_name}</div>
-                      <div style={{ fontFamily: MONO, fontSize: 11, color: '#D4B85A', opacity: 0.85, marginTop: 2 }}>{i.from_sig}</div>
+        <div className="in-grid">
+          {/* ── Addressed to you: the decision is yours ─────────────────── */}
+          <section>
+            <h2 className="in-h2">{t('Awaiting your word', 'Chờ bạn hồi đáp')}</h2>
+            {incoming.length === 0 ? (
+              <p className="in-quiet">{t('No introductions awaiting you just now.', 'Hiện chưa có lời giới thiệu nào chờ bạn.')}</p>
+            ) : (
+              <div className="in-list">
+                {incoming.map(i => (
+                  <div key={i.id} className="in-row">
+                    {i.via === 'palate_match' ? (
+                      <>
+                        <div className="in-match">
+                          <span className="in-pct">{i.match_pct}%</span>
+                          <span className="in-pct-l">{t('palate match', 'hợp khẩu vị')}</span>
+                        </div>
+                        <p className="in-text">
+                          {lang === 'vn'
+                            ? <>Một hội viên có khẩu vị giống bạn {i.match_pct}% muốn được làm quen — hai bạn cùng thích {i.shared_note}. Chấp nhận để biết đó là ai.</>
+                            : <>A member whose palate is {i.match_pct}% yours would like to meet — you share {i.shared_note}. Accept to see who.</>}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="in-name">{i.from_name}</div>
+                        <div className="in-sig">{i.from_sig}</div>
+                        {i.context && <p className="in-context">“{i.context}”</p>}
+                      </>
+                    )}
+                    <div className="in-actions">
+                      <button onClick={() => act(i.id, 'accept')} disabled={busy === i.id} className="pk-cta in-cta">
+                        {t('Accept · open a thread', 'Chấp nhận · mở trò chuyện')} <span className="pk-go">→</span>
+                      </button>
+                      <button onClick={() => act(i.id, 'decline')} disabled={busy === i.id} className="in-quietbtn">{t('Not now', 'Để sau')}</button>
                     </div>
                   </div>
-                  {i.context && <div style={contextLine}>“{i.context}”</div>}
-                </>
-              )}
-              <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-                <button onClick={() => act(i.id, 'accept')} disabled={busy === i.id} style={acceptBtn}>{t('Accept · open a thread', 'Chấp nhận · mở trò chuyện')}</button>
-                <button onClick={() => act(i.id, 'decline')} disabled={busy === i.id} style={declineBtn}>{t('Not now', 'Để sau')}</button>
+                ))}
               </div>
-            </div>
-          ))}
+            )}
+          </section>
 
-          <div style={{ ...sectionLabel, marginTop: 32 }}>{t('Your requests', 'Yêu cầu của bạn')}</div>
-          {sent.length === 0 ? (
-            <p style={muted}>{t('You haven’t requested any introductions yet — find someone in ', 'Bạn chưa đề nghị lời giới thiệu nào — hãy tìm một người trong ')}<Link href="/members/members" style={link}>{t('the directory', 'danh bạ')}</Link>.</p>
-          ) : sent.map(s => (
-            <div key={s.id} style={{ ...card, opacity: 0.92 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 15, color: '#E5D4C2' }}>
-                  {s.to_name || (s.via === 'palate_match' ? t('A palate match', 'Một người hợp khẩu vị') : t('A member', 'Một hội viên'))}
-                </span>
-                {s.status === 'accepted'
-                  ? <Link href="/members/messages" style={connectedPill}>{t('Connected — open messages →', 'Đã kết nối — mở tin nhắn →')}</Link>
-                  : <span style={pendingPill}>{t('Pending', 'Đang chờ')}</span>}
+          {/* ── What you asked for: always "pending" until it isn't ─────── */}
+          <section>
+            <h2 className="in-h2">{t('Your requests', 'Yêu cầu của bạn')}</h2>
+            {sent.length === 0 ? (
+              <p className="in-quiet">{t('You haven’t requested any introductions yet — find someone in ', 'Bạn chưa đề nghị lời giới thiệu nào — hãy tìm một người trong ')}<Link href="/members/members" className="in-link">{t('the directory', 'danh bạ')}</Link>.</p>
+            ) : (
+              <div className="in-list">
+                {sent.map(s => (
+                  <div key={s.id} className="in-row is-sent">
+                    <div className="in-sent-top">
+                      <span className="in-sent-name">
+                        {s.to_name || (s.via === 'palate_match' ? t('A palate match', 'Một người hợp khẩu vị') : t('A member', 'Một hội viên'))}
+                      </span>
+                      {s.status === 'accepted'
+                        ? <Link href="/members/messages" className="in-connected">{t('Connected — open messages →', 'Đã kết nối — mở tin nhắn →')}</Link>
+                        : <span className="in-pending">{t('Pending', 'Đang chờ')}</span>}
+                    </div>
+                    {s.context && <p className="in-context">“{s.context}”</p>}
+                  </div>
+                ))}
               </div>
-              {s.context && <div style={{ ...contextLine, marginTop: 6 }}>“{s.context}”</div>}
-            </div>
-          ))}
-        </>
+            )}
+          </section>
+        </div>
       )}
     </MemberPage>
   )
 }
 
-const muted: React.CSSProperties = { fontFamily: MONO, fontSize: 13, color: '#B2AA98', opacity: 0.75, lineHeight: 1.7 }
-const sectionLabel: React.CSSProperties = { fontFamily: MONO, fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#D4B85A', opacity: 0.8, marginBottom: 12 }
-const card: React.CSSProperties = { border: '1px solid rgba(229,212,194,0.1)', borderRadius: 12, background: 'rgba(229,212,194,0.03)', padding: '14px 16px', marginBottom: 12 }
-const sigil: React.CSSProperties = { width: 40, height: 40, borderRadius: '50%', flexShrink: 0, border: '1px solid rgba(212,184,90,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#D4B85A', background: 'rgba(212,184,90,0.08)' }
-const contextLine: React.CSSProperties = { fontFamily: MONO, fontSize: 12, color: '#B2AA98', fontStyle: 'italic', lineHeight: 1.6 }
-const acceptBtn: React.CSSProperties = { background: '#D4B85A', color: '#052E20', border: 'none', borderRadius: 8, padding: '8px 16px', fontFamily: MONO, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', cursor: 'pointer' }
-const declineBtn: React.CSSProperties = { background: 'transparent', border: '1px solid rgba(178,170,152,0.3)', borderRadius: 8, padding: '8px 16px', fontFamily: MONO, fontSize: 11, color: '#B2AA98', cursor: 'pointer' }
-const pendingPill: React.CSSProperties = { fontFamily: MONO, fontSize: 10, color: '#B2AA98', border: '1px solid rgba(178,170,152,0.3)', borderRadius: 10, padding: '3px 10px', letterSpacing: '0.04em' }
-const connectedPill: React.CSSProperties = { fontFamily: MONO, fontSize: 10, color: '#7AB07A', textDecoration: 'none', border: '1px solid rgba(122,176,122,0.4)', borderRadius: 10, padding: '3px 10px', letterSpacing: '0.04em' }
-const link: React.CSSProperties = { color: '#D4B85A', textDecoration: 'none', borderBottom: '1px solid rgba(212,184,90,0.35)' }
+const SERIF = "'Rampant Sans', serif"
+const LINE = 'rgba(229,212,194,.18)'
+
+const CSS = `
+  .in-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 88px; align-items: start; }
+  .in-h2 { font-family: ${SERIF}; font-weight: 400; font-size: clamp(30px, 3.4vw, 44px); line-height: 1; color: #E5D4C2; margin: 0 0 26px; }
+  .in-quiet { font-family: ${MONO}; font-size: 14px; line-height: 1.95; color: #E5D4C2; opacity: .8; max-width: 560px; margin: 0; }
+  .in-link { color: #D4B85A; text-decoration: none; border-bottom: 1px solid rgba(212,184,90,.5); padding-bottom: 1px; }
+  .in-link:hover { border-bottom-color: #D4B85A; }
+
+  .in-list { border-bottom: 1px solid ${LINE}; }
+  .in-row { padding: 26px 0 28px; border-top: 1px solid ${LINE}; }
+  .in-match { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .in-pct { font-family: ${SERIF}; font-size: clamp(56px, 6.4vw, 88px); line-height: .9; color: #D4B85A; }
+  .in-pct-l { font-family: ${MONO}; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: #E5D4C2; opacity: .8; }
+  .in-text { font-family: ${MONO}; font-size: 14px; line-height: 1.95; color: #E5D4C2; opacity: .9; margin: 16px 0 0; max-width: 560px; }
+  .in-name { font-family: ${SERIF}; font-size: clamp(32px, 3.8vw, 52px); line-height: .96; color: #E5D4C2; overflow-wrap: anywhere; }
+  .in-sig { font-family: ${MONO}; font-size: 13.5px; line-height: 1.8; color: #D4B85A; margin-top: 10px; }
+  .in-context { font-family: ${MONO}; font-size: 13.5px; line-height: 1.9; color: #E5D4C2; opacity: .85; margin: 14px 0 0; max-width: 560px; }
+
+  .in-actions { display: flex; align-items: baseline; gap: 30px; flex-wrap: wrap; margin-top: 24px; }
+  .pk-cta.in-cta { margin-top: 0; color: #D4B85A; }
+  .pk-cta.in-cta:disabled, .in-quietbtn:disabled { opacity: .4; cursor: not-allowed; }
+  .in-quietbtn { background: none; border: none; padding: 0 0 6px; cursor: pointer; color: #E5D4C2; opacity: .72;
+                 font-family: ${MONO}; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; transition: opacity .2s ease; }
+  .in-quietbtn:hover:not(:disabled) { opacity: 1; }
+
+  .in-row.is-sent { padding: 22px 0 22px; }
+  .in-sent-top { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+  .in-sent-name { font-family: ${SERIF}; font-size: clamp(24px, 2.6vw, 32px); line-height: 1.05; color: #E5D4C2; }
+  .in-pending { font-family: ${MONO}; font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: #E5D4C2; opacity: .7; }
+  .in-connected { font-family: ${MONO}; font-size: 12px; letter-spacing: .04em; color: #D4B85A; text-decoration: none;
+                  border-bottom: 1px solid rgba(212,184,90,.5); padding-bottom: 3px; }
+  .in-connected:hover { border-bottom-color: #D4B85A; }
+
+  @media (max-width: 960px) {
+    .in-grid { grid-template-columns: minmax(0, 1fr); gap: 72px; }
+  }
+`

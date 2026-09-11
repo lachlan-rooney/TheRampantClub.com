@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useLang, type Lang } from '@/lib/lang'
+import { CreamInk, CreamInkDefs } from '@/components/public/CreamInk'
 
 // PASSIVE post-visit card. The morning(s) after a recent visit, a quiet recap —
 // composed from real visit + consumption rows (member-safe fields only). Degrades
@@ -70,26 +71,48 @@ export default function ReturnCard() {
     setDismissed(true)
   }
 
+  // The arrow is part of the translated line; lift it out so it can slide.
+  const actionLabel = t('A thought on the evening? →', 'Đôi lời về buổi tối? →').replace(/\s*→\s*$/, '')
+
   return (
-    <div style={card}>
+    <div className="rc2" style={card}>
+      <style dangerouslySetInnerHTML={{ __html: CARD_CSS }} />
+      <CreamInkDefs />
       <button onClick={dismiss} aria-label={t('Dismiss', 'Bỏ qua')} style={closeBtn}>×</button>
-      <div style={kicker}>{t('Welcome back', 'Chào mừng trở lại')}</div>
-      <div style={headline}>{t(`Your visit ${when}`, `Lần ghé của bạn ${when}`)}</div>
-      <div style={detail}>
-        {[where, dur && t(`${dur} with us`, `${dur} cùng chúng tôi`)].filter(Boolean).join(' · ') || t('Lovely to have had you in.', 'Thật vui được đón bạn.')}
+      <div style={{ minWidth: 0 }}>
+        <div style={kicker}>{t('Welcome back', 'Chào mừng trở lại')}</div>
+        <div style={headline}>{t(`Your visit ${when}`, `Lần ghé của bạn ${when}`)}</div>
+        <div style={detail}>
+          {[where, dur && t(`${dur} with us`, `${dur} cùng chúng tôi`)].filter(Boolean).join(' · ') || t('Lovely to have had you in.', 'Thật vui được đón bạn.')}
+        </div>
+        {dramLine && <div style={dramStyle}>{dramLine}</div>}
+        <Link href={`/members/concierge?prefill=${encodeURIComponent(prefill)}`} className="rc2-cta">
+          {actionLabel} <span className="rc2-go" aria-hidden="true">→</span>
+        </Link>
       </div>
-      {dramLine && <div style={dramStyle}>{dramLine}</div>}
-      <Link href={`/members/concierge?prefill=${encodeURIComponent(prefill)}`} style={action}>
-        {t('A thought on the evening? →', 'Đôi lời về buổi tối? →')}
-      </Link>
+      <div className="rc2-art" aria-hidden="true">
+        <CreamInk name="glass" width="100%" rot={6} dur={8} />
+      </div>
     </div>
   )
 }
 
-const card: React.CSSProperties = { position: 'relative', border: '1px solid rgba(229,212,194,0.14)', borderRadius: 14, background: 'rgba(229,212,194,0.04)', padding: '20px 22px', marginBottom: 24 }
-const closeBtn: React.CSSProperties = { position: 'absolute', top: 12, right: 14, background: 'transparent', border: 'none', color: '#B2AA98', fontSize: 18, lineHeight: 1, cursor: 'pointer', opacity: 0.6 }
-const kicker: React.CSSProperties = { fontFamily: MONO, fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#7AB07A' }
-const headline: React.CSSProperties = { fontFamily: "'Rampant Sans', serif", fontSize: 22, color: '#E5D4C2', margin: '8px 0 4px', letterSpacing: '0.02em' }
-const detail: React.CSSProperties = { fontFamily: MONO, fontSize: 13, color: '#E5D4C2', opacity: 0.82, lineHeight: 1.5 }
-const dramStyle: React.CSSProperties = { fontFamily: MONO, fontSize: 12, color: '#D4B85A', opacity: 0.85, marginTop: 8, lineHeight: 1.5 }
-const action: React.CSSProperties = { display: 'inline-block', marginTop: 14, fontFamily: MONO, fontSize: 12, color: '#B2AA98', textDecoration: 'none', letterSpacing: '0.04em', borderBottom: '1px solid rgba(178,170,152,0.4)', paddingBottom: 2 }
+const CARD_CSS = `
+  .rc2 { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 28px; align-items: center; }
+  .rc2-art { width: 96px; margin-right: 40px; }
+  .rc2-cta { display: inline-block; margin-top: 22px; color: #E5D4C2; text-decoration: none;
+             border-bottom: 1px solid rgba(229,212,194,.6); padding-bottom: 6px;
+             font-family: ${MONO}; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+  .rc2-go { display: inline-block; transition: transform .35s ease; }
+  .rc2-cta:hover .rc2-go { transform: translateX(7px); }
+  @media (max-width: 560px) { .rc2 { grid-template-columns: minmax(0, 1fr) 64px; gap: 16px; align-items: start; }
+                              .rc2-art { width: 64px; margin: 36px 0 0; } }
+  @media (prefers-reduced-motion: reduce) { .rc2-go { transition: none; } }
+`
+
+const card: React.CSSProperties = { position: 'relative', borderTop: '1px solid rgba(229,212,194,0.18)', padding: '28px 0', color: '#E5D4C2' }
+const closeBtn: React.CSSProperties = { position: 'absolute', top: 14, right: 0, background: 'transparent', border: 'none', color: '#E5D4C2', fontSize: 22, lineHeight: 1, cursor: 'pointer', opacity: 0.7, padding: 4 }
+const kicker: React.CSSProperties = { fontFamily: MONO, fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#B0C18E' }
+const headline: React.CSSProperties = { fontFamily: "'Rampant Sans', serif", fontSize: 'clamp(30px, 4.4vw, 52px)', lineHeight: 0.98, color: '#E5D4C2', margin: '14px 0 12px' }
+const detail: React.CSSProperties = { fontFamily: MONO, fontSize: 13.5, color: '#E5D4C2', opacity: 0.88, lineHeight: 1.8 }
+const dramStyle: React.CSSProperties = { fontFamily: MONO, fontSize: 13, color: '#D4B85A', marginTop: 6, lineHeight: 1.8 }

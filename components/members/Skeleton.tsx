@@ -2,10 +2,11 @@
 
 // Branded shimmer skeleton for the member portal — replaces the one-line
 // "Loading…" texts so pages reserve their layout and shimmer instead of
-// popping in. Cream-on-green, matches the club palette.
+// popping in. Cream-on-green, matches the club palette; squared-off corners,
+// like the hairlines the portal is now drawn with, rather than pills.
 
 export function Skeleton({
-  width = '100%', height = 14, radius = 6, style,
+  width = '100%', height = 14, radius = 3, style,
 }: {
   width?: number | string
   height?: number | string
@@ -19,7 +20,7 @@ export function Skeleton({
         aria-hidden
         style={{
           width, height, borderRadius: radius,
-          background: 'linear-gradient(100deg, rgba(229,212,194,0.05) 30%, rgba(229,212,194,0.14) 50%, rgba(229,212,194,0.05) 70%)',
+          background: 'linear-gradient(100deg, rgba(229,212,194,0.06) 30%, rgba(229,212,194,0.16) 50%, rgba(229,212,194,0.06) 70%)',
           backgroundSize: '200% 100%',
           animation: 'mskel 1.4s ease-in-out infinite',
           ...style,
@@ -42,7 +43,7 @@ export function SkeletonLines({ lines = 3, gap = 12 }: { lines?: number; gap?: n
 
 // A shimmer card — for tile/panel-heavy pages.
 export function SkeletonCard({ height = 120 }: { height?: number }) {
-  return <Skeleton width="100%" height={height} radius={12} />
+  return <Skeleton width="100%" height={height} radius={6} />
 }
 
 function SkeletonKeyframes() {

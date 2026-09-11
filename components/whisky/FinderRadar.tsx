@@ -66,8 +66,8 @@ export default function FinderRadar({ cats, value, onChange, size = 340 }: {
   return (
     <svg viewBox={`0 0 ${W} ${H}`} role="group" aria-label={t('Set your flavour profile', 'Chọn hồ sơ hương vị của bạn')}style={{ display: 'block', width: '100%', maxWidth: W, height: 'auto', margin: '0 auto', touchAction: 'manipulation' }}>
       {/* grid + axes */}
-      {rings.map((d, i) => <path key={i} d={d} fill="none" stroke="rgba(229,212,194,0.10)" strokeWidth={1} />)}
-      {cats.map((c, i) => { const [x, y] = pt(i, 4); return <line key={c.slug} x1={cx} y1={cy} x2={x} y2={y} stroke="rgba(229,212,194,0.08)" strokeWidth={1} /> })}
+      {rings.map((d, i) => <path key={i} d={d} fill="none" stroke="rgba(229,212,194,0.10)" style={{ stroke: 'var(--rc-grid, rgba(229,212,194,0.10))' }} strokeWidth={1} />)}
+      {cats.map((c, i) => { const [x, y] = pt(i, 4); return <line key={c.slug} x1={cx} y1={cy} x2={x} y2={y} stroke="rgba(229,212,194,0.08)" style={{ stroke: 'var(--rc-axis, rgba(229,212,194,0.08))' }} strokeWidth={1} /> })}
 
       {/* tappable wedges (under the shape; the shape itself ignores pointers) */}
       {cats.map((c, i) => (
@@ -90,12 +90,13 @@ export default function FinderRadar({ cats, value, onChange, size = 340 }: {
         const lx = cx + lr * cos, ly = cy + lr * sin
         const anchor: 'start' | 'middle' | 'end' = cos > 0.15 ? 'start' : cos < -0.15 ? 'end' : 'middle'
         const lvl = value[c.slug] || 0
-        const fill = lvl > 0 ? '#D4B85A' : 'rgba(229,212,194,0.55)'
+        // CSS hooks (--rc-label-set / -unset) default to the colours they have always been.
+        const fill = lvl > 0 ? 'var(--rc-label-set, #D4B85A)' : 'var(--rc-label-unset, rgba(229,212,194,0.55))'
         const lines = wrapName(catLabel(c, lang))
         if (lvl > 0) lines[lines.length - 1] += ` · ${lvl}`
         const y0 = sin > 0.35 ? ly + 6 : sin < -0.35 ? ly - 6 - (lines.length - 1) * LINE_H : ly - (lines.length - 1) * LINE_H / 2
         return lines.map((ln, k) => (
-          <text key={c.slug + k} x={lx} y={y0 + k * LINE_H} textAnchor={anchor} dominantBaseline="middle" fontSize={8.5} fontFamily={FAMILY} fill={fill} style={{ cursor: 'pointer' }} onClick={() => cycle(c.slug)}>{ln}</text>
+          <text key={c.slug + k} x={lx} y={y0 + k * LINE_H} textAnchor={anchor} dominantBaseline="middle" fontSize={8.5} fontFamily={FAMILY} style={{ fill, cursor: 'pointer' }} onClick={() => cycle(c.slug)}>{ln}</text>
         ))
       })}
     </svg>

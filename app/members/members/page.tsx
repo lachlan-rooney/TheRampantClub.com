@@ -66,64 +66,115 @@ export default function Directory() {
 
   return (
     <MemberPage title="The Members" subtitle="NHỮNG THÀNH VIÊN" description={t('Fellow members who’ve chosen to be found. A name and a palate — the club makes the introduction.', 'Những hội viên đã chọn để được tìm thấy. Một cái tên và một khẩu vị — câu lạc bộ sẽ đứng ra giới thiệu.')}>
-      <div style={toggleRow}>
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
+
+      {/* Being found is a choice, stated on one line: the words, and the switch. */}
+      <div className="md-opt">
         <div>
-          <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 15, color: '#E5D4C2' }}>{t('Appear in the directory', 'Hiển thị trong danh bạ')}</div>
-          <div style={{ fontFamily: MONO, fontSize: 10, color: '#B2AA98', opacity: 0.7, marginTop: 2 }}>{t('Others see your name + palate only. Off by default.', 'Người khác chỉ thấy tên và khẩu vị của bạn. Mặc định tắt.')}</div>
+          <div className="md-opt-t">{t('Appear in the directory', 'Hiển thị trong danh bạ')}</div>
+          <div className="md-opt-s">{t('Others see your name + palate only. Off by default.', 'Người khác chỉ thấy tên và khẩu vị của bạn. Mặc định tắt.')}</div>
         </div>
-        <button onClick={toggleDiscoverable} style={{ ...toggle, ...(discoverable ? toggleOn : null) }}>
-          <span style={{ ...knob, transform: discoverable ? 'translateX(20px)' : 'translateX(0)' }} />
+        <button onClick={toggleDiscoverable} className={`md-switch ${discoverable ? 'is-on' : ''}`}
+                aria-pressed={discoverable} aria-label={t('Appear in the directory', 'Hiển thị trong danh bạ')}>
+          <span className="md-knob" />
         </button>
       </div>
 
+      {/* THE REGISTER — a name set large, the palate beneath it in mono, the
+          introduction at the end of the line. Nothing else is ever shown. */}
       {loading ? (
-        <p style={muted}>{t('Looking who’s about…', 'Đang xem ai có mặt…')}</p>
+        <p className="md-quiet">{t('Looking who’s about…', 'Đang xem ai có mặt…')}</p>
       ) : entries.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '28px 0' }}>
-          <p style={muted}>{t('No one’s listed in the directory yet.', 'Chưa có ai trong danh bạ.')} {discoverable ? t('You’re listed — others will appear as they opt in.', 'Bạn đã có tên — những hội viên khác sẽ xuất hiện khi họ tham gia.') : t('Flip the switch above to be found.', 'Bật công tắc phía trên để được tìm thấy.')}</p>
-        </div>
-      ) : entries.map(e => {
-        const requested = sentTo.has(e.member_id)
-        return (
-          <div key={e.member_id} style={card}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={sigil}>{(e.display_name || '?').charAt(0).toUpperCase()}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2' }}>{e.display_name}</div>
-                <div style={{ fontFamily: MONO, fontSize: 11, color: '#D4B85A', opacity: 0.85, marginTop: 2 }}>{paletteSignature(e.vector)}</div>
+        <p className="md-quiet">{t('No one’s listed in the directory yet.', 'Chưa có ai trong danh bạ.')} {discoverable ? t('You’re listed — others will appear as they opt in.', 'Bạn đã có tên — những hội viên khác sẽ xuất hiện khi họ tham gia.') : t('Flip the switch above to be found.', 'Bật công tắc phía trên để được tìm thấy.')}</p>
+      ) : (
+        <div className="md-register">
+          {entries.map(e => {
+            const requested = sentTo.has(e.member_id)
+            return (
+              <div key={e.member_id} className="md-row">
+                <div className="md-name">{e.display_name}</div>
+                <div className="md-sig">{paletteSignature(e.vector)}</div>
+                <button onClick={() => { setTarget(e); setContext(''); setErr('') }} disabled={requested} className="pk-cta md-cta md-ask">
+                  {requested ? t('Requested', 'Đã gửi') : <>{t('Introduce me', 'Giới thiệu tôi')} <span className="pk-go">→</span></>}
+                </button>
               </div>
-              <button onClick={() => { setTarget(e); setContext(''); setErr('') }} disabled={requested} style={{ ...reqBtn, opacity: requested ? 0.4 : 1 }}>
-                {requested ? t('Requested', 'Đã gửi') : t('Introduce me', 'Giới thiệu tôi')}
-              </button>
-            </div>
-          </div>
-        )
-      })}
+            )
+          })}
+        </div>
+      )}
 
       <MemberModal open={!!target} onClose={() => setTarget(null)} title={t('Request an introduction', 'Đề nghị được giới thiệu')} subtitle={target ? `${t('TO', 'GỬI')} ${target.display_name.toUpperCase()}` : ''}>
-        {err && <div style={{ fontFamily: MONO, fontSize: 11, color: '#C27070', marginBottom: 8 }}>{err}</div>}
-        <div style={{ fontFamily: MONO, fontSize: 12, color: '#B2AA98', lineHeight: 1.7, marginBottom: 12 }}>
+        {err && <div className="md-err">{err}</div>}
+        <p className="md-note">
           {t('A line on why, if you like — the club passes it along. They’ll see it; you’ll simply see “pending”.', 'Đôi dòng lý do, nếu bạn muốn — câu lạc bộ sẽ chuyển lời. Họ sẽ đọc được; còn bạn sẽ chỉ thấy “đang chờ”.')}
-        </div>
-        <textarea value={context} onChange={e => setContext(e.target.value.slice(0, 280))} rows={3} placeholder={t('We both seem to love the sherried Speysiders…', 'Có vẻ chúng ta đều mê những chai Speyside ủ thùng sherry…')} style={textarea} />
-        <div style={{ fontFamily: MONO, fontSize: 9, color: '#7E7864', textAlign: 'right', marginTop: 4 }}>{context.length}/280</div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 14 }}>
-          <button onClick={() => setTarget(null)} style={cancelBtn}>{t('Cancel', 'Huỷ')}</button>
-          <button onClick={request} disabled={sending} style={{ ...sendBtn, opacity: sending ? 0.5 : 1 }}>{sending ? t('Sending…', 'Đang gửi…') : t('Request introduction', 'Gửi đề nghị')}</button>
+        </p>
+        <textarea value={context} onChange={e => setContext(e.target.value.slice(0, 280))} rows={3} placeholder={t('We both seem to love the sherried Speysiders…', 'Có vẻ chúng ta đều mê những chai Speyside ủ thùng sherry…')} className="md-field" />
+        <div className="md-count">{context.length}/280</div>
+        <div className="md-actions">
+          <button onClick={() => setTarget(null)} className="md-cancel">{t('Cancel', 'Huỷ')}</button>
+          <button onClick={request} disabled={sending} className="pk-cta md-cta">
+            {sending ? t('Sending…', 'Đang gửi…') : <>{t('Request introduction', 'Gửi đề nghị')} <span className="pk-go">→</span></>}
+          </button>
         </div>
       </MemberModal>
     </MemberPage>
   )
 }
 
-const toggleRow: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, border: '1px solid rgba(212,184,90,0.2)', borderRadius: 12, background: 'rgba(229,212,194,0.03)', padding: '14px 16px', marginBottom: 22 }
-const toggle: React.CSSProperties = { position: 'relative', width: 44, height: 24, borderRadius: 12, border: '1px solid rgba(178,170,152,0.4)', background: 'rgba(178,170,152,0.15)', cursor: 'pointer', flexShrink: 0, padding: 0 }
-const toggleOn: React.CSSProperties = { background: 'rgba(212,184,90,0.4)', border: '1px solid #D4B85A' }
-const knob: React.CSSProperties = { position: 'absolute', top: 1, left: 1, width: 20, height: 20, borderRadius: '50%', background: '#E5D4C2', transition: 'transform 0.2s ease' }
-const muted: React.CSSProperties = { fontFamily: MONO, fontSize: 13, color: '#B2AA98', textAlign: 'center', opacity: 0.7, lineHeight: 1.7 }
-const card: React.CSSProperties = { border: '1px solid rgba(229,212,194,0.1)', borderRadius: 12, background: 'rgba(229,212,194,0.03)', padding: '14px 16px', marginBottom: 10 }
-const sigil: React.CSSProperties = { width: 40, height: 40, borderRadius: '50%', flexShrink: 0, border: '1px solid rgba(212,184,90,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#D4B85A', background: 'rgba(212,184,90,0.08)' }
-const reqBtn: React.CSSProperties = { flexShrink: 0, background: 'rgba(212,184,90,0.12)', border: '1px solid rgba(212,184,90,0.35)', borderRadius: 18, padding: '6px 14px', fontFamily: MONO, fontSize: 10, color: '#D4B85A', cursor: 'pointer', letterSpacing: '0.04em' }
-const textarea: React.CSSProperties = { width: '100%', resize: 'vertical', background: 'rgba(229,212,194,0.06)', border: '1px solid rgba(229,212,194,0.16)', borderRadius: 8, color: '#E5D4C2', fontFamily: MONO, fontSize: 13, lineHeight: 1.6, padding: '10px 12px', outline: 'none', boxSizing: 'border-box' }
-const cancelBtn: React.CSSProperties = { background: 'transparent', border: '1px solid rgba(178,170,152,0.3)', borderRadius: 8, padding: '8px 16px', fontFamily: MONO, fontSize: 12, color: '#B2AA98', cursor: 'pointer' }
-const sendBtn: React.CSSProperties = { background: '#D4B85A', color: '#052E20', border: 'none', borderRadius: 8, padding: '8px 18px', fontFamily: MONO, fontSize: 12, fontWeight: 600, letterSpacing: '0.04em', cursor: 'pointer' }
+const SERIF = "'Rampant Sans', serif"
+const LINE = 'rgba(229,212,194,.18)'
+
+// The modal is portalled to <body>, outside the page, so nothing here leans on
+// an ancestor for its colour — every rule names its own.
+const CSS = `
+  .md-opt { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 28px; align-items: center;
+            max-width: 720px; padding: 22px 0; border-top: 1px solid ${LINE}; border-bottom: 1px solid ${LINE}; }
+  .md-opt-t { font-family: ${SERIF}; font-size: clamp(22px, 2.4vw, 28px); line-height: 1.1; color: #E5D4C2; }
+  .md-opt-s { font-family: ${MONO}; font-size: 13px; line-height: 1.8; color: #E5D4C2; opacity: .78; margin-top: 6px; }
+
+  .md-switch { position: relative; width: 56px; height: 30px; flex: 0 0 auto; padding: 0; cursor: pointer;
+               background: transparent; border: 1px solid rgba(229,212,194,.55); border-radius: 15px;
+               transition: border-color .3s ease, background .3s ease; }
+  .md-switch.is-on { border-color: #D4B85A; background: rgba(212,184,90,.16); }
+  .md-knob { position: absolute; top: 4px; left: 4px; width: 20px; height: 20px; border-radius: 50%; background: #E5D4C2;
+             transition: transform .4s cubic-bezier(.16,.84,.44,1), background .3s ease; }
+  .md-switch.is-on .md-knob { transform: translateX(26px); background: #D4B85A; }
+
+  .md-quiet { font-family: ${MONO}; font-size: 14px; line-height: 1.95; color: #E5D4C2; opacity: .8; max-width: 600px; margin: 64px 0 0; }
+
+  .md-register { margin-top: 72px; }
+  .md-row { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) auto; gap: 36px; align-items: baseline;
+            padding: 28px 0 26px; border-top: 1px solid ${LINE}; }
+  .md-row:last-child { border-bottom: 1px solid ${LINE}; }
+  .md-name { font-family: ${SERIF}; font-size: clamp(32px, 4.2vw, 56px); line-height: .96; color: #E5D4C2; overflow-wrap: anywhere; }
+  .md-sig { font-family: ${MONO}; font-size: 13.5px; line-height: 1.8; color: #D4B85A; }
+
+  .pk-cta.md-cta { margin-top: 0; color: #D4B85A; white-space: nowrap; }
+  .pk-cta.md-cta:disabled { opacity: .45; cursor: not-allowed; }
+  .pk-cta.md-cta:disabled .pk-go { transform: none; }
+  .pk-cta.md-ask:disabled { color: #E5D4C2; opacity: .6; border-bottom-color: transparent; cursor: default; }
+
+  .md-err { font-family: ${MONO}; font-size: 12.5px; line-height: 1.7; color: #E89B9B; margin-bottom: 10px; }
+  .md-note { font-family: ${MONO}; font-size: 13px; line-height: 1.85; color: #E5D4C2; opacity: .82; margin: 0 0 8px; }
+  .md-field { display: block; width: 100%; box-sizing: border-box; resize: vertical; background: transparent; color: #E5D4C2;
+              border: none; border-bottom: 1px solid rgba(229,212,194,.32); border-radius: 0; padding: 12px 0;
+              font-family: ${MONO}; font-size: 14px; line-height: 1.75; outline: none; transition: border-color .25s ease; }
+  .md-field::placeholder { color: rgba(229,212,194,.5); }
+  .md-field:focus { border-bottom-color: #D4B85A; }
+  /* beats the portal's keyboard ring (layout: [class*=member] textarea:focus-visible) — the gold underline is the focus mark */
+  .md-field.md-field:focus-visible { outline: none; border-radius: 0; }
+  .md-count { font-family: ${MONO}; font-size: 11px; color: #E5D4C2; opacity: .6; text-align: right; margin-top: 6px; }
+  .md-actions { display: flex; justify-content: flex-end; align-items: baseline; gap: 28px; margin-top: 22px; flex-wrap: wrap; }
+  .md-cancel { background: none; border: none; padding: 0 0 6px; cursor: pointer; color: #E5D4C2; opacity: .72;
+               font-family: ${MONO}; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; transition: opacity .2s ease; }
+  .md-cancel:hover { opacity: 1; }
+
+  @media (max-width: 760px) {
+    .md-opt { gap: 18px; }
+    .md-register { margin-top: 48px; }
+    .md-row { grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 24px 0 22px; }
+    .pk-cta.md-ask { justify-self: start; margin-top: 12px; }
+    .md-field { font-size: 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .md-switch, .md-knob { transition: none; } }
+`

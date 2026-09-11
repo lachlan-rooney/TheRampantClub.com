@@ -120,30 +120,35 @@ function Concierge() {
       subtitle={t('A LINE TO THE CLUB', 'ĐƯỜNG DÂY RIÊNG VỚI CÂU LẠC BỘ')}
       description={t("Anything at all — a request before you arrive, a bottle you're after, a word about the evening. The Club is listening.", 'Bất cứ điều gì — một yêu cầu trước khi bạn đến, một chai bạn đang tìm, đôi lời về buổi tối. Câu lạc bộ luôn lắng nghe.')}
     >
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
       {gate ? (
-        <div style={gateWrap}>
+        <div className="cg-col cg-gate">
           {gate === 'staff' ? (
             <>
-              <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2', marginBottom: 10 }}>{t('This is the members’ line to the Club.', 'Đây là đường dây riêng của hội viên với Câu lạc bộ.')}</div>
-              <div style={muted}>{t('You’re signed in as staff — members’ messages reach you in the inbox.', 'Bạn đang đăng nhập với tư cách nhân viên — tin nhắn của hội viên sẽ đến hộp thư của bạn.')}</div>
-              <Link href="/admin/concierge" style={gateLink}>{t('Open the Concierge inbox →', 'Mở hộp thư Quản Gia →')}</Link>
+              <h2 className="cg-h2">{t('This is the members’ line to the Club.', 'Đây là đường dây riêng của hội viên với Câu lạc bộ.')}</h2>
+              <p className="cg-quiet">{t('You’re signed in as staff — members’ messages reach you in the inbox.', 'Bạn đang đăng nhập với tư cách nhân viên — tin nhắn của hội viên sẽ đến hộp thư của bạn.')}</p>
+              <Link href="/admin/concierge" className="pk-cta cg-cta">
+                {t('Open the Concierge inbox →', 'Mở hộp thư Quản Gia →').replace(/\s*→$/, '')} <span className="pk-go">→</span>
+              </Link>
             </>
           ) : (
             <>
-              <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2', marginBottom: 10 }}>{t('Not yet available on this account.', 'Tài khoản này chưa thể sử dụng.')}</div>
-              <div style={muted}>{t('Your login isn’t linked to a membership yet. A word with the Club will set it right.', 'Tài khoản đăng nhập của bạn chưa được liên kết với tư cách thành viên. Chỉ cần báo với Câu lạc bộ, chúng tôi sẽ sắp xếp ngay.')}</div>
+              <h2 className="cg-h2">{t('Not yet available on this account.', 'Tài khoản này chưa thể sử dụng.')}</h2>
+              <p className="cg-quiet">{t('Your login isn’t linked to a membership yet. A word with the Club will set it right.', 'Tài khoản đăng nhập của bạn chưa được liên kết với tư cách thành viên. Chỉ cần báo với Câu lạc bộ, chúng tôi sẽ sắp xếp ngay.')}</p>
             </>
           )}
         </div>
       ) : (
-      <div style={panel}>
-        <div ref={scrollRef} style={scroll}>
+      <div className="cg-col">
+        {/* The thread: the Club's voice hung from a gold rule, yours from a
+            cream one at the right; the days marked in the margin of the line. */}
+        <div ref={scrollRef} className="cg-scroll">
           {!loaded ? (
-            <div style={muted}>{t('Opening the thread…', 'Đang mở cuộc trò chuyện…')}</div>
+            <p className="cg-quiet">{t('Opening the thread…', 'Đang mở cuộc trò chuyện…')}</p>
           ) : messages.length === 0 ? (
-            <div style={emptyWrap}>
-              <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2', marginBottom: 8 }}>{t('The Club is listening.', 'Câu lạc bộ luôn lắng nghe.')}</div>
-              <div style={muted}>{t('Start a note below — we read every one.', 'Hãy viết đôi dòng bên dưới — chúng tôi đọc từng tin nhắn.')}</div>
+            <div className="cg-empty">
+              <h2 className="cg-h2">{t('The Club is listening.', 'Câu lạc bộ luôn lắng nghe.')}</h2>
+              <p className="cg-quiet">{t('Start a note below — we read every one.', 'Hãy viết đôi dòng bên dưới — chúng tôi đọc từng tin nhắn.')}</p>
             </div>
           ) : messages.map(m => {
             const mine = m.sender === meId
@@ -151,36 +156,34 @@ function Concierge() {
             const sep = d !== lastDay; lastDay = d
             return (
               <div key={m.id}>
-                {sep && <div style={daySep}>{d}</div>}
-                <div style={{ display: 'flex', justifyContent: mine ? 'flex-end' : 'flex-start', marginBottom: 10 }}>
-                  <div style={mine ? bubbleMine : bubbleClub}>
-                    {!mine && <div style={clubLabel}>The Club</div>}
-                    <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{m.body}</div>
-                    <div style={{ ...stamp, textAlign: mine ? 'right' : 'left' }}>{timeOf(m.created_at, lang)}</div>
-                  </div>
+                {sep && <div className="cg-day"><span>{d}</span></div>}
+                <div className={`cg-msg ${mine ? 'is-mine' : ''}`}>
+                  {!mine && <div className="cg-club">The Club</div>}
+                  <div className="cg-body">{m.body}</div>
+                  <div className="cg-stamp">{timeOf(m.created_at, lang)}</div>
                 </div>
               </div>
             )
           })}
         </div>
 
-        <div style={composer}>
-          {error && <div style={errStyle}>{error}</div>}
-          <textarea
-            value={draft}
-            onChange={e => setDraft(e.target.value.slice(0, 4000))}
-            onKeyDown={onKey}
-            placeholder={t('Write to The Club…', 'Viết cho Câu lạc bộ…')}
-            rows={2}
-            style={textarea}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-            <span style={{ fontFamily: MONO, fontSize: 10, color: '#B2AA98', opacity: 0.5 }}>
-              {t('Enter to send · Shift+Enter for a new line', 'Enter để gửi · Shift+Enter để xuống dòng')}
-            </span>
-            <button onClick={send} disabled={sending || !draft.trim()} style={{ ...sendBtn, opacity: sending || !draft.trim() ? 0.4 : 1 }}>
-              {sending ? t('Sending…', 'Đang gửi…') : t('Send', 'Gửi')}
+        <div className="cg-composer">
+          {error && <div className="cg-err">{error}</div>}
+          <div className="cg-compose-row">
+            <textarea
+              value={draft}
+              onChange={e => setDraft(e.target.value.slice(0, 4000))}
+              onKeyDown={onKey}
+              placeholder={t('Write to The Club…', 'Viết cho Câu lạc bộ…')}
+              rows={2}
+              className="cg-field"
+            />
+            <button onClick={send} disabled={sending || !draft.trim()} className="pk-cta cg-send">
+              {sending ? t('Sending…', 'Đang gửi…') : <>{t('Send', 'Gửi')} <span className="pk-go">→</span></>}
             </button>
+          </div>
+          <div className="cg-hint">
+            {t('Enter to send · Shift+Enter for a new line', 'Enter để gửi · Shift+Enter để xuống dòng')}
           </div>
         </div>
       </div>
@@ -193,18 +196,52 @@ export default function ConciergePage() {
   return <Suspense fallback={null}><Concierge /></Suspense>
 }
 
-const panel: React.CSSProperties = { border: '1px solid rgba(212,184,90,0.20)', borderRadius: 14, background: 'rgba(229,212,194,0.03)', overflow: 'hidden' }
-const scroll: React.CSSProperties = { maxHeight: '52vh', minHeight: 220, overflowY: 'auto', padding: '20px 18px' }
-const composer: React.CSSProperties = { borderTop: '1px solid rgba(212,184,90,0.16)', padding: '14px 16px 16px', background: 'rgba(5,46,32,0.4)' }
-const textarea: React.CSSProperties = { width: '100%', resize: 'vertical', background: 'rgba(229,212,194,0.06)', border: '1px solid rgba(229,212,194,0.16)', borderRadius: 8, color: '#E5D4C2', fontFamily: MONO, fontSize: 13, lineHeight: 1.55, padding: '10px 12px', outline: 'none', boxSizing: 'border-box' }
-const sendBtn: React.CSSProperties = { background: '#D4B85A', color: '#052E20', border: 'none', borderRadius: 8, padding: '8px 20px', fontFamily: MONO, fontSize: 12, fontWeight: 600, letterSpacing: '0.04em', cursor: 'pointer' }
-const bubbleClub: React.CSSProperties = { maxWidth: '80%', background: 'rgba(212,184,90,0.10)', border: '1px solid rgba(212,184,90,0.28)', borderRadius: '4px 12px 12px 12px', padding: '10px 13px', fontFamily: MONO, fontSize: 13, color: '#E5D4C2', lineHeight: 1.55 }
-const bubbleMine: React.CSSProperties = { maxWidth: '80%', background: 'rgba(229,212,194,0.08)', border: '1px solid rgba(229,212,194,0.14)', borderRadius: '12px 4px 12px 12px', padding: '10px 13px', fontFamily: MONO, fontSize: 13, color: '#E5D4C2', lineHeight: 1.55 }
-const clubLabel: React.CSSProperties = { fontFamily: MONO, fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#D4B85A', marginBottom: 4 }
-const stamp: React.CSSProperties = { fontFamily: MONO, fontSize: 9, color: '#B2AA98', opacity: 0.5, marginTop: 5 }
-const daySep: React.CSSProperties = { textAlign: 'center', fontFamily: MONO, fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#B2AA98', opacity: 0.55, margin: '14px 0 12px' }
-const muted: React.CSSProperties = { fontFamily: MONO, fontSize: 12, color: '#B2AA98', opacity: 0.6, fontStyle: 'italic', textAlign: 'center', padding: '20px 0' }
-const emptyWrap: React.CSSProperties = { textAlign: 'center', padding: '36px 12px' }
-const gateWrap: React.CSSProperties = { border: '1px solid rgba(212,184,90,0.20)', borderRadius: 14, background: 'rgba(229,212,194,0.03)', padding: '40px 28px', textAlign: 'center' }
-const gateLink: React.CSSProperties = { display: 'inline-block', marginTop: 16, fontFamily: MONO, fontSize: 12, color: '#D4B85A', textDecoration: 'none', letterSpacing: '0.04em', borderBottom: '1px solid rgba(212,184,90,0.4)', paddingBottom: 2 }
-const errStyle: React.CSSProperties = { fontFamily: MONO, fontSize: 11, color: '#C27070', marginBottom: 8 }
+const SERIF = "'Rampant Sans', serif"
+const LINE = 'rgba(229,212,194,.18)'
+
+const CSS = `
+  .cg-col { max-width: 820px; }
+  .cg-h2 { font-family: ${SERIF}; font-weight: 400; font-size: clamp(30px, 3.6vw, 46px); line-height: 1; color: #E5D4C2; margin: 0 0 16px; }
+  .cg-quiet { font-family: ${MONO}; font-size: 14px; line-height: 1.95; color: #E5D4C2; opacity: .8; max-width: 560px; margin: 0; }
+  .cg-gate { padding-top: 8px; }
+  .pk-cta.cg-cta { color: #D4B85A; }
+
+  .cg-scroll { max-height: 52vh; min-height: 220px; overflow-y: auto; padding: 28px 4px 28px 0;
+               border-top: 1px solid ${LINE}; border-bottom: 1px solid ${LINE};
+               scrollbar-width: thin; scrollbar-color: rgba(229,212,194,.25) transparent; }
+  .cg-empty { padding: 18px 0 8px; }
+
+  .cg-day { display: flex; align-items: center; gap: 16px; margin: 6px 0 22px;
+            font-family: ${MONO}; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: #E5D4C2; }
+  .cg-day span { opacity: .7; white-space: nowrap; }
+  .cg-day::after { content: ''; flex: 1; height: 1px; background: ${LINE}; }
+
+  .cg-msg { width: fit-content; max-width: 78%; margin: 0 0 22px; padding: 2px 0 2px 18px; border-left: 1px solid rgba(212,184,90,.7); }
+  .cg-msg.is-mine { margin-left: auto; padding: 2px 18px 2px 0; border-left: none; border-right: 1px solid rgba(229,212,194,.4); }
+  .cg-club { font-family: ${MONO}; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: #D4B85A; margin-bottom: 6px; }
+  .cg-body { font-family: ${MONO}; font-size: 14px; line-height: 1.85; color: #E5D4C2; white-space: pre-wrap; word-break: break-word; }
+  .cg-stamp { font-family: ${MONO}; font-size: 11px; letter-spacing: .06em; color: #E5D4C2; opacity: .6; margin-top: 6px; }
+  .cg-msg.is-mine .cg-stamp { text-align: right; }
+
+  .cg-composer { padding-top: 18px; }
+  .cg-err { font-family: ${MONO}; font-size: 12.5px; line-height: 1.7; color: #E89B9B; margin-bottom: 8px; }
+  .cg-compose-row { display: flex; align-items: flex-end; gap: 28px; }
+  .cg-field { flex: 1; min-width: 0; display: block; width: 100%; box-sizing: border-box; resize: vertical; background: transparent; color: #E5D4C2;
+              border: none; border-bottom: 1px solid rgba(229,212,194,.32); border-radius: 0; padding: 12px 0;
+              font-family: ${MONO}; font-size: 14px; line-height: 1.7; outline: none; transition: border-color .25s ease; }
+  .cg-field::placeholder { color: rgba(229,212,194,.5); }
+  .cg-field:focus { border-bottom-color: #D4B85A; }
+  /* beats the portal's keyboard ring (layout: [class*=member] textarea:focus-visible) — the gold underline is the focus mark */
+  .cg-field.cg-field:focus-visible { outline: none; border-radius: 0; }
+  .pk-cta.cg-send { margin: 0 0 12px; color: #D4B85A; white-space: nowrap; }
+  .pk-cta.cg-send:disabled { opacity: .4; cursor: not-allowed; }
+  .pk-cta.cg-send:disabled .pk-go { transform: none; }
+  .cg-hint { font-family: ${MONO}; font-size: 11.5px; letter-spacing: .02em; line-height: 1.7; color: #E5D4C2; opacity: .6; margin-top: 12px; }
+
+  @media (max-width: 760px) {
+    .cg-msg { max-width: 88%; }
+    .cg-compose-row { flex-direction: column; align-items: stretch; gap: 16px; }
+    .pk-cta.cg-send { align-self: flex-end; margin-bottom: 0; }
+    .cg-field { font-size: 16px; }
+  }
+`

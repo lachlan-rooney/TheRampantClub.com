@@ -12,18 +12,6 @@ function formatDate(d: string | null, lang: Lang = 'en'): string {
   return new Date(d).toLocaleDateString(lang === 'vn' ? 'vi-VN' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-const inputStyle: React.CSSProperties = {
-  background: 'rgba(229,212,194,0.06)', color: '#E5D4C2',
-  border: '1px solid rgba(229,212,194,0.1)', borderRadius: 6,
-  padding: '8px 12px', fontFamily: "'Google Sans Code', 'DM Mono', monospace",
-  fontSize: 12, width: '100%', boxSizing: 'border-box', outline: 'none',
-}
-
-const labelStyle: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10,
-  color: '#B2AA98', letterSpacing: '0.04em', display: 'block', marginBottom: 4,
-}
-
 const INTERESTS = ['Golf', 'Tennis', 'Padel', 'Running', 'Whisky Tastings', 'Private Dinners', 'Art & Exhibitions', 'Cigar Evenings']
 // Display only — the English value above is what is stored in preferences.
 const INTEREST_VN: Record<string, string> = {
@@ -144,106 +132,76 @@ export default function ProfilePage() {
 
   return (
     <MemberPage title="My Membership" subtitle="Tư Cách Thành Viên">
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
       {loading ? (
-        <div style={{ maxWidth: 400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="pf-skel">
           <SkeletonLines lines={4} />
           <div style={{ height: 12 }} />
           <SkeletonLines lines={3} />
         </div>
       ) : (
-        <>
-          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+        <div className="pf-grid">
+          {/* ══ THE RECORD — what the Club holds, read-only ═══════════════ */}
+          <div className="pf-record">
             {profile?.member_no ? (
-              <div style={{
-                fontFamily: "'Rampant Sans', serif", fontSize: 48, fontWeight: 500,
-                color: '#E5D4C2', marginBottom: 8,
-              }}>
+              <div className="pf-no">
                 {t('No.', 'Số')} {profile.member_no.replace(/^TRC-M/i, '')}
               </div>
             ) : (
-              <p style={{
-                fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12,
-                fontStyle: 'italic', color: '#B2AA98',
-              }}>
+              <p className="pf-quiet">
                 {t('Your membership number will be assigned by the Committee.', 'Số thành viên của bạn sẽ do Hội đồng cấp.')}
               </p>
             )}
-          </div>
 
-          <div style={{ maxWidth: 400, margin: '0 auto' }}>
-            {readOnlyFields.map(f => (
-              <div key={f.label} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-                padding: '10px 0', borderBottom: '1px solid rgba(229,212,194,0.1)',
-              }}>
-                <span style={{ ...labelStyle, marginBottom: 0 }}>{f.label}</span>
-                <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: '#E5D4C2', textAlign: 'right' }}>
-                  {f.value}
-                </span>
-              </div>
-            ))}
+            <dl className="pf-rows">
+              {readOnlyFields.map(f => (
+                <div key={f.label}>
+                  <dt>{f.label}</dt>
+                  <dd>{f.value}</dd>
+                </div>
+              ))}
+            </dl>
 
             {/* Membership & Receipts */}
             {membership && (membership.status || membership.payments.length > 0) && (
-              <div style={{ marginTop: 36 }}>
-                <h3 style={{
-                  fontFamily: "'Rampant Sans', serif", fontSize: 20, fontWeight: 500,
-                  color: '#E5D4C2', textAlign: 'center', letterSpacing: '0.04em', marginBottom: 20,
-                }}>
+              <div className="pf-section">
+                <h2 className="pf-h2">
                   {t('Membership & Receipts', 'Tư cách thành viên & Biên nhận')}
-                </h3>
+                </h2>
 
                 {membership.status && (() => {
                   const badge = membershipBadge(membership.status, t)
                   return (
-                    <div style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '14px 16px', marginBottom: 16, borderRadius: 8,
-                      background: 'rgba(229,212,194,0.04)', border: '1px solid rgba(229,212,194,0.1)',
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ width: 9, height: 9, borderRadius: '50%', background: badge.color, display: 'inline-block' }} />
-                        <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: '#E5D4C2' }}>{badge.label}</span>
+                    <div className="pf-status">
+                      <div className="pf-badge">
+                        <span className="pf-dot" style={{ background: badge.color }} />
+                        <span>{badge.label}</span>
                       </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ ...labelStyle, marginBottom: 2 }}>{t('Paid through', 'Đã thanh toán đến')}</div>
-                        <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: '#E5D4C2' }}>
-                          {formatDate(membership.status.paid_through, lang)}
-                        </div>
+                      <div className="pf-paid">
+                        <div className="pf-label">{t('Paid through', 'Đã thanh toán đến')}</div>
+                        <div className="pf-paid-d">{formatDate(membership.status.paid_through, lang)}</div>
                       </div>
                     </div>
                   )
                 })()}
 
                 {membership.payments.length > 0 && (
-                  <div>
-                    <div style={{ ...labelStyle, marginBottom: 8 }}>{t('Receipts', 'Biên nhận')}</div>
+                  <div className="pf-receipts">
+                    <div className="pf-label">{t('Receipts', 'Biên nhận')}</div>
                     {membership.payments.map(p => (
-                      <div key={p.id} style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
-                        padding: '10px 0', borderBottom: '1px solid rgba(229,212,194,0.08)',
-                      }}>
-                        <div>
-                          <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: '#E5D4C2' }}>
-                            {fmtVnd(p.amount_vnd)}
-                          </div>
-                          <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>
+                      <div key={p.id} className="pf-receipt">
+                        <div style={{ minWidth: 0 }}>
+                          <div className="pf-amt">{fmtVnd(p.amount_vnd)}</div>
+                          <div className="pf-meta">
                             {FEE_LABEL[p.fee_kind] ? t(FEE_LABEL[p.fee_kind].en, FEE_LABEL[p.fee_kind].vn) : p.fee_kind} · {formatDate(p.payment_date, lang)} · {p.receipt_no}
                           </div>
                         </div>
                         {p.receipt_available ? (
-                          <a
-                            href={`/api/members/receipts/${p.id}`} target="_blank" rel="noreferrer"
-                            style={{
-                              fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11,
-                              color: '#D4B85A', textDecoration: 'none', border: '1px solid rgba(212,184,90,0.35)',
-                              borderRadius: 6, padding: '6px 14px', whiteSpace: 'nowrap',
-                            }}
-                          >
+                          <a href={`/api/members/receipts/${p.id}`} target="_blank" rel="noreferrer" className="pf-pdf">
                             {t('Download PDF', 'Tải PDF')}
                           </a>
                         ) : (
-                          <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#7E7864' }}>{t('Preparing…', 'Đang chuẩn bị…')}</span>
+                          <span className="pf-preparing">{t('Preparing…', 'Đang chuẩn bị…')}</span>
                         )}
                       </div>
                     ))}
@@ -251,76 +209,62 @@ export default function ProfilePage() {
                 )}
               </div>
             )}
+          </div>
 
-            {/* Editable details */}
-            <div style={{ marginTop: 32 }}>
-              <div style={{ marginBottom: 16 }}>
-                <label style={labelStyle}>{t('Display Name', 'Tên hiển thị')}</label>
-                <input style={inputStyle} value={displayName} onChange={e => setDisplayName(e.target.value)} />
-              </div>
-              <div style={{ marginBottom: 16 }}>
-                <label style={labelStyle}>{t('Preferred Dram', 'Ly whisky ưa thích')}</label>
-                <input style={inputStyle} value={preferredDram} onChange={e => setPreferredDram(e.target.value)} />
-              </div>
+          {/* ══ WHAT YOU TELL US — the parts you can change ═══════════════ */}
+          <div className="pf-form">
+            <div className="pf-field">
+              <label className="pf-label">{t('Display Name', 'Tên hiển thị')}</label>
+              <input className="pf-input" value={displayName} onChange={e => setDisplayName(e.target.value)} />
+            </div>
+            <div className="pf-field">
+              <label className="pf-label">{t('Preferred Dram', 'Ly whisky ưa thích')}</label>
+              <input className="pf-input" value={preferredDram} onChange={e => setPreferredDram(e.target.value)} />
             </div>
 
-            {/* Preferences */}
-            <div style={{
-              width: 8, height: 8, background: '#E5D4C2',
-              transform: 'rotate(45deg)', opacity: 0.15, margin: '36px auto',
-            }} />
-
-            <h3 style={{
-              fontFamily: "'Rampant Sans', serif", fontSize: 20, fontWeight: 500,
-              color: '#E5D4C2', textAlign: 'center', letterSpacing: '0.04em', marginBottom: 24,
-            }}>
+            <h2 className="pf-h2 pf-prefs">
               {t('Preferences', 'Tuỳ chọn cá nhân')}
-            </h3>
+            </h2>
 
-            <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>{t('Dietary Requirements', 'Chế độ ăn uống')}</label>
+            <div className="pf-field">
+              <label className="pf-label">{t('Dietary Requirements', 'Chế độ ăn uống')}</label>
               <input
-                style={inputStyle}
+                className="pf-input"
                 placeholder={t('e.g. Vegetarian, Pescatarian, Halal', 'VD: Ăn chay, Ăn cá, Halal')}
                 value={prefs.dietary || ''}
                 onChange={e => setPrefs(p => ({ ...p, dietary: e.target.value }))}
               />
             </div>
 
-            <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>{t('Allergies', 'Dị ứng')}</label>
+            <div className="pf-field">
+              <label className="pf-label">{t('Allergies', 'Dị ứng')}</label>
               <input
-                style={inputStyle}
+                className="pf-input"
                 placeholder={t('e.g. Shellfish, nuts', 'VD: Hải sản có vỏ, các loại hạt')}
                 value={prefs.allergies || ''}
                 onChange={e => setPrefs(p => ({ ...p, allergies: e.target.value }))}
               />
             </div>
 
-            <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>{t('Drink Preferences (beyond whisky)', 'Đồ uống ưa thích (ngoài whisky)')}</label>
+            <div className="pf-field">
+              <label className="pf-label">{t('Drink Preferences (beyond whisky)', 'Đồ uống ưa thích (ngoài whisky)')}</label>
               <input
-                style={inputStyle}
+                className="pf-input"
                 placeholder={t('e.g. Negronis, natural wine, no beer', 'VD: Negroni, vang tự nhiên, không bia')}
                 value={prefs.drink_preferences || ''}
                 onChange={e => setPrefs(p => ({ ...p, drink_preferences: e.target.value }))}
               />
             </div>
 
-            <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>{t('Preferred Contact Method', 'Cách liên hệ ưa thích')}</label>
-              <div style={{ display: 'flex', gap: 8 }}>
+            <div className="pf-field">
+              <label className="pf-label">{t('Preferred Contact Method', 'Cách liên hệ ưa thích')}</label>
+              <div className="pf-opts">
                 {['Email', 'Zalo', 'WhatsApp', 'Phone'].map(m => (
                   <button
                     key={m}
                     onClick={() => setPrefs(p => ({ ...p, contact_method: m }))}
-                    style={{
-                      fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11,
-                      borderRadius: 20, padding: '6px 14px', cursor: 'pointer',
-                      border: prefs.contact_method === m ? 'none' : '1px solid rgba(229,212,194,0.15)',
-                      background: prefs.contact_method === m ? 'rgba(229,212,194,0.12)' : 'transparent',
-                      color: prefs.contact_method === m ? '#E5D4C2' : '#B2AA98',
-                    }}
+                    className={`pf-opt ${prefs.contact_method === m ? 'is-on' : ''}`}
+                    aria-pressed={prefs.contact_method === m}
                   >
                     {t(m, CONTACT_VN[m])}
                   </button>
@@ -328,20 +272,15 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>{t('Interests', 'Sở thích')}</label>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div className="pf-field">
+              <label className="pf-label">{t('Interests', 'Sở thích')}</label>
+              <div className="pf-opts">
                 {INTERESTS.map(i => (
                   <button
                     key={i}
                     onClick={() => toggleInterest(i)}
-                    style={{
-                      fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11,
-                      borderRadius: 20, padding: '6px 14px', cursor: 'pointer',
-                      border: (prefs.interests || []).includes(i) ? 'none' : '1px solid rgba(229,212,194,0.15)',
-                      background: (prefs.interests || []).includes(i) ? 'rgba(229,212,194,0.12)' : 'transparent',
-                      color: (prefs.interests || []).includes(i) ? '#E5D4C2' : '#B2AA98',
-                    }}
+                    className={`pf-opt ${(prefs.interests || []).includes(i) ? 'is-on' : ''}`}
+                    aria-pressed={(prefs.interests || []).includes(i)}
                   >
                     {t(i, INTEREST_VN[i])}
                   </button>
@@ -349,10 +288,10 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div style={{ marginBottom: 24 }}>
-              <label style={labelStyle}>{t('Preferred Seating', 'Chỗ ngồi ưa thích')}</label>
+            <div className="pf-field">
+              <label className="pf-label">{t('Preferred Seating', 'Chỗ ngồi ưa thích')}</label>
               <input
-                style={inputStyle}
+                className="pf-input"
                 placeholder={t('e.g. Rooftop, Library Bar corner, Rampant Room', 'VD: Sân thượng, góc Library Bar, Rampant Room')}
                 value={prefs.seating || ''}
                 onChange={e => setPrefs(p => ({ ...p, seating: e.target.value }))}
@@ -360,33 +299,89 @@ export default function ProfilePage() {
             </div>
 
             {/* Save */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                style={{
-                  background: 'rgba(229,212,194,0.1)', color: '#E5D4C2', border: 'none', borderRadius: 6,
-                  padding: '10px 24px', cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1,
-                  fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12,
-                  transition: 'opacity 0.2s ease',
-                }}
-              >
-                {saving ? t('Saving…', 'Đang lưu…') : t('Save', 'Lưu')}
+            <div className="pf-save">
+              <button onClick={handleSave} disabled={saving} className="pk-cta pf-cta">
+                {saving ? t('Saving…', 'Đang lưu…') : <>{t('Save', 'Lưu')} <span className="pk-go">→</span></>}
               </button>
-              {saved && (
-                <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#7AB07A' }}>
-                  {t('Saved', 'Đã lưu')}
-                </span>
-              )}
-              {saveErr && (
-                <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#C27070' }}>
-                  {saveErr}
-                </span>
-              )}
+              {saved && <span className="pf-saved">{t('Saved', 'Đã lưu')}</span>}
+              {saveErr && <span className="pf-err">{saveErr}</span>}
             </div>
           </div>
-        </>
+        </div>
       )}
     </MemberPage>
   )
 }
+
+const MONO = "'Google Sans Code', 'DM Mono', monospace"
+const SERIF = "'Rampant Sans', serif"
+const LINE = 'rgba(229,212,194,.18)'
+
+const CSS = `
+  .pf-skel { max-width: 420px; display: flex; flex-direction: column; gap: 16px; }
+  .pf-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 96px; align-items: start; }
+
+  .pf-no { font-family: ${SERIF}; font-size: clamp(72px, 9vw, 132px); line-height: .88; color: #D4B85A; margin: 0 0 40px; }
+  .pf-quiet { font-family: ${MONO}; font-size: 14px; line-height: 1.95; color: #E5D4C2; opacity: .82; max-width: 460px; margin: 0 0 36px; }
+
+  .pf-rows { margin: 0; }
+  .pf-rows > div { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 16px; align-items: baseline;
+                   padding: 15px 0; border-top: 1px solid ${LINE}; }
+  .pf-rows > div:last-child { border-bottom: 1px solid ${LINE}; }
+  .pf-rows dt { font-family: ${MONO}; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: #E5D4C2; opacity: .7; }
+  .pf-rows dd { margin: 0; font-family: ${MONO}; font-size: 14px; line-height: 1.6; color: #E5D4C2; overflow-wrap: anywhere; }
+
+  .pf-section { margin-top: 64px; }
+  .pf-h2 { font-family: ${SERIF}; font-weight: 400; font-size: clamp(30px, 3.4vw, 44px); line-height: 1; color: #E5D4C2; margin: 0 0 24px; }
+  .pf-label { display: block; font-family: ${MONO}; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: #E5D4C2; opacity: .72; }
+
+  .pf-status { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap;
+               padding: 18px 0; border-top: 1px solid ${LINE}; border-bottom: 1px solid ${LINE}; }
+  .pf-badge { display: flex; align-items: center; gap: 12px; font-family: ${SERIF}; font-size: 26px; line-height: 1; color: #E5D4C2; }
+  .pf-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
+  .pf-paid { text-align: right; }
+  .pf-paid-d { font-family: ${MONO}; font-size: 14px; color: #E5D4C2; margin-top: 6px; }
+
+  .pf-receipts { margin-top: 36px; }
+  .pf-receipts > .pf-label { margin-bottom: 8px; }
+  .pf-receipt { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 0; border-top: 1px solid ${LINE}; }
+  .pf-receipt:last-child { border-bottom: 1px solid ${LINE}; }
+  .pf-amt { font-family: ${SERIF}; font-size: 26px; line-height: 1.05; color: #E5D4C2; }
+  .pf-meta { font-family: ${MONO}; font-size: 12.5px; line-height: 1.7; color: #E5D4C2; opacity: .75; margin-top: 4px; }
+  .pf-pdf { flex: 0 0 auto; white-space: nowrap; color: #D4B85A; text-decoration: none; padding-bottom: 5px; border-bottom: 1px solid #D4B85A;
+            font-family: ${MONO}; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+  .pf-preparing { flex: 0 0 auto; font-family: ${MONO}; font-size: 12px; color: #E5D4C2; opacity: .65; }
+
+  .pf-field { margin-bottom: 30px; }
+  .pf-input { display: block; width: 100%; box-sizing: border-box; background: transparent; color: #E5D4C2;
+              border: none; border-bottom: 1px solid rgba(229,212,194,.32); border-radius: 0; padding: 12px 0 11px;
+              font-family: ${MONO}; font-size: 14px; letter-spacing: .01em; outline: none; transition: border-color .25s ease; }
+  .pf-input::placeholder { color: rgba(229,212,194,.5); }
+  .pf-input:focus { border-bottom-color: #D4B85A; }
+  /* beats the portal's keyboard ring (layout: [class*=member] textarea:focus-visible) — the gold underline is the focus mark */
+  .pf-input.pf-input:focus-visible { outline: none; border-radius: 0; }
+  .pf-prefs { margin-top: 64px; margin-bottom: 30px; }
+
+  .pf-opts { display: flex; flex-wrap: wrap; gap: 10px 24px; margin-top: 14px; }
+  .pf-opt { background: none; border: none; border-bottom: 1px solid rgba(229,212,194,.22); border-radius: 0; padding: 0 0 5px; cursor: pointer;
+            font-family: ${MONO}; font-size: 13px; letter-spacing: .02em; color: #E5D4C2; opacity: .72;
+            transition: opacity .2s ease, color .2s ease, border-color .2s ease; }
+  .pf-opt:hover { opacity: 1; }
+  .pf-opt.is-on { color: #D4B85A; opacity: 1; border-bottom-color: #D4B85A; }
+
+  .pf-save { display: flex; align-items: baseline; gap: 22px; flex-wrap: wrap; margin-top: 12px; }
+  .pk-cta.pf-cta { margin-top: 0; color: #D4B85A; }
+  .pk-cta.pf-cta:disabled { opacity: .5; cursor: default; }
+  .pf-saved { font-family: ${MONO}; font-size: 12.5px; color: #D4B85A; }
+  .pf-err { font-family: ${MONO}; font-size: 12.5px; color: #E89B9B; }
+
+  @media (max-width: 960px) {
+    .pf-grid { grid-template-columns: minmax(0, 1fr); gap: 72px; }
+  }
+  @media (max-width: 760px) {
+    .pf-rows > div { grid-template-columns: 112px minmax(0, 1fr); }
+    .pf-input { font-size: 16px; }
+    .pf-status { align-items: flex-start; }
+    .pf-paid { text-align: left; }
+  }
+`

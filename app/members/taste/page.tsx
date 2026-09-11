@@ -8,12 +8,17 @@ import { fetchCategories, RADAR_GOLD, type Cat, type ShapeValues } from '@/compo
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { buildTasteNarrative, vectorToShape, type TasteVector, type TasteSources } from '@/lib/whisky/taste-narrative'
 import { useLang } from '@/lib/lang'
+import { WhiskyStyle, bare, RADAR } from '@/components/whisky/WhiskyStyle'
+import { Rise, CREAM, GOLD, MONO, SERIF } from '@/components/public/kit'
+import { CreamInk } from '@/components/public/CreamInk'
 
 // A linked member's OWN palate, in TRC voice — narrative + radar + the bottles
 // that shape it. NO raw scores/parameters. member_taste_profiles is read via the
 // member-own RLS (proven 0a), so the query returns only their row.
-
-const FAMILY = "'Google Sans Code', 'DM Mono', monospace"
+//
+// Set as the house sets a portrait: the narrative in the display face on the
+// left, large, with the radar given the right half; the bottles that shape it
+// beneath as a numbered list on hairlines, a lion with his dram beside them.
 
 // ── THE VIETNAMESE NARRATIVE ────────────────────────────────────────────────
 // buildTasteNarrative (lib/whisky/taste-narrative) speaks English only. This is
@@ -68,15 +73,8 @@ export default function MyTastePage() {
   const [narrativeVn, setNarrativeVn] = useState('')
   const [lovedBottles, setLovedBottles] = useState<string[]>([])
   const [notedCount, setNotedCount] = useState(0)
-  // Responsive radar: MemberPage gives ~280px of content width at 360px, so a
-  // fixed 300 would overflow. Cap to the viewport (clamped 240–300).
-  const [radarSize, setRadarSize] = useState(300)
-
-  useEffect(() => {
-    const fit = () => setRadarSize(Math.max(240, Math.min(300, window.innerWidth - 96)))
-    fit(); window.addEventListener('resize', fit)
-    return () => window.removeEventListener('resize', fit)
-  }, [])
+  // The radar scales to its column (.wl-radar); drawn at the pages' RADAR size.
+  const radarSize = RADAR
 
   useEffect(() => {
     const supabase = createBrowserSupabaseClient()
@@ -102,36 +100,53 @@ export default function MyTastePage() {
 
   return (
     <MemberPage title="Your Palate" subtitle="Khẩu Vị Của Bạn">
+      <WhiskyStyle />
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
       {loading ? (
-        <p style={muted}>{t('Reading your palate…', 'Đang đọc khẩu vị của bạn…')}</p>
+        <p className="wl-text">{t('Reading your palate…', 'Đang đọc khẩu vị của bạn…')}</p>
       ) : !hasProfile ? (
-        <div style={emptyWrap}>
-          <p style={muted}>{t("We're still learning your palate. Tell us the drams you love — explore the", 'Chúng tôi vẫn đang tìm hiểu khẩu vị của bạn. Hãy cho chúng tôi biết những ly bạn yêu thích — khám phá')} <Link href="/members/whisky" style={link}>{t('Whisky Library', 'Thư Viện Whisky')}</Link> {t('or try the', 'hoặc thử')} <Link href="/members/whisky/finder" style={link}>{t('Flavour Finder', 'Tìm Ly Của Bạn')}</Link>{t(', and your profile will take shape.', ', và hồ sơ khẩu vị của bạn sẽ dần hình thành.')}</p>
-        </div>
+        <section>
+          <Rise>
+            <p className="wt-empty-text">{t("We're still learning your palate. Tell us the drams you love — explore the", 'Chúng tôi vẫn đang tìm hiểu khẩu vị của bạn. Hãy cho chúng tôi biết những ly bạn yêu thích — khám phá')} <Link href="/members/whisky" className="wl-inline">{t('Whisky Library', 'Thư Viện Whisky')}</Link> {t('or try the', 'hoặc thử')} <Link href="/members/whisky/finder" className="wl-inline">{t('Flavour Finder', 'Tìm Ly Của Bạn')}</Link>{t(', and your profile will take shape.', ', và hồ sơ khẩu vị của bạn sẽ dần hình thành.')}</p>
+          </Rise>
+        </section>
       ) : (
         <>
-          {narrative && <p style={narrativeText}>{lang === 'vn' ? (narrativeVn || narrative) : narrative}</p>}
+          <section className={`wt-grid ${cats && shape && Object.keys(shape).length > 0 ? '' : 'is-single'}`}>
+            <div>
+              {narrative && <Rise><p className="wt-narrative">{lang === 'vn' ? (narrativeVn || narrative) : narrative}</p></Rise>}
 
-          {notedCount > 0 && (
-            <p style={shapedLine}>
-              {t(`✒ Shaped by your ${notedCount} tasting note${notedCount === 1 ? '' : 's'} — keep logging and your palate sharpens.`, `✒ Được định hình từ ${notedCount} ghi chú nếm thử của bạn — tiếp tục ghi lại để khẩu vị thêm tinh tường.`)}
-            </p>
-          )}
-
-          {cats && shape && Object.keys(shape).length > 0 && (
-            <div style={radarWrap}>
-              <RadarChart cats={cats} shapes={[{ values: shape, color: RADAR_GOLD, label: '' }]} size={radarSize} />
+              {notedCount > 0 && (
+                <Rise delay={.08}>
+                  <p className="wt-shaped">
+                    {t(`✒ Shaped by your ${notedCount} tasting note${notedCount === 1 ? '' : 's'} — keep logging and your palate sharpens.`, `✒ Được định hình từ ${notedCount} ghi chú nếm thử của bạn — tiếp tục ghi lại để khẩu vị thêm tinh tường.`)}
+                  </p>
+                </Rise>
+              )}
             </div>
-          )}
+
+            {cats && shape && Object.keys(shape).length > 0 && (
+              <Rise delay={.12} className="wl-radar wt-radar">
+                <RadarChart cats={cats} shapes={[{ values: shape, color: RADAR_GOLD, label: '' }]} size={radarSize} />
+              </Rise>
+            )}
+          </section>
 
           {lovedBottles.length > 0 && (
-            <div style={{ marginTop: 8 }}>
-              <div style={sectionLabel}>{t('The drams that shape your profile', 'Những ly định hình khẩu vị của bạn')}</div>
-              <ul style={bottleList}>
-                {lovedBottles.map((b, i) => <li key={i} style={bottleItem}>{b}</li>)}
-              </ul>
-              <Link href="/members/whisky" style={{ ...link, fontSize: 11 }}>{t('Explore the library →', 'Khám phá thư viện →')}</Link>
-            </div>
+            <section className="wt-loved">
+              <div className="wt-loved-head">
+                <Rise><h2 className="wl-h is-2">{t('The drams that shape your profile', 'Những ly định hình khẩu vị của bạn')}</h2></Rise>
+                <Rise delay={.1} className="wt-loved-ink"><CreamInk name="lion-suit" width="100%" rot={4} dur={9} /></Rise>
+              </div>
+              <ol className="wt-list">
+                {lovedBottles.map((b, i) => (
+                  <li key={i}><span className="wt-num">{String(i + 1).padStart(2, '0')}</span><span className="wt-name">{b}</span></li>
+                ))}
+              </ol>
+              <Link href="/members/whisky" className="wl-link is-gold is-big" style={{ marginTop: 30 }}>
+                {bare(t('Explore the library →', 'Khám phá thư viện →'))} <span className="pk-go" aria-hidden="true">→</span>
+              </Link>
+            </section>
           )}
         </>
       )}
@@ -139,12 +154,33 @@ export default function MyTastePage() {
   )
 }
 
-const muted: React.CSSProperties = { fontFamily: FAMILY, fontSize: 13, color: '#B2AA98', lineHeight: 1.7, textAlign: 'center' }
-const emptyWrap: React.CSSProperties = { maxWidth: 460, margin: '24px auto', textAlign: 'center' }
-const narrativeText: React.CSSProperties = { fontFamily: "'Rampant Sans', serif", fontSize: 21, lineHeight: 1.55, color: '#E5D4C2', textAlign: 'center', maxWidth: 520, margin: '4px auto 8px' }
-const shapedLine: React.CSSProperties = { fontFamily: FAMILY, fontSize: 11, color: '#D4B85A', textAlign: 'center', letterSpacing: '0.04em', opacity: 0.85, margin: '0 auto 10px' }
-const radarWrap: React.CSSProperties = { display: 'flex', justifyContent: 'center', margin: '12px 0 24px' }
-const sectionLabel: React.CSSProperties = { fontFamily: FAMILY, fontSize: 10, color: '#D4B85A', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 12, textAlign: 'center' }
-const bottleList: React.CSSProperties = { listStyle: 'none', padding: 0, margin: '0 auto 14px', maxWidth: 460 }
-const bottleItem: React.CSSProperties = { fontFamily: FAMILY, fontSize: 13, color: '#E5D4C2', padding: '9px 0', borderBottom: '1px solid rgba(229,212,194,0.08)', textAlign: 'center' }
-const link: React.CSSProperties = { color: '#D4B85A', textDecoration: 'none', borderBottom: '1px solid rgba(212,184,90,0.35)' }
+const CSS = `
+  .wt-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 72px; align-items: center; }
+  .wt-grid.is-single { grid-template-columns: minmax(0, 1fr); }
+  .wt-narrative { font-family: ${SERIF}; font-weight: 400; font-size: clamp(26px, 2.9vw, 40px); line-height: 1.14;
+                  color: ${CREAM}; margin: 0; max-width: 620px; }
+  .wt-shaped { font-family: ${MONO}; font-size: 12.5px; line-height: 1.9; color: ${GOLD}; margin: 26px 0 0; max-width: 520px; }
+  .wt-radar { max-width: 540px; justify-self: end; }
+
+  .wt-loved { margin-top: 120px; }
+  .wt-loved-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: end; margin-bottom: 34px; }
+  .wt-loved-ink { width: clamp(120px, 13vw, 190px); margin-right: 4%; }
+  .wt-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 56px; }
+  .wt-list li { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 10px; align-items: baseline;
+                padding: 16px 0 18px; border-top: 1px solid rgba(229,212,194,.16); }
+  .wt-num { font-family: ${MONO}; font-size: 11px; letter-spacing: .12em; color: ${GOLD}; }
+  .wt-name { font-family: ${SERIF}; font-size: clamp(21px, 2.1vw, 27px); line-height: 1.08; color: ${CREAM}; overflow-wrap: anywhere; }
+
+  .wt-empty-text { font-family: ${MONO}; font-size: 14px; line-height: 2; color: ${CREAM}; opacity: .9; max-width: 600px; margin: 0; }
+
+  @media (max-width: 860px) {
+    .wt-grid { grid-template-columns: minmax(0, 1fr); gap: 36px; }
+    .wt-radar { justify-self: stretch; max-width: 480px; }
+    .wt-list { grid-template-columns: minmax(0, 1fr); }
+    .wt-loved { margin-top: 88px; }
+  }
+  @media (max-width: 600px) {
+    .wt-loved-ink { width: 92px; margin-right: 0; }
+    .wt-empty-text { font-size: 13.5px; line-height: 1.95; }
+  }
+`

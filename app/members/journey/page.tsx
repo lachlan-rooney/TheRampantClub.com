@@ -8,12 +8,17 @@ import RadarChart from '@/components/whisky/RadarChart'
 import { fetchCategories, RADAR_GOLD, type Cat, type ShapeValues } from '@/components/whisky/flavour-data'
 import { vectorToShape, type TasteVector } from '@/lib/whisky/taste-narrative'
 import { useLang } from '@/lib/lang'
+import { WhiskyStyle, RADAR } from '@/components/whisky/WhiskyStyle'
+import { Rise, CREAM, GOLD, MONO, SERIF } from '@/components/public/kit'
+import { CreamInk } from '@/components/public/CreamInk'
 
 // Your Whisky Journey — the timeline of becoming. Current palate up top, then the
 // real milestones, an honest drift line (only when earned), and the chronological
 // story of drams + notes. Sparse → an invitation, never a barren page.
-
-const MONO = "'Google Sans Code', 'DM Mono', monospace"
+//
+// Set to the house standard: the drift line large and the milestones as big
+// numbers on the left, the palate's radar on the right; the story beneath as
+// a run of dated entries on hairlines, a lion at his ease beside its heading.
 
 interface Entry { kind: 'dram' | 'note'; date: string; whisky_id?: string; whisky_name: string; distillery?: string | null; note?: string; flavour_tags?: string[] }
 interface Milestone { label: string; value: string }
@@ -51,12 +56,8 @@ export default function Journey() {
   const [timeline, setTimeline] = useState<Entry[]>([])
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [drift, setDrift] = useState<{ line: string; family?: string } | null>(null)
-  const [size, setSize] = useState(280)
-
-  useEffect(() => {
-    const fit = () => setSize(Math.max(240, Math.min(300, window.innerWidth - 96)))
-    fit(); window.addEventListener('resize', fit); return () => window.removeEventListener('resize', fit)
-  }, [])
+  // The radar scales to its column (.wl-radar); drawn at the pages' RADAR size.
+  const size = RADAR
 
   useEffect(() => {
     const supabase = createBrowserSupabaseClient()
@@ -76,52 +77,68 @@ export default function Journey() {
 
   return (
     <MemberPage title="Your Journey" subtitle="HÀNH TRÌNH CỦA BẠN" description={t('Every dram and every note becomes part of your story. This is it, unfolding.', 'Mỗi ly rượu, mỗi ghi chú đều trở thành một phần câu chuyện của bạn. Và đây là câu chuyện ấy, đang dần mở ra.')}>
+      <WhiskyStyle />
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
       {loading ? (
-        <p style={muted}>{t('Tracing your path…', 'Đang lần theo hành trình của bạn…')}</p>
+        <p className="wl-text">{t('Tracing your path…', 'Đang lần theo hành trình của bạn…')}</p>
       ) : (
         <>
-          {hasPalate && cats && (
-            <div style={{ display: 'flex', justifyContent: 'center', margin: '4px 0 18px' }}>
-              <RadarChart cats={cats} shapes={[{ values: shape!, color: RADAR_GOLD, label: '' }]} size={size} />
-            </div>
-          )}
-          {drift && <p style={driftLine}>{lang === 'vn' && drift.family && DRIFT_WORD_VN[drift.family] ? `Bạn ngày càng nghiêng về gu ${DRIFT_WORD_VN[drift.family]}.` : drift.line}</p>}
+          {(hasPalate && cats) || drift || milestones.length > 0 ? (
+            <section className={`wj-top ${hasPalate && cats ? '' : 'is-single'}`}>
+              <div style={{ minWidth: 0 }}>
+                {drift && <Rise><p className="wj-drift">{lang === 'vn' && drift.family && DRIFT_WORD_VN[drift.family] ? `Bạn ngày càng nghiêng về gu ${DRIFT_WORD_VN[drift.family]}.` : drift.line}</p></Rise>}
 
-          {milestones.length > 0 && (
-            <div style={milestoneGrid}>
-              {milestones.map((m, i) => (
-                <div key={i} style={milestoneCard}>
-                  <div style={milestoneVal}>{lang === 'vn' ? milestoneValueVn(m.value) : m.value}</div>
-                  <div style={milestoneLabel}>{t(m.label, MILESTONE_VN[m.label] || '')}</div>
-                </div>
-              ))}
-            </div>
-          )}
+                {milestones.length > 0 && (
+                  <div className="wj-stones">
+                    {milestones.map((m, i) => (
+                      <Rise key={i} delay={.06 + i * .05} className="wj-stone">
+                        <div className="wj-stone-val">{lang === 'vn' ? milestoneValueVn(m.value) : m.value}</div>
+                        <div className="wj-stone-label">{t(m.label, MILESTONE_VN[m.label] || '')}</div>
+                      </Rise>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {hasPalate && cats && (
+                <Rise delay={.12} className="wl-radar wj-radar">
+                  <RadarChart cats={cats} shapes={[{ values: shape!, color: RADAR_GOLD, label: '' }]} size={size} />
+                </Rise>
+              )}
+            </section>
+          ) : null}
 
           {story.length === 0 ? (
-            <div style={sparse}>
-              <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2', marginBottom: 8 }}>{t('Your journey begins.', 'Hành trình của bạn bắt đầu.')}</div>
-              <p style={muted}>{t('Every dram poured for you and every note you log becomes part of the story here. Start in the', 'Mỗi ly được rót cho bạn và mỗi ghi chú bạn lưu lại đều trở thành một phần câu chuyện nơi đây. Hãy bắt đầu từ')} <Link href="/members/whisky" style={link}>{t('Whisky Library', 'Thư Viện Whisky')}</Link> — <Link href="/members/notes" style={link}>{t('note what you taste', 'ghi lại cảm nhận của bạn')}</Link>{t(', and watch this fill.', ', và xem trang này dần đầy lên.')}</p>
-            </div>
+            <section>
+              <Rise>
+                <h2 className="wl-h is-2">{t('Your journey begins.', 'Hành trình của bạn bắt đầu.')}</h2>
+                <p className="wj-sparse-text">{t('Every dram poured for you and every note you log becomes part of the story here. Start in the', 'Mỗi ly được rót cho bạn và mỗi ghi chú bạn lưu lại đều trở thành một phần câu chuyện nơi đây. Hãy bắt đầu từ')} <Link href="/members/whisky" className="wl-inline">{t('Whisky Library', 'Thư Viện Whisky')}</Link> — <Link href="/members/notes" className="wl-inline">{t('note what you taste', 'ghi lại cảm nhận của bạn')}</Link>{t(', and watch this fill.', ', và xem trang này dần đầy lên.')}</p>
+              </Rise>
+            </section>
           ) : (
-            <div style={{ marginTop: 8 }}>
-              <div style={sectionLabel}>{t('The story so far', 'Câu chuyện đến nay')}</div>
-              {story.map((e, i) => (
-                <div key={i} style={entryRow}>
-                  <div style={{ ...dot, background: e.kind === 'note' ? '#D4B85A' : '#7AB07A' }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
-                      <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 15, color: '#E5D4C2' }}>
-                        {e.whisky_id ? <Link href={`/members/whisky/${e.whisky_id}`} style={whiskyLink}>{e.whisky_name}</Link> : e.whisky_name === 'a dram' ? t('a dram', 'một ly') : e.whisky_name === 'a whisky' ? t('a whisky', 'một chai whisky') : e.whisky_name}
-                      </span>
-                      <span style={{ fontFamily: MONO, fontSize: 9, color: '#7E7864', flexShrink: 0 }}>{fmt(e.date)}</span>
+            <section className="wj-story">
+              <div className="wj-story-head">
+                <Rise><h2 className="wl-h is-2">{t('The story so far', 'Câu chuyện đến nay')}</h2></Rise>
+                <Rise delay={.1} className="wj-story-ink"><CreamInk name="lion-reclining" width="100%" rot={-3} dur={9} /></Rise>
+              </div>
+              <ol className="wj-list">
+                {story.map((e, i) => (
+                  <li key={i} className="wj-entry">
+                    <div className="wl-date">{fmt(e.date)}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="wj-name">
+                        {e.whisky_id ? <Link href={`/members/whisky/${e.whisky_id}`} className="wj-link">{e.whisky_name}</Link> : e.whisky_name === 'a dram' ? t('a dram', 'một ly') : e.whisky_name === 'a whisky' ? t('a whisky', 'một chai whisky') : e.whisky_name}
+                      </div>
+                      <div className="wj-kind">
+                        <span className="wj-dot" style={{ background: e.kind === 'note' ? GOLD : '#9CC79C' }} aria-hidden="true" />
+                        {e.kind === 'note' ? t('you noted it', 'bạn đã ghi chú') : t('poured for you', 'đã rót cho bạn')}{e.distillery ? ` · ${e.distillery}` : ''}
+                      </div>
+                      {e.note && <div className="wj-note">“{e.note}”</div>}
                     </div>
-                    <div style={{ fontFamily: MONO, fontSize: 10, color: '#7E7864', marginTop: 1 }}>{e.kind === 'note' ? t('you noted it', 'bạn đã ghi chú') : t('poured for you', 'đã rót cho bạn')}{e.distillery ? ` · ${e.distillery}` : ''}</div>
-                    {e.note && <div style={{ fontFamily: MONO, fontSize: 12, color: '#B2AA98', lineHeight: 1.6, marginTop: 5, fontStyle: 'italic' }}>“{e.note}”</div>}
-                  </div>
-                </div>
-              ))}
-            </div>
+                  </li>
+                ))}
+              </ol>
+            </section>
           )}
         </>
       )}
@@ -129,15 +146,41 @@ export default function Journey() {
   )
 }
 
-const muted: React.CSSProperties = { fontFamily: MONO, fontSize: 13, color: '#B2AA98', opacity: 0.8, lineHeight: 1.75, textAlign: 'center' }
-const link: React.CSSProperties = { color: '#D4B85A', textDecoration: 'none', borderBottom: '1px solid rgba(212,184,90,0.35)' }
-const driftLine: React.CSSProperties = { fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#D4B85A', textAlign: 'center', margin: '0 auto 18px', letterSpacing: '0.02em' }
-const milestoneGrid: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 26 }
-const milestoneCard: React.CSSProperties = { border: '1px solid rgba(212,184,90,0.22)', borderRadius: 12, background: 'rgba(229,212,194,0.03)', padding: '14px 12px', textAlign: 'center' }
-const milestoneVal: React.CSSProperties = { fontFamily: "'Rampant Sans', serif", fontSize: 22, fontWeight: 600, color: '#D4B85A' }
-const milestoneLabel: React.CSSProperties = { fontFamily: MONO, fontSize: 9, color: '#B2AA98', letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: 4 }
-const sparse: React.CSSProperties = { textAlign: 'center', padding: '28px 12px', border: '1px solid rgba(212,184,90,0.2)', borderRadius: 14, background: 'rgba(229,212,194,0.03)' }
-const sectionLabel: React.CSSProperties = { fontFamily: MONO, fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#D4B85A', opacity: 0.8, marginBottom: 14 }
-const entryRow: React.CSSProperties = { display: 'flex', gap: 12, paddingBottom: 16, marginBottom: 4, borderLeft: '1px solid rgba(229,212,194,0.1)', paddingLeft: 14, marginLeft: 4, position: 'relative' }
-const dot: React.CSSProperties = { position: 'absolute', left: -4, top: 4, width: 7, height: 7, borderRadius: '50%' }
-const whiskyLink: React.CSSProperties = { color: '#E5D4C2', textDecoration: 'none', borderBottom: '1px solid rgba(212,184,90,0.3)' }
+const CSS = `
+  .wj-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 72px; align-items: center; margin-bottom: 110px; }
+  .wj-top.is-single { grid-template-columns: minmax(0, 1fr); }
+  .wj-drift { font-family: ${SERIF}; font-weight: 400; font-size: clamp(28px, 3.3vw, 46px); line-height: 1.12; color: ${GOLD}; margin: 0 0 44px; max-width: 620px; }
+  .wj-stones { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 30px 36px; }
+  .wj-stone { border-top: 1px solid rgba(229,212,194,.16); padding-top: 16px; }
+  .wj-stone-val { font-family: ${SERIF}; font-size: clamp(32px, 3.4vw, 48px); line-height: .98; color: ${CREAM}; overflow-wrap: break-word; }
+  .wj-stone-label { font-family: ${MONO}; font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: ${CREAM}; opacity: .78; margin-top: 12px; line-height: 1.6; }
+  .wj-radar { max-width: 540px; justify-self: end; }
+
+  .wj-story-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: end; margin-bottom: 34px; }
+  .wj-story-ink { width: clamp(170px, 20vw, 280px); margin-right: 2%; }
+  .wj-list { list-style: none; margin: 0; padding: 0; border-bottom: 1px solid rgba(229,212,194,.16); }
+  .wj-entry { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 10px 40px; align-items: baseline;
+              padding: 22px 0 24px; border-top: 1px solid rgba(229,212,194,.16); }
+  .wj-name { font-family: ${SERIF}; font-size: clamp(21px, 2.1vw, 27px); line-height: 1.08; color: ${CREAM}; overflow-wrap: anywhere; }
+  .wj-link { color: inherit; text-decoration: none; background-image: linear-gradient(currentColor, currentColor); background-size: 0 1px;
+             background-repeat: no-repeat; background-position: 0 100%; transition: background-size .45s cubic-bezier(.16,.84,.44,1); }
+  .wj-link:hover { background-size: 100% 1px; }
+  .wj-kind { font-family: ${MONO}; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: ${CREAM}; opacity: .8; margin-top: 8px;
+             display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .wj-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .wj-note { font-family: ${MONO}; font-size: 13px; line-height: 1.9; color: ${CREAM}; opacity: .88; margin-top: 10px; max-width: 660px; }
+
+  .wj-sparse-text { font-family: ${MONO}; font-size: 14px; line-height: 2; color: ${CREAM}; opacity: .9; max-width: 580px; margin: 24px 0 0; }
+
+  @media (max-width: 860px) {
+    .wj-top { grid-template-columns: minmax(0, 1fr); gap: 44px; margin-bottom: 88px; }
+    .wj-radar { justify-self: stretch; max-width: 480px; }
+  }
+  @media (max-width: 600px) {
+    .wj-entry { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+    .wj-story-ink { width: 120px; margin-right: -6px; }
+    .wj-stones { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 20px; }
+    .wj-stone-val { font-size: clamp(26px, 8vw, 34px); }
+    .wj-sparse-text { font-size: 13.5px; line-height: 1.95; }
+  }
+`

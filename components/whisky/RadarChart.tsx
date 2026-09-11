@@ -49,8 +49,8 @@ export default function RadarChart({ cats, shapes, size = 300 }: { cats: Cat[]; 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('Flavour radar', 'Biểu đồ hương vị')}style={{ display: 'block', width: '100%', maxWidth: W, height: 'auto', margin: '0 auto' }}>
       {/* grid rings + axes — drawn once */}
-      {rings.map((d, i) => <path key={i} d={d} fill="none" stroke="rgba(229,212,194,0.10)" strokeWidth={1} />)}
-      {cats.map((c, i) => { const [x, y] = pt(i, 4); return <line key={c.slug} x1={cx} y1={cy} x2={x} y2={y} stroke="rgba(229,212,194,0.08)" strokeWidth={1} /> })}
+      {rings.map((d, i) => <path key={i} d={d} fill="none" stroke="rgba(229,212,194,0.10)" style={{ stroke: 'var(--rc-grid, rgba(229,212,194,0.10))' }} strokeWidth={1} />)}
+      {cats.map((c, i) => { const [x, y] = pt(i, 4); return <line key={c.slug} x1={cx} y1={cy} x2={x} y2={y} stroke="rgba(229,212,194,0.08)" style={{ stroke: 'var(--rc-axis, rgba(229,212,194,0.08))' }} strokeWidth={1} /> })}
 
       {/* one polygon per shape */}
       {shapes.map((sh, si) => {
@@ -72,20 +72,23 @@ export default function RadarChart({ cats, shapes, size = 300 }: { cats: Cat[]; 
         const lx = cx + lr * cos, ly = cy + lr * sin
         const anchor: 'start' | 'middle' | 'end' = cos > 0.15 ? 'start' : cos < -0.15 ? 'end' : 'middle'
         const lines = wrapName(catLabel(c, lang))
+        // Each fill carries a CSS hook (--rc-label / -low / -dim) that defaults
+        // to the value it has always been, so a page on a cream ground — or one
+        // that wants its absent families a little brighter — can say so.
         let fill: string
         if (single && sv) {
           const s = sv[c.slug]
           const low = s && s.confidence < 0.6
-          fill = s ? (low ? 'rgba(229,212,194,0.5)' : '#E5D4C2') : 'rgba(229,212,194,0.28)'
+          fill = s ? (low ? 'var(--rc-label-low, rgba(229,212,194,0.5))' : 'var(--rc-label, #E5D4C2)') : 'var(--rc-label-dim, rgba(229,212,194,0.28))'
           if (s) lines[lines.length - 1] += ` · ${s.intensity}${low ? ' ?' : ''}`
         } else {
-          fill = presentAny(c.slug) ? '#E5D4C2' : 'rgba(229,212,194,0.28)'
+          fill = presentAny(c.slug) ? 'var(--rc-label, #E5D4C2)' : 'var(--rc-label-dim, rgba(229,212,194,0.28))'
         }
         const y0 = sin > 0.35 ? ly + 6
           : sin < -0.35 ? ly - 6 - (lines.length - 1) * LINE_H
           : ly - (lines.length - 1) * LINE_H / 2
         return lines.map((ln, k) => (
-          <text key={c.slug + k} x={lx} y={y0 + k * LINE_H} textAnchor={anchor} dominantBaseline="middle" fontSize={8} fontFamily={FAMILY} fill={fill}>{ln}</text>
+          <text key={c.slug + k} x={lx} y={y0 + k * LINE_H} textAnchor={anchor} dominantBaseline="middle" fontSize={8} fontFamily={FAMILY} style={{ fill }}>{ln}</text>
         ))
       })}
     </svg>

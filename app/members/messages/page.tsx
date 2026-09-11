@@ -77,65 +77,73 @@ function Messages() {
 
   return (
     <MemberPage title="Messages" subtitle="TIN NHẮN" description={t('Private conversations, opened by an introduction. Staff see that introductions happen — they never read your messages.', 'Những cuộc trò chuyện riêng, mở ra từ một lời giới thiệu. Nhân viên biết có lời giới thiệu — nhưng không bao giờ đọc tin nhắn của bạn.')}>
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
       {!sel ? (
-        <>
+        <div className="ms-col">
           {!loaded ? (
-            <p style={muted}>{t('Gathering your conversations…', 'Đang tải các cuộc trò chuyện…')}</p>
+            <p className="ms-quiet">{t('Gathering your conversations…', 'Đang tải các cuộc trò chuyện…')}</p>
           ) : threads.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '24px 0' }}>
-              <p style={muted}>{t('No conversations yet. They begin with an ', 'Chưa có cuộc trò chuyện nào. Mọi cuộc trò chuyện bắt đầu từ một ')}<Link href="/members/members" style={link}>{t('introduction', 'lời giới thiệu')}</Link>.</p>
+            <p className="ms-quiet">{t('No conversations yet. They begin with an ', 'Chưa có cuộc trò chuyện nào. Mọi cuộc trò chuyện bắt đầu từ một ')}<Link href="/members/members" className="ms-link">{t('introduction', 'lời giới thiệu')}</Link>.</p>
+          ) : (
+            <div className="ms-list">
+              {threads.map(th => (
+                <button key={th.thread_id} onClick={() => setSel(th.thread_id)} className="ms-row pk-hover">
+                  <span className="ms-row-main">
+                    <span className="ms-row-top">
+                      <span className="ms-name">{th.other_name}</span>
+                      {th.unread > 0 && <span className="ms-unread">{th.unread}</span>}
+                    </span>
+                    <span className="ms-preview">{th.last_preview || '—'}</span>
+                  </span>
+                  <span className="pk-go ms-arrow" aria-hidden="true">→</span>
+                </button>
+              ))}
             </div>
-          ) : threads.map(th => (
-            <button key={th.thread_id} onClick={() => setSel(th.thread_id)} style={listRow}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-                <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2' }}>{th.other_name}</span>
-                {th.unread > 0 && <span style={unreadDot}>{th.unread}</span>}
-              </div>
-              <div style={preview}>{th.last_preview || '—'}</div>
-            </button>
-          ))}
+          )}
 
           {blocked.length > 0 && (
-            <div style={{ marginTop: 24 }}>
-              <div style={sectionLabel}>{t('Blocked', 'Đã chặn')}</div>
+            <div className="ms-blocked">
+              <h2 className="ms-h2">{t('Blocked', 'Đã chặn')}</h2>
               {blocked.map(b => (
-                <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(229,212,194,0.06)' }}>
-                  <span style={{ fontFamily: MONO, fontSize: 12, color: '#B2AA98' }}>{b.name}</span>
-                  <button onClick={() => unblock(b.id)} style={unblockBtn}>{t('Unblock', 'Bỏ chặn')}</button>
+                <div key={b.id} className="ms-brow">
+                  <span className="ms-bname">{b.name}</span>
+                  <button onClick={() => unblock(b.id)} className="ms-quietbtn">{t('Unblock', 'Bỏ chặn')}</button>
                 </div>
               ))}
             </div>
           )}
-        </>
+        </div>
       ) : (
-        <>
-          <div style={threadHeader}>
-            <button onClick={() => setSel(null)} style={backBtn}>{t('← All messages', '← Tất cả tin nhắn')}</button>
-            <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2' }}>{other.name}</span>
-            <button onClick={block} style={blockBtn}>{t('Block', 'Chặn')}</button>
+        <div className="ms-col">
+          <button onClick={() => setSel(null)} className="ms-back">{t('← All messages', '← Tất cả tin nhắn')}</button>
+          <div className="ms-head">
+            <h2 className="ms-other">{other.name}</h2>
+            <button onClick={block} className="ms-quietbtn is-danger">{t('Block', 'Chặn')}</button>
           </div>
-          <div style={panel}>
-            <div ref={scrollRef} style={scroll}>
-              {messages.length === 0 ? (
-                <div style={{ ...muted, textAlign: 'center', padding: '24px 0' }}>{t('The introduction’s made — say hello.', 'Lời giới thiệu đã xong — hãy gửi lời chào.')}</div>
-              ) : messages.map(m => (
-                <div key={m.id} style={{ display: 'flex', justifyContent: m.mine ? 'flex-end' : 'flex-start', marginBottom: 10 }}>
-                  <div style={m.mine ? bubbleMine : bubbleOther}>
-                    <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{m.body}</div>
-                    <div style={{ ...stamp, textAlign: m.mine ? 'right' : 'left' }}>{timeOf(m.created_at, lang)}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div style={composer}>
-              {err && <div style={{ fontFamily: MONO, fontSize: 11, color: '#C27070', marginBottom: 6 }}>{err}</div>}
-              <textarea value={draft} onChange={e => setDraft(e.target.value.slice(0, 4000))} onKeyDown={onKey} rows={2} placeholder={`${t('Message', 'Nhắn cho')} ${other.name}…`} style={textarea} />
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-                <button onClick={send} disabled={sending || !draft.trim()} style={{ ...sendBtn, opacity: sending || !draft.trim() ? 0.4 : 1 }}>{sending ? t('Sending…', 'Đang gửi…') : t('Send', 'Gửi')}</button>
+
+          {/* The conversation: no bubbles, just two voices — theirs hung from a
+              gold rule on the left, yours from a cream one on the right. */}
+          <div ref={scrollRef} className="ms-scroll">
+            {messages.length === 0 ? (
+              <p className="ms-quiet">{t('The introduction’s made — say hello.', 'Lời giới thiệu đã xong — hãy gửi lời chào.')}</p>
+            ) : messages.map(m => (
+              <div key={m.id} className={`ms-msg ${m.mine ? 'is-mine' : ''}`}>
+                <div className="ms-body">{m.body}</div>
+                <div className="ms-stamp">{timeOf(m.created_at, lang)}</div>
               </div>
+            ))}
+          </div>
+
+          <div className="ms-composer">
+            {err && <div className="ms-err">{err}</div>}
+            <div className="ms-compose-row">
+              <textarea value={draft} onChange={e => setDraft(e.target.value.slice(0, 4000))} onKeyDown={onKey} rows={2} placeholder={`${t('Message', 'Nhắn cho')} ${other.name}…`} className="ms-field" />
+              <button onClick={send} disabled={sending || !draft.trim()} className="pk-cta ms-send">
+                {sending ? t('Sending…', 'Đang gửi…') : <>{t('Send', 'Gửi')} <span className="pk-go">→</span></>}
+              </button>
             </div>
           </div>
-        </>
+        </div>
       )}
     </MemberPage>
   )
@@ -145,21 +153,76 @@ export default function MessagesPage() {
   return <Suspense fallback={null}><Messages /></Suspense>
 }
 
-const muted: React.CSSProperties = { fontFamily: MONO, fontSize: 13, color: '#B2AA98', opacity: 0.75, lineHeight: 1.7 }
-const link: React.CSSProperties = { color: '#D4B85A', textDecoration: 'none', borderBottom: '1px solid rgba(212,184,90,0.35)' }
-const listRow: React.CSSProperties = { display: 'block', width: '100%', textAlign: 'left', background: 'rgba(229,212,194,0.03)', border: '1px solid rgba(229,212,194,0.1)', borderRadius: 12, padding: '12px 14px', cursor: 'pointer', marginBottom: 8 }
-const unreadDot: React.CSSProperties = { fontFamily: MONO, fontSize: 9, color: '#052E20', background: '#D4B85A', borderRadius: 8, padding: '1px 7px', fontWeight: 700 }
-const preview: React.CSSProperties = { fontFamily: MONO, fontSize: 11, color: '#B2AA98', opacity: 0.8, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
-const sectionLabel: React.CSSProperties = { fontFamily: MONO, fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#7E7864', marginBottom: 8 }
-const unblockBtn: React.CSSProperties = { background: 'transparent', border: '1px solid rgba(178,170,152,0.3)', borderRadius: 8, padding: '4px 12px', fontFamily: MONO, fontSize: 10, color: '#B2AA98', cursor: 'pointer' }
-const threadHeader: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 12 }
-const backBtn: React.CSSProperties = { background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: MONO, fontSize: 11, color: '#B2AA98' }
-const blockBtn: React.CSSProperties = { background: 'transparent', border: '1px solid rgba(194,112,112,0.3)', borderRadius: 8, padding: '5px 12px', fontFamily: MONO, fontSize: 10, color: '#C27070', cursor: 'pointer' }
-const panel: React.CSSProperties = { border: '1px solid rgba(212,184,90,0.2)', borderRadius: 14, background: 'rgba(229,212,194,0.03)', overflow: 'hidden' }
-const scroll: React.CSSProperties = { maxHeight: '52vh', minHeight: 200, overflowY: 'auto', padding: '18px 16px' }
-const composer: React.CSSProperties = { borderTop: '1px solid rgba(212,184,90,0.16)', padding: '12px 14px', background: 'rgba(5,46,32,0.4)' }
-const textarea: React.CSSProperties = { width: '100%', resize: 'vertical', background: 'rgba(229,212,194,0.06)', border: '1px solid rgba(229,212,194,0.16)', borderRadius: 8, color: '#E5D4C2', fontFamily: MONO, fontSize: 13, lineHeight: 1.55, padding: '10px 12px', outline: 'none', boxSizing: 'border-box' }
-const sendBtn: React.CSSProperties = { background: '#D4B85A', color: '#052E20', border: 'none', borderRadius: 8, padding: '8px 20px', fontFamily: MONO, fontSize: 12, fontWeight: 600, letterSpacing: '0.04em', cursor: 'pointer' }
-const bubbleOther: React.CSSProperties = { maxWidth: '80%', background: 'rgba(212,184,90,0.10)', border: '1px solid rgba(212,184,90,0.28)', borderRadius: '4px 12px 12px 12px', padding: '9px 12px', fontFamily: MONO, fontSize: 13, color: '#E5D4C2', lineHeight: 1.5 }
-const bubbleMine: React.CSSProperties = { maxWidth: '80%', background: 'rgba(229,212,194,0.08)', border: '1px solid rgba(229,212,194,0.14)', borderRadius: '12px 4px 12px 12px', padding: '9px 12px', fontFamily: MONO, fontSize: 13, color: '#E5D4C2', lineHeight: 1.5 }
-const stamp: React.CSSProperties = { fontFamily: MONO, fontSize: 9, color: '#B2AA98', opacity: 0.5, marginTop: 5 }
+const SERIF = "'Rampant Sans', serif"
+const LINE = 'rgba(229,212,194,.18)'
+
+const CSS = `
+  .ms-col { max-width: 820px; }
+  .ms-quiet { font-family: ${MONO}; font-size: 14px; line-height: 1.95; color: #E5D4C2; opacity: .8; max-width: 560px; margin: 0; }
+  .ms-link { color: #D4B85A; text-decoration: none; border-bottom: 1px solid rgba(212,184,90,.5); padding-bottom: 1px; }
+  .ms-link:hover { border-bottom-color: #D4B85A; }
+  .ms-h2 { font-family: ${SERIF}; font-weight: 400; font-size: clamp(26px, 3vw, 36px); line-height: 1; color: #E5D4C2; margin: 0 0 18px; }
+
+  /* the list of conversations, as a register */
+  .ms-list { border-bottom: 1px solid ${LINE}; }
+  .ms-row { display: flex; align-items: center; gap: 24px; width: 100%; text-align: left; cursor: pointer;
+            background: none; border: none; border-top: 1px solid ${LINE}; border-radius: 0; padding: 24px 0; color: #E5D4C2; }
+  .ms-row-main { display: block; flex: 1; min-width: 0; }
+  .ms-row-top { display: flex; align-items: baseline; gap: 14px; }
+  .ms-name { font-family: ${SERIF}; font-size: clamp(28px, 3.2vw, 40px); line-height: 1; overflow-wrap: anywhere; }
+  .ms-unread { flex: 0 0 auto; font-family: ${MONO}; font-size: 11px; font-weight: 600; line-height: 1; color: #052E20;
+               background: #D4B85A; border-radius: 10px; padding: 4px 8px; transform: translateY(-4px); }
+  .ms-preview { display: block; font-family: ${MONO}; font-size: 13px; line-height: 1.7; opacity: .75; margin-top: 8px;
+                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-arrow { font-family: ${MONO}; font-size: 16px; color: #D4B85A; }
+
+  .ms-blocked { margin-top: 64px; }
+  .ms-brow { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 14px 0; border-top: 1px solid ${LINE}; }
+  .ms-brow:last-child { border-bottom: 1px solid ${LINE}; }
+  .ms-bname { font-family: ${MONO}; font-size: 14px; color: #E5D4C2; opacity: .85; }
+  .ms-quietbtn { background: none; border: none; padding: 0 0 4px; cursor: pointer; color: #E5D4C2; opacity: .75;
+                 font-family: ${MONO}; font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+                 border-bottom: 1px solid rgba(229,212,194,.35); transition: opacity .2s ease, border-color .2s ease; }
+  .ms-quietbtn:hover { opacity: 1; border-bottom-color: currentColor; }
+  .ms-quietbtn.is-danger { color: #E89B9B; border-bottom-color: rgba(232,155,155,.4); }
+
+  /* a single conversation */
+  .ms-back { background: none; border: none; padding: 0; cursor: pointer; color: #E5D4C2; opacity: .8;
+             font-family: ${MONO}; font-size: 12px; letter-spacing: .08em; transition: opacity .2s ease; }
+  .ms-back:hover { opacity: 1; }
+  .ms-head { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; margin: 22px 0 26px; }
+  .ms-other { font-family: ${SERIF}; font-weight: 400; font-size: clamp(38px, 5vw, 64px); line-height: .95; color: #E5D4C2;
+              margin: 0; min-width: 0; overflow-wrap: anywhere; }
+
+  .ms-scroll { max-height: 52vh; min-height: 200px; overflow-y: auto; padding: 28px 4px 28px 0;
+               border-top: 1px solid ${LINE}; border-bottom: 1px solid ${LINE};
+               scrollbar-width: thin; scrollbar-color: rgba(229,212,194,.25) transparent; }
+  .ms-msg { width: fit-content; max-width: 78%; margin: 0 0 22px; padding: 2px 0 2px 18px; border-left: 1px solid rgba(212,184,90,.7); }
+  .ms-msg:last-child { margin-bottom: 0; }
+  .ms-msg.is-mine { margin-left: auto; padding: 2px 18px 2px 0; border-left: none; border-right: 1px solid rgba(229,212,194,.4); }
+  .ms-body { font-family: ${MONO}; font-size: 14px; line-height: 1.85; color: #E5D4C2; white-space: pre-wrap; word-break: break-word; }
+  .ms-stamp { font-family: ${MONO}; font-size: 11px; letter-spacing: .06em; color: #E5D4C2; opacity: .6; margin-top: 6px; }
+  .ms-msg.is-mine .ms-stamp { text-align: right; }
+
+  .ms-composer { padding-top: 18px; }
+  .ms-err { font-family: ${MONO}; font-size: 12.5px; line-height: 1.7; color: #E89B9B; margin-bottom: 8px; }
+  .ms-compose-row { display: flex; align-items: flex-end; gap: 28px; }
+  .ms-field { flex: 1; min-width: 0; display: block; width: 100%; box-sizing: border-box; resize: vertical; background: transparent; color: #E5D4C2;
+              border: none; border-bottom: 1px solid rgba(229,212,194,.32); border-radius: 0; padding: 12px 0;
+              font-family: ${MONO}; font-size: 14px; line-height: 1.7; outline: none; transition: border-color .25s ease; }
+  .ms-field::placeholder { color: rgba(229,212,194,.5); }
+  .ms-field:focus { border-bottom-color: #D4B85A; }
+  /* beats the portal's keyboard ring (layout: [class*=member] textarea:focus-visible) — the gold underline is the focus mark */
+  .ms-field.ms-field:focus-visible { outline: none; border-radius: 0; }
+  .pk-cta.ms-send { margin: 0 0 12px; color: #D4B85A; white-space: nowrap; }
+  .pk-cta.ms-send:disabled { opacity: .4; cursor: not-allowed; }
+  .pk-cta.ms-send:disabled .pk-go { transform: none; }
+
+  @media (max-width: 760px) {
+    .ms-row { padding: 20px 0; gap: 16px; }
+    .ms-msg { max-width: 88%; }
+    .ms-compose-row { flex-direction: column; align-items: stretch; gap: 16px; }
+    .pk-cta.ms-send { align-self: flex-end; margin-bottom: 0; }
+    .ms-field { font-size: 16px; }
+  }
+`

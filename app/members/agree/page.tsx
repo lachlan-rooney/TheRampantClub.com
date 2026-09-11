@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLang } from '@/lib/lang'
+import { PublicPage } from '@/components/public/kit'
+import { CreamInk, CreamInkDefs } from '@/components/public/CreamInk'
 
 interface Doc {
   doc_key: string; name_en: string; name_vn: string | null
@@ -51,80 +53,93 @@ export default function AgreePage() {
   const signed = (docs || []).filter(d => d.satisfied_by === 'signature')
 
   return (
-    // paddingBottom clears the fixed BottomTabBar (70px, z-index 8998). The layout
-    // pads the document, but an element scrolled to the viewport's bottom EDGE can
-    // still land under the bar — which is exactly what intercepted a real tap on the
-    // agree control during verification.
-    <div style={{ maxWidth: 760, paddingBottom: 96 }}>
-      <h1 style={h1}>{t('Before you go on', 'Trước khi tiếp tục')}</h1>
-      <p style={intro}>
-        {t('Two documents, read at your own pace. You can keep a copy of either without agreeing to it, and we’ll email you what you agreed to and when.',
-          'Hai văn bản, xin bạn cứ đọc thong thả. Bạn có thể lưu bản sao của từng văn bản mà không cần đồng ý, và chúng tôi sẽ gửi email xác nhận nội dung bạn đã đồng ý cùng thời điểm đồng ý.')}
-      </p>
+    <PublicPage ground="#052E20" ink="#E5D4C2">
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
+      <CreamInkDefs />
+      {/* paddingBottom clears the fixed BottomTabBar (70px, z-index 8998). The layout
+          pads the document, but an element scrolled to the viewport's bottom EDGE can
+          still land under the bar — which is exactly what intercepted a real tap on the
+          agree control during verification. */}
+      <div className="ag-wrap" style={{ paddingBottom: 96 }}>
+        <header className="ag-mast">
+          <div className="ag-words">
+            <h1 className="ag-h1 ag-rise">{t('Before you go on', 'Trước khi tiếp tục')}</h1>
+            <p className="ag-intro ag-rise" style={{ animationDelay: '.08s' }}>
+              {t('Two documents, read at your own pace. You can keep a copy of either without agreeing to it, and we’ll email you what you agreed to and when.',
+                'Hai văn bản, xin bạn cứ đọc thong thả. Bạn có thể lưu bản sao của từng văn bản mà không cần đồng ý, và chúng tôi sẽ gửi email xác nhận nội dung bạn đã đồng ý cùng thời điểm đồng ý.')}
+            </p>
 
-      <div style={{ display: 'flex', gap: 8, margin: '22px 0 6px' }}>
-        {(['en', 'vn'] as const).map(l => (
-          <button key={l} onClick={() => setLang(l)}
-            style={{ ...tab, ...(lang === l ? tabOn : null) }}>{l === 'en' ? 'English' : 'Tiếng Việt'}</button>
-        ))}
-      </div>
-      {/* Surfaced, not buried at paragraph six where the source document puts it. */}
-      <p style={prevails}>
-        {/* Both languages stay on screen; the chosen one leads. */}
-        {t(PREVAILS_EN, PREVAILS_VN)}
-        <span style={{ opacity: .7 }}> · {t(PREVAILS_VN, PREVAILS_EN)}</span>
-      </p>
+            <div className="ag-tabs ag-rise" style={{ animationDelay: '.14s' }}>
+              {(['en', 'vn'] as const).map(l => (
+                <button key={l} onClick={() => setLang(l)} aria-pressed={lang === l}
+                  className={`ag-tab ${lang === l ? 'is-on' : ''}`}>{l === 'en' ? 'English' : 'Tiếng Việt'}</button>
+              ))}
+            </div>
+            {/* Surfaced, not buried at paragraph six where the source document puts it. */}
+            <p className="ag-prevails ag-rise" style={{ animationDelay: '.18s' }}>
+              {/* Both languages stay on screen; the chosen one leads. */}
+              {t(PREVAILS_EN, PREVAILS_VN)}
+              <span style={{ opacity: .7 }}> · {t(PREVAILS_VN, PREVAILS_EN)}</span>
+            </p>
+          </div>
+          <div className="ag-art ag-rise" style={{ animationDelay: '.2s' }}>
+            <CreamInk name="lion-suit" width="100%" rot={4} dur={9} />
+          </div>
+        </header>
 
-      {docs === null && <p style={{ opacity: .6, fontSize: 14 }}>{t('Loading…', 'Đang tải…')}</p>}
+        <div className="ag-body">
+          {docs === null && <p className="ag-quiet">{t('Loading…', 'Đang tải…')}</p>}
 
-      {docs && pending.length === 0 && (
-        <div style={done}>{t('You’re up to date. Nothing to agree to.', 'Bạn đã hoàn tất. Không còn văn bản nào cần đồng ý.')}</div>
-      )}
+          {docs && pending.length === 0 && (
+            <p className="ag-done">{t('You’re up to date. Nothing to agree to.', 'Bạn đã hoàn tất. Không còn văn bản nào cần đồng ý.')}</p>
+          )}
 
-      {pending.map(d => (
-        <DocumentBlock key={d.doc_key} doc={d} lang={lang} busy={busy === d.doc_key}
-          reached={!!reached[d.doc_key]}
-          onReached={() => setReached(s => (s[d.doc_key] ? s : { ...s, [d.doc_key]: true }))}
-          onAgree={() => agree(d, true)} />
-      ))}
+          {pending.map(d => (
+            <DocumentBlock key={d.doc_key} doc={d} lang={lang} busy={busy === d.doc_key}
+              reached={!!reached[d.doc_key]}
+              onReached={() => setReached(s => (s[d.doc_key] ? s : { ...s, [d.doc_key]: true }))}
+              onAgree={() => agree(d, true)} />
+          ))}
 
-      {optional.length > 0 && docs && (
-        <div style={{ marginTop: 40 }}>
-          <div style={sectionLabel}>{t('Optional', 'Tuỳ chọn')}</div>
-          {optional.map(d => (
-            <div key={d.doc_key} style={optRow}>
-              <div>
-                <div style={{ fontFamily: SERIF, fontSize: 17 }}>{lang === 'vn' && d.name_vn ? d.name_vn : d.name_en}</div>
-                <div style={{ fontSize: 13, opacity: .65, marginTop: 3 }}>
-                  {t('Optional, and it never affects your membership. You’ll still hear about anything affecting your membership either way — that isn’t marketing.',
-                    'Không bắt buộc, và không bao giờ ảnh hưởng đến tư cách thành viên của bạn. Dù chọn thế nào, bạn vẫn nhận được mọi thông tin liên quan đến tư cách thành viên — đó không phải là tiếp thị.')}
+          {optional.length > 0 && docs && (
+            <div className="ag-group">
+              <h2 className="ag-h2">{t('Optional', 'Tuỳ chọn')}</h2>
+              {optional.map(d => (
+                <div key={d.doc_key} className="ag-row">
+                  <div>
+                    <div className="ag-row-t">{lang === 'vn' && d.name_vn ? d.name_vn : d.name_en}</div>
+                    <div className="ag-row-s">
+                      {t('Optional, and it never affects your membership. You’ll still hear about anything affecting your membership either way — that isn’t marketing.',
+                        'Không bắt buộc, và không bao giờ ảnh hưởng đến tư cách thành viên của bạn. Dù chọn thế nào, bạn vẫn nhận được mọi thông tin liên quan đến tư cách thành viên — đó không phải là tiếp thị.')}
+                    </div>
+                  </div>
+                  <div className="ag-opts">
+                    <button onClick={() => agree(d, true)} className={`ag-opt ${d.granted ? 'is-on' : ''}`}>{d.granted ? t('On', 'Đang bật') : t('Turn on', 'Bật')}</button>
+                    <button onClick={() => agree(d, false)} className={`ag-opt ${d.granted === false ? 'is-on' : ''}`}>{d.granted === false ? t('Off', 'Đã tắt') : t('No thanks', 'Không, cảm ơn')}</button>
+                  </div>
                 </div>
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => agree(d, true)} style={smallBtn}>{d.granted ? t('On', 'Đang bật') : t('Turn on', 'Bật')}</button>
-                <button onClick={() => agree(d, false)} style={smallGhost}>{d.granted === false ? t('Off', 'Đã tắt') : t('No thanks', 'Không, cảm ơn')}</button>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
 
-      {signed.length > 0 && (
-        <div style={{ marginTop: 40 }}>
-          <div style={sectionLabel}>{t('Signed', 'Đã ký')}</div>
-          {signed.map(d => (
-            <div key={d.doc_key} style={{ ...optRow, display: 'block' }}>
-              <div style={{ fontFamily: SERIF, fontSize: 17 }}>{lang === 'vn' && d.name_vn ? d.name_vn : d.name_en}</div>
-              <div style={{ fontSize: 13, opacity: .65, marginTop: 3 }}>
-                {t('Executed by signature, not agreed here. Your signed copy is the record.', 'Được xác lập bằng chữ ký, không đồng ý tại đây. Bản đã ký của bạn là văn bản lưu hồ sơ.')}
-              </div>
+          {signed.length > 0 && (
+            <div className="ag-group">
+              <h2 className="ag-h2">{t('Signed', 'Đã ký')}</h2>
+              {signed.map(d => (
+                <div key={d.doc_key} className="ag-row is-block">
+                  <div className="ag-row-t">{lang === 'vn' && d.name_vn ? d.name_vn : d.name_en}</div>
+                  <div className="ag-row-s">
+                    {t('Executed by signature, not agreed here. Your signed copy is the record.', 'Được xác lập bằng chữ ký, không đồng ý tại đây. Bản đã ký của bạn là văn bản lưu hồ sơ.')}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
 
-      {msg && <div style={{ marginTop: 20, fontSize: 13, color: '#2E7D52' }}>{msg}</div>}
-    </div>
+          {msg && <div className="ag-msg">{msg}</div>}
+        </div>
+      </div>
+    </PublicPage>
   )
 }
 
@@ -176,29 +191,30 @@ function DocumentBlock({ doc, lang, reached, onReached, onAgree, busy }: {
   }
 
   return (
-    <section style={{ marginTop: 30 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-        <h2 style={{ fontFamily: SERIF, fontSize: 22, margin: 0 }}>{title}</h2>
-        <div style={{ fontFamily: MONO, fontSize: 11, opacity: .6 }}>
+    <section className="ag-doc">
+      <div className="ag-doc-head">
+        <h2 className="ag-h2">{title}</h2>
+        <div className="ag-ver">
           {t('version', 'phiên bản')} {doc.version}{doc.effective_date ? ` · ${doc.effective_date}` : ''}
         </div>
       </div>
 
-      <div ref={box} style={body}>
-        <div dangerouslySetInnerHTML={{ __html: html || '' }} />
+      {/* The document on a sheet of the house paper — the sheet IS the
+          scrolling box the gate observes. */}
+      <div ref={box} className="ag-sheet">
+        <div className="ag-html" dangerouslySetInnerHTML={{ __html: html || '' }} />
         {/* The foot of the document, INSIDE the scrolling box. A short document
             leaves this already intersecting, so the control enables on the first
             observer callback with no special case. */}
         <div ref={sentinel} aria-hidden style={{ height: 1 }} />
       </div>
 
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 18, flexWrap: 'wrap' }}>
-        <button onClick={onAgree} disabled={!reached || busy}
-          style={{ ...btn, opacity: reached && !busy ? 1 : .35, cursor: reached && !busy ? 'pointer' : 'not-allowed' }}>
-          {busy ? t('Recording…', 'Đang ghi nhận…') : t('I agree', 'Tôi đồng ý')}
+      <div className="ag-actions">
+        <button onClick={onAgree} disabled={!reached || busy} className="pk-cta ag-agree">
+          {busy ? t('Recording…', 'Đang ghi nhận…') : <>{t('I agree', 'Tôi đồng ý')} <span className="pk-go">→</span></>}
         </button>
-        <button onClick={download} style={smallGhost}>{t('Download a copy', 'Tải bản sao')}</button>
-        {!reached && <span style={{ fontSize: 12, opacity: .55 }}>{t('Read to the end to continue.', 'Đọc đến cuối để tiếp tục.')}</span>}
+        <button onClick={download} className="ag-quietbtn">{t('Download a copy', 'Tải bản sao')}</button>
+        {!reached && <span className="ag-hint">{t('Read to the end to continue.', 'Đọc đến cuối để tiếp tục.')}</span>}
       </div>
     </section>
   )
@@ -207,37 +223,102 @@ function DocumentBlock({ doc, lang, reached, onReached, onAgree, busy }: {
 const PREVAILS_EN = 'Reading either language is enough. Where the two differ, the English version prevails.'
 const PREVAILS_VN = 'Đọc một trong hai ngôn ngữ là đủ. Nếu có khác biệt, bản tiếng Anh được ưu tiên.'
 const SERIF = "'Rampant Sans', Georgia, serif"
-const MONO = "'Google Sans Code', monospace"
-const h1: React.CSSProperties = { fontFamily: SERIF, fontSize: 30, marginBottom: 8 }
-const intro: React.CSSProperties = { fontSize: 14, lineHeight: 1.75, opacity: .8, maxWidth: 620 }
-const prevails: React.CSSProperties = { fontSize: 12.5, lineHeight: 1.7, opacity: .7, margin: '0 0 6px', maxWidth: 620 }
-const body: React.CSSProperties = {
-  marginTop: 18, padding: '22px 24px', maxHeight: '58vh', overflowY: 'auto',
-  border: '1px solid rgba(5,46,32,.14)', borderRadius: 8, background: '#fff',
-  fontSize: 15, lineHeight: 1.8,
-}
-const tab: React.CSSProperties = {
-  background: 'transparent', border: '1px solid rgba(5,46,32,.2)', borderRadius: 6,
-  padding: '8px 16px', fontFamily: MONO, fontSize: 12, cursor: 'pointer', color: '#052E20',
-}
-const tabOn: React.CSSProperties = { background: '#052E20', color: '#E5D4C2', borderColor: '#052E20' }
-const btn: React.CSSProperties = {
-  background: '#052E20', color: '#E5D4C2', border: 'none', borderRadius: 6,
-  padding: '14px 30px', fontFamily: MONO, fontSize: 13, letterSpacing: '.08em', textTransform: 'uppercase',
-}
-const smallBtn: React.CSSProperties = { ...btn, padding: '10px 18px', fontSize: 12, cursor: 'pointer' }
-const smallGhost: React.CSSProperties = {
-  background: 'transparent', border: '1px solid rgba(5,46,32,.25)', borderRadius: 6, color: '#052E20',
-  padding: '10px 18px', fontFamily: MONO, fontSize: 12, cursor: 'pointer',
-}
-const sectionLabel: React.CSSProperties = {
-  fontFamily: MONO, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', opacity: .55, marginBottom: 10,
-}
-const optRow: React.CSSProperties = {
-  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap',
-  border: '1px solid rgba(5,46,32,.12)', borderRadius: 8, padding: '14px 16px', marginBottom: 10,
-}
-const done: React.CSSProperties = {
-  marginTop: 26, padding: '16px 18px', border: '1px solid rgba(46,125,82,.35)',
-  background: 'rgba(46,125,82,.08)', borderRadius: 8, fontSize: 14,
-}
+const MONO = "'Google Sans Code', 'DM Mono', monospace"
+const PAPER = '#F3E9DA'
+const INK = '#052E20'
+const LINE = 'rgba(229,212,194,.18)'
+
+const CSS = `
+  /* the fixed lion (NavOverlay) sits at the right edge, mid-height, on a desk
+     wider than 1024 — keep the column clear of it at any width */
+  .ag-wrap { max-width: 1180px; margin: 0 auto; box-sizing: border-box; color: #E5D4C2;
+             padding-left: 24px; padding-right: max(24px, calc(150px - (100vw - 1180px) / 2)); }
+  .ag-mast { display: grid; grid-template-columns: minmax(0, 1fr) clamp(150px, 19vw, 250px); gap: 48px; align-items: end;
+             padding-top: 140px; padding-bottom: 64px; }
+  .ag-h1 { font-family: ${SERIF}; font-weight: 400; font-size: clamp(48px, 6.6vw, 96px); line-height: .92; margin: 0; text-wrap: balance; }
+  .ag-intro { font-family: ${MONO}; font-size: 14px; line-height: 1.95; opacity: .9; max-width: 620px; margin: 26px 0 0; }
+  .ag-art { align-self: end; padding-bottom: 6px; }
+  .ag-rise { opacity: 0; transform: translateY(22px); animation: pk-rise .9s cubic-bezier(.16,.84,.44,1) both; }
+
+  .ag-tabs { display: flex; gap: 28px; margin-top: 34px; }
+  .ag-tab { position: relative; background: none; border: none; padding: 0 0 7px; cursor: pointer; color: #E5D4C2;
+            font-family: ${MONO}; font-size: 12.5px; letter-spacing: .1em; opacity: .6; transition: opacity .3s ease; }
+  .ag-tab::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1.5px; background: #D4B85A;
+                   transform: scaleX(0); transform-origin: left; transition: transform .45s cubic-bezier(.16,.84,.44,1); }
+  .ag-tab:hover { opacity: .9; }
+  .ag-tab.is-on { opacity: 1; color: #D4B85A; }
+  .ag-tab.is-on::after { transform: scaleX(1); }
+  .ag-prevails { font-family: ${MONO}; font-size: 13px; line-height: 1.9; opacity: .82; max-width: 620px; margin: 18px 0 0; }
+
+  .ag-body { max-width: 880px; }
+  .ag-quiet { font-family: ${MONO}; font-size: 14px; line-height: 1.95; opacity: .8; margin: 0; }
+  .ag-done { font-family: ${SERIF}; font-size: clamp(28px, 3.4vw, 42px); line-height: 1.05; margin: 0; }
+
+  .ag-doc + .ag-doc { margin-top: 88px; }
+  .ag-doc-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+  .ag-h2 { font-family: ${SERIF}; font-weight: 400; font-size: clamp(30px, 3.6vw, 46px); line-height: 1; margin: 0; }
+  .ag-ver { font-family: ${MONO}; font-size: 12px; letter-spacing: .04em; opacity: .75; }
+
+  .ag-sheet { max-height: 58vh; overflow-y: auto; background: ${PAPER}; color: ${INK}; border-radius: 4px;
+              padding: clamp(28px, 4.5vw, 56px) clamp(22px, 5vw, 64px);
+              box-shadow: 0 30px 70px rgba(0,0,0,.36), 0 8px 22px rgba(0,0,0,.2);
+              scrollbar-width: thin; scrollbar-color: rgba(5,46,32,.3) transparent; }
+  .ag-html { font-family: ${MONO}; font-size: 13.5px; line-height: 2; overflow-wrap: anywhere; }
+  .ag-html h1 { font-family: ${SERIF}; font-weight: 400; font-size: clamp(30px, 4vw, 48px); line-height: 1; margin: 0 0 16px; overflow-wrap: normal; }
+  .ag-html h2 { font-family: ${SERIF}; font-weight: 400; font-size: clamp(22px, 2.6vw, 30px); line-height: 1.05; margin: 44px 0 14px; overflow-wrap: normal; }
+  .ag-html h3 { font-family: ${SERIF}; font-weight: 400; font-size: clamp(19px, 2vw, 23px); line-height: 1.15; margin: 30px 0 10px; }
+  .ag-html p { margin: 0 0 16px; opacity: .9; }
+  .ag-html ul, .ag-html ol { margin: 0 0 18px; padding-left: 20px; opacity: .9; }
+  .ag-html li { margin-bottom: 8px; padding-left: 4px; }
+  .ag-html li::marker { color: rgba(5,46,32,.55); }
+  .ag-html em { opacity: .75; }
+  .ag-html strong { font-weight: 600; }
+  .ag-html a { color: inherit; text-underline-offset: 3px; }
+  .ag-html hr { border: none; border-top: 1px solid rgba(5,46,32,.16); margin: 32px 0; }
+  .ag-html table { width: 100%; border-collapse: collapse; margin: 0 0 18px; font-size: 12.5px; line-height: 1.7; }
+  .ag-html td, .ag-html th { border-top: 1px solid rgba(5,46,32,.16); border-bottom: 1px solid rgba(5,46,32,.16); padding: 10px 12px 10px 0; vertical-align: top; text-align: left; }
+
+  .ag-actions { display: flex; align-items: baseline; gap: 18px 32px; flex-wrap: wrap; margin-top: 28px; }
+  .pk-cta.ag-agree { margin-top: 0; color: #D4B85A; font-size: 13px; }
+  .pk-cta.ag-agree:disabled { opacity: .35; cursor: not-allowed; }
+  .pk-cta.ag-agree:disabled .pk-go { transform: none; }
+  .ag-quietbtn { background: none; border: none; padding: 0 0 5px; cursor: pointer; color: #E5D4C2; opacity: .8;
+                 border-bottom: 1px solid rgba(229,212,194,.35); border-radius: 0;
+                 font-family: ${MONO}; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; transition: opacity .2s ease; }
+  .ag-quietbtn:hover { opacity: 1; }
+  .ag-hint { font-family: ${MONO}; font-size: 12.5px; line-height: 1.7; opacity: .75; }
+
+  .ag-group { margin-top: 88px; }
+  .ag-group > .ag-h2 { margin-bottom: 22px; }
+  .ag-row { display: flex; justify-content: space-between; align-items: center; gap: 16px 32px; flex-wrap: wrap;
+            padding: 22px 0; border-top: 1px solid ${LINE}; }
+  .ag-row:last-child { border-bottom: 1px solid ${LINE}; }
+  .ag-row.is-block { display: block; }
+  .ag-row > div:first-child { flex: 1 1 380px; min-width: 0; }
+  .ag-row-t { font-family: ${SERIF}; font-size: clamp(22px, 2.4vw, 28px); line-height: 1.1; }
+  .ag-row-s { font-family: ${MONO}; font-size: 13px; line-height: 1.85; opacity: .8; margin-top: 8px; max-width: 600px; }
+  .ag-opts { display: flex; gap: 24px; }
+  .ag-opt { background: none; border: none; border-bottom: 1px solid rgba(229,212,194,.3); border-radius: 0; padding: 0 0 5px; cursor: pointer;
+            color: #E5D4C2; opacity: .78; font-family: ${MONO}; font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+            transition: opacity .2s ease, color .2s ease, border-color .2s ease; }
+  .ag-opt:hover { opacity: 1; }
+  .ag-opt.is-on { color: #D4B85A; opacity: 1; border-bottom-color: #D4B85A; }
+
+  .ag-msg { margin-top: 28px; font-family: ${MONO}; font-size: 13.5px; line-height: 1.8; color: #D4B85A; }
+
+  @media (max-width: 1024px) { .ag-wrap { padding-right: 24px; } }
+  @media (max-width: 860px) {
+    .ag-wrap { padding-left: 20px; padding-right: 20px; }
+    .ag-mast { grid-template-columns: minmax(0, 1fr); gap: 0; padding-top: 118px; padding-bottom: 48px; }
+    .ag-art { display: none; }
+    .ag-h1 { font-size: clamp(44px, 13vw, 64px); }
+    .ag-intro { font-size: 13.5px; line-height: 1.9; }
+    .ag-sheet { padding: 28px 20px; }
+    .ag-html { font-size: 13px; line-height: 1.95; }
+    .ag-doc + .ag-doc, .ag-group { margin-top: 72px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ag-rise { opacity: 1; transform: none; animation: none; }
+    .ag-tab::after { transition: none; }
+  }
+`

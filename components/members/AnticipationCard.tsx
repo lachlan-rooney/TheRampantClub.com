@@ -3,11 +3,15 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useLang, type Lang } from '@/lib/lang'
+import { CreamInk, CreamInkDefs } from '@/components/public/CreamInk'
 
 // PASSIVE pre-visit card. Composes the member's next real booking and renders on
 // the dashboard — nothing is sent, no staff action, no fabrication (it shows only
 // what's true). Its one action deep-links into the concierge thread with context
 // pre-filled (NOT pre-sent). No booking → renders nothing.
+//
+// Set in the site's language: no tinted box — the date LARGE between two
+// hairlines, the room key drifting beside it, the action an underlined line.
 
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
 
@@ -64,33 +68,54 @@ export default function AnticipationCard() {
     `Đôi lời về lượt đặt chỗ của tôi vào ${dateLabel(b.date, lang)} tại ${art(b.space)}: `,
   )
 
+  // The arrow is part of the translated line; lift it out so it can slide.
+  const actionLabel = t('A request for the evening? →', 'Có yêu cầu gì cho buổi tối? →').replace(/\s*→\s*$/, '')
+
   return (
-    <div style={card}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
-        <div style={kicker}>{t('We’re expecting you', 'Chúng tôi mong đón bạn')}</div>
-        {when && <div style={whenChip}>{when}</div>}
-      </div>
-      <div style={headline}>{dateLabel(b.date, lang)}</div>
-      <div style={detail}>
-        {tableLine}
-        {b.party_size && b.party_size > 1 ? t(` · a table for ${b.party_size}`, ` · bàn cho ${b.party_size} người`) : ''}
-      </div>
-      {events.length > 0 && (
-        <div style={eventLine}>
-          {t('Also in the house that day:', 'Cùng ngày tại câu lạc bộ:')} {events.map(e => e.title).join(' · ')}
+    <div className="ac" style={card}>
+      <style dangerouslySetInnerHTML={{ __html: CARD_CSS }} />
+      <CreamInkDefs />
+      <div style={{ minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '6px 16px' }}>
+          <div style={kicker}>{t('We’re expecting you', 'Chúng tôi mong đón bạn')}</div>
+          {when && <div style={whenStyle}>{when}</div>}
         </div>
-      )}
-      <Link href={`/members/concierge?prefill=${encodeURIComponent(prefill)}`} style={action}>
-        {t('A request for the evening? →', 'Có yêu cầu gì cho buổi tối? →')}
-      </Link>
+        <div style={headline}>{dateLabel(b.date, lang)}</div>
+        <div style={detail}>
+          {tableLine}
+          {b.party_size && b.party_size > 1 ? t(` · a table for ${b.party_size}`, ` · bàn cho ${b.party_size} người`) : ''}
+        </div>
+        {events.length > 0 && (
+          <div style={eventLine}>
+            {t('Also in the house that day:', 'Cùng ngày tại câu lạc bộ:')} {events.map(e => e.title).join(' · ')}
+          </div>
+        )}
+        <Link href={`/members/concierge?prefill=${encodeURIComponent(prefill)}`} className="ac-cta">
+          {actionLabel} <span className="ac-go" aria-hidden="true">→</span>
+        </Link>
+      </div>
+      <div className="ac-art" aria-hidden="true">
+        <CreamInk name="key" width="100%" rot={-14} dur={8} />
+      </div>
     </div>
   )
 }
 
-const card: React.CSSProperties = { border: '1px solid rgba(212,184,90,0.32)', borderRadius: 14, background: 'linear-gradient(135deg, rgba(212,184,90,0.10), rgba(212,184,90,0.03))', padding: '20px 22px', marginBottom: 24 }
-const kicker: React.CSSProperties = { fontFamily: MONO, fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#D4B85A' }
-const whenChip: React.CSSProperties = { fontFamily: MONO, fontSize: 10, letterSpacing: '0.06em', color: '#052E20', background: '#D4B85A', padding: '2px 10px', borderRadius: 10, fontWeight: 700 }
-const headline: React.CSSProperties = { fontFamily: "'Rampant Sans', serif", fontSize: 22, color: '#E5D4C2', margin: '8px 0 4px', letterSpacing: '0.02em' }
-const detail: React.CSSProperties = { fontFamily: MONO, fontSize: 13, color: '#E5D4C2', opacity: 0.85, lineHeight: 1.5 }
-const eventLine: React.CSSProperties = { fontFamily: MONO, fontSize: 11, color: '#B2AA98', marginTop: 8, lineHeight: 1.5 }
-const action: React.CSSProperties = { display: 'inline-block', marginTop: 14, fontFamily: MONO, fontSize: 12, color: '#D4B85A', textDecoration: 'none', letterSpacing: '0.04em', borderBottom: '1px solid rgba(212,184,90,0.4)', paddingBottom: 2 }
+const CARD_CSS = `
+  .ac { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 28px; align-items: center; }
+  .ac-art { width: 110px; }
+  .ac-cta { display: inline-block; margin-top: 22px; color: #D4B85A; text-decoration: none;
+            border-bottom: 1px solid #D4B85A; padding-bottom: 6px;
+            font-family: ${MONO}; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+  .ac-go { display: inline-block; transition: transform .35s ease; }
+  .ac-cta:hover .ac-go { transform: translateX(7px); }
+  @media (max-width: 560px) { .ac { grid-template-columns: minmax(0, 1fr) 72px; gap: 16px; align-items: start; } .ac-art { width: 72px; } }
+  @media (prefers-reduced-motion: reduce) { .ac-go { transition: none; } }
+`
+
+const card: React.CSSProperties = { borderTop: '1px solid rgba(229,212,194,0.18)', padding: '28px 0', color: '#E5D4C2' }
+const kicker: React.CSSProperties = { fontFamily: MONO, fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#D4B85A' }
+const whenStyle: React.CSSProperties = { fontFamily: MONO, fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#E5D4C2', opacity: 0.85 }
+const headline: React.CSSProperties = { fontFamily: "'Rampant Sans', serif", fontSize: 'clamp(30px, 4.4vw, 52px)', lineHeight: 0.98, color: '#E5D4C2', margin: '14px 0 12px' }
+const detail: React.CSSProperties = { fontFamily: MONO, fontSize: 13.5, color: '#E5D4C2', opacity: 0.88, lineHeight: 1.8 }
+const eventLine: React.CSSProperties = { fontFamily: MONO, fontSize: 12.5, color: '#E5D4C2', opacity: 0.75, marginTop: 6, lineHeight: 1.8 }
