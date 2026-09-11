@@ -10,8 +10,8 @@ import { useLang } from '@/lib/lang'
 // everything else. Now it is an object with a character of its own: the old
 // Solari board from a station concourse. The greeting runs across the top in
 // big flaps, Sài Gòn's clock sits in the corner and flips each minute, and
-// every pick is a departure — what it is, the selection, the remarks, a status
-// lamp. When it scrolls into view the letters shuffle and settle.
+// every pick is a departure — what it is, the selection, the remarks. When it
+// scrolls into view the letters shuffle and settle.
 //
 // The same component serves the homepage (cream) and the member dashboard
 // (green, with the clubhouse count as a third row). The board is its own dark
@@ -38,7 +38,7 @@ function saigonNow(): { hour: number; hhmm: string } {
 
 function greetingFor(hour: number, t: (en: string, vn: string) => string): string {
   if (hour < 5)  return t('After hours in Sài Gòn', 'Sài Gòn về khuya')
-  if (hour < 11) return t('Good morning, Sài Gòn', 'Chào buổi sáng, Sài Gòn')
+  if (hour < 12) return t('Good morning, Sài Gòn', 'Chào buổi sáng, Sài Gòn')
   if (hour < 17) return t('Good afternoon, Sài Gòn', 'Chào buổi chiều, Sài Gòn')
   if (hour < 21) return t('Good evening, Sài Gòn', 'Chào buổi tối, Sài Gòn')
   return t('Tonight in Sài Gòn', 'Đêm nay tại Sài Gòn')
@@ -142,18 +142,15 @@ export default function TonightPanel({
 
   const greeting = now ? greetingFor(now.hour, t) : t('Tonight in Sài Gòn', 'Đêm nay tại Sài Gòn')
 
-  const rows: { tag: string; value: string; remark: string; status: string; lamp: string }[] = [
-    { tag: t('Dram of the day', 'Ly của ngày'), value: data?.dram.label || '', remark: data?.dram.note || '',
-      status: t('Pouring', 'Đang rót'), lamp: '#E8B64A' },
-    { tag: t('On the turntable', 'Trên mâm đĩa'), value: data?.vinyl.label || '', remark: data?.vinyl.note || '',
-      status: t('Playing', 'Đang phát'), lamp: '#E8B64A' },
+  const rows: { tag: string; value: string; remark: string }[] = [
+    { tag: t('Dram of the day', 'Ly của ngày'), value: data?.dram.label || '', remark: data?.dram.note || '' },
+    { tag: t('On the turntable', 'Trên mâm đĩa'), value: data?.vinyl.label || '', remark: data?.vinyl.note || '' },
   ]
   if (showClubhouseCount && count !== null) {
     rows.push({
       tag: t('Clubhouse', 'Câu lạc bộ'),
       value: count === 0 ? t('Quiet', 'Yên tĩnh') : t(`${count} ${count === 1 ? 'member' : 'members'} in`, `${count} thành viên`),
       remark: t('Tapped within the last 4 hours', 'Quẹt thẻ trong 4 giờ qua'),
-      status: t('Live', 'Trực tiếp'), lamp: '#6FCF8E',
     })
   }
 
@@ -198,7 +195,7 @@ export default function TonightPanel({
 
         .tb-greeting { margin: 18px 0 20px; }
         .tb-cols, .tb-row {
-          display: grid; grid-template-columns: 150px minmax(0, 1fr) minmax(0, 250px) 110px;
+          display: grid; grid-template-columns: 150px minmax(0, 1fr) minmax(0, 280px);
           gap: 18px; align-items: center;
         }
         .tb-cols { font-family: ${MONO}; font-size: 9.5px; letter-spacing: .22em; text-transform: uppercase;
@@ -207,23 +204,15 @@ export default function TonightPanel({
         .tb-row:last-child { border-bottom: none; }
         .tb-tag { font-family: ${MONO}; font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: #D4B85A; }
         .tb-remark { font-family: ${MONO}; font-size: 12px; line-height: 1.6; color: rgba(237,227,207,.72); }
-        .tb-status { display: flex; align-items: center; gap: 8px; font-family: ${MONO}; font-size: 10.5px;
-                     letter-spacing: .16em; text-transform: uppercase; }
-        .tb-lamp { width: 8px; height: 8px; border-radius: 50%; animation: tb-lamp 2.6s ease-in-out infinite; }
-        @keyframes tb-lamp { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
 
         /* Narrow boards — a phone, or half of the member dashboard — stack each
-           departure: tag and status on one line, the flaps, then the remarks. */
+           departure: the tag, the flaps, then the remarks. */
         @container (max-width: 720px) {
           .tb-cols { display: none; }
-          .tb-row { grid-template-columns: 1fr auto; row-gap: 10px; }
-          .tb-row .tb-value { grid-column: 1 / -1; order: 2; }
-          .tb-row .tb-remark { grid-column: 1 / -1; order: 3; }
-          .tb-row .tb-status { order: 1; justify-self: end; }
-          .tb-row .tb-tag { order: 0; }
+          .tb-row { grid-template-columns: 1fr; row-gap: 10px; }
         }
         @media (prefers-reduced-motion: reduce) {
-          .tb-lamp, .tb-cell.is-flip > span { animation: none; }
+          .tb-cell.is-flip > span { animation: none; }
         }
       ` }} />
 
@@ -243,7 +232,6 @@ export default function TonightPanel({
         <span>{t('Tonight', 'Tối nay')}</span>
         <span>{t('Selection', 'Lựa chọn')}</span>
         <span>{t('Remarks', 'Ghi chú')}</span>
-        <span>{t('Status', 'Trạng thái')}</span>
       </div>
 
       {rows.map(r => (
@@ -255,10 +243,6 @@ export default function TonightPanel({
               : <span className="tb-remark">…</span>}
           </div>
           <div className="tb-remark">{r.remark}</div>
-          <div className="tb-status">
-            <span className="tb-lamp" style={{ background: r.lamp, boxShadow: `0 0 10px ${r.lamp}` }} />
-            {r.status}
-          </div>
         </div>
       ))}
     </div>
