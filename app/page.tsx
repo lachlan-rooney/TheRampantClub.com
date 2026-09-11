@@ -710,6 +710,44 @@ export default function HomePage() {
           margin-bottom: 60px;
         }
 
+        /* ── The membership card, floating above Member Benefits ──
+           Small and tilted up to the left, like something held just off the
+           paper. Two parts: the card bobs, and a soft shadow on the ground
+           below tightens and darkens as it comes down — that pairing is what
+           reads as height, where a drop-shadow alone reads as a sticker. */
+        @keyframes trc-card-float {
+          from { transform: rotate(-16deg) translateY(0); }
+          to   { transform: rotate(-13deg) translateY(-12px); }
+        }
+        @keyframes trc-card-shadow {
+          from { transform: scaleX(1);   opacity: .55; }
+          to   { transform: scaleX(.8);  opacity: .32; }
+        }
+        .trc-card-float {
+          position: relative;
+          width: 104px; margin: -36px auto 44px;
+          pointer-events: none;
+        }
+        .trc-card-float img {
+          display: block; width: 100%; height: auto;
+          filter: drop-shadow(10px 16px 14px rgba(5, 46, 32, .22));
+          animation: trc-card-float 5.5s ease-in-out infinite alternate;
+        }
+        .trc-card-float::after {
+          content: ''; position: absolute;
+          left: 8%; right: 8%; bottom: -26px; height: 14px;
+          border-radius: 50%;
+          background: radial-gradient(ellipse at center, rgba(5, 46, 32, .35), transparent 70%);
+          animation: trc-card-shadow 5.5s ease-in-out infinite alternate;
+        }
+        @media (max-width: 768px) {
+          .trc-card-float { width: 84px; margin: 8px auto 40px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .trc-card-float img { animation: none; transform: rotate(-15deg); }
+          .trc-card-float::after { animation: none; }
+        }
+
         /* ── Scroll-reveal blurb section ── */
         .trc-blurb {
           text-align: center;
@@ -994,6 +1032,15 @@ export default function HomePage() {
 
         {/* ══════ 2. BENEFITS ══════ */}
         <div ref={benefitsSec.ref} className="trc-section">
+          {/* The membership card in its sleeve — decorative, so hidden from
+              screen readers. Fades in with the section; the float is CSS. */}
+          <div className="trc-card-float" aria-hidden="true" style={{
+            opacity: benefitsSec.visible ? 1 : 0,
+            transition: 'opacity 1s ease',
+          }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/member-card-opt.webp" alt="" />
+          </div>
           <div className="trc-section-diamond" />
           <div className="trc-section-title">Member Benefits</div>
           <div className="trc-section-subtitle">Quyền Lợi Thành Viên</div>
