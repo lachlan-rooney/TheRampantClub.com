@@ -5,6 +5,7 @@ import { surfaceName } from '@/lib/members/surfaces'
 import { useState, useCallback, useEffect, useRef, Fragment } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
+import { useLang } from '@/lib/lang'
 
 // Member nav — grouped by what a member actually comes here to do, each link with
 // a consistent line icon (same visual language as the admin sidebar). Order is
@@ -14,36 +15,36 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 // never what a thing is called.
 const L = (href: string) => ({ href, en: surfaceName(href, 'en'), vn: surfaceName(href, 'vn') })
 
-const MEMBER_GROUPS: { label: string; links: { href: string; en: string; vn: string; icon: string }[] }[] = [
-  { label: 'What’s On', links: [
+const MEMBER_GROUPS: { label: string; vn: string; links: { href: string; en: string; vn: string; icon: string }[] }[] = [
+  { label: 'What’s On', vn: 'Sự Kiện', links: [
     { ...L('/members/events'), icon: 'calendar' },
     { ...L('/members/gallery'), icon: 'image' },
     { ...L('/members/notices'), icon: 'pin' },
   ] },
-  { label: 'The Club', links: [
+  { label: 'The Club', vn: 'Câu Lạc Bộ', links: [
     { ...L('/members/spaces'), icon: 'building' },
     { ...L('/menus'), icon: 'menu' },
     { ...L('/members/snug'), icon: 'sofa' },
     { ...L('/members/concierge'), icon: 'bell' },
   ] },
-  { label: 'Whisky', links: [
+  { label: 'Whisky', vn: 'Whisky', links: [
     { ...L('/members/whisky'), icon: 'glass' },
     { ...L('/members/whisky/finder'), icon: 'compass' },
     { ...L('/members/taste'), icon: 'radar' },
     { ...L('/members/notes'), icon: 'quill' },
     { ...L('/members/journey'), icon: 'flag' },
   ] },
-  { label: 'Community', links: [
+  { label: 'Community', vn: 'Cộng Đồng', links: [
     { ...L('/members/members'), icon: 'people' },
     { ...L('/members/introductions'), icon: 'introduce' },
     { ...L('/members/messages'), icon: 'chat' },
   ] },
-  { label: 'You', links: [
+  { label: 'You', vn: 'Bạn', links: [
     { ...L('/members/profile'), icon: 'card' },
     { ...L('/members/calendar'), icon: 'calendar' },
     { ...L('/members/visits'), icon: 'clock' },
   ] },
-  { label: 'Info', links: [
+  { label: 'Info', vn: 'Thông Tin', links: [
     { ...L('/members/rules'), icon: 'book' },
     { ...L('/members/terms'), icon: 'document' },
     { ...L('/members/contact'), icon: 'mail' },
@@ -91,27 +92,32 @@ interface NavOverlayProps {
   hideLogo?: boolean
 }
 
+const allCollapsed = (): Record<string, boolean> => Object.fromEntries(MEMBER_GROUPS.map(g => [g.label, true]))
+
 export default function NavOverlay({ variant, dark = false, hideLogo = false }: NavOverlayProps) {
+  // Member links stack two lines, English over Vietnamese. In VN the order
+  // flips — the same swap MemberPage makes with a page's title — so the switch
+  // visibly changes the menu rather than leaving it as it was. Group names
+  // (the welcome guide's names for the same groups) follow the switch too.
+  const { lang } = useLang()
+  const lines = (en: string, vn: string) => lang === 'vn' ? [vn, en] : [en, vn]
   const [open, setOpen] = useState(false)
   const [logoInverted, setLogoInverted] = useState(dark)
   const [isAdminUser, setIsAdminUser] = useState(false)
   const [conciergeUnread, setConciergeUnread] = useState(0)
-  // Collapsible member-nav groups — default collapsed so the menu opens compact
-  // (Home + category headers), each header a tap to reveal its links. Persisted.
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(
-    () => Object.fromEntries(MEMBER_GROUPS.map(g => [g.label, true]))
-  )
+  // Collapsible member-nav groups — the menu ALWAYS opens compact (Home +
+  // category headers), each header a tap to reveal its links.
+  //
+  // This used to be remembered in localStorage, so a group opened once stayed
+  // open on every visit after — the menu arrived with "The Club" already
+  // expanded and nothing on screen said why. Now every opening starts
+  // collapsed, and the old saved state is cleared rather than left to linger.
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(allCollapsed)
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('member_nav_collapsed')
-      if (raw) setCollapsed(c => ({ ...c, ...JSON.parse(raw) }))
-    } catch { /* ignore */ }
+    try { localStorage.removeItem('member_nav_collapsed') } catch { /* ignore */ }
   }, [])
-  const toggleGroup = (label: string) => setCollapsed(c => {
-    const next = { ...c, [label]: !c[label] }
-    try { localStorage.setItem('member_nav_collapsed', JSON.stringify(next)) } catch { /* ignore */ }
-    return next
-  })
+  useEffect(() => { if (open) setCollapsed(allCollapsed()) }, [open])
+  const toggleGroup = (label: string) => setCollapsed(c => ({ ...c, [label]: !c[label] }))
   const navRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const logoRef = useRef<HTMLImageElement>(null)
@@ -507,8 +513,8 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
             <Link href="/members" className="nav-link nav-link-withicon" onClick={() => setOpen(false)}>
               <NavIcon name="home" />
               <span className="nav-link-text">
-                <div className="nav-link-en">Home</div>
-                <div className="nav-link-vn">Trang chủ</div>
+                <div className="nav-link-en">{lines('Home', 'Trang chủ')[0]}</div>
+                <div className="nav-link-vn">{lines('Home', 'Trang chủ')[1]}</div>
               </span>
             </Link>
             {MEMBER_GROUPS.map(g => {
@@ -518,7 +524,7 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
                 <Fragment key={g.label}>
                   <button type="button" className="nav-group-toggle" onClick={() => toggleGroup(g.label)} aria-expanded={!isCollapsed}>
                     <span className="nav-group-left">
-                      {g.label}
+                      {lang === 'vn' ? g.vn : g.label}
                       {isCollapsed && groupHasUnread && (
                         <span className="nav-badge">{conciergeUnread > 9 ? '9+' : conciergeUnread}</span>
                       )}
@@ -532,12 +538,12 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
                           <NavIcon name={l.icon} />
                           <span className="nav-link-text">
                             <div className="nav-link-en" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              {l.en}
+                              {lines(l.en, l.vn)[0]}
                               {l.href === '/members/concierge' && conciergeUnread > 0 && (
                                 <span className="nav-badge">{conciergeUnread > 9 ? '9+' : conciergeUnread}</span>
                               )}
                             </div>
-                            <div className="nav-link-vn">{l.vn}</div>
+                            <div className="nav-link-vn">{lines(l.en, l.vn)[1]}</div>
                           </span>
                         </Link>
                       ))}
@@ -549,15 +555,15 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
             <button className="nav-link nav-link-withicon" onClick={() => { setOpen(false); window.dispatchEvent(new Event('open-portal-guide')) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', marginTop: 12 }}>
               <NavIcon name="compass" />
               <span className="nav-link-text">
-                <div className="nav-link-en">Portal Guide</div>
-                <div className="nav-link-vn">Hướng Dẫn</div>
+                <div className="nav-link-en">{lines('Portal Guide', 'Hướng Dẫn')[0]}</div>
+                <div className="nav-link-vn">{lines('Portal Guide', 'Hướng Dẫn')[1]}</div>
               </span>
             </button>
             <button className="nav-link nav-link-withicon" onClick={handleSignOut} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', marginTop: 4 }}>
               <NavIcon name="signout" />
               <span className="nav-link-text">
-                <div className="nav-link-en">Sign Out</div>
-                <div className="nav-link-vn">Đăng xuất</div>
+                <div className="nav-link-en">{lines('Sign Out', 'Đăng xuất')[0]}</div>
+                <div className="nav-link-vn">{lines('Sign Out', 'Đăng xuất')[1]}</div>
               </span>
             </button>
             {isAdminUser && (
