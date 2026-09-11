@@ -6,6 +6,8 @@ import { useState, useCallback, useEffect, useRef, Fragment } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { useLang } from '@/lib/lang'
+import { InkFloat } from '@/components/public/kit'
+import { CreamInk, CreamInkDefs } from '@/components/public/CreamInk'
 
 // Member nav — grouped by what a member actually comes here to do, each link with
 // a consistent line icon (same visual language as the admin sidebar). Order is
@@ -239,168 +241,118 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
           animation: diamond-pulse 1.2s ease-in-out 3;
         }
 
+        /* ── THE MENU: a sheet from the left, in the house style ─────────────
+           It was a small floating box of little spaced capitals — the old
+           look, next to a site now set in large display type. Now a full-
+           height sheet slides in with the page dimmed behind it: the rooms
+           set large in the display face, the Vietnamese beneath in mono,
+           hairlines between the groups, utilities quiet at the foot, and one
+           of the house's ink drawings for company. Cream on the public site,
+           the portal's deep green inside it. */
+        .nav-scrim { position: fixed; inset: 0; z-index: 8998; background: rgba(5, 46, 32, .26);
+                     -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+                     opacity: 0; pointer-events: none; transition: opacity .45s ease; }
+        .nav-dark .nav-scrim { background: rgba(0, 0, 0, .42); }
+        .nav-scrim.is-open { opacity: 1; pointer-events: auto; }
+
         .nav-menu {
-          position: fixed;
-          top: 68px;
-          left: 28px;
-          z-index: 8999;
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-          /* Grouped member nav can be ~16 rows — cap to the viewport and scroll
-             rather than clip Sign Out / Admin off the bottom on short screens. */
-          max-height: calc(100vh - 84px);
-          overflow-y: auto;
-          opacity: 0;
-          transform: translateY(-6px);
-          pointer-events: none;
-          transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
-          padding: 18px 22px;
-          background: rgba(242, 229, 210, 0.94);
-          backdrop-filter: blur(14px);
-          -webkit-backdrop-filter: blur(14px);
-          border-radius: 8px;
-          border: 1px solid rgba(5, 46, 32, 0.10);
-          box-shadow: 0 18px 36px rgba(5, 46, 32, 0.15);
+          position: fixed; top: 0; left: 0; bottom: 0; z-index: 8999;
+          width: min(400px, 88vw);
+          display: flex; flex-direction: column; gap: 2px;
+          overflow-y: auto; overscroll-behavior: contain;
+          padding: 88px 34px 30px;
+          background: #EADCCB; color: #052E20;
+          border-right: 1px solid rgba(5, 46, 32, .12);
+          box-shadow: 24px 0 70px rgba(5, 46, 32, .18);
+          transform: translateX(-102%); pointer-events: none;
+          transition: transform .55s cubic-bezier(.16,.84,.44,1);
         }
-        .nav-dark .nav-menu {
-          background: rgba(5, 46, 32, 0.94);
-          border: 1px solid rgba(229, 212, 194, 0.18);
-          box-shadow: 0 18px 36px rgba(0, 0, 0, 0.45);
-        }
-        .nav-menu.is-open {
-          opacity: 1;
-          transform: translateY(0);
-          pointer-events: auto;
-        }
+        .nav-dark .nav-menu { background: #04251A; color: #E5D4C2; border-right-color: rgba(229, 212, 194, .12);
+                              box-shadow: 24px 0 70px rgba(0, 0, 0, .5); }
+        .nav-menu.is-open { transform: none; pointer-events: auto; }
 
-        .nav-link {
-          text-decoration: none;
-          display: block;
-          transition: opacity 0.2s ease;
-        }
-        .nav-link:hover { opacity: 0.5; }
-
-        /* Icon-led member links — icon + stacked EN/VN text on one row. Only the
-           member nav uses this; public/Home stay block so nothing else shifts. */
-        .nav-link-withicon { display: flex; align-items: center; gap: 12px; }
+        .nav-link { text-decoration: none; display: block; padding: 7px 0; color: inherit; }
+        .nav-link-withicon { display: flex; align-items: flex-start; gap: 12px; }
         .nav-link-text { display: block; }
-        .nav-link-ico { flex-shrink: 0; color: #A9822C; opacity: 0.85; }
-        .nav-dark .nav-link-ico { color: #D4B85A; opacity: 0.9; }
+        /* type-led now: the little line icons go */
+        .nav-link-ico { display: none; }
 
-        /* Primary action (Member Log in) — gold accent so the key returning-
-           member action stands out, in both the light and dark nav themes. */
-        .nav-link-primary .nav-link-en { color: #A9822C; }
-        .nav-link-primary .nav-link-vn { color: #A9822C; opacity: 0.85; }
+        .nav-link-en {
+          font-family: 'Rampant Sans', 'Playfair Display', serif; font-weight: 400;
+          font-size: 28px; line-height: 1.02; letter-spacing: 0; text-transform: none;
+          color: #052E20; transition: color .25s ease, transform .35s cubic-bezier(.16,.84,.44,1);
+        }
+        .nav-link-vn {
+          font-family: 'Google Sans Code', monospace; font-size: 11px; letter-spacing: .03em;
+          color: #052E20; opacity: .6; margin-top: 4px;
+        }
+        .nav-link:hover .nav-link-en, .nav-link:focus-visible .nav-link-en { color: #8A6A1F; transform: translateX(4px); }
+        .nav-link:focus-visible { outline: none; }
+        .nav-dark .nav-link-en { color: #E5D4C2; }
+        .nav-dark .nav-link-vn { color: #E5D4C2; }
+        .nav-dark .nav-link:hover .nav-link-en, .nav-dark .nav-link:focus-visible .nav-link-en { color: #D4B85A; }
+
+        /* Primary action (Member Log in) — gold, so the returning member finds it */
+        .nav-link-primary .nav-link-en { color: #8A6A1F; }
+        .nav-link-primary .nav-link-vn { color: #8A6A1F; opacity: .85; }
         .nav-dark .nav-link-primary .nav-link-en { color: #E7C766; }
         .nav-dark .nav-link-primary .nav-link-vn { color: #D4B85A; }
 
-        .nav-link-en {
-          font-family: 'Rampant Sans', 'Playfair Display', serif;
-          font-size: 14px;
-          font-weight: 400;
-          color: #052E20;
-          letter-spacing: 0.14em;
-          text-transform: uppercase;
-          line-height: 1.2;
-        }
-        .nav-link-vn {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px;
-          color: #052E20;
-          letter-spacing: 0.04em;
-          margin-top: 1px;
-        }
-
         .nav-badge {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          min-width: 16px;
-          height: 16px;
-          padding: 0 5px;
-          border-radius: 8px;
-          background: #D4B85A;
-          color: #052E20;
-          font-family: 'Google Sans Code', monospace;
-          font-size: 9px;
-          font-weight: 700;
-          letter-spacing: 0;
+          display: inline-flex; align-items: center; justify-content: center;
+          min-width: 16px; height: 16px; padding: 0 5px; border-radius: 8px;
+          background: #D4B85A; color: #052E20;
+          font-family: 'Google Sans Code', monospace; font-size: 9px; font-weight: 700; letter-spacing: 0;
         }
 
         .nav-group-label {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 9px;
-          letter-spacing: 0.18em;
-          text-transform: uppercase;
-          color: #5E6650;
-          opacity: 0.7;
-          margin-top: 12px;
-          margin-bottom: -2px;
+          font-family: 'Google Sans Code', monospace; font-size: 10px; letter-spacing: .18em;
+          text-transform: uppercase; opacity: .6; margin-top: 12px;
         }
 
-        /* Collapsible group header (member nav) */
+        /* Collapsible groups (member nav): the group name in the display face */
         .nav-group-toggle {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 10px;
-          width: 100%;
-          background: none;
-          border: none;
-          cursor: pointer;
-          padding: 8px 0 6px;
-          margin-top: 8px;
-          border-top: 1px solid rgba(5, 46, 32, 0.10);
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px;
-          letter-spacing: 0.18em;
-          text-transform: uppercase;
-          color: #5E6650;
-          transition: color 0.2s ease;
+          display: flex; align-items: center; justify-content: space-between; gap: 10px;
+          width: 100%; background: none; border: none; cursor: pointer;
+          padding: 16px 0 12px; margin-top: 4px;
+          border-top: 1px solid rgba(5, 46, 32, .14);
+          font-family: 'Rampant Sans', serif; font-size: 20px; letter-spacing: 0; text-transform: none;
+          color: #052E20; opacity: .8; transition: opacity .2s ease, color .2s ease;
         }
-        .nav-group-toggle:first-of-type { border-top: none; }
-        .nav-group-toggle:hover { color: #052E20; }
+        .nav-group-toggle:hover, .nav-group-toggle[aria-expanded="true"] { opacity: 1; }
         .nav-group-toggle .nav-group-left { display: flex; align-items: center; gap: 8px; }
-        .nav-group-caret { font-size: 9px; opacity: 0.6; transition: transform 0.2s ease; }
-        .nav-dark .nav-group-toggle { color: #B2AA98; border-top-color: rgba(229, 212, 194, 0.12); }
-        .nav-dark .nav-group-toggle:hover { color: #E5D4C2; }
-        .nav-group-links {
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-          padding: 6px 0 4px 10px;
-          border-left: 1px solid rgba(5, 46, 32, 0.10);
-          margin-left: 2px;
+        .nav-group-caret { font-family: 'Google Sans Code', monospace; font-size: 11px; opacity: .6; }
+        .nav-dark .nav-group-toggle { color: #E5D4C2; border-top-color: rgba(229, 212, 194, .14); }
+        .nav-group-links { display: flex; flex-direction: column; gap: 0; padding: 0 0 12px 14px; }
+        .nav-group-links .nav-link-en { font-size: 22px; }
+
+        /* Utilities at the foot: quiet mono, not rooms */
+        .nav-menu button.nav-link { margin-top: 0 !important; }
+        .nav-menu button.nav-link .nav-link-en {
+          font-family: 'Google Sans Code', monospace; font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
         }
-        .nav-dark .nav-group-links { border-left-color: rgba(229, 212, 194, 0.14); }
+        .nav-menu button.nav-link .nav-link-vn { font-size: 10.5px; }
+        .nav-foot { margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(5, 46, 32, .14); display: flex; flex-direction: column; gap: 2px; }
+        .nav-dark .nav-foot { border-top-color: rgba(229, 212, 194, .14); }
+        .nav-ink { margin-top: auto; padding-top: 26px; flex-shrink: 0; align-self: flex-end; opacity: .9; pointer-events: none; }
+        .nav-ink img { display: block; width: 100%; height: auto; }
 
         .nav-signout {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px;
-          letter-spacing: 0.06em;
-          color: #5E6650;
-          opacity: 0.5;
-          background: none;
-          border: none;
-          cursor: pointer;
-          padding: 0;
-          text-align: left;
-          margin-top: 6px;
-          transition: opacity 0.2s ease;
+          font-family: 'Google Sans Code', monospace; font-size: 11px; letter-spacing: .06em;
+          color: inherit; opacity: .6; background: none; border: none; cursor: pointer; padding: 0;
+          text-align: left; margin-top: 6px; transition: opacity .2s ease;
         }
         .nav-signout:hover { opacity: 1; }
 
         .nav-admin-link {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px;
-          letter-spacing: 0.06em;
-          color: #5E6650;
-          opacity: 0.35;
-          text-decoration: none;
-          transition: opacity 0.2s ease;
+          font-family: 'Google Sans Code', monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+          color: inherit; opacity: .5; text-decoration: none; padding: 4px 0; transition: opacity .2s ease;
         }
-        .nav-admin-link:hover { opacity: 0.7; }
+        .nav-admin-link:hover { opacity: .9; }
+
+        @media (prefers-reduced-motion: reduce) {
+          .nav-menu, .nav-scrim, .nav-link-en { transition: none; }
+        }
 
         .nav-logo {
           position: fixed;
@@ -418,11 +370,6 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
         /* ── Dark variant (for green backgrounds) ── */
         .nav-dark .nav-diamond { background: #E5D4C2; }
         .nav-inv .nav-diamond { background: #E5D4C2; }
-        .nav-dark .nav-link-en { color: #E5D4C2; }
-        .nav-dark .nav-link-vn { color: #B2AA98; }
-        .nav-dark .nav-group-label { color: #D4B85A; opacity: 0.6; }
-        .nav-dark .nav-signout { color: #B2AA98; }
-        .nav-dark .nav-admin-link { color: #B2AA98; }
         .nav-dark .nav-logo {
         }
         .nav-logo.inverted {
@@ -434,11 +381,7 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
 
         @media (max-width: 768px) {
           .nav-trigger { top: 18px; left: 18px; }
-          .nav-menu {
-            top: 60px;
-            left: 16px;
-            padding: 16px 20px;
-          }
+          .nav-menu { padding: 78px 26px 26px; }
           .nav-logo { display: none !important; }
         }
         /* Hide the lion on iPad-sized viewports too, but only inside the members portal */
@@ -473,6 +416,7 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
         <div className="nav-diamond" />
       </button>
 
+      <div className={`nav-scrim ${open ? 'is-open' : ''}`} onClick={() => setOpen(false)} aria-hidden="true" />
       <div ref={navRef} className={`nav-menu ${open ? 'is-open' : ''}`}>
         {variant === 'public' ? (
           <>
@@ -553,6 +497,7 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
                 </Fragment>
               )
             })}
+            <div className="nav-foot">
             <button className="nav-link nav-link-withicon" onClick={() => { setOpen(false); window.dispatchEvent(new Event('open-portal-guide')) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', marginTop: 12 }}>
               <NavIcon name="compass" />
               <span className="nav-link-text">
@@ -577,9 +522,15 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
                 </Link>
               </>
             )}
+            </div>
           </>
         )}
+        {/* one of the house's ink drawings, keeping the sheet company */}
+        {dark
+          ? <CreamInk name="lion-lounging" width={150} rot={-3} dur={10} className="nav-ink" />
+          : <InkFloat name="lion-lounging" width={150} rot={-3} dur={10} className="nav-ink" />}
       </div>
+      {dark && <CreamInkDefs />}
       </div>
     </>
   )

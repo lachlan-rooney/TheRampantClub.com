@@ -182,15 +182,9 @@ export default function StudioExhibition({ collaboration, images }: {
                     {body.split(/\n{2,}/).map((para, k) => (
                       <p key={k} style={{ fontFamily: MONO, fontSize: 14, lineHeight: 2, margin: '0 0 20px' }}>{para}</p>
                     ))}
-                    {/* The signature closes the artist's OWN words. With no
-                        "in the artist's words" section it closes his bio
-                        instead — it was set for Rizal but never drawn, because
-                        it only lived inside a section his page does not have. */}
-                    {label === `About ${c.artist_name}` && !c.inspiration_en && c.signature_path && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={c.signature_path} alt="" aria-hidden="true"
-                           style={{ display: 'block', width: 180, height: 'auto', marginTop: 12, opacity: .85 }} />
-                    )}
+                    {/* No signature under the bio: Toni's file rendered as blocks
+                        (the owner took it off). It still closes an artist's own
+                        words in the "in the artist's words" section, where set. */}
                   </div>
                   {im && (
                     <figure className="ex-pic" style={{ margin: 0 }}>
