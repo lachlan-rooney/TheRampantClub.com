@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import FooterGate from '@/components/FooterGate'
 import PWARegistrar from '@/components/PWARegistrar'
+import OverscrollColour from '@/components/OverscrollColour'
 import { LangProvider } from '@/lib/lang'
 
 export const metadata: Metadata = {
@@ -100,6 +101,9 @@ export default function RootLayout({
           }
           * { font-feature-settings: 'ss01' on; box-sizing: border-box; }
           html, body { margin: 0; padding: 0; }
+          /* Never white past the ends of a page, even before any script runs.
+             <OverscrollColour /> then matches it to the page's actual edges. */
+          html { background-color: #E5D4C2; }
           html { overflow-y: scroll; scrollbar-gutter: auto; }
           html, body { overflow-x: hidden; }
           ::-webkit-scrollbar { width: 6px; background: transparent; }
@@ -130,6 +134,7 @@ export default function RootLayout({
           input[type="checkbox"]:disabled { opacity: 0.5; cursor: not-allowed; }
         ` }} />
         <PWARegistrar />
+        <OverscrollColour />
         {children}
         <FooterGate />
         </LangProvider>
