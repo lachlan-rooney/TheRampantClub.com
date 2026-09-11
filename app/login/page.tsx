@@ -5,6 +5,8 @@ import { useSearchParams } from 'next/navigation'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import NavOverlay from '@/components/NavOverlay'
 import LoginTicker from '@/components/LoginTicker'
+import { PublicPage } from '@/components/public/kit'
+import { CreamInk, CreamInkDefs } from '@/components/public/CreamInk'
 
 export default function LoginPage() {
   return (
@@ -83,221 +85,163 @@ function LoginContent() {
   }, [email, forgotLoading, forgotSent])
 
   return (
-    <>
+    <PublicPage ground="#052E20" ink="#E5D4C2">
       <style suppressHydrationWarning dangerouslySetInnerHTML={{ __html: `
-        html, body {
-          margin: 0;
-          padding: 0;
-          background: #052E20;
-        }
+        html, body { margin: 0; padding: 0; }
 
-        .login-page {
-          min-height: 100vh;
-          background: #052E20;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-family: 'Google Sans Code', monospace;
-          position: relative;
-          padding: 24px;
+        /* ── Arriving at the door ─────────────────────────────────────────
+           Words and the key on the left, the form on the right, set on the
+           green like the rest of the house: no card, no box — underlined
+           fields, a gold submit that is a line of script with an arrow. */
+        .lg { position: relative; min-height: 100vh; min-height: 100svh; display: flex; align-items: center; }
+        .lg-grid {
+          width: 100%; box-sizing: border-box;
+          display: grid; grid-template-columns: 1.05fr .95fr; gap: 64px; align-items: center;
+          padding-top: 132px; padding-bottom: 96px;
+          /* the fixed lion (NavOverlay) sits at the right edge, mid-height —
+             keep the form clear of it whatever the width of the desk */
+          padding-right: max(24px, calc(150px - (100vw - 1180px) / 2));
         }
+        .lg-words { position: relative; }
+        .lg-eyebrow { color: #D4B85A; opacity: 1; }
+        .lg-title { margin-top: 18px; }
+        .lg-key { width: clamp(190px, 19vw, 270px); margin: 34px 0 0 clamp(80px, 14vw, 220px); }
 
-        .login-grain {
-          position: fixed;
-          inset: 0;
-          pointer-events: none;
-          z-index: 1;
-          opacity: 0.035;
-          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-          background-repeat: repeat;
-          background-size: 200px;
-        }
-
-        .login-card {
-          position: relative;
-          z-index: 2;
-          width: 100%;
-          max-width: 380px;
-          text-align: center;
-        }
-
-        .login-wordmark {
-          font-family: 'Rampant Sans', 'Playfair Display', serif;
-          font-weight: 400;
-          font-size: 14px;
-          letter-spacing: 0.2em;
-          text-transform: uppercase;
-          color: #E5D4C2;
-          opacity: 0.5;
-          margin-bottom: 48px;
-        }
-
-        .login-title {
-          font-family: 'Rampant Sans', 'Playfair Display', serif;
-          font-size: 24px;
-          font-weight: 400;
-          letter-spacing: 0.14em;
-          text-transform: uppercase;
-          color: #E5D4C2;
-          margin-bottom: 6px;
-        }
-        .login-subtitle {
-          font-size: 11px;
-          color: #B2AA98;
-          opacity: 0.5;
-          letter-spacing: 0.06em;
-          margin-bottom: 36px;
-        }
+        .lg-panel { width: 100%; max-width: 440px; justify-self: end; }
+        .lg-form { display: grid; gap: 26px; }
 
         .login-input {
-          width: 100%;
-          padding: 14px 16px;
-          background: rgba(229, 212, 194, 0.06);
-          border: 1px solid rgba(229, 212, 194, 0.12);
-          border-radius: 8px;
-          color: #E5D4C2;
-          font-family: 'Google Sans Code', monospace;
-          font-size: 12px;
-          letter-spacing: 0.02em;
-          outline: none;
-          transition: border-color 0.2s ease;
-          margin-bottom: 12px;
+          display: block; width: 100%; box-sizing: border-box;
+          background: transparent; color: #E5D4C2;
+          border: none; border-bottom: 1px solid rgba(229, 212, 194, 0.32); border-radius: 0;
+          padding: 14px 0;
+          font-family: 'Google Sans Code', 'DM Mono', monospace; font-size: 14px; letter-spacing: 0.02em;
+          outline: none; transition: border-color 0.25s ease;
         }
-        .login-input::placeholder { color: #B2AA98; opacity: 0.3; }
-        .login-input:focus { border-color: rgba(229, 212, 194, 0.3); }
+        .login-input::placeholder { color: rgba(229, 212, 194, 0.5); }
+        .login-input:focus { border-bottom-color: #D4B85A; }
         .login-input:-webkit-autofill,
         .login-input:-webkit-autofill:hover,
         .login-input:-webkit-autofill:focus {
-          -webkit-box-shadow: 0 0 0 1000px rgba(5, 46, 32, 0.95) inset !important;
+          -webkit-box-shadow: 0 0 0 1000px #052E20 inset !important;
           -webkit-text-fill-color: #E5D4C2 !important;
-          border-color: rgba(229, 212, 194, 0.12);
+          caret-color: #E5D4C2;
           transition: background-color 5000s ease-in-out 0s;
         }
 
         .login-btn {
-          width: 100%;
-          padding: 16px;
-          background: #5E6650;
-          border: none;
-          border-radius: 8px;
-          color: #E5D4C2;
-          font-family: 'Pinyon Script', 'Rampant Sans', serif;
-          font-size: 24px;
-          font-weight: 400;
-          letter-spacing: 0.06em;
-          text-transform: none;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          margin-top: 4px;
+          justify-self: start; margin-top: 10px;
+          display: inline-flex; align-items: baseline; gap: 18px;
+          background: none; border: none; border-bottom: 1px solid #D4B85A; border-radius: 0;
+          padding: 0 2px 8px 0; color: #D4B85A; cursor: pointer;
+          font-family: 'Pinyon Script', 'Rampant Sans', serif; font-size: 34px; font-weight: 400;
+          line-height: 1.1; letter-spacing: 0.02em; text-transform: none;
         }
-        .login-btn:hover { background: #4a5040; }
-        .login-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .login-btn .lg-go { font-family: 'Google Sans Code', 'DM Mono', monospace; font-size: 15px;
+                            display: inline-block; transition: transform .35s ease; }
+        .login-btn:hover:not(:disabled) .lg-go { transform: translateX(7px); }
+        .login-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
         .login-toggle {
-          margin-top: 20px;
-          font-size: 11px;
-          color: #B2AA98;
-          opacity: 0.5;
-          background: none;
-          border: none;
-          cursor: pointer;
-          font-family: 'Google Sans Code', monospace;
-          letter-spacing: 0.04em;
-          transition: opacity 0.2s;
+          display: block; margin-top: 30px; padding: 4px 0; text-align: left;
+          background: none; border: none; cursor: pointer; color: #E5D4C2; opacity: 0.78;
+          font-family: 'Google Sans Code', 'DM Mono', monospace; font-size: 11.5px; line-height: 1.8;
+          letter-spacing: 0.04em; text-decoration: underline; text-decoration-color: rgba(229,212,194,.35);
+          text-underline-offset: 5px; transition: opacity 0.2s;
         }
-        .login-toggle:hover { opacity: 0.6; }
+        .login-toggle:hover:not(:disabled) { opacity: 1; }
+        .login-toggle:disabled { cursor: default; text-decoration: none; }
 
-        .login-message {
-          margin-top: 16px;
-          padding: 12px;
-          border-radius: 8px;
-          font-size: 12px;
-          letter-spacing: 0.02em;
-        }
-        .login-message.success {
-          background: rgba(94, 102, 80, 0.15);
-          border: 1px solid rgba(94, 102, 80, 0.25);
-          color: #B2AA98;
-        }
-        .login-message.error {
-          background: rgba(139, 58, 58, 0.1);
-          border: 1px solid rgba(139, 58, 58, 0.2);
-          color: #C27070;
-        }
+        .login-message { margin-top: 18px; font-family: 'Google Sans Code', 'DM Mono', monospace;
+                         font-size: 12px; line-height: 1.8; letter-spacing: 0.02em; }
+        .login-message.error { color: #E89B9B; }
 
-        .login-diamond {
-          width: 6px;
-          height: 6px;
-          background: #5E6650;
-          transform: rotate(45deg);
-          opacity: 0.3;
-          margin: 28px auto 0;
+        /* rises in once the button's face has loaded (see fontsReady) */
+        .lg-rise { opacity: 0; transform: translateY(22px); }
+        .lg.is-ready .lg-rise { animation: pk-rise .9s cubic-bezier(.16,.84,.44,1) both; }
+
+        @media (max-width: 1024px) { .lg-grid { padding-right: 24px; } }
+        @media (max-width: 860px) {
+          .lg { align-items: flex-start; }
+          .lg-grid { grid-template-columns: 1fr; gap: 40px; padding: 104px 20px 72px; }
+          .lg-key { position: absolute; top: 6px; right: -6px; width: 104px; margin: 0; }
+          .lg-panel { justify-self: start; max-width: none; }
+          .lg-form { gap: 22px; }
+          /* 16px stops iOS zooming the page when a field is focused */
+          .login-input { font-size: 16px; }
+          /* …but the placeholder is a line of copy that must be read whole */
+          .login-input::placeholder { font-size: 12.5px; letter-spacing: 0; }
+          .login-btn { font-size: 30px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .lg-rise, .lg.is-ready .lg-rise { opacity: 1; transform: none; animation: none; }
+          .login-btn .lg-go { transition: none; }
         }
       ` }} />
+      <CreamInkDefs />
 
       <NavOverlay variant="public" dark />
       <LoginTicker />
 
-      <div className="login-page">
-        <div className="login-grain" />
+      <div className={`lg ${fontsReady ? 'is-ready' : ''}`} style={{ opacity: fontsReady ? 1 : 0, transition: 'opacity 0.3s ease' }}>
+        <div className="pk-wrap lg-grid">
+          <div className="lg-words">
+            <div className="lg-rise"><div className="pk-eyebrow lg-eyebrow">The Rampant Club</div></div>
+            <div className="lg-rise" style={{ animationDelay: '.06s' }}><h1 className="pk-h1 lg-title">Members</h1></div>
+            <div className="lg-rise" style={{ animationDelay: '.12s' }}><p className="pk-sub" style={{ margin: '12px 0 0' }}>Thành viên</p></div>
+            <div className="lg-key lg-rise" style={{ animationDelay: '.2s' }}>
+              <CreamInk name="key" width="100%" rot={-10} dur={9} />
+            </div>
+          </div>
 
-        <div className="login-card" style={{ opacity: fontsReady ? 1 : 0, transition: 'opacity 0.3s ease' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/images/Key .svg"
-            alt="The Rampant Club"
-            style={{ height: 80, width: 'auto', display: 'block', margin: '0 auto 48px' }}
-          />
+          <div className="lg-panel lg-rise" style={{ animationDelay: '.16s' }}>
+            <form onSubmit={handleLogin} className="lg-form">
+              <input
+                type="email"
+                id="login-email"
+                name="email"
+                className="login-input"
+                placeholder="Email address"
+                aria-label="Email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+              />
+              <input
+                type="password"
+                id="login-password"
+                name="password"
+                className="login-input"
+                placeholder="Password (not your whisky locker code)"
+                aria-label="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
+              <button className="login-btn" type="submit" disabled={loading}>
+                <span>{loading ? 'Entering The Lions Den...' : 'Hic Sunt Leones'}</span>
+                {!loading && <span className="lg-go" aria-hidden="true">→</span>}
+              </button>
+            </form>
 
-          <h1 className="login-title">Members</h1>
-          <p className="login-subtitle">Thành viên</p>
-
-          <form onSubmit={handleLogin}>
-            <input
-              type="email"
-              id="login-email"
-              name="email"
-              className="login-input"
-              placeholder="Email address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-            />
-            <input
-              type="password"
-              id="login-password"
-              name="password"
-              className="login-input"
-              placeholder="Password (not your whisky locker code)"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
-            <button className="login-btn" type="submit" disabled={loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-              <span>{loading ? 'Entering The Lions Den...' : 'Hic Sunt Leones'}</span>
-              {!loading && <span style={{ fontSize: 24, opacity: 0.5, fontFamily: "'Rampant Sans', serif", position: 'absolute', right: 16 }}>&rsaquo;</span>}
+            <button
+              className="login-toggle"
+              onClick={handleForgotPassword}
+              disabled={forgotLoading || forgotSent}
+            >
+              {forgotLoading
+                ? 'Sending…'
+                : forgotSent
+                  ? 'Check your email. We\'ve sent a lifeline.'
+                  : 'Forgotten password? It happens to the best of us.'}
             </button>
-          </form>
 
-          <button
-            className="login-toggle"
-            onClick={handleForgotPassword}
-            disabled={forgotLoading || forgotSent}
-          >
-            {forgotLoading
-              ? 'Sending…'
-              : forgotSent
-                ? 'Check your email. We\'ve sent a lifeline.'
-                : 'Forgotten password? It happens to the best of us.'}
-          </button>
-
-          {error && <div className="login-message error">{error}</div>}
-
-          <div className="login-diamond" />
+            {error && <div className="login-message error" role="alert">{error}</div>}
+          </div>
         </div>
       </div>
-    </>
+    </PublicPage>
   )
 }

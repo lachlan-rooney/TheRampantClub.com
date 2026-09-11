@@ -3,6 +3,8 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
+import { PublicPage } from '@/components/public/kit'
+import { CreamInk, CreamInkDefs } from '@/components/public/CreamInk'
 
 export default function ResetPasswordPage() {
   const [fontsReady, setFontsReady] = useState(false)
@@ -47,112 +49,103 @@ export default function ResetPasswordPage() {
   }, [password, confirm, router])
 
   return (
-    <>
+    <PublicPage ground="#052E20" ink="#E5D4C2">
       <style suppressHydrationWarning dangerouslySetInnerHTML={{ __html: `
-        html, body { margin: 0; padding: 0; background: #052E20; }
-        .rp-page {
-          min-height: 100vh; background: #052E20;
-          display: flex; align-items: center; justify-content: center;
-          font-family: 'Google Sans Code', monospace;
-          position: relative; padding: 24px;
-        }
-        .rp-grain {
-          position: fixed; inset: 0; pointer-events: none; z-index: 1;
-          opacity: 0.035;
-          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-          background-repeat: repeat; background-size: 200px;
-        }
-        .rp-card { position: relative; z-index: 2; width: 100%; max-width: 380px; text-align: center; }
-        .rp-wordmark {
-          font-family: 'Rampant Sans', 'Playfair Display', serif;
-          font-weight: 400; font-size: 14px; letter-spacing: 0.2em;
-          text-transform: uppercase; color: #E5D4C2; opacity: 0.5; margin-bottom: 48px;
-        }
-        .rp-title {
-          font-family: 'Rampant Sans', 'Playfair Display', serif;
-          font-size: 24px; font-weight: 400; letter-spacing: 0.14em;
-          text-transform: uppercase; color: #E5D4C2; margin-bottom: 6px;
-        }
-        .rp-subtitle {
-          font-size: 11px; color: #B2AA98; opacity: 0.5;
-          letter-spacing: 0.06em; margin-bottom: 36px;
-        }
+        html, body { margin: 0; padding: 0; }
+        /* The words and a new key on the left, two underlined fields on the
+           right, the same gold line of script as the door. No card. */
+        .rp-page { min-height: 100vh; min-height: 100svh; display: flex; align-items: center; }
+        .rp-grid { width: 100%; box-sizing: border-box; display: grid; grid-template-columns: 1.05fr .95fr; gap: 72px;
+                   align-items: center; padding-top: 110px; padding-bottom: 110px; }
+        .rp-grid.is-single { grid-template-columns: 1fr; }
+        .rp-words { position: relative; }
+        .rp-wordmark { color: #D4B85A; opacity: 1; }
+        .rp-title { margin-top: 16px; }
+        .rp-subtitle { font-family: 'Google Sans Code', 'DM Mono', monospace; font-size: 14px; line-height: 2; margin: 20px 0 0; }
+        .rp-art { width: clamp(160px, 16vw, 230px); margin: 34px 0 0 clamp(60px, 12vw, 190px); }
+        .rp-panel { width: 100%; max-width: 440px; justify-self: end; }
+        .rp-form { display: grid; gap: 26px; }
         .rp-input {
-          width: 100%; padding: 14px 16px;
-          background: rgba(229, 212, 194, 0.06);
-          border: 1px solid rgba(229, 212, 194, 0.12);
-          border-radius: 8px; color: #E5D4C2;
-          font-family: 'Google Sans Code', monospace;
-          font-size: 12px; letter-spacing: 0.02em;
-          outline: none; transition: border-color 0.2s ease; margin-bottom: 12px;
+          display: block; width: 100%; box-sizing: border-box;
+          background: transparent; color: #E5D4C2;
+          border: none; border-bottom: 1px solid rgba(229, 212, 194, 0.32); border-radius: 0;
+          padding: 14px 0; outline: none;
+          font-family: 'Google Sans Code', 'DM Mono', monospace; font-size: 14px; letter-spacing: 0.02em;
+          transition: border-color 0.25s ease;
         }
-        .rp-input::placeholder { color: #B2AA98; opacity: 0.3; }
-        .rp-input:focus { border-color: rgba(229, 212, 194, 0.3); }
+        .rp-input::placeholder { color: rgba(229, 212, 194, 0.5); }
+        .rp-input:focus { border-bottom-color: #D4B85A; }
         .rp-input:-webkit-autofill,
         .rp-input:-webkit-autofill:hover,
         .rp-input:-webkit-autofill:focus {
-          -webkit-box-shadow: 0 0 0 1000px rgba(5, 46, 32, 0.95) inset !important;
+          -webkit-box-shadow: 0 0 0 1000px #052E20 inset !important;
           -webkit-text-fill-color: #E5D4C2 !important;
-          border-color: rgba(229, 212, 194, 0.12);
           transition: background-color 5000s ease-in-out 0s;
         }
         .rp-btn {
-          width: 100%; padding: 16px;
-          background: #5E6650; border: none; border-radius: 8px;
-          color: #E5D4C2; font-family: 'Pinyon Script', 'Rampant Sans', serif;
-          font-size: 24px; font-weight: 400; letter-spacing: 0.06em;
-          cursor: pointer; transition: all 0.2s ease; margin-top: 4px;
+          justify-self: start; margin-top: 10px;
+          display: inline-flex; align-items: baseline; gap: 16px;
+          background: none; border: none; border-bottom: 1px solid #D4B85A; border-radius: 0;
+          padding: 0 2px 8px 0; color: #D4B85A; cursor: pointer;
+          font-family: 'Pinyon Script', 'Rampant Sans', serif; font-size: 34px; font-weight: 400; line-height: 1.1;
         }
-        .rp-btn:hover { background: #4a5040; }
+        .rp-btn .pk-go { font-family: 'Google Sans Code', 'DM Mono', monospace; font-size: 15px; }
+        .rp-btn:hover:not(:disabled) .pk-go { transform: translateX(7px); }
         .rp-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        .rp-message {
-          margin-top: 16px; padding: 12px; border-radius: 8px;
-          font-size: 12px; letter-spacing: 0.02em;
-        }
-        .rp-message.success {
-          background: rgba(94, 102, 80, 0.15);
-          border: 1px solid rgba(94, 102, 80, 0.25);
-          color: #B2AA98;
-        }
-        .rp-message.error {
-          background: rgba(139, 58, 58, 0.1);
-          border: 1px solid rgba(139, 58, 58, 0.2);
-          color: #C27070;
-        }
+        .rp-message { font-family: 'Google Sans Code', 'DM Mono', monospace; font-size: 12px; line-height: 1.8; }
+        .rp-message.error { color: #E89B9B; }
         .rp-back {
-          display: inline-block; margin-top: 24px;
-          font-size: 11px; color: #B2AA98; opacity: 0.5;
-          letter-spacing: 0.04em; text-decoration: none;
-          transition: opacity 0.2s;
+          display: inline-block; margin-top: 30px; color: #D4B85A; text-decoration: none;
+          border-bottom: 1px solid #D4B85A; padding-bottom: 6px;
+          font-family: 'Google Sans Code', 'DM Mono', monospace; font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
         }
-        .rp-back:hover { opacity: 0.9; }
+        .rp-back:hover .pk-go { transform: translateX(7px); }
+
+        @media (max-width: 860px) {
+          .rp-page { align-items: flex-start; }
+          .rp-grid { grid-template-columns: 1fr; gap: 36px; padding: 72px 20px 96px; }
+          .rp-art { position: absolute; top: -8px; right: -10px; width: 88px; margin: 0; }
+          .rp-words > :first-child, .rp-words > .rp-title { max-width: 72%; }
+          .rp-panel { justify-self: start; max-width: none; }
+          .rp-input { font-size: 16px; }
+          .rp-btn { font-size: 30px; }
+        }
       ` }} />
+      <CreamInkDefs />
 
       <div className="rp-page" style={{ opacity: fontsReady ? 1 : 0, transition: 'opacity 0.4s ease' }}>
-        <div className="rp-grain" />
-        <div className="rp-card">
-          <div className="rp-wordmark">The Rampant Club</div>
+        <div className={`pk-wrap rp-grid ${done || hasSession === false ? 'is-single' : ''}`}>
+          <div className="rp-words">
+            <div className="pk-eyebrow rp-wordmark">The Rampant Club</div>
 
-          {done ? (
-            <>
-              <div className="rp-title">Done</div>
-              <div className="rp-subtitle">Taking you to the members&rsquo; area…</div>
-            </>
-          ) : hasSession === false ? (
-            <>
-              <div className="rp-title">Link expired</div>
-              <div className="rp-subtitle">Reset links are single-use and time-limited.</div>
-              <a href="/login" className="rp-back">Request a new one →</a>
-            </>
-          ) : (
-            <>
-              <div className="rp-title">Set a new password</div>
-              <div className="rp-subtitle">At least eight characters.</div>
-              <form onSubmit={handleSubmit}>
+            {done ? (
+              <>
+                <h1 className="pk-h1 rp-title">Done</h1>
+                <p className="rp-subtitle">Taking you to the members&rsquo; area…</p>
+              </>
+            ) : hasSession === false ? (
+              <>
+                <h1 className="pk-h1 rp-title">Link expired</h1>
+                <p className="rp-subtitle">Reset links are single-use and time-limited.</p>
+                <a href="/login" className="rp-back">Request a new one <span className="pk-go">→</span></a>
+              </>
+            ) : (
+              <>
+                <h1 className="pk-h1 rp-title">Set a new password</h1>
+                <p className="rp-subtitle">At least eight characters.</p>
+              </>
+            )}
+            <div className="rp-art"><CreamInk name="key" width="100%" rot={-10} dur={9} /></div>
+          </div>
+
+          {!done && hasSession !== false && (
+            <div className="rp-panel">
+              <form onSubmit={handleSubmit} className="rp-form">
                 <input
                   type="password"
                   className="rp-input"
                   placeholder="New password"
+                  aria-label="New password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="new-password"
@@ -162,19 +155,21 @@ export default function ResetPasswordPage() {
                   type="password"
                   className="rp-input"
                   placeholder="Confirm new password"
+                  aria-label="Confirm new password"
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   autoComplete="new-password"
                 />
                 <button type="submit" className="rp-btn" disabled={loading || !password || !confirm}>
-                  {loading ? '…' : 'Save'}
+                  <span>{loading ? '…' : 'Save'}</span>
+                  {!loading && <span className="pk-go" aria-hidden="true">→</span>}
                 </button>
-                {error && <div className="rp-message error">{error}</div>}
+                {error && <div className="rp-message error" role="alert">{error}</div>}
               </form>
-            </>
+            </div>
           )}
         </div>
       </div>
-    </>
+    </PublicPage>
   )
 }
