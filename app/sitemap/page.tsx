@@ -1,8 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import NavOverlay from '@/components/NavOverlay'
+import { PublicPage, Masthead, Rise, Eyebrow, InkFloat, MONO, SERIF } from '@/components/public/kit'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SITEMAP — set to the /studio benchmark.
+// ───────────────────────────────────────────────────────────────────────────
+// An index, set large: each group's name in mono in the margin, every page in
+// the display face with its address beside it, the arrow sliding on hover.
+// The links are exactly as they were (the owner is deciding /membership
+// separately — keep it here until told otherwise).
 
 const SECTIONS = [
   {
@@ -42,67 +50,66 @@ const SECTIONS = [
 ]
 
 export default function SitemapPage() {
-  const [visible, setVisible] = useState(false)
-  useEffect(() => { setTimeout(() => setVisible(true), 150) }, [])
-
   return (
-    <>
+    <PublicPage>
       <NavOverlay variant="public" />
       <style dangerouslySetInnerHTML={{ __html: `
-        html, body { background: #E5D4C2 !important; margin: 0; padding: 0; }
-      ` }} />
-      <div style={{
-        position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9998,
-        opacity: 0.04,
-        backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='6' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E\")",
-        backgroundRepeat: 'repeat', backgroundSize: '300px',
-      }} />
-      <div style={{
-        minHeight: '100vh', background: '#E5D4C2', padding: '80px 40px 100px',
-      }}>
-        <div style={{
-          maxWidth: 640, width: '100%', margin: '0 auto',
-          opacity: visible ? 1 : 0,
-          transform: visible ? 'translateY(0)' : 'translateY(16px)',
-          transition: 'opacity 0.8s cubic-bezier(0.22,1,0.36,1), transform 0.8s cubic-bezier(0.22,1,0.36,1)',
-        }}>
-          <div style={{
-            width: 8, height: 8, background: '#5E6650',
-            transform: 'rotate(45deg)', opacity: 0.25, margin: '0 auto 32px',
-          }} />
-          <h1 style={{
-            fontFamily: "'Rampant Sans', serif", fontSize: 28, fontWeight: 500,
-            color: '#052E20', textAlign: 'center', letterSpacing: '0.04em', marginBottom: 48,
-          }}>
-            Sitemap
-          </h1>
+        .sm-key { width: 100%; max-width: 250px; margin: 0 12% 0 auto; }
 
-          {SECTIONS.map((section, i) => (
-            <div key={section.title} style={{ marginBottom: i < SECTIONS.length - 1 ? 40 : 0 }}>
-              <h2 style={{
-                fontFamily: "'Rampant Sans', serif", fontSize: 16, fontWeight: 600,
-                color: '#052E20', letterSpacing: '0.04em', marginBottom: 16,
-              }}>
-                {section.title}
-              </h2>
-              {section.links.map(link => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  style={{
-                    display: 'block', padding: '8px 0',
-                    fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12,
-                    color: '#5E6650', textDecoration: 'none', letterSpacing: '0.02em',
-                    borderBottom: '1px solid rgba(5,46,32,0.06)',
-                  }}
-                >
-                  {link.label}
-                </Link>
+        .sm-group { display: grid; grid-template-columns: 240px 1fr; gap: 40px; align-items: start; }
+        .sm-group + .sm-group { margin-top: 96px; }
+        .sm-group-head { padding-top: 22px; }
+        .sm-group-n { font-family: ${SERIF}; font-size: clamp(38px, 4.4vw, 60px); line-height: 1; margin-top: 12px; opacity: .9; }
+
+        .sm-links { display: grid; grid-template-columns: 1fr 1fr; column-gap: 40px; }
+        .sm-link { display: flex; flex-direction: column; gap: 8px;
+                   padding: 20px 0 18px; color: inherit; text-decoration: none;
+                   border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+        .sm-label { font-family: ${SERIF}; font-size: clamp(26px, 2.9vw, 38px); line-height: 1.05; }
+        .sm-path { font-family: ${MONO}; font-size: 11px; opacity: .62; white-space: nowrap; }
+        .sm-link .pk-go { font-family: ${MONO}; font-size: 13px; margin-left: 10px; }
+        .sm-link:hover .sm-path { opacity: 1; }
+
+        @media (max-width: 1000px) {
+          .sm-links { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 860px) {
+          .sm-key { max-width: 170px; margin: 0 8% 0 auto; }
+          .sm-group { grid-template-columns: 1fr; gap: 10px; }
+          .sm-group + .sm-group { margin-top: 72px; }
+          .sm-group-head { padding-top: 0; display: flex; align-items: baseline; gap: 14px; }
+          .sm-group-n { font-size: 30px; margin-top: 0; order: -1; }
+          .sm-link { padding: 16px 0 14px; }
+        }
+      ` }} />
+
+      {/* ══ THE MASTHEAD ═══════════════════════════════════════════════ */}
+      <Masthead
+        title="Sitemap"
+        art={<InkFloat name="key" width="100%" rot={-14} dur={7.5} className="sm-key" />}
+      />
+
+      {/* ══ THE INDEX ══════════════════════════════════════════════════ */}
+      <section className="pk-wrap" style={{ paddingBottom: 140 }}>
+        {SECTIONS.map((section, gi) => (
+          <div key={section.title} className="sm-group">
+            <Rise className="sm-group-head">
+              <Eyebrow style={{ opacity: 1 }}><h2 style={{ font: 'inherit', margin: 0 }}>{section.title}</h2></Eyebrow>
+              <div className="sm-group-n" aria-hidden="true">{String(gi + 1).padStart(2, '0')}</div>
+            </Rise>
+            <div className="sm-links">
+              {section.links.map((link, li) => (
+                <Rise key={link.href} delay={Math.min(li, 6) * .04}>
+                  <Link href={link.href} className="sm-link pk-hover">
+                    <span className="sm-label">{link.label}</span>
+                    <span className="sm-path">{link.href}<span className="pk-go">→</span></span>
+                  </Link>
+                </Rise>
               ))}
             </div>
-          ))}
-        </div>
-      </div>
-    </>
+          </div>
+        ))}
+      </section>
+    </PublicPage>
   )
 }

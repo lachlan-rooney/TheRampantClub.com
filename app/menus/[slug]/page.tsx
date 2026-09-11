@@ -4,6 +4,18 @@ import { use } from 'react'
 import Link from 'next/link'
 import NavOverlay from '@/components/NavOverlay'
 import { notFound } from 'next/navigation'
+import { PublicPage, Rise, Eyebrow, BleedImage, InkFloat, MONO, SERIF } from '@/components/public/kit'
+import InkStill from '@/components/public/menus/InkStill'
+import { FLOOR_MARK, ROOM_PHOTO } from '@/components/public/menus/rooms'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ONE FLOOR'S MENU — the cover of it, and the way in.
+// ───────────────────────────────────────────────────────────────────────────
+// The menu itself is a PDF (public/documents/menus/<slug>.pdf), so this page is
+// its cover: the room's name set large with the floor's lion drifting beside
+// it, the room itself bleeding into the ground as on /studio, then one big
+// invitation to open it. The two quiet links in the masthead stay for those who
+// want it in a tab or on their phone.
 
 interface FloorMenu {
   slug: string
@@ -26,184 +38,107 @@ const MENUS: Record<string, FloorMenu> = {
   // Others to come — drop a PDF in /public/documents/menus/<slug>.pdf and add the entry here.
 }
 
+const CSS = `
+  .mp-mast { padding-bottom: 72px; }
+  .mp-back { display: inline-block; margin-bottom: 34px; color: inherit; text-decoration: none;
+             font-family: ${MONO}; font-size: 12px; letter-spacing: .08em; }
+  .mp-back .pk-go { margin-right: 6px; }
+  .mp-back:hover .pk-go { transform: translateX(-6px); }
+  .mp-kind { font-family: ${MONO}; font-size: 13px; letter-spacing: .04em; line-height: 2; margin-top: 18px; }
+  .mp-actions { display: flex; flex-wrap: wrap; gap: 8px 34px; }
+  .mp-art { position: relative; width: 88%; max-width: 480px; margin-left: auto; }
+
+  .mp-view { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 320px); gap: 56px;
+             align-items: center; padding-top: 40px; padding-bottom: 150px; }
+  .mp-note { font-family: ${MONO}; font-size: 14px; line-height: 2; margin: 0; }
+  .mp-phone { display: none; }
+  .mp-big { display: inline-block; margin-top: 22px; color: inherit; text-decoration: none;
+            font-family: ${SERIF}; font-weight: 400; font-size: clamp(44px, 6.4vw, 92px); line-height: .95;
+            border-bottom: 2px solid currentColor; padding-bottom: 10px; }
+  .mp-big .pk-go { font-family: ${MONO}; font-size: .62em; vertical-align: .08em; }
+  .mp-big:hover .pk-go { transform: translateX(14px); }
+
+  @media (max-width: 860px) {
+    .mp-mast { padding-bottom: 44px; }
+    .mp-back { margin-bottom: 26px; }
+    .mp-art { width: 46%; max-width: 210px; margin: 0 0 0 auto; }
+    .mp-view { grid-template-columns: 1fr; gap: 18px; padding-bottom: 110px; }
+    .mp-tray { width: 52%; max-width: 220px; margin-left: auto; }
+  }
+  /* Phones get the words they got before — a PDF opens in its own viewer
+     there, so it is a tap, not a viewer. */
+  @media (max-width: 768px) {
+    .mp-desk { display: none; }
+    .mp-phone { display: block; }
+  }
+`
+
 export default function FloorMenuPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
   const menu = MENUS[slug]
   if (!menu) notFound()
 
+  const photo = ROOM_PHOTO[menu.slug]
+  const mark = FLOOR_MARK[menu.floor]
+
   return (
     <>
       <NavOverlay variant="public" />
-      <style dangerouslySetInnerHTML={{ __html: `
-        html, body { background: #E5D4C2 !important; margin: 0; padding: 0; }
+      <PublicPage>
+        <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
-        .menu-page { min-height: 100vh; display: flex; flex-direction: column; }
+        <header className="pk-wrap pk-mast mp-mast">
+          <div>
+            <Rise>
+              <Link href="/menus" className="mp-back"><span className="pk-go">←</span>All menus</Link>
+            </Rise>
+            <Rise delay={.04}><Eyebrow>FLOOR {menu.floor}</Eyebrow></Rise>
+            <Rise delay={.08}><h1 className="pk-h1">{menu.name}</h1></Rise>
+            <Rise delay={.14}><div className="pk-sub">{menu.vn}</div></Rise>
+            <Rise delay={.2}><div className="mp-kind">{menu.kind}</div></Rise>
+            <Rise delay={.26}>
+              <div className="mp-actions">
+                <a href={menu.pdf} target="_blank" rel="noopener noreferrer" className="pk-cta">
+                  Open in new tab <span className="pk-go">↗</span>
+                </a>
+                <a href={menu.pdf} download className="pk-cta">
+                  Download PDF <span className="pk-go">↓</span>
+                </a>
+              </div>
+            </Rise>
+          </div>
+          {mark && (
+            <Rise delay={.15}>
+              <div className="mp-art">
+                <InkFloat name={mark} width="100%" rot={-5} dur={8} />
+              </div>
+            </Rise>
+          )}
+        </header>
 
-        .menu-head {
-          padding: 100px 24px 24px;
-          text-align: center;
-          max-width: 880px;
-          width: 100%;
-          margin: 0 auto;
-        }
-        .menu-back {
-          display: inline-block;
-          font-family: 'Google Sans Code', monospace;
-          font-size: 11px; color: #5E6650;
-          letter-spacing: 0.06em; text-decoration: none;
-          opacity: 0.65;
-          margin-bottom: 24px;
-          transition: opacity 0.2s;
-        }
-        .menu-back:hover { opacity: 1; }
+        {photo && <BleedImage src={photo.src} position={photo.position} />}
 
-        .menu-floor {
-          font-family: 'Rampant Sans', 'Playfair Display', serif;
-          font-size: 14px; font-weight: 600;
-          color: #052E20; opacity: 0.3;
-          letter-spacing: 0.18em;
-          margin-bottom: 8px;
-        }
-        .menu-name {
-          font-family: 'Rampant Sans', 'Playfair Display', serif;
-          font-size: clamp(28px, 4.5vw, 40px);
-          font-weight: 500; color: #052E20;
-          letter-spacing: 0.02em;
-          margin: 0 0 6px;
-        }
-        .menu-vn {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 12px; color: #5E6650;
-          letter-spacing: 0.04em;
-          margin-bottom: 4px;
-        }
-        .menu-kind {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 11px; color: #5E6650; opacity: 0.7;
-          letter-spacing: 0.06em;
-          margin-bottom: 24px;
-        }
-
-        .menu-actions {
-          display: flex;
-          gap: 12px;
-          justify-content: center;
-          margin-bottom: 32px;
-          flex-wrap: wrap;
-        }
-        .menu-action {
-          font-family: 'Rampant Sans', 'Playfair Display', serif;
-          font-size: 12px;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-          padding: 12px 24px;
-          border-radius: 6px;
-          text-decoration: none;
-          transition: background 0.2s, transform 0.2s;
-        }
-        .menu-action.primary {
-          background: #052E20;
-          color: #E5D4C2;
-        }
-        .menu-action.primary:hover { background: #0a3d2b; transform: translateY(-1px); }
-        .menu-action.ghost {
-          color: #052E20;
-          border: 1px solid rgba(5,46,32,0.25);
-        }
-        .menu-action.ghost:hover { background: rgba(5,46,32,0.05); }
-
-        .menu-frame {
-          flex: 1;
-          width: 100%;
-          max-width: 1100px;
-          margin: 0 auto;
-          padding: 0 16px 60px;
-        }
-        /* Layout for the menu link card. There is no inline PDF — see the note
-           in the markup; object-src 'none' rules it out on every browser. */
-        .menu-embed {
-          width: 100%;
-          height: 80vh;
-          min-height: 600px;
-          border: 1px solid rgba(5,46,32,0.12);
-          border-radius: 8px;
-          background: #fff;
-          box-shadow: 0 12px 32px rgba(5,46,32,0.10);
-          display: block;
-        }
-        .menu-cta {
-          text-align: center;
-          padding: 48px 20px;
-        }
-        .menu-cta-text {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 12px; color: #5E6650; opacity: 0.8;
-          margin: 0 0 18px; letter-spacing: 0.04em;
-        }
-        /* Mobile browsers don't render PDFs inline — show a clean card + button
-           instead of a broken embed box. */
-        .menu-mobile {
-          display: none;
-          background: #fff;
-          border: 1px solid rgba(5,46,32,0.12);
-          border-radius: 8px;
-          box-shadow: 0 12px 32px rgba(5,46,32,0.10);
-          text-align: center;
-          padding: 48px 24px;
-        }
-        .menu-fallback {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 11px; color: #5E6650; opacity: 0.7;
-          text-align: center; margin-top: 14px;
-        }
-        .menu-fallback a {
-          color: #052E20;
-          border-bottom: 1px solid rgba(5,46,32,0.25);
-          text-decoration: none;
-          padding-bottom: 1px;
-        }
-
-        @media (max-width: 768px) {
-          .menu-head { padding-top: 80px; }
-          .menu-embed { display: none; }
-          .menu-mobile { display: block; }   /* the same card, sized for a phone */
-        }
-      ` }} />
-
-      <div className="menu-page">
-        <div className="menu-head">
-          <Link href="/menus" className="menu-back">← All menus</Link>
-          <div className="menu-floor">FLOOR {menu.floor}</div>
-          <h1 className="menu-name">{menu.name}</h1>
-          <div className="menu-vn">{menu.vn}</div>
-          <div className="menu-kind">{menu.kind}</div>
-
-          <div className="menu-actions">
-            <a href={menu.pdf} target="_blank" rel="noopener noreferrer" className="menu-action primary">
-              Open in new tab
+        {/* A LINK — not an embed with a fallback.
+            The CSP sets object-src 'none', so <object> never rendered a PDF here
+            either: 93e035a swapped a broken <iframe> for a broken <object>, and
+            what actually shipped both times was a card like this one. It is the
+            right surface — it just was not what the code claimed to be. */}
+        <section className="pk-wrap mp-view">
+          <Rise>
+            <p className="mp-note mp-desk">The menu opens in your PDF viewer.</p>
+            <p className="mp-note mp-phone">Tap to view the full menu.</p>
+            <a href={menu.pdf} target="_blank" rel="noopener noreferrer" className="mp-big">
+              View the menu&nbsp;<span className="pk-go">→</span>
             </a>
-            <a href={menu.pdf} download className="menu-action ghost">
-              Download PDF
-            </a>
-          </div>
-        </div>
-
-        <div className="menu-frame">
-          {/* A LINK CARD — not an embed with a fallback.
-              The CSP sets object-src 'none', so <object> never rendered a PDF here
-              either: 93e035a swapped a broken <iframe> for a broken <object>, and
-              what actually shipped both times was this card. It is the right
-              surface — it just was not what the code claimed to be. */}
-          <div className="menu-cta menu-embed">
-            <p className="menu-cta-text">The menu opens in your PDF viewer.</p>
-            <a href={menu.pdf} target="_blank" rel="noopener noreferrer" className="menu-action primary">View the menu →</a>
-          </div>
-          <div className="menu-mobile">
-            <p className="menu-cta-text">Tap to view the full menu.</p>
-            <a href={menu.pdf} target="_blank" rel="noopener noreferrer" className="menu-action primary">View the menu →</a>
-          </div>
-        </div>
-      </div>
+          </Rise>
+          <Rise delay={.12}>
+            <InkStill className="mp-tray" aspect="1 / 0.9" objects={[
+              { name: 'butler-tray', w: '78%', top: '0%',  left: '14%', rot: 6,   dur: 8, z: 2 },
+              { name: 'cigar',       w: '42%', top: '62%', left: '0%',  rot: -14, dur: 7 },
+            ]} />
+          </Rise>
+        </section>
+      </PublicPage>
     </>
   )
 }

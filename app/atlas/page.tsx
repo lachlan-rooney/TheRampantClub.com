@@ -5,24 +5,51 @@ import dynamic from 'next/dynamic'
 import NavOverlay from '@/components/NavOverlay'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { ATLAS_REGIONS } from '@/lib/whisky-atlas-data'
+import { PublicPage, Masthead, SectionHead, Rise, InkFloat, MONO } from '@/components/public/kit'
+
+// /atlas — what is on the shelf, and where it came from.
+//
+// Set to the /studio benchmark: words left and large; the club's own shelves
+// as a small pile of photographs in the masthead's empty half; the globe given
+// room, with the shelf's totals set large beside it; and the regions as an
+// editorial index — the name large, the character in ink — rather than a grid
+// of boxed cards.
 
 const AtlasGlobe = dynamic(() => import('./AtlasGlobe'), {
   ssr: false,
   loading: () => (
     <div style={{
-      height: 560, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: "'Google Sans Code', monospace", fontSize: 11,
-      color: 'rgba(5,46,32,0.4)', letterSpacing: '0.06em',
+      height: 420, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: MONO, fontSize: 10.5, letterSpacing: '.22em', textTransform: 'uppercase', opacity: .62,
     }}>
       Loading the globe…
     </div>
   ),
 })
 
+// The masthead's pile of photographs from the shelves, with the lion and his
+// bottle in front of them.
+const SHELF: { src: string; w: string; left: string; top: string; rot: number; z: number }[] = [
+  { src: 'whisky-library',    w: '46%', left: '27%', top: '0%',  rot: 2,  z: 1 },
+  { src: 'bottle-collection', w: '40%', left: '0%',  top: '20%', rot: -7, z: 2 },
+  { src: 'springbank',        w: '38%', left: '61%', top: '27%', rot: 7,  z: 2 },
+]
+
 export default function AtlasPage() {
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [categories, setCategories] = useState<{ singleMalt: number; bourbon: number; blended: number }>({ singleMalt: 0, bourbon: 0, blended: 0 })
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
+  // The globe gets more room on a desk; a phone keeps it short enough to
+  // scroll past, since a drag on the globe spins it rather than the page.
+  const [globeHeight, setGlobeHeight] = useState(420)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 861px)')
+    const set = () => setGlobeHeight(mq.matches ? 600 : 420)
+    set()
+    mq.addEventListener('change', set)
+    return () => mq.removeEventListener('change', set)
+  }, [])
 
   useEffect(() => {
     const supabase = createBrowserSupabaseClient()
@@ -62,195 +89,43 @@ export default function AtlasPage() {
     return new Date(iso).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
   }
 
+  const hasStats = (categories.singleMalt + categories.bourbon + categories.blended) > 0
+  const stocked = ATLAS_REGIONS.filter(r => counts[r.key] > 0).length
+
   return (
-    <>
+    <PublicPage>
       <style suppressHydrationWarning dangerouslySetInnerHTML={{ __html: `
-        :root {
-          --atl-cream: #E5D4C2;
-          --atl-cream-dim: #B2AA98;
-          --atl-green-deep: #052E20;
-          --atl-green-mid: #28483C;
-          --atl-green-accent: #5E6650;
-          --atl-gold: #D4B85A;
-        }
-        body { background: var(--atl-cream); }
+        /* the pile of photographs */
+        .atl-shelf { position: relative; width: calc(100% + 56px); max-width: 600px; aspect-ratio: 1 / .92; margin-left: -56px; }
+        .atl-shot { position: absolute; }
+        .atl-shot .pk-thumb { aspect-ratio: 4 / 5; }
+        .atl-shelf-ink { position: absolute; z-index: 3; left: 34%; top: 55%; }
 
-        .atl-hero {
-          padding: 80px 24px 40px;
-          text-align: center;
-          background: var(--atl-cream);
-        }
-        .atl-eyebrow {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 11px;
-          color: var(--atl-cream-dim);
-          letter-spacing: 0.06em;
-          margin-bottom: 16px;
-        }
-        .atl-title {
-          font-family: 'Rampant Sans', 'Playfair Display', serif;
-          font-size: clamp(32px, 5vw, 48px);
-          font-weight: 500;
-          color: var(--atl-green-deep);
-          letter-spacing: 0.02em;
-          margin: 0 0 24px;
-        }
-        .atl-sub {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 12px; line-height: 1.8;
-          color: var(--atl-cream-dim);
-          letter-spacing: 0.04em;
-          max-width: 540px; margin: 0 auto;
-        }
+        /* the globe, and the shelf's totals beside it */
+        .atl-globe { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, .75fr); gap: 40px; align-items: center; }
+        .atl-globe-stage { position: relative; min-width: 0; }
+        .atl-hint { font-family: ${MONO}; font-size: 10.5px; letter-spacing: .22em; text-transform: uppercase; opacity: .62;
+                    margin-top: 10px; text-align: center; }
+        .atl-stats { display: grid; gap: 26px; }
+        .atl-stat-num { font-family: 'Rampant Sans', serif; font-size: clamp(64px, 7.2vw, 108px); line-height: .86; }
+        .atl-stat-label { font-family: ${MONO}; font-size: 10.5px; letter-spacing: .22em; text-transform: uppercase; margin-top: 10px; opacity: .75; }
+        .atl-updated { font-family: ${MONO}; font-size: 12.5px; line-height: 2; margin-top: 4px; }
+        .atl-stats-ink { margin-top: 10px; }
 
-        .atl-stats {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 28px;
-          margin: 28px auto 0;
-          max-width: 540px;
-        }
-        .atl-stat { text-align: center; }
-        .atl-stat-num {
-          font-family: 'Rampant Sans', serif;
-          font-size: 28px;
-          font-weight: 600;
-          color: var(--atl-green-deep);
-          letter-spacing: 0.02em;
-          line-height: 1;
-        }
-        .atl-stat-label {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px;
-          color: var(--atl-cream-dim);
-          letter-spacing: 0.14em;
-          text-transform: uppercase;
-          margin-top: 6px;
-        }
-        .atl-stat-sep {
-          width: 1px;
-          height: 28px;
-          background: rgba(5,46,32,0.18);
-        }
-        .atl-updated {
-          margin-top: 18px;
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px;
-          color: var(--atl-green-accent);
-          opacity: 0.7;
-          letter-spacing: 0.06em;
-          font-style: italic;
-        }
-
-        .atl-globe-wrap {
-          position: relative;
-          background: var(--atl-cream);
-          padding: 12px 0 12px;
-        }
-        .atl-stats-section {
-          padding: 12px 24px 24px;
-          text-align: center;
-        }
-        .atl-globe-hint {
-          text-align: center;
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px;
-          color: rgba(5,46,32,0.5);
-          letter-spacing: 0.18em;
-          text-transform: uppercase;
-          margin-top: 12px;
-        }
-
-        .atl-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 12px;
-          padding: 40px 24px 80px;
-          max-width: 1200px;
-          margin: 0 auto;
-        }
-
-        .atl-card {
-          background: rgba(5, 46, 32, 0.04);
-          border: 1px solid rgba(5, 46, 32, 0.08);
-          border-radius: 10px;
-          padding: 14px 16px;
-          cursor: pointer;
-          transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-                      background 0.35s ease,
-                      border-color 0.35s ease,
-                      box-shadow 0.35s ease;
-        }
-        .atl-card:hover {
-          transform: translateY(-3px);
-          background: rgba(5, 46, 32, 0.07);
-          border-color: rgba(212, 184, 90, 0.4);
-          box-shadow: 0 12px 24px rgba(5, 46, 32, 0.1);
-        }
-        .atl-card-header {
-          display: flex; align-items: center; gap: 10px;
-          margin-bottom: 8px;
-        }
-        .atl-flag { font-size: 20px; line-height: 1; }
-        .atl-card-name {
-          font-family: 'Rampant Sans', 'Playfair Display', serif;
-          font-size: 16px;
-          font-weight: 500;
-          color: var(--atl-green-deep);
-          letter-spacing: 0.02em;
-        }
-        .atl-card-native {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px;
-          color: var(--atl-cream-dim);
-          letter-spacing: 0.06em;
-          margin-top: 1px;
-        }
-        .atl-card-blurb {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 11px;
-          line-height: 1.55;
-          color: var(--atl-green-accent);
-          opacity: 0.85;
-          margin-bottom: 8px;
-          display: -webkit-box;
-          -webkit-line-clamp: 3;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-        .atl-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
-        .atl-chip {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px;
-          letter-spacing: 0.05em;
-          padding: 3px 7px;
-          border-radius: 10px;
-          background: rgba(212, 184, 90, 0.12);
-          color: var(--atl-green-mid);
-        }
-        .atl-card-footer {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px;
-          color: var(--atl-green-accent);
-          opacity: 0.7;
-          padding-top: 8px;
-          border-top: 1px solid rgba(5, 46, 32, 0.08);
-          display: flex; justify-content: flex-start; align-items: center;
-        }
-        .atl-card-pill {
-          display: inline-block;
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px;
-          color: var(--atl-green-deep);
-          letter-spacing: 0.06em;
-          background: rgba(5, 46, 32, 0.08);
-          padding: 3px 9px;
-          border-radius: 10px;
-          opacity: 1;
-        }
-
-        .atl-card { cursor: default; }
+        /* the regions, as an index */
+        .atl-regions { padding-bottom: 140px; }
+        .atl-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 64px 48px; margin-top: 64px; }
+        .atl-card-header { display: flex; align-items: baseline; gap: 12px; }
+        .atl-flag { font-size: 22px; line-height: 1; transform: translateY(-2px); }
+        .atl-card-name { font-family: 'Rampant Sans', serif; font-size: clamp(26px, 2.6vw, 34px); line-height: 1; }
+        .atl-card-native { font-family: ${MONO}; font-size: 11px; letter-spacing: .06em; opacity: .7; margin-top: 8px; }
+        .atl-card-blurb { font-family: ${MONO}; font-size: 12.5px; line-height: 1.95; margin: 16px 0 0; }
+        .atl-chips { font-family: ${MONO}; font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase;
+                     margin-top: 14px; opacity: .75; line-height: 1.9; }
+        .atl-card-footer { font-family: ${MONO}; font-size: 12px; margin-top: 14px; display: flex; align-items: center; gap: 10px; }
+        .atl-card-footer.is-empty { opacity: .62; }
+        .atl-dot { width: 8px; height: 8px; border-radius: 50%; background: #FF7A1F; flex-shrink: 0;
+                   box-shadow: 0 0 0 4px rgba(255,122,31,.16); }
 
         /* Strip the default dark frame react-globe.gl wraps tooltips in */
         .float-tooltip-kap {
@@ -260,101 +135,117 @@ export default function AtlasPage() {
           color: inherit !important;
         }
 
-        @media (max-width: 720px) {
-          .atl-hero { padding: 100px 20px 40px; }
-          .atl-grid { padding: 40px 20px 80px; gap: 12px; }
+        @media (max-width: 1000px) { .atl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 860px) {
+          .atl-shelf { width: 100%; max-width: 400px; margin: 0 auto; aspect-ratio: 1 / .86; }
+          .atl-hint { font-size: 9.5px; letter-spacing: .12em; }
+          .atl-globe { grid-template-columns: 1fr; gap: 20px; }
+          .atl-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+          .atl-stat-num { font-size: clamp(44px, 13vw, 64px); }
+          .atl-stat-label { font-size: 9.5px; letter-spacing: .16em; }
+          .atl-updated, .atl-stats-ink { grid-column: 1 / -1; }
+          .atl-stats-ink { display: none; }
+          .atl-regions { padding-bottom: 100px; }
+        }
+        @media (max-width: 600px) {
+          .atl-grid { grid-template-columns: 1fr; gap: 44px; margin-top: 44px; }
         }
       `}} />
 
       <NavOverlay variant="public" />
 
-      <main>
-        <section className="atl-hero">
-          <div className="atl-eyebrow">Bản Đồ Whisky · The Atlas</div>
-          <h1 className="atl-title">What&rsquo;s currently stocked in the club?</h1>
-          <p className="atl-sub">
-            Members constantly bring new whiskies into the club. Tap a region to see its character,
-            signature distilleries, and how many bottles are on the shelf right now.
-          </p>
-        </section>
-
-        <section style={{ maxWidth: 860, margin: '0 auto', padding: '0 20px 4px' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 10 }}>
-            {['bottle-collection', 'whisky-library', 'springbank'].map(s => (
-              <div key={s} style={{ width: 176, borderRadius: 8, overflow: 'hidden', boxShadow: '0 12px 30px rgba(5,46,32,0.14)' }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`/images/social/${s}.webp`} alt="" style={{ display: 'block', width: '100%', height: 132, objectFit: 'cover' }} />
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="atl-globe-wrap">
-          <AtlasGlobe counts={counts} height={420} />
-          <div className="atl-globe-hint">
-            Drag to spin · scroll to zoom · tap a marker
-          </div>
-        </section>
-
-        {(categories.singleMalt + categories.bourbon + categories.blended) > 0 && (
-          <section className="atl-stats-section">
-            <div className="atl-stats">
-              <div className="atl-stat">
-                <div className="atl-stat-num">{categories.singleMalt}</div>
-                <div className="atl-stat-label">Single Malts</div>
-              </div>
-              <div className="atl-stat-sep" />
-              <div className="atl-stat">
-                <div className="atl-stat-num">{categories.bourbon}</div>
-                <div className="atl-stat-label">Bourbons</div>
-              </div>
-              <div className="atl-stat-sep" />
-              <div className="atl-stat">
-                <div className="atl-stat-num">{categories.blended}</div>
-                <div className="atl-stat-label">Blends</div>
-              </div>
-            </div>
-            {lastUpdated && (
-              <div className="atl-updated">
-                Last bottle added {fmtRelative(lastUpdated)}
-              </div>
-            )}
-          </section>
-        )}
-
-        <section className="atl-grid">
-          {ATLAS_REGIONS.map(r => (
-            <div key={r.key} className="atl-card">
-              <div className="atl-card-header">
-                <span className="atl-flag" aria-hidden>{r.flag}</span>
-                <div>
-                  <div className="atl-card-name">{r.name}</div>
-                  {r.native && r.native !== r.name && (
-                    <div className="atl-card-native">{r.native}</div>
-                  )}
+      <Masthead
+        eyebrow="Bản Đồ Whisky · The Atlas"
+        title={<>What&rsquo;s currently stocked in the club?</>}
+        lede={<>Members constantly bring new whiskies into the club. Tap a region to see its character,
+          signature distilleries, and how many bottles are on the shelf right now.</>}
+        art={
+          <div className="atl-shelf">
+            {SHELF.map(s => (
+              <div key={s.src} className="atl-shot pk-hover"
+                   style={{ width: s.w, left: s.left, top: s.top, zIndex: s.z, transform: `rotate(${s.rot}deg)` }}>
+                <div className="pk-thumb">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`/images/social/${s.src}.webp`} alt="" />
                 </div>
               </div>
-              <div className="atl-card-blurb">{r.blurb}</div>
-              <div className="atl-chips">
-                {r.character.slice(0, 3).map(c => (
-                  <span key={c} className="atl-chip">{c}</span>
-                ))}
+            ))}
+            <InkFloat name="lion-bottle" width="30%" rot={-5} dur={8} className="atl-shelf-ink" />
+          </div>
+        }
+      />
+
+      <section className="pk-wrap">
+        <div className="atl-globe">
+          <Rise className="atl-globe-stage">
+            <AtlasGlobe counts={counts} height={globeHeight} />
+            <div className="atl-hint">
+              Drag to spin · scroll to zoom · tap a marker
+            </div>
+          </Rise>
+
+          {hasStats && (
+            <Rise delay={.12}>
+              <div className="atl-stats">
+                <div className="atl-stat">
+                  <div className="atl-stat-num">{categories.singleMalt}</div>
+                  <div className="atl-stat-label">Single Malts</div>
+                </div>
+                <div className="atl-stat">
+                  <div className="atl-stat-num">{categories.bourbon}</div>
+                  <div className="atl-stat-label">Bourbons</div>
+                </div>
+                <div className="atl-stat">
+                  <div className="atl-stat-num">{categories.blended}</div>
+                  <div className="atl-stat-label">Blends</div>
+                </div>
+                {lastUpdated && (
+                  <div className="atl-updated">
+                    Last bottle added {fmtRelative(lastUpdated)}
+                  </div>
+                )}
+                <InkFloat name="glass" width={120} rot={8} dur={7} className="atl-stats-ink" />
               </div>
-              <div className="atl-card-footer">
-                {counts[r.key] > 0 ? (
-                  <span className="atl-card-pill">
+            </Rise>
+          )}
+        </div>
+      </section>
+
+      <section className="pk-wrap pk-section atl-regions">
+        <SectionHead
+          eyebrow={<>{ATLAS_REGIONS.length} regions{stocked > 0 && <> · {stocked} on the shelf</>}</>}
+          title="The Regions"
+          art={<InkFloat name="lion-reclining" width="clamp(200px, 24vw, 300px)" rot={-3} dur={9} />}
+        />
+
+        <div className="atl-grid">
+          {ATLAS_REGIONS.map((r, i) => (
+            <Rise key={r.key} as="article" delay={(i % 3) * .06} className="atl-card">
+              <div className="atl-card-header">
+                <span className="atl-flag" aria-hidden>{r.flag}</span>
+                <div className="atl-card-name">{r.name}</div>
+              </div>
+              {r.native && r.native !== r.name && (
+                <div className="atl-card-native">{r.native}</div>
+              )}
+              <p className="atl-card-blurb">{r.blurb}</p>
+              <div className="atl-chips">
+                {r.character.slice(0, 3).join('  ·  ')}
+              </div>
+              {counts[r.key] > 0 ? (
+                <div className="atl-card-footer">
+                  <span className="atl-dot" aria-hidden />
+                  <span>
                     {counts[r.key] > 99 ? '99+' : counts[r.key]} {counts[r.key] === 1 ? 'bottle' : 'bottles'} in the Rampant Room
                   </span>
-                ) : (
-                  <span>{r.country}</span>
-                )}
-              </div>
-            </div>
+                </div>
+              ) : (
+                <div className="atl-card-footer is-empty">{r.country}</div>
+              )}
+            </Rise>
           ))}
-        </section>
-      </main>
-
-    </>
+        </div>
+      </section>
+    </PublicPage>
   )
 }
-

@@ -244,13 +244,6 @@ export default function SportsPage() {
                         transition: transform .7s cubic-bezier(.16,.84,.44,1); }
         .sp-thumb:hover img { transform: scale(1.05); }
 
-        .sp-cta {
-          display: inline-block; text-decoration: none; color: ${INK};
-          font-family: ${MONO}; font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
-          border-bottom: 1px solid ${INK}; padding-bottom: 6px;
-        }
-        .sp-go { display: inline-block; transition: transform .35s ease; }
-        .sp-cta:hover .sp-go { transform: translateX(7px); }
 
         /* ── other fixtures: a list set large ── */
         .sp-fixture {
@@ -276,7 +269,7 @@ export default function SportsPage() {
         }
         @media (prefers-reduced-motion: reduce) {
           .sp-rise, .sp-wait { animation: none !important; opacity: 1 !important; }
-          .sp-thumb img, .sp-go, .sp-index-line::after { transition: none !important; }
+          .sp-thumb img, .sp-index-line::after { transition: none !important; }
         }
       ` }} />
 
@@ -350,10 +343,10 @@ export default function SportsPage() {
                   ]} />
                   <SportOdds sport="golf" />
                 </div>
-
-                <a href="/cup/finder" className="sp-cta" style={{ marginTop: 34 }}>
-                  Find your dram — the Flavour Finder <span className="sp-go">→</span>
-                </a>
+                {/* The Flavour Finder link used to sit here. It is not a golf
+                    thing: it gets a home of its own once the DramFinder widget
+                    is ready. /cup/finder itself stays up — event QR codes
+                    point at it. */}
               </div>
 
               {/* The Cup, in full colour */}

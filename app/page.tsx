@@ -309,7 +309,6 @@ function DraggableImage({
 // ─── Main Page ───────────────────────────────────────────────────
 export default function HomePage() {
   const easterEggs = useEasterEggs()
-  useEffect(() => { window.scrollTo(0, 0) }, [])
   const [images, setImages] = useState<MoodboardImage[]>([])
   const [showGrid, setShowGrid] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })

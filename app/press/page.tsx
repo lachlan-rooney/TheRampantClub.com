@@ -3,6 +3,15 @@
 import { useEffect, useState } from 'react'
 import NavOverlay from '@/components/NavOverlay'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
+import { PublicPage, Masthead, SectionHead, Rise, InkFloat, SERIF, MONO } from '@/components/public/kit'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PRESS — set to the /studio benchmark.
+// ───────────────────────────────────────────────────────────────────────────
+// Coverage reads as a magazine would print it: the outlet in mono in the
+// margin, the words themselves set large in the display face. Releases and
+// kits are a plain dated list. The copy and the data flow are untouched —
+// press_items, published only, newest first.
 
 type PressType = 'kit' | 'release' | 'mention'
 interface PressItem {
@@ -21,12 +30,19 @@ const fmtDate = (d: string | null) => {
   return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+// The display face is all capitals, so only a SHORT line can stand as a
+// pull-quote. A paragraph lifted from an article is set as an excerpt in mono,
+// under its headline in the display face — the same words, readable.
+const PULL_MAX = 220
+const quoteSize = (s: string) => s.length < 90 ? 'clamp(30px, 4.4vw, 54px)' : 'clamp(26px, 3.3vw, 42px)'
+
+// Some bodies arrive already in quotation marks; don't print a second pair.
+const isQuoted = (s: string) => /^\s*[“"]/.test(s)
+
 export default function PressPage() {
-  const [visible, setVisible] = useState(false)
   const [items, setItems] = useState<PressItem[]>([])
   const [loading, setLoading] = useState(true)
   useEffect(() => {
-    const t = setTimeout(() => setVisible(true), 150)
     const supabase = createBrowserSupabaseClient()
     supabase.from('press_items')
       .select('id, type, title, outlet, body, link, image_url, published_at')
@@ -37,7 +53,6 @@ export default function PressPage() {
         if (data) setItems(data as PressItem[])
         setLoading(false)
       })
-    return () => clearTimeout(t)
   }, [])
 
   const kits     = items.filter(i => i.type === 'kit')
@@ -45,239 +60,177 @@ export default function PressPage() {
   const mentions = items.filter(i => i.type === 'mention')
 
   return (
-    <>
+    <PublicPage>
       <NavOverlay variant="public" />
       <style dangerouslySetInnerHTML={{ __html: `
-        html, body { background: #E5D4C2 !important; margin: 0; padding: 0; }
+        .pr-lede a { color: inherit; text-decoration: none; border-bottom: 1px solid currentColor; padding-bottom: 1px; }
+        .pr-lede a:hover { border-bottom-width: 2px; }
 
-        .pr-container {
-          max-width: 720px; width: 100%;
-          margin: 0 auto; padding: 120px 24px 100px;
-        }
-        .pr-eyebrow {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 11px;
-          color: #5E6650; letter-spacing: 0.06em;
-          text-align: center; margin-bottom: 16px;
-        }
-        .pr-title {
-          font-family: 'Rampant Sans', 'Playfair Display', serif;
-          font-size: clamp(32px, 5vw, 48px);
-          font-weight: 500; color: #052E20;
-          text-align: center; letter-spacing: 0.02em;
-          margin: 0 0 24px;
-        }
-        .pr-sub {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 12px; line-height: 1.85;
-          color: #5E6650; opacity: 0.85;
-          text-align: center; max-width: 520px; margin: 0 auto;
-          letter-spacing: 0.04em;
-        }
-        .pr-sub a { color: #052E20; }
+        .pr-mast-art { width: 100%; max-width: 470px; margin-left: auto; }
 
-        .pr-section { margin-top: 56px; }
-        .pr-h2 {
-          font-family: 'Rampant Sans', serif;
-          font-size: 24px; font-weight: 500;
-          color: #052E20; letter-spacing: 0.02em;
-          margin-bottom: 8px;
-        }
-        .pr-h2-sub {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px; color: #5E6650; opacity: 0.6;
-          letter-spacing: 0.18em; text-transform: uppercase;
-          margin-bottom: 20px;
-        }
-        .pr-rule {
-          height: 1px; background: rgba(94,102,80,0.18);
-          margin: 0 0 18px;
-        }
+        /* ── in the press: source in the margin, the words set large ── */
+        .pr-quotes { margin-top: 72px; display: grid; gap: 88px; }
+        .pr-quote { display: grid; grid-template-columns: 220px 1fr; gap: 40px; align-items: start; }
+        .pr-source { font-family: ${MONO}; padding-top: 10px; }
+        .pr-outlet { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; line-height: 1.7; }
+        .pr-date { font-size: 11px; margin-top: 6px; opacity: .62; }
+        .pr-words { font-family: ${SERIF}; font-weight: 400; line-height: 1.12; margin: 0; max-width: 900px;
+                    white-space: pre-line; overflow-wrap: anywhere; }
+        .pr-mark { display: inline-block; width: .5em; margin-left: -.5em; }
+        .pr-title { font-family: ${MONO}; font-size: 12.5px; line-height: 1.9; margin: 22px 0 0; max-width: 620px; }
+        .pr-headline { font-family: ${SERIF}; font-weight: 400; font-size: clamp(26px, 3.3vw, 42px); line-height: 1.04;
+                       margin: 0; max-width: 900px; overflow-wrap: anywhere; }
+        .pr-excerpt { font-family: ${MONO}; font-size: 14px; line-height: 2; margin: 22px 0 0; max-width: 680px;
+                      white-space: pre-line; overflow-wrap: anywhere; }
+        .pr-quote .pk-cta { margin-top: 18px; }
 
-        /* Kit / release row — pure typography */
-        .pr-row {
-          padding: 16px 0;
-          border-bottom: 1px solid rgba(94,102,80,0.10);
-          display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap;
-        }
-        .pr-row-date {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px; color: #5E6650; opacity: 0.55;
-          letter-spacing: 0.06em; min-width: 110px; padding-top: 4px;
-        }
-        .pr-row-body { flex: 1; min-width: 240px; }
-        .pr-row-title {
-          font-family: 'Rampant Sans', serif;
-          font-size: 16px; font-weight: 600;
-          color: #052E20; margin: 0 0 6px;
-          letter-spacing: 0.02em;
-        }
-        .pr-row-text {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 11px; line-height: 1.75;
-          color: #5E6650; margin: 0 0 8px;
-        }
-        .pr-link {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 11px; color: #052E20;
-          letter-spacing: 0.04em; text-decoration: none;
-          border-bottom: 1px solid rgba(5,46,32,0.25);
-          padding-bottom: 1px;
-          transition: border-color 0.2s;
-        }
-        .pr-link:hover { border-color: #052E20; }
+        /* ── releases and kits: a dated list ── */
+        .pr-list { margin-top: 56px; }
+        .pr-row { display: grid; grid-template-columns: 220px 1fr; gap: 40px; align-items: start;
+                  padding: 30px 0 34px; border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+        .pr-row:last-child { border-bottom: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+        .pr-row-date { font-family: ${MONO}; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; padding-top: 12px; }
+        .pr-row-title { font-family: ${SERIF}; font-weight: 400; font-size: clamp(26px, 3.2vw, 42px); line-height: 1.02; margin: 0;
+                        overflow-wrap: anywhere; }
+        .pr-row-text { font-family: ${MONO}; font-size: 13px; line-height: 2; opacity: .86; margin: 18px 0 0; max-width: 680px;
+                       white-space: pre-line; overflow-wrap: anywhere; }
+        .pr-row .pk-cta { margin-top: 22px; }
+        .pr-empty { font-family: ${MONO}; font-size: 13px; line-height: 2; font-style: italic; margin: 40px 0 0; }
 
-        /* In-the-press card with quote and outlet */
-        .pr-clip {
-          padding: 22px 24px;
-          margin-bottom: 12px;
-          background: rgba(5,46,32,0.04);
-          border: 1px solid rgba(5,46,32,0.10);
-          border-left: 3px solid rgba(212,184,90,0.5);
-          border-radius: 8px;
-          transition: background 0.2s, border-color 0.2s, transform 0.3s;
-        }
-        .pr-clip:hover { background: rgba(5,46,32,0.07); transform: translateY(-2px); }
-        .pr-clip-outlet {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px; color: #5E6650;
-          letter-spacing: 0.18em; text-transform: uppercase;
-          margin-bottom: 6px;
-        }
-        .pr-clip-quote {
-          font-family: 'Rampant Sans', serif;
-          font-size: 20px; font-weight: 500; line-height: 1.45;
-          font-style: italic; color: #052E20;
-          margin: 0 0 12px; letter-spacing: 0.01em;
-        }
-        .pr-clip-foot {
-          display: flex; justify-content: space-between; align-items: center;
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px; color: #5E6650; opacity: 0.7;
-          letter-spacing: 0.06em;
-        }
-        .pr-clip-link {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px; color: #052E20;
-          text-decoration: none; letter-spacing: 0.06em;
-          border-bottom: 1px solid rgba(5,46,32,0.25);
-        }
-        .pr-clip-link:hover { border-color: #052E20; }
+        .pr-releases-art { margin-right: 8px; }
 
-        .pr-empty {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 11px; color: #5E6650; opacity: 0.55;
-          font-style: italic;
+        .pr-fine { font-family: ${MONO}; font-size: 12.5px; line-height: 2; max-width: 600px; margin: 0; }
+
+        @media (max-width: 860px) {
+          .pr-mast-art { max-width: 300px; margin: 0 0 0 auto; }
+          .pr-quotes { margin-top: 48px; gap: 64px; }
+          .pr-quote, .pr-row { grid-template-columns: 1fr; gap: 14px; }
+          .pr-source { padding-top: 0; }
+          .pr-row-date { padding-top: 0; }
+          .pr-mark { margin-left: 0; width: auto; }
+          .pr-releases-art { margin: 8px 0 0 auto; }
         }
       ` }} />
 
-      {/* Grain overlay */}
-      <div style={{
-        position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9998,
-        opacity: 0.04,
-        backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='6' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E\")",
-        backgroundRepeat: 'repeat', backgroundSize: '300px',
-      }} />
+      {/* ══ THE MASTHEAD ═══════════════════════════════════════════════ */}
+      <Masthead
+        eyebrow="Báo Chí · Newsroom"
+        title="Press"
+        lede={<span className="pr-lede">
+          Press kits, releases, and selected coverage of The Rampant Club.
+          For interviews, photography, or any other request, write to{' '}
+          <a href="mailto:Press@TheRampantClub.com">Press@TheRampantClub.com</a>.
+        </span>}
+        art={<InkFloat name="newspaper" width="100%" rot={-7} dur={9} className="pr-mast-art" />}
+      />
 
-      <div style={{
-        minHeight: '100vh',
-        background: '#E5D4C2',
-      }}>
-        <div className="pr-container" style={{
-          opacity: visible ? 1 : 0,
-          transform: visible ? 'translateY(0)' : 'translateY(16px)',
-          transition: 'opacity 0.7s cubic-bezier(0.22,1,0.36,1), transform 0.7s cubic-bezier(0.22,1,0.36,1)',
-        }}>
-          <div className="pr-eyebrow">Báo Chí · Newsroom</div>
-          <h1 className="pr-title">Press</h1>
-          <p className="pr-sub">
-            Press kits, releases, and selected coverage of The Rampant Club.
-            For interviews, photography, or any other request, write to{' '}
-            <a href="mailto:Press@TheRampantClub.com">Press@TheRampantClub.com</a>.
-          </p>
-
-          {/* In the Press */}
-          <section className="pr-section">
-            <div className="pr-h2">In the Press</div>
-            <div className="pr-h2-sub">Selected coverage</div>
-            <div className="pr-rule" />
-            {loading ? (
-              <div className="pr-empty">Loading…</div>
-            ) : mentions.length === 0 ? (
-              <div className="pr-empty">No coverage on file yet.</div>
-            ) : mentions.map(m => (
-              <div key={m.id} className="pr-clip">
-                {m.outlet && <div className="pr-clip-outlet">{m.outlet}</div>}
-                {m.body && <p className="pr-clip-quote">“{m.body}”</p>}
-                <div className="pr-clip-foot">
-                  <span>{m.title}{m.published_at ? ' · ' + fmtDate(m.published_at) : ''}</span>
-                  {m.link && <a href={m.link} target="_blank" rel="noreferrer" className="pr-clip-link">Read →</a>}
+      {/* ══ IN THE PRESS ═══════════════════════════════════════════════ */}
+      <section className="pk-wrap" style={{ paddingTop: 40 }}>
+        <SectionHead eyebrow="Selected coverage" title="In the Press" />
+        {loading ? (
+          <p className="pr-empty">Loading…</p>
+        ) : mentions.length === 0 ? (
+          <p className="pr-empty">No coverage on file yet.</p>
+        ) : (
+          <div className="pr-quotes">
+            {mentions.map(m => (
+              <Rise key={m.id} as="article" className="pr-quote">
+                <div className="pr-source">
+                  {m.outlet && <div className="pr-outlet">{m.outlet}</div>}
+                  {m.published_at && <div className="pr-date">{fmtDate(m.published_at)}</div>}
                 </div>
-              </div>
+                <div>
+                  {m.body && m.body.length <= PULL_MAX ? (
+                    <>
+                      <p className="pr-words" style={{ fontSize: quoteSize(m.body) }}>
+                        {isQuoted(m.body) ? m.body : <><span className="pr-mark">“</span>{m.body}”</>}
+                      </p>
+                      <p className="pr-title">{m.title}</p>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="pr-headline">{m.title}</h3>
+                      {m.body && (
+                        <p className="pr-excerpt">{isQuoted(m.body) ? m.body : <>“{m.body}”</>}</p>
+                      )}
+                    </>
+                  )}
+                  {m.link && (
+                    <a href={m.link} target="_blank" rel="noreferrer" className="pk-cta">
+                      Read <span className="pk-go">→</span>
+                    </a>
+                  )}
+                </div>
+              </Rise>
             ))}
-          </section>
+          </div>
+        )}
+      </section>
 
-          {/* Press Releases */}
-          <section className="pr-section">
-            <div className="pr-h2">Press Releases</div>
-            <div className="pr-h2-sub">Latest first</div>
-            <div className="pr-rule" />
-            {loading ? (
-              <div className="pr-empty">Loading…</div>
-            ) : releases.length === 0 ? (
-              <div className="pr-empty">No releases yet.</div>
-            ) : releases.map(r => (
-              <div key={r.id} className="pr-row">
+      {/* ══ PRESS RELEASES ═════════════════════════════════════════════ */}
+      <section className="pk-wrap pk-section">
+        <SectionHead eyebrow="Latest first" title="Press Releases"
+          art={<InkFloat name="cigar" width="clamp(140px, 15vw, 210px)" rot={-8} dur={8.5} className="pr-releases-art" />} />
+        {loading ? (
+          <p className="pr-empty">Loading…</p>
+        ) : releases.length === 0 ? (
+          <p className="pr-empty">No releases yet.</p>
+        ) : (
+          <div className="pr-list">
+            {releases.map(r => (
+              <Rise key={r.id} as="article" className="pr-row">
                 <div className="pr-row-date">{fmtDate(r.published_at)}</div>
-                <div className="pr-row-body">
+                <div>
                   <h3 className="pr-row-title">{r.title}</h3>
                   {r.body && <p className="pr-row-text">{r.body}</p>}
-                  {r.link && <a href={r.link} target="_blank" rel="noreferrer" className="pr-link">Read the release →</a>}
+                  {r.link && (
+                    <a href={r.link} target="_blank" rel="noreferrer" className="pk-cta">
+                      Read the release <span className="pk-go">→</span>
+                    </a>
+                  )}
                 </div>
-              </div>
+              </Rise>
             ))}
-          </section>
+          </div>
+        )}
+      </section>
 
-          {/* Press Kits */}
-          <section className="pr-section">
-            <div className="pr-h2">Press Kits</div>
-            <div className="pr-h2-sub">Downloadable assets</div>
-            <div className="pr-rule" />
-            {loading ? (
-              <div className="pr-empty">Loading…</div>
-            ) : kits.length === 0 ? (
-              <div className="pr-empty">No kits available yet.</div>
-            ) : kits.map(k => (
-              <div key={k.id} className="pr-row">
+      {/* ══ PRESS KITS ═════════════════════════════════════════════════ */}
+      <section className="pk-wrap pk-section">
+        <SectionHead eyebrow="Downloadable assets" title="Press Kits" />
+        {loading ? (
+          <p className="pr-empty">Loading…</p>
+        ) : kits.length === 0 ? (
+          <p className="pr-empty">No kits available yet.</p>
+        ) : (
+          <div className="pr-list">
+            {kits.map(k => (
+              <Rise key={k.id} as="article" className="pr-row">
                 <div className="pr-row-date">{fmtDate(k.published_at)}</div>
-                <div className="pr-row-body">
+                <div>
                   <h3 className="pr-row-title">{k.title}</h3>
                   {k.body && <p className="pr-row-text">{k.body}</p>}
-                  {k.link && <a href={k.link} target="_blank" rel="noreferrer" className="pr-link">Download →</a>}
+                  {k.link && (
+                    <a href={k.link} target="_blank" rel="noreferrer" className="pk-cta">
+                      Download <span className="pk-go">→</span>
+                    </a>
+                  )}
                 </div>
-              </div>
+              </Rise>
             ))}
-          </section>
+          </div>
+        )}
+      </section>
 
-          <div style={{
-            width: 6, height: 6,
-            background: '#5E6650',
-            transform: 'rotate(45deg)',
-            opacity: 0.18,
-            margin: '64px auto 28px',
-          }} />
-
-          <p style={{
-            fontFamily: "'Google Sans Code', monospace",
-            fontSize: 10, color: '#5E6650', opacity: 0.55,
-            textAlign: 'center', lineHeight: 1.8,
-            maxWidth: 520, margin: '0 auto', letterSpacing: '0.02em',
-          }}>
+      {/* ══ THE FINE PRINT ═════════════════════════════════════════════ */}
+      <section className="pk-wrap" style={{ paddingTop: 110, paddingBottom: 130 }}>
+        <Rise>
+          <p className="pr-fine">
             All press materials remain the intellectual property of The Rampant Club and are made available exclusively for editorial use.
             Unauthorised redistribution or alteration is prohibited.
           </p>
-        </div>
-      </div>
-    </>
+        </Rise>
+      </section>
+    </PublicPage>
   )
 }

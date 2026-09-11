@@ -37,6 +37,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* A REFRESH STARTS AT THE TOP. Browsers restore the old scroll
+            position on reload, so a page came back half-way down — which read
+            as broken on pages that rise in from the top. This runs before
+            first paint and only for a reload: back/forward still return you to
+            where you were, and a link to an anchor (/spaces#dining) still
+            lands on it. */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var n=performance.getEntriesByType('navigation')[0];if(!n||n.type!=='reload'||location.hash)return;history.scrollRestoration='manual';window.scrollTo(0,0);addEventListener('load',function(){window.scrollTo(0,0);setTimeout(function(){history.scrollRestoration='auto'},0)})}catch(e){}})()` }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />

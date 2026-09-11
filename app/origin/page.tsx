@@ -1,10 +1,17 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import NavOverlay from '@/components/NavOverlay'
+import { PublicPage, Masthead, SectionHead, Rise, Cta, InkFloat, BleedImage } from '@/components/public/kit'
 
 // /origin — long-form story page. The copy below is intentionally editable;
 // treat it as scaffolding to be tuned by the founders.
+//
+// Set to the /studio benchmark: words left and large, the lion painting in the
+// masthead's empty half, each chapter answered by the house's own ink — the
+// rampant lion beside the lion, five rampant floor-marks climbing a stair
+// beside the five-floor house, two drawings raising a glass beside the table.
+// The clubhouse photograph runs full-bleed into the ground before the building.
 
 const CHAPTERS = [
   {
@@ -48,236 +55,153 @@ const CHAPTERS = [
   },
 ]
 
-export default function OriginPage() {
-  const [revealed, setRevealed] = useState<Set<number>>(new Set())
-  const sectionRefs = useRef<(HTMLElement | null)[]>([])
+const photo = (name: string) => `/images/social/${name}.webp`
 
-  useEffect(() => {
-    const obs = new IntersectionObserver((entries) => {
-      for (const e of entries) {
-        if (e.isIntersecting) {
-          const idx = Number(e.target.getAttribute('data-idx'))
-          setRevealed(prev => {
-            if (prev.has(idx)) return prev
-            const next = new Set(prev); next.add(idx); return next
-          })
-        }
-      }
-    }, { threshold: 0.15 })
-    sectionRefs.current.forEach(el => el && obs.observe(el))
-    return () => obs.disconnect()
-  }, [])
+// The five floors as the house draws them — the rampant lion holding each
+// floor's object — climbing from the Library Bar (1) to the Lab (5).
+const STAIR = ['floor-library-bar', 'floor-studio', 'floor-dining', 'floor-rampant-room', 'floor-lab'] as const
 
+// A photograph as the kit frames it, with an ink drawing or two pinned over
+// its corners.
+function Pinned({ src, children, style }: { src: string; children?: ReactNode; style?: CSSProperties }) {
   return (
-    <>
-      <style suppressHydrationWarning dangerouslySetInnerHTML={{ __html: `
-        @font-face {
-          font-family: 'Rampant Sans';
-          src: url('/fonts/MNRampantSans-Regular.woff2') format('woff2'),
-               url('/fonts/MNRampantSans-Regular.ttf') format('truetype');
-          font-weight: 400; font-style: normal; font-display: block;
-        }
-        @font-face {
-          font-family: 'Google Sans Code';
-          src: url('/fonts/GoogleSansCode-VariableFont_wght.ttf') format('truetype');
-          font-weight: 100 900; font-style: normal; font-display: block;
-        }
+    <div className="org-pinned" style={style}>
+      <div className="pk-thumb org-photo">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} alt="" loading="lazy" />
+      </div>
+      {children}
+    </div>
+  )
+}
 
-        :root {
-          --org-cream: #E5D4C2;
-          --org-cream-dim: #B2AA98;
-          --org-green-deep: #052E20;
-          --org-green-mid: #28483C;
-          --org-green-accent: #5E6650;
-          --org-gold: #D4B85A;
-        }
+// The chapter's art, by chapter.
+function ChapterArt({ index, image }: { index: number; image: string }) {
+  if (index === 0) return (
+    <Pinned src={photo(image)}>
+      <InkFloat name="lion-suit" width="44%" rot={-6} dur={8.5} className="org-pin org-pin-bl" />
+    </Pinned>
+  )
+  if (index === 1) return (
+    <div className="org-stair" aria-hidden="true">
+      {STAIR.map((f, i) => (
+        <InkFloat key={f} name={f} width="19%" rot={i % 2 ? 4 : -4} dur={7 + i * .6} className="org-step"
+                  style={{ left: `${i * 20}%`, bottom: `${i * 17.5}%` }} />
+      ))}
+    </div>
+  )
+  return (
+    <Pinned src={photo(image)}>
+      <InkFloat name="gent-toast" width="42%" rot={-5} dur={8} className="org-pin org-pin-bl" />
+      <InkFloat name="girl-toast" width="38%" rot={6} dur={9} className="org-pin org-pin-tr" />
+    </Pinned>
+  )
+}
 
-        body { background: var(--org-cream); }
+export default function OriginPage() {
+  return (
+    <PublicPage>
+      <style dangerouslySetInnerHTML={{ __html: `
+        /* the painting, askew in the masthead's empty half */
+        .org-paint { position: relative; width: calc(100% + 40px); max-width: 600px; margin-left: -40px; }
+        .org-paint .pk-float img { filter: drop-shadow(0 18px 34px rgba(5,46,32,.22)); }
+        .org-paint-glass { position: absolute; left: -6%; bottom: -10%; z-index: 2; }
 
-        .org-hero {
-          min-height: 92vh;
-          display: flex; align-items: center; justify-content: center;
-          padding: 120px 24px 80px;
-          background: var(--org-cream);
-          position: relative;
-          overflow: hidden;
-        }
-        .org-hero-inner {
-          position: relative; z-index: 2;
-          text-align: center; max-width: 760px;
-        }
-        .org-eyebrow {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 11px;
-          color: var(--org-cream-dim);
-          letter-spacing: 0.06em;
-          margin-bottom: 16px;
-        }
-        .org-hero-title {
-          font-family: 'Rampant Sans', 'Playfair Display', serif;
-          font-size: clamp(32px, 5vw, 48px);
-          font-weight: 500;
-          color: var(--org-green-deep);
-          line-height: 1.1;
-          letter-spacing: 0.02em;
-          margin: 0 0 24px;
-        }
-        .org-hero-sub {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 12px; line-height: 1.8;
-          color: var(--org-cream-dim);
-          letter-spacing: 0.04em;
-          max-width: 460px; margin: 0 auto;
-        }
-        .org-hero-divider {
-          width: 1px; height: 60px;
-          background: var(--org-green-accent);
-          opacity: 0.3;
-          margin: 48px auto 0;
-        }
+        .org-ch { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 72px; align-items: center; }
+        .org-ch.is-flip { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); }
+        .org-ch.is-flip .org-ch-art { order: -1; }
+        .org-ch-body { margin-top: 34px; max-width: 60ch; }
+        .org-ch-body .pk-body { font-size: 14px; opacity: 1; margin-bottom: 22px; }
 
-        .org-chapter {
-          padding: 100px 32px;
-          max-width: 880px;
-          margin: 0 auto;
-          position: relative;
-        }
-        .org-chapter[data-revealed="true"] .org-chapter-inner {
-          opacity: 1; transform: translateY(0);
-        }
-        .org-chapter-inner {
-          opacity: 0;
-          transform: translateY(20px);
-          transition: opacity 1.2s cubic-bezier(0.22, 1, 0.36, 1),
-                      transform 1.2s cubic-bezier(0.22, 1, 0.36, 1);
-        }
-        .org-chapter-eyebrow {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 11px;
-          color: var(--org-cream-dim);
-          letter-spacing: 0.06em;
-          margin-bottom: 8px;
-        }
-        .org-chapter-title {
-          font-family: 'Rampant Sans', 'Playfair Display', serif;
-          font-size: 28px;
-          font-weight: 500;
-          color: var(--org-green-deep);
-          line-height: 1.2;
-          margin: 0 0 28px;
-          letter-spacing: 0.02em;
-        }
-        .org-chapter-body p {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 12px;
-          line-height: 1.9;
-          color: var(--org-green-accent);
-          opacity: 0.85;
-          margin: 0 0 20px;
-        }
-        .org-closing {
-          padding: 120px 32px;
-          background: var(--org-green-deep);
-          color: var(--org-cream);
-          text-align: center;
-        }
-        .org-closing-title {
-          font-family: 'Rampant Sans', 'Playfair Display', serif;
-          font-size: 28px;
-          font-weight: 500;
-          margin: 0 0 20px;
-          letter-spacing: 0.02em;
-        }
-        .org-closing-text {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 12px; line-height: 1.8;
-          color: var(--org-cream-dim);
-          max-width: 540px; margin: 0 auto;
-          letter-spacing: 0.04em;
-        }
-        .org-closing-link {
-          display: inline-block;
-          margin-top: 36px;
-          padding: 12px 28px;
-          font-family: 'Google Sans Code', monospace;
-          font-size: 11px;
-          letter-spacing: 0.18em;
-          text-transform: uppercase;
-          color: var(--org-cream);
-          border: 1px solid rgba(229,212,194,0.4);
-          text-decoration: none;
-          transition: background 0.3s ease, border-color 0.3s ease;
-        }
-        .org-closing-link:hover {
-          background: rgba(229,212,194,0.06);
-          border-color: var(--org-gold);
-        }
+        .org-pinned { position: relative; width: 100%; max-width: 400px; margin: 0 auto; }
+        .org-photo { aspect-ratio: 4 / 5; transform: rotate(-1.5deg); }
+        .org-ch.is-flip .org-photo { transform: rotate(1.5deg); }
+        .org-pin { position: absolute; z-index: 2; pointer-events: none; }
+        .org-pin-bl { left: -16%; bottom: -12%; }
+        .org-pin-tr { right: -14%; top: -10%; }
 
-        .org-lion-mark {
-          display: block;
-          width: clamp(220px, 38vw, 360px);
-          height: auto;
-          margin: 0 auto 40px;
-          filter: drop-shadow(0 18px 40px rgba(5, 46, 32, 0.18));
-        }
+        /* five floors, climbing */
+        .org-stair { position: relative; width: 100%; max-width: 440px; aspect-ratio: 1 / 1; margin: 0 auto; }
+        .org-step { position: absolute; }
 
-        @media (max-width: 720px) {
-          .org-hero { padding: 100px 20px 60px; }
-          .org-chapter { padding: 60px 20px; }
-          .org-closing { padding: 80px 20px; }
+        .org-close { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); gap: 56px; align-items: center;
+                     padding-bottom: 140px; }
+        .org-close-art { position: relative; width: 100%; max-width: 420px; aspect-ratio: 1 / .8; margin-left: auto; }
+        .org-close-art .pk-float { position: absolute; }
+
+        @media (max-width: 860px) {
+          .org-paint { width: 100%; max-width: 420px; margin: 0 auto; }
+          .org-paint-glass { left: -2%; }
+          .org-ch, .org-ch.is-flip { grid-template-columns: 1fr; gap: 56px; }
+          .org-ch.is-flip .org-ch-art { order: 0; }
+          .org-ch-body { margin-top: 26px; }
+          .org-ch-body .pk-body { font-size: 13px; }
+          .org-pinned { max-width: 300px; }
+          .org-pin-bl { left: -12%; }
+          .org-pin-tr { right: -10%; }
+          .org-stair { max-width: 320px; }
+          .org-close { grid-template-columns: 1fr; gap: 36px; padding-bottom: 100px; }
+          .org-close-art { max-width: 320px; margin: 0 auto; }
         }
       ` }} />
 
       <NavOverlay variant="public" />
 
-      <main>
-        <section className="org-hero">
-          <div className="org-hero-inner">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/Lion-opt.png" alt="The Rampant Lion" className="org-lion-mark" />
-            <div className="org-eyebrow">Nguồn Gốc · The Origin</div>
-            <h1 className="org-hero-title">A townhouse, a lion, an idea.</h1>
-            <p className="org-hero-sub">
-              How a Scottish-Vietnamese clubhouse came to occupy a five-storey townhouse in District 1,
-              and what it intends to do there.
-            </p>
-            <div className="org-hero-divider" />
+      <Masthead
+        eyebrow="Nguồn Gốc · The Origin"
+        title="A townhouse, a lion, an idea."
+        lede={<>How a Scottish-Vietnamese clubhouse came to occupy a five-storey townhouse in District 1,
+          and what it intends to do there.</>}
+        art={
+          <div className="org-paint">
+            <div className="pk-float" style={{ ['--rot' as string]: '-3deg', ['--dur' as string]: '10s' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/lion-painting.webp" alt="The Rampant Lion" />
+            </div>
+            <InkFloat name="glass" width="22%" rot={-10} dur={7} className="org-paint-glass" />
           </div>
-        </section>
+        }
+      />
 
-        {CHAPTERS.map((c, i) => (
-          <section
-            key={c.title}
-            className="org-chapter"
-            ref={el => { sectionRefs.current[i] = el }}
-            data-idx={i}
-            data-revealed={revealed.has(i) || undefined}
-          >
-            <div className="org-chapter-inner">
-              <div className="org-chapter-eyebrow">{c.eyebrow}</div>
-              <h2 className="org-chapter-title">{c.title}</h2>
-              <div className="org-chapter-body">
-                {c.body.map((p, j) => <p key={j}>{p}</p>)}
+      {CHAPTERS.map((c, i) => (
+        <div key={c.title}>
+          {/* The building is the clubhouse photograph, full width, fading
+              into the ground the way /studio's heroes do. */}
+          {i === 1 && <div style={{ marginTop: 110 }}><BleedImage src={photo(c.image)} position="50% 62%" /></div>}
+          <section className={`pk-wrap ${i === 1 ? '' : 'pk-section'}`} style={i === 1 ? { paddingTop: 12 } : undefined}>
+            <div className={`org-ch ${i === 2 ? 'is-flip' : ''}`}>
+              <div>
+                <SectionHead eyebrow={c.eyebrow} title={c.title} />
+                <Rise delay={.14} className="org-ch-body">
+                  {c.body.map((p, j) => <p key={j} className="pk-body">{p}</p>)}
+                </Rise>
               </div>
-              {c.image && (
-                <div style={{ margin: '32px auto 0', width: 264, maxWidth: '78%', borderRadius: 8, overflow: 'hidden', boxShadow: '0 14px 36px rgba(5,46,32,0.16)' }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/images/social/${c.image}.webp`} alt="" style={{ display: 'block', width: '100%', height: 'auto' }} />
-                </div>
-              )}
+              <Rise delay={.2} className="org-ch-art">
+                <ChapterArt index={i} image={c.image} />
+              </Rise>
             </div>
           </section>
-        ))}
+        </div>
+      ))}
 
-        <section className="org-closing">
-          <div className="org-closing-title">Membership is by invitation or referral only.</div>
-          <p className="org-closing-text">
-            We do not advertise. We do not accept applications. If The Rampant Club is for you, we will
-            most likely meet through one of our Lions.
-          </p>
-          <a href="/" className="org-closing-link">Return to the front door</a>
-        </section>
-      </main>
-    </>
+      <section className="pk-wrap pk-section org-close">
+        <div>
+          <Rise><h2 className="pk-h2">Membership is by invitation or referral only.</h2></Rise>
+          <Rise delay={.1}>
+            <p className="pk-lede">
+              We do not advertise. We do not accept applications. If The Rampant Club is for you, we will
+              most likely meet through one of our Lions.
+            </p>
+          </Rise>
+          <Rise delay={.18}><Cta href="/">Return to the front door</Cta></Rise>
+        </div>
+        <Rise delay={.16}>
+          <div className="org-close-art">
+            <InkFloat name="lion-lounging" width="86%" rot={-3} dur={9} style={{ left: 0, bottom: 0 }} />
+            <InkFloat name="key" width="34%" rot={-22} dur={7} style={{ right: 0, top: 0 }} />
+          </div>
+        </Rise>
+      </section>
+    </PublicPage>
   )
 }
