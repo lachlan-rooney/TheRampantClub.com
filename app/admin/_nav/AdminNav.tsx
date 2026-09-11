@@ -4,64 +4,65 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { ADMIN_SURFACE } from '@/lib/admin/surfaces'
+import { useLang } from '@/lib/lang'
 
 // Grouped admin sidebar. Groups remember their collapsed state in localStorage.
 // The Dashboard sits above the groups as a single landing link.
 
-type Item = { href: string; label: string; icon: string }
-type Group = { id: string; label: string; items: Item[] }
+type Item = { href: string; label: string; vn: string; icon: string }
+type Group = { id: string; label: string; vn: string; items: Item[] }
 
 // Reorganised by TEAM (2026-08): On-Site (floor/service), Membership,
 // Cellar & Whisky, Sports & Events, Management. Renamed the two confusing
 // duplicates — "User Roster" → "Access & Logins", ops "Reports" → "Ops Reports".
-const DASHBOARD: Item = { href: '/admin', label: 'Dashboard', icon: 'grid' }
+const DASHBOARD: Item = { href: '/admin', label: 'Dashboard', vn: 'Bảng điều khiển', icon: 'grid' }
 
 const GROUPS: Group[] = [
   {
     id: 'onsite',
-    label: 'On-Site',
+    label: 'On-Site', vn: 'Tại chỗ',
     items: [
-      { href: '/admin/tonight', label: 'Tonight', icon: 'moon' },
-      { href: '/admin/mx-daily', label: 'MX Daily', icon: 'clipboard' },
-      { href: '/admin/checklists', label: 'Checklists', icon: 'checklist' },
+      { href: '/admin/tonight', label: 'Tonight', vn: 'Tối nay', icon: 'moon' },
+      { href: '/admin/mx-daily', label: 'MX Daily', vn: 'MX Daily', icon: 'clipboard' },
+      { href: '/admin/checklists', label: 'Checklists', vn: 'Danh sách kiểm tra', icon: 'checklist' },
       // Beside Checklists deliberately: that is opening/closing per shift, this
       // is the standing weekly list. Same team, same part of the day.
-      { href: '/admin/shifts', label: ADMIN_SURFACE['/admin/shifts'].en, icon: 'clipboard' },
-      { href: '/admin/studio', label: 'The Studio', icon: 'image' },
-      { href: '/admin/members/link', label: 'Accounts & Memberships', icon: 'link' },
-      { href: '/admin/quickref', label: 'Quick Reference', icon: 'book' },
-      { href: '/admin/cards', label: 'Member Cards', icon: 'card' },
-      { href: '/admin/concierge', label: 'Concierge', icon: 'bell' },
-      { href: '/admin/notices', label: 'Notice Board', icon: 'megaphone' },
-      { href: '/admin/calendar', label: 'Calendar', icon: 'calendar' },
-      { href: '/admin/attendance', label: 'Guest Attendance', icon: 'users' },
-      { href: '/admin/harmony', label: 'Harmony Log', icon: 'heart' },
-      { href: '/admin/snug', label: 'The Snug', icon: 'cup' },
-      { href: '/admin/introductions', label: 'Introductions', icon: 'people' },
+      { href: '/admin/shifts', label: ADMIN_SURFACE['/admin/shifts'].en, vn: ADMIN_SURFACE['/admin/shifts'].vn, icon: 'clipboard' },
+      { href: '/admin/studio', label: 'The Studio', vn: 'Phòng Studio', icon: 'image' },
+      { href: '/admin/members/link', label: 'Accounts & Memberships', vn: 'Tài khoản & Hội viên', icon: 'link' },
+      { href: '/admin/quickref', label: 'Quick Reference', vn: 'Tra cứu nhanh', icon: 'book' },
+      { href: '/admin/cards', label: 'Member Cards', vn: 'Thẻ hội viên', icon: 'card' },
+      { href: '/admin/concierge', label: 'Concierge', vn: 'Quản Gia', icon: 'bell' },
+      { href: '/admin/notices', label: 'Notice Board', vn: 'Bảng Tin', icon: 'megaphone' },
+      { href: '/admin/calendar', label: 'Calendar', vn: 'Lịch', icon: 'calendar' },
+      { href: '/admin/attendance', label: 'Guest Attendance', vn: 'Khách ghé thăm', icon: 'users' },
+      { href: '/admin/harmony', label: 'Harmony Log', vn: 'Nhật ký ca trực', icon: 'heart' },
+      { href: '/admin/snug', label: 'The Snug', vn: 'Phòng Khách', icon: 'cup' },
+      { href: '/admin/introductions', label: 'Introductions', vn: 'Giới thiệu', icon: 'people' },
     ],
   },
   {
     id: 'membership',
-    label: 'Membership',
+    label: 'Membership', vn: 'Hội viên',
     items: [
-      { href: '/admin/mis/pipeline', label: 'Pipeline', icon: 'funnel' },
-      { href: '/admin/mis', label: 'Members', icon: 'users' },
-      { href: '/admin/mis/candidates', label: 'Pref Candidates', icon: 'star' },
-      { href: '/admin/agreements', label: 'Agreements', icon: 'signature' },
-      { href: '/admin/membership', label: 'Membership Finance', icon: 'receipt' },
-      { href: '/admin/newsletters', label: 'Newsletter', icon: 'megaphone' },
-      { href: '/admin/gifts', label: 'Gifting', icon: 'gift' },
-      { href: '/admin/observatory', label: 'Observatory', icon: 'eye' },
-      { href: '/admin/decay-fit', label: 'Decay Fit', icon: 'trend' },
+      { href: '/admin/mis/pipeline', label: 'Pipeline', vn: 'Quy trình tuyển chọn', icon: 'funnel' },
+      { href: '/admin/mis', label: 'Members', vn: 'Hội viên', icon: 'users' },
+      { href: '/admin/mis/candidates', label: 'Pref Candidates', vn: 'Ứng viên ưu tiên', icon: 'star' },
+      { href: '/admin/agreements', label: 'Agreements', vn: 'Thỏa thuận', icon: 'signature' },
+      { href: '/admin/membership', label: 'Membership Finance', vn: 'Tài chính hội viên', icon: 'receipt' },
+      { href: '/admin/newsletters', label: 'Newsletter', vn: 'Bản Tin Hội Viên', icon: 'megaphone' },
+      { href: '/admin/gifts', label: 'Gifting', vn: 'Quà tặng', icon: 'gift' },
+      { href: '/admin/observatory', label: 'Observatory', vn: 'Đài quan sát', icon: 'eye' },
+      { href: '/admin/decay-fit', label: 'Decay Fit', vn: 'Đường suy giảm', icon: 'trend' },
     ],
   },
   {
     id: 'cellar',
-    label: 'Cellar & Whisky',
+    label: 'Cellar & Whisky', vn: 'Hầm rượu & Whisky',
     items: [
-      { href: '/admin/whisky', label: 'Inventory', icon: 'bottle' },
-      { href: '/admin/lockers', label: 'Lockers', icon: 'lock' },
-      { href: '/admin/whisky/flavour-review', label: 'Flavour Review', icon: 'flask' },
+      { href: '/admin/whisky', label: 'Inventory', vn: 'Kho rượu', icon: 'bottle' },
+      { href: '/admin/lockers', label: 'Lockers', vn: 'Tủ khóa', icon: 'lock' },
+      { href: '/admin/whisky/flavour-review', label: 'Flavour Review', vn: 'Duyệt hương vị', icon: 'flask' },
     ],
   },
   {
@@ -70,28 +71,28 @@ const GROUPS: Group[] = [
     // and staff looking for the thing a member just asked about should not have to
     // translate. /admin/calendar also feeds it, but it stays under On-Site because
     // it is mostly a bookings tool used every shift.
-    label: "What's On",
+    label: "What's On", vn: 'Sự Kiện',
     items: [
-      { href: '/admin/fixtures', label: 'Events', icon: 'trophy' },
-      { href: '/admin/gallery', label: 'Event Gallery', icon: 'image' },
+      { href: '/admin/fixtures', label: 'Events', vn: 'Sự Kiện', icon: 'trophy' },
+      { href: '/admin/gallery', label: 'Event Gallery', vn: 'Thư Viện Sự Kiện', icon: 'image' },
     ],
   },
   {
     id: 'management',
-    label: 'Management',
+    label: 'Management', vn: 'Quản lý',
     items: [
-      { href: '/admin/ops', label: 'Boards', icon: 'boards' },
-      { href: '/admin/ops/rota', label: 'Rota', icon: 'rota' },
-      { href: '/admin/ops/reports', label: 'Ops Reports', icon: 'bars' },
-      { href: '/admin/reports', label: 'Weekly Report', icon: 'doc' },
-      { href: '/admin/ops/activity', label: 'Activity', icon: 'pulse' },
-      { href: '/admin/tier-budgets', label: 'Tier Budgets', icon: 'layers' },
-      { href: '/admin/training', label: 'Training', icon: 'cap' },
-      { href: '/admin/rules', label: 'House Rules', icon: 'rules' },
-      { href: '/admin/journal', label: 'Journal', icon: 'pen' },
-      { href: '/admin/press', label: 'Press', icon: 'news' },
-      { href: '/admin/kiosk', label: 'Kiosk', icon: 'tablet' },
-      { href: '/admin/members', label: 'Access & Logins', icon: 'badge' },
+      { href: '/admin/ops', label: 'Boards', vn: 'Bảng', icon: 'boards' },
+      { href: '/admin/ops/rota', label: 'Rota', vn: 'Lịch trực', icon: 'rota' },
+      { href: '/admin/ops/reports', label: 'Ops Reports', vn: 'Báo cáo vận hành', icon: 'bars' },
+      { href: '/admin/reports', label: 'Weekly Report', vn: 'Báo cáo hàng tuần', icon: 'doc' },
+      { href: '/admin/ops/activity', label: 'Activity', vn: 'Hoạt động', icon: 'pulse' },
+      { href: '/admin/tier-budgets', label: 'Tier Budgets', vn: 'Ngân sách theo hạng', icon: 'layers' },
+      { href: '/admin/training', label: 'Training', vn: 'Đào tạo', icon: 'cap' },
+      { href: '/admin/rules', label: 'House Rules', vn: 'Nội Quy', icon: 'rules' },
+      { href: '/admin/journal', label: 'Journal', vn: 'Nhật ký', icon: 'pen' },
+      { href: '/admin/press', label: 'Press', vn: 'Báo chí', icon: 'news' },
+      { href: '/admin/kiosk', label: 'Kiosk', vn: 'Kiosk', icon: 'tablet' },
+      { href: '/admin/members', label: 'Access & Logins', vn: 'Truy cập & Đăng nhập', icon: 'badge' },
     ],
   },
 ]
@@ -145,6 +146,11 @@ function NavIcon({ name }: { name: string }) {
 }
 
 export default function AdminNav() {
+  // The sidebar follows the EN/VN switch like the rest of admin (it used to be
+  // English-only by design; the owner wants it to switch). MX Daily and Kiosk
+  // are names, so they read the same in both.
+  const { lang } = useLang()
+  const nm = (x: { label: string; vn: string }) => (lang === 'vn' ? x.vn : x.label)
   const pathname = usePathname() || ''
   // Off-canvas below 1024px. The sidebar was fixed at 240px with no media query
   // anywhere, so on an iPad it permanently ate a quarter of the screen and on a
@@ -215,7 +221,7 @@ export default function AdminNav() {
 
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 16 }}>
         <Link href={DASHBOARD.href} style={{ ...itemLink, ...(isActive(DASHBOARD.href) ? itemLinkActive : null), marginBottom: 12 }}>
-          <NavIcon name={DASHBOARD.icon} />{DASHBOARD.label}
+          <NavIcon name={DASHBOARD.icon} />{nm(DASHBOARD)}
         </Link>
 
         {GROUPS.map(g => {
@@ -228,7 +234,7 @@ export default function AdminNav() {
                 onClick={() => toggle(g.id)}
                 style={{ ...groupHeader, color: groupActive ? '#D4B85A' : '#7E7864' }}
               >
-                <span>{g.label}</span>
+                <span>{nm(g)}</span>
                 <span style={{ opacity: 0.6, fontSize: 9 }}>{isCollapsed ? '▸' : '▾'}</span>
               </button>
               {!isCollapsed && (
@@ -243,7 +249,7 @@ export default function AdminNav() {
                         paddingLeft: 20,
                       }}
                     >
-                      <NavIcon name={it.icon} />{it.label}
+                      <NavIcon name={it.icon} />{nm(it)}
                     </Link>
                   ))}
                 </div>

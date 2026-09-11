@@ -20,12 +20,15 @@ export interface Attachment {
 }
 
 export default function AttachmentField({
-  entityType, entityId, memberVisible, onChange,
+  entityType, entityId, memberVisible, onChange, hideNote = false,
 }: {
   entityType: 'fixture' | 'calendar_entry'
   entityId: string
   memberVisible: boolean
   onChange?: (a: Attachment | null) => void
+  // A page that states the warning ONCE at its top (admin Fixtures) hides it
+  // here, rather than repeating it above every image in the list.
+  hideNote?: boolean
 }) {
   const { t } = useLang()
   const [att, setAtt] = useState<Attachment | null>(null)
@@ -87,13 +90,13 @@ export default function AttachmentField({
     <div style={wrap}>
       <div style={label}>{t('Artwork or invitation', 'Hình ảnh hoặc thư mời')}</div>
 
-      <div style={note}>
+      {!hideNote && <div style={note}>
         {memberVisible
           ? t('Members see this on What’s On, and it may go out to the club’s Zalo and WhatsApp groups. Never upload a seating plan, a guest list, or anything else naming a member or a guest.',
               'Hội viên sẽ thấy tệp này trong What’s On, và nó có thể được gửi tới nhóm Zalo và WhatsApp của câu lạc bộ. Tuyệt đối không tải lên sơ đồ chỗ ngồi, danh sách khách, hay bất cứ thứ gì có tên hội viên hoặc khách.')
           : t('This entry is staff-only, so the file stays internal — a member cannot open it. If you make the entry member-visible, the file becomes visible too.',
               'Mục này chỉ dành cho nhân viên nên tệp được giữ nội bộ — hội viên không mở được. Nếu chuyển mục sang chế độ hội viên thấy được, tệp cũng sẽ hiển thị.')}
-      </div>
+      </div>}
 
       {att ? (
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginTop: 10 }}>

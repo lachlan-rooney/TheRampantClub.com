@@ -142,6 +142,9 @@ export default function AdminFixtures() {
         <p style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#B2AA98', opacity: .75, margin: '4px 0 0', lineHeight: 1.7 }}>
           {t('Events appear in the members\u2019 What\u2019s On, alongside member-visible calendar entries.',
              'Sự kiện hiển thị trong mục What\u2019s On của hội viên, cùng với các mục lịch dành cho hội viên.')}
+          {/* Said once, here — not above every event's image. */}
+          {' '}{t('Artwork may also go out to the club\u2019s Zalo and WhatsApp groups: never upload a seating plan, a guest list, or anything else naming a member or a guest.',
+                  'Hình ảnh cũng có thể được gửi tới nhóm Zalo và WhatsApp của câu lạc bộ: tuyệt đối không tải lên sơ đồ chỗ ngồi, danh sách khách, hay bất cứ thứ gì có tên hội viên hoặc khách.')}
         </p>
         {!showForm && (
           <button onClick={() => { resetForm(); setShowForm(true) }} style={btnStyle}>{t('+ New Event', '+ Sự kiện mới')}</button>
@@ -247,7 +250,7 @@ export default function AdminFixtures() {
             {/* On the ROW, not only in the create form: the events that most need
                 artwork are the ones already in the calendar. Ken Grier exists
                 already and has to be attachable without being recreated. */}
-            <AttachmentField entityType="fixture" entityId={f.id} memberVisible />
+            <AttachmentField entityType="fixture" entityId={f.id} memberVisible hideNote />
 
             {/* The share draft. Every fixture is member-visible by RLS, so there is
                 no visibility condition here — unlike calendar entries, where a
