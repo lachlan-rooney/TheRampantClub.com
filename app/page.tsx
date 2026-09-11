@@ -5,6 +5,9 @@ import NavOverlay from '@/components/NavOverlay'
 import LiveTicker from '@/components/LiveTicker'
 import TonightPanel from '@/components/TonightPanel'
 import ReciprocalClocks from '@/components/ReciprocalClocks'
+import HomeHero from '@/components/home/HomeHero'
+import { tenseOf, dateRange } from '@/components/StudioIndex'
+import MemberBenefits from '@/components/home/MemberBenefits'
 import Spotlight from '@/components/Spotlight'
 import useEasterEggs from '@/hooks/useEasterEggs'
 import Link from 'next/link'
@@ -58,16 +61,6 @@ function useScrollReveal(threshold = 0.15) {
 }
 
 // ─── Data ────────────────────────────────────────────────────────
-const BENEFITS = [
-  { title: 'The Rampant Room', desc: 'Hundreds of open bottles in a world-class bottle-share room. Pour for yourself, stay as long as you like.' },
-  { title: 'Club Picks', desc: 'Taste, discuss, and select bespoke casks to be bottled exclusively under The Rampant Club label.' },
-  { title: 'Blending Workshops', desc: 'Private blending sessions where members learn to blend whisky and make their own small bottlings.' },
-  { title: 'Our Scottish Castle', desc: 'Members enjoy exclusive discounts on accommodation, fishing, shooting, golf, and dining at our sister castle in the Scottish Highlands, slated to open in 2027, will be home to an exclusive Rampant Club satellite outpost.' },
-  { title: 'The Rampant Club Apartment', desc: 'Complimentary stays in Huntly, Scotland, furnished with cask samples for members to enjoy. Perfect for those visiting Speyside.' },
-  { title: 'Reciprocal Club Access', desc: 'Bespoke access to a vetted global network of premier private clubs in London, New York, Tokyo, and Singapore.' },
-  { title: 'Luxury Transport', desc: 'Complimentary GF VIP chauffeur service, plus airport fast-track and private car transfer for out-of-town members.' },
-  { title: 'Events & Networking', desc: 'Highland Games, golf tournaments, round table events, business brunches, and private dinners.' },
-]
 
 const FLOORS = [
   { num: 5, name: 'Source & Origin Lab', vn: 'Phòng Thí Nghiệm', desc: 'Our in-house culinary innovation lab, bringing cutting-edge beverage experiences exclusively to members.' },
@@ -95,6 +88,11 @@ const TIERS = [
     desc: 'Three nominated representative seats per company. Access to all spaces, events, and networking opportunities \u2014 ideal for hosting, relationship-building, and representation.',
   },
 ]
+
+// The Cup's dates as DATES, so the eyebrow says "Played" by itself once they
+// pass — the same rule as the sports page.
+const CUP = { opens: '2026-08-14', closes: '2026-08-15' }
+const cupTense = (() => { const t = tenseOf(CUP.opens, CUP.closes); return t === 'Past' ? 'Played' : t })()
 
 // ─── Draggable Image Component ───────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════
@@ -131,12 +129,16 @@ function GolfFilm() {
   }, [])
 
   return (
-    <div ref={wrap} style={{ maxWidth: 900, margin: '28px auto 0', padding: '0 20px' }}>
+    <div ref={wrap} style={{ marginTop: 40 }}>
       <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0,
-                    borderRadius: 12, overflow: 'hidden',
-                    border: '1px solid rgba(229,212,194,0.12)',
-                    boxShadow: '0 24px 56px rgba(0,0,0,0.4)',
-                    background: 'rgba(5,46,32,0.6)' }}>
+                    borderRadius: 14, overflow: 'hidden',
+                    boxShadow: '0 24px 60px rgba(5,46,32,0.24)',
+                    background: '#0B1A14' }}>
+        {/* The Cup's own poster sits underneath until the film arrives — so
+            there is never an empty grey box, even where YouTube is blocked. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/cup/cup-course.webp" alt="" aria-hidden="true" loading="lazy"
+             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 38%' }} />
         {armed && (
           <iframe
             ref={frame}
@@ -327,8 +329,6 @@ export default function HomePage() {
   const multiplier = isMobile ? 2 : 6
 
   // Scroll-reveal hooks for new sections
-  const hero = useScrollReveal(0.1)
-  const benefitsSec = useScrollReveal(0.1)
   const floorsSec = useScrollReveal(0.1)
   const tiersSec = useScrollReveal(0.1)
 
@@ -537,90 +537,28 @@ export default function HomePage() {
           margin-bottom: 60px;
         }
 
-        /* ── The membership card, dropped across the seam ──
-           Not a section of its own: it lies ON the page, over the line where
-           the hero ends and Member Benefits begins, tilted up to the left.
-           Its shadow falls behind it onto the paper, which is what lifts it —
-           and it drifts the way the lion does on /studio. The shadow lives on
-           the WRAPPER and the tilt on the image, so the light stays put while
-           the card turns under it. */
-        @keyframes trc-card-land {
-          from { opacity: 0; transform: translate(-14px, -42px) scale(1.12) rotate(-5deg); }
-          to   { opacity: 1; transform: none; }
-        }
-        @keyframes trc-card-drift {
-          from { transform: rotate(-15deg) translateY(0); }
-          to   { transform: rotate(-12deg) translateY(-12px); }
-        }
-        .trc-card-drop {
-          position: absolute; z-index: 3; pointer-events: none;
-          left: 2%; top: -190px;
-          width: clamp(150px, 15vw, 210px);
-          opacity: 0;
-          filter: drop-shadow(18px 24px 20px rgba(5, 46, 32, .28))
-                  drop-shadow(4px 6px 5px rgba(5, 46, 32, .18));
-        }
-        .trc-card-drop.is-in { animation: trc-card-land 1s cubic-bezier(.16,.84,.44,1) .15s both; }
-        .trc-card-drop img {
-          display: block; width: 100%; height: auto;
-          transform: rotate(-15deg);
-          animation: trc-card-drift 7s ease-in-out infinite alternate;
-        }
-        @media (max-width: 768px) {
-          /* Runs off the left edge a little, clear of the centred title. */
-          .trc-card-drop { width: 100px; left: 2px; top: -150px; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .trc-card-drop.is-in { animation: none; opacity: 1; }
-          .trc-card-drop img { animation: none; }
-        }
-
-        /* ── Scroll-reveal blurb section ── */
-        .trc-blurb {
-          text-align: center;
-          padding: 40px 24px 0;
-          max-width: 560px;
-          margin: 0 auto;
-          background: var(--trc-cream);
-          opacity: 0;
-          transform: translateY(20px);
-          transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
-        }
-        .trc-blurb.visible {
-          opacity: 1;
-          transform: translateY(0);
-        }
-
-        .trc-blurb-diamond {
-          width: 8px; height: 8px; background: var(--trc-green-accent);
-          transform: rotate(45deg); opacity: 0.3; margin: 0 auto 32px;
-        }
-
-        .trc-blurb-wordmark-img {
-          display: block;
-          width: 220px;
-          height: auto;
-          margin: 0 auto 28px;
-        }
-
-        .trc-blurb-en {
-          font-size: 12px; line-height: 1.8;
-          color: var(--trc-green-deep);
-          letter-spacing: 0.02em;
-          margin-bottom: 20px;
-        }
-        .trc-blurb-vn {
-          font-size: 11px; line-height: 1.75;
-          color: var(--trc-green-accent);
-          letter-spacing: 0.02em;
-        }
-
-        .trc-blurb-address {
-          margin-top: 32px;
-          font-family: 'Rampant Sans', 'Playfair Display', serif;
-          font-size: 14px; font-weight: 500;
-          color: var(--trc-green-deep);
-          letter-spacing: 0.06em; line-height: 1.6;
+        /* ── The Rampant Cup ── */
+        .trc-cup { max-width: 1180px; margin: 0 auto; padding: 120px 24px 40px; color: var(--trc-green-deep); }
+        .trc-cup-head { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: end; }
+        .trc-cup-head .trc-tiers-eyebrow { margin-top: 26px; }
+        .trc-cup-ink { position: relative; width: clamp(120px, 16vw, 220px); height: clamp(110px, 13vw, 170px); }
+        .trc-cup-ink img { position: absolute; height: auto; filter: drop-shadow(5px 8px 8px rgba(5,46,32,.12));
+                           transition: transform .6s cubic-bezier(.16,.84,.44,1); }
+        .trc-cup-flag { width: 46%; left: 6%; bottom: 0; transform: rotate(-6deg); }
+        .trc-cup-club { width: 44%; right: 4%; bottom: 4%; transform: rotate(14deg); }
+        .trc-cup-head:hover .trc-cup-flag { transform: rotate(-12deg) translateY(-4px); }
+        .trc-cup-head:hover .trc-cup-club { transform: rotate(26deg) translateY(-6px); }
+        /* the /studio call to action: mono, underlined, the arrow slides */
+        .trc-cta { display: inline-block; margin-top: 26px; color: var(--trc-green-deep); text-decoration: none;
+                   font-family: 'Google Sans Code', 'DM Mono', monospace; font-size: 12px; letter-spacing: .12em;
+                   text-transform: uppercase; border-bottom: 1px solid var(--trc-green-deep); padding-bottom: 6px; }
+        .trc-go { display: inline-block; transition: transform .35s ease; }
+        .trc-cta:hover .trc-go { transform: translateX(7px); }
+        @media (max-width: 600px) {
+          .trc-cup { padding: 80px 20px 24px; }
+          .trc-cup-head { grid-template-columns: 1fr; }
+          .trc-cup-ink { position: absolute; right: 16px; margin-top: -8px; width: 110px; height: 96px; }
+          .trc-cup-head { position: relative; }
         }
 
         /* ── Membership, set like /studio ── */
@@ -633,6 +571,16 @@ export default function HomePage() {
         .trc-tiers-rise { opacity: 0; }
         .trc-tiers.is-in .trc-tiers-rise { animation: trc-rise .9s cubic-bezier(.16,.84,.44,1) both; }
         .trc-tiers-rule { height: 1px; background: var(--trc-green-deep); opacity: .15; }
+        .trc-tiers-head { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: end; }
+        .trc-tiers-lion { width: clamp(120px, 15vw, 210px); height: auto; margin-right: 4%;
+                          transform: rotate(4deg); filter: drop-shadow(6px 10px 10px rgba(5,46,32,.14));
+                          transition: transform .6s cubic-bezier(.16,.84,.44,1); }
+        .trc-tiers-head:hover .trc-tiers-lion { transform: rotate(-3deg) translateY(-6px); }
+        @media (max-width: 600px) {
+          .trc-tiers-head { grid-template-columns: 1fr; }
+          .trc-tiers-lion { width: 120px; justify-self: end; margin: -10px 0 0; order: -1; }
+          .trc-tiers .trc-cta { font-size: 11px; letter-spacing: .06em; }
+        }
         .trc-tiers-eyebrow {
           font-family: 'Google Sans Code', 'DM Mono', monospace;
           font-size: 10.5px; letter-spacing: .22em; text-transform: uppercase;
@@ -692,31 +640,6 @@ export default function HomePage() {
           .trc-section { padding: 40px 16px; }
           .trc-section-title { font-size: 24px; }
           .trc-section-subtitle { font-size: 10px; }
-          .trc-benefits-grid {
-            grid-template-columns: 1fr !important;
-            gap: 0 !important;
-          }
-          .trc-benefits-glass {
-            order: -1;
-            margin-bottom: 24px;
-          }
-          .trc-benefits-left > div:nth-child(odd),
-          .trc-benefits-right > div:nth-child(odd) {
-            text-align: left !important;
-            padding-right: 20% !important;
-          }
-          .trc-benefits-left > div:nth-child(even),
-          .trc-benefits-right > div:nth-child(even) {
-            text-align: right !important;
-            padding-left: 20% !important;
-          }
-          .trc-hero-title {
-            font-size: 32px !important;
-          }
-          .trc-hero-illustration {
-            margin-left: -235px !important;
-            width: 120px !important;
-          }
         }
       ` }} />
 
@@ -788,167 +711,11 @@ export default function HomePage() {
           </>
         )}
 
-        {/* ══════ 1. HERO ══════ */}
-        <div
-          ref={hero.ref}
-          style={{
-            padding: '160px 40px 100px',
-            textAlign: 'center',
-            maxWidth: 700,
-            margin: '0 auto',
-            opacity: hero.visible ? 1 : 0,
-            transform: hero.visible ? 'translateY(0)' : 'translateY(30px)',
-            transition: 'opacity 1s ease, transform 1s cubic-bezier(0.22, 1, 0.36, 1)',
-          }}
-        >
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            marginBottom: -20,
-            position: 'relative',
-            zIndex: 1,
-          }}>
-            <img
-              src="/images/whisky-girl-opt.png"
-              alt="The Rampant Club girl illustration"
-              className="trc-hero-illustration"
-              style={{
-                width: 180,
-                height: 'auto',
-                objectFit: 'contain',
-                filter: 'brightness(1.1)',
-                marginLeft: -345,
-              }}
-            />
-          </div>
-          <h1 className="trc-hero-title" style={{
-            fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-            fontSize: 48,
-            fontWeight: 400,
-            color: 'var(--trc-green-deep)',
-            letterSpacing: '0.02em',
-            lineHeight: 1.15,
-            marginBottom: 24,
-          }}>
-            A Members&rsquo; Club
-          </h1>
-          <p style={{
-            fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-            fontSize: 20,
-            fontWeight: 400,
-            color: 'var(--trc-green-deep)',
-            opacity: 0.7,
-            lineHeight: 1.5,
-            marginBottom: 12,
-          }}>
-            For kindred spirits
-          </p>
-          <p style={{
-            fontFamily: "'Google Sans Code', monospace",
-            fontSize: 12,
-            color: 'var(--trc-green-accent)',
-            opacity: 0.7,
-            letterSpacing: '0.04em',
-            lineHeight: 1.7,
-            marginBottom: 40,
-          }}>
-            Scottish heritage meets Vietnamese soul in a five-storey townhouse in the heart of Sài Gòn.
-            Whisky, art, conversation, and community &mdash; sustained by its members, not for profit.
-          </p>
-          <button
-            onClick={() => setEthosOpen(true)}
-            style={{
-              display: 'inline-block',
-              fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-              fontSize: 11,
-              letterSpacing: '0.14em',
-              textTransform: 'uppercase',
-              color: 'var(--trc-cream)',
-              background: 'var(--trc-green-deep)',
-              padding: '14px 36px',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'opacity 0.2s ease',
-            }}
-          >
-            Club Ethos
-          </button>
-        </div>
+        {/* ══════ 1. HERO — components/home/HomeHero ══════ */}
+        <HomeHero onEthos={() => setEthosOpen(true)} />
 
-        {/* ══════ 2. BENEFITS ══════ */}
-        <div ref={benefitsSec.ref} className="trc-section" style={{ position: 'relative' }}>
-          {/* The membership card in its sleeve, lying across the seam between
-              the hero and this section. Decorative, so hidden from screen
-              readers; it lands when the section comes into view. */}
-          <div className={`trc-card-drop ${benefitsSec.visible ? 'is-in' : ''}`} aria-hidden="true">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/member-card-opt.webp" alt="" />
-          </div>
-          <div className="trc-section-diamond" />
-          <div className="trc-section-title">Member Benefits</div>
-          <div className="trc-section-subtitle">Quyền Lợi Thành Viên</div>
-
-          <div className="trc-benefits-grid" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '0 48px', alignItems: 'center' }}>
-            {/* Left column — first 4 benefits */}
-            <div className="trc-benefits-left">
-              {BENEFITS.slice(0, 4).map((b, i) => (
-                <div
-                  key={b.title}
-                  style={{
-                    padding: '20px 0',
-                    borderTop: '1px solid rgba(5, 46, 32, 0.08)',
-                    opacity: benefitsSec.visible ? 1 : 0,
-                    transform: benefitsSec.visible ? 'translateY(0)' : 'translateY(12px)',
-                    transition: 'opacity 0.6s ease, transform 0.6s ease',
-                    transitionDelay: `${i * 0.06}s`,
-                    textAlign: 'right',
-                  }}
-                >
-                  <div style={{
-                    fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-                    fontSize: 16, fontWeight: 500, color: 'var(--trc-green-deep)', marginBottom: 6,
-                  }}>{b.title}</div>
-                  <div style={{
-                    fontFamily: "'Google Sans Code', monospace",
-                    fontSize: 11, color: 'var(--trc-green-accent)', opacity: 0.7, lineHeight: 1.6,
-                  }}>{b.desc}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Centre image */}
-            <div className="trc-benefits-glass" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/whisky-swim-opt.png" alt="" style={{ width: 160, height: 'auto' }} />
-            </div>
-
-            {/* Right column — last 4 benefits */}
-            <div className="trc-benefits-right">
-              {BENEFITS.slice(4).map((b, i) => (
-                <div
-                  key={b.title}
-                  style={{
-                    padding: '20px 0',
-                    borderTop: '1px solid rgba(5, 46, 32, 0.08)',
-                    opacity: benefitsSec.visible ? 1 : 0,
-                    transform: benefitsSec.visible ? 'translateY(0)' : 'translateY(12px)',
-                    transition: 'opacity 0.6s ease, transform 0.6s ease',
-                    transitionDelay: `${(i + 4) * 0.06}s`,
-                  }}
-                >
-                  <div style={{
-                    fontFamily: "'Rampant Sans', 'Playfair Display', serif",
-                    fontSize: 16, fontWeight: 500, color: 'var(--trc-green-deep)', marginBottom: 6,
-                  }}>{b.title}</div>
-                  <div style={{
-                    fontFamily: "'Google Sans Code', monospace",
-                    fontSize: 11, color: 'var(--trc-green-accent)', opacity: 0.7, lineHeight: 1.6,
-                  }}>{b.desc}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        {/* ══════ 2. MEMBER BENEFITS (+ the card across the seam) ══════ */}
+        <MemberBenefits />
 
         {/* ══════ 2.5 TONIGHT — the departures board ══════
             Full content width, not a small card in the middle of the page. */}
@@ -963,10 +730,23 @@ export default function HomePage() {
             it does not depend on a Drive share that breaks silently when
             somebody tidies a folder. /members/upload and /api/moodboard are left
             in place; nothing else on the site renders them. */}
-        <div className="trc-section">
-          <div className="trc-section-diamond" />
-          <div className="trc-section-title">The Rampant Cup</div>
-          <div className="trc-section-subtitle">Ngày Hội Golf</div>
+        <div className="trc-cup">
+          <div className="trc-cup-head">
+            <div>
+              <div className="trc-tiers-rule" />
+              <div className="trc-tiers-eyebrow">
+                {['Ngày Hội Golf', cupTense, dateRange(CUP.opens, CUP.closes)].filter(Boolean).join('  ·  ')}
+              </div>
+              <h2 className="trc-tiers-title">The Rampant Cup</h2>
+              <Link href="/sports#golf" className="trc-cta">The Cup at The Sports Club <span className="trc-go">→</span></Link>
+            </div>
+            <div className="trc-cup-ink" aria-hidden="true">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/ink/golf-flag.webp" alt="" className="trc-cup-flag" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/ink/golf-club.webp" alt="" className="trc-cup-club" />
+            </div>
+          </div>
           <GolfFilm />
         </div>
 
@@ -1134,11 +914,23 @@ export default function HomePage() {
             mono for the reading, hairlines instead of boxes. */}
         <div ref={tiersSec.ref} id="tiers" className={`trc-tiers ${tiersSec.visible ? 'is-in' : ''}`}>
           <div className="trc-tiers-rule" />
-          <div className="trc-tiers-eyebrow trc-tiers-rise">Membership · Thành Viên</div>
-          <h2 className="trc-tiers-title trc-tiers-rise" style={{ animationDelay: '.06s' }}>By Invitation</h2>
-          <p className="trc-tiers-lede trc-tiers-rise" style={{ animationDelay: '.14s' }}>
-            Membership is by invitation or referral only. We do not accept applications.
-          </p>
+          <div className="trc-tiers-head">
+            <div>
+              <div className="trc-tiers-eyebrow trc-tiers-rise">Membership · Thành Viên</div>
+              <h2 className="trc-tiers-title trc-tiers-rise" style={{ animationDelay: '.06s' }}>By Invitation</h2>
+              <p className="trc-tiers-lede trc-tiers-rise" style={{ animationDelay: '.14s' }}>
+                Membership is by invitation or referral only. We do not accept applications.
+              </p>
+              {/* Somewhere to go from here: the club's own membership address,
+                  the one the footer already carries. */}
+              <a href="mailto:membership@therampantclub.com" className="trc-cta trc-tiers-rise" style={{ animationDelay: '.2s' }}>
+                Enquiries · membership@therampantclub.com <span className="trc-go">→</span>
+              </a>
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/ink/lion-suit.webp" alt="" aria-hidden="true" className="trc-tiers-lion trc-tiers-rise"
+                 style={{ animationDelay: '.24s' }} />
+          </div>
 
           <div className="trc-tiers-grid">
             {TIERS.map((tier, i) => (
