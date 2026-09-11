@@ -9,15 +9,15 @@ import { PublicPage, Masthead, Rise, Eyebrow, InkFloat, MONO, SERIF } from '@/co
 // ───────────────────────────────────────────────────────────────────────────
 // An index, set large: each group's name in mono in the margin, every page in
 // the display face with its address beside it, the arrow sliding on hover.
-// The links are exactly as they were (the owner is deciding /membership
-// separately — keep it here until told otherwise).
+// "Membership" points at the homepage's Membership section. The old
+// /membership page is now /legacy — kept for reference, deliberately unlisted.
 
 const SECTIONS = [
   {
     title: 'The Club',
     links: [
       { href: '/', label: 'Home' },
-      { href: '/membership', label: 'Membership' },
+      { href: '/#tiers', label: 'Membership' },
       { href: '/sports', label: 'The Sports Club' },
       { href: '/kitchen', label: 'The Kitchen' },
       { href: '/press', label: 'Press' },

@@ -58,6 +58,13 @@ const nextConfig = {
     ],
   },
 
+  // /membership moved to /legacy as an unlinked reference (see
+  // app/legacy/layout.tsx). Old links land on the current Membership section.
+  // Temporary (307) on purpose: the owner may point it elsewhere later, and a
+  // permanent redirect is cached by browsers for good.
+  async redirects() {
+    return [{ source: '/membership', destination: '/#tiers', permanent: false }]
+  },
   async headers() {
     const csp = [
       "default-src 'self'",
