@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import MemberPage from '@/components/MemberPage'
+import { useLang, type Lang } from '@/lib/lang'
+import { surfaceName } from '@/lib/members/surfaces'
 
 // A member's own visit history — member-own via /api/members/visits (session →
 // member_no). A tasteful record (date · space), not raw rows.
@@ -9,16 +11,18 @@ import MemberPage from '@/components/MemberPage'
 interface Visit { visit_id: string; visit_date: string; space: string | null; duration_min: number | null }
 const FAMILY = "'Google Sans Code', 'DM Mono', monospace"
 
-function fmtDate(iso: string) {
-  return new Date(`${iso}T12:00:00+07:00`).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' })
+function fmtDate(iso: string, lang: Lang) {
+  return new Date(`${iso}T12:00:00+07:00`).toLocaleDateString(lang === 'vn' ? 'vi-VN' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' })
 }
-function fmtDuration(min: number | null) {
+function fmtDuration(min: number | null, lang: Lang) {
   if (!min || min <= 0) return null
   const h = Math.floor(min / 60), m = min % 60
+  if (lang === 'vn') return h ? `${h} giờ${m ? ` ${m} phút` : ''}` : `${m} phút`
   return h ? `${h}h${m ? ` ${m}m` : ''}` : `${m}m`
 }
 
 export default function MyVisitsPage() {
+  const { t, lang } = useLang()
   const [visits, setVisits] = useState<Visit[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -30,19 +34,19 @@ export default function MyVisitsPage() {
   }, [])
 
   return (
-    <MemberPage title="Your Visits" subtitle="Những Lần Ghé Thăm">
+    <MemberPage title="Your Visits" subtitle={surfaceName('/members/visits', 'vn')}>
       {loading ? (
-        <p style={muted}>Loading…</p>
+        <p style={muted}>{t('Loading…', 'Đang tải…')}</p>
       ) : visits.length === 0 ? (
-        <p style={muted}>No visits recorded yet. We look forward to welcoming you.</p>
+        <p style={muted}>{t('No visits recorded yet. We look forward to welcoming you.', 'Chưa có lần ghé thăm nào được ghi nhận. Chúng tôi mong được đón tiếp bạn.')}</p>
       ) : (
         <div style={{ maxWidth: 540, margin: '0 auto' }}>
           {visits.map(v => {
-            const dur = fmtDuration(v.duration_min)
+            const dur = fmtDuration(v.duration_min, lang)
             return (
               <div key={v.visit_id} style={row}>
-                <div style={dateText}>{fmtDate(v.visit_date)}</div>
-                <div style={metaText}>{[v.space, dur].filter(Boolean).join(' · ') || 'A visit to the club'}</div>
+                <div style={dateText}>{fmtDate(v.visit_date, lang)}</div>
+                <div style={metaText}>{[v.space, dur].filter(Boolean).join(' · ') || t('A visit to the club', 'Một lần ghé thăm câu lạc bộ')}</div>
               </div>
             )
           })}

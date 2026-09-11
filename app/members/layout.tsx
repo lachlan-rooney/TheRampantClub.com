@@ -33,20 +33,24 @@ export default function MembersLayout({ children }: { children: React.ReactNode 
         /* Kill the blue tap-flash on touch; keep taps feeling instant. */
         a, button { -webkit-tap-highlight-color: transparent; }
 
+        .m-lang { top: calc(56px + env(safe-area-inset-top, 0px)); right: 40px; }
+        @media (max-width: 768px) { .m-lang { top: calc(72px + env(safe-area-inset-top, 0px)); right: 20px; } }
+
         /* Reserve room for the mobile bottom tab bar so it never covers content. */
         @media (max-width: 768px) {
           body { padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
         }
       ` }} />
       <NavOverlay variant="members" dark />
-      {/* Same position as the admin portal: a right-aligned strip at the top
-          of the content area (app/admin/layout.tsx puts LangToggle in exactly
-          this spot, in flow, before the page). Member pages own their full-page
-          backgrounds and top padding, so this sits above them rather than
-          inside — same place on screen, without disturbing every page's rhythm. */}
-      <div style={{
-        position: 'absolute', top: 'calc(16px + env(safe-area-inset-top, 0px))', right: 24,
-        zIndex: 60, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12,
+      {/* THE SAME PLACE AS ADMIN — measured, not described. app/admin/layout.tsx
+          puts LangToggle in a right-aligned strip at the top of the content,
+          inside 48px/40px padding: on a desk it lands 56px down, its right edge
+          40px in. It was pinned to the very corner here (17px down, 24px in),
+          up in the ticker's line — "top right" in words, not the same spot.
+          Absolute, not fixed, so it scrolls away with the page as admin's does. */}
+      <div className="m-lang" style={{
+        position: 'absolute', zIndex: 60,
+        display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12,
       }}>
         <LangToggle />
       </div>

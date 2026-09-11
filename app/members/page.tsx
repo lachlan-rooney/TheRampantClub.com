@@ -10,6 +10,7 @@ import AnticipationCard from '@/components/members/AnticipationCard'
 import ReturnCard from '@/components/members/ReturnCard'
 import { typeLabel } from '@/lib/fixtures'
 import { Skeleton } from '@/components/members/Skeleton'
+import { useLang } from '@/lib/lang'
 
 interface Notice {
   id: string
@@ -59,10 +60,12 @@ function TileIcon({ name }: { name: string }) {
 }
 
 export default function MembersPage() {
-  const [greeting, setGreeting] = useState('')
+  const { t, lang } = useLang()
+  // The hour, not the greeting text — the words are composed at render so they
+  // follow the EN/VN switch instead of being frozen in whichever language loaded.
+  const [greetHour, setGreetHour] = useState<number | null>(null)
   const [firstName, setFirstName] = useState<string | undefined>(undefined)
   const [email, setEmail] = useState('')
-  const [summary, setSummary] = useState('')
   const [memberNo, setMemberNo] = useState<string | null>(null)
   const [lockerNumber, setLockerNumber] = useState<string | null>(null)
   const [preferredDram, setPreferredDram] = useState<string | null>(null)
@@ -72,15 +75,10 @@ export default function MembersPage() {
   const [profileLoaded, setProfileLoaded] = useState(false)
 
   useEffect(() => {
-    const hour = new Date().getHours()
-    let timeGreeting = 'Good evening'
-    if (hour < 12) timeGreeting = 'Good morning'
-    else if (hour < 17) timeGreeting = 'Good afternoon'
-
     // Show the time greeting AT ONCE. It needs no network, and waiting for the
     // profile left the heading empty for two chained round trips — which reads
     // as a missing greeting rather than a loading one.
-    setGreeting(timeGreeting)
+    setGreetHour(new Date().getHours())
 
     const supabase = createBrowserSupabaseClient()
 
@@ -106,21 +104,13 @@ export default function MembersPage() {
         .then(({ data: profile }) => {
           const name = profile?.display_name
           if (name) {
-            setGreeting(`${timeGreeting}, ${name}`)
             // The whole display name (e.g. "Mr Rooney") — the first word alone
             // can be just an honorific, so greet with the full name.
             setFirstName(name)
-          } else {
-            setGreeting(timeGreeting)
           }
           if (profile?.member_no) setMemberNo(profile.member_no)
           if (profile?.locker_number) setLockerNumber(profile.locker_number)
           if (profile?.preferred_dram) setPreferredDram(profile.preferred_dram)
-          const parts: string[] = []
-          if (profile?.member_no) parts.push(`Member No. ${profile.member_no.replace(/^TRC-M/i, '')}`)
-          if (profile?.locker_number) parts.push(`Locker ${profile.locker_number}`)
-          if (profile?.preferred_dram) parts.push(`Dram of choice: ${profile.preferred_dram}`)
-          setSummary(parts.join(' · '))
           setProfileLoaded(true)
         }, () => setProfileLoaded(true))
     })
@@ -136,11 +126,24 @@ export default function MembersPage() {
   }, [notices.length])
 
 
+  const timeGreeting = greetHour === null ? ''
+    : greetHour < 12 ? t('Good morning', 'Chào buổi sáng')
+    : greetHour < 17 ? t('Good afternoon', 'Chào buổi chiều')
+    : t('Good evening', 'Chào buổi tối')
+  const greeting = timeGreeting && firstName ? `${timeGreeting}, ${firstName}` : timeGreeting
+
+  const summary = [
+    memberNo && t(`Member No. ${memberNo.replace(/^TRC-M/i, '')}`, `Số thành viên ${memberNo.replace(/^TRC-M/i, '')}`),
+    lockerNumber && t(`Locker ${lockerNumber}`, `Tủ khóa ${lockerNumber}`),
+    preferredDram && t(`Dram of choice: ${preferredDram}`, `Ly ưa thích: ${preferredDram}`),
+  ].filter(Boolean).join(' · ')
+
+  const dateLocale = lang === 'vn' ? 'vi-VN' : 'en-GB'
   const fmtDate = (d: string) => {
     const dt = new Date(d)
-    return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+    return dt.toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' })
       + ' \u00b7 '
-      + dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+      + dt.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' })
   }
 
   interface Bucket {
@@ -162,8 +165,8 @@ export default function MembersPage() {
       en: surfaceName('/members/events', 'en'),
       vn: surfaceName('/members/events', 'vn'),
       icon: 'calendar',
-      primary: nextFixture ? typeLabel(nextFixture.type) : undefined,
-      secondary: nextFixture ? fmtDate(nextFixture.date) : "What's on \u00b7 sign-ups \u00b7 sports",
+      primary: nextFixture ? typeLabel(nextFixture.type, lang) : undefined,
+      secondary: nextFixture ? fmtDate(nextFixture.date) : t("What's on \u00b7 sign-ups \u00b7 sports", 'Sự kiện \u00b7 đăng ký \u00b7 thể thao'),
     },
     {
       href: '/members/profile',
@@ -172,7 +175,7 @@ export default function MembersPage() {
       vn: surfaceName('/members/profile', 'vn'),
       icon: 'card',
       primary: memberNo ? '#' + memberNo.replace(/^TRC-M/i, '') : '\u2014',
-      secondary: lockerNumber ? 'Locker ' + lockerNumber : (preferredDram ? 'Dram: ' + preferredDram : 'Your details'),
+      secondary: lockerNumber ? t('Locker ', 'Tủ khóa ') + lockerNumber : (preferredDram ? t('Dram: ', 'Ly: ') + preferredDram : t('Your details', 'Thông tin của bạn')),
     },
     {
       href: '/members/fixtures',
@@ -180,8 +183,8 @@ export default function MembersPage() {
       en: surfaceName('/members/fixtures', 'en'),
       vn: surfaceName('/members/fixtures', 'vn'),
       icon: 'trophy',
-      primary: nextFixture ? typeLabel(nextFixture.type) : 'No upcoming',
-      secondary: nextFixture ? fmtDate(nextFixture.date) : 'Check the schedule',
+      primary: nextFixture ? typeLabel(nextFixture.type, lang) : t('No upcoming', 'Chưa có lịch'),
+      secondary: nextFixture ? fmtDate(nextFixture.date) : t('Check the schedule', 'Xem lịch thi đấu'),
     },
     {
       href: '/members/journal',
@@ -189,7 +192,7 @@ export default function MembersPage() {
       en: surfaceName('/members/journal', 'en'),
       vn: surfaceName('/members/journal', 'vn'),
       icon: 'quill',
-      secondary: 'Tasting notes & long-form whisky writing',
+      secondary: t('Tasting notes & long-form whisky writing', 'Ghi chú nếm thử & bài viết chuyên sâu về whisky'),
     },
     {
       href: '/members/spaces',
@@ -205,7 +208,7 @@ export default function MembersPage() {
       en: surfaceName('/members/rules', 'en'),
       vn: surfaceName('/members/rules', 'vn'),
       icon: 'book',
-      secondary: "The club's operating principles",
+      secondary: t("The club's operating principles", 'Nguyên tắc hoạt động của câu lạc bộ'),
     },
     {
       href: '/members/contact',
@@ -213,7 +216,7 @@ export default function MembersPage() {
       en: surfaceName('/members/contact', 'en'),
       vn: surfaceName('/members/contact', 'vn'),
       icon: 'mail',
-      secondary: 'Address & member hotline',
+      secondary: t('Address & member hotline', 'Địa chỉ & đường dây nóng thành viên'),
     },
   ]
 
@@ -221,27 +224,27 @@ export default function MembersPage() {
   // Whisky Library is the prominent first Explore tile (it had none before).
   const byHref = Object.fromEntries(buckets.map(b => [b.href, b])) as Record<string, Bucket>
   const extra: Record<string, Bucket> = {
-    snug:   { href: '/members/snug', img: IMG('whisky-lounge'),          en: surfaceName('/members/snug', 'en'),       vn: surfaceName('/members/snug', 'vn'),       icon: 'sofa', secondary: 'The club in conversation \u2014 drams, moments, a word between members' },
-    concierge: { href: '/members/concierge', img: IMG('ao-dai'), en: surfaceName('/members/concierge', 'en'),  vn: surfaceName('/members/concierge', 'vn'),          icon: 'bell', secondary: 'A line to the Club \u2014 requests, bottles, a word about the evening' },
-    whisky: { href: '/members/whisky', img: IMG('whisky-library'),        en: surfaceName('/members/whisky', 'en'), vn: surfaceName('/members/whisky', 'vn'), icon: 'glass', secondary: 'The shelf \u00b7 radar \u00b7 300+ drams' },
-    finder: { href: '/members/whisky/finder', img: IMG('art-bottles'), en: surfaceName('/members/whisky/finder', 'en'), vn: surfaceName('/members/whisky/finder', 'vn'), icon: 'compass', secondary: 'Match a dram to your taste' },
-    menus:  { href: '/menus', img: IMG('gala-table'),                 en: surfaceName('/menus', 'en'),      vn: surfaceName('/menus', 'vn'),     icon: 'menu', secondary: 'Food & drink lists' },
-    terms:  { href: '/members/terms', img: IMG('springbank'),         en: surfaceName('/members/terms', 'en'),          vn: surfaceName('/members/terms', 'vn'),   icon: 'document', secondary: 'Full terms & conditions' },
-    taste:  { href: '/members/taste', img: IMG('bottle-collection'),         en: surfaceName('/members/taste', 'en'),    vn: surfaceName('/members/taste', 'vn'), icon: 'radar', secondary: 'Your taste \u00b7 radar \u00b7 loved drams' },
-    journey: { href: '/members/journey', img: IMG('saigon-street'),      en: surfaceName('/members/journey', 'en'),   vn: surfaceName('/members/journey', 'vn'), icon: 'flag', secondary: 'Your whisky story over time \u00b7 milestones \u00b7 palate drift' },
-    visits: { href: '/members/visits', img: IMG('market'),        en: surfaceName('/members/visits', 'en'),    vn: surfaceName('/members/visits', 'vn'), icon: 'pin', secondary: 'Your record at the club' },
-    gifts:  { href: '/members/gifts', img: IMG('brass-pin'),         en: surfaceName('/members/gifts', 'en'),          vn: surfaceName('/members/gifts', 'vn'),          icon: 'gift', secondary: 'Gifts from the club' },
-    gallery: { href: '/members/gallery', img: IMG('gala-table'),     en: surfaceName('/members/gallery', 'en'),  vn: surfaceName('/members/gallery', 'vn'), icon: 'image', secondary: 'Photos & video from fixtures, dinners & socials' },
+    snug:   { href: '/members/snug', img: IMG('whisky-lounge'),          en: surfaceName('/members/snug', 'en'),       vn: surfaceName('/members/snug', 'vn'),       icon: 'sofa', secondary: t('The club in conversation \u2014 drams, moments, a word between members', 'Câu lạc bộ trò chuyện \u2014 những ly rượu, khoảnh khắc, đôi lời giữa các thành viên') },
+    concierge: { href: '/members/concierge', img: IMG('ao-dai'), en: surfaceName('/members/concierge', 'en'),  vn: surfaceName('/members/concierge', 'vn'),          icon: 'bell', secondary: t('A line to the Club \u2014 requests, bottles, a word about the evening', 'Đường dây riêng tới Câu Lạc Bộ \u2014 yêu cầu, chai rượu, đôi lời về buổi tối') },
+    whisky: { href: '/members/whisky', img: IMG('whisky-library'),        en: surfaceName('/members/whisky', 'en'), vn: surfaceName('/members/whisky', 'vn'), icon: 'glass', secondary: t('The shelf \u00b7 radar \u00b7 300+ drams', 'Kệ rượu \u00b7 radar \u00b7 hơn 300 loại') },
+    finder: { href: '/members/whisky/finder', img: IMG('art-bottles'), en: surfaceName('/members/whisky/finder', 'en'), vn: surfaceName('/members/whisky/finder', 'vn'), icon: 'compass', secondary: t('Match a dram to your taste', 'Tìm ly hợp khẩu vị của bạn') },
+    menus:  { href: '/menus', img: IMG('gala-table'),                 en: surfaceName('/menus', 'en'),      vn: surfaceName('/menus', 'vn'),     icon: 'menu', secondary: t('Food & drink lists', 'Thực đơn đồ ăn & thức uống') },
+    terms:  { href: '/members/terms', img: IMG('springbank'),         en: surfaceName('/members/terms', 'en'),          vn: surfaceName('/members/terms', 'vn'),   icon: 'document', secondary: t('Full terms & conditions', 'Điều khoản & điều kiện đầy đủ') },
+    taste:  { href: '/members/taste', img: IMG('bottle-collection'),         en: surfaceName('/members/taste', 'en'),    vn: surfaceName('/members/taste', 'vn'), icon: 'radar', secondary: t('Your taste \u00b7 radar \u00b7 loved drams', 'Khẩu vị \u00b7 radar \u00b7 những ly yêu thích') },
+    journey: { href: '/members/journey', img: IMG('saigon-street'),      en: surfaceName('/members/journey', 'en'),   vn: surfaceName('/members/journey', 'vn'), icon: 'flag', secondary: t('Your whisky story over time \u00b7 milestones \u00b7 palate drift', 'Câu chuyện whisky của bạn \u00b7 cột mốc \u00b7 khẩu vị đổi thay') },
+    visits: { href: '/members/visits', img: IMG('market'),        en: surfaceName('/members/visits', 'en'),    vn: surfaceName('/members/visits', 'vn'), icon: 'pin', secondary: t('Your record at the club', 'Những lần bạn ghé câu lạc bộ') },
+    gifts:  { href: '/members/gifts', img: IMG('brass-pin'),         en: surfaceName('/members/gifts', 'en'),          vn: surfaceName('/members/gifts', 'vn'),          icon: 'gift', secondary: t('Gifts from the club', 'Quà tặng từ câu lạc bộ') },
+    gallery: { href: '/members/gallery', img: IMG('gala-table'),     en: surfaceName('/members/gallery', 'en'),  vn: surfaceName('/members/gallery', 'vn'), icon: 'image', secondary: t('Photos & video from fixtures, dinners & socials', 'Ảnh & video từ các trận đấu, bữa tối & buổi gặp mặt') },
   }
   // Tile groups mirror the nav's groups exactly (Whisky · What's On · The Club ·
   // You · Info) so the dashboard and the menu tell the same story. Events and
   // Event Gallery sit next to each other — an event and its photos belong together.
   const bucketGroups = [
-    { label: "What's On", tiles: [byHref['/members/events'], extra.gallery] },
-    { label: 'The Club',  tiles: [byHref['/members/spaces'], extra.menus, extra.snug, extra.concierge] },
-    { label: 'Whisky',    tiles: [extra.whisky, extra.finder, extra.taste, extra.journey] },
-    { label: 'You',       tiles: [byHref['/members/profile'], extra.visits] },
-    { label: 'Info',      tiles: [byHref['/members/rules'], extra.terms, byHref['/members/contact']] },
+    { label: "What's On", vn: 'Sự Kiện',    tiles: [byHref['/members/events'], extra.gallery] },
+    { label: 'The Club',  vn: 'Câu Lạc Bộ', tiles: [byHref['/members/spaces'], extra.menus, extra.snug, extra.concierge] },
+    { label: 'Whisky',    vn: 'Whisky',     tiles: [extra.whisky, extra.finder, extra.taste, extra.journey] },
+    { label: 'You',       vn: 'Bạn',        tiles: [byHref['/members/profile'], extra.visits] },
+    { label: 'Info',      vn: 'Thông Tin',  tiles: [byHref['/members/rules'], extra.terms, byHref['/members/contact']] },
   ].map(g => ({ ...g, tiles: g.tiles.filter(Boolean) }))
 
   return (
@@ -592,7 +595,7 @@ export default function MembersPage() {
           <button
             onClick={() => window.dispatchEvent(new Event('open-portal-guide'))}
             style={{ background: 'none', border: '1px solid rgba(212,184,90,0.35)', color: '#D4B85A', fontFamily: "'Google Sans Code', monospace", fontSize: 10, letterSpacing: '0.06em', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', marginBottom: 8 }}
-          >◇ Portal guide</button>
+          >{t('◇ Portal guide', '◇ Hướng dẫn')}</button>
 
           <AnticipationCard />
           <ReturnCard />
@@ -616,7 +619,7 @@ export default function MembersPage() {
                     color: '#3E2D1F', letterSpacing: '0.06em',
                     marginBottom: 12, fontWeight: 600,
                   }}>
-                    Notice Board
+                    {surfaceName('/members/notices', lang)}
                   </div>
                 <div className="notice-paper">
                   {notices.map((n, i) => (
@@ -667,7 +670,7 @@ export default function MembersPage() {
 
           {bucketGroups.map(group => (
             <div key={group.label}>
-              <div className="members-section-label">{group.label}</div>
+              <div className="members-section-label">{t(group.label, group.vn)}</div>
               <div className="members-bucket-grid">
                 {group.tiles.map((b, i) => (
                   <Link key={b.href} href={b.href} className="members-bucket" style={{ animationDelay: `${i * 45}ms` }}>
@@ -675,8 +678,10 @@ export default function MembersPage() {
                     <span className="members-bucket-veil" aria-hidden />
                     <div className="members-bucket-body">
                       <div className="members-bucket-emblem" aria-hidden><TileIcon name={b.icon} /></div>
-                      <div className="members-bucket-en">{b.en}</div>
-                      <div className="members-bucket-vn">{b.vn}</div>
+                      {/* VN promotes the Vietnamese name to the heading and demotes the
+                          English beneath it — the same swap MemberPage does. */}
+                      <div className="members-bucket-en">{lang === 'vn' ? b.vn : b.en}</div>
+                      <div className="members-bucket-vn">{lang === 'vn' ? b.en : b.vn}</div>
                       {b.primary && <div className="members-bucket-primary">{b.primary}</div>}
                       {b.secondary && <div className="members-bucket-secondary">{b.secondary}</div>}
                       <div className="members-bucket-arrow">&rarr;</div>

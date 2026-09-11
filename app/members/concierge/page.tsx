@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import MemberPage from '@/components/MemberPage'
+import { useLang, type Lang } from '@/lib/lang'
+import { surfaceName } from '@/lib/members/surfaces'
 
 // The member's one persistent thread with The Club — the Guardian Angel, digitised.
 // Member-side only ever shows "The Club"; a staff member's individual identity is
@@ -14,17 +16,18 @@ const MONO = "'Google Sans Code', 'DM Mono', monospace"
 
 interface Msg { id: string; sender: string; body: string; created_at: string }
 
-function dayLabel(iso: string): string {
+function dayLabel(iso: string, lang: Lang = 'en'): string {
   const d = new Date(iso), today = new Date()
   const same = (a: Date, b: Date) => a.toDateString() === b.toDateString()
   const yest = new Date(today); yest.setDate(today.getDate() - 1)
-  if (same(d, today)) return 'Today'
-  if (same(d, yest)) return 'Yesterday'
-  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
+  if (same(d, today)) return lang === 'vn' ? 'Hôm nay' : 'Today'
+  if (same(d, yest)) return lang === 'vn' ? 'Hôm qua' : 'Yesterday'
+  return d.toLocaleDateString(lang === 'vn' ? 'vi-VN' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
 }
-const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+const timeOf = (iso: string, lang: Lang = 'en') => new Date(iso).toLocaleTimeString(lang === 'vn' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit' })
 
 function Concierge() {
+  const { t, lang } = useLang()
   const search = useSearchParams()
   const [meId, setMeId] = useState<string | null>(null)
   const [threadId, setThreadId] = useState<string | null>(null)
@@ -91,18 +94,18 @@ function Concierge() {
         else {
           const j = await cr.json().catch(() => ({}))
           if (cr.status === 403) { setGate(j.reason === 'staff' ? 'staff' : 'unlinked'); return }
-          setError(j.error || 'Could not open the thread.'); return
+          setError(j.error || t('Could not open the thread.', 'Chưa mở được cuộc trò chuyện.')); return
         }
       }
-      if (!tid) { setError('Could not open the thread.'); return }
+      if (!tid) { setError(t('Could not open the thread.', 'Chưa mở được cuộc trò chuyện.')); return }
       const res = await fetch('/api/social/messages', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ thread_id: tid, body: text }),
       })
       if (res.ok) { setDraft(''); await load() }
-      else { setError((await res.json().catch(() => ({})))?.error || 'Could not send.') }
+      else { setError((await res.json().catch(() => ({})))?.error || t('Could not send.', 'Chưa gửi được.')) }
     } finally { setSending(false) }
-  }, [draft, sending, threadId, load])
+  }, [draft, sending, threadId, load, t])
 
   const onKey = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
@@ -113,22 +116,22 @@ function Concierge() {
 
   return (
     <MemberPage
-      title="The Concierge"
-      subtitle="A LINE TO THE CLUB"
-      description="Anything at all — a request before you arrive, a bottle you're after, a word about the evening. The Club is listening."
+      title={t('The Concierge', surfaceName('/members/concierge', 'vn'))}
+      subtitle={t('A LINE TO THE CLUB', 'ĐƯỜNG DÂY RIÊNG VỚI CÂU LẠC BỘ')}
+      description={t("Anything at all — a request before you arrive, a bottle you're after, a word about the evening. The Club is listening.", 'Bất cứ điều gì — một yêu cầu trước khi bạn đến, một chai bạn đang tìm, đôi lời về buổi tối. Câu lạc bộ luôn lắng nghe.')}
     >
       {gate ? (
         <div style={gateWrap}>
           {gate === 'staff' ? (
             <>
-              <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2', marginBottom: 10 }}>This is the members’ line to the Club.</div>
-              <div style={muted}>You’re signed in as staff — members’ messages reach you in the inbox.</div>
-              <Link href="/admin/concierge" style={gateLink}>Open the Concierge inbox →</Link>
+              <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2', marginBottom: 10 }}>{t('This is the members’ line to the Club.', 'Đây là đường dây riêng của hội viên với Câu lạc bộ.')}</div>
+              <div style={muted}>{t('You’re signed in as staff — members’ messages reach you in the inbox.', 'Bạn đang đăng nhập với tư cách nhân viên — tin nhắn của hội viên sẽ đến hộp thư của bạn.')}</div>
+              <Link href="/admin/concierge" style={gateLink}>{t('Open the Concierge inbox →', 'Mở hộp thư Quản Gia →')}</Link>
             </>
           ) : (
             <>
-              <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2', marginBottom: 10 }}>Not yet available on this account.</div>
-              <div style={muted}>Your login isn’t linked to a membership yet. A word with the Club will set it right.</div>
+              <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2', marginBottom: 10 }}>{t('Not yet available on this account.', 'Tài khoản này chưa thể sử dụng.')}</div>
+              <div style={muted}>{t('Your login isn’t linked to a membership yet. A word with the Club will set it right.', 'Tài khoản đăng nhập của bạn chưa được liên kết với tư cách thành viên. Chỉ cần báo với Câu lạc bộ, chúng tôi sẽ sắp xếp ngay.')}</div>
             </>
           )}
         </div>
@@ -136,15 +139,15 @@ function Concierge() {
       <div style={panel}>
         <div ref={scrollRef} style={scroll}>
           {!loaded ? (
-            <div style={muted}>Opening the thread…</div>
+            <div style={muted}>{t('Opening the thread…', 'Đang mở cuộc trò chuyện…')}</div>
           ) : messages.length === 0 ? (
             <div style={emptyWrap}>
-              <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2', marginBottom: 8 }}>The Club is listening.</div>
-              <div style={muted}>Start a note below — we read every one.</div>
+              <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2', marginBottom: 8 }}>{t('The Club is listening.', 'Câu lạc bộ luôn lắng nghe.')}</div>
+              <div style={muted}>{t('Start a note below — we read every one.', 'Hãy viết đôi dòng bên dưới — chúng tôi đọc từng tin nhắn.')}</div>
             </div>
           ) : messages.map(m => {
             const mine = m.sender === meId
-            const d = dayLabel(m.created_at)
+            const d = dayLabel(m.created_at, lang)
             const sep = d !== lastDay; lastDay = d
             return (
               <div key={m.id}>
@@ -153,7 +156,7 @@ function Concierge() {
                   <div style={mine ? bubbleMine : bubbleClub}>
                     {!mine && <div style={clubLabel}>The Club</div>}
                     <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{m.body}</div>
-                    <div style={{ ...stamp, textAlign: mine ? 'right' : 'left' }}>{timeOf(m.created_at)}</div>
+                    <div style={{ ...stamp, textAlign: mine ? 'right' : 'left' }}>{timeOf(m.created_at, lang)}</div>
                   </div>
                 </div>
               </div>
@@ -167,16 +170,16 @@ function Concierge() {
             value={draft}
             onChange={e => setDraft(e.target.value.slice(0, 4000))}
             onKeyDown={onKey}
-            placeholder="Write to The Club…"
+            placeholder={t('Write to The Club…', 'Viết cho Câu lạc bộ…')}
             rows={2}
             style={textarea}
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
             <span style={{ fontFamily: MONO, fontSize: 10, color: '#B2AA98', opacity: 0.5 }}>
-              Enter to send · Shift+Enter for a new line
+              {t('Enter to send · Shift+Enter for a new line', 'Enter để gửi · Shift+Enter để xuống dòng')}
             </span>
             <button onClick={send} disabled={sending || !draft.trim()} style={{ ...sendBtn, opacity: sending || !draft.trim() ? 0.4 : 1 }}>
-              {sending ? 'Sending…' : 'Send'}
+              {sending ? t('Sending…', 'Đang gửi…') : t('Send', 'Gửi')}
             </button>
           </div>
         </div>

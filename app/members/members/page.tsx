@@ -5,6 +5,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import MemberPage from '@/components/MemberPage'
 import MemberModal from '@/components/MemberModal'
 import { paletteSignature } from '@/lib/whisky/palate-signature'
+import { useLang } from '@/lib/lang'
 
 // The opt-in directory — discreet, whisky-framed. Only members who hold the
 // 'discoverable' consent appear (the function gates it; an opted-out member is
@@ -17,6 +18,7 @@ const MONO = "'Google Sans Code', 'DM Mono', monospace"
 interface Entry { member_id: string; display_name: string; vector: Record<string, number> }
 
 export default function Directory() {
+  const { t } = useLang()
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
   const [discoverable, setDiscoverable] = useState(false)
@@ -58,16 +60,16 @@ export default function Directory() {
         body: JSON.stringify({ recipient: target.member_id, context: context.trim() || undefined }),
       })
       if (r.ok) { setSentTo(s => new Set(s).add(target.member_id)); setTarget(null); setContext('') }
-      else setErr((await r.json().catch(() => ({})))?.error || 'Could not send.')
+      else setErr((await r.json().catch(() => ({})))?.error || t('Could not send.', 'Chưa gửi được.'))
     } finally { setSending(false) }
-  }, [target, context, sending])
+  }, [target, context, sending, t])
 
   return (
-    <MemberPage title="The Members" subtitle="NHỮNG THÀNH VIÊN" description="Fellow members who’ve chosen to be found. A name and a palate — the club makes the introduction.">
+    <MemberPage title="The Members" subtitle="NHỮNG THÀNH VIÊN" description={t('Fellow members who’ve chosen to be found. A name and a palate — the club makes the introduction.', 'Những hội viên đã chọn để được tìm thấy. Một cái tên và một khẩu vị — câu lạc bộ sẽ đứng ra giới thiệu.')}>
       <div style={toggleRow}>
         <div>
-          <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 15, color: '#E5D4C2' }}>Appear in the directory</div>
-          <div style={{ fontFamily: MONO, fontSize: 10, color: '#B2AA98', opacity: 0.7, marginTop: 2 }}>Others see your name + palate only. Off by default.</div>
+          <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 15, color: '#E5D4C2' }}>{t('Appear in the directory', 'Hiển thị trong danh bạ')}</div>
+          <div style={{ fontFamily: MONO, fontSize: 10, color: '#B2AA98', opacity: 0.7, marginTop: 2 }}>{t('Others see your name + palate only. Off by default.', 'Người khác chỉ thấy tên và khẩu vị của bạn. Mặc định tắt.')}</div>
         </div>
         <button onClick={toggleDiscoverable} style={{ ...toggle, ...(discoverable ? toggleOn : null) }}>
           <span style={{ ...knob, transform: discoverable ? 'translateX(20px)' : 'translateX(0)' }} />
@@ -75,10 +77,10 @@ export default function Directory() {
       </div>
 
       {loading ? (
-        <p style={muted}>Looking who’s about…</p>
+        <p style={muted}>{t('Looking who’s about…', 'Đang xem ai có mặt…')}</p>
       ) : entries.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '28px 0' }}>
-          <p style={muted}>No one’s listed in the directory yet. {discoverable ? 'You’re listed — others will appear as they opt in.' : 'Flip the switch above to be found.'}</p>
+          <p style={muted}>{t('No one’s listed in the directory yet.', 'Chưa có ai trong danh bạ.')} {discoverable ? t('You’re listed — others will appear as they opt in.', 'Bạn đã có tên — những hội viên khác sẽ xuất hiện khi họ tham gia.') : t('Flip the switch above to be found.', 'Bật công tắc phía trên để được tìm thấy.')}</p>
         </div>
       ) : entries.map(e => {
         const requested = sentTo.has(e.member_id)
@@ -91,23 +93,23 @@ export default function Directory() {
                 <div style={{ fontFamily: MONO, fontSize: 11, color: '#D4B85A', opacity: 0.85, marginTop: 2 }}>{paletteSignature(e.vector)}</div>
               </div>
               <button onClick={() => { setTarget(e); setContext(''); setErr('') }} disabled={requested} style={{ ...reqBtn, opacity: requested ? 0.4 : 1 }}>
-                {requested ? 'Requested' : 'Introduce me'}
+                {requested ? t('Requested', 'Đã gửi') : t('Introduce me', 'Giới thiệu tôi')}
               </button>
             </div>
           </div>
         )
       })}
 
-      <MemberModal open={!!target} onClose={() => setTarget(null)} title="Request an introduction" subtitle={target ? `TO ${target.display_name.toUpperCase()}` : ''}>
+      <MemberModal open={!!target} onClose={() => setTarget(null)} title={t('Request an introduction', 'Đề nghị được giới thiệu')} subtitle={target ? `${t('TO', 'GỬI')} ${target.display_name.toUpperCase()}` : ''}>
         {err && <div style={{ fontFamily: MONO, fontSize: 11, color: '#C27070', marginBottom: 8 }}>{err}</div>}
         <div style={{ fontFamily: MONO, fontSize: 12, color: '#B2AA98', lineHeight: 1.7, marginBottom: 12 }}>
-          A line on why, if you like — the club passes it along. They’ll see it; you’ll simply see “pending”.
+          {t('A line on why, if you like — the club passes it along. They’ll see it; you’ll simply see “pending”.', 'Đôi dòng lý do, nếu bạn muốn — câu lạc bộ sẽ chuyển lời. Họ sẽ đọc được; còn bạn sẽ chỉ thấy “đang chờ”.')}
         </div>
-        <textarea value={context} onChange={e => setContext(e.target.value.slice(0, 280))} rows={3} placeholder="We both seem to love the sherried Speysiders…" style={textarea} />
+        <textarea value={context} onChange={e => setContext(e.target.value.slice(0, 280))} rows={3} placeholder={t('We both seem to love the sherried Speysiders…', 'Có vẻ chúng ta đều mê những chai Speyside ủ thùng sherry…')} style={textarea} />
         <div style={{ fontFamily: MONO, fontSize: 9, color: '#7E7864', textAlign: 'right', marginTop: 4 }}>{context.length}/280</div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 14 }}>
-          <button onClick={() => setTarget(null)} style={cancelBtn}>Cancel</button>
-          <button onClick={request} disabled={sending} style={{ ...sendBtn, opacity: sending ? 0.5 : 1 }}>{sending ? 'Sending…' : 'Request introduction'}</button>
+          <button onClick={() => setTarget(null)} style={cancelBtn}>{t('Cancel', 'Huỷ')}</button>
+          <button onClick={request} disabled={sending} style={{ ...sendBtn, opacity: sending ? 0.5 : 1 }}>{sending ? t('Sending…', 'Đang gửi…') : t('Request introduction', 'Gửi đề nghị')}</button>
         </div>
       </MemberModal>
     </MemberPage>

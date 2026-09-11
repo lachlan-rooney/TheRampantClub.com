@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { categoryLabel } from '@/lib/gallery'
+import { useLang, type Lang } from '@/lib/lang'
+import { surfaceName } from '@/lib/members/surfaces'
 
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
 const SERIF = "'Rampant Sans', serif"
@@ -18,13 +20,14 @@ interface Media {
   submitter_name: string | null; source: 'club' | 'member'; provider: string | null; mine: boolean
 }
 
-const fmtDate = (d: string | null) =>
-  d ? new Date(d + 'T12:00:00+07:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' }) : ''
+const fmtDate = (d: string | null, lang: Lang) =>
+  d ? new Date(d + 'T12:00:00+07:00').toLocaleDateString(lang === 'vn' ? 'vi-VN' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' }) : ''
 
 export default function EventDetailPage() {
   const params = useParams<{ id: string }>()
   const id = params.id
   const router = useRouter()
+  const { t, lang } = useLang()
   const supabase = useMemo(() => createBrowserSupabaseClient(), [])
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -54,7 +57,7 @@ export default function EventDetailPage() {
     // object to its uploader (see the media route) — nobody can register a row
     // over someone else's photo.
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setError('Please sign in again.'); return }
+    if (!user) { setError(t('Please sign in again.', 'Vui lòng đăng nhập lại.')); return }
     const list = Array.from(files).filter(f => f.type.startsWith('image/'))
     setUploading(u => u + list.length)
     for (const file of list) {
@@ -67,14 +70,14 @@ export default function EventDetailPage() {
         const fd = new FormData()
         fd.append('file', file)
         const upRes = await fetch(`/api/members/events/${id}/media/upload`, { method: 'POST', body: fd })
-        if (!upRes.ok) { setError((await upRes.json().catch(() => ({})))?.error || 'Upload failed — try again.'); continue }
+        if (!upRes.ok) { setError((await upRes.json().catch(() => ({})))?.error || t('Upload failed — try again.', 'Tải lên thất bại — vui lòng thử lại.')); continue }
         const { storage_path: path, url: pub } = await upRes.json()
         const res = await fetch(`/api/members/events/${id}/media`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ kind: 'image', url: pub, storage_path: path }),
         })
-        if (!res.ok) setError((await res.json().catch(() => ({})))?.error || 'Could not save that photo.')
-      } catch { setError('Upload failed — try again.') } finally { setUploading(u => u - 1) }
+        if (!res.ok) setError((await res.json().catch(() => ({})))?.error || t('Could not save that photo.', 'Không thể lưu ảnh này.'))
+      } catch { setError(t('Upload failed — try again.', 'Tải lên thất bại — vui lòng thử lại.')) } finally { setUploading(u => u - 1) }
     }
     await load()
   }
@@ -87,7 +90,7 @@ export default function EventDetailPage() {
       body: JSON.stringify({ kind: 'link', url: linkUrl.trim() }),
     })
     const j = await res.json()
-    if (!res.ok) { setError(j.error || 'Could not add the link.'); return }
+    if (!res.ok) { setError(j.error || t('Could not add the link.', 'Không thể thêm liên kết.')); return }
     setLinkUrl(''); setLinkOpen(false); await load()
   }
 
@@ -96,7 +99,7 @@ export default function EventDetailPage() {
     try { await fetch(`/api/members/events/${id}/media/${mid}`, { method: 'DELETE' }) } catch { /* */ }
   }
   const removeEvent = async () => {
-    if (!confirm('Delete this whole event and its photos?')) return
+    if (!confirm(t('Delete this whole event and its photos?', 'Xóa toàn bộ sự kiện này cùng các ảnh?'))) return
     try { await fetch(`/api/members/events/${id}`, { method: 'DELETE' }) } catch { /* */ }
     router.push('/members/gallery')
   }
@@ -132,45 +135,45 @@ export default function EventDetailPage() {
         .evd-input { box-sizing:border-box; background:rgba(5,46,32,0.5); color:#E5D4C2; border:1px solid rgba(229,212,194,0.14); border-radius:7px; padding:9px 12px; font-family:${MONO}; font-size:12px; outline:none; min-width:260px; flex:1; }
       ` }} />
       <div className="evd-wrap">
-        <Link href="/members/gallery" className="evd-back">← Event Gallery</Link>
+        <Link href="/members/gallery" className="evd-back">← {surfaceName('/members/gallery', lang)}</Link>
 
         {loading ? (
-          <div className="evd-empty" style={{ marginTop: 30 }}>Loading…</div>
+          <div className="evd-empty" style={{ marginTop: 30 }}>{t('Loading…', 'Đang tải…')}</div>
         ) : !event ? (
-          <div className="evd-empty" style={{ marginTop: 30 }}>This event isn’t available.</div>
+          <div className="evd-empty" style={{ marginTop: 30 }}>{t('This event isn’t available.', 'Sự kiện này không khả dụng.')}</div>
         ) : (
           <>
-            <div className="evd-cat">{categoryLabel(event.category)}{event.source === 'club' ? ' · The Club' : ''}</div>
+            <div className="evd-cat">{categoryLabel(event.category, lang === 'vn')}{event.source === 'club' ? ' · The Club' : ''}</div>
             <h1 className="evd-title">{event.title}</h1>
-            <div className="evd-meta">{[fmtDate(event.event_date), event.source === 'member' ? `added by ${event.creator_name}` : null].filter(Boolean).join(' · ')}</div>
+            <div className="evd-meta">{[fmtDate(event.event_date, lang), event.source === 'member' ? t(`added by ${event.creator_name}`, `do ${event.creator_name} thêm`) : null].filter(Boolean).join(' · ')}</div>
             {event.description && <p className="evd-desc">{event.description}</p>}
 
             <div className="evd-bar">
               <button className="evd-btn gold" onClick={() => fileRef.current?.click()} disabled={uploading > 0}>
-                {uploading > 0 ? `Uploading ${uploading}…` : '+ Add photos'}
+                {uploading > 0 ? t(`Uploading ${uploading}…`, `Đang tải lên ${uploading}…`) : t('+ Add photos', '+ Thêm ảnh')}
               </button>
               <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={e => onPickFiles(e.target.files)} />
-              <button className="evd-btn ghost" onClick={() => setLinkOpen(o => !o)}>+ Add a link</button>
-              {event.mine && <button className="evd-btn ghost" onClick={removeEvent} style={{ marginLeft: 'auto', color: '#C27070' }}>Delete event</button>}
+              <button className="evd-btn ghost" onClick={() => setLinkOpen(o => !o)}>{t('+ Add a link', '+ Thêm liên kết')}</button>
+              {event.mine && <button className="evd-btn ghost" onClick={removeEvent} style={{ marginLeft: 'auto', color: '#C27070' }}>{t('Delete event', 'Xóa sự kiện')}</button>}
             </div>
 
             {linkOpen && (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-                <input className="evd-input" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://drive.google.com/… or a YouTube link" />
-                <button className="evd-btn gold" onClick={addLink}>Add</button>
+                <input className="evd-input" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder={t('https://drive.google.com/… or a YouTube link', 'https://drive.google.com/… hoặc liên kết YouTube')} />
+                <button className="evd-btn gold" onClick={addLink}>{t('Add', 'Thêm')}</button>
               </div>
             )}
             {error && <div className="evd-err">{error}</div>}
 
             {images.length > 0 && (
               <>
-                <div className="evd-sec">Photos · {images.length}</div>
+                <div className="evd-sec">{t('Photos', 'Ảnh')} · {images.length}</div>
                 <div className="evd-grid">
                   {images.map(m => (
                     <div key={m.id} className="evd-tile">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <a href={m.url} target="_blank" rel="noopener noreferrer"><img src={m.url} alt={m.caption || 'Event photo'} loading="lazy" /></a>
-                      {m.mine && <button className="evd-rm" onClick={() => removeMedia(m.id)}>Remove</button>}
+                      <a href={m.url} target="_blank" rel="noopener noreferrer"><img src={m.url} alt={m.caption || t('Event photo', 'Ảnh sự kiện')} loading="lazy" /></a>
+                      {m.mine && <button className="evd-rm" onClick={() => removeMedia(m.id)}>{t('Remove', 'Xoá')}</button>}
                     </div>
                   ))}
                 </div>
@@ -179,16 +182,16 @@ export default function EventDetailPage() {
 
             {links.length > 0 && (
               <>
-                <div className="evd-sec">Links · {links.length}</div>
+                <div className="evd-sec">{t('Links', 'Liên kết')} · {links.length}</div>
                 <div className="evd-links">
                   {links.map(m => (
                     <div key={m.id} className="evd-link">
                       <a href={m.url} target="_blank" rel="noopener noreferrer">
-                        {m.provider || 'Link'}{m.caption ? ` — ${m.caption}` : ''} ↗
+                        {m.provider && m.provider !== 'Link' ? m.provider : t('Link', 'Liên kết')}{m.caption ? ` — ${m.caption}` : ''} ↗
                       </a>
                       <span style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                         <span style={{ fontFamily: MONO, fontSize: 9, color: '#7E7864' }}>{m.source === 'club' ? 'The Club' : m.submitter_name}</span>
-                        {m.mine && <button className="evd-rm" style={{ position: 'static' }} onClick={() => removeMedia(m.id)}>Remove</button>}
+                        {m.mine && <button className="evd-rm" style={{ position: 'static' }} onClick={() => removeMedia(m.id)}>{t('Remove', 'Xoá')}</button>}
                       </span>
                     </div>
                   ))}
@@ -197,7 +200,7 @@ export default function EventDetailPage() {
             )}
 
             {images.length === 0 && links.length === 0 && (
-              <div className="evd-empty">No photos yet — be the first to add some.</div>
+              <div className="evd-empty">{t('No photos yet — be the first to add some.', 'Chưa có ảnh nào — hãy là người đầu tiên thêm ảnh.')}</div>
             )}
           </>
         )}

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import MemberModal from '@/components/MemberModal'
+import { useLang } from '@/lib/lang'
 
 // Branded confirm dialog for the member portal, built on MemberModal — replaces
 // the off-brand native window.confirm() used for destructive actions (Snug post
@@ -12,7 +13,7 @@ const MONO = "'Google Sans Code', 'DM Mono', monospace"
 
 export default function ConfirmModal({
   open, onClose, onConfirm, title, body,
-  confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false, busy = false,
+  confirmLabel, cancelLabel, danger = false, busy = false,
 }: {
   open: boolean
   onClose: () => void
@@ -24,11 +25,12 @@ export default function ConfirmModal({
   danger?: boolean
   busy?: boolean
 }) {
+  const { t } = useLang()
   return (
     <MemberModal open={open} onClose={onClose} maxWidth={440} title={title}>
       {body && <p style={bodyStyle}>{body}</p>}
       <div style={actions}>
-        <button onClick={onClose} disabled={busy} style={cancelBtn}>{cancelLabel}</button>
+        <button onClick={onClose} disabled={busy} style={cancelBtn}>{cancelLabel ?? t('Cancel', 'Hủy')}</button>
         <button
           onClick={onConfirm}
           disabled={busy}
@@ -39,7 +41,7 @@ export default function ConfirmModal({
             opacity: busy ? 0.5 : 1,
           }}
         >
-          {busy ? 'Working…' : confirmLabel}
+          {busy ? t('Working…', 'Đang xử lý…') : (confirmLabel ?? t('Confirm', 'Xác nhận'))}
         </button>
       </div>
     </MemberModal>

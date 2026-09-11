@@ -36,7 +36,7 @@ export async function GET(req: Request) {
       // interpretation of the bare date.
       .gte('date', from + 'T00:00:00+07:00').lte('date', to + 'T23:59:59+07:00').order('date', { ascending: true }),
     a.from('fixture_signups').select('fixture_id').eq('user_id', actor.id),
-    a.from('calendar_entries').select('id, title, entry_date, start_time, end_time, session_label, space, kind')
+    a.from('calendar_entries').select('id, title, title_vn, entry_date, start_time, end_time, session_label, space, kind')
       .eq('visibility', 'member').gte('entry_date', from).lte('entry_date', to),
   ])
 

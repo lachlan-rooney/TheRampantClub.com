@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import MemberModal from '@/components/MemberModal'
+import { useLang } from '@/lib/lang'
+import { catLabel } from './flavour-data'
 
 // A member's tasting notes on one whisky — their own (private or shared) + other
 // members' Snug notes. Composer is the shared MemberModal (portal-to-body). Lazy:
@@ -16,6 +18,7 @@ interface Family { slug: string; name: string }
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 
 export default function WhiskyNotes({ whiskyId }: { whiskyId: string }) {
+  const { t, lang } = useLang()
   const [open, setOpen] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [notes, setNotes] = useState<Note[]>([])
@@ -41,7 +44,7 @@ export default function WhiskyNotes({ whiskyId }: { whiskyId: string }) {
       .then(({ data }) => { if (data) setFamilies(data) })
   }, [open, loaded, load])
 
-  const toggleTag = (slug: string) => setTags(t => t.includes(slug) ? t.filter(x => x !== slug) : [...t, slug])
+  const toggleTag = (slug: string) => setTags(prev => prev.includes(slug) ? prev.filter(x => x !== slug) : [...prev, slug])
 
   const save = useCallback(async () => {
     const note = draft.trim()
@@ -56,31 +59,31 @@ export default function WhiskyNotes({ whiskyId }: { whiskyId: string }) {
       if (photo) fd.set('photo', photo)
       const r = await fetch('/api/social/tasting-notes', { method: 'POST', body: fd })
       if (r.ok) { setComposer(false); setDraft(''); setTags([]); setVisibility('private'); setPhoto(null); await load() }
-      else setError((await r.json().catch(() => ({})))?.error || 'Could not save.')
+      else setError((await r.json().catch(() => ({})))?.error || t('Could not save.', 'Không thể lưu.'))
     } finally { setSaving(false) }
-  }, [draft, saving, whiskyId, visibility, tags, photo, load])
+  }, [draft, saving, whiskyId, visibility, tags, photo, load, t])
 
-  const nameOf = (slug: string) => families.find(f => f.slug === slug)?.name || slug
+  const nameOf = (slug: string) => { const f = families.find(x => x.slug === slug); return f ? catLabel(f, lang) : slug }
 
   return (
     <div style={{ marginTop: 10 }}>
       <button onClick={() => setOpen(o => !o)} aria-expanded={open} style={toggleBtn}>
-        {open ? '↑ Hide notes' : '✒ Your notes & the Snug'}
+        {open ? t('↑ Hide notes', '↑ Ẩn ghi chú') : t('✒ Your notes & the Snug', '✒ Ghi chú của bạn & Phòng Khách')}
       </button>
 
       {open && (
         <div style={{ marginTop: 12 }}>
           {!loaded ? (
-            <div style={muted}>Fetching notes…</div>
+            <div style={muted}>{t('Fetching notes…', 'Đang tải ghi chú…')}</div>
           ) : notes.length === 0 ? (
-            <div style={muted}>No notes yet — be the first to record this dram.</div>
+            <div style={muted}>{t('No notes yet — be the first to record this dram.', 'Chưa có ghi chú — hãy là người đầu tiên ghi lại ly này.')}</div>
           ) : notes.map(n => (
             <div key={n.id} style={noteCard}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
                 <span style={{ fontFamily: MONO, fontSize: 11, color: n.is_own ? '#D4B85A' : '#E5D4C2', letterSpacing: '0.04em' }}>
                   {n.author_name}{n.visibility === 'snug' && !n.is_own ? '' : ''}
-                  {n.is_own && n.visibility === 'snug' && <span style={snugBadge}>Shared</span>}
-                  {n.is_own && n.visibility === 'private' && <span style={privBadge}>Private</span>}
+                  {n.is_own && n.visibility === 'snug' && <span style={snugBadge}>{t('Shared', 'Đã chia sẻ')}</span>}
+                  {n.is_own && n.visibility === 'private' && <span style={privBadge}>{t('Private', 'Riêng tư')}</span>}
                 </span>
                 <span style={{ fontFamily: MONO, fontSize: 9, color: '#7E7864' }}>{fmtDate(n.created_at)}</span>
               </div>
@@ -91,24 +94,24 @@ export default function WhiskyNotes({ whiskyId }: { whiskyId: string }) {
               )}
               {n.flavour_tags.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 7 }}>
-                  {n.flavour_tags.map(t => <span key={t} style={tagChip}>{nameOf(t)}</span>)}
+                  {n.flavour_tags.map(tag => <span key={tag} style={tagChip}>{nameOf(tag)}</span>)}
                 </div>
               )}
             </div>
           ))}
 
-          <button onClick={() => setComposer(true)} style={addBtn}>＋ Add a note</button>
+          <button onClick={() => setComposer(true)} style={addBtn}>{t('＋ Add a note', '＋ Thêm ghi chú')}</button>
         </div>
       )}
 
-      <MemberModal open={composer} onClose={() => setComposer(false)} title="Your tasting note" subtitle="PRIVATE BY DEFAULT — SHARE IF YOU WISH">
+      <MemberModal open={composer} onClose={() => setComposer(false)} title={t('Your tasting note', 'Ghi chú nếm thử của bạn')} subtitle={t('PRIVATE BY DEFAULT — SHARE IF YOU WISH', 'MẶC ĐỊNH RIÊNG TƯ — CHIA SẺ NẾU MUỐN')}>
         {error && <div style={{ fontFamily: MONO, fontSize: 11, color: '#C27070', marginBottom: 8 }}>{error}</div>}
-        <textarea value={draft} onChange={e => setDraft(e.target.value.slice(0, 8000))} rows={4} placeholder="Nose, palate, finish — or simply how it struck you." style={textarea} />
+        <textarea value={draft} onChange={e => setDraft(e.target.value.slice(0, 8000))} rows={4} placeholder={t('Nose, palate, finish — or simply how it struck you.', 'Hương, vị, hậu vị — hoặc đơn giản là cảm nhận của bạn.')} style={textarea} />
 
         <div style={{ marginTop: 14 }}>
-          <div style={fieldLabel}>Visibility</div>
+          <div style={fieldLabel}>{t('Visibility', 'Chế độ hiển thị')}</div>
           <div style={{ display: 'flex', gap: 8 }}>
-            {([['private', 'Keep private'], ['snug', 'Share to the Snug']] as const).map(([v, label]) => (
+            {([['private', t('Keep private', 'Giữ riêng tư')], ['snug', t('Share to the Snug', 'Chia sẻ lên Phòng Khách')]] as const).map(([v, label]) => (
               <button key={v} onClick={() => setVisibility(v)} style={{ ...pill, ...(visibility === v ? pillOn : null) }}>{label}</button>
             ))}
           </div>
@@ -116,25 +119,25 @@ export default function WhiskyNotes({ whiskyId }: { whiskyId: string }) {
 
         {families.length > 0 && (
           <div style={{ marginTop: 14 }}>
-            <div style={fieldLabel}>Flavour notes <span style={{ opacity: 0.5 }}>(optional)</span></div>
+            <div style={fieldLabel}>{t('Flavour notes', 'Nhóm hương vị')} <span style={{ opacity: 0.5 }}>{t('(optional)', '(không bắt buộc)')}</span></div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {families.map(f => (
-                <button key={f.slug} onClick={() => toggleTag(f.slug)} style={{ ...chip, ...(tags.includes(f.slug) ? chipOn : null) }}>{f.name}</button>
+                <button key={f.slug} onClick={() => toggleTag(f.slug)} style={{ ...chip, ...(tags.includes(f.slug) ? chipOn : null) }}>{catLabel(f, lang)}</button>
               ))}
             </div>
           </div>
         )}
 
         <div style={{ marginTop: 14 }}>
-          <div style={fieldLabel}>Photo <span style={{ opacity: 0.5 }}>(optional — location data is stripped)</span></div>
+          <div style={fieldLabel}>{t('Photo', 'Ảnh')} <span style={{ opacity: 0.5 }}>{t('(optional — location data is stripped)', '(không bắt buộc — dữ liệu vị trí sẽ được xóa)')}</span></div>
           {photo ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontFamily: MONO, fontSize: 11, color: '#E5D4C2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>{photo.name}</span>
-              <button onClick={() => setPhoto(null)} style={{ ...chip, color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}>Remove</button>
+              <button onClick={() => setPhoto(null)} style={{ ...chip, color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}>{t('Remove', 'Xóa')}</button>
             </div>
           ) : (
             <label style={{ ...chip, cursor: 'pointer', display: 'inline-block' }}>
-              ＋ Add a photo
+              {t('＋ Add a photo', '＋ Thêm ảnh')}
               <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" style={{ display: 'none' }}
                 onChange={e => { const f = e.target.files?.[0]; if (f) setPhoto(f) }} />
             </label>
@@ -142,8 +145,8 @@ export default function WhiskyNotes({ whiskyId }: { whiskyId: string }) {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
-          <button onClick={() => { setComposer(false); setPhoto(null) }} style={cancelBtn}>Cancel</button>
-          <button onClick={save} disabled={saving || !draft.trim()} style={{ ...saveBtn, opacity: saving || !draft.trim() ? 0.4 : 1 }}>{saving ? 'Saving…' : 'Save note'}</button>
+          <button onClick={() => { setComposer(false); setPhoto(null) }} style={cancelBtn}>{t('Cancel', 'Hủy')}</button>
+          <button onClick={save} disabled={saving || !draft.trim()} style={{ ...saveBtn, opacity: saving || !draft.trim() ? 0.4 : 1 }}>{saving ? t('Saving…', 'Đang lưu…') : t('Save note', 'Lưu ghi chú')}</button>
         </div>
       </MemberModal>
     </div>

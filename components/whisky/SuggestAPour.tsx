@@ -5,6 +5,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import RecResults, { type RecItem } from './RecResults'
 import FinderRadar from './FinderRadar'
 import { fetchCategories, type Cat } from './flavour-data'
+import { useLang } from '@/lib/lang'
 
 // Staff hospitality tool on the MIS member page. Seeds recs from THIS member's
 // stored taste profile; if their profile is empty (no mapped loves on file),
@@ -15,6 +16,7 @@ const FAMILY = "'Google Sans Code', monospace"
 interface RecResp { recs: RecItem[]; target: Record<string, number>; bestIsClose: boolean; profileEmpty: boolean; sources?: { loved_bottles?: string[] } }
 
 export default function SuggestAPour({ memberNo }: { memberNo: string }) {
+  const { t } = useLang()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<RecResp | null>(null)
@@ -33,20 +35,20 @@ export default function SuggestAPour({ memberNo }: { memberNo: string }) {
   return (
     <div style={panel}>
       <div style={headRow}>
-        <div style={label}>Suggest a pour</div>
-        {!open && <button onClick={() => { setOpen(true); run({ member_no: memberNo, limit: 5 }) }} style={btn}>◆ Suggest →</button>}
-        {open && <button onClick={() => { setOpen(false); setData(null); setShape({}) }} style={btnGhost}>Close</button>}
+        <div style={label}>{t('Suggest a pour', 'Gợi ý một ly')}</div>
+        {!open && <button onClick={() => { setOpen(true); run({ member_no: memberNo, limit: 5 }) }} style={btn}>{t('◆ Suggest →', '◆ Gợi ý →')}</button>}
+        {open && <button onClick={() => { setOpen(false); setData(null); setShape({}) }} style={btnGhost}>{t('Close', 'Đóng')}</button>}
       </div>
-      {open && (loading ? <div style={muted}>Finding…</div> : data && (
+      {open && (loading ? <div style={muted}>{t('Finding…', 'Đang tìm…')}</div> : data && (
         data.profileEmpty ? (
           <div>
-            <div style={muted}>No taste profile for {memberNo} yet (no flavour-mapped loves on file). Tap a flavour shape to suggest from:</div>
+            <div style={muted}>{t(`No taste profile for ${memberNo} yet (no flavour-mapped loves on file). Tap a flavour shape to suggest from:`, `Chưa có hồ sơ khẩu vị cho ${memberNo} (chưa có chai yêu thích nào được lập bản đồ hương vị). Chạm để tạo hình hương vị làm cơ sở gợi ý:`)}</div>
             {cats.length > 0 && <FinderRadar cats={cats} value={shape} onChange={setShape} />}
-            <button onClick={() => run({ set: shape, limit: 5 })} disabled={!Object.keys(shape).length} style={{ ...btn, marginTop: 8, opacity: Object.keys(shape).length ? 1 : 0.5 }}>Suggest from this shape</button>
+            <button onClick={() => run({ set: shape, limit: 5 })} disabled={!Object.keys(shape).length} style={{ ...btn, marginTop: 8, opacity: Object.keys(shape).length ? 1 : 0.5 }}>{t('Suggest from this shape', 'Gợi ý theo hình này')}</button>
           </div>
         ) : (
           <>
-            {data.sources?.loved_bottles?.length ? <div style={muted}>From their loves: {data.sources.loved_bottles.slice(0, 4).join(' · ')}</div> : null}
+            {data.sources?.loved_bottles?.length ? <div style={muted}>{t('From their loves:', 'Từ những chai họ yêu thích:')} {data.sources.loved_bottles.slice(0, 4).join(' · ')}</div> : null}
             <RecResults recs={data.recs} target={data.target} bestIsClose={data.bestIsClose} />
           </>
         )

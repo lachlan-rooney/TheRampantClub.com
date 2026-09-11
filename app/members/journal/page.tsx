@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import MemberPage from '@/components/MemberPage'
+import { useLang, type Lang } from '@/lib/lang'
 
 interface Entry {
   id: string
@@ -14,10 +15,11 @@ interface Entry {
   published_at: string
 }
 
-const fmtDate = (d: string) =>
-  new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+const fmtDate = (d: string, lang: Lang = 'en') =>
+  new Date(d).toLocaleDateString(lang === 'vn' ? 'vi-VN' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 
 export default function MembersJournal() {
+  const { t, lang } = useLang()
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState<Entry | null>(null)
@@ -137,18 +139,18 @@ export default function MembersJournal() {
 
       <MemberPage title="The Cellarmaster's Journal" subtitle="Nhật Ký Cellarmaster">
         {loading ? (
-          <p style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#B2AA98', textAlign: 'center' }}>Loading…</p>
+          <p style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 12, color: '#B2AA98', textAlign: 'center' }}>{t('Loading…', 'Đang tải…')}</p>
         ) : entries.length === 0 ? (
           <div className="jrnl-empty">
-            The Cellarmaster has not yet committed pen to paper.
-            New entries will appear here as they are written.
+            {t('The Cellarmaster has not yet committed pen to paper. New entries will appear here as they are written.',
+              'Cellarmaster vẫn chưa đặt bút. Các bài viết mới sẽ xuất hiện tại đây khi được hoàn thành.')}
           </div>
         ) : (
           <div className="jrnl-list">
             {entries.map(e => (
               <div key={e.id} className="jrnl-card" onClick={() => setOpen(e)}>
                 <div className="jrnl-meta">
-                  {e.author_name || 'The Cellarmaster'} &middot; {fmtDate(e.published_at)}
+                  {e.author_name || t('The Cellarmaster', 'Cellarmaster')} &middot; {fmtDate(e.published_at, lang)}
                 </div>
                 <h2 className="jrnl-title">{e.title}</h2>
                 {e.excerpt && <p className="jrnl-excerpt">{e.excerpt}</p>}
@@ -161,15 +163,15 @@ export default function MembersJournal() {
       {open && (
         <div className="jrnl-back" onClick={() => setOpen(null)}>
           <article className="jrnl-reader" onClick={e => e.stopPropagation()}>
-            <button className="jrnl-close" onClick={() => setOpen(null)} aria-label="Close">×</button>
+            <button className="jrnl-close" onClick={() => setOpen(null)} aria-label={t('Close', 'Đóng')}>×</button>
             {open.cover_image_url && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={open.cover_image_url} alt="" className="jrnl-cover" />
             )}
-            <div className="jrnl-r-meta">From the Cellarmaster's Journal</div>
+            <div className="jrnl-r-meta">{t("From the Cellarmaster's Journal", 'Trích từ Nhật Ký Cellarmaster')}</div>
             <h1 className="jrnl-r-title">{open.title}</h1>
             <div className="jrnl-r-byline">
-              {open.author_name || 'The Cellarmaster'} &middot; {fmtDate(open.published_at)}
+              {open.author_name || t('The Cellarmaster', 'Cellarmaster')} &middot; {fmtDate(open.published_at, lang)}
             </div>
             <div className="jrnl-r-body">
               {open.body.split(/\n\s*\n/).map((para, i) => (

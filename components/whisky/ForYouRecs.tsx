@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import RecResults, { type RecItem } from './RecResults'
+import { useLang } from '@/lib/lang'
 
 // Member-facing "For You" — reads the logged-in member's OWN taste profile
 // (server-resolved) → recs. Honest empty-state when there's no profile (no
@@ -12,6 +13,7 @@ const FAMILY = "'Google Sans Code', 'DM Mono', monospace"
 interface RecResp { recs: RecItem[]; target: Record<string, number>; bestIsClose: boolean; profileEmpty: boolean }
 
 export default function ForYouRecs() {
+  const { t } = useLang()
   const [data, setData] = useState<RecResp | null>(null)
   const [loading, setLoading] = useState(true)
   useEffect(() => {
@@ -23,13 +25,13 @@ export default function ForYouRecs() {
   if (!data || data.profileEmpty || !data.recs?.length) {
     return (
       <div style={empty}>
-        Tell us what you love — try the <a href="/members/whisky/finder" style={{ color: '#D4B85A', textDecoration: 'none' }}>Flavour Finder</a>{' '}and we&apos;ll match you a dram.
+        {t('Tell us what you love — try the', 'Hãy cho chúng tôi biết bạn yêu thích gì — thử')} <a href="/members/whisky/finder" style={{ color: '#D4B85A', textDecoration: 'none' }}>{t('Flavour Finder', 'Tìm Ly Của Bạn')}</a>{' '}{t("and we'll match you a dram.", 'và chúng tôi sẽ tìm cho bạn một ly phù hợp.')}
       </div>
     )
   }
   return (
     <div style={{ marginBottom: 36 }}>
-      <div style={heading}>Recommended for you</div>
+      <div style={heading}>{t('Recommended for you', 'Gợi ý dành cho bạn')}</div>
       <RecResults recs={data.recs} target={data.target} bestIsClose={data.bestIsClose} theme="member" />
     </div>
   )

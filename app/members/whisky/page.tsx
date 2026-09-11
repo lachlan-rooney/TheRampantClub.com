@@ -8,10 +8,12 @@ import MemberPage from '@/components/MemberPage'
 import ForYouRecs from '@/components/whisky/ForYouRecs'
 import AlphabetShelf from '@/components/whisky/AlphabetShelf'
 import WhiskyRow from '@/components/whisky/WhiskyRow'
+import { useLang } from '@/lib/lang'
 
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
 
 export default function WhiskyPage() {
+  const { t } = useLang()
   const [whiskies, setWhiskies] = useState<Whisky[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -36,7 +38,7 @@ export default function WhiskyPage() {
     if (toks.length === 0) return null
     return whiskies.filter(w => {
       const hay = `${w.name} ${w.distillery || ''} ${w.region || ''}`.toLowerCase()
-      return toks.every(t => hay.includes(t))
+      return toks.every(tok => hay.includes(tok))
     })
   }, [search, whiskies])
 
@@ -46,14 +48,14 @@ export default function WhiskyPage() {
         title="The Whisky Library"
         subtitle="Thư Viện Whisky"
         icon="/images/whisky-glass-icon-opt.png"
-        description={`${whiskies.length} bottle${whiskies.length === 1 ? '' : 's'} and counting`}
+        description={t(`${whiskies.length} bottle${whiskies.length === 1 ? '' : 's'} and counting`, `${whiskies.length} chai, và con số vẫn đang tăng`)}
       >
         <Link href="/members/whisky/finder" style={{
           display: 'block', textAlign: 'center', marginBottom: 24, textDecoration: 'none',
           fontFamily: MONO, fontSize: 12, letterSpacing: '0.04em',
           color: '#D4B85A', border: '1px solid rgba(212,184,90,0.35)', borderRadius: 24, padding: '11px 20px',
         }}>
-          ◆ Find your dram — match by flavour →
+          {t('◆ Find your dram — match by flavour →', '◆ Tìm ly của bạn — theo hương vị →')}
         </Link>
         <ForYouRecs />
 
@@ -62,7 +64,7 @@ export default function WhiskyPage() {
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search by name or distillery…"
+          placeholder={t('Search by name or distillery…', 'Tìm theo tên hoặc nhà chưng cất…')}
           style={{
             width: '100%', boxSizing: 'border-box', marginBottom: 24,
             background: 'rgba(229,212,194,0.06)', color: '#E5D4C2',
@@ -72,17 +74,17 @@ export default function WhiskyPage() {
         />
 
         {loading ? (
-          <p style={{ fontFamily: MONO, fontSize: 12, color: '#B2AA98', textAlign: 'center' }}>Loading…</p>
+          <p style={{ fontFamily: MONO, fontSize: 12, color: '#B2AA98', textAlign: 'center' }}>{t('Loading…', 'Đang tải…')}</p>
         ) : results !== null ? (
           // Search active → matching whiskies (alphabet bypassed)
           results.length === 0 ? (
             <p style={{ fontFamily: MONO, fontSize: 12, color: '#B2AA98', textAlign: 'center', fontStyle: 'italic' }}>
-              No whiskies match “{search}”.
+              {t(`No whiskies match “${search}”.`, `Không có whisky nào khớp “${search}”.`)}
             </p>
           ) : (
             <div>
               <div style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98', marginBottom: 6 }}>
-                {results.length} match{results.length === 1 ? '' : 'es'}
+                {t(`${results.length} match${results.length === 1 ? '' : 'es'}`, `${results.length} kết quả`)}
               </div>
               {results.map(w => <WhiskyRow key={w.id} w={w} />)}
             </div>

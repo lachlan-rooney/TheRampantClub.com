@@ -1,6 +1,7 @@
 'use client'
 
-import { type Cat, RADAR_GOLD, hexToRgba } from './flavour-data'
+import { type Cat, RADAR_GOLD, hexToRgba, catLabel } from './flavour-data'
+import { useLang } from '@/lib/lang'
 
 // Interactive flavour radar for the Finder. Each spoke is a big tappable wedge
 // (mobile-friendly); tapping cycles its intensity 0→1→2→3→4→0. Unset (0) spokes
@@ -29,6 +30,7 @@ export default function FinderRadar({ cats, value, onChange, size = 340 }: {
   onChange: (v: Record<string, number>) => void
   size?: number
 }) {
+  const { t, lang } = useLang()
   const N = cats.length
   const R = Math.round(size * 0.36)
   const SIDE = 104, VERT = 44
@@ -62,7 +64,7 @@ export default function FinderRadar({ cats, value, onChange, size = 340 }: {
   const anySet = Object.keys(value).length > 0
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} role="group" aria-label="Set your flavour profile" style={{ display: 'block', width: '100%', maxWidth: W, height: 'auto', margin: '0 auto', touchAction: 'manipulation' }}>
+    <svg viewBox={`0 0 ${W} ${H}`} role="group" aria-label={t('Set your flavour profile', 'Chọn hồ sơ hương vị của bạn')}style={{ display: 'block', width: '100%', maxWidth: W, height: 'auto', margin: '0 auto', touchAction: 'manipulation' }}>
       {/* grid + axes */}
       {rings.map((d, i) => <path key={i} d={d} fill="none" stroke="rgba(229,212,194,0.10)" strokeWidth={1} />)}
       {cats.map((c, i) => { const [x, y] = pt(i, 4); return <line key={c.slug} x1={cx} y1={cy} x2={x} y2={y} stroke="rgba(229,212,194,0.08)" strokeWidth={1} /> })}
@@ -70,7 +72,7 @@ export default function FinderRadar({ cats, value, onChange, size = 340 }: {
       {/* tappable wedges (under the shape; the shape itself ignores pointers) */}
       {cats.map((c, i) => (
         <path key={'w' + c.slug} d={wedge(i)} fill="transparent" style={{ cursor: 'pointer' }} onClick={() => cycle(c.slug)}>
-          <title>{c.name}</title>
+          <title>{catLabel(c, lang)}</title>
         </path>
       ))}
 
@@ -89,7 +91,7 @@ export default function FinderRadar({ cats, value, onChange, size = 340 }: {
         const anchor: 'start' | 'middle' | 'end' = cos > 0.15 ? 'start' : cos < -0.15 ? 'end' : 'middle'
         const lvl = value[c.slug] || 0
         const fill = lvl > 0 ? '#D4B85A' : 'rgba(229,212,194,0.55)'
-        const lines = wrapName(c.name)
+        const lines = wrapName(catLabel(c, lang))
         if (lvl > 0) lines[lines.length - 1] += ` · ${lvl}`
         const y0 = sin > 0.35 ? ly + 6 : sin < -0.35 ? ly - 6 - (lines.length - 1) * LINE_H : ly - (lines.length - 1) * LINE_H / 2
         return lines.map((ln, k) => (

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useLang, type Lang } from '@/lib/lang'
 
 // PASSIVE pre-visit card. Composes the member's next real booking and renders on
 // the dashboard — nothing is sent, no staff action, no fabrication (it shows only
@@ -13,26 +14,34 @@ const MONO = "'Google Sans Code', 'DM Mono', monospace"
 interface Booking { date: string; start_time: string | null; session_label: string | null; space: string; party_size: number | null; tables: string[] }
 interface Evt { title: string; start_time: string | null }
 
-const withArticle = (s: string) => (/^(the|a)\b/i.test(s) ? s : `the ${s}`)
-function dateLabel(iso: string): string {
+type T = (en: string, vn: string) => string
+// Vietnamese has no article, so "the Library Bar" stays "Library Bar" in VN.
+const withArticle = (s: string, lang: Lang) => (lang === 'vn' || /^(the|a)\b/i.test(s) ? s : `the ${s}`)
+function dateLabel(iso: string, lang: Lang): string {
   const d = new Date(iso + 'T00:00:00')
-  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
+  return d.toLocaleDateString(lang === 'vn' ? 'vi-VN' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
 }
-function timeLabel(b: Booking): string {
+// The three standard sessions (db/bookings.sql); a custom label shows as typed.
+const SESSION_VN: Record<string, string> = { early: 'Sớm', evening: 'Buổi tối', late: 'Khuya' }
+function timeLabel(b: Booking, lang: Lang): string {
   if (b.start_time) return b.start_time.slice(0, 5)
-  if (b.session_label) return b.session_label.charAt(0).toUpperCase() + b.session_label.slice(1)
+  if (b.session_label) {
+    const vn = lang === 'vn' ? SESSION_VN[b.session_label.toLowerCase()] : undefined
+    return vn || b.session_label.charAt(0).toUpperCase() + b.session_label.slice(1)
+  }
   return ''
 }
-function relativeDay(iso: string): string {
+function relativeDay(iso: string, t: T): string {
   const d = new Date(iso + 'T00:00:00'), today = new Date()
   const days = Math.round((d.getTime() - new Date(today.toDateString()).getTime()) / 86_400_000)
-  if (days <= 0) return 'Today'
-  if (days === 1) return 'Tomorrow'
-  if (days < 7) return `In ${days} days`
+  if (days <= 0) return t('Today', 'Hôm nay')
+  if (days === 1) return t('Tomorrow', 'Ngày mai')
+  if (days < 7) return t(`In ${days} days`, `${days} ngày nữa`)
   return ''
 }
 
 export default function AnticipationCard() {
+  const { t, lang } = useLang()
   const [b, setB] = useState<Booking | null>(null)
   const [events, setEvents] = useState<Evt[]>([])
 
@@ -44,31 +53,35 @@ export default function AnticipationCard() {
 
   if (!b) return null
 
-  const when = [relativeDay(b.date), timeLabel(b)].filter(Boolean).join(' · ')
+  const art = (s: string) => withArticle(s, lang)
+  const when = [relativeDay(b.date, t), timeLabel(b, lang)].filter(Boolean).join(' · ')
   const tableLine = b.tables.length
-    ? `${withArticle(b.space)} — ${b.tables.map(withArticle).join(', ')}`
-    : withArticle(b.space)
+    ? `${art(b.space)} — ${b.tables.map(art).join(', ')}`
+    : art(b.space)
   // Prefill the composer (NOT sent) — an opener the member finishes.
-  const prefill = `A note about my booking on ${dateLabel(b.date)} in ${withArticle(b.space)}: `
+  const prefill = t(
+    `A note about my booking on ${dateLabel(b.date, lang)} in ${art(b.space)}: `,
+    `Đôi lời về lượt đặt chỗ của tôi vào ${dateLabel(b.date, lang)} tại ${art(b.space)}: `,
+  )
 
   return (
     <div style={card}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
-        <div style={kicker}>We’re expecting you</div>
+        <div style={kicker}>{t('We’re expecting you', 'Chúng tôi mong đón bạn')}</div>
         {when && <div style={whenChip}>{when}</div>}
       </div>
-      <div style={headline}>{dateLabel(b.date)}</div>
+      <div style={headline}>{dateLabel(b.date, lang)}</div>
       <div style={detail}>
         {tableLine}
-        {b.party_size && b.party_size > 1 ? ` · a table for ${b.party_size}` : ''}
+        {b.party_size && b.party_size > 1 ? t(` · a table for ${b.party_size}`, ` · bàn cho ${b.party_size} người`) : ''}
       </div>
       {events.length > 0 && (
         <div style={eventLine}>
-          Also in the house that day: {events.map(e => e.title).join(' · ')}
+          {t('Also in the house that day:', 'Cùng ngày tại câu lạc bộ:')} {events.map(e => e.title).join(' · ')}
         </div>
       )}
       <Link href={`/members/concierge?prefill=${encodeURIComponent(prefill)}`} style={action}>
-        A request for the evening? →
+        {t('A request for the evening? →', 'Có yêu cầu gì cho buổi tối? →')}
       </Link>
     </div>
   )

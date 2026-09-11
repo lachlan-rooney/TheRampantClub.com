@@ -34,6 +34,34 @@ export function valuesFromSpokes(spokes: Spoke[]): ShapeValues {
   return Object.fromEntries(spokes.map(s => [s.category_slug, { intensity: s.intensity, confidence: s.confidence }]))
 }
 
+// Vietnamese names for the 16 Compass families. flavour_categories carries no
+// `_vn` column, so the pairing lives here, keyed by slug. Unknown slugs fall back
+// to the DB (English) name. No lib/lang import: this module is also loaded by a
+// server route, and lib/lang is a client module.
+const FAMILY_VN: Record<string, string> = {
+  cereal_biscuit:       'Ngũ Cốc & Bánh Quy',
+  green_grassy:         'Cỏ Tươi & Lá Xanh',
+  orchard_fruit:        'Trái Cây Vườn',
+  tropical_citrus:      'Nhiệt Đới & Cam Chanh',
+  floral_honeyed:       'Hoa & Mật Ong',
+  buttery_creamy:       'Bơ & Kem',
+  meaty_sulphury:       'Thịt & Lưu Huỳnh',
+  vanilla_coconut:      'Vani & Dừa',
+  baking_spice:         'Gia Vị Ấm',
+  pepper_tannin:        'Tiêu & Tannin',
+  dried_fruit_walnut:   'Trái Cây Khô & Óc Chó',
+  treacle_roast:        'Mật Mía & Hương Rang',
+  leather_polished_oak: 'Da Thuộc & Gỗ Sồi',
+  woodsmoke:            'Khói Gỗ',
+  tar_iodine:           'Hắc Ín & I-ốt',
+  brine_shoreline:      'Muối & Hơi Biển',
+}
+
+/** A family's display name in the current language (English DB name as fallback). */
+export function catLabel(c: { slug: string; name: string }, lang: 'en' | 'vn'): string {
+  return lang === 'vn' ? (FAMILY_VN[c.slug] || c.name) : c.name
+}
+
 export function hexToRgba(hex: string, a: number): string {
   const m = hex.replace('#', '')
   const r = parseInt(m.slice(0, 2), 16), g = parseInt(m.slice(2, 4), 16), b = parseInt(m.slice(4, 6), 16)

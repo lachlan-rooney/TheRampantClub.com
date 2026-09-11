@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useLang } from '@/lib/lang'
 
 // The club's spaces, floor by floor. ONE component drives two surfaces:
 //   variant="internal" → /members/spaces (members: full CTAs incl. menu + events)
@@ -104,6 +105,8 @@ export default function SpacesShowcase({ variant }: { variant: 'internal' | 'pub
   const [activeIdx, setActiveIdx] = useState(0)
   const sectionRefs = useRef<(HTMLElement | null)[]>([])
   const internal = variant === 'internal'
+  const { t, lang } = useLang()
+  const vn = lang === 'vn'
 
   useEffect(() => {
     const obs = new IntersectionObserver((entries) => {
@@ -374,23 +377,24 @@ export default function SpacesShowcase({ variant }: { variant: 'internal' | 'pub
 
         <div className="spaces-head">
           {internal
-            ? <Link href="/members" className="spaces-back">&larr; Back to dashboard</Link>
-            : <Link href="/" className="spaces-back">&larr; Back to home</Link>}
-          <h1 className="spaces-title">{internal ? 'Our Spaces' : 'Club Spaces'}</h1>
-          <p className="spaces-sub">Không gian của câu lạc bộ</p>
+            ? <Link href="/members" className="spaces-back">&larr; {t('Back to dashboard', 'Về Trang Chính')}</Link>
+            : <Link href="/" className="spaces-back">&larr; {t('Back to home', 'Về trang chủ')}</Link>}
+          {/* VN promotes the Vietnamese to the heading and demotes the English, as MemberPage does. */}
+          <h1 className="spaces-title">{vn ? 'Không gian của câu lạc bộ' : internal ? 'Our Spaces' : 'Club Spaces'}</h1>
+          <p className="spaces-sub">{vn ? (internal ? 'Our Spaces' : 'Club Spaces') : 'Không gian của câu lạc bộ'}</p>
           <p className="spaces-intro">
-            Five floors and a sports club. Each space has its own character; each floor, its own purpose.
-            Scroll through to walk the building, top to bottom.
+            {t('Five floors and a sports club. Each space has its own character; each floor, its own purpose. Scroll through to walk the building, top to bottom.',
+              'Năm tầng lầu và một câu lạc bộ thể thao. Mỗi không gian một cá tính; mỗi tầng một mục đích riêng. Cuộn xuống để dạo quanh toà nhà, từ trên xuống dưới.')}
           </p>
         </div>
 
-        <nav className="floor-rail" aria-label="Floor navigator">
+        <nav className="floor-rail" aria-label={t('Floor navigator', 'Điều hướng tầng')}>
           {SPACES.map((s, i) => (
             <button
               key={s.id}
               className={'floor-rail-btn' + (activeIdx === i ? ' is-on' : '')}
               onClick={() => goTo(i)}
-              aria-label={`Go to ${s.en}`}
+              aria-label={t(`Go to ${s.en}`, `Đến ${s.vn}`)}
               aria-current={activeIdx === i || undefined}
             >
               {s.floor}
@@ -414,7 +418,7 @@ export default function SpacesShowcase({ variant }: { variant: 'internal' | 'pub
                 )}
                 {s.photo && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={s.photo} alt={s.en} />
+                  <img src={s.photo} alt={vn ? s.vn : s.en} />
                 )}
                 {/* No corner label on any panel. The floor is already named a
                     line below, in the eyebrow beside the title, and over a
@@ -443,15 +447,15 @@ export default function SpacesShowcase({ variant }: { variant: 'internal' | 'pub
                     the room, beside a rail that numbers the floors, on a page whose
                     own introduction says it runs top to bottom. Three ways of saying
                     the same thing is two too many. */}
-                <h2 className="floor-name">{s.en}</h2>
-                <p className="floor-vn">{s.vn}</p>
-                <p className="floor-desc">{s.descEn}</p>
-                <p className="floor-desc-vn">{s.descVn}</p>
+                <h2 className="floor-name">{vn ? s.vn : s.en}</h2>
+                <p className="floor-vn">{vn ? s.en : s.vn}</p>
+                <p className="floor-desc">{vn ? s.descVn : s.descEn}</p>
+                <p className="floor-desc-vn">{vn ? s.descEn : s.descVn}</p>
 
                 {/* Menu link — members only. */}
                 {internal && s.id === 'library-bar' && (
                   <Link href="/menus/library-bar" className="floor-cta">
-                    Library Bar Menu →
+                    {t('Library Bar Menu →', 'Thực Đơn Quầy Bar Thư Viện →')}
                   </Link>
                 )}
 
@@ -459,14 +463,14 @@ export default function SpacesShowcase({ variant }: { variant: 'internal' | 'pub
                     Atlas (the public whisky map), so the link is useful either way. */}
                 {s.id === 'rampant-room' && (
                   <Link href={internal ? '/members/whisky' : '/atlas'} className="floor-cta">
-                    {internal ? 'Current Whisky Stock →' : 'Explore the Atlas →'}
+                    {internal ? t('Current Whisky Stock →', 'Whisky Hiện Có →') : t('Explore the Atlas →', 'Khám Phá Atlas →')}
                   </Link>
                 )}
 
                 {/* Sports calendar is an events surface — members only. */}
                 {internal && s.id === 'sports' && (
                   <Link href="/sports" className="floor-cta">
-                    Sports calendar →
+                    {t('Sports calendar →', 'Lịch Thể Thao →')}
                   </Link>
                 )}
 
@@ -494,27 +498,23 @@ export default function SpacesShowcase({ variant }: { variant: 'internal' | 'pub
                         September reads as neglect, where naming it as the most recent
                         reads as deliberate. The same question the board's no_event had:
                         what does a room say when nothing is currently on. */}
-                    <h3 className="floor-studio-title">Most recently: Terroir of Memories</h3>
+                    <h3 className="floor-studio-title">{t('Most recently', 'Gần đây nhất')}: Terroir of Memories</h3>
                     <div className="floor-studio-sub">
                       Quỳnh Anh Lê &times; The Octave by Duncan Taylor
                     </div>
                     <p className="floor-studio-body">
-                      A collaboration between Vietnamese contemporary artist Quỳnh Anh Lê and The Octave,
-                      exploring how place becomes character — through whisky, through paint, through the
-                      slow work of time. It was centred on 88 collaboration bottles carrying the artist&rsquo;s label,
-                      alongside a single hand-painted bottle: the first of three by three Vietnamese artists,
-                      to be auctioned for charity at the series&rsquo; end. It was a multi-sensory experience,
-                      with bespoke soundscape, signature scent, and curated canapés.
+                      {t('A collaboration between Vietnamese contemporary artist Quỳnh Anh Lê and The Octave, exploring how place becomes character — through whisky, through paint, through the slow work of time. It was centred on 88 collaboration bottles carrying the artist’s label, alongside a single hand-painted bottle: the first of three by three Vietnamese artists, to be auctioned for charity at the series’ end. It was a multi-sensory experience, with bespoke soundscape, signature scent, and curated canapés.',
+                        'Sự hợp tác giữa nghệ sĩ đương đại Việt Nam Quỳnh Anh Lê và The Octave, khám phá cách một vùng đất hun đúc nên cá tính — qua whisky, qua màu vẽ, qua sự chắt lọc chậm rãi của thời gian. Trọng tâm là 88 chai hợp tác mang nhãn của nghệ sĩ, cùng một chai duy nhất được vẽ tay: chai đầu tiên trong bộ ba của ba nghệ sĩ Việt Nam, sẽ được đấu giá gây quỹ từ thiện khi chuỗi triển lãm khép lại. Đó là một trải nghiệm đa giác quan, với âm thanh được thiết kế riêng, mùi hương đặc trưng và các món canapé tuyển chọn.')}
                     </p>
                     <p className="floor-studio-body">
-                      A members-only whisky was created for the occasion — the Octave Auchentoshan 14,
-                      bottled for the exhibition.
+                      {t('A members-only whisky was created for the occasion — the Octave Auchentoshan 14, bottled for the exhibition.',
+                        'Một loại whisky dành riêng cho hội viên đã được tạo ra cho dịp này — Octave Auchentoshan 14, đóng chai riêng cho triển lãm.')}
                     </p>
-                    <a className="floor-cta" href="/studio">Past exhibitions →</a>
+                    <a className="floor-cta" href="/studio">{t('Past exhibitions →', 'Các Triển Lãm Trước →')}</a>
                     <div className="floor-studio-video">
                       <iframe
                         src="https://www.youtube.com/embed/DOY4fYCpQC0"
-                        title="Terroir of Memories — Process Film"
+                        title={t('Terroir of Memories — Process Film', 'Terroir of Memories — Phim quá trình sáng tác')}
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
                       />

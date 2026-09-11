@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useLang } from '@/lib/lang'
 
 export default function ContactPage() {
+  const { t } = useLang()
   const [copied, setCopied] = useState(false)
 
   const copyEmail = () => {
@@ -120,11 +122,12 @@ export default function ContactPage() {
 
       <div className="contact-page">
         <div className="contact-grain" />
-        <Link href="/members" className="contact-back">&larr; Back to dashboard</Link>
+        <Link href="/members" className="contact-back">&larr; {t('Back to dashboard', 'Về trang chủ')}</Link>
 
         <div className="contact-container">
-          <h1 className="contact-title">Contact</h1>
-          <p className="contact-subtitle">Liên hệ</p>
+          {/* Same swap as MemberPage: in VN the Vietnamese leads, the English follows. */}
+          <h1 className="contact-title">{t('Contact', 'Liên hệ')}</h1>
+          <p className="contact-subtitle">{t('Liên hệ', 'Contact')}</p>
 
           <div className="contact-diamond" />
 
@@ -139,7 +142,7 @@ export default function ContactPage() {
                 opacity: copied ? 1 : 0, transition: 'opacity 0.8s ease',
                 pointerEvents: 'none',
               }}>
-                Copied to clipboard
+                {t('Copied to clipboard', 'Đã sao chép')}
               </span>
             </span>
           </div>

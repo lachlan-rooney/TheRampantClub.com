@@ -13,7 +13,7 @@ export default function MemberPage({
   icon?: string
   children: ReactNode
 }) {
-  const { lang } = useLang()
+  const { lang, t } = useLang()
   // ── ONLY SWAP WHEN THE SUBTITLE IS ACTUALLY VIETNAMESE ───────────────────
   // Most pages pair an English title with a Vietnamese subtitle, but not all:
   // The Snug's is "THE CLUB, IN CONVERSATION" and the concierge's is "A LINE TO
@@ -27,7 +27,11 @@ export default function MemberPage({
   // and `đ` is checked separately because it carries no combining mark.
   const isVietnamese = (s: string) =>
     /[\u0300-\u0323]/.test(s.normalize('NFD')) || /[đĐ]/.test(s)
-  const showVn = lang === 'vn' && !!subtitle && isVietnamese(subtitle)
+  // …and ONLY WHEN THE TITLE IS STILL ENGLISH. A page that translates its own
+  // title (title={t('The Concierge', 'Quản Gia')}, subtitle={t(tagline, vnTagline)})
+  // is already Vietnamese in both lines; swapping it would put the tagline above
+  // the name.
+  const showVn = lang === 'vn' && !!subtitle && isVietnamese(subtitle) && !isVietnamese(title)
 
   // Reveal is a single CSS mount animation (`both` fill) — it begins at
   // opacity 0 and animates in immediately, with NO artificial blank delay and
@@ -64,7 +68,7 @@ export default function MemberPage({
       }} />
       <div className="mp-wrap">
         <div className="mp-inner">
-          <Link href="/members" className="mp-back">← Back to dashboard</Link>
+          <Link href="/members" className="mp-back">{t('← Back to dashboard', '← Về Trang Chính')}</Link>
           {icon ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={icon} alt="" style={{

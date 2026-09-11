@@ -5,6 +5,8 @@ import Link from 'next/link'
 import MemberPage from '@/components/MemberPage'
 import MemberModal from '@/components/MemberModal'
 import ConfirmModal from '@/components/members/ConfirmModal'
+import { useLang, type Lang } from '@/lib/lang'
+import { surfaceName } from '@/lib/members/surfaces'
 
 // The Snug — a salon, not a timeline. A single unhurried column of house posts,
 // member posts and snug tasting-notes (union-at-read), equal visual weight. No
@@ -21,21 +23,23 @@ interface Item {
 }
 
 const RX = [
-  { key: 'raise_glass', emoji: '🥃', label: 'raise a glass' },
-  { key: 'noted', emoji: '🔖', label: 'noted' },
-  { key: 'join_me', emoji: '🤝', label: 'join me' },
+  { key: 'raise_glass', emoji: '🥃', label: 'raise a glass', label_vn: 'nâng ly' },
+  { key: 'noted', emoji: '🔖', label: 'noted', label_vn: 'đánh dấu' },
+  { key: 'join_me', emoji: '🤝', label: 'join me', label_vn: 'cùng tôi nhé' },
 ] as const
 
-const when = (iso: string) => {
+const when = (iso: string, lang: Lang = 'en') => {
+  const vn = lang === 'vn'
   const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000))
-  if (s < 60) return 'just now'
-  const m = Math.floor(s / 60); if (m < 60) return `${m}m ago`
-  const h = Math.floor(m / 60); if (h < 24) return `${h}h ago`
-  const d = Math.floor(h / 24); if (d < 7) return `${d}d ago`
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  if (s < 60) return vn ? 'vừa xong' : 'just now'
+  const m = Math.floor(s / 60); if (m < 60) return vn ? `${m} phút trước` : `${m}m ago`
+  const h = Math.floor(m / 60); if (h < 24) return vn ? `${h} giờ trước` : `${h}h ago`
+  const d = Math.floor(h / 24); if (d < 7) return vn ? `${d} ngày trước` : `${d}d ago`
+  return new Date(iso).toLocaleDateString(vn ? 'vi-VN' : 'en-GB', { day: 'numeric', month: 'short' })
 }
 
 export default function Snug() {
+  const { t } = useLang()
   const [items, setItems] = useState<Item[]>([])
   const [next, setNext] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -90,60 +94,60 @@ export default function Snug() {
       const fd = new FormData(); fd.set('body', body); if (photo) fd.set('photo', photo)
       const r = await fetch('/api/social/posts', { method: 'POST', body: fd })
       if (r.ok) { setComposer(false); setDraft(''); setPhoto(null); await load() }
-      else setError((await r.json().catch(() => ({})))?.error || 'Could not post.')
+      else setError((await r.json().catch(() => ({})))?.error || t('Could not post.', 'Chưa đăng được.'))
     } finally { setPosting(false) }
-  }, [draft, photo, posting, load])
+  }, [draft, photo, posting, load, t])
 
   return (
-    <MemberPage title="The Snug" subtitle="THE CLUB, IN CONVERSATION" description="Drams worth mentioning, moments from the floor, a word between members. Unhurried — like the room itself.">
+    <MemberPage title={t('The Snug', surfaceName('/members/snug', 'vn'))} subtitle={t('THE CLUB, IN CONVERSATION', 'NƠI CÂU LẠC BỘ TRÒ CHUYỆN')} description={t('Drams worth mentioning, moments from the floor, a word between members. Unhurried — like the room itself.', 'Những ly đáng nhắc đến, khoảnh khắc trong câu lạc bộ, đôi lời giữa các hội viên. Thong thả — như chính căn phòng này.')}>
       {gate ? (
         <div style={gateWrap}>
           {gate === 'staff'
-            ? <>The Snug is the members’ room. You can post house moments from <Link href="/admin/snug" style={gateLink}>the admin Snug →</Link></>
-            : <>Your login isn’t linked to a membership yet. A word with the Club will set it right.</>}
+            ? <>{t('The Snug is the members’ room. You can post house moments from ', 'The Snug là phòng của hội viên. Bạn có thể đăng khoảnh khắc của câu lạc bộ từ ')}<Link href="/admin/snug" style={gateLink}>{t('the admin Snug →', 'trang Snug quản trị →')}</Link></>
+            : <>{t('Your login isn’t linked to a membership yet. A word with the Club will set it right.', 'Tài khoản đăng nhập của bạn chưa được liên kết với tư cách thành viên. Chỉ cần báo với Câu lạc bộ, chúng tôi sẽ sắp xếp ngay.')}</>}
         </div>
       ) : (
         <>
-          <button onClick={() => setComposer(true)} style={shareBtn}>✎ Share something</button>
+          <button onClick={() => setComposer(true)} style={shareBtn}>✎ {t('Share something', 'Chia sẻ đôi điều')}</button>
 
           {pending > 0 && (
-            <button onClick={refreshTop} style={nudge}>↑ {pending} new {pending === 1 ? 'arrival' : 'arrivals'} — tap to catch up</button>
+            <button onClick={refreshTop} style={nudge}>↑ {pending} {t(pending === 1 ? 'new arrival' : 'new arrivals', 'bài mới')} — {t('tap to catch up', 'chạm để xem')}</button>
           )}
 
           {loading ? (
-            <p style={muted}>Settling in…</p>
+            <p style={muted}>{t('Settling in…', 'Đang vào phòng…')}</p>
           ) : items.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '32px 0' }}>
-              <p style={muted}>Quiet in here for the moment. Pour something, and tell the room about it.</p>
+              <p style={muted}>{t('Quiet in here for the moment. Pour something, and tell the room about it.', 'Lúc này trong phòng còn yên ắng. Hãy rót một ly và kể cho mọi người nghe.')}</p>
             </div>
           ) : (
             <div>
               {items.map(it => <FeedCard key={`${it.item_type}:${it.id}`} it={it} onChanged={load} />)}
-              {next && <button onClick={loadMore} disabled={loadingMore} style={moreBtn}>{loadingMore ? 'Pouring…' : 'Earlier in the Snug'}</button>}
+              {next && <button onClick={loadMore} disabled={loadingMore} style={moreBtn}>{loadingMore ? t('Pouring…', 'Đang rót…') : t('Earlier in the Snug', 'Bài cũ hơn trong The Snug')}</button>}
             </div>
           )}
         </>
       )}
 
-      <MemberModal open={composer} onClose={() => { setComposer(false); setPhoto(null) }} title="Share with the Snug" subtitle="THE ROOM WILL SEE THIS">
+      <MemberModal open={composer} onClose={() => { setComposer(false); setPhoto(null) }} title={t('Share with the Snug', 'Chia sẻ lên The Snug')} subtitle={t('THE ROOM WILL SEE THIS', 'MỌI NGƯỜI TRONG PHÒNG SẼ THẤY')}>
         {error && <div style={{ fontFamily: MONO, fontSize: 11, color: '#C27070', marginBottom: 8 }}>{error}</div>}
-        <textarea value={draft} onChange={e => setDraft(e.target.value.slice(0, 8000))} rows={4} placeholder="A dram worth mentioning, a thought, a question for the room…" style={textarea} />
+        <textarea value={draft} onChange={e => setDraft(e.target.value.slice(0, 8000))} rows={4} placeholder={t('A dram worth mentioning, a thought, a question for the room…', 'Một ly đáng nhắc đến, một suy nghĩ, một câu hỏi cho mọi người…')} style={textarea} />
         <div style={{ marginTop: 12 }}>
           {photo ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontFamily: MONO, fontSize: 11, color: '#E5D4C2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>{photo.name}</span>
-              <button onClick={() => setPhoto(null)} style={{ ...smallChip, color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}>Remove</button>
+              <button onClick={() => setPhoto(null)} style={{ ...smallChip, color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }}>{t('Remove', 'Gỡ bỏ')}</button>
             </div>
           ) : (
             <label style={{ ...smallChip, cursor: 'pointer', display: 'inline-block' }}>
-              ＋ Add a photo <span style={{ opacity: 0.5 }}>(location stripped)</span>
+              ＋ {t('Add a photo', 'Thêm ảnh')} <span style={{ opacity: 0.5 }}>{t('(location stripped)', '(đã xoá vị trí)')}</span>
               <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) setPhoto(f) }} />
             </label>
           )}
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
-          <button onClick={() => { setComposer(false); setPhoto(null) }} style={cancelBtn}>Cancel</button>
-          <button onClick={post} disabled={posting || !draft.trim()} style={{ ...postBtn, opacity: posting || !draft.trim() ? 0.4 : 1 }}>{posting ? 'Sharing…' : 'Share'}</button>
+          <button onClick={() => { setComposer(false); setPhoto(null) }} style={cancelBtn}>{t('Cancel', 'Huỷ')}</button>
+          <button onClick={post} disabled={posting || !draft.trim()} style={{ ...postBtn, opacity: posting || !draft.trim() ? 0.4 : 1 }}>{posting ? t('Sharing…', 'Đang chia sẻ…') : t('Share', 'Chia sẻ')}</button>
         </div>
       </MemberModal>
     </MemberPage>
@@ -151,6 +155,7 @@ export default function Snug() {
 }
 
 function FeedCard({ it, onChanged }: { it: Item; onChanged: () => void }) {
+  const { t, lang } = useLang()
   const house = it.kind === 'house_post'
   const [mine, setMine] = useState<string[]>(it.my_reactions || [])
   const [summary, setSummary] = useState(it.reaction_summary)
@@ -188,20 +193,20 @@ function FeedCard({ it, onChanged }: { it: Item; onChanged: () => void }) {
     <div style={{ ...card, ...(house ? houseCard : null) }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
         <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 15, color: house ? '#D4B85A' : '#E5D4C2' }}>
-          {it.author_name}{it.is_own && !house ? ' · you' : ''}
+          {it.author_name}{it.is_own && !house ? ` · ${t('you', 'bạn')}` : ''}
         </span>
-        <span style={{ fontFamily: MONO, fontSize: 9, color: '#7E7864' }}>{when(it.created_at)}</span>
+        <span style={{ fontFamily: MONO, fontSize: 9, color: '#7E7864' }}>{when(it.created_at, lang)}</span>
       </div>
 
       {it.kind === 'tasting_note' ? (
         <>
           <div style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98', marginBottom: 6 }}>
-            noted <Link href={`/members/whisky/${it.whisky_id}`} style={whiskyLink}>{it.whisky_name}</Link>
+            {t('noted', 'đã ghi chú về')} <Link href={`/members/whisky/${it.whisky_id}`} style={whiskyLink}>{it.whisky_name}</Link>
           </div>
           <div style={bodyText}>{it.note}</div>
           {(it.flavour_tags?.length ?? 0) > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
-              {it.flavour_tags!.map(t => <span key={t} style={tagChip}>{t.replace(/_/g, ' ')}</span>)}
+              {it.flavour_tags!.map(tag => <span key={tag} style={tagChip}>{tag.replace(/_/g, ' ')}</span>)}
             </div>
           )}
         </>
@@ -211,15 +216,15 @@ function FeedCard({ it, onChanged }: { it: Item; onChanged: () => void }) {
 
       {it.photo_url && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={it.photo_url} alt="Photograph shared in the Snug" loading="lazy" decoding="async" style={{ display: 'block', maxWidth: '100%', maxHeight: 320, borderRadius: 8, marginTop: 10, objectFit: 'cover' }} />
+        <img src={it.photo_url} alt={t('Photograph shared in the Snug', 'Ảnh được chia sẻ trong The Snug')} loading="lazy" decoding="async" style={{ display: 'block', maxWidth: '100%', maxHeight: 320, borderRadius: 8, marginTop: 10, objectFit: 'cover' }} />
       )}
 
       <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
         {RX.map(r => {
           const on = mine.includes(r.key)
           return (
-            <button key={r.key} onClick={() => toggle(r.key)} title={r.label} style={{ ...rxBtn, ...(on ? rxOn : null) }}>
-              <span aria-hidden>{r.emoji}</span> {r.label}
+            <button key={r.key} onClick={() => toggle(r.key)} title={t(r.label, r.label_vn)} style={{ ...rxBtn, ...(on ? rxOn : null) }}>
+              <span aria-hidden>{r.emoji}</span> {t(r.label, r.label_vn)}
             </button>
           )
         })}
@@ -233,8 +238,8 @@ function FeedCard({ it, onChanged }: { it: Item; onChanged: () => void }) {
 
       {canManage && (
         <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
-          <button onClick={() => { setEditDraft(it.body || ''); setEditing(true) }} style={manageBtn}>Edit</button>
-          <button onClick={() => setConfirmDel(true)} style={{ ...manageBtn, color: '#C27070' }}>Delete</button>
+          <button onClick={() => { setEditDraft(it.body || ''); setEditing(true) }} style={manageBtn}>{t('Edit', 'Sửa')}</button>
+          <button onClick={() => setConfirmDel(true)} style={{ ...manageBtn, color: '#C27070' }}>{t('Delete', 'Xoá')}</button>
         </div>
       )}
 
@@ -244,16 +249,17 @@ function FeedCard({ it, onChanged }: { it: Item; onChanged: () => void }) {
         onConfirm={doDelete}
         busy={deleting}
         danger
-        title="Delete this post?"
-        body="This removes your post from the Snug for everyone. This can't be undone."
-        confirmLabel="Delete"
+        title={t('Delete this post?', 'Xoá bài đăng này?')}
+        body={t("This removes your post from the Snug for everyone. This can't be undone.", 'Bài đăng sẽ bị xoá khỏi The Snug với tất cả mọi người. Không thể hoàn tác.')}
+        confirmLabel={t('Delete', 'Xoá')}
+        cancelLabel={t('Cancel', 'Huỷ')}
       />
 
-      <MemberModal open={editing} onClose={() => setEditing(false)} title="Edit your post">
+      <MemberModal open={editing} onClose={() => setEditing(false)} title={t('Edit your post', 'Sửa bài đăng')}>
         <textarea value={editDraft} onChange={e => setEditDraft(e.target.value.slice(0, 8000))} rows={4} style={textarea} />
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 14 }}>
-          <button onClick={() => setEditing(false)} style={cancelBtn}>Cancel</button>
-          <button onClick={saveEdit} disabled={!editDraft.trim()} style={{ ...postBtn, opacity: editDraft.trim() ? 1 : 0.4 }}>Save</button>
+          <button onClick={() => setEditing(false)} style={cancelBtn}>{t('Cancel', 'Huỷ')}</button>
+          <button onClick={saveEdit} disabled={!editDraft.trim()} style={{ ...postBtn, opacity: editDraft.trim() ? 1 : 0.4 }}>{t('Save', 'Lưu')}</button>
         </div>
       </MemberModal>
     </div>

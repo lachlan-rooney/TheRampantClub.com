@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import MemberPage from '@/components/MemberPage'
+import { useLang } from '@/lib/lang'
 
 // Introductions. Incoming: requests addressed to me (name + palate + context) with
 // a gracious accept / a quiet decline (one tap, no drama). Sent: my own requests —
@@ -15,6 +16,7 @@ interface Incoming { id: string; via: string; from_name?: string; from_sig?: str
 interface Sent { id: string; via: string; to_name: string | null; status: string; context?: string | null; created_at: string }
 
 export default function Introductions() {
+  const { t, lang } = useLang()
   const [incoming, setIncoming] = useState<Incoming[]>([])
   const [sent, setSent] = useState<Sent[]>([])
   const [loading, setLoading] = useState(true)
@@ -36,24 +38,26 @@ export default function Introductions() {
   }, [load])
 
   return (
-    <MemberPage title="Introductions" subtitle="LỜI GIỚI THIỆU" description="The club makes the introduction — you decide. A decline is quiet; no one is ever told no.">
+    <MemberPage title="Introductions" subtitle="LỜI GIỚI THIỆU" description={t('The club makes the introduction — you decide. A decline is quiet; no one is ever told no.', 'Câu lạc bộ đứng ra giới thiệu — quyết định là ở bạn. Lời từ chối luôn kín đáo; không ai phải nghe một lời “không”.')}>
       {loading ? (
-        <p style={muted}>Reading the room…</p>
+        <p style={muted}>{t('Reading the room…', 'Đang xem qua…')}</p>
       ) : (
         <>
-          <div style={sectionLabel}>Awaiting your word</div>
+          <div style={sectionLabel}>{t('Awaiting your word', 'Chờ bạn hồi đáp')}</div>
           {incoming.length === 0 ? (
-            <p style={{ ...muted, marginBottom: 28 }}>No introductions awaiting you just now.</p>
+            <p style={{ ...muted, marginBottom: 28 }}>{t('No introductions awaiting you just now.', 'Hiện chưa có lời giới thiệu nào chờ bạn.')}</p>
           ) : incoming.map(i => (
             <div key={i.id} style={card}>
               {i.via === 'palate_match' ? (
                 <div style={{ marginBottom: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                     <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 26, fontWeight: 600, color: '#D4B85A' }}>{i.match_pct}%</span>
-                    <span style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98' }}>palate match</span>
+                    <span style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98' }}>{t('palate match', 'hợp khẩu vị')}</span>
                   </div>
                   <div style={{ fontFamily: MONO, fontSize: 12, color: '#E5D4C2', lineHeight: 1.6, marginTop: 6 }}>
-                    A member whose palate is {i.match_pct}% yours would like to meet — you share {i.shared_note}. Accept to see who.
+                    {lang === 'vn'
+                      ? <>Một hội viên có khẩu vị giống bạn {i.match_pct}% muốn được làm quen — hai bạn cùng thích {i.shared_note}. Chấp nhận để biết đó là ai.</>
+                      : <>A member whose palate is {i.match_pct}% yours would like to meet — you share {i.shared_note}. Accept to see who.</>}
                   </div>
                 </div>
               ) : (
@@ -69,24 +73,24 @@ export default function Introductions() {
                 </>
               )}
               <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-                <button onClick={() => act(i.id, 'accept')} disabled={busy === i.id} style={acceptBtn}>Accept · open a thread</button>
-                <button onClick={() => act(i.id, 'decline')} disabled={busy === i.id} style={declineBtn}>Not now</button>
+                <button onClick={() => act(i.id, 'accept')} disabled={busy === i.id} style={acceptBtn}>{t('Accept · open a thread', 'Chấp nhận · mở trò chuyện')}</button>
+                <button onClick={() => act(i.id, 'decline')} disabled={busy === i.id} style={declineBtn}>{t('Not now', 'Để sau')}</button>
               </div>
             </div>
           ))}
 
-          <div style={{ ...sectionLabel, marginTop: 32 }}>Your requests</div>
+          <div style={{ ...sectionLabel, marginTop: 32 }}>{t('Your requests', 'Yêu cầu của bạn')}</div>
           {sent.length === 0 ? (
-            <p style={muted}>You haven’t requested any introductions yet — find someone in <Link href="/members/members" style={link}>the directory</Link>.</p>
+            <p style={muted}>{t('You haven’t requested any introductions yet — find someone in ', 'Bạn chưa đề nghị lời giới thiệu nào — hãy tìm một người trong ')}<Link href="/members/members" style={link}>{t('the directory', 'danh bạ')}</Link>.</p>
           ) : sent.map(s => (
             <div key={s.id} style={{ ...card, opacity: 0.92 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 15, color: '#E5D4C2' }}>
-                  {s.to_name || (s.via === 'palate_match' ? 'A palate match' : 'A member')}
+                  {s.to_name || (s.via === 'palate_match' ? t('A palate match', 'Một người hợp khẩu vị') : t('A member', 'Một hội viên'))}
                 </span>
                 {s.status === 'accepted'
-                  ? <Link href="/members/messages" style={connectedPill}>Connected — open messages →</Link>
-                  : <span style={pendingPill}>Pending</span>}
+                  ? <Link href="/members/messages" style={connectedPill}>{t('Connected — open messages →', 'Đã kết nối — mở tin nhắn →')}</Link>
+                  : <span style={pendingPill}>{t('Pending', 'Đang chờ')}</span>}
               </div>
               {s.context && <div style={{ ...contextLine, marginTop: 6 }}>“{s.context}”</div>}
             </div>

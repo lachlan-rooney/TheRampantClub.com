@@ -61,7 +61,9 @@ export default function TermsPage() {
 
   return (
     <MemberPage
-      title={(lang === 'vn' ? doc?.name_vn : doc?.name_en) || doc?.name_en || 'Membership Agreement'}
+      // English title + Vietnamese subtitle: MemberPage itself promotes the
+      // Vietnamese in VN mode. Passing name_vn as the title too printed it twice.
+      title={doc?.name_en || 'Membership Agreement'}
       subtitle={doc?.name_vn || 'Thỏa Thuận Thành Viên'}
     >
       <style dangerouslySetInnerHTML={{ __html: `

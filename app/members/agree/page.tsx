@@ -20,7 +20,7 @@ export default function AgreePage() {
   // what is rendered AND what goes into the consent payload, so `evidence` keeps
   // recording the language actually read — which is the whole point of capturing
   // it. Reading one language still suffices; that decision is untouched.
-  const { lang, setLang } = useLang()
+  const { lang, setLang, t } = useLang()
   const [reached, setReached] = useState<Record<string, boolean>>({})
   const [busy, setBusy] = useState<string | null>(null)
   const [msg, setMsg] = useState('')
@@ -39,8 +39,8 @@ export default function AgreePage() {
     })
     setBusy(null)
     const j = await r.json().catch(() => ({}))
-    if (!r.ok) return setMsg(j.error || 'Could not record that.')
-    setMsg(j.emailed ? 'Recorded. A copy is on its way to your email.' : 'Recorded.')
+    if (!r.ok) return setMsg(j.error || t('Could not record that.', 'Chưa ghi nhận được.'))
+    setMsg(j.emailed ? t('Recorded. A copy is on its way to your email.', 'Đã ghi nhận. Một bản sao đang được gửi đến email của bạn.') : t('Recorded.', 'Đã ghi nhận.'))
     await load()
     const left = (docs || []).filter(x => x.doc_key !== d.doc_key && x.needs_action)
     if (left.length === 0) setTimeout(() => router.push('/members'), 1200)
@@ -56,10 +56,10 @@ export default function AgreePage() {
     // still land under the bar — which is exactly what intercepted a real tap on the
     // agree control during verification.
     <div style={{ maxWidth: 760, paddingBottom: 96 }}>
-      <h1 style={h1}>Before you go on</h1>
+      <h1 style={h1}>{t('Before you go on', 'Trước khi tiếp tục')}</h1>
       <p style={intro}>
-        Two documents, read at your own pace. You can keep a copy of either without agreeing to it,
-        and we&rsquo;ll email you what you agreed to and when.
+        {t('Two documents, read at your own pace. You can keep a copy of either without agreeing to it, and we’ll email you what you agreed to and when.',
+          'Hai văn bản, xin bạn cứ đọc thong thả. Bạn có thể lưu bản sao của từng văn bản mà không cần đồng ý, và chúng tôi sẽ gửi email xác nhận nội dung bạn đã đồng ý cùng thời điểm đồng ý.')}
       </p>
 
       <div style={{ display: 'flex', gap: 8, margin: '22px 0 6px' }}>
@@ -70,14 +70,15 @@ export default function AgreePage() {
       </div>
       {/* Surfaced, not buried at paragraph six where the source document puts it. */}
       <p style={prevails}>
-        Reading either language is enough. Where the two differ, the English version prevails.
-        <span style={{ opacity: .7 }}> · Đọc một trong hai ngôn ngữ là đủ. Nếu có khác biệt, bản tiếng Anh được ưu tiên.</span>
+        {/* Both languages stay on screen; the chosen one leads. */}
+        {t(PREVAILS_EN, PREVAILS_VN)}
+        <span style={{ opacity: .7 }}> · {t(PREVAILS_VN, PREVAILS_EN)}</span>
       </p>
 
-      {docs === null && <p style={{ opacity: .6, fontSize: 14 }}>Loading…</p>}
+      {docs === null && <p style={{ opacity: .6, fontSize: 14 }}>{t('Loading…', 'Đang tải…')}</p>}
 
       {docs && pending.length === 0 && (
-        <div style={done}>You&rsquo;re up to date. Nothing to agree to.</div>
+        <div style={done}>{t('You’re up to date. Nothing to agree to.', 'Bạn đã hoàn tất. Không còn văn bản nào cần đồng ý.')}</div>
       )}
 
       {pending.map(d => (
@@ -89,19 +90,19 @@ export default function AgreePage() {
 
       {optional.length > 0 && docs && (
         <div style={{ marginTop: 40 }}>
-          <div style={sectionLabel}>Optional</div>
+          <div style={sectionLabel}>{t('Optional', 'Tuỳ chọn')}</div>
           {optional.map(d => (
             <div key={d.doc_key} style={optRow}>
               <div>
                 <div style={{ fontFamily: SERIF, fontSize: 17 }}>{lang === 'vn' && d.name_vn ? d.name_vn : d.name_en}</div>
                 <div style={{ fontSize: 13, opacity: .65, marginTop: 3 }}>
-                  Optional, and it never affects your membership. You&rsquo;ll still hear about anything
-                  affecting your membership either way — that isn&rsquo;t marketing.
+                  {t('Optional, and it never affects your membership. You’ll still hear about anything affecting your membership either way — that isn’t marketing.',
+                    'Không bắt buộc, và không bao giờ ảnh hưởng đến tư cách thành viên của bạn. Dù chọn thế nào, bạn vẫn nhận được mọi thông tin liên quan đến tư cách thành viên — đó không phải là tiếp thị.')}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => agree(d, true)} style={smallBtn}>{d.granted ? 'On' : 'Turn on'}</button>
-                <button onClick={() => agree(d, false)} style={smallGhost}>{d.granted === false ? 'Off' : 'No thanks'}</button>
+                <button onClick={() => agree(d, true)} style={smallBtn}>{d.granted ? t('On', 'Đang bật') : t('Turn on', 'Bật')}</button>
+                <button onClick={() => agree(d, false)} style={smallGhost}>{d.granted === false ? t('Off', 'Đã tắt') : t('No thanks', 'Không, cảm ơn')}</button>
               </div>
             </div>
           ))}
@@ -110,12 +111,12 @@ export default function AgreePage() {
 
       {signed.length > 0 && (
         <div style={{ marginTop: 40 }}>
-          <div style={sectionLabel}>Signed</div>
+          <div style={sectionLabel}>{t('Signed', 'Đã ký')}</div>
           {signed.map(d => (
             <div key={d.doc_key} style={{ ...optRow, display: 'block' }}>
               <div style={{ fontFamily: SERIF, fontSize: 17 }}>{lang === 'vn' && d.name_vn ? d.name_vn : d.name_en}</div>
               <div style={{ fontSize: 13, opacity: .65, marginTop: 3 }}>
-                Executed by signature, not agreed here. Your signed copy is the record.
+                {t('Executed by signature, not agreed here. Your signed copy is the record.', 'Được xác lập bằng chữ ký, không đồng ý tại đây. Bản đã ký của bạn là văn bản lưu hồ sơ.')}
               </div>
             </div>
           ))}
@@ -130,6 +131,7 @@ export default function AgreePage() {
 function DocumentBlock({ doc, lang, reached, onReached, onAgree, busy }: {
   doc: Doc; lang: 'en' | 'vn'; reached: boolean; onReached: () => void; onAgree: () => void; busy: boolean
 }) {
+  const { t } = useLang()
   const sentinel = useRef<HTMLDivElement | null>(null)
   const box = useRef<HTMLDivElement | null>(null)
   // onReached is a new closure on every parent render. Depending on it re-created
@@ -178,7 +180,7 @@ function DocumentBlock({ doc, lang, reached, onReached, onAgree, busy }: {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
         <h2 style={{ fontFamily: SERIF, fontSize: 22, margin: 0 }}>{title}</h2>
         <div style={{ fontFamily: MONO, fontSize: 11, opacity: .6 }}>
-          version {doc.version}{doc.effective_date ? ` · ${doc.effective_date}` : ''}
+          {t('version', 'phiên bản')} {doc.version}{doc.effective_date ? ` · ${doc.effective_date}` : ''}
         </div>
       </div>
 
@@ -193,15 +195,17 @@ function DocumentBlock({ doc, lang, reached, onReached, onAgree, busy }: {
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 18, flexWrap: 'wrap' }}>
         <button onClick={onAgree} disabled={!reached || busy}
           style={{ ...btn, opacity: reached && !busy ? 1 : .35, cursor: reached && !busy ? 'pointer' : 'not-allowed' }}>
-          {busy ? 'Recording…' : 'I agree'}
+          {busy ? t('Recording…', 'Đang ghi nhận…') : t('I agree', 'Tôi đồng ý')}
         </button>
-        <button onClick={download} style={smallGhost}>Download a copy</button>
-        {!reached && <span style={{ fontSize: 12, opacity: .55 }}>Read to the end to continue.</span>}
+        <button onClick={download} style={smallGhost}>{t('Download a copy', 'Tải bản sao')}</button>
+        {!reached && <span style={{ fontSize: 12, opacity: .55 }}>{t('Read to the end to continue.', 'Đọc đến cuối để tiếp tục.')}</span>}
       </div>
     </section>
   )
 }
 
+const PREVAILS_EN = 'Reading either language is enough. Where the two differ, the English version prevails.'
+const PREVAILS_VN = 'Đọc một trong hai ngôn ngữ là đủ. Nếu có khác biệt, bản tiếng Anh được ưu tiên.'
 const SERIF = "'Rampant Sans', Georgia, serif"
 const MONO = "'Google Sans Code', monospace"
 const h1: React.CSSProperties = { fontFamily: SERIF, fontSize: 30, marginBottom: 8 }

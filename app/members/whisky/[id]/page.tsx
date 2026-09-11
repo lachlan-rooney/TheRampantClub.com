@@ -7,6 +7,7 @@ import type { Whisky } from '@/lib/types'
 import MemberPage from '@/components/MemberPage'
 import FlavourRadar from '@/components/whisky/FlavourRadar'
 import WhiskyNotes from '@/components/whisky/WhiskyNotes'
+import { useLang } from '@/lib/lang'
 
 // A bottle's living story — its own data + the FlavourRadar + the members'
 // conversation (WhiskyNotes: own notes any visibility, others' SNUG notes only —
@@ -16,6 +17,7 @@ import WhiskyNotes from '@/components/whisky/WhiskyNotes'
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
 
 export default function BottleStory() {
+  const { t } = useLang()
   const params = useParams()
   const id = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : ''
   const [w, setW] = useState<Whisky | null>(null)
@@ -27,8 +29,8 @@ export default function BottleStory() {
       .then(({ data }) => { setW((data as Whisky) || null); setLoading(false) })
   }, [id])
 
-  if (loading) return <MemberPage title="…" subtitle=""><p style={muted}>Pouring…</p></MemberPage>
-  if (!w) return <MemberPage title="Not found" subtitle=""><p style={muted}>We couldn’t find that bottle.</p></MemberPage>
+  if (loading) return <MemberPage title="…" subtitle=""><p style={muted}>{t('Pouring…', 'Đang rót…')}</p></MemberPage>
+  if (!w) return <MemberPage title={t('Not found', 'Không tìm thấy')} subtitle=""><p style={muted}>{t('We couldn’t find that bottle.', 'Chúng tôi không tìm thấy chai này.')}</p></MemberPage>
 
   const meta = [w.distillery, w.region].filter(Boolean).join(' · ')
   const spec = [w.cask_type, w.age, w.abv].filter(Boolean).join(' · ')
@@ -40,7 +42,7 @@ export default function BottleStory() {
       {w.tasting_notes ? (
         <p style={house}>{w.tasting_notes}</p>
       ) : (
-        <p style={{ ...house, opacity: 0.5 }}>No house note for this bottle yet — but the radar shows its shape, and the room may have something to say below.</p>
+        <p style={{ ...house, opacity: 0.5 }}>{t('No house note for this bottle yet — but the radar shows its shape, and the room may have something to say below.', 'Chai này chưa có ghi chú của câu lạc bộ — nhưng biểu đồ đã cho thấy hình dáng hương vị, và các hội viên có thể đã chia sẻ cảm nhận bên dưới.')}</p>
       )}
 
       <div style={{ display: 'flex', justifyContent: 'center', margin: '20px 0 28px' }}>
@@ -48,7 +50,7 @@ export default function BottleStory() {
       </div>
 
       <div style={divider} />
-      <div style={convLabel}>The room on this bottle</div>
+      <div style={convLabel}>{t('The room on this bottle', 'Hội viên nói về chai này')}</div>
       <WhiskyNotes whiskyId={w.id} />
     </MemberPage>
   )

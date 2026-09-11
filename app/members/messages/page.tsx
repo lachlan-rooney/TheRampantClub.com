@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import MemberPage from '@/components/MemberPage'
+import { useLang, type Lang } from '@/lib/lang'
 
 // Member↔member direct messages — only ever opened by an accepted introduction.
 // Reuses the concierge thread feel. A member can block the other party (the thread
@@ -13,9 +14,10 @@ const MONO = "'Google Sans Code', 'DM Mono', monospace"
 
 interface ThreadRow { thread_id: string; other_name: string; last_preview: string; last_at: string | null; unread: number }
 interface Msg { id: string; sender: string; body: string; created_at: string; mine: boolean }
-const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+const timeOf = (iso: string, lang: Lang = 'en') => new Date(iso).toLocaleTimeString(lang === 'vn' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit' })
 
 function Messages() {
+  const { t, lang } = useLang()
   const search = useSearchParams()
   const [threads, setThreads] = useState<ThreadRow[]>([])
   const [blocked, setBlocked] = useState<{ id: string; name: string }[]>([])
@@ -56,15 +58,15 @@ function Messages() {
     try {
       const r = await fetch('/api/social/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ thread_id: sel, body: text }) })
       if (r.ok) { setDraft(''); await loadThread(sel); await loadList() }
-      else setErr((await r.json().catch(() => ({})))?.error || 'Could not send.')
+      else setErr((await r.json().catch(() => ({})))?.error || t('Could not send.', 'Chưa gửi được.'))
     } finally { setSending(false) }
-  }, [draft, sel, sending, loadThread, loadList])
+  }, [draft, sel, sending, loadThread, loadList, t])
 
   const block = useCallback(async () => {
-    if (!other.id || !window.confirm('Block this member? Your shared conversation closes for both of you.')) return
+    if (!other.id || !window.confirm(t('Block this member? Your shared conversation closes for both of you.', 'Chặn hội viên này? Cuộc trò chuyện chung sẽ đóng lại với cả hai người.'))) return
     await fetch('/api/social/blocks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target: other.id, block: true }) })
     setSel(null); setMessages([]); await loadList()
-  }, [other, loadList])
+  }, [other, loadList, t])
 
   const unblock = useCallback(async (id: string) => {
     await fetch('/api/social/blocks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target: id, block: false }) })
@@ -74,32 +76,32 @@ function Messages() {
   const onKey = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }
 
   return (
-    <MemberPage title="Messages" subtitle="TIN NHẮN" description="Private conversations, opened by an introduction. Staff see that introductions happen — they never read your messages.">
+    <MemberPage title="Messages" subtitle="TIN NHẮN" description={t('Private conversations, opened by an introduction. Staff see that introductions happen — they never read your messages.', 'Những cuộc trò chuyện riêng, mở ra từ một lời giới thiệu. Nhân viên biết có lời giới thiệu — nhưng không bao giờ đọc tin nhắn của bạn.')}>
       {!sel ? (
         <>
           {!loaded ? (
-            <p style={muted}>Gathering your conversations…</p>
+            <p style={muted}>{t('Gathering your conversations…', 'Đang tải các cuộc trò chuyện…')}</p>
           ) : threads.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '24px 0' }}>
-              <p style={muted}>No conversations yet. They begin with an <Link href="/members/members" style={link}>introduction</Link>.</p>
+              <p style={muted}>{t('No conversations yet. They begin with an ', 'Chưa có cuộc trò chuyện nào. Mọi cuộc trò chuyện bắt đầu từ một ')}<Link href="/members/members" style={link}>{t('introduction', 'lời giới thiệu')}</Link>.</p>
             </div>
-          ) : threads.map(t => (
-            <button key={t.thread_id} onClick={() => setSel(t.thread_id)} style={listRow}>
+          ) : threads.map(th => (
+            <button key={th.thread_id} onClick={() => setSel(th.thread_id)} style={listRow}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-                <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2' }}>{t.other_name}</span>
-                {t.unread > 0 && <span style={unreadDot}>{t.unread}</span>}
+                <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2' }}>{th.other_name}</span>
+                {th.unread > 0 && <span style={unreadDot}>{th.unread}</span>}
               </div>
-              <div style={preview}>{t.last_preview || '—'}</div>
+              <div style={preview}>{th.last_preview || '—'}</div>
             </button>
           ))}
 
           {blocked.length > 0 && (
             <div style={{ marginTop: 24 }}>
-              <div style={sectionLabel}>Blocked</div>
+              <div style={sectionLabel}>{t('Blocked', 'Đã chặn')}</div>
               {blocked.map(b => (
                 <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(229,212,194,0.06)' }}>
                   <span style={{ fontFamily: MONO, fontSize: 12, color: '#B2AA98' }}>{b.name}</span>
-                  <button onClick={() => unblock(b.id)} style={unblockBtn}>Unblock</button>
+                  <button onClick={() => unblock(b.id)} style={unblockBtn}>{t('Unblock', 'Bỏ chặn')}</button>
                 </div>
               ))}
             </div>
@@ -108,28 +110,28 @@ function Messages() {
       ) : (
         <>
           <div style={threadHeader}>
-            <button onClick={() => setSel(null)} style={backBtn}>← All messages</button>
+            <button onClick={() => setSel(null)} style={backBtn}>{t('← All messages', '← Tất cả tin nhắn')}</button>
             <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2' }}>{other.name}</span>
-            <button onClick={block} style={blockBtn}>Block</button>
+            <button onClick={block} style={blockBtn}>{t('Block', 'Chặn')}</button>
           </div>
           <div style={panel}>
             <div ref={scrollRef} style={scroll}>
               {messages.length === 0 ? (
-                <div style={{ ...muted, textAlign: 'center', padding: '24px 0' }}>The introduction’s made — say hello.</div>
+                <div style={{ ...muted, textAlign: 'center', padding: '24px 0' }}>{t('The introduction’s made — say hello.', 'Lời giới thiệu đã xong — hãy gửi lời chào.')}</div>
               ) : messages.map(m => (
                 <div key={m.id} style={{ display: 'flex', justifyContent: m.mine ? 'flex-end' : 'flex-start', marginBottom: 10 }}>
                   <div style={m.mine ? bubbleMine : bubbleOther}>
                     <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{m.body}</div>
-                    <div style={{ ...stamp, textAlign: m.mine ? 'right' : 'left' }}>{timeOf(m.created_at)}</div>
+                    <div style={{ ...stamp, textAlign: m.mine ? 'right' : 'left' }}>{timeOf(m.created_at, lang)}</div>
                   </div>
                 </div>
               ))}
             </div>
             <div style={composer}>
               {err && <div style={{ fontFamily: MONO, fontSize: 11, color: '#C27070', marginBottom: 6 }}>{err}</div>}
-              <textarea value={draft} onChange={e => setDraft(e.target.value.slice(0, 4000))} onKeyDown={onKey} rows={2} placeholder={`Message ${other.name}…`} style={textarea} />
+              <textarea value={draft} onChange={e => setDraft(e.target.value.slice(0, 4000))} onKeyDown={onKey} rows={2} placeholder={`${t('Message', 'Nhắn cho')} ${other.name}…`} style={textarea} />
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-                <button onClick={send} disabled={sending || !draft.trim()} style={{ ...sendBtn, opacity: sending || !draft.trim() ? 0.4 : 1 }}>{sending ? 'Sending…' : 'Send'}</button>
+                <button onClick={send} disabled={sending || !draft.trim()} style={{ ...sendBtn, opacity: sending || !draft.trim() ? 0.4 : 1 }}>{sending ? t('Sending…', 'Đang gửi…') : t('Send', 'Gửi')}</button>
               </div>
             </div>
           </div>

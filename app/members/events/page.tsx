@@ -6,6 +6,8 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { vnDateString, vnEventLabel } from '@/lib/datetime'
 import type { Fixture, FixtureSignup } from '@/lib/types'
 import { typeLabel, isSport } from '@/lib/fixtures'
+import { useLang, pick, type Lang } from '@/lib/lang'
+import { surfaceName } from '@/lib/members/surfaces'
 
 // "What's On" — ONE surface for everything happening at the club. Sports
 // fixtures (from `fixtures`, with RSVP) and house happenings (from
@@ -17,6 +19,7 @@ import { typeLabel, isSport } from '@/lib/fixtures'
 interface Entry {
   id: string
   title: string
+  title_vn: string | null
   description: string | null
   entry_date: string
   start_time: string | null
@@ -45,6 +48,7 @@ const metaOf = (t: string) => TYPE_META[t] || TYPE_META.other
 // PDF fires nowhere on this site, and a broken frame is worse than an honest
 // label. Named a link card here so nobody rebuilds the embed later.
 function Thumb({ a }: { a?: { id: string; kind: string; filename: string } }) {
+  const { t } = useLang()
   if (!a) return null
   if (a.kind === 'pdf') {
     return (
@@ -58,39 +62,48 @@ function Thumb({ a }: { a?: { id: string; kind: string; filename: string } }) {
   // tap. contain, not cover — cropping a poster is the wrong operation.
   return (
     <a href={`/api/entries/attachment/${a.id}`} target="_blank" rel="noreferrer"
-       className="wo-thumb-link" aria-label="Open the full image">
+       className="wo-thumb-link" aria-label={t('Open the full image', 'Mở ảnh đầy đủ')}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img className="wo-thumb" src={`/api/entries/attachment/${a.id}`} alt="" loading="lazy" />
     </a>
   )
 }
-const KIND_META: Record<string, { label: string; tint: string; ring: string }> = {
-  event:        { label: 'Event',          tint: 'rgba(212,184,90,0.20)',  ring: 'rgba(212,184,90,0.55)' },
-  meeting:      { label: 'Meeting',        tint: 'rgba(178,170,152,0.16)', ring: 'rgba(178,170,152,0.45)' },
-  interview:    { label: 'Interview',      tint: 'rgba(178,170,152,0.16)', ring: 'rgba(178,170,152,0.45)' },
-  reminder:     { label: 'Reminder',       tint: 'rgba(178,170,152,0.16)', ring: 'rgba(178,170,152,0.45)' },
-  closure:      { label: 'Club closed',    tint: 'rgba(194,112,112,0.18)', ring: 'rgba(194,112,112,0.5)' },
-  private_hire: { label: 'Private event',  tint: 'rgba(212,184,90,0.16)',  ring: 'rgba(212,184,90,0.45)' },
-  supplier:     { label: 'Distiller visit',tint: 'rgba(122,176,122,0.16)', ring: 'rgba(122,176,122,0.5)' },
-  tasting:      { label: 'Tasting',        tint: 'rgba(212,184,90,0.20)',  ring: 'rgba(212,184,90,0.55)' },
-  other:        { label: 'Notice',         tint: 'rgba(178,170,152,0.16)', ring: 'rgba(178,170,152,0.45)' },
+const KIND_META: Record<string, { label: string; vn: string; tint: string; ring: string }> = {
+  event:        { label: 'Event',          vn: 'Sự kiện',          tint: 'rgba(212,184,90,0.20)',  ring: 'rgba(212,184,90,0.55)' },
+  meeting:      { label: 'Meeting',        vn: 'Cuộc họp',         tint: 'rgba(178,170,152,0.16)', ring: 'rgba(178,170,152,0.45)' },
+  interview:    { label: 'Interview',      vn: 'Phỏng vấn',        tint: 'rgba(178,170,152,0.16)', ring: 'rgba(178,170,152,0.45)' },
+  reminder:     { label: 'Reminder',       vn: 'Nhắc nhở',         tint: 'rgba(178,170,152,0.16)', ring: 'rgba(178,170,152,0.45)' },
+  closure:      { label: 'Club closed',    vn: 'CLB đóng cửa',     tint: 'rgba(194,112,112,0.18)', ring: 'rgba(194,112,112,0.5)' },
+  private_hire: { label: 'Private event',  vn: 'Sự kiện riêng',    tint: 'rgba(212,184,90,0.16)',  ring: 'rgba(212,184,90,0.45)' },
+  supplier:     { label: 'Distiller visit',vn: 'Nhà chưng cất ghé thăm', tint: 'rgba(122,176,122,0.16)', ring: 'rgba(122,176,122,0.5)' },
+  tasting:      { label: 'Tasting',        vn: 'Nếm thử',          tint: 'rgba(212,184,90,0.20)',  ring: 'rgba(212,184,90,0.55)' },
+  other:        { label: 'Notice',         vn: 'Thông báo',        tint: 'rgba(178,170,152,0.16)', ring: 'rgba(178,170,152,0.45)' },
 }
 
 // Pinned to Vietnam, NOT the viewer's browser. A member reading from Scotland or
 // a reciprocal club must see the time the event actually starts here.
-const fmtFixtureDate = (d: string) => vnEventLabel(d)
-const fmtEntryDate = (iso: string) =>
-  new Date(`${iso}T12:00:00+07:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Ho_Chi_Minh' })
-const fmtEntryTime = (e: Entry) => {
-  if (e.start_time) { const t = e.start_time.slice(0, 5); return e.end_time ? `${t}–${e.end_time.slice(0, 5)}` : t }
-  if (e.session_label) return e.session_label.charAt(0).toUpperCase() + e.session_label.slice(1)
-  return 'All day'
+// Vietnamese mirrors vnEventLabel's two formatters, same options, vi-VN locale.
+const VI_EVENT_DATE = new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', weekday: 'short', day: 'numeric', month: 'short' })
+const VI_EVENT_TIME = new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })  // Vietnamese reads 19:00, not 7:00 CH
+const fmtFixtureDate = (d: string, lang: Lang) => {
+  if (lang !== 'vn') return vnEventLabel(d)
+  const date = new Date(d)
+  return Number.isNaN(date.getTime()) ? '' : `${VI_EVENT_DATE.format(date)} · ${VI_EVENT_TIME.format(date)}`
 }
-const relativeDate = (ms: number) => {
+const fmtEntryDate = (iso: string, lang: Lang) =>
+  new Date(`${iso}T12:00:00+07:00`).toLocaleDateString(lang === 'vn' ? 'vi-VN' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Ho_Chi_Minh' })
+// Display-only Vietnamese for the stored session labels; a custom label stays as typed.
+const SESSION_VN: Record<string, string> = { early: 'Buổi chiều', evening: 'Buổi tối', late: 'Khuya' }
+const fmtEntryTime = (e: Entry, t: (en: string, vn: string) => string) => {
+  if (e.start_time) { const st = e.start_time.slice(0, 5); return e.end_time ? `${st}–${e.end_time.slice(0, 5)}` : st }
+  if (e.session_label) { const en = e.session_label.charAt(0).toUpperCase() + e.session_label.slice(1); return t(en, SESSION_VN[e.session_label.toLowerCase()] || en) }
+  return t('All day', 'Cả ngày')
+}
+const relativeDate = (ms: number, t: (en: string, vn: string) => string) => {
   const days = Math.round((ms - Date.now()) / 86400000)
-  if (days === 0) return 'today'
-  if (days === 1) return 'tomorrow'
-  if (days > 0 && days < 7) return `in ${days} days`
+  if (days === 0) return t('today', 'hôm nay')
+  if (days === 1) return t('tomorrow', 'ngày mai')
+  if (days > 0 && days < 7) return t(`in ${days} days`, `${days} ngày nữa`)
   return ''
 }
 
@@ -100,6 +113,7 @@ type Item =
 
 export default function WhatsOnPage() {
   const supabase = useMemo(() => createBrowserSupabaseClient(), [])
+  const { t, lang } = useLang()
   const [fixtures, setFixtures] = useState<Fixture[]>([])
   const [entries, setEntries] = useState<Entry[]>([])
   const [signups, setSignups] = useState<FixtureSignup[]>([])
@@ -134,7 +148,7 @@ export default function WhatsOnPage() {
         supabase.from('fixture_signups').select('*'),
         supabase.rpc('fixture_signup_counts'),
         supabase.from('calendar_entries')
-          .select('id, title, description, entry_date, start_time, end_time, session_label, space, kind')
+          .select('id, title, title_vn, description, entry_date, start_time, end_time, session_label, space, kind')
           .eq('visibility', 'member').gte('entry_date', vnDateString())
           .order('entry_date').order('start_time', { ascending: true, nullsFirst: true }),
       ])
@@ -152,11 +166,11 @@ export default function WhatsOnPage() {
   const isSignedUp = (id: string) => signups.some(s => s.fixture_id === id && s.user_id === userId)
   const deadlinePassed = (f: Fixture) => f.signup_deadline ? new Date(f.signup_deadline).getTime() < nowTs : false
   const REFUSAL: Record<string, string> = {
-    full: 'That one filled up while you were looking.',
-    closed: 'Sign-ups for that one have closed.',
-    already: 'You’re already down for that one.',
-    unknown: 'That fixture is no longer listed.',
-    auth: 'Please sign in again.',
+    full: t('That one filled up while you were looking.', 'Sự kiện này vừa kín chỗ trong lúc bạn đang xem.'),
+    closed: t('Sign-ups for that one have closed.', 'Sự kiện này đã đóng đăng ký.'),
+    already: t('You’re already down for that one.', 'Bạn đã có tên trong sự kiện này rồi.'),
+    unknown: t('That fixture is no longer listed.', 'Sự kiện này không còn trong danh sách.'),
+    auth: t('Please sign in again.', 'Vui lòng đăng nhập lại.'),
   }
 
   const toggleSignup = async (fixtureId: string) => {
@@ -170,9 +184,9 @@ export default function WhatsOnPage() {
       ? supabase.rpc('fixture_signup', { p_fixture_id: fixtureId })
       : supabase.from('fixture_signups').delete().eq('fixture_id', fixtureId).eq('user_id', userId)
     const { data: reason, error } = await op
-    if (error) { setErrorMsg(error.message || 'Could not update signup.'); setBusyId(null); return }
+    if (error) { setErrorMsg(error.message || t('Could not update signup.', 'Không thể cập nhật đăng ký.')); setBusyId(null); return }
     if (signingUp && reason) {
-      setErrorMsg(REFUSAL[reason as string] || 'Could not sign you up.')
+      setErrorMsg(REFUSAL[reason as string] || t('Could not sign you up.', 'Không thể đăng ký cho bạn.'))
       // Still refresh: 'full' means somebody else took the seat, and the count on
       // screen is now wrong in a way the member can see.
     }
@@ -204,10 +218,10 @@ export default function WhatsOnPage() {
   const myUpcoming = upcoming.filter(it => it.type === 'fixture' && isSignedUp(it.f.id)).length
 
   const tabs: { key: string; label: string }[] = [
-    { key: 'all', label: 'All' },
-    { key: 'golf', label: 'Golf' }, { key: 'tennis', label: 'Tennis' },
-    { key: 'padel', label: 'Padel' }, { key: 'hash', label: 'Hash' },
-    { key: 'happenings', label: 'Happenings' },
+    { key: 'all', label: t('All', 'Tất cả') },
+    { key: 'golf', label: typeLabel('golf', lang) }, { key: 'tennis', label: typeLabel('tennis', lang) },
+    { key: 'padel', label: typeLabel('padel', lang) }, { key: 'hash', label: typeLabel('hash', lang) },
+    { key: 'happenings', label: t('Happenings', 'Hoạt động') },
   ]
 
   const renderFixture = (f: Fixture) => {
@@ -217,27 +231,27 @@ export default function WhatsOnPage() {
     const count = counts[f.id] || 0
     const cap = f.max_signups
     const full = cap != null && count >= cap
-    const rel = relativeDate(new Date(f.date).getTime())
+    const rel = relativeDate(new Date(f.date).getTime(), t)
     return (
       <div key={`f-${f.id}`} className="wo-card" style={{ borderLeftColor: meta.ring }}>
         <div className="wo-row">
           <Thumb a={attachments[`fixture:${f.id}`]} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="wo-tags">
-              <span className="wo-tag" style={{ background: meta.tint }}>{typeLabel(f.type)}</span>
+              <span className="wo-tag" style={{ background: meta.tint }}>{typeLabel(f.type, lang)}</span>
               {rel && <span className="wo-rel">{rel}</span>}
-              {signed && <span className="wo-in">You&apos;re in</span>}
+              {signed && <span className="wo-in">{t("You're in", 'Đã đăng ký')}</span>}
             </div>
             <div className="wo-title">{f.title}</div>
-            <div className="wo-meta">{fmtFixtureDate(f.date)}{f.location ? ' · ' + f.location : ''}</div>
+            <div className="wo-meta">{fmtFixtureDate(f.date, lang)}{f.location ? ' · ' + f.location : ''}</div>
             {f.description && <p className="wo-desc">{f.description}</p>}
           </div>
           <div className="wo-action">
-            <div className="wo-count">{count}{cap != null ? `/${cap}` : ''} in</div>
-            {closed ? <span className="wo-closed">Closed</span>
-              : full && !signed ? <span className="wo-closed">Full</span>
+            <div className="wo-count">{count}{cap != null ? `/${cap}` : ''} {t('in', 'tham gia')}</div>
+            {closed ? <span className="wo-closed">{t('Closed', 'Đã đóng')}</span>
+              : full && !signed ? <span className="wo-closed">{t('Full', 'Hết chỗ')}</span>
               : <button onClick={() => toggleSignup(f.id)} disabled={busyId === f.id} className={signed ? 'wo-btn wo-btn-on' : 'wo-btn'}>
-                  {busyId === f.id ? '…' : signed ? 'Withdraw' : 'Sign me up'}
+                  {busyId === f.id ? '…' : signed ? t('Withdraw', 'Rút tên') : t('Sign me up', 'Đăng ký')}
                 </button>}
           </div>
         </div>
@@ -253,10 +267,10 @@ export default function WhatsOnPage() {
           <Thumb a={attachments[`calendar_entry:${e.id}`]} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="wo-tags">
-              <span className="wo-tag" style={{ background: meta.tint }}>{meta.label}</span>
+              <span className="wo-tag" style={{ background: meta.tint }}>{t(meta.label, meta.vn)}</span>
             </div>
-            <div className="wo-title">{e.title}</div>
-            <div className="wo-meta">{fmtEntryDate(e.entry_date)} · {fmtEntryTime(e)}{e.space ? ' · ' + e.space : ''}</div>
+            <div className="wo-title">{pick(lang, e.title, e.title_vn)}</div>
+            <div className="wo-meta">{fmtEntryDate(e.entry_date, lang)} · {fmtEntryTime(e, t)}{e.space ? ' · ' + e.space : ''}</div>
             {e.description && <p className="wo-desc">{e.description}</p>}
           </div>
         </div>
@@ -310,14 +324,14 @@ export default function WhatsOnPage() {
       ` }} />
       <div className="wo-page">
         <div className="wo-inner">
-          <Link href="/members" className="wo-back">← Back to dashboard</Link>
-          <h1 className="wo-h1">What&apos;s On</h1>
-          <div className="wo-sub">Sự kiện & Lịch Thi Đấu</div>
+          <Link href="/members" className="wo-back">{t('← Back to dashboard', '← Về Trang Chính')}</Link>
+          <h1 className="wo-h1">{surfaceName('/members/events', lang)}</h1>
+          <div className="wo-sub">{surfaceName('/members/events', lang === 'vn' ? 'en' : 'vn')}</div>
 
           <div className="wo-stats">
-            <div className="wo-stat"><div className="wo-stat-n">{upcoming.length}</div><div className="wo-stat-l">coming up</div></div>
-            <div className="wo-stat"><div className="wo-stat-n">{myUpcoming}</div><div className="wo-stat-l">you&apos;re signed up for</div></div>
-            <Link href="/members/gallery" className="wo-stat" style={{ textDecoration: 'none' }}><div className="wo-stat-n" style={{ fontSize: 18, paddingTop: 6 }}>Photos →</div><div className="wo-stat-l">from past events</div></Link>
+            <div className="wo-stat"><div className="wo-stat-n">{upcoming.length}</div><div className="wo-stat-l">{t('coming up', 'sắp diễn ra')}</div></div>
+            <div className="wo-stat"><div className="wo-stat-n">{myUpcoming}</div><div className="wo-stat-l">{t("you're signed up for", 'bạn đã đăng ký')}</div></div>
+            <Link href="/members/gallery" className="wo-stat" style={{ textDecoration: 'none' }}><div className="wo-stat-n" style={{ fontSize: 18, paddingTop: 6 }}>{t('Photos →', 'Ảnh →')}</div><div className="wo-stat-l">{t('from past events', 'từ các sự kiện đã qua')}</div></Link>
           </div>
 
           <div className="wo-tabs">
@@ -329,24 +343,24 @@ export default function WhatsOnPage() {
           {errorMsg && <div className="wo-empty" style={{ color: '#C27070' }}>{errorMsg}</div>}
 
           {loading ? (
-            <div className="wo-empty">Loading…</div>
+            <div className="wo-empty">{t('Loading…', 'Đang tải…')}</div>
           ) : (
             <>
-              <div className="wo-sec">Coming up</div>
+              <div className="wo-sec">{t('Coming up', 'Sắp diễn ra')}</div>
               {shownUpcoming.length === 0 ? (
-                <div className="wo-empty">Nothing on the calendar here yet.</div>
+                <div className="wo-empty">{t('Nothing on the calendar here yet.', 'Chưa có gì trên lịch ở mục này.')}</div>
               ) : shownUpcoming.map(it => it.type === 'fixture' ? renderFixture(it.f) : renderEntry(it.e))}
 
               {filter !== 'happenings' && pastFixtures.length > 0 && (
                 <>
-                  <div className="wo-sec">Past results</div>
+                  <div className="wo-sec">{t('Past results', 'Kết quả đã qua')}</div>
                   {pastFixtures.filter(f => filter === 'all' || f.type === filter).map(f => {
                     const meta = metaOf(f.type)
                     return (
                       <div key={`p-${f.id}`} className="wo-card" style={{ borderLeftColor: meta.ring, opacity: 0.8 }}>
-                        <div className="wo-tags"><span className="wo-tag" style={{ background: meta.tint }}>{typeLabel(f.type)}</span></div>
+                        <div className="wo-tags"><span className="wo-tag" style={{ background: meta.tint }}>{typeLabel(f.type, lang)}</span></div>
                         <div className="wo-title">{f.title}</div>
-                        <div className="wo-meta">{fmtFixtureDate(f.date)}{f.location ? ' · ' + f.location : ''}</div>
+                        <div className="wo-meta">{fmtFixtureDate(f.date, lang)}{f.location ? ' · ' + f.location : ''}</div>
                         {f.results && <div className="wo-results">{f.results}</div>}
                       </div>
                     )

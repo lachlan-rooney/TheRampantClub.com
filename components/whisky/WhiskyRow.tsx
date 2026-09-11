@@ -5,6 +5,7 @@ import Link from 'next/link'
 import type { Whisky } from '@/lib/types'
 import FlavourRadar from './FlavourRadar'
 import WhiskyNotes from './WhiskyNotes'
+import { useLang } from '@/lib/lang'
 
 // One whisky's display + a self-contained tap-to-reveal flavour radar. Reused by
 // the alphabet-shelf letter modal AND the search results — same row everywhere.
@@ -12,6 +13,7 @@ import WhiskyNotes from './WhiskyNotes'
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
 
 export default function WhiskyRow({ w }: { w: Whisky }) {
+  const { t } = useLang()
   const [open, setOpen] = useState(false)
   return (
     <div style={{ padding: '16px 0', borderBottom: '1px solid rgba(229,212,194,0.1)', opacity: w.in_stock ? 1 : 0.5 }}>
@@ -32,7 +34,7 @@ export default function WhiskyRow({ w }: { w: Whisky }) {
         </p>
       ) : (
         <p style={{ fontFamily: MONO, fontSize: 11, color: 'rgba(178,170,152,0.45)', fontStyle: 'italic', margin: 0 }}>
-          Tasting notes coming soon — tap the flavour profile for its shape.
+          {t('Tasting notes coming soon — tap the flavour profile for its shape.', 'Ghi chú nếm thử sắp có — chạm vào hồ sơ hương vị để xem hình dáng.')}
         </p>
       )}
       <button
@@ -44,10 +46,10 @@ export default function WhiskyRow({ w }: { w: Whisky }) {
           fontFamily: MONO, fontSize: 10, letterSpacing: '0.06em', color: '#D4B85A',
         }}
       >
-        {open ? '↑ Hide flavour profile' : '↓ Flavour profile'}
+        {open ? t('↑ Hide flavour profile', '↑ Ẩn hồ sơ hương vị') : t('↓ Flavour profile', '↓ Hồ sơ hương vị')}
       </button>
       <Link href={`/members/whisky/${w.id}`} style={{ marginLeft: 8, fontFamily: MONO, fontSize: 10, letterSpacing: '0.06em', color: '#B2AA98', textDecoration: 'none', borderBottom: '1px solid rgba(178,170,152,0.3)' }}>
-        ↗ Bottle story
+        {t('↗ Bottle story', '↗ Câu chuyện chai')}
       </Link>
       {open && <div style={{ marginTop: 14 }}><FlavourRadar whiskyId={w.id} /></div>}
       <WhiskyNotes whiskyId={w.id} />

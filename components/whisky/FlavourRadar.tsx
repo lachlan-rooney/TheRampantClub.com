@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import RadarChart from './RadarChart'
 import { type Cat, type ShapeValues, fetchCategories, fetchSpokes, valuesFromSpokes, RADAR_GOLD } from './flavour-data'
+import { useLang } from '@/lib/lang'
 
 // Single-whisky flavour radar — thin wrapper: fetches one whisky's spokes and
 // renders a one-shape RadarChart (gold). HONEST: a whisky with no mapped flavour
@@ -12,6 +13,7 @@ import { type Cat, type ShapeValues, fetchCategories, fetchSpokes, valuesFromSpo
 const FAMILY = "'Google Sans Code', monospace"
 
 export default function FlavourRadar({ whiskyId, size = 300 }: { whiskyId: string; size?: number }) {
+  const { t } = useLang()
   const supabase = createBrowserSupabaseClient()
   const [cats, setCats] = useState<Cat[] | null>(null)
   const [values, setValues] = useState<ShapeValues | null>(null)
@@ -29,8 +31,8 @@ export default function FlavourRadar({ whiskyId, size = 300 }: { whiskyId: strin
   if (!cats || values === null) return <div style={stateBox}>…</div>
   if (Object.keys(values).length === 0) return (
     <div style={stateBox}>
-      <div style={{ color: '#B2AA98' }}>Flavour profile not yet mapped</div>
-      <div style={{ fontSize: 10, opacity: 0.55, marginTop: 4 }}>Not yet tagged for the flavour map</div>
+      <div style={{ color: '#B2AA98' }}>{t('Flavour profile not yet mapped', 'Chưa có hồ sơ hương vị')}</div>
+      <div style={{ fontSize: 10, opacity: 0.55, marginTop: 4 }}>{t('Not yet tagged for the flavour map', 'Chưa được gắn thẻ trên bản đồ hương vị')}</div>
     </div>
   )
 

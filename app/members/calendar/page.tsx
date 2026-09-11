@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { typeLabel, TYPE_RING } from '@/lib/fixtures'
+import { useLang, pick } from '@/lib/lang'
 
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
 const SERIF = "'Rampant Sans', serif"
 
 interface Booking { booking_id: string; booking_date: string; start_time: string | null; end_time: string | null; session_label: string | null; space: string | null; party_size: number | null; status: string }
 interface Fixture { id: string; type: string; title: string; date: string; location: string | null; signed_up: boolean }
-interface Entry { id: string; title: string; entry_date: string; start_time: string | null; end_time: string | null; session_label: string | null; space: string | null; kind: string }
+interface Entry { id: string; title: string; title_vn?: string | null; entry_date: string; start_time: string | null; end_time: string | null; session_label: string | null; space: string | null; kind: string }
 
 type Item =
   | { kind: 'booking'; day: string; label: string; sub: string; tint: string; ring: string }
@@ -18,16 +19,21 @@ type Item =
 
 
 const KIND_LABEL: Record<string, string> = { closure: 'Club closed', private_hire: 'Private event', supplier: 'Distiller visit', tasting: 'Tasting', event: 'Event', other: 'Notice' }
+const KIND_LABEL_VN: Record<string, string> = { closure: 'CLB đóng cửa', private_hire: 'Sự kiện riêng', supplier: 'Nhà chưng cất ghé thăm', tasting: 'Nếm thử', event: 'Sự kiện', other: 'Thông báo' }
+// Display-only Vietnamese for the stored session labels; a custom label stays as typed.
+const SESSION_VN: Record<string, string> = { early: 'Buổi chiều', evening: 'Buổi tối', late: 'Khuya' }
 
 const iso = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
 const vnDayOf = (ts: string) => new Date(ts).toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
 const hm = (t: string | null) => t ? t.slice(0, 5) : ''
-const timeStr = (start: string | null, end: string | null, session: string | null) =>
-  start ? (end ? `${hm(start)}–${hm(end)}` : hm(start)) : (session ? session[0].toUpperCase() + session.slice(1) : 'All day')
+const timeStr = (start: string | null, end: string | null, session: string | null, t: (en: string, vn: string) => string) =>
+  start ? (end ? `${hm(start)}–${hm(end)}` : hm(start)) : (session ? t(session[0].toUpperCase() + session.slice(1), SESSION_VN[session.toLowerCase()] || session[0].toUpperCase() + session.slice(1)) : t('All day', 'Cả ngày'))
 
 const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const DOW_VN = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
 
 export default function MemberCalendarPage() {
+  const { t, lang } = useLang()
   const [cursor, setCursor] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() } }) // m: 0-11
   const [bookings, setBookings] = useState<Booking[]>([])
   const [fixtures, setFixtures] = useState<Fixture[]>([])
@@ -57,13 +63,14 @@ export default function MemberCalendarPage() {
   const byDay = useMemo(() => {
     const m: Record<string, Item[]> = {}
     const push = (it: Item) => { (m[it.day] ||= []).push(it) }
-    for (const b of bookings) push({ kind: 'booking', day: b.booking_date, label: b.space || 'Your booking', sub: timeStr(b.start_time, b.end_time, b.session_label), tint: 'rgba(212,184,90,0.16)', ring: '#D4B85A' })
-    for (const f of fixtures) { const ring = TYPE_RING[f.type] || TYPE_RING.other; push({ kind: 'fixture', day: vnDayOf(f.date), label: f.title, sub: typeLabel(f.type) + (f.signed_up ? ' · you’re in' : ''), tint: 'rgba(94,102,80,0.22)', ring, signed: f.signed_up, href: '/members/events' }) }
-    for (const e of entries) push({ kind: 'entry', day: e.entry_date, label: e.title, sub: KIND_LABEL[e.kind] || 'Notice', tint: 'rgba(178,170,152,0.16)', ring: '#B2AA98' })
+    for (const b of bookings) push({ kind: 'booking', day: b.booking_date, label: b.space || t('Your booking', 'Đặt chỗ của bạn'), sub: timeStr(b.start_time, b.end_time, b.session_label, t), tint: 'rgba(212,184,90,0.16)', ring: '#D4B85A' })
+    for (const f of fixtures) { const ring = TYPE_RING[f.type] || TYPE_RING.other; push({ kind: 'fixture', day: vnDayOf(f.date), label: f.title, sub: typeLabel(f.type, lang) + (f.signed_up ? t(' · you’re in', ' · bạn đã đăng ký') : ''), tint: 'rgba(94,102,80,0.22)', ring, signed: f.signed_up, href: '/members/events' }) }
+    for (const e of entries) push({ kind: 'entry', day: e.entry_date, label: pick(lang, e.title, e.title_vn), sub: t(KIND_LABEL[e.kind] || 'Notice', KIND_LABEL_VN[e.kind] || 'Thông báo'), tint: 'rgba(178,170,152,0.16)', ring: '#B2AA98' })
     return m
-  }, [bookings, fixtures, entries])
+  }, [bookings, fixtures, entries, t, lang])
 
-  const monthLabel = new Date(Date.UTC(cursor.y, cursor.m, 1)).toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+  const monthRaw = new Date(Date.UTC(cursor.y, cursor.m, 1)).toLocaleDateString(lang === 'vn' ? 'vi-VN' : 'en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+  const monthLabel = monthRaw.charAt(0).toUpperCase() + monthRaw.slice(1)
   const step = (n: number) => setCursor(c => { const d = new Date(Date.UTC(c.y, c.m + n, 1)); return { y: d.getUTCFullYear(), m: d.getUTCMonth() } })
   const agenda = useMemo(() => Object.keys(byDay).filter(d => d >= iso(new Date(Date.UTC(cursor.y, cursor.m, 1))) && d <= iso(new Date(Date.UTC(cursor.y, cursor.m + 1, 0)))).sort(), [byDay, cursor])
 
@@ -95,23 +102,23 @@ export default function MemberCalendarPage() {
         @media (max-width:640px){ .mc-cell { min-height:64px; } .mc-chip { font-size:8px; } }
       ` }} />
       <div className="mc-wrap">
-        <Link href="/members" className="mc-back">← Back to dashboard</Link>
+        <Link href="/members" className="mc-back">{t('← Back to dashboard', '← Về Trang Chính')}</Link>
         <div className="mc-bar">
           <h1 className="mc-h1">{monthLabel}</h1>
           <div className="mc-nav">
-            <button className="mc-btn" onClick={() => step(-1)}>←</button>
-            <button className="mc-btn" onClick={() => setCursor(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() } })}>Today</button>
-            <button className="mc-btn" onClick={() => step(1)}>→</button>
+            <button className="mc-btn" onClick={() => step(-1)} aria-label={t('Previous month', 'Tháng trước')}>←</button>
+            <button className="mc-btn" onClick={() => setCursor(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() } })}>{t('Today', 'Hôm nay')}</button>
+            <button className="mc-btn" onClick={() => step(1)} aria-label={t('Next month', 'Tháng sau')}>→</button>
           </div>
         </div>
         <div className="mc-legend">
-          <span><span className="mc-dot" style={{ background: '#D4B85A' }} />Your bookings</span>
-          <span><span className="mc-dot" style={{ background: '#5E6650' }} />Fixtures</span>
-          <span><span className="mc-dot" style={{ background: '#B2AA98' }} />House events</span>
+          <span><span className="mc-dot" style={{ background: '#D4B85A' }} />{t('Your bookings', 'Đặt chỗ của bạn')}</span>
+          <span><span className="mc-dot" style={{ background: '#5E6650' }} />{t('Fixtures', 'Thi đấu')}</span>
+          <span><span className="mc-dot" style={{ background: '#B2AA98' }} />{t('House events', 'Sự kiện tại CLB')}</span>
         </div>
 
         <div className="mc-grid" style={{ marginTop: 14 }}>
-          {DOW.map(d => <div key={d} className="mc-dow">{d}</div>)}
+          {DOW.map((d, i) => <div key={d} className="mc-dow">{t(d, DOW_VN[i])}</div>)}
           {grid.map(d => {
             const k = iso(d)
             const inMonth = d.getUTCMonth() === cursor.m
@@ -130,11 +137,11 @@ export default function MemberCalendarPage() {
 
         {/* Agenda for the month */}
         <div className="mc-agenda">
-          {loading ? <div className="mc-empty">Loading…</div>
-            : agenda.length === 0 ? <div className="mc-empty">Nothing on your calendar this month.</div>
+          {loading ? <div className="mc-empty">{t('Loading…', 'Đang tải…')}</div>
+            : agenda.length === 0 ? <div className="mc-empty">{t('Nothing on your calendar this month.', 'Tháng này lịch của bạn chưa có gì.')}</div>
             : agenda.map(day => (
               <div key={day} className="mc-arow">
-                <div className="mc-adate">{new Date(day + 'T12:00:00+07:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' })}</div>
+                <div className="mc-adate">{new Date(day + 'T12:00:00+07:00').toLocaleDateString(lang === 'vn' ? 'vi-VN' : 'en-GB', { weekday: 'short', day: 'numeric' })}</div>
                 <div style={{ flex: 1 }}>
                   {(byDay[day] || []).map((it, i) => (
                     <div key={i} className="mc-aitem" style={{ marginBottom: 3 }}>

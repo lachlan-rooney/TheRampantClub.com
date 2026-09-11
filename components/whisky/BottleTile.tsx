@@ -1,5 +1,7 @@
 'use client'
 
+import { useLang } from '@/lib/lang'
+
 // One letter-bottle on the shelf — ELEGANT LINE-ART, coherent with TRC's ink
 // illustration set: a fine cream outline on the deep-green ground, NO flat fill
 // (the flat tint is what read childish), elegant tall proportions, sparing gold
@@ -25,6 +27,7 @@ const SHAPES = [
 ]
 
 export default function BottleTile({ letter, count, onClick }: { letter: string; count: number; onClick: () => void }) {
+  const { t } = useLang()
   const empty = count === 0
   const idx = Math.max(0, letter.charCodeAt(0) - 65)
   const d = SHAPES[idx % SHAPES.length]
@@ -33,7 +36,7 @@ export default function BottleTile({ letter, count, onClick }: { letter: string;
     <button
       onClick={empty ? undefined : onClick}
       disabled={empty}
-      aria-label={empty ? `${letter} — no whiskies yet` : `${letter} — ${count} whiskies`}
+      aria-label={empty ? t(`${letter} — no whiskies yet`, `${letter} — chưa có whisky`) : t(`${letter} — ${count} whiskies`, `${letter} — ${count} whisky`)}
       className={empty ? '' : 'bottle-tile'}
       style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, background: 'transparent', border: 'none', padding: 0, width: '100%', cursor: empty ? 'default' : 'pointer' }}
     >

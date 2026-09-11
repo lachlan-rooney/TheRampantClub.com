@@ -5,6 +5,8 @@ import Link from 'next/link'
 import MemberPage from '@/components/MemberPage'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { GALLERY_CATEGORIES, categoryLabel } from '@/lib/gallery'
+import { useLang, type Lang } from '@/lib/lang'
+import { surfaceName } from '@/lib/members/surfaces'
 
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
 const SERIF = "'Rampant Sans', serif"
@@ -23,11 +25,12 @@ interface EventCard {
 }
 interface FixtureLite { id: string; title: string; type: string; date: string }
 
-const fmtDate = (d: string | null) =>
-  d ? new Date(d + 'T12:00:00+07:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
+const fmtDate = (d: string | null, lang: Lang) =>
+  d ? new Date(d + 'T12:00:00+07:00').toLocaleDateString(lang === 'vn' ? 'vi-VN' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
 
 export default function GalleryPage() {
   const supabase = useMemo(() => createBrowserSupabaseClient(), [])
+  const { t, lang } = useLang()
   const [events, setEvents] = useState<EventCard[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
@@ -71,17 +74,17 @@ export default function GalleryPage() {
         }),
       })
       const j = await r.json()
-      if (!r.ok) { setError(j.error || 'Could not create.'); return }
+      if (!r.ok) { setError(j.error || t('Could not create.', 'Không thể tạo.')); return }
       setTitle(''); setDescription(''); setEventDate(''); setFixtureId(''); setCategory('social'); setOpen(false)
       await load()
-    } catch { setError('Could not create. Try again.') } finally { setSubmitting(false) }
+    } catch { setError(t('Could not create. Try again.', 'Không thể tạo. Vui lòng thử lại.')) } finally { setSubmitting(false) }
   }
 
   const shown = filter === 'all' ? events : events.filter(e => e.category === filter)
   const cats = ['all', ...GALLERY_CATEGORIES.map(c => c.key).filter(k => events.some(e => e.category === k))]
 
   return (
-    <MemberPage title="Event Gallery" subtitle="Thư Viện Sự Kiện" description="Every club moment — fixtures, dinners, tastings and socials. Open an event to see the photos, or start your own and add yours.">
+    <MemberPage title="Event Gallery" subtitle={surfaceName('/members/gallery', 'vn')} description={t('Every club moment — fixtures, dinners, tastings and socials. Open an event to see the photos, or start your own and add yours.', 'Mọi khoảnh khắc của câu lạc bộ — thi đấu, bữa tối, nếm thử và giao lưu. Mở một sự kiện để xem ảnh, hoặc tạo sự kiện của riêng bạn và thêm ảnh của bạn.')}>
       <style dangerouslySetInnerHTML={{ __html: `
         .ev-actions { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
         .ev-chips { display:flex; gap:6px; flex-wrap:wrap; }
@@ -112,62 +115,62 @@ export default function GalleryPage() {
         <div className="ev-chips">
           {cats.map(c => (
             <button key={c} className={`ev-chip ${filter === c ? 'on' : ''}`} onClick={() => setFilter(c)}>
-              {c === 'all' ? 'All' : categoryLabel(c)}
+              {c === 'all' ? t('All', 'Tất cả') : categoryLabel(c, lang === 'vn')}
             </button>
           ))}
         </div>
-        <button className="ev-add" onClick={() => setOpen(o => !o)}>{open ? 'Close' : '+ Create an event'}</button>
+        <button className="ev-add" onClick={() => setOpen(o => !o)}>{open ? t('Close', 'Đóng') : t('+ Create an event', '+ Tạo sự kiện')}</button>
       </div>
 
       {open && (
         <div className="ev-form">
           {error && <div className="ev-err">{error}</div>}
-          <label className="ev-label">Event title</label>
-          <input className="ev-input" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Padel Social — August" maxLength={120} />
+          <label className="ev-label">{t('Event title', 'Tiêu đề sự kiện')}</label>
+          <input className="ev-input" value={title} onChange={e => setTitle(e.target.value)} placeholder={t('e.g. Padel Social — August', 'vd. Giao lưu Padel — Tháng 8')} maxLength={120} />
           <div className="ev-row">
             <div>
-              <label className="ev-label">What was it?</label>
+              <label className="ev-label">{t('What was it?', 'Đó là sự kiện gì?')}</label>
               <select className="ev-select" value={category} onChange={e => setCategory(e.target.value)}>
-                {GALLERY_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.en}</option>)}
+                {GALLERY_CATEGORIES.map(c => <option key={c.key} value={c.key}>{lang === 'vn' ? c.vn : c.en}</option>)}
               </select>
             </div>
             <div>
-              <label className="ev-label">Date</label>
+              <label className="ev-label">{t('Date', 'Ngày')}</label>
               <input className="ev-input" type="date" value={eventDate} onChange={e => setEventDate(e.target.value)} />
             </div>
           </div>
           {category === 'fixture' && fixtures.length > 0 && (
             <>
-              <label className="ev-label">Link to a fixture (optional)</label>
+              <label className="ev-label">{t('Link to a fixture (optional)', 'Liên kết với trận đấu (tuỳ chọn)')}</label>
               <select className="ev-select" value={fixtureId} onChange={e => setFixtureId(e.target.value)}>
-                <option value="">— none —</option>
-                {fixtures.map(f => <option key={f.id} value={f.id}>{f.title} · {fmtDate(f.date)}</option>)}
+                <option value="">{t('— none —', '— không —')}</option>
+                {fixtures.map(f => <option key={f.id} value={f.id}>{f.title} · {fmtDate(f.date, lang)}</option>)}
               </select>
             </>
           )}
-          <label className="ev-label">A note (optional)</label>
-          <input className="ev-input" value={description} onChange={e => setDescription(e.target.value)} placeholder="A word about the event" maxLength={600} />
+          <label className="ev-label">{t('A note (optional)', 'Ghi chú (tuỳ chọn)')}</label>
+          <input className="ev-input" value={description} onChange={e => setDescription(e.target.value)} placeholder={t('A word about the event', 'Đôi lời về sự kiện')} maxLength={600} />
           <button className="ev-add" onClick={create} disabled={submitting} style={{ opacity: submitting ? 0.5 : 1 }}>
-            {submitting ? 'Creating…' : 'Create event'}
+            {submitting ? t('Creating…', 'Đang tạo…') : t('Create event', 'Tạo sự kiện')}
           </button>
         </div>
       )}
 
       {loading ? (
-        <div className="ev-empty">Loading…</div>
+        <div className="ev-empty">{t('Loading…', 'Đang tải…')}</div>
       ) : shown.length === 0 ? (
-        <div className="ev-empty">No events yet — create one and add the first photos.</div>
+        <div className="ev-empty">{t('No events yet — create one and add the first photos.', 'Chưa có sự kiện nào — hãy tạo một sự kiện và thêm những bức ảnh đầu tiên.')}</div>
       ) : (
         <div className="ev-grid">
           {shown.map(e => (
             <Link key={e.id} href={`/members/gallery/${e.id}`} className="ev-card">
               <div className={'ev-cover' + (e.cover ? '' : ' ev-cover-empty')} style={e.cover ? { backgroundImage: `url(${e.cover})` } : undefined}>
-                <span className="ev-count">{e.media_count} {e.media_count === 1 ? 'item' : 'items'}</span>
+                <span className="ev-count">{e.media_count} {e.media_count === 1 ? t('item', 'mục') : t('items', 'mục')}</span>
               </div>
               <div className="ev-body">
-                <div className="ev-cat">{categoryLabel(e.category)}{e.source === 'club' ? ' · The Club' : ''}</div>
+                <div className="ev-cat">{categoryLabel(e.category, lang === 'vn')}{e.source === 'club' ? ' · The Club' : ''}</div>
                 <div className="ev-title">{e.title}</div>
-                <div className="ev-meta">{[fmtDate(e.event_date), e.source === 'member' ? e.creator_name : null].filter(Boolean).join(' · ')}</div>
+                <div className="ev-meta">{[fmtDate(e.event_date, lang), e.source === 'member' ? e.creator_name : null].filter(Boolean).join(' · ')}</div>
               </div>
             </Link>
           ))}

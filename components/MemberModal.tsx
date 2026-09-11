@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { useLang } from '@/lib/lang'
 
 // Shared member-facing modal. Renders via a portal to <body> so position:fixed is
 // viewport-relative — NOT trapped by MemberPage's transformed wrapper (the banked
@@ -20,6 +21,7 @@ export default function MemberModal({ open, onClose, title, subtitle, children, 
   children: ReactNode
   maxWidth?: number
 }) {
+  const { t } = useLang()
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
 
@@ -51,7 +53,7 @@ export default function MemberModal({ open, onClose, title, subtitle, children, 
                 {title && <div style={titleStyle}>{title}</div>}
                 {subtitle && <div style={subStyle}>{subtitle}</div>}
               </div>
-              <button onClick={onClose} aria-label="Close" style={closeBtn}>×</button>
+              <button onClick={onClose} aria-label={t('Close', 'Đóng')} style={closeBtn}>×</button>
             </div>
           )}
           {children}

@@ -1,6 +1,7 @@
 'use client'
 
-import { type Cat, type ShapeValues, hexToRgba } from './flavour-data'
+import { type Cat, type ShapeValues, hexToRgba, catLabel } from './flavour-data'
+import { useLang } from '@/lib/lang'
 
 // Presentational flavour radar — draws the frame/axes/labels ONCE and one
 // polygon per shape. Single-shape mode reproduces the original FlavourRadar
@@ -28,6 +29,7 @@ function wrapName(name: string): string[] {
 }
 
 export default function RadarChart({ cats, shapes, size = 300 }: { cats: Cat[]; shapes: RadarShape[]; size?: number }) {
+  const { t, lang } = useLang()
   const N = cats.length
   const R = Math.round(size * 0.36)
   const SIDE = 104, VERT = 44
@@ -45,7 +47,7 @@ export default function RadarChart({ cats, shapes, size = 300 }: { cats: Cat[]; 
   const presentAny = (slug: string) => shapes.some(s => (s.values[slug]?.intensity || 0) > 0)
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Flavour radar" style={{ display: 'block', width: '100%', maxWidth: W, height: 'auto', margin: '0 auto' }}>
+    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('Flavour radar', 'Biểu đồ hương vị')}style={{ display: 'block', width: '100%', maxWidth: W, height: 'auto', margin: '0 auto' }}>
       {/* grid rings + axes — drawn once */}
       {rings.map((d, i) => <path key={i} d={d} fill="none" stroke="rgba(229,212,194,0.10)" strokeWidth={1} />)}
       {cats.map((c, i) => { const [x, y] = pt(i, 4); return <line key={c.slug} x1={cx} y1={cy} x2={x} y2={y} stroke="rgba(229,212,194,0.08)" strokeWidth={1} /> })}
@@ -69,7 +71,7 @@ export default function RadarChart({ cats, shapes, size = 300 }: { cats: Cat[]; 
         const lr = R + 12
         const lx = cx + lr * cos, ly = cy + lr * sin
         const anchor: 'start' | 'middle' | 'end' = cos > 0.15 ? 'start' : cos < -0.15 ? 'end' : 'middle'
-        const lines = wrapName(c.name)
+        const lines = wrapName(catLabel(c, lang))
         let fill: string
         if (single && sv) {
           const s = sv[c.slug]

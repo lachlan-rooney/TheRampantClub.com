@@ -5,8 +5,10 @@ import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import type { HouseRule } from '@/lib/types'
 import MemberPage from '@/components/MemberPage'
+import { useLang, pick } from '@/lib/lang'
 
 export default function RulesPage() {
+  const { t, lang } = useLang()
   const [rules, setRules] = useState<HouseRule[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -21,10 +23,10 @@ export default function RulesPage() {
       <MemberPage
         title="House Rules"
         subtitle="Nội Quy Câu Lạc Bộ"
-        description="The following rules are observed by all members of The Rampant Club. Ignorance is not a defence, though it is occasionally an explanation."
+        description={t('The following rules are observed by all members of The Rampant Club. Ignorance is not a defence, though it is occasionally an explanation.', 'Mọi hội viên của The Rampant Club đều tuân thủ những nội quy dưới đây. Không biết không phải là lý do bào chữa, dù đôi khi là một lời giải thích.')}
       >
         {loading ? (
-          <p style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: '#B2AA98', textAlign: 'center' }}>Loading...</p>
+          <p style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: '#B2AA98', textAlign: 'center' }}>{t('Loading...', 'Đang tải...')}</p>
         ) : (
           rules.map((r, i) => (
             <div key={r.id}>
@@ -33,14 +35,15 @@ export default function RulesPage() {
                   fontFamily: "'Rampant Sans', serif", fontSize: 16, fontWeight: 600,
                   color: '#E5D4C2', marginBottom: 4, margin: 0,
                 }}>
-                  {r.section_title}
+                  {pick(lang, r.section_title, r.section_title_vn)}
                 </h3>
+                {/* The other language, demoted — as the page title does. */}
                 {r.section_title_vn && (
                   <div style={{
                     fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10,
                     color: 'rgba(178,170,152,0.5)', letterSpacing: '0.04em', marginBottom: 16,
                   }}>
-                    {r.section_title_vn}
+                    {lang === 'vn' ? r.section_title : r.section_title_vn}
                   </div>
                 )}
                 <p style={{
@@ -73,7 +76,7 @@ export default function RulesPage() {
               color: '#B2AA98', opacity: 0.5, textDecoration: 'none', letterSpacing: '0.04em',
             }}
           >
-            Full Terms & Conditions →
+            {t('Full Terms & Conditions →', 'Toàn bộ Điều khoản & Điều kiện →')}
           </Link>
         </div>
       </MemberPage>

@@ -5,6 +5,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import FlavourRadar from './FlavourRadar'
 import RadarChart from './RadarChart'
 import { type Cat, type ShapeValues, fetchCategories, fetchSpokes, valuesFromSpokes, RADAR_GOLD, RADAR_SAGE } from './flavour-data'
+import { useLang } from '@/lib/lang'
 
 // Staff-side flavour panel: the single radar + a Compare flow. Pick a second
 // (flavour-MAPPED) whisky → side-by-side by default, or toggle to overlay (gold
@@ -15,6 +16,7 @@ const FAMILY = "'Google Sans Code', monospace"
 interface Picked { id: string; name: string }
 
 export default function WhiskyFlavourPanel({ whiskyId, whiskyName }: { whiskyId: string; whiskyName: string }) {
+  const { t } = useLang()
   const supabase = createBrowserSupabaseClient()
   const [cats, setCats] = useState<Cat[] | null>(null)
   const [baseVals, setBaseVals] = useState<ShapeValues | null>(null)
@@ -62,7 +64,7 @@ export default function WhiskyFlavourPanel({ whiskyId, whiskyName }: { whiskyId:
 
   const filtered = (mapped || []).filter(w => {
     const toks = search.trim().toLowerCase().split(/\s+/).filter(Boolean)
-    return toks.every(t => w.name.toLowerCase().includes(t))
+    return toks.every(tok => w.name.toLowerCase().includes(tok))
   })
 
   // ── Comparison active ──
@@ -70,10 +72,10 @@ export default function WhiskyFlavourPanel({ whiskyId, whiskyName }: { whiskyId:
     return (
       <div>
         <div style={headRow}>
-          <div style={labelStyle}>Flavour comparison</div>
+          <div style={labelStyle}>{t('Flavour comparison', 'So sánh hương vị')}</div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => setOverlay(o => !o)} style={btn}>{overlay ? '▣ Side by side' : '◎ Overlay'}</button>
-            <button onClick={clear} style={btn}>✕ Clear</button>
+            <button onClick={() => setOverlay(o => !o)} style={btn}>{overlay ? t('▣ Side by side', '▣ Cạnh nhau') : t('◎ Overlay', '◎ Chồng lớp')}</button>
+            <button onClick={clear} style={btn}>{t('✕ Clear', '✕ Bỏ chọn')}</button>
           </div>
         </div>
         <div style={legendRow}>
@@ -105,29 +107,29 @@ export default function WhiskyFlavourPanel({ whiskyId, whiskyName }: { whiskyId:
   return (
     <div>
       <div style={headRow}>
-        <div style={labelStyle}>Flavour radar</div>
+        <div style={labelStyle}>{t('Flavour radar', 'Biểu đồ hương vị')}</div>
         {baseMapped && (
           <button onClick={pickerOpen ? () => setPickerOpen(false) : openCompare} style={btn}>
-            {pickerOpen ? 'Close' : 'Compare ⇆'}
+            {pickerOpen ? t('Close', 'Đóng') : t('Compare ⇆', 'So sánh ⇆')}
           </button>
         )}
       </div>
 
       {pickerOpen && (
         <div style={pickerBox}>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search a whisky to compare…" style={input} autoFocus />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('Search a whisky to compare…', 'Tìm một chai whisky để so sánh…')} style={input} autoFocus />
           {mapped === null ? (
-            <div style={hint}>Loading…</div>
+            <div style={hint}>{t('Loading…', 'Đang tải…')}</div>
           ) : (
             <div style={pickerList}>
-              {filtered.length === 0 ? <div style={hint}>No flavour-mapped whisky matches.</div> : filtered.slice(0, 40).map(w => (
+              {filtered.length === 0 ? <div style={hint}>{t('No flavour-mapped whisky matches.', 'Không có whisky đã lập bản đồ hương vị nào khớp.')}</div> : filtered.slice(0, 40).map(w => (
                 <button key={w.id} onClick={() => pick(w)} disabled={busy} style={pickRow}>{w.name}</button>
               ))}
-              {filtered.length > 40 && <div style={hint}>+{filtered.length - 40} more — keep typing</div>}
+              {filtered.length > 40 && <div style={hint}>{t(`+${filtered.length - 40} more — keep typing`, `+${filtered.length - 40} chai nữa — tiếp tục gõ`)}</div>}
             </div>
           )}
           <div style={{ ...hint, marginTop: 6, opacity: 0.6 }}>
-            Only the {mapped?.length ?? '…'} flavour-mapped whiskies can be compared.
+            {t(`Only the ${mapped?.length ?? '…'} flavour-mapped whiskies can be compared.`, `Chỉ ${mapped?.length ?? '…'} chai whisky đã lập bản đồ hương vị mới có thể so sánh.`)}
           </div>
         </div>
       )}

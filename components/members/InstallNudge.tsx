@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useLang } from '@/lib/lang'
 
 // A subtle, dismissable "add to home screen" nudge for members. You already ship
 // a manifest + service worker (PWARegistrar) but never prompt anyone to install.
@@ -15,6 +16,7 @@ interface BIPEvent extends Event {
 const KEY = 'trc_install_nudge_dismissed'
 
 export default function InstallNudge() {
+  const { t } = useLang()
   const [deferred, setDeferred] = useState<BIPEvent | null>(null)
   const [show, setShow] = useState(false)
   const [iosHint, setIosHint] = useState(false)
@@ -73,16 +75,16 @@ export default function InstallNudge() {
         .inudge-btn { background: #D4B85A; color: #052E20; border: none; border-radius: 18px; padding: 8px 16px; font-family: 'Google Sans Code', monospace; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap; }
         .inudge-x { background: transparent; border: none; color: #B2AA98; font-size: 18px; cursor: pointer; line-height: 1; padding: 0 2px; }
       ` }} />
-      <div className="inudge" role="dialog" aria-label="Add to home screen">
+      <div className="inudge" role="dialog" aria-label={t('Add to home screen', 'Thêm vào màn hình chính')}>
         <div className="inudge-txt">
           {iosHint ? (
-            <>Add the Club to your home screen — tap <strong>Share</strong>, then <strong>“Add to Home Screen.”</strong></>
+            <>{t('Add the Club to your home screen — tap', 'Thêm Câu Lạc Bộ vào màn hình chính — chạm')} <strong>{t('Share', 'Chia sẻ')}</strong>, {t('then', 'rồi chọn')} <strong>{t('“Add to Home Screen.”', '“Thêm vào MH chính”.')}</strong></>
           ) : (
-            <>Keep the Club a tap away.<br /><span className="inudge-sub">Add it to your home screen.</span></>
+            <>{t('Keep the Club a tap away.', 'Câu Lạc Bộ, chỉ cách một chạm.')}<br /><span className="inudge-sub">{t('Add it to your home screen.', 'Thêm vào màn hình chính của bạn.')}</span></>
           )}
         </div>
-        {!iosHint && <button className="inudge-btn" onClick={install}>Install</button>}
-        <button className="inudge-x" onClick={dismiss} aria-label="Dismiss">×</button>
+        {!iosHint && <button className="inudge-btn" onClick={install}>{t('Install', 'Cài đặt')}</button>}
+        <button className="inudge-x" onClick={dismiss} aria-label={t('Dismiss', 'Bỏ qua')}>×</button>
       </div>
     </>
   )

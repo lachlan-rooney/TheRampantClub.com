@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import RadarChart from './RadarChart'
 import { type Cat, type ShapeValues, fetchCategories, RADAR_GOLD, RADAR_SAGE } from './flavour-data'
+import { useLang } from '@/lib/lang'
 
 // Shared rec-results renderer (staff Suggest-a-pour + member For-You both use it).
 // Each rec card overlays the TARGET taste (gold) vs the whisky's shape (sage) so
@@ -12,6 +13,7 @@ import { type Cat, type ShapeValues, fetchCategories, RADAR_GOLD, RADAR_SAGE } f
 
 const FAMILY = "'Google Sans Code', monospace"
 const STRENGTH: Record<string, string> = { strong: 'Strong match', good: 'Good match', loose: 'Loose match', distant: 'Distant' }
+const STRENGTH_VN: Record<string, string> = { strong: 'Rất phù hợp', good: 'Phù hợp', loose: 'Tương đối', distant: 'Khá xa' }
 const toShape = (m: Record<string, number>): ShapeValues =>
   Object.fromEntries(Object.entries(m || {}).map(([k, v]) => [k, { intensity: v, confidence: 1 }]))
 
@@ -23,6 +25,7 @@ export interface RecItem {
 export default function RecResults({ recs, target, bestIsClose, theme = 'dark' }: {
   recs: RecItem[]; target: Record<string, number>; bestIsClose: boolean; theme?: 'dark' | 'member'
 }) {
+  const { t } = useLang()
   const [cats, setCats] = useState<Cat[]>([])
   useEffect(() => { fetchCategories(createBrowserSupabaseClient()).then(setCats) }, [])
   if (!recs.length) return null
@@ -31,29 +34,29 @@ export default function RecResults({ recs, target, bestIsClose, theme = 'dark' }
   return (
     <div>
       {!bestIsClose && (
-        <div style={banner}>Nothing&apos;s a close match to this profile yet — here&apos;s the nearest we pour.</div>
+        <div style={banner}>{t("Nothing's a close match to this profile yet — here's the nearest we pour.", 'Chưa có chai nào thật sự khớp với hồ sơ này — đây là những ly gần nhất chúng tôi có.')}</div>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {recs.map(r => (
           <div key={r.id} style={card}>
             <div style={head}>
               <div style={name}>{r.name}</div>
-              <div style={{ ...pill, ...tone(r.strength) }}>{STRENGTH[r.strength] || r.strength} · {r.pct}%</div>
+              <div style={{ ...pill, ...tone(r.strength) }}>{t(STRENGTH[r.strength] || r.strength, STRENGTH_VN[r.strength] || '')} · {r.pct}%</div>
             </div>
             <div style={stockLine}>
-              {r.stock_known ? `In stock · ~${r.fill_pct}% of the bottle` : 'Stock not tracked'}
+              {r.stock_known ? t(`In stock · ~${r.fill_pct}% of the bottle`, `Còn hàng · ~${r.fill_pct}% chai`) : t('Stock not tracked', 'Chưa theo dõi tồn kho')}
             </div>
             {cats.length > 0 && (
               <RadarChart cats={cats} shapes={[
-                { values: targetShape, color: RADAR_GOLD, label: 'Their taste' },
+                { values: targetShape, color: RADAR_GOLD, label: t('Their taste', 'Khẩu vị của họ') },
                 { values: toShape(r.spokes), color: RADAR_SAGE, label: r.name },
               ]} />
             )}
             <div style={legend}>
-              <span style={{ ...sw, background: RADAR_GOLD }} /><span style={leg}>Their taste</span>
-              <span style={{ ...sw, background: RADAR_SAGE, marginLeft: 14 }} /><span style={leg}>This whisky</span>
+              <span style={{ ...sw, background: RADAR_GOLD }} /><span style={leg}>{t('Their taste', 'Khẩu vị của họ')}</span>
+              <span style={{ ...sw, background: RADAR_SAGE, marginLeft: 14 }} /><span style={leg}>{t('This whisky', 'Chai whisky này')}</span>
             </div>
-            <Link href={`/members/whisky?focus=${r.id}`} style={link}>See it in the library →</Link>
+            <Link href={`/members/whisky?focus=${r.id}`} style={link}>{t('See it in the library →', 'Xem trong thư viện →')}</Link>
           </div>
         ))}
       </div>

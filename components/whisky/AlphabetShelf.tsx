@@ -5,6 +5,7 @@ import type { Whisky } from '@/lib/types'
 import BottleTile from './BottleTile'
 import WhiskyRow from './WhiskyRow'
 import MemberModal from '@/components/MemberModal'
+import { useLang } from '@/lib/lang'
 
 // The A–Z bottle shelf. Whiskies are grouped by their DISTILLERY's first letter
 // (strip leading "The"; fall back to the name when distillery is blank) — this
@@ -24,6 +25,7 @@ export function letterOf(w: Whisky): string {
 }
 
 export default function AlphabetShelf({ whiskies }: { whiskies: Whisky[] }) {
+  const { t } = useLang()
   const [openLetter, setOpenLetter] = useState<string | null>(null)
 
   const byLetter = useMemo(() => {
@@ -55,11 +57,11 @@ export default function AlphabetShelf({ whiskies }: { whiskies: Whisky[] }) {
         open={!!openLetter}
         onClose={() => setOpenLetter(null)}
         title={openLetter || ''}
-        subtitle={openLetter && list.length ? `${list.length} whisk${list.length === 1 ? 'y' : 'ies'}` : undefined}
+        subtitle={openLetter && list.length ? t(`${list.length} whisk${list.length === 1 ? 'y' : 'ies'}`, `${list.length} whisky`) : undefined}
       >
         {list.length === 0 ? (
           <div style={{ fontFamily: MONO, fontSize: 13, color: '#B2AA98', opacity: 0.7, fontStyle: 'italic', padding: '24px 0' }}>
-            No whiskies under {openLetter} yet.
+            {t(`No whiskies under ${openLetter} yet.`, `Chưa có whisky nào ở chữ ${openLetter}.`)}
           </div>
         ) : (
           <div>{list.map(w => <WhiskyRow key={w.id} w={w} />)}</div>

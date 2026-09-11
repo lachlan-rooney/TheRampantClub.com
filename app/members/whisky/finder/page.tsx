@@ -8,13 +8,20 @@ import FinderRadar from '@/components/whisky/FinderRadar'
 import RadarChart from '@/components/whisky/RadarChart'
 import { type Cat, type ShapeValues, fetchCategories, RADAR_GOLD, RADAR_SAGE } from '@/components/whisky/flavour-data'
 import { STRENGTH_LABEL, type Match } from '@/lib/whisky/flavour-match'
+import { useLang } from '@/lib/lang'
 
 const FAMILY = "'Google Sans Code', 'DM Mono', monospace"
+
+// Vietnamese for the shared STRENGTH_LABEL (lib/whisky/flavour-match), keyed the same.
+const STRENGTH_VN: Record<Match['strength'], string> = {
+  strong: 'Rất phù hợp', good: 'Phù hợp', loose: 'Tương đối', distant: 'Khá xa — gần nhất hiện có',
+}
 
 const toShape = (m: Record<string, number>): ShapeValues =>
   Object.fromEntries(Object.entries(m).map(([k, v]) => [k, { intensity: v, confidence: 1 }]))
 
 export default function FlavourFinderPage() {
+  const { t } = useLang()
   const [cats, setCats] = useState<Cat[]>([])
   const [value, setValue] = useState<Record<string, number>>({})
   const [matches, setMatches] = useState<Match[] | null>(null)
@@ -43,54 +50,54 @@ export default function FlavourFinderPage() {
 
   return (
     <>
-      <MemberPage title="Find Your Dram" subtitle="Tìm Ly Của Bạn" icon="/images/whisky-glass-icon-opt.png" description="Set the flavours you're in the mood for, and we'll find your match">
+      <MemberPage title="Find Your Dram" subtitle="Tìm Ly Của Bạn" icon="/images/whisky-glass-icon-opt.png" description={t("Set the flavours you're in the mood for, and we'll find your match", 'Chọn những hương vị bạn đang muốn thưởng thức, chúng tôi sẽ tìm ly hợp với bạn')}>
         <p style={prompt}>
-          Tap a flavour to add it, tap again to turn it up (1–4). Set only the notes you care about —
-          the rest we&apos;ll leave open. Then find your match.
+          {t("Tap a flavour to add it, tap again to turn it up (1–4). Set only the notes you care about — the rest we'll leave open. Then find your match.",
+            'Chạm vào một hương vị để thêm, chạm lần nữa để tăng mức độ (1–4). Chỉ chọn những hương bạn quan tâm — phần còn lại chúng tôi để ngỏ. Rồi tìm ly hợp với bạn.')}
         </p>
 
-        {cats.length === 0 ? <div style={muted}>Loading…</div> : (
+        {cats.length === 0 ? <div style={muted}>{t('Loading…', 'Đang tải…')}</div> : (
           <>
             <FinderRadar cats={cats} value={value} onChange={setValue} />
             <div style={actions}>
               <button onClick={find} disabled={!anySet || loading} style={{ ...primaryBtn, opacity: anySet && !loading ? 1 : 0.45 }}>
-                {loading ? 'Finding…' : 'Find my match'}
+                {loading ? t('Finding…', 'Đang tìm…') : t('Find my match', 'Tìm ly hợp với tôi')}
               </button>
-              {anySet && <button onClick={reset} style={ghostBtn}>Reset</button>}
+              {anySet && <button onClick={reset} style={ghostBtn}>{t('Reset', 'Đặt lại')}</button>}
             </div>
-            {!anySet && <div style={{ ...muted, textAlign: 'center' }}>Tap the compass above to begin.</div>}
+            {!anySet && <div style={{ ...muted, textAlign: 'center' }}>{t('Tap the compass above to begin.', 'Chạm vào la bàn phía trên để bắt đầu.')}</div>}
           </>
         )}
 
         {matches && (
           <div style={{ marginTop: 36 }}>
             {matches.length === 0 ? (
-              <div style={muted}>Set a flavour or two first.</div>
+              <div style={muted}>{t('Set a flavour or two first.', 'Hãy chọn một hoặc hai hương vị trước.')}</div>
             ) : (
               <>
                 {!bestIsClose && (
                   <div style={honestBanner}>
-                    Nothing&apos;s a close match for that exact profile yet — but here&apos;s the nearest we pour.
+                    {t("Nothing's a close match for that exact profile yet — but here's the nearest we pour.", 'Chưa có chai nào thật sự khớp với đúng hồ sơ đó — nhưng đây là những ly gần nhất chúng tôi có.')}
                   </div>
                 )}
-                <div style={resultsHead}>{bestIsClose ? 'Your matches' : 'Nearest pours'}</div>
+                <div style={resultsHead}>{bestIsClose ? t('Your matches', 'Những ly hợp với bạn') : t('Nearest pours', 'Những ly gần nhất')}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                   {matches.map(m => (
                     <div key={m.id} style={card}>
                       <div style={cardHead}>
                         <div style={cardName}>{m.name}</div>
-                        <div style={{ ...strengthPill, ...strengthTone(m.strength) }}>{STRENGTH_LABEL[m.strength]} · {m.pct}%</div>
+                        <div style={{ ...strengthPill, ...strengthTone(m.strength) }}>{t(STRENGTH_LABEL[m.strength], STRENGTH_VN[m.strength])} · {m.pct}%</div>
                       </div>
-                      {m.in_stock === false && <div style={oos}>Not currently in stock</div>}
+                      {m.in_stock === false && <div style={oos}>{t('Not currently in stock', 'Hiện đang hết hàng')}</div>}
                       <RadarChart cats={cats} shapes={[
-                        { values: memberShape, color: RADAR_GOLD, label: 'You' },
+                        { values: memberShape, color: RADAR_GOLD, label: t('You', 'Bạn') },
                         { values: toShape(m.spokes), color: RADAR_SAGE, label: m.name },
                       ]} />
                       <div style={legend}>
-                        <span style={{ ...sw, background: RADAR_GOLD }} /><span style={legTxt}>What you set</span>
-                        <span style={{ ...sw, background: RADAR_SAGE, marginLeft: 14 }} /><span style={legTxt}>This whisky</span>
+                        <span style={{ ...sw, background: RADAR_GOLD }} /><span style={legTxt}>{t('What you set', 'Lựa chọn của bạn')}</span>
+                        <span style={{ ...sw, background: RADAR_SAGE, marginLeft: 14 }} /><span style={legTxt}>{t('This whisky', 'Chai whisky này')}</span>
                       </div>
-                      <Link href={`/members/whisky?focus=${m.id}`} style={libLink}>See it in the library →</Link>
+                      <Link href={`/members/whisky?focus=${m.id}`} style={libLink}>{t('See it in the library →', 'Xem trong thư viện →')}</Link>
                     </div>
                   ))}
                 </div>
