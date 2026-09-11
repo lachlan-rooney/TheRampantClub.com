@@ -43,81 +43,60 @@ export default function ExpressInterest() {
   return (
     <>
       <style>{`
+        /* Two columns: the ask set large on the left, the form on the right as
+           underlined fields — the /studio way of drawing a line, not a box. */
         .interest-section {
-          background: #052E20;
+          max-width: 1180px; margin: 0 auto;
+          padding: 110px 24px 140px;
           color: #E5D4C2;
-          padding: 80px 24px;
-          text-align: center;
+          display: grid; grid-template-columns: 1fr 1fr; gap: 72px; align-items: start;
         }
         .interest-eyebrow {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px;
-          color: #D4B85A;
-          letter-spacing: 0.24em;
-          text-transform: uppercase;
-          margin-bottom: 8px;
+          font-family: 'Google Sans Code', monospace; font-size: 10.5px;
+          color: #D4B85A; letter-spacing: .22em; text-transform: uppercase;
+          padding-top: 26px; border-top: 1px solid rgba(229,212,194,.15);
         }
         .interest-title {
-          font-family: 'Rampant Sans', serif;
-          font-size: 32px;
-          font-weight: 500;
-          letter-spacing: 0.02em;
-          margin: 0 0 12px;
+          font-family: 'Rampant Sans', serif; font-weight: 400;
+          font-size: clamp(34px, 5.6vw, 68px); line-height: 1;
+          margin: 16px 0 0;
         }
         .interest-sub {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 12px;
-          color: #B2AA98;
-          line-height: 1.8;
-          max-width: 480px;
-          margin: 0 auto 36px;
-          letter-spacing: 0.04em;
+          font-family: 'Google Sans Code', monospace; font-size: 13px;
+          line-height: 2; opacity: .75; max-width: 460px; margin: 24px 0 0;
         }
-        .interest-form {
-          max-width: 460px;
-          margin: 0 auto;
-          display: grid;
-          gap: 12px;
-          text-align: left;
-        }
+        .interest-form { display: grid; gap: 22px; padding-top: 26px; }
         .interest-input, .interest-select, .interest-textarea {
-          background: rgba(229,212,194,0.06);
-          color: #E5D4C2;
-          border: 1px solid rgba(229,212,194,0.15);
-          border-radius: 8px;
-          padding: 12px 14px;
-          font-family: 'Google Sans Code', monospace;
-          font-size: 12px;
-          width: 100%;
-          box-sizing: border-box;
-          letter-spacing: 0.02em;
-          transition: border-color 0.2s, background 0.2s;
+          background: transparent; color: #E5D4C2;
+          border: none; border-bottom: 1px solid rgba(229,212,194,.28); border-radius: 0;
+          padding: 12px 0;
+          font-family: 'Google Sans Code', monospace; font-size: 13px;
+          width: 100%; box-sizing: border-box;
+          transition: border-color .25s;
         }
+        .interest-input::placeholder, .interest-textarea::placeholder { color: rgba(229,212,194,.45); }
         .interest-input:focus, .interest-select:focus, .interest-textarea:focus {
-          outline: none;
-          border-color: #D4B85A;
-          background: rgba(229,212,194,0.10);
+          outline: none; border-bottom-color: #D4B85A;
         }
+        .interest-select { appearance: none; -webkit-appearance: none; cursor: pointer;
+          background-image: linear-gradient(45deg, transparent 50%, #E5D4C2 50%), linear-gradient(135deg, #E5D4C2 50%, transparent 50%);
+          background-position: calc(100% - 10px) 50%, calc(100% - 5px) 50%;
+          background-size: 5px 5px; background-repeat: no-repeat; }
         .interest-select option { background: #052E20; }
-        .interest-textarea { resize: vertical; min-height: 84px; font-family: inherit; }
+        .interest-textarea { resize: vertical; min-height: 84px; }
         .interest-submit {
-          background: #D4B85A;
-          color: #052E20;
-          border: none;
-          border-radius: 8px;
-          padding: 14px 20px;
-          font-family: 'Rampant Sans', serif;
-          font-size: 14px;
-          font-weight: 600;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-          cursor: pointer;
-          transition: transform 0.2s, background 0.2s;
+          justify-self: start; margin-top: 8px;
+          background: none; color: #D4B85A; border: none;
+          border-bottom: 1px solid #D4B85A; border-radius: 0;
+          padding: 0 0 6px;
+          font-family: 'Google Sans Code', monospace; font-size: 12px;
+          letter-spacing: .12em; text-transform: uppercase; cursor: pointer;
         }
-        .interest-submit:disabled { opacity: 0.5; cursor: not-allowed; }
-        .interest-submit:hover:not(:disabled) {
-          background: #E0C76D;
-          transform: translateY(-1px);
+        .interest-submit span { display: inline-block; transition: transform .35s ease; }
+        .interest-submit:hover:not(:disabled) span { transform: translateX(7px); }
+        .interest-submit:disabled { opacity: 0.45; cursor: not-allowed; }
+        @media (max-width: 900px) {
+          .interest-section { grid-template-columns: 1fr; gap: 20px; padding: 84px 20px 110px; }
         }
         .interest-error {
           font-family: 'Google Sans Code', monospace;
@@ -136,17 +115,20 @@ export default function ExpressInterest() {
           color: #E5D4C2;
           line-height: 1.6;
           max-width: 460px;
-          margin: 0 auto;
+          margin-top: 26px;
+          text-align: left;
         }
       `}</style>
 
       <div className="interest-section">
-        <div className="interest-eyebrow">Make Yourself Known</div>
-        <h2 className="interest-title">Have a word with the Captain.</h2>
-        <p className="interest-sub">
-          Want in on a fixture, suggest a new sport, or simply tell the Captain you exist?
-          Drop a line below — anonymously or otherwise.
-        </p>
+        <div>
+          <div className="interest-eyebrow">Make Yourself Known</div>
+          <h2 className="interest-title">Have a word with the Captain.</h2>
+          <p className="interest-sub">
+            Want in on a fixture, suggest a new sport, or simply tell the Captain you exist?
+            Drop a line below — anonymously or otherwise.
+          </p>
+        </div>
 
         {done ? (
           <div className="interest-thanks">
@@ -157,27 +139,27 @@ export default function ExpressInterest() {
           </div>
         ) : (
           <form className="interest-form" onSubmit={submit}>
-            <select className="interest-select" value={sport} onChange={e => setSport(e.target.value)}>
+            <select className="interest-select" aria-label="Sport" value={sport} onChange={e => setSport(e.target.value)}>
               {SPORTS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
             </select>
             <input
-              type="email" required placeholder="your@email.com"
+              type="email" required placeholder="your@email.com" aria-label="Email"
               className="interest-input"
               value={email} onChange={e => setEmail(e.target.value)}
             />
             <input
-              placeholder="Your name (optional)"
+              placeholder="Your name (optional)" aria-label="Name"
               className="interest-input"
               value={name} onChange={e => setName(e.target.value)}
             />
             <textarea
-              placeholder="A note for the Captain (optional)"
+              placeholder="A note for the Captain (optional)" aria-label="Note"
               className="interest-textarea"
               value={note} onChange={e => setNote(e.target.value)}
             />
             {error && <div className="interest-error">{error}</div>}
             <button type="submit" className="interest-submit" disabled={busy || !email}>
-              {busy ? 'Sending…' : 'Tell the Captain'}
+              {busy ? 'Sending…' : <>Tell the Captain <span>→</span></>}
             </button>
           </form>
         )}

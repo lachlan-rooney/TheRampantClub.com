@@ -16,57 +16,53 @@ export default function TrophyCabinet() {
   return (
     <>
       <style>{`
-        .trophy-section {
-          padding: 60px 20px 80px;
+        /* Set like /studio's "Every exhibition": left-aligned, a mono eyebrow,
+           the title large, and each cup in a lit case rather than a boxed card. */
+        .trophy-section { max-width: 1180px; margin: 0 auto; padding: 120px 24px 40px; color: #E5D4C2; }
+        .trophy-rule { height: 1px; background: #E5D4C2; opacity: .15; }
+        .trophy-eyebrow {
+          font-family: 'Google Sans Code', monospace; font-size: 10.5px;
+          letter-spacing: .22em; text-transform: uppercase; color: #D4B85A; margin-top: 26px;
         }
         .trophy-cabinet-title {
-          font-family: 'Rampant Sans', serif;
-          font-size: 28px;
-          color: #E5D4C2;
-          text-align: center;
-          letter-spacing: 0.04em;
-          margin-bottom: 6px;
+          font-family: 'Rampant Sans', serif; font-weight: 400;
+          font-size: clamp(34px, 7vw, 80px); line-height: .98;
+          margin: 16px 0 0; color: #E5D4C2;
         }
-        .trophy-cabinet-vn {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 11px;
-          color: #B2AA98;
-          text-align: center;
-          letter-spacing: 0.06em;
-          margin-bottom: 50px;
-          opacity: 0.7;
-        }
+        .trophy-cabinet-vn { font-family: 'Google Sans Code', monospace; font-size: 12px; opacity: .6; margin: 14px 0 0; }
         .trophy-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 32px;
-          max-width: 880px;
-          margin: 0 auto;
+          display: grid; grid-template-columns: repeat(4, 1fr);
+          gap: 28px; margin-top: 48px;
         }
         .trophy-card {
-          position: relative;
-          padding: 30px 24px 22px;
-          background: rgba(229,212,194,0.04);
-          border: 1px solid rgba(229,212,194,0.10);
-          border-radius: 12px;
-          text-align: center;
-          cursor: pointer;
-          transition: transform 0.4s cubic-bezier(0.22,1,0.36,1),
-                      background 0.3s, border-color 0.3s, box-shadow 0.4s;
-          color: #E5D4C2;
+          all: unset; box-sizing: border-box; display: block; cursor: pointer;
+          color: #E5D4C2; text-align: left;
+          /* A button centres its content vertically; stretched to the tallest
+             card in the row, the shorter ones would sit lower. Pin to the top. */
+          align-self: start;
         }
-        .trophy-card:hover {
-          transform: translateY(-6px);
-          background: rgba(229,212,194,0.07);
-          border-color: rgba(212,184,90,0.45);
-          box-shadow: 0 24px 48px rgba(0,0,0,0.35);
+        .trophy-card:focus-visible { outline: 1px solid #D4B85A; outline-offset: 6px; border-radius: 12px; }
+        .trophy-case {
+          aspect-ratio: 4 / 5; border-radius: 12px;
+          display: flex; align-items: center; justify-content: center;
+          background: radial-gradient(ellipse at 50% 36%, rgba(229,212,194,.13), rgba(0,0,0,.22) 72%);
+          box-shadow: inset 0 0 0 1px rgba(229,212,194,.06), 0 16px 38px rgba(0,0,0,.28);
+          transition: box-shadow .5s ease;
         }
+        .trophy-card:hover .trophy-case { box-shadow: inset 0 0 0 1px rgba(212,184,90,.35), 0 22px 46px rgba(0,0,0,.34); }
+        .trophy-scale { transform: scale(1.7); }
         .trophy-card:hover .trophy-cup { transform: rotateY(15deg) rotateX(-3deg); }
+        .trophy-go { display: inline-block; transition: transform .35s ease; }
+        .trophy-card:hover .trophy-go { transform: translateX(7px); }
+        @media (max-width: 900px) {
+          .trophy-section { padding: 84px 20px 24px; }
+          .trophy-grid { grid-template-columns: repeat(2, 1fr); gap: 22px 16px; }
+        }
 
         /* The cup illustration is a stack of CSS shapes — bowl, stem, base */
         .trophy-cup {
           width: 64px; height: 88px;
-          margin: 0 auto 18px;
+          margin: 0 auto;
           position: relative;
           transition: transform 0.6s cubic-bezier(0.22,1,0.36,1);
           transform-style: preserve-3d;
@@ -99,39 +95,14 @@ export default function TrophyCabinet() {
           width: 36px; height: 12px;
           border-radius: 3px;
         }
-        .trophy-name {
-          font-family: 'Rampant Sans', serif;
-          font-size: 16px;
-          font-weight: 600;
-          color: #E5D4C2;
-          margin-bottom: 4px;
-          letter-spacing: 0.02em;
-        }
+        .trophy-name { font-family: 'Rampant Sans', serif; font-size: 21px; line-height: 1.15; margin-top: 16px; }
         .trophy-sport {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px;
-          color: #D4B85A;
-          letter-spacing: 0.18em;
-          text-transform: uppercase;
-          margin-bottom: 12px;
+          font-family: 'Google Sans Code', monospace; font-size: 10px;
+          color: #D4B85A; letter-spacing: .18em; text-transform: uppercase; margin-top: 6px;
         }
-        .trophy-desc {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 11px;
-          color: #B2AA98;
-          opacity: 0.85;
-          line-height: 1.6;
-          margin-bottom: 18px;
-        }
-        .trophy-est {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px;
-          color: #B2AA98;
-          opacity: 0.5;
-          letter-spacing: 0.08em;
-          padding-top: 12px;
-          border-top: 1px solid rgba(229,212,194,0.08);
-        }
+        .trophy-desc { font-family: 'Google Sans Code', monospace; font-size: 11px; line-height: 1.8; opacity: .72; margin-top: 10px; }
+        .trophy-est { font-family: 'Google Sans Code', monospace; font-size: 11px; margin-top: 12px; display: flex; gap: 14px; }
+        .trophy-est > span:first-child { opacity: .5; }
 
         /* Hall of Champions modal */
         .hall-backdrop {
@@ -223,22 +194,28 @@ export default function TrophyCabinet() {
       `}</style>
 
       <div className="trophy-section">
+        <div className="trophy-rule" />
+        <div className="trophy-eyebrow">Tủ Cúp · Hall of Champions</div>
         <h2 className="trophy-cabinet-title">The Trophy Cabinet</h2>
-        <p className="trophy-cabinet-vn">Tủ Cúp · click any cup to see past champions</p>
+        <p className="trophy-cabinet-vn">Click any cup to see past champions.</p>
 
         <div className="trophy-grid">
           {TROPHIES.map(t => (
-            <div key={t.id} className="trophy-card" onClick={() => setActive(t)}>
-              <div className="trophy-cup" style={{ color: 'transparent' }}>
-                <div className="trophy-bowl" style={{ background: METAL_GRADIENTS[t.metal], borderColor: METAL_GRADIENTS[t.metal] }} />
-                <div className="trophy-stem" style={{ background: METAL_GRADIENTS[t.metal] }} />
-                <div className="trophy-base" style={{ background: METAL_GRADIENTS[t.metal] }} />
+            <button key={t.id} type="button" className="trophy-card" onClick={() => setActive(t)}>
+              <div className="trophy-case">
+                <div className="trophy-scale">
+                  <div className="trophy-cup" style={{ color: 'transparent' }}>
+                    <div className="trophy-bowl" style={{ background: METAL_GRADIENTS[t.metal], borderColor: METAL_GRADIENTS[t.metal] }} />
+                    <div className="trophy-stem" style={{ background: METAL_GRADIENTS[t.metal] }} />
+                    <div className="trophy-base" style={{ background: METAL_GRADIENTS[t.metal] }} />
+                  </div>
+                </div>
               </div>
               <div className="trophy-name">{t.name}</div>
               <div className="trophy-sport">{t.sport}</div>
               <div className="trophy-desc">{t.description}</div>
-              <div className="trophy-est">Est. {t.established}</div>
-            </div>
+              <div className="trophy-est"><span>Est. {t.established}</span><span>Champions <span className="trophy-go">→</span></span></div>
+            </button>
           ))}
         </div>
       </div>

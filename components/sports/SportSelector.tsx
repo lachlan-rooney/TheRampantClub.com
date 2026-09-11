@@ -1,11 +1,26 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { SPORTS } from '@/lib/sports-data'
-import SportIcon from './SportIcons'
 
-// Tile strip below the page title. Click a tile → smooth-scroll to that
-// section's anchor on the page. Highlights its sport name and upcoming count.
+// The sports, set as /studio sets its artists: names in the display face, an
+// underline that draws in, and the live upcoming count in mono beside each.
+// Click → smooth-scroll to that section. The tab for the section on screen is
+// marked as the reader scrolls, so the strip doubles as a "you are here".
 export default function SportSelector({ counts }: { counts?: Record<string, number> }) {
+  const [current, setCurrent] = useState<string | null>(null)
+
+  useEffect(() => {
+    const els = SPORTS.map(s => document.getElementById(s.id)).filter(Boolean) as HTMLElement[]
+    if (!els.length) return
+    // A section counts as "on screen" while it crosses the upper third.
+    const obs = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) setCurrent(e.target.id) })
+    }, { rootMargin: '-30% 0px -60% 0px' })
+    els.forEach(el => obs.observe(el))
+    return () => obs.disconnect()
+  }, [])
+
   const onClick = (id: string) => (e: React.MouseEvent) => {
     e.preventDefault()
     const el = document.getElementById(id)
@@ -15,94 +30,50 @@ export default function SportSelector({ counts }: { counts?: Record<string, numb
   return (
     <>
       <style>{`
-        .sport-selector {
-          display: grid;
-          grid-template-columns: repeat(${SPORTS.length}, 1fr);
-          gap: 10px;
-          margin: 0 auto 56px;
-          max-width: 640px;
+        .sport-tabs {
+          display: flex; gap: clamp(22px, 3.4vw, 40px);
+          overflow-x: auto; scrollbar-width: none;
+          border-bottom: 1px solid rgba(5,46,32,.12);
         }
-        .sport-tile {
-          position: relative;
-          padding: 18px 10px 14px;
-          background: rgba(5,46,32,0.04);
-          border: 1px solid rgba(5,46,32,0.10);
-          border-radius: 10px;
-          text-align: center;
-          cursor: pointer;
-          transition: transform 0.3s cubic-bezier(0.22,1,0.36,1),
-                      background 0.3s ease, border-color 0.3s ease,
-                      box-shadow 0.3s ease;
-          text-decoration: none;
-          color: inherit;
-        }
-        .sport-tile:hover {
-          transform: translateY(-3px);
-          background: rgba(5,46,32,0.07);
-          border-color: rgba(212,184,90,0.45);
-          box-shadow: 0 12px 24px rgba(5,46,32,0.10);
-        }
-        .sport-tile-glyph {
-          color: #5E6650;
-          line-height: 0;
-          margin: 0 auto 10px;
-          opacity: 0.85;
-          transition: color 0.3s, transform 0.3s, opacity 0.3s;
-        }
-        .sport-tile:hover .sport-tile-glyph {
-          color: #052E20;
-          opacity: 1;
-          transform: translateY(-1px);
-        }
-        .sport-tile-label {
+        .sport-tabs::-webkit-scrollbar { display: none; }
+        .sport-tab {
+          position: relative; flex-shrink: 0;
+          padding: 0 0 14px; text-decoration: none; color: #052E20;
           font-family: 'Rampant Sans', serif;
-          font-size: 12px;
-          font-weight: 600;
-          color: #052E20;
-          letter-spacing: 0.04em;
+          font-size: clamp(19px, 3.2vw, 27px); line-height: 1;
+          opacity: .4; transition: opacity .35s ease;
         }
-        .sport-tile-vn {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px;
-          color: #5E6650;
-          opacity: 0.7;
-          margin-top: 2px;
-          letter-spacing: 0.08em;
+        .sport-tab::after {
+          content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
+          background: #052E20; transform: scaleX(0); transform-origin: left;
+          transition: transform .45s cubic-bezier(.16,.84,.44,1);
         }
-        .sport-tile-count {
-          margin: 10px auto 0;
-          display: inline-block;
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px;
-          color: #052E20;
-          letter-spacing: 0.06em;
-          background: rgba(5, 46, 32, 0.08);
-          padding: 3px 9px;
-          border-radius: 10px;
+        .sport-tab:hover { opacity: .85; }
+        .sport-tab:hover::after { transform: scaleX(1); opacity: .4; }
+        .sport-tab.is-on { opacity: 1; }
+        .sport-tab.is-on::after { transform: scaleX(1); opacity: 1; }
+        .sport-tab-count {
+          font-family: 'Google Sans Code', monospace; font-size: 10px;
+          letter-spacing: .04em; opacity: .75; margin-left: 6px;
         }
-        @media (max-width: 600px) {
-          .sport-selector {
-            grid-template-columns: repeat(3, 1fr);
-            row-gap: 10px;
-          }
+        @media (prefers-reduced-motion: reduce) {
+          .sport-tab, .sport-tab::after { transition: none; }
         }
       `}</style>
 
-      <div className="sport-selector" role="navigation" aria-label="Sport selector">
+      <nav className="sport-tabs" aria-label="Sports">
         {SPORTS.map(s => {
           const upcoming = counts?.[s.id] ?? s.upcoming   // live count when provided, else the static fallback
           return (
-          <a key={s.id} href={`#${s.id}`} onClick={onClick(s.id)} className="sport-tile">
-            <div className="sport-tile-glyph" aria-hidden><SportIcon id={s.id} size={28} /></div>
-            <div className="sport-tile-label">{s.label}</div>
-            <div className="sport-tile-vn">{s.vn}</div>
-            {upcoming > 0 && (
-              <div className="sport-tile-count">{upcoming} upcoming</div>
-            )}
-          </a>
+            <a key={s.id} href={`#${s.id}`} onClick={onClick(s.id)}
+               className={`sport-tab ${current === s.id ? 'is-on' : ''}`}
+               aria-current={current === s.id ? 'true' : undefined}>
+              {s.label}
+              {upcoming > 0 && <span className="sport-tab-count">· {upcoming} upcoming</span>}
+            </a>
           )
         })}
-      </div>
+      </nav>
     </>
   )
 }

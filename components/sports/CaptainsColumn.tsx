@@ -4,12 +4,14 @@ import { useState } from 'react'
 import { CAPTAINS_COLUMN } from '@/lib/sports-data'
 
 // Picks an aphorism deterministically per visit so it doesn't flicker on
-// hydration; clicking the chevron rotates to the next one.
+// hydration; "Another" rotates to the next one.
 function pickIndex() {
   const day = Math.floor(Date.now() / 86400000)
   return day % CAPTAINS_COLUMN.length
 }
 
+// A full-width band in the club's green, the quote set large — a pause in the
+// page between the Cup and the rest of the calendar.
 export default function CaptainsColumn() {
   const [idx, setIdx] = useState<number>(() => pickIndex())
   const next = () => setIdx(i => (i + 1) % CAPTAINS_COLUMN.length)
@@ -17,63 +19,41 @@ export default function CaptainsColumn() {
   return (
     <>
       <style>{`
-        .capt-column {
-          margin: 56px auto;
-          max-width: 540px;
-          padding: 28px 32px 24px;
-          background: rgba(5,46,32,0.04);
-          border-left: 3px solid #D4B85A;
-          border-radius: 4px;
-          position: relative;
+        .capt-band { background: #052E20; color: #E5D4C2; }
+        .capt-inner { max-width: 1180px; margin: 0 auto; padding: 96px 24px 88px; }
+        .capt-eyebrow {
+          font-family: 'Google Sans Code', monospace; font-size: 10.5px;
+          letter-spacing: .22em; text-transform: uppercase; color: #D4B85A;
         }
-        .capt-column-eyebrow {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px;
-          color: #5E6650;
-          letter-spacing: 0.18em;
-          text-transform: uppercase;
-          opacity: 0.7;
-          margin-bottom: 12px;
-        }
-        .capt-column-quote {
+        .capt-quote {
           font-family: 'Rampant Sans', serif;
-          font-size: 20px;
-          font-style: italic;
-          color: #052E20;
-          line-height: 1.5;
-          margin-bottom: 14px;
+          font-size: clamp(30px, 5.4vw, 68px); line-height: 1.02;
+          margin: 22px 0 0; max-width: 16ch;
         }
-        .capt-column-byline {
-          font-family: 'Google Sans Code', monospace;
-          font-size: 10px;
-          color: #5E6650;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
+        .capt-foot { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-top: 34px; flex-wrap: wrap; }
+        .capt-byline { font-family: 'Google Sans Code', monospace; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; opacity: .6; }
+        .capt-next {
+          background: none; border: none; cursor: pointer; color: #E5D4C2;
+          font-family: 'Google Sans Code', monospace; font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+          border-bottom: 1px solid rgba(229,212,194,.6); padding: 0 0 6px;
         }
-        .capt-column-chev {
-          position: absolute;
-          top: 14px; right: 14px;
-          background: transparent;
-          border: 1px solid rgba(5,46,32,0.15);
-          border-radius: 50%;
-          width: 28px; height: 28px;
-          font-size: 14px; line-height: 1;
-          color: #5E6650;
-          cursor: pointer;
-          transition: background 0.2s, color 0.2s, border-color 0.2s;
-        }
-        .capt-column-chev:hover {
-          background: #D4B85A;
-          color: #052E20;
-          border-color: #D4B85A;
-        }
+        .capt-next span { display: inline-block; transition: transform .35s ease; }
+        .capt-next:hover span { transform: translateX(7px); }
+        @keyframes capt-in { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
+        .capt-quote { animation: capt-in .6s cubic-bezier(.16,.84,.44,1) both; }
+        @media (prefers-reduced-motion: reduce) { .capt-quote { animation: none; } .capt-next span { transition: none; } }
       `}</style>
 
-      <div className="capt-column">
-        <button className="capt-column-chev" onClick={next} aria-label="Next quote">›</button>
-        <div className="capt-column-eyebrow">From the Captain’s Column</div>
-        <div className="capt-column-quote">“{CAPTAINS_COLUMN[idx]}”</div>
-        <div className="capt-column-byline">— The Captain</div>
+      <div className="capt-band">
+        <div className="capt-inner">
+          <div className="capt-eyebrow">From the Captain’s Column</div>
+          {/* keyed so each new quote rises in */}
+          <blockquote key={idx} className="capt-quote">“{CAPTAINS_COLUMN[idx]}”</blockquote>
+          <div className="capt-foot">
+            <div className="capt-byline">— The Captain</div>
+            <button className="capt-next" onClick={next} aria-label="Next quote">Another <span>→</span></button>
+          </div>
+        </div>
       </div>
     </>
   )
