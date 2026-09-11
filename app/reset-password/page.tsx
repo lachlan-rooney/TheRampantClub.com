@@ -50,6 +50,9 @@ export default function ResetPasswordPage() {
 
   return (
     <PublicPage ground="#052E20" ink="#E5D4C2">
+      {/* The button's script face (self-hosted), asked for with the HTML so it
+          lands with the page; React hoists this into <head>. */}
+      <link rel="preload" href="/fonts/PinyonScript-Regular.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
       <style suppressHydrationWarning dangerouslySetInnerHTML={{ __html: `
         html, body { margin: 0; padding: 0; }
         /* The words and a new key on the left, two underlined fields on the

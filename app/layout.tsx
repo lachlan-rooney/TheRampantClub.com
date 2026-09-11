@@ -47,7 +47,6 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-        <link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&display=block" rel="stylesheet" />
         <link rel="preload" href="/fonts/MNRampantSans-Regular.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         <link rel="preload" href="/fonts/GoogleSansCode-VariableFont_wght.ttf" as="font" type="font/ttf" crossOrigin="anonymous" />
         <link rel="preload" href="/fonts/GoogleSansCode-Italic-VariableFont_wght.ttf" as="font" type="font/ttf" crossOrigin="anonymous" />
@@ -56,6 +55,17 @@ export default function RootLayout({
             font-family: 'Rampant Sans';
             src: url('/fonts/MNRampantSans-Regular.woff2') format('woff2'),
                  url('/fonts/MNRampantSans-Regular.ttf') format('truetype');
+            font-weight: 400;
+            font-style: normal;
+            font-display: block;
+          }
+          /* Pinyon Script — the log-in and reset buttons. Self-hosted (OFL,
+             Latin set) rather than fetched from Google after the page loads:
+             that round trip was most of the wait before the log-in button
+             appeared. block = never flash the fallback face in its place. */
+          @font-face {
+            font-family: 'Pinyon Script';
+            src: url('/fonts/PinyonScript-Regular.woff2') format('woff2');
             font-weight: 400;
             font-style: normal;
             font-display: block;

@@ -148,7 +148,6 @@ export default function OriginPage() {
       <NavOverlay variant="public" />
 
       <Masthead
-        eyebrow="Nguồn Gốc · The Origin"
         title="A townhouse, a lion, an idea."
         lede={<>How a Scottish-Vietnamese clubhouse came to occupy a five-storey townhouse in District 1,
           and what it intends to do there.</>}

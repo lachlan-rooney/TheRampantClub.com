@@ -1,52 +1,38 @@
 'use client'
 
-import { useState, useCallback, useEffect, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useState, useCallback } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import NavOverlay from '@/components/NavOverlay'
 import LoginTicker from '@/components/LoginTicker'
 import { PublicPage } from '@/components/public/kit'
 import { CreamInk, CreamInkDefs } from '@/components/public/CreamInk'
 
+// THE DOOR OPENS AT ONCE. This page used to read the ?redirect= address with
+// useSearchParams, which made Next render the whole page in the browser only —
+// a blank screen until the scripts arrived — and then kept the panel hidden
+// until the button's script font had loaded from Google. Together that was
+// ~1.5s of nothing. Now the address is read at the moment of signing in, the
+// page is sent as HTML, and the font is self-hosted and requested up front
+// (font-display: block holds just that one line until it lands, so there is
+// still no flash of the wrong face).
 export default function LoginPage() {
-  return (
-    <Suspense>
-      <LoginContent />
-    </Suspense>
-  )
+  return <LoginContent />
+}
+
+// Only ever send someone on to a page of this site. `?redirect=` used to be
+// followed wherever it pointed, so a doctored link could land a member on
+// another site straight after signing in.
+function safeRedirect(): string {
+  const r = new URLSearchParams(window.location.search).get('redirect') || ''
+  return r.startsWith('/') && !r.startsWith('//') && !r.startsWith('/\\') ? r : '/members'
 }
 
 function LoginContent() {
-  const [fontsReady, setFontsReady] = useState(false)
-  useEffect(() => {
-    // Explicitly wait for Pinyon Script (the button face, loaded from Google
-    // Fonts) before revealing the card. document.fonts.ready can resolve before
-    // an external-stylesheet font is even registered, so on a cold/uncached load
-    // online the button would flash the serif fallback. Poll-load until the face
-    // is ready (the Google stylesheet may still be loading → check() is false and
-    // load() finds no face yet, so retry), with a hard cap so it never stays hidden.
-    let cancelled = false
-    const reveal = () => { if (!cancelled) setFontsReady(true) }
-    const ensure = async () => {
-      for (let i = 0; i < 20; i++) {                       // ~2s of 100ms retries
-        if (document.fonts.check("24px 'Pinyon Script'")) break
-        try { await document.fonts.load("24px 'Pinyon Script'") } catch { /* ignore */ }
-        if (document.fonts.check("24px 'Pinyon Script'")) break
-        await new Promise(r => setTimeout(r, 100))
-      }
-      reveal()
-    }
-    ensure()
-    const t = setTimeout(reveal, 2500)                     // safety: never stay hidden
-    return () => { cancelled = true; clearTimeout(t) }
-  }, [])
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [forgotSent, setForgotSent] = useState(false)
-  const searchParams = useSearchParams()
-  const redirect = searchParams.get('redirect') || '/members'
 
   const handleLogin = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
@@ -62,9 +48,9 @@ function LoginContent() {
     } else {
       // Hard navigation so the browser sees a real page transition and offers to save the password.
       // router.push() is a client-side route change that some browsers don't recognise as a login success.
-      window.location.href = redirect
+      window.location.href = safeRedirect()
     }
-  }, [email, password, redirect])
+  }, [email, password])
 
   const [forgotLoading, setForgotLoading] = useState(false)
   const handleForgotPassword = useCallback(async () => {
@@ -86,6 +72,9 @@ function LoginContent() {
 
   return (
     <PublicPage ground="#052E20" ink="#E5D4C2">
+      {/* The button's script face (self-hosted), asked for with the HTML so it
+          lands with the page; React hoists this into <head>. */}
+      <link rel="preload" href="/fonts/PinyonScript-Regular.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
       <style suppressHydrationWarning dangerouslySetInnerHTML={{ __html: `
         html, body { margin: 0; padding: 0; }
 
@@ -156,9 +145,8 @@ function LoginContent() {
                          font-size: 12px; line-height: 1.8; letter-spacing: 0.02em; }
         .login-message.error { color: #E89B9B; }
 
-        /* rises in once the button's face has loaded (see fontsReady) */
-        .lg-rise { opacity: 0; transform: translateY(22px); }
-        .lg.is-ready .lg-rise { animation: pk-rise .9s cubic-bezier(.16,.84,.44,1) both; }
+        /* rises in on arrival — CSS only, no waiting on scripts or fonts */
+        .lg-rise { opacity: 0; transform: translateY(22px); animation: pk-rise .9s cubic-bezier(.16,.84,.44,1) both; }
 
         @media (max-width: 1024px) { .lg-grid { padding-right: 24px; } }
         @media (max-width: 860px) {
@@ -174,7 +162,7 @@ function LoginContent() {
           .login-btn { font-size: 30px; }
         }
         @media (prefers-reduced-motion: reduce) {
-          .lg-rise, .lg.is-ready .lg-rise { opacity: 1; transform: none; animation: none; }
+          .lg-rise { opacity: 1; transform: none; animation: none; }
           .login-btn .lg-go { transition: none; }
         }
       ` }} />
@@ -183,7 +171,7 @@ function LoginContent() {
       <NavOverlay variant="public" dark />
       <LoginTicker />
 
-      <div className={`lg ${fontsReady ? 'is-ready' : ''}`} style={{ opacity: fontsReady ? 1 : 0, transition: 'opacity 0.3s ease' }}>
+      <div className="lg">
         <div className="pk-wrap lg-grid">
           <div className="lg-words">
             <div className="lg-rise"><div className="pk-eyebrow lg-eyebrow">The Rampant Club</div></div>

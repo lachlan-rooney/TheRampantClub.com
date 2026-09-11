@@ -155,7 +155,6 @@ export default function AtlasPage() {
       <NavOverlay variant="public" />
 
       <Masthead
-        eyebrow="Bản Đồ Whisky · The Atlas"
         title={<>What&rsquo;s currently stocked in the club?</>}
         lede={<>Members constantly bring new whiskies into the club. Tap a region to see its character,
           signature distilleries, and how many bottles are on the shelf right now.</>}
