@@ -30,7 +30,7 @@ export default function HomeHero({ onEthos }: { onEthos: () => void }) {
   return (
     <section className={`hh ${entered ? 'is-in' : ''}`}>
       <style dangerouslySetInnerHTML={{ __html: `
-        .hh { max-width: 1180px; margin: 0 auto; padding: 150px 24px 150px; color: var(--trc-green-deep); }
+        .hh { max-width: 1180px; margin: 0 auto; padding: 108px 24px 150px; color: var(--trc-green-deep); }
         .hh-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 40px; align-items: center; }
         .hh-rise { opacity: 0; transform: translateY(22px); }
         .hh.is-in .hh-rise { animation: hh-rise .9s cubic-bezier(.16,.84,.44,1) both; }
@@ -64,7 +64,7 @@ export default function HomeHero({ onEthos }: { onEthos: () => void }) {
         }
 
         @media (max-width: 900px) {
-          .hh { padding: 110px 20px 150px; }
+          .hh { padding: 80px 20px 150px; }
           .hh-grid { grid-template-columns: 1fr; gap: 26px; }
           .hh-still { width: 100%; max-width: 440px; margin: 0 auto; aspect-ratio: 1 / 0.8; }
         }

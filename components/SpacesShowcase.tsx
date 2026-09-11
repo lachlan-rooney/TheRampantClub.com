@@ -353,10 +353,8 @@ export default function SpacesShowcase({ variant }: { variant: 'internal' | 'pub
                       <img className="sp-crest" src={s.mark} alt="" loading="lazy" />
                     </Rise>
                   )}
-                  <Rise delay={.05}>
-                    {/* The floor's number, then its name in the other language. */}
-                    <Eyebrow>{s.floor === '—' ? '' : `${s.floor.padStart(2, '0')} · `}{vn ? s.en : s.vn}</Eyebrow>
-                  </Rise>
+                  {/* No "01 · Quầy Bar Thư Viện" eyebrow over the name — the
+                      owner took them off; the lion and the name carry it. */}
                   <Rise delay={.1}><h2 className="pk-h2 sp-title">{nameOf(s)}</h2></Rise>
                   <Rise delay={.16}>
                     <p className="pk-lede">{vn ? s.descVn : s.descEn}</p>
