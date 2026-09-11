@@ -15,7 +15,6 @@ import { PublicPage, Masthead, SectionHead, Rise, Cta, InkFloat, BleedImage } fr
 
 const CHAPTERS = [
   {
-    eyebrow: 'I.  The Lion',
     image: 'lion-crest',
     title: 'A symbol, twice over',
     body: [
@@ -28,7 +27,6 @@ const CHAPTERS = [
     ],
   },
   {
-    eyebrow: 'II.  The Building',
     image: 'whisky-lounge',
     title: 'A house with five floors and a long memory',
     body: [
@@ -42,7 +40,6 @@ const CHAPTERS = [
     ],
   },
   {
-    eyebrow: 'III.  The Idea',
     image: 'gala-table',
     title: 'Sustained by its members, not for profit',
     body: [
@@ -167,7 +164,7 @@ export default function OriginPage() {
           <section className={`pk-wrap ${i === 1 ? '' : 'pk-section'}`} style={i === 1 ? { paddingTop: 12 } : undefined}>
             <div className={`org-ch ${i === 2 ? 'is-flip' : ''}`}>
               <div>
-                <SectionHead eyebrow={c.eyebrow} title={c.title} />
+                <SectionHead title={c.title} />
                 <Rise delay={.14} className="org-ch-body">
                   {c.body.map((p, j) => <p key={j} className="pk-body">{p}</p>)}
                 </Rise>
