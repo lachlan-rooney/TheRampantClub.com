@@ -1,9 +1,10 @@
 'use client'
 
-import { useRef, useCallback, useEffect, useMemo, useState } from 'react'
+import { useRef, useCallback, useEffect, useState } from 'react'
 import NavOverlay from '@/components/NavOverlay'
 import LiveTicker from '@/components/LiveTicker'
 import TonightPanel from '@/components/TonightPanel'
+import ReciprocalClocks from '@/components/ReciprocalClocks'
 import Spotlight from '@/components/Spotlight'
 import useEasterEggs from '@/hooks/useEasterEggs'
 import Link from 'next/link'
@@ -76,25 +77,21 @@ const FLOORS = [
   { num: 1, name: 'The Library Bar', vn: 'Quầy Bar Thư Viện', desc: 'Your private cocktail bar. Seasonal cocktails, vintage spirits, curated books and games, with resident musicians and DJs.' },
 ]
 
-// `short` is the name set large; `meta` is the one fact that tells the three
-// apart at a glance, taken from the description rather than added to it.
+// `short` is the name set large; the description carries the rest.
 const TIERS = [
   {
     name: 'The Legacy Membership',
     short: 'Legacy',
-    meta: 'The Legacy Membership \u00b7 Established',
     desc: 'For established individuals shaping their communities. Full use of the Club and its shared resources, balanced through mutual consideration rather than formal limits.',
   },
   {
     name: 'The Pioneer Membership',
     short: 'Pioneer',
-    meta: 'The Pioneer Membership \u00b7 Under 33',
     desc: 'For emerging leaders and rising creatives under 33. Full access to all areas, events, and member privileges at a preferential rate designed to nurture the next generation.',
   },
   {
     name: 'The Corporate Membership',
     short: 'Corporate',
-    meta: 'The Corporate Membership \u00b7 Three seats',
     desc: 'Three nominated representative seats per company. Access to all spaces, events, and networking opportunities \u2014 ideal for hosting, relationship-building, and representation.',
   },
 ]
@@ -311,180 +308,6 @@ function DraggableImage({
   )
 }
 
-// ─── Reciprocal Section ──────────────────────────────────────────
-// Four reciprocal-club hubs, each showing the live local time and a
-// signature partner club. Decorative dashed flight paths animate in.
-const RECIP_CITIES = [
-  { name: 'London',    tz: 'Europe/London',    code: 'GMT',  partner: 'Mark’s Club',          country: 'United Kingdom' },
-  { name: 'New York',  tz: 'America/New_York', code: 'EST',  partner: 'Soho House',           country: 'United States' },
-  { name: 'Tokyo',     tz: 'Asia/Tokyo',       code: 'JST',  partner: 'The Aman Club',        country: 'Japan' },
-  { name: 'Singapore', tz: 'Asia/Singapore',   code: 'SGT',  partner: '1880',                 country: 'Singapore' },
-]
-
-function ReciprocalSection({ refProp, visible }: {
-  refProp: React.Ref<HTMLDivElement>
-  visible: boolean
-}) {
-  const computeTimes = () => RECIP_CITIES.map(c => new Intl.DateTimeFormat('en-GB', {
-    hour: '2-digit', minute: '2-digit', hour12: false, timeZone: c.tz,
-  }).format(new Date()))
-  // Server render uses placeholders to avoid SSR/CSR drift; first client paint hydrates real times.
-  const [times, setTimes] = useState<string[]>(() => Array(RECIP_CITIES.length).fill('—'))
-
-  useEffect(() => {
-    setTimes(computeTimes())
-    const id = setInterval(() => setTimes(computeTimes()), 30_000)
-    return () => clearInterval(id)
-  }, [])
-
-  // Sort cities left → right, earliest local time first.
-  const order = useMemo(() => {
-    const minutes = (t: string) => {
-      const [h, m] = t.split(':').map(n => parseInt(n, 10))
-      if (Number.isNaN(h) || Number.isNaN(m)) return -1
-      return h * 60 + m
-    }
-    return RECIP_CITIES.map((_, i) => i).sort((a, b) => minutes(times[a]) - minutes(times[b]))
-  }, [times])
-
-  return (
-    <div
-      ref={refProp}
-      style={{
-        padding: '60px 32px 64px',
-        background: 'var(--trc-green-deep)',
-        position: 'relative',
-        overflow: 'hidden',
-        opacity: visible ? 1 : 0,
-        transform: visible ? 'translateY(0)' : 'translateY(20px)',
-        transition: 'opacity 0.8s ease, transform 0.8s cubic-bezier(0.22, 1, 0.36, 1)',
-      }}
-    >
-      <div style={{ maxWidth: 980, margin: '0 auto', position: 'relative' }}>
-        <div
-          className="trc-section-diamond"
-          style={{ background: 'var(--trc-cream)', opacity: 0.4 }}
-        />
-        <h2
-          className="trc-section-title"
-          style={{ color: 'var(--trc-cream)', marginBottom: 8 }}
-        >
-          A World Beyond Sài Gòn
-        </h2>
-        <div
-          className="trc-section-subtitle"
-          style={{ color: 'var(--trc-cream-dim)', opacity: 0.7, marginBottom: 16 }}
-        >
-          Câu Lạc Bộ Đối Ứng
-        </div>
-        <p style={{
-          fontFamily: "'Google Sans Code', monospace",
-          fontSize: 12,
-          color: 'var(--trc-cream)',
-          opacity: 0.65,
-          lineHeight: 1.7,
-          textAlign: 'center',
-          maxWidth: 560,
-          margin: '0 auto 36px',
-        }}>
-          Bespoke reciprocal access to a vetted network of premier private clubs.
-        </p>
-
-        {/* Live city tiles */}
-        <div className="recip-grid" style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: 14,
-          maxWidth: 880,
-          margin: '0 auto',
-        }}>
-          {order.map((i, displayIdx) => {
-            const c = RECIP_CITIES[i]
-            return (
-            <div
-              key={c.name}
-              style={{
-                padding: '14px 14px 14px',
-                background: 'rgba(229,212,194,0.04)',
-                border: '1px solid rgba(229,212,194,0.10)',
-                borderRadius: 10,
-                textAlign: 'center',
-                opacity: visible ? 1 : 0,
-                transform: visible ? 'translateY(0)' : 'translateY(12px)',
-                transition: `opacity 0.6s ease ${0.2 + displayIdx * 0.1}s, transform 0.6s cubic-bezier(0.22,1,0.36,1) ${0.2 + displayIdx * 0.1}s, background 0.3s, border-color 0.3s, box-shadow 0.4s`,
-                cursor: 'default',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background  = 'rgba(229,212,194,0.07)'
-                e.currentTarget.style.borderColor = 'rgba(212,184,90,0.4)'
-                e.currentTarget.style.boxShadow   = '0 18px 32px rgba(0,0,0,0.32)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background  = 'rgba(229,212,194,0.04)'
-                e.currentTarget.style.borderColor = 'rgba(229,212,194,0.10)'
-                e.currentTarget.style.boxShadow   = 'none'
-              }}
-            >
-              <div style={{
-                fontFamily: "'Rampant Sans', serif",
-                fontSize: 14,
-                fontWeight: 500,
-                color: 'var(--trc-cream)',
-                letterSpacing: '0.04em',
-                marginBottom: 2,
-              }}>
-                {c.name}
-              </div>
-              <div style={{
-                fontFamily: "'Google Sans Code', monospace",
-                fontSize: 10,
-                color: '#D4B85A',
-                opacity: 0.7,
-                letterSpacing: '0.18em',
-                textTransform: 'uppercase',
-                marginBottom: 8,
-              }}>
-                {c.code}
-              </div>
-              <div style={{
-                fontFamily: "'Google Sans Code', monospace",
-                fontSize: 16,
-                fontVariantNumeric: 'tabular-nums',
-                fontWeight: 500,
-                color: 'var(--trc-cream)',
-                letterSpacing: '0.04em',
-              }}>
-                {times[i]}
-              </div>
-            </div>
-          )})}
-        </div>
-
-        <p className="recip-foot" style={{
-          fontFamily: "'Google Sans Code', monospace",
-          fontSize: 10,
-          color: 'var(--trc-cream-dim)',
-          opacity: 0.45,
-          letterSpacing: '0.06em',
-          textAlign: 'center',
-          marginTop: 36,
-          fontStyle: 'italic',
-        }}>
-          Featured partner cities shown.
-          <span className="recip-foot-break"> </span>
-          The full reciprocal list is shared with members upon joining.
-        </p>
-        <style dangerouslySetInnerHTML={{ __html: `
-          @media (max-width: 768px) {
-            .recip-foot-break { display: block; height: 0; }
-            .recip-grid { grid-template-columns: repeat(2, 1fr) !important; }
-          }
-        ` }} />
-      </div>
-    </div>
-  )
-}
-
 // ─── Main Page ───────────────────────────────────────────────────
 export default function HomePage() {
   const easterEggs = useEasterEggs()
@@ -507,7 +330,6 @@ export default function HomePage() {
   const hero = useScrollReveal(0.1)
   const benefitsSec = useScrollReveal(0.1)
   const floorsSec = useScrollReveal(0.1)
-  const reciprocalSec = useScrollReveal(0.15)
   const tiersSec = useScrollReveal(0.1)
 
   useEffect(() => {
@@ -805,7 +627,7 @@ export default function HomePage() {
         @keyframes trc-rise { from { opacity: 0; transform: translateY(22px) } to { opacity: 1; transform: none } }
         .trc-tiers {
           max-width: 1180px; margin: 0 auto;
-          padding: 110px 24px 140px;
+          padding: 28px 24px 140px;   /* tucked under the faded image, as on /studio */
           color: var(--trc-green-deep);
         }
         .trc-tiers-rise { opacity: 0; }
@@ -849,17 +671,13 @@ export default function HomePage() {
           font-size: clamp(34px, 3.6vw, 48px); line-height: 1;
           margin-top: 26px;
         }
-        .trc-tier-meta {
-          font-family: 'Google Sans Code', 'DM Mono', monospace;
-          font-size: 11px; opacity: .62; margin-top: 10px;
-        }
         .trc-tier-desc {
           font-family: 'Google Sans Code', 'DM Mono', monospace;
           font-size: 12px; line-height: 1.9; opacity: .8;
           margin: 18px 0 0; max-width: 34ch;
         }
         @media (max-width: 900px) {
-          .trc-tiers { padding: 72px 20px 96px; }
+          .trc-tiers { padding: 20px 20px 96px; }
           .trc-tiers-grid { grid-template-columns: 1fr; gap: 44px; margin-top: 52px; }
           .trc-tier-desc { max-width: none; }
         }
@@ -1132,11 +950,10 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* ══════ 2.5 TONIGHT PANEL ══════ */}
+        {/* ══════ 2.5 TONIGHT — the departures board ══════
+            Full content width, not a small card in the middle of the page. */}
         <div className="trc-section" style={{ paddingTop: 0, paddingBottom: 0 }}>
-          <div style={{ maxWidth: 720, margin: '0 auto' }}>
-            <TonightPanel />
-          </div>
+          <TonightPanel />
         </div>
 
         {/* ══════ 3. THE GOLF DAY ══════════════════════════════════════════
@@ -1289,23 +1106,27 @@ export default function HomePage() {
         </Link>
 
         {/* ══════ 5. RECIPROCAL ACCESS ══════ */}
-        <ReciprocalSection refProp={reciprocalSec.ref} visible={reciprocalSec.visible} />
+        <ReciprocalClocks />
 
-        {/* ══════ 6. LION PAINTING ══════ */}
+        {/* ══════ 6. THE CLUB'S COLOURS — full bleed ══════
+            Unboxed and edge to edge, fading into the cream below exactly the
+            way the artist heroes fade into the sage on /studio: the same
+            height rule and the same gradient stop, only the ground differs. */}
         <div
           ref={blurbRef}
-          className={`trc-blurb ${blurbVisible ? 'visible' : ''}`}
-          style={{ textAlign: 'center' }}
+          style={{
+            position: 'relative', width: '100%', height: 'min(70vh, 660px)', overflow: 'hidden',
+            opacity: blurbVisible ? 1 : 0, transition: 'opacity 1s ease',
+          }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/images/castle-opt.png"
             alt="The Rampant Club"
-            style={{
-              display: 'block', maxWidth: 500, width: '100%', height: 'auto',
-              margin: '0 auto', opacity: 0.9, borderRadius: 12,
-            }}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
+          <div style={{ position: 'absolute', inset: 0,
+                        background: 'linear-gradient(to bottom, transparent 58%, var(--trc-cream) 100%)' }} />
         </div>
 
         {/* ══════ 7. MEMBERSHIP TIERS ══════
@@ -1327,7 +1148,6 @@ export default function HomePage() {
                   <span className="trc-tier-line" />
                 </div>
                 <div className="trc-tier-name">{tier.short}</div>
-                <div className="trc-tier-meta">{tier.meta}</div>
                 <p className="trc-tier-desc">{tier.desc}</p>
               </div>
             ))}
