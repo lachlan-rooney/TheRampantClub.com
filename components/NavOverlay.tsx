@@ -440,12 +440,14 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
               <div className="nav-link-en">Club Spaces</div>
               <div className="nav-link-vn">Không Gian</div>
             </Link>
-            {/* English only, and deliberately so — asked for twice. The Studio
-                carries its own name (it has its own wordmark); it is not the
-                club's word for a room, so it takes no Vietnamese line. Do not
-                "match every other item" and add one back. */}
+            {/* This line has been both ways. English only twice (b31cb09,
+                22a6d0b), on the reasoning that the Studio carries its own
+                name; Vietnamese underneath the rest of the time. Lachlan's
+                call on 2026-09-12 is that it matches every other item, so
+                "Phòng Studio" it is — the same words /studio uses of itself. */}
             <Link href="/studio" className="nav-link" onClick={() => setOpen(false)}>
               <div className="nav-link-en">The Studio</div>
+              <div className="nav-link-vn">Phòng Studio</div>
             </Link>
             <Link href="/sports" className="nav-link" onClick={() => setOpen(false)}>
               <div className="nav-link-en">The Sports Club</div>
