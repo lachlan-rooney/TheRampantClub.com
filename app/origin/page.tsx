@@ -15,7 +15,7 @@ import { PublicPage, Masthead, SectionHead, Rise, Cta, InkFloat, BleedImage } fr
 
 const CHAPTERS = [
   {
-    image: 'lion-crest',
+    image: 'trc/headcover-lion',
     title: 'A symbol, twice over',
     body: [
       `In Scottish heraldry, a lion rampant stands on its hind legs, forelegs raised, jaws and claws bared.

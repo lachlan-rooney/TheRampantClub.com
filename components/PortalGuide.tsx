@@ -53,13 +53,13 @@ interface Slide { key: string; icon: string; image: string; title: L; blurb: L; 
 
 // Short, plain one-liners. One photo-led screen per area.
 const SLIDES: Slide[] = [
-  { key: 'start', icon: 'home', image: 'whisky-lounge', title: { en: 'Getting around', vn: 'Cách dùng' },
+  { key: 'start', icon: 'home', image: 'trc/card-tees', title: { en: 'Getting around', vn: 'Cách dùng' },
     blurb: { en: 'Two ways to move around — the picture tiles, and the menu.', vn: 'Hai cách di chuyển — các ô hình, và menu.' },
     items: [
       { icon: 'home', name: { en: 'The home tiles', vn: 'Ô trang chủ' }, line: { en: 'Tap any picture to open that part of the club.', vn: 'Chạm một hình để mở phần đó.' } },
       { icon: 'menu', name: { en: 'The menu (≡)', vn: 'Menu (≡)' }, line: { en: 'The button up top opens the full menu, on any page.', vn: 'Nút phía trên mở menu đầy đủ, trên mọi trang.' } },
     ] },
-  { key: 'whisky', icon: 'glass', image: 'bottle-collection', title: { en: 'Whisky', vn: 'Whisky' },
+  { key: 'whisky', icon: 'glass', image: 'trc/ags-bottle', title: { en: 'Whisky', vn: 'Whisky' },
     blurb: { en: 'Explore whisky — the app learns what you like as you go.', vn: 'Khám phá whisky — ứng dụng học gu của bạn.' },
     items: [
       { icon: 'glass', name: { en: 'Whisky Library', vn: 'Thư Viện Whisky' }, line: { en: 'Browse every bottle we pour — search, read members’ notes.', vn: 'Duyệt mọi chai — tìm kiếm, đọc ghi chú hội viên.' } },
@@ -104,7 +104,7 @@ const SLIDES: Slide[] = [
       { icon: 'document', name: { en: 'Terms', vn: 'Điều Khoản' }, line: { en: 'The full terms and conditions.', vn: 'Điều khoản đầy đủ.' } },
       { icon: 'mail', name: { en: 'Contact', vn: 'Liên Hệ' }, line: { en: 'Address and phone number.', vn: 'Địa chỉ và số điện thoại.' } },
     ] },
-  { key: 'ask', icon: 'chat', image: 'whisky-library', title: { en: 'You’re all set', vn: 'Bạn đã sẵn sàng' },
+  { key: 'ask', icon: 'chat', image: 'trc/headcover-script', title: { en: 'You’re all set', vn: 'Bạn đã sẵn sàng' },
     blurb: { en: 'That’s the tour. Ask a question below, or jump straight in.', vn: 'Đó là toàn bộ. Hỏi bên dưới, hoặc bắt đầu ngay.' },
     items: [] },
 ]
