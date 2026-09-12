@@ -32,7 +32,7 @@ const AtlasGlobe = dynamic(() => import('./AtlasGlobe'), {
 const SHELF: { src: string; w: string; left: string; top: string; rot: number; z: number }[] = [
   { src: 'whisky-library',    w: '46%', left: '27%', top: '0%',  rot: 2,  z: 1 },
   { src: 'bottle-collection', w: '40%', left: '0%',  top: '20%', rot: -7, z: 2 },
-  { src: 'springbank',        w: '38%', left: '61%', top: '27%', rot: 7,  z: 2 },
+  { src: 'trc/octave-glencairn', w: '38%', left: '61%', top: '27%', rot: 7,  z: 2 },
 ]
 
 export default function AtlasPage() {
@@ -164,7 +164,7 @@ export default function AtlasPage() {
                    style={{ width: s.w, left: s.left, top: s.top, zIndex: s.z, transform: `rotate(${s.rot}deg)` }}>
                 <div className="pk-thumb">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/images/social/${s.src}.webp`} alt="" />
+                  <img src={s.src.startsWith('trc/') ? `/images/${s.src}-800.webp` : `/images/social/${s.src}.webp`} alt="" />
                 </div>
               </div>
             ))}

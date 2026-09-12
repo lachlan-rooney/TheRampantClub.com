@@ -125,7 +125,7 @@ const SPACES: Space[] = [
   {
     id: 'sports',
     mark: '/images/floors/sports-club.svg',
-    backdrop: '/images/floors/sports-backdrop.jpg',
+    backdrop: '/images/trc/cup-high-five-1600.webp',
     focus: '50% 34%',
     ink: 'tee-glass',
     floor: '—',

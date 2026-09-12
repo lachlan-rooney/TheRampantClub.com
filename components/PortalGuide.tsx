@@ -19,7 +19,7 @@ const SEEN_KEY = 'rampant.portalguide.v2'
 // a third implementation of the same idea. The old key is migrated on read by
 // the provider, so a member who chose Vietnamese here keeps it.
 interface L { en: string; vn: string }
-const IMG = (n: string) => `/images/social/${n}.webp`
+const IMG = (n: string) => n.startsWith('trc/') ? `/images/${n}-800.webp` : `/images/social/${n}.webp`
 
 const ICONS: Record<string, string> = {
   home: '<path d="M3 7.5L8 3.5l5 4"/><path d="M4.2 6.8V13h7.6V6.8"/><path d="M6.8 13V9.5h2.4V13"/>',
@@ -68,14 +68,14 @@ const SLIDES: Slide[] = [
       { icon: 'quill', name: { en: 'Your Notes', vn: 'Ghi Chú' }, line: { en: 'Jot what you thought of a dram, like a diary.', vn: 'Ghi cảm nhận về một ly, như nhật ký.' } },
       { icon: 'flag', name: { en: 'Your Journey', vn: 'Hành Trình' }, line: { en: 'Your whisky story over time.', vn: 'Câu chuyện whisky của bạn theo thời gian.' } },
     ] },
-  { key: 'whatson', icon: 'calendar', image: 'cocktails', title: { en: "What’s On", vn: 'Sự Kiện' },
+  { key: 'whatson', icon: 'calendar', image: 'trc/gala-cheer', title: { en: "What’s On", vn: 'Sự Kiện' },
     blurb: { en: 'Everything happening — and the photos afterwards.', vn: 'Mọi thứ đang diễn ra — và ảnh sau đó.' },
     items: [
       { icon: 'calendar', name: { en: surfaceName('/members/events', 'en'), vn: surfaceName('/members/events', 'vn') }, line: { en: 'What’s coming up — tap “Sign me up” to join a match.', vn: 'Sắp tới — chạm “Cho tôi tham gia” để dự trận.' } },
       { icon: 'image', name: { en: surfaceName('/members/gallery', 'en'), vn: surfaceName('/members/gallery', 'vn') }, line: { en: 'Photos from events — add your own too.', vn: 'Ảnh từ sự kiện — thêm ảnh của bạn.' } },
       { icon: 'pin', name: { en: surfaceName('/members/notices', 'en'), vn: surfaceName('/members/notices', 'vn') }, line: { en: 'Short club announcements, every week.', vn: 'Thông báo ngắn, hàng tuần.' } },
     ] },
-  { key: 'club', icon: 'building', image: 'gala-table', title: { en: 'The Club', vn: 'Câu Lạc Bộ' },
+  { key: 'club', icon: 'building', image: 'trc/bar-cart', title: { en: 'The Club', vn: 'Câu Lạc Bộ' },
     blurb: { en: 'The rooms, the menus, a members’ chat, and staff.', vn: 'Các phòng, thực đơn, trò chuyện hội viên, và nhân viên.' },
     items: [
       { icon: 'building', name: { en: 'Our Spaces', vn: 'Không Gian' }, line: { en: 'A tour of the five floors and the sports club.', vn: 'Tham quan năm tầng và câu lạc bộ thể thao.' } },
@@ -83,21 +83,21 @@ const SLIDES: Slide[] = [
       { icon: 'sofa', name: { en: 'The Snug', vn: 'Phòng Khách' }, line: { en: 'A members’ chatroom — post drams, photos, and chat.', vn: 'Phòng trò chuyện hội viên — đăng ly, ảnh, trò chuyện.' } },
       { icon: 'bell', name: { en: 'The Concierge', vn: 'Quản Gia' }, line: { en: 'A private line to staff — a real person replies.', vn: 'Đường dây riêng với nhân viên — người thật trả lời.' } },
     ] },
-  { key: 'community', icon: 'people', image: 'ao-dai', title: { en: 'Community', vn: 'Cộng Đồng' },
+  { key: 'community', icon: 'people', image: 'trc/gala-arrivals', title: { en: 'Community', vn: 'Cộng Đồng' },
     blurb: { en: 'The other members — meet them privately, at your pace.', vn: 'Các hội viên khác — gặp gỡ riêng tư, theo nhịp của bạn.' },
     items: [
       { icon: 'people', name: { en: 'The Members', vn: 'Thành Viên' }, line: { en: 'A directory — each member shows what they choose.', vn: 'Danh bạ — mỗi người hiển thị điều họ chọn.' } },
       { icon: 'introduce', name: { en: 'Introductions', vn: 'Giới Thiệu' }, line: { en: 'Meet a member — both agree before names are shared.', vn: 'Làm quen — cả hai đồng ý trước khi chia sẻ tên.' } },
       { icon: 'chat', name: { en: 'Messages', vn: 'Tin Nhắn' }, line: { en: 'Your private chats with other members.', vn: 'Trò chuyện riêng với hội viên khác.' } },
     ] },
-  { key: 'you', icon: 'card', image: 'lion-crest', title: { en: 'You', vn: 'Bạn' },
+  { key: 'you', icon: 'card', image: 'trc/card-lemon', title: { en: 'You', vn: 'Bạn' },
     blurb: { en: 'Your membership, your schedule, your history.', vn: 'Tư cách, lịch, và lịch sử của bạn.' },
     items: [
       { icon: 'card', name: { en: 'My Membership', vn: 'Tư Cách Thành Viên' }, line: { en: 'Your card, number, locker, and receipts.', vn: 'Thẻ, số, tủ khoá và biên nhận.' } },
       { icon: 'calendar', name: { en: 'My Calendar', vn: 'Lịch Của Bạn' }, line: { en: 'Your bookings and the matches you’ve joined.', vn: 'Đặt chỗ và các trận bạn tham gia.' } },
       { icon: 'clock', name: { en: 'Your Visits', vn: 'Ghé Thăm' }, line: { en: 'A record of your visits.', vn: 'Ghi lại những lần ghé của bạn.' } },
     ] },
-  { key: 'info', icon: 'book', image: 'springbank', title: { en: 'Info', vn: 'Thông Tin' },
+  { key: 'info', icon: 'book', image: 'trc/club-booklet', title: { en: 'Info', vn: 'Thông Tin' },
     blurb: { en: 'The rules, the legal bits, and how to reach us.', vn: 'Nội quy, phần pháp lý, và cách liên hệ.' },
     items: [
       { icon: 'book', name: { en: 'House Rules', vn: 'Nội Quy' }, line: { en: 'How the club works — worth a read.', vn: 'Cách câu lạc bộ hoạt động — đáng đọc.' } },

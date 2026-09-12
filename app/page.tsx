@@ -90,6 +90,15 @@ const TIERS = [
 const CUP = { opens: '2026-08-14', closes: '2026-08-15' }
 const cupTense = (() => { const t = tenseOf(CUP.opens, CUP.closes); return t === 'Past' ? 'Played' : t })()
 
+// The Friday gala at The Grand Hồ Tràm, laid under the Cup's film.
+const GALA: { src: string; alt: string; rot: number; dy: number; z: number; pos?: string }[] = [
+  { src: 'gala-arrivals', alt: 'Arrivals at the 2026 Invitational & Charity Gala Dinner', rot: -5,  dy: 0,  z: 2, pos: '62% 40%' },
+  { src: 'trophy-gold',   alt: 'The Rampant Cup trophy',                               rot: 4,   dy: 26, z: 3, pos: '50% 30%' },
+  { src: 'gala-cheer',    alt: 'The gala room on its feet',                            rot: -2,  dy: 8,  z: 4, pos: '58% 50%' },
+  { src: 'cask-lid',      alt: 'An Auchentoshan cask lid at the gala',                 rot: 6,   dy: 30, z: 3, pos: '38% 50%' },
+  { src: 'gala-pour',     alt: 'A pour at the gala',                                   rot: -4,  dy: 4,  z: 2, pos: '50% 45%' },
+]
+
 // ─── Draggable Image Component ───────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════
 // THE GOLF DAY FILM — plays when it reaches you, muted.
@@ -548,6 +557,28 @@ export default function HomePage() {
                    text-transform: uppercase; border-bottom: 1px solid var(--trc-green-deep); padding-bottom: 6px; }
         .trc-go { display: inline-block; transition: transform .35s ease; }
         .trc-cta:hover .trc-go { transform: translateX(7px); }
+        /* the gala, as prints tossed under the film */
+        .trc-gala { display: flex; justify-content: center; margin: 46px auto 0; padding: 0 12px 30px; }
+        .trc-gala-print { position: relative; display: block; flex: 0 1 230px; min-width: 0; margin: 0 -14px;
+                          aspect-ratio: 4 / 5; background: #FBF6EC; padding: 9px 9px 28px; border-radius: 3px;
+                          box-shadow: 0 1px 2px rgba(5,46,32,.14), 0 18px 34px rgba(5,46,32,.2);
+                          transform: translateY(var(--dy)) rotate(var(--rot));
+                          transition: transform .55s cubic-bezier(.16,.84,.44,1), box-shadow .55s ease; }
+        .trc-gala-print img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 1px; }
+        .trc-gala-print:hover, .trc-gala-print:focus-visible {
+          transform: translateY(calc(var(--dy) - 14px)) rotate(0deg) scale(1.06); z-index: 9 !important;
+          box-shadow: 0 2px 3px rgba(5,46,32,.14), 0 30px 50px rgba(5,46,32,.28); }
+        .trc-gala-tape { position: absolute; top: -10px; left: 50%; width: 74px; height: 20px; margin-left: -37px;
+                         background: rgba(236,226,196,.8); transform: rotate(-4deg); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+        @media (max-width: 760px) {
+          /* a phone gets them as a row to thumb through */
+          .trc-gala { justify-content: flex-start; overflow-x: auto; scroll-snap-type: x mandatory; margin: 32px -20px 0;
+                      padding: 20px 28px 36px; scrollbar-width: none; }
+          .trc-gala::-webkit-scrollbar { display: none; }
+          .trc-gala-print { flex: 0 0 58vw; max-width: 240px; margin: 0 -6px; scroll-snap-align: center; }
+        }
+        @media (prefers-reduced-motion: reduce) { .trc-gala-print { transition: none; } }
+
         @media (max-width: 600px) {
           .trc-cup { padding: 80px 20px 24px; }
           .trc-cup-head { grid-template-columns: 1fr; }
@@ -740,6 +771,20 @@ export default function HomePage() {
             </div>
           </div>
           <GolfFilm />
+          {/* The gala night, as prints tossed down under the film. They stay
+              clear of the film itself — its controls live along the bottom. */}
+          <div className="trc-gala">
+            {GALA.map((g, i) => (
+              <Link key={g.src} href="/sports#golf" className="trc-gala-print"
+                    style={{ ['--rot' as string]: `${g.rot}deg`, ['--dy' as string]: `${g.dy}px`, zIndex: g.z }}
+                    aria-label={g.alt}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/images/trc/${g.src}-800.webp`} alt={g.alt} loading="lazy"
+                     style={{ objectPosition: g.pos || '50% 50%' }} />
+                {i === 0 && <span className="trc-gala-tape" aria-hidden="true" />}
+              </Link>
+            ))}
+          </div>
         </div>
 
         {/* ══════ 4. THE CLUBHOUSE — components/home/Clubhouse (interim, until the

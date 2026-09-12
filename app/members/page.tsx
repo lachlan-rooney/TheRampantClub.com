@@ -139,12 +139,14 @@ export default function MembersPage() {
     secondary?: string
   }
 
-  const IMG = (n: string) => `/images/social/${n}.webp`
+  // 'trc/…' names are the club's own photographs (public/images/trc); the
+  // rest are the older social set.
+  const IMG = (n: string) => n.startsWith('trc/') ? `/images/${n}-800.webp` : `/images/social/${n}.webp`
 
   const buckets: Bucket[] = [
     {
       href: '/members/events',
-      img: IMG('cocktails'),
+      img: IMG('trc/gala-cheer'),
       en: surfaceName('/members/events', 'en'),
       vn: surfaceName('/members/events', 'vn'),
       icon: 'calendar',
@@ -153,7 +155,7 @@ export default function MembersPage() {
     },
     {
       href: '/members/profile',
-      img: IMG('lion-crest'),
+      img: IMG('trc/card-lemon'),
       en: surfaceName('/members/profile', 'en'),
       vn: surfaceName('/members/profile', 'vn'),
       icon: 'card',
@@ -162,7 +164,7 @@ export default function MembersPage() {
     },
     {
       href: '/members/fixtures',
-      img: IMG('tennis-visor'),
+      img: IMG('trc/cup-high-five'),
       en: surfaceName('/members/fixtures', 'en'),
       vn: surfaceName('/members/fixtures', 'vn'),
       icon: 'trophy',
@@ -171,7 +173,7 @@ export default function MembersPage() {
     },
     {
       href: '/members/journal',
-      img: IMG('springbank'),
+      img: IMG('trc/glass-script'),
       en: surfaceName('/members/journal', 'en'),
       vn: surfaceName('/members/journal', 'vn'),
       icon: 'quill',
@@ -179,7 +181,7 @@ export default function MembersPage() {
     },
     {
       href: '/members/spaces',
-      img: IMG('gala-table'),
+      img: IMG('trc/bar-cart'),
       en: surfaceName('/members/spaces', 'en'),
       vn: surfaceName('/members/spaces', 'vn'),
       icon: 'building',
@@ -187,7 +189,7 @@ export default function MembersPage() {
     },
     {
       href: '/members/rules',
-      img: IMG('lion-crest'),
+      img: IMG('trc/club-booklet'),
       en: surfaceName('/members/rules', 'en'),
       vn: surfaceName('/members/rules', 'vn'),
       icon: 'book',
@@ -208,16 +210,16 @@ export default function MembersPage() {
   const byHref = Object.fromEntries(buckets.map(b => [b.href, b])) as Record<string, Bucket>
   const extra: Record<string, Bucket> = {
     snug:   { href: '/members/snug', img: IMG('whisky-lounge'),          en: surfaceName('/members/snug', 'en'),       vn: surfaceName('/members/snug', 'vn'),       icon: 'sofa', secondary: t('The club in conversation \u2014 drams, moments, a word between members', 'Câu lạc bộ trò chuyện \u2014 những ly rượu, khoảnh khắc, đôi lời giữa các thành viên') },
-    concierge: { href: '/members/concierge', img: IMG('ao-dai'), en: surfaceName('/members/concierge', 'en'),  vn: surfaceName('/members/concierge', 'vn'),          icon: 'bell', secondary: t('A line to the Club \u2014 requests, bottles, a word about the evening', 'Đường dây riêng tới Câu Lạc Bộ \u2014 yêu cầu, chai rượu, đôi lời về buổi tối') },
+    concierge: { href: '/members/concierge', img: IMG('trc/decanter-pour'), en: surfaceName('/members/concierge', 'en'),  vn: surfaceName('/members/concierge', 'vn'),          icon: 'bell', secondary: t('A line to the Club \u2014 requests, bottles, a word about the evening', 'Đường dây riêng tới Câu Lạc Bộ \u2014 yêu cầu, chai rượu, đôi lời về buổi tối') },
     whisky: { href: '/members/whisky', img: IMG('whisky-library'),        en: surfaceName('/members/whisky', 'en'), vn: surfaceName('/members/whisky', 'vn'), icon: 'glass', secondary: t('The shelf \u00b7 radar \u00b7 300+ drams', 'Kệ rượu \u00b7 radar \u00b7 hơn 300 loại') },
-    finder: { href: '/members/whisky/finder', img: IMG('art-bottles'), en: surfaceName('/members/whisky/finder', 'en'), vn: surfaceName('/members/whisky/finder', 'vn'), icon: 'compass', secondary: t('Match a dram to your taste', 'Tìm ly hợp khẩu vị của bạn') },
-    menus:  { href: '/menus', img: IMG('gala-table'),                 en: surfaceName('/menus', 'en'),      vn: surfaceName('/menus', 'vn'),     icon: 'menu', secondary: t('Food & drink lists', 'Thực đơn đồ ăn & thức uống') },
-    terms:  { href: '/members/terms', img: IMG('springbank'),         en: surfaceName('/members/terms', 'en'),          vn: surfaceName('/members/terms', 'vn'),   icon: 'document', secondary: t('Full terms & conditions', 'Điều khoản & điều kiện đầy đủ') },
+    finder: { href: '/members/whisky/finder', img: IMG('trc/octave-glencairn'), en: surfaceName('/members/whisky/finder', 'en'), vn: surfaceName('/members/whisky/finder', 'vn'), icon: 'compass', secondary: t('Match a dram to your taste', 'Tìm ly hợp khẩu vị của bạn') },
+    menus:  { href: '/menus', img: IMG('trc/cocktail-pour'),                 en: surfaceName('/menus', 'en'),      vn: surfaceName('/menus', 'vn'),     icon: 'menu', secondary: t('Food & drink lists', 'Thực đơn đồ ăn & thức uống') },
+    terms:  { href: '/members/terms', img: IMG('trc/pins-seals'),         en: surfaceName('/members/terms', 'en'),          vn: surfaceName('/members/terms', 'vn'),   icon: 'document', secondary: t('Full terms & conditions', 'Điều khoản & điều kiện đầy đủ') },
     taste:  { href: '/members/taste', img: IMG('bottle-collection'),         en: surfaceName('/members/taste', 'en'),    vn: surfaceName('/members/taste', 'vn'), icon: 'radar', secondary: t('Your taste \u00b7 radar \u00b7 loved drams', 'Khẩu vị \u00b7 radar \u00b7 những ly yêu thích') },
-    journey: { href: '/members/journey', img: IMG('saigon-street'),      en: surfaceName('/members/journey', 'en'),   vn: surfaceName('/members/journey', 'vn'), icon: 'flag', secondary: t('Your whisky story over time \u00b7 milestones \u00b7 palate drift', 'Câu chuyện whisky của bạn \u00b7 cột mốc \u00b7 khẩu vị đổi thay') },
-    visits: { href: '/members/visits', img: IMG('market'),        en: surfaceName('/members/visits', 'en'),    vn: surfaceName('/members/visits', 'vn'), icon: 'pin', secondary: t('Your record at the club', 'Những lần bạn ghé câu lạc bộ') },
-    gifts:  { href: '/members/gifts', img: IMG('brass-pin'),         en: surfaceName('/members/gifts', 'en'),          vn: surfaceName('/members/gifts', 'vn'),          icon: 'gift', secondary: t('Gifts from the club', 'Quà tặng từ câu lạc bộ') },
-    gallery: { href: '/members/gallery', img: IMG('gala-table'),     en: surfaceName('/members/gallery', 'en'),  vn: surfaceName('/members/gallery', 'vn'), icon: 'image', secondary: t('Photos & video from fixtures, dinners & socials', 'Ảnh & video từ các trận đấu, bữa tối & buổi gặp mặt') },
+    journey: { href: '/members/journey', img: IMG('trc/cask-lid'),      en: surfaceName('/members/journey', 'en'),   vn: surfaceName('/members/journey', 'vn'), icon: 'flag', secondary: t('Your whisky story over time \u00b7 milestones \u00b7 palate drift', 'Câu chuyện whisky của bạn \u00b7 cột mốc \u00b7 khẩu vị đổi thay') },
+    visits: { href: '/members/visits', img: IMG('trc/card-deck'),        en: surfaceName('/members/visits', 'en'),    vn: surfaceName('/members/visits', 'vn'), icon: 'pin', secondary: t('Your record at the club', 'Những lần bạn ghé câu lạc bộ') },
+    gifts:  { href: '/members/gifts', img: IMG('trc/pins-dish'),         en: surfaceName('/members/gifts', 'en'),          vn: surfaceName('/members/gifts', 'vn'),          icon: 'gift', secondary: t('Gifts from the club', 'Quà tặng từ câu lạc bộ') },
+    gallery: { href: '/members/gallery', img: IMG('trc/gala-arrivals'),     en: surfaceName('/members/gallery', 'en'),  vn: surfaceName('/members/gallery', 'vn'), icon: 'image', secondary: t('Photos & video from fixtures, dinners & socials', 'Ảnh & video từ các trận đấu, bữa tối & buổi gặp mặt') },
   }
   // Tile groups mirror the nav's groups exactly (Whisky · What's On · The Club ·
   // You · Info) so the dashboard and the menu tell the same story. Events and

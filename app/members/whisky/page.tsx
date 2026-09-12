@@ -24,7 +24,7 @@ import { useLang } from '@/lib/lang'
 const PILE: { src: string; w: string; left: string; top: string; rot: number; z: number }[] = [
   { src: 'whisky-lounge',     w: '46%', left: '28%', top: '0%',  rot: 2,  z: 1 },
   { src: 'bottle-collection', w: '40%', left: '0%',  top: '19%', rot: -6, z: 2 },
-  { src: 'springbank',        w: '38%', left: '62%', top: '26%', rot: 7,  z: 2 },
+  { src: 'trc/octave-glencairn', w: '38%', left: '62%', top: '26%', rot: 7,  z: 2 },
 ]
 
 export default function WhiskyPage() {
@@ -125,7 +125,7 @@ export default function WhiskyPage() {
                    style={{ width: s.w, left: s.left, top: s.top, zIndex: s.z, transform: `rotate(${s.rot}deg)` }}>
                 <div className="pk-thumb">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/images/social/${s.src}.webp`} alt="" loading="lazy" />
+                  <img src={s.src.startsWith('trc/') ? `/images/${s.src}-800.webp` : `/images/social/${s.src}.webp`} alt="" loading="lazy" />
                 </div>
               </div>
             ))}

@@ -155,16 +155,28 @@ const cupTense = (() => {
   return t === 'Past' ? 'Played' : t
 })()
 
+// The Cup's posters, with the weekend itself between them — the Friday gala
+// at The Grand and the Saturday at The Bluffs. 'trc/…' are the club's own
+// photographs (public/images/trc); the rest are the Cup's poster set.
 const CUP_WORLD = [
   { s: 'cup-course', alt: 'The Rampant Cup at The Bluffs' },
-  { s: 'poster-2', alt: '2026 Invitational and Charity Gala Dinner' },
+  { s: 'trc/gala-arrivals', alt: 'Arrivals at the 2026 Invitational & Charity Gala Dinner', pos: '62% 40%' },
+  { s: 'trc/cup-high-five', alt: 'On the course at The Bluffs' },
+  { s: 'trc/trophy-gold', alt: 'The Rampant Cup trophy', pos: '50% 30%' },
   { s: 'lady', alt: 'The Rampant Cup' },
+  { s: 'trc/gala-cheer', alt: 'The gala room on its feet', pos: '58% 50%' },
+  { s: 'trc/cup-tee-shot', alt: 'Driving from the first', pos: '66% 50%' },
+  { s: 'trc/cask-lid', alt: 'An Auchentoshan cask lid at the gala', pos: '38% 50%' },
   { s: 'ferrari-sponsor', alt: 'Your seat and tee time, compliments of Ferrari' },
+  { s: 'trc/gala-pour', alt: 'A pour at the gala' },
+  { s: 'trc/cup-lady', alt: 'On the tee at The Bluffs', pos: '50% 30%' },
   { s: 'cao-minh', alt: 'Black tie by Cao Minh, Saigon' },
-  { s: 'cup-flag', alt: 'The ninth at The Bluffs' },
   { s: 'tie', alt: 'The house colours' },
-  { s: 'cup-argyle', alt: 'The Rampant Cup 2026' },
+  { s: 'trc/gala-conversation', alt: 'Between courses at The Grand', pos: '55% 50%' },
+  { s: 'trc/cup-drive', alt: 'Saturday at The Bluffs', pos: '50% 30%' },
+  { s: 'poster-2', alt: '2026 Invitational and Charity Gala Dinner' },
 ]
+const cupSrc = (s: string) => s.startsWith('trc/') ? `/images/${s}-800.webp` : `/images/cup/${s}.webp`
 
 export default function SportsPage() {
   const [entered, setEntered] = useState(false)
@@ -364,7 +376,8 @@ export default function SportsPage() {
               {CUP_WORLD.map(im => (
                 <div key={im.s} className="sp-thumb">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/images/cup/${im.s}.webp`} alt={im.alt} loading="lazy" />
+                  <img src={cupSrc(im.s)} alt={im.alt} loading="lazy"
+                       style={'pos' in im && im.pos ? { objectPosition: im.pos } : undefined} />
                 </div>
               ))}
             </div>

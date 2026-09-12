@@ -40,7 +40,7 @@ const CHAPTERS = [
     ],
   },
   {
-    image: 'gala-table',
+    image: 'trc/gala-cheer',
     title: 'Sustained by its members, not for profit',
     body: [
       `The Rampant Club is a members' club in the strict sense. It exists for the people who belong to it,
@@ -52,7 +52,8 @@ const CHAPTERS = [
   },
 ]
 
-const photo = (name: string) => `/images/social/${name}.webp`
+// 'trc/…' are the club's own photographs (public/images/trc).
+const photo = (name: string) => name.startsWith('trc/') ? `/images/${name}-1600.webp` : `/images/social/${name}.webp`
 
 // The five floors as the house draws them — the rampant lion holding each
 // floor's object — climbing from the Library Bar (1) to the Lab (5).
