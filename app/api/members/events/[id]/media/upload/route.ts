@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
-import { getActor, svc } from '@/lib/social/server'
+import { getActor, svc, canPost, NOT_LINKED } from '@/lib/social/server'
 import { sniff, MAX_BYTES, REFUSAL } from '@/lib/attachments/verify'
 import { getSharp, imagePipelineDownMember } from '@/lib/attachments/image'
 
@@ -31,7 +31,7 @@ export const runtime = 'nodejs'
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const actor = await getActor()
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
-  if (!actor.memberNo) return NextResponse.json({ error: 'This account is not linked to a membership, so it cannot post as a member. Staff accounts need a member number linked in the admin.' }, { status: 403 })
+  if (!canPost(actor)) return NextResponse.json({ error: NOT_LINKED }, { status: 403 })
   const { id } = await params
   const a = svc()
 

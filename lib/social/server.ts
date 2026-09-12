@@ -28,6 +28,14 @@ export async function getActor(): Promise<Actor | null> {
   return { sb, id: user.id, memberNo: prof?.member_no ?? null, isAdmin: !!prof?.is_admin }
 }
 
+// Who may POST to the shared spaces — the gallery, the Snug, tasting notes,
+// reactions. A linked member, or staff: the owner's rule is that admins and
+// staff can post anywhere, and a staff login has no member number to link.
+// Member-to-member relationships (introductions, blocks) and the concierge
+// line keep the plain `memberNo` check — those only mean anything for a member.
+export const canPost = (actor: Actor) => !!actor.memberNo || actor.isAdmin
+export const NOT_LINKED = 'This account is not linked to a membership, so it cannot post. Speak to the team to link it.'
+
 // Emit a social event onto the spine (activity_events, project_id null). Runs via
 // the SESSION client so actor = auth.uid() = this user (ops_emit_event stamps
 // auth.uid(), which is null under service-role). Best-effort — never blocks a write.

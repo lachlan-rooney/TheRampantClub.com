@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getActor, svc, socialEmit } from '@/lib/social/server'
+import { getActor, svc, socialEmit, canPost, NOT_LINKED } from '@/lib/social/server'
 import { isGalleryCategory } from '@/lib/gallery'
 
 // Event Gallery v2 — member surface (the list).
@@ -10,10 +10,10 @@ export const dynamic = 'force-dynamic'
 // Deliberately per-category rather than one generic image: a golf tournament
 // and a tasting should not share a placeholder that fits neither.
 const DEFAULT_COVER: Record<string, string> = {
-  tournament: '/images/gallery/tournament.jpg',
-  dinner:     '/images/gallery/dinner.jpg',
-  social:     '/images/gallery/social.jpg',
-  tasting:    '/images/gallery/tasting.jpg',
+  tournament: '/images/trc/cup-tee-shot-1600.webp',
+  dinner:     '/images/trc/gala-handshake-1600.webp',
+  social:     '/images/trc/gala-conversation-1600.webp',
+  tasting:    '/images/trc/glass-script-1600.webp',
 }
 
 export async function GET() {
@@ -59,7 +59,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const actor = await getActor()
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
-  if (!actor.memberNo) return NextResponse.json({ error: 'This account is not linked to a membership, so it cannot post as a member. Staff accounts need a member number linked in the admin.' }, { status: 403 })
+  if (!canPost(actor)) return NextResponse.json({ error: NOT_LINKED }, { status: 403 })
 
   const p = await req.json().catch(() => null)
   const title = typeof p?.title === 'string' ? p.title.trim() : ''
@@ -80,8 +80,9 @@ export async function POST(req: Request) {
   const { data: prof } = await a.from('profiles').select('display_name').eq('id', actor.id).maybeSingle()
   const ins = await a.from('events').insert({
     title, category, event_date, description, fixture_id,
-    created_by: actor.id, creator_name: prof?.display_name || 'A member',
-    source: 'member', status: 'visible',
+    created_by: actor.id, creator_name: prof?.display_name || (actor.memberNo ? 'A member' : 'The Club'),
+    // A staff login with no membership posts as the club.
+    source: actor.memberNo ? 'member' : 'club', status: 'visible',
   }).select('id').single()
   if (ins.error) return NextResponse.json({ error: 'Could not create the event.' }, { status: 500 })
   await socialEmit(actor.sb, 'created', 'event', ins.data.id, { title, category })

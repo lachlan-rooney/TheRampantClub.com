@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
-import { getActor, svc, socialEmit } from '@/lib/social/server'
+import { getActor, svc, socialEmit, canPost, NOT_LINKED } from '@/lib/social/server'
 import { rederiveAndPersist } from '@/lib/whisky/derive-taste'
 import { getSharp, imagePipelineDownMember } from '@/lib/attachments/image'
 
@@ -18,7 +18,7 @@ const BUCKET = 'member-media'
 export async function GET(req: Request) {
   const actor = await getActor()
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
-  if (!actor.memberNo) return NextResponse.json({ notes: [] })
+  if (!canPost(actor)) return NextResponse.json({ notes: [] })
   const whiskyId = new URL(req.url).searchParams.get('whisky_id')
   const a = svc()
 
@@ -68,7 +68,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const actor = await getActor()
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
-  if (!actor.memberNo) return NextResponse.json({ error: 'This account is not linked to a membership, so it cannot post as a member. Staff accounts need a member number linked in the admin.', reason: actor.isAdmin ? 'staff' : 'unlinked' }, { status: 403 })
+  if (!canPost(actor)) return NextResponse.json({ error: NOT_LINKED }, { status: 403 })
 
   const form = await req.formData().catch(() => null)
   if (!form) return NextResponse.json({ error: 'Nothing to save.' }, { status: 400 })
@@ -117,6 +117,7 @@ export async function POST(req: Request) {
   }
   await socialEmit(actor.sb, 'note.logged', 'tasting_note', ins.data.id, { whisky_id: whiskyId, visibility, has_photo: !!media_path })
   // The flywheel: the note's flavour data enriches the member's palate on the spot.
-  try { await rederiveAndPersist(a, actor.memberNo) } catch { /* best-effort; the note still saved */ }
+  // Staff have no palate to re-derive — only a linked member does.
+  if (actor.memberNo) try { await rederiveAndPersist(a, actor.memberNo) } catch { /* best-effort; the note still saved */ }
   return NextResponse.json({ id: ins.data.id })
 }

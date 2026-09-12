@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getActor, svc, socialEmit } from '@/lib/social/server'
+import { getActor, svc, socialEmit, canPost, NOT_LINKED } from '@/lib/social/server'
 
 // Toggle a TRC-voice reaction (🥃 raise_glass · 🔖 noted · 🤝 join_me) on a feed
 // item. Session identity; route-only (no member write policy). 🔖 noted on a
@@ -14,7 +14,7 @@ const TYPES = ['post', 'tasting_note']
 export async function POST(req: Request) {
   const actor = await getActor()
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
-  if (!actor.memberNo) return NextResponse.json({ error: 'This account is not linked to a membership, so it cannot post as a member. Staff accounts need a member number linked in the admin.' }, { status: 403 })
+  if (!canPost(actor)) return NextResponse.json({ error: NOT_LINKED }, { status: 403 })
 
   const p = await req.json().catch(() => null)
   const item_type: unknown = p?.item_type

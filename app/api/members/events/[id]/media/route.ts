@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getActor, svc, socialEmit } from '@/lib/social/server'
+import { getActor, svc, socialEmit, canPost, NOT_LINKED } from '@/lib/social/server'
 import { parseMediaUrl } from '@/lib/gallery'
 
 // Add a contribution to an event.
@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const actor = await getActor()
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
-  if (!actor.memberNo) return NextResponse.json({ error: 'This account is not linked to a membership, so it cannot post as a member. Staff accounts need a member number linked in the admin.' }, { status: 403 })
+  if (!canPost(actor)) return NextResponse.json({ error: NOT_LINKED }, { status: 403 })
   const { id } = await params
   const a = svc()
 
@@ -53,8 +53,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { data: prof } = await a.from('profiles').select('display_name').eq('id', actor.id).maybeSingle()
   const ins = await a.from('event_media').insert({
     event_id: id, kind, url, storage_path, caption,
-    submitted_by: actor.id, submitter_name: prof?.display_name || 'A member',
-    source: 'member', status: 'visible',
+    submitted_by: actor.id, submitter_name: prof?.display_name || (actor.memberNo ? 'A member' : 'The Club'),
+    // A staff login with no membership posts as the club.
+    source: actor.memberNo ? 'member' : 'club', status: 'visible',
   }).select('id').single()
   if (ins.error) return NextResponse.json({ error: 'Could not add it.' }, { status: 500 })
   await socialEmit(actor.sb, 'contributed', 'event_media', ins.data.id, { event_id: id, kind })
