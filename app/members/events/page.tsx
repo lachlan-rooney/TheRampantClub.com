@@ -469,7 +469,10 @@ export default function WhatsOnPage() {
             {filter !== 'happenings' && pastFixtures.length > 0 && (
               <>
                 <div className="wo-sec" style={{ marginTop: 110 }}>
-                  <h2 className="wo-h2">{t('Past results', 'Kết quả đã qua')}</h2>
+                  {/* "Past events", not "Past results": the section lists every
+                      past entry, and most carry no result at all — f.results is
+                      optional and renders only when it exists. */}
+                  <h2 className="wo-h2">{t('Past events', 'Sự kiện đã qua')}</h2>
                   <CreamInk name="newspaper" width="clamp(84px, 10vw, 130px)" rot={-7} dur={10} />
                 </div>
                 {shownPast.map(f => (
