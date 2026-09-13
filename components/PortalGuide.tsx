@@ -317,17 +317,42 @@ export default function PortalGuide({ name }: { name?: string }) {
         .pg-move:hover { color:#D4B85A; }
         .pg-move .pg-move-ic { color:#D4B85A; display:flex; }
 
+        /* ── A SCREEN IS A SCREEN. ─────────────────────────────────────────
+           Every slide has to fit the phone without scrolling: a guide you
+           have to scroll to finish reading is a guide people abandon. The
+           desk had room; phones overflowed by up to 400px on the Whisky
+           slide, measured at 390x844 and 414x736.
+           So on a phone the type steps down, the rows tighten, the
+           photograph becomes a band rather than a picture — and on a SHORT
+           phone it goes entirely, because the words are the point. */
         @media (max-width: 860px) {
           /* Flex, not block: the photograph comes after the words in the
              DOM (so a screen reader meets the heading first) and is lifted
              above them on a phone with order, the way the member pages put
              their art at the top. */
-          .pg-grid { display:flex; flex-direction:column; padding-top:4px; }
-          .pg-photo { order:-1; aspect-ratio:16/10; margin-bottom:26px; }
-          .pg-title { font-size:clamp(36px,11vw,60px); }
-          .pg-lede { font-size:13.5px; line-height:1.9; margin-top:18px; }
-          .pg-foot { margin-top:34px; }
-          .pg-wrap { padding-bottom:56px; }
+          .pg-grid { display:flex; flex-direction:column; padding-top:0; }
+          .pg-photo { order:-1; aspect-ratio:auto; height:clamp(110px,19vh,170px); margin-bottom:16px; }
+          .pg-title { font-size:clamp(28px,8.4vw,42px); }
+          .pg-lede { font-size:13px; line-height:1.75; margin-top:12px; }
+          .pg-list { margin-top:18px; }
+          .pg-row { padding:11px 0; gap:13px; grid-template-columns:20px minmax(0,1fr); }
+          .pg-row-name { font-size:17px; }
+          .pg-row-line { font-size:12px; line-height:1.6; margin-top:4px; }
+          .pg-foot { margin-top:18px; padding-top:13px; }
+          .pg-top { padding:14px 20px 10px; }
+          .pg-wrap { padding-bottom:22px; }
+          /* the last screen */
+          .pg-ask { margin-top:4px; }
+          .pg-sugg { margin:2px 0 14px; }
+          .pg-sugg button { padding:5px 0; font-size:12px; }
+          .pg-move { padding:11px 0; font-size:12px; }
+          .pg-answer { margin-top:14px; padding-top:14px; font-size:12.5px; line-height:1.75; }
+        }
+        @media (max-width: 860px) and (max-height: 790px) {
+          /* Short phone: the picture is the first thing to go. */
+          .pg-photo { display:none; }
+          .pg-title { font-size:clamp(26px,7.4vw,34px); }
+          .pg-row { padding:9px 0; }
         }
       ` }} />
 

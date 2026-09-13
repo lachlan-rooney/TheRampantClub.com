@@ -408,10 +408,12 @@ export default function MembersPage() {
                     <li key={b.href}>
                       <Link href={b.href} className="md-row pk-hover">
                         <span className="md-name-cell">
-                          {/* VN promotes the Vietnamese name to the heading and demotes the
-                              English beneath it — the same swap MemberPage does. */}
+                          {/* ONE LANGUAGE. The tile used to print the name twice, English
+                              over Vietnamese, which made sense before there was a switch.
+                              There is one now — at the top of this page and in the menu —
+                              so the second line repeated what the member had just chosen
+                              not to read, on nineteen tiles. */}
                           <span className="md-name">{lang === 'vn' ? b.vn : b.en}</span>
-                          <span className="md-alt">{lang === 'vn' ? b.en : b.vn}</span>
                         </span>
                         <span className="md-info">
                           {b.primary && <span className="md-primary">{b.primary}</span>}
