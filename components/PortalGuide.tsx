@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { useLang } from '@/lib/lang'
+import LangToggle from '@/components/LangToggle'
 
 // The members' portal training — a clean, linear flow. Mounted in the member
 // layout so it's on every page: opens automatically the first time, replayable
@@ -198,117 +199,204 @@ export default function PortalGuide({ name }: { name?: string }) {
   if (!open) return null
   const s = SLIDES[i]
   const last = i === SLIDES.length - 1
+  const n2 = (v: number) => String(v).padStart(2, '0')
 
   return (
     <div className="pg-root" role="dialog" aria-modal="true" aria-label="Portal guide">
-      <style dangerouslySetInnerHTML={{ __html: `
-        .pg-root { position:fixed; inset:0; z-index:10000; display:flex; align-items:center; justify-content:center; padding:18px; }
-        .pg-back { position:absolute; inset:0; background:rgba(3,20,14,0.88); backdrop-filter:blur(4px); }
-        .pg-card { position:relative; width:min(500px,96vw); max-height:94vh; display:flex; flex-direction:column;
-          background:#0A3526; border:1px solid rgba(212,184,90,0.28); border-radius:18px; box-shadow:0 40px 100px rgba(0,0,0,0.6); overflow:hidden;
-          animation:pg-in 0.4s cubic-bezier(0.22,1,0.36,1) both; }
-        @keyframes pg-in { from { opacity:0; transform:translateY(14px) scale(0.98) } to { opacity:1; transform:none } }
-        .pg-fade { animation:pg-fade 0.35s ease both; }
-        @keyframes pg-fade { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:none } }
-        @media (prefers-reduced-motion: reduce) { .pg-card,.pg-fade { animation:none } }
-        .pg-hero { position:relative; height:150px; }
-        .pg-hero img { width:100%; height:100%; object-fit:cover; display:block; }
-        .pg-hero::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg, rgba(10,53,38,0.15) 0%, rgba(10,53,38,0.55) 60%, #0A3526 100%); }
-        .pg-progress { position:absolute; top:0; left:0; right:0; height:3px; background:rgba(0,0,0,0.25); z-index:2; }
-        .pg-progress-fill { height:100%; background:linear-gradient(90deg,#B8862B,#E7C766); transition:width 0.4s cubic-bezier(0.22,1,0.36,1); }
-        .pg-close { position:absolute; top:12px; right:12px; z-index:3; width:28px; height:28px; border-radius:50%; background:rgba(5,46,32,0.6); border:1px solid rgba(229,212,194,0.2);
-          color:#E5D4C2; font-size:14px; cursor:pointer; line-height:1; }
-        .pg-lang { position:absolute; top:12px; left:12px; z-index:3; display:flex; gap:4px; }
-        .pg-lang button { font-family:'Google Sans Code',monospace; font-size:10px; padding:3px 8px; border-radius:6px; cursor:pointer; border:1px solid rgba(229,212,194,0.2); background:rgba(5,46,32,0.6); color:#B2AA98; }
-        .pg-lang button.on { background:rgba(212,184,90,0.22); border-color:rgba(212,184,90,0.6); color:#E7C766; }
-        .pg-headwrap { position:absolute; bottom:12px; left:20px; right:20px; z-index:2; display:flex; align-items:center; gap:10px; }
-        .pg-headic { width:34px; height:34px; flex-shrink:0; display:flex; align-items:center; justify-content:center; border-radius:50%; color:#E7C766; background:rgba(5,46,32,0.55); border:1px solid rgba(212,184,90,0.4); }
-        .pg-eyebrow { font-family:'Google Sans Code',monospace; font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:#E7C766; }
-        .pg-title { font-family:'Rampant Sans',serif; font-size:22px; color:#F3EAD9; margin:0; line-height:1.1; text-shadow:0 2px 12px rgba(0,0,0,0.5); }
-        .pg-blurb { font-family:'Google Sans Code',monospace; font-size:11.5px; color:#B2AA98; line-height:1.6; padding:14px 20px 4px; }
-        .pg-body { overflow-y:auto; padding:4px 12px 8px; }
-        .pg-li { display:flex; gap:12px; align-items:flex-start; padding:9px 8px; }
-        .pg-li-ic { flex-shrink:0; width:30px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:50%; color:#D4B85A; background:rgba(212,184,90,0.08); border:1px solid rgba(212,184,90,0.3); margin-top:1px; }
-        .pg-li-name { font-family:'Rampant Sans',serif; font-size:15px; color:#E5D4C2; line-height:1.2; }
-        .pg-li-line { font-family:'Google Sans Code',monospace; font-size:11px; color:#B2AA98; line-height:1.5; margin-top:2px; }
-        .pg-chip { font-family:'Google Sans Code',monospace; font-size:10.5px; color:#E5D4C2; background:rgba(212,184,90,0.08); border:1px solid rgba(212,184,90,0.28); border-radius:999px; padding:6px 11px; cursor:pointer; text-align:left; }
-        .pg-chip:hover { border-color:rgba(212,184,90,0.6); background:rgba(212,184,90,0.14); }
-        .pg-input { flex:1; min-width:0; box-sizing:border-box; background:rgba(5,46,32,0.55); color:#E5D4C2; border:1px solid rgba(229,212,194,0.16); border-radius:8px; padding:10px 12px; font-family:'Google Sans Code',monospace; font-size:12.5px; outline:none; }
-        .pg-answer { margin-top:12px; background:rgba(212,184,90,0.06); border:1px solid rgba(212,184,90,0.22); border-radius:10px; padding:13px 15px; font-family:'Rampant Sans',serif; font-size:14.5px; line-height:1.6; color:#E5D4C2; white-space:pre-wrap; }
-        .pg-typing { display:inline-flex; gap:5px; } .pg-typing i { width:6px; height:6px; border-radius:50%; background:#D4B85A; opacity:0.5; animation:pg-blink 1.1s infinite; }
-        .pg-typing i:nth-child(2){ animation-delay:0.2s } .pg-typing i:nth-child(3){ animation-delay:0.4s }
-        @keyframes pg-blink { 0%,80%,100%{ opacity:0.25; transform:translateY(0) } 40%{ opacity:1; transform:translateY(-3px) } }
-        .pg-move { display:inline-flex; align-items:center; gap:7px; font-family:'Google Sans Code',monospace; font-size:11px; color:#E5D4C2; background:rgba(229,212,194,0.04); border:1px solid rgba(229,212,194,0.16); border-radius:8px; padding:8px 13px; cursor:pointer; }
-        .pg-move:hover { border-color:rgba(212,184,90,0.5); background:rgba(212,184,90,0.08); }
-        .pg-foot { display:flex; align-items:center; gap:10px; padding:12px 20px 16px; border-top:1px solid rgba(229,212,194,0.10); }
-        .pg-dots { display:flex; gap:5px; margin-right:auto; }
-        .pg-dot { width:7px; height:7px; border-radius:50%; background:rgba(229,212,194,0.2); cursor:pointer; transition:background 0.2s; }
-        .pg-dot.on { background:#D4B85A; }
-        .pg-btn { font-family:'Google Sans Code',monospace; font-size:11px; padding:8px 16px; border-radius:8px; cursor:pointer; border:1px solid rgba(229,212,194,0.18); background:transparent; color:#B2AA98; }
-        .pg-btn.gold { background:#D4B85A; color:#052E20; border:none; font-weight:700; }
-      ` }} />
-      <div className="pg-back" onClick={close} />
-      <div className="pg-card">
-        <div className="pg-hero">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={IMG(s.image)} alt="" />
-          <div className="pg-progress"><div className="pg-progress-fill" style={{ width: `${((i + 1) / SLIDES.length) * 100}%` }} /></div>
-          <div className="pg-lang">
-            <button className={lang === 'en' ? 'on' : ''} onClick={() => setLang('en')}>EN</button>
-            <button className={lang === 'vn' ? 'on' : ''} onClick={() => setLang('vn')}>VN</button>
-          </div>
-          <button className="pg-close" onClick={close} aria-label="Close">✕</button>
-          <div className="pg-headwrap">
-            <span className="pg-headic"><Icon n={s.icon} size={17} /></span>
-            <div>
-              <div className="pg-eyebrow">{i === 0 && who ? t({ en: `Welcome, ${who}`, vn: `Chào mừng, ${who}` }) : `${i + 1} / ${SLIDES.length}`}</div>
-              <h2 className="pg-title">{t(s.title)}</h2>
-            </div>
-          </div>
-        </div>
+      {/* ═════════════════════════════════════════════════════════════════════
+          THE GUIDE IS THE PORTAL, NOT A POP-UP ON TOP OF IT.
+          It used to be a 500px rounded card on a blurred scrim: a gradient
+          progress bar, circular icon badges, pill buttons, 11px type — the
+          look of an onboarding widget, from before the portal was rebuilt in
+          the house style. Nothing in the club looks like that any more.
 
-        <div className="pg-fade" key={s.key} style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <div className="pg-blurb">{t(s.blurb)}</div>
-          <div className="pg-body">
-            {s.key === 'ask' ? (
-              <div style={{ padding: '4px 6px 4px' }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-                  {SUGGESTED.map((sg, k) => <button key={k} className="pg-chip" onClick={() => ask(t(sg))}>{t(sg)}</button>)}
+          So it is now built from the same vocabulary as every member page
+          (components/public/kit.tsx, MemberPage): the portal's own ground,
+          Rampant Sans set LARGE and left-aligned, mono body at a readable
+          14px/2, hairline rules instead of borders and badges, and the club's
+          own photograph given real room rather than a 150px letterbox.
+          The step arrows are the house's underlined CTA with the sliding
+          arrow, the same control as "Back to dashboard".
+
+          The EN/VN switch is now the SHARED LangToggle. This file carried a
+          third hand-rolled pair of EN/VN buttons — the exact drift the toggle
+          was made to end (see components/LangToggle.tsx).
+          ═══════════════════════════════════════════════════════════════════ */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        .pg-root { position:fixed; inset:0; z-index:10000; background:#052E20; color:#E5D4C2;
+                   overflow-y:auto; overscroll-behavior:contain; animation:pg-in .45s cubic-bezier(.16,.84,.44,1) both; }
+        @keyframes pg-in { from { opacity:0 } to { opacity:1 } }
+        .pg-fade { animation:pg-fade .5s cubic-bezier(.16,.84,.44,1) both; }
+        @keyframes pg-fade { from { opacity:0; transform:translateY(14px) } to { opacity:1; transform:none } }
+        @media (prefers-reduced-motion: reduce) { .pg-root,.pg-fade { animation:none } }
+
+        /* The top strip — the way out, and the language. Fixed to the sheet so
+           a long slide never scrolls them off, as the corner switch did. */
+        .pg-top { position:sticky; top:0; z-index:4; display:flex; align-items:center; justify-content:space-between;
+                  gap:16px; padding:18px clamp(20px,4vw,52px) 14px;
+                  background:linear-gradient(180deg,#052E20 72%,rgba(5,46,32,0)); }
+        .pg-mark { font-family:'Google Sans Code','DM Mono',monospace; font-size:10.5px; letter-spacing:.22em;
+                   text-transform:uppercase; opacity:.62; }
+        .pg-topr { display:flex; align-items:center; gap:clamp(12px,3vw,22px); }
+        .pg-x { background:none; border:none; cursor:pointer; color:#E5D4C2; padding:0 0 5px;
+                border-bottom:1px solid rgba(229,212,194,.45);
+                font-family:'Google Sans Code','DM Mono',monospace; font-size:11.5px; letter-spacing:.12em; text-transform:uppercase;
+                opacity:.9; transition:opacity .2s ease,border-color .2s ease; }
+        .pg-x:hover { opacity:1; border-bottom-color:#D4B85A; }
+
+        .pg-wrap { max-width:1180px; margin:0 auto; padding:0 clamp(20px,4vw,52px) 40px; box-sizing:border-box; }
+        .pg-grid { display:grid; grid-template-columns:minmax(0,1fr) clamp(260px,32vw,420px); gap:clamp(28px,5vw,64px);
+                   align-items:start; padding-top:clamp(8px,2vw,26px); }
+
+        .pg-title { font-family:'Rampant Sans',serif; font-weight:400; color:#E5D4C2;
+                    font-size:clamp(40px,7vw,88px); line-height:.96; margin:0; overflow-wrap:anywhere; }
+        .pg-lede { font-family:'Google Sans Code','DM Mono',monospace; font-size:14px; line-height:2;
+                   opacity:.88; max-width:540px; margin:22px 0 0; }
+
+        /* The photograph: a tall panel beside the words on a desk, a wide band
+           above them on a phone. Same treatment as the site's thumbs. */
+        .pg-photo { overflow:hidden; border-radius:12px; box-shadow:0 18px 44px rgba(0,0,0,.34);
+                    aspect-ratio:4/5; }
+        .pg-photo img { display:block; width:100%; height:100%; object-fit:cover; }
+
+        /* The list — hairline rules, no badges. Set like pk-details. */
+        .pg-list { margin:clamp(30px,4vw,46px) 0 0; }
+        .pg-row { display:grid; grid-template-columns:22px minmax(0,1fr); gap:16px; align-items:start;
+                  padding:16px 0; border-top:1px solid rgba(229,212,194,.14); }
+        .pg-row:last-child { border-bottom:1px solid rgba(229,212,194,.14); }
+        .pg-row-ic { color:#D4B85A; opacity:.9; padding-top:3px; }
+        .pg-row-name { font-family:'Rampant Sans',serif; font-size:clamp(19px,2.2vw,24px); line-height:1.1; }
+        .pg-row-line { font-family:'Google Sans Code','DM Mono',monospace; font-size:12.5px; line-height:1.85;
+                       opacity:.78; margin-top:7px; }
+
+        /* The foot — the count, then the way back and on. */
+        .pg-foot { display:flex; align-items:center; gap:clamp(14px,3vw,26px); flex-wrap:wrap;
+                   margin-top:clamp(34px,5vw,58px); padding-top:20px; border-top:1px solid rgba(229,212,194,.14); }
+        .pg-count { font-family:'Google Sans Code','DM Mono',monospace; font-size:11px; letter-spacing:.18em;
+                    opacity:.55; margin-right:auto; }
+        .pg-cta { background:none; border:none; cursor:pointer; color:#E5D4C2; padding:0 0 6px;
+                  border-bottom:1px solid currentColor;
+                  font-family:'Google Sans Code','DM Mono',monospace; font-size:12px; letter-spacing:.12em; text-transform:uppercase; }
+        .pg-cta[disabled] { opacity:.4; cursor:default; }
+        .pg-cta.is-on { color:#D4B85A; }
+        .pg-go { display:inline-block; transition:transform .35s ease; }
+        .pg-cta:hover .pg-go { transform:translateX(7px); }
+        .pg-cta.is-back:hover .pg-go { transform:translateX(-7px); }
+        @media (prefers-reduced-motion: reduce) { .pg-go { transition:none } }
+
+        /* The last screen — ask a question, then a first move. */
+        .pg-ask { display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap; margin-top:8px; }
+        .pg-input { flex:1 1 260px; min-width:0; box-sizing:border-box; background:none; color:#E5D4C2;
+                    border:none; border-bottom:1px solid rgba(229,212,194,.3); padding:8px 2px;
+                    font-family:'Google Sans Code','DM Mono',monospace; font-size:14px; outline:none; }
+        .pg-input:focus { border-bottom-color:#D4B85A; }
+        .pg-input::placeholder { color:#E5D4C2; opacity:.42; }
+        .pg-sugg { display:flex; flex-direction:column; align-items:flex-start; gap:2px; margin:4px 0 26px; }
+        .pg-sugg button { background:none; border:none; cursor:pointer; color:#E5D4C2; opacity:.76; text-align:left;
+                          padding:7px 0; font-family:'Google Sans Code','DM Mono',monospace; font-size:12.5px; line-height:1.7; }
+        .pg-sugg button:hover { opacity:1; color:#D4B85A; }
+        .pg-answer { margin-top:24px; padding:20px 0 0; border-top:1px solid rgba(229,212,194,.14);
+                     font-family:'Google Sans Code','DM Mono',monospace; font-size:13.5px; line-height:2; white-space:pre-wrap; }
+        .pg-typing { display:inline-flex; gap:5px; } .pg-typing i { width:6px; height:6px; border-radius:50%; background:#D4B85A; opacity:.5; animation:pg-blink 1.1s infinite; }
+        .pg-typing i:nth-child(2){ animation-delay:.2s } .pg-typing i:nth-child(3){ animation-delay:.4s }
+        @keyframes pg-blink { 0%,80%,100%{ opacity:.25; transform:translateY(0) } 40%{ opacity:1; transform:translateY(-3px) } }
+        .pg-moves { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:0 28px; margin-top:6px; }
+        .pg-move { display:flex; align-items:center; gap:12px; background:none; border:none; cursor:pointer; color:#E5D4C2;
+                   text-align:left; padding:15px 0; border-top:1px solid rgba(229,212,194,.14);
+                   font-family:'Google Sans Code','DM Mono',monospace; font-size:12.5px; letter-spacing:.04em; }
+        .pg-move:hover { color:#D4B85A; }
+        .pg-move .pg-move-ic { color:#D4B85A; display:flex; }
+
+        @media (max-width: 860px) {
+          /* Flex, not block: the photograph comes after the words in the
+             DOM (so a screen reader meets the heading first) and is lifted
+             above them on a phone with order, the way the member pages put
+             their art at the top. */
+          .pg-grid { display:flex; flex-direction:column; padding-top:4px; }
+          .pg-photo { order:-1; aspect-ratio:16/10; margin-bottom:26px; }
+          .pg-title { font-size:clamp(36px,11vw,60px); }
+          .pg-lede { font-size:13.5px; line-height:1.9; margin-top:18px; }
+          .pg-foot { margin-top:34px; }
+          .pg-wrap { padding-bottom:56px; }
+        }
+      ` }} />
+
+      <div className="pg-top">
+        <span className="pg-mark">{t({ en: 'Portal guide', vn: 'Hướng dẫn' })}</span>
+        <div className="pg-topr">
+          <LangToggle compact />
+          <button className="pg-x" onClick={close}>{t({ en: 'Close', vn: 'Đóng' })}</button>
+        </div>
+      </div>
+
+      <div className="pg-wrap">
+        <div className="pg-fade" key={s.key}>
+          <div className="pg-grid">
+            <div>
+              <h2 className="pg-title">{t(s.title)}</h2>
+              <p className="pg-lede">
+                {i === 0 && who ? `${t({ en: `Welcome, ${who}.`, vn: `Chào mừng, ${who}.` })} ` : ''}
+                {t(s.blurb)}
+              </p>
+
+              {s.key === 'ask' ? (
+                <div className="pg-list" style={{ borderTop: '1px solid rgba(229,212,194,.14)', paddingTop: 26 }}>
+                  <div className="pg-ask">
+                    <input className="pg-input" value={q} onChange={e => setQ(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter' && q.trim().length >= 2) ask(q) }}
+                      placeholder={t({ en: 'Ask anything about the app…', vn: 'Hỏi bất cứ điều gì…' })} maxLength={500} />
+                    <button className="pg-cta is-on" onClick={() => ask(q)} disabled={asking || q.trim().length < 2}>
+                      {asking ? t({ en: 'Thinking…', vn: 'Đang nghĩ…' }) : <>{t({ en: 'Ask', vn: 'Hỏi' })} <span className="pg-go" aria-hidden="true">→</span></>}
+                    </button>
+                  </div>
+                  <div className="pg-sugg">
+                    {SUGGESTED.map((sg, k) => <button key={k} onClick={() => ask(t(sg))}>{t(sg)}</button>)}
+                  </div>
+                  {qErr && <div style={{ fontFamily: "'Google Sans Code',monospace", fontSize: 12, color: '#C98A8A' }}>{qErr}</div>}
+                  {(asking || answer) && <div className="pg-answer">{asking ? <span className="pg-typing"><i /><i /><i /></span> : answer}</div>}
+
+                  <div className="pg-moves">
+                    {FIRST_MOVES.map((m, k) => (
+                      <button key={k} className="pg-move" onClick={() => goto(m.href)}>
+                        <span className="pg-move-ic"><Icon n={m.icon} size={15} /></span>{t(m.label)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <input className="pg-input" value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && q.trim().length >= 2) ask(q) }}
-                    placeholder={t({ en: 'Ask anything about the app…', vn: 'Hỏi bất cứ điều gì…' })} maxLength={500} />
-                  <button className="pg-btn gold" onClick={() => ask(q)} disabled={asking || q.trim().length < 2} style={{ opacity: asking || q.trim().length < 2 ? 0.5 : 1 }}>
-                    {asking ? t({ en: 'Thinking…', vn: 'Đang nghĩ…' }) : t({ en: 'Ask', vn: 'Hỏi' })}
-                  </button>
-                </div>
-                {qErr && <div style={{ fontFamily: "'Google Sans Code',monospace", fontSize: 11, color: '#C27070', marginTop: 10 }}>{qErr}</div>}
-                {(asking || answer) && <div className="pg-answer">{asking ? <span className="pg-typing"><i /><i /><i /></span> : answer}</div>}
-                <div style={{ fontFamily: "'Google Sans Code',monospace", fontSize: 9.5, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#D4B85A', margin: '20px 0 8px' }}>{t({ en: 'Jump in', vn: 'Bắt đầu' })}</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {FIRST_MOVES.map((m, k) => (
-                    <button key={k} className="pg-move" onClick={() => goto(m.href)}><span style={{ display: 'flex', color: '#D4B85A' }}><Icon n={m.icon} size={14} /></span>{t(m.label)}</button>
+              ) : (
+                <div className="pg-list">
+                  {s.items.map((it, k) => (
+                    <div key={k} className="pg-row">
+                      <span className="pg-row-ic"><Icon n={it.icon} size={17} /></span>
+                      <div style={{ minWidth: 0 }}>
+                        <div className="pg-row-name">{t(it.name)}</div>
+                        <div className="pg-row-line">{t(it.line)}</div>
+                      </div>
+                    </div>
                   ))}
                 </div>
-              </div>
-            ) : s.items.map((it, k) => (
-              <div key={k} className="pg-li">
-                <span className="pg-li-ic"><Icon n={it.icon} /></span>
-                <div style={{ minWidth: 0 }}>
-                  <div className="pg-li-name">{t(it.name)}</div>
-                  <div className="pg-li-line">{t(it.line)}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+              )}
+            </div>
 
-        <div className="pg-foot">
-          <div className="pg-dots">{SLIDES.map((_, k) => <span key={k} className={'pg-dot' + (k === i ? ' on' : '')} onClick={() => setI(k)} />)}</div>
-          {i > 0 && <button className="pg-btn" onClick={prev}>{t({ en: 'Back', vn: 'Trước' })}</button>}
-          {last
-            ? <button className="pg-btn gold" onClick={close}>{t({ en: 'Done', vn: 'Xong' })}</button>
-            : <button className="pg-btn gold" onClick={next}>{i === 0 ? t({ en: 'Start →', vn: 'Bắt đầu →' }) : t({ en: 'Next →', vn: 'Tiếp →' })}</button>}
+            <div className="pg-photo">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={IMG(s.image)} alt="" />
+            </div>
+          </div>
+
+          <div className="pg-foot">
+            <span className="pg-count">{n2(i + 1)} / {n2(SLIDES.length)}</span>
+            {i > 0 && (
+              <button className="pg-cta is-back" onClick={prev}>
+                <span className="pg-go" aria-hidden="true">←</span> {t({ en: 'Back', vn: 'Trước' })}
+              </button>
+            )}
+            {last
+              ? <button className="pg-cta is-on" onClick={close}>{t({ en: 'Done', vn: 'Xong' })} <span className="pg-go" aria-hidden="true">→</span></button>
+              : <button className="pg-cta is-on" onClick={next}>
+                  {i === 0 ? t({ en: 'Start', vn: 'Bắt đầu' }) : t({ en: 'Next', vn: 'Tiếp' })} <span className="pg-go" aria-hidden="true">→</span>
+                </button>}
+          </div>
         </div>
       </div>
     </div>
