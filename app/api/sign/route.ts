@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
       token, fullName, email, mobile, profession, referredBy,
       category, dateOfBirth, nationality, homeAddress, companyName,
       signatureDataUrl, signatureMethod, typedName, declarations,
+      termsVersionId,
     } = body
 
     // 1. Validate the token
@@ -34,6 +35,23 @@ export async function POST(req: NextRequest) {
 
     if (invError || !invitation) {
       return NextResponse.json({ error: 'Invalid or expired invitation' }, { status: 400 })
+    }
+
+    // WHICH TERMS THIS SIGNATURE IS AGAINST.
+    // The page sends the version it displayed; we look that row up rather than
+    // taking the label on trust, and fall back to whatever is current if the
+    // client sent nothing. Null is left as null — a guess about which contract
+    // somebody signed is the one thing this must never record.
+    let signedVersionId: string | null = null
+    let signedVersionLabel: string | null = null
+    {
+      const { data: v } = termsVersionId
+        ? await supabaseAdmin.from('terms_versions').select('id, version').eq('id', termsVersionId).maybeSingle()
+        : await supabaseAdmin.from('terms_versions')
+            .select('id, version').eq('doc_key', 'membership_terms')
+            .lte('effective_date', new Date().toISOString().slice(0, 10))
+            .order('effective_date', { ascending: false }).limit(1).maybeSingle()
+      if (v) { signedVersionId = v.id as string; signedVersionLabel = (v.version as string) || null }
     }
 
     // 2. Generate signed PDF
@@ -133,7 +151,11 @@ export async function POST(req: NextRequest) {
     yPos -= 8
     page.drawRectangle({ x: 52, y: yPos - 2, width: 10, height: 10, borderColor: green, borderWidth: 0.5, color: rgb(0.94, 0.92, 0.88) })
     page.drawText('x', { x: 54.5, y: yPos, size: 8, font: fontBold, color: green })
-    page.drawText('Accepted the Terms and Conditions of Membership', { x: 70, y: yPos, size: 9, font, color: green })
+    page.drawText(
+      signedVersionLabel
+        ? `Accepted the Terms and Conditions of Membership (v${signedVersionLabel})`
+        : 'Accepted the Terms and Conditions of Membership',
+      { x: 70, y: yPos, size: 9, font, color: green })
 
     // Signature section
     yPos -= 40
@@ -199,7 +221,7 @@ export async function POST(req: NextRequest) {
     const ip = req.headers.get('x-forwarded-for') || 'unknown'
     const ua = req.headers.get('user-agent') || 'unknown'
 
-    await supabaseAdmin.from('signed_agreements').insert({
+    const signedRecord = {
       invitation_id: invitation.id,
       full_name: fullName,
       email,
@@ -218,7 +240,17 @@ export async function POST(req: NextRequest) {
       declarations,
       ip_address: ip,
       user_agent: ua,
-    })
+    }
+    const withVersion = { ...signedRecord, terms_version_id: signedVersionId, terms_version: signedVersionLabel }
+    const firstTry = await supabaseAdmin.from('signed_agreements').insert(withVersion)
+    if (firstTry.error) {
+      // db/signed_agreements_version.sql has not been run here yet. Record the
+      // signature WITHOUT the version rather than failing a person mid-signing
+      // over a column — and say so in the log, loudly, because an unversioned
+      // signature is the gap that file exists to close.
+      console.warn('signed_agreements: version columns missing, storing without them —', firstTry.error.message)
+      await supabaseAdmin.from('signed_agreements').insert(signedRecord)
+    }
 
     // 5. Close the MIS signing loop FIRST — if the invitation came from the
     // pipeline it carries the provisional member_no and prospect_id, and we

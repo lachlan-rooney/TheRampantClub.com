@@ -17,9 +17,23 @@ interface PrefillData {
   companyName: string
 }
 
+interface Terms {
+  id: string
+  version: string
+  effectiveDate: string
+  titleEn: string
+  titleVn: string
+  htmlEn: string
+  htmlVn: string
+}
+
 interface Props {
   token: string
   prefill: PrefillData
+  /** The CURRENT Terms, straight from the register (terms_versions). Null only
+   *  if nothing is published, in which case the agreement summary stands alone
+   *  rather than the page inventing a contract. */
+  terms: Terms | null
 }
 
 const FONTS = [
@@ -33,7 +47,7 @@ const CREAM = '#E5D4C2'
 const GOLD = '#C9A84C'
 const MUTED = '#B2AA98'
 
-export default function MembershipSigning({ token, prefill }: Props) {
+export default function MembershipSigning({ token, prefill, terms }: Props) {
   // Shared context, and canonical 'vn' — this was the last holdout still
   // spelling Vietnamese 'vi'.
   const { lang, setLang } = useLang()
@@ -180,6 +194,9 @@ export default function MembershipSigning({ token, prefill }: Props) {
           companyName: form.companyName,
           signatureDataUrl: getSignatureDataUrl(),
           signatureMethod: sigMode,
+          // WHICH terms were on the screen when they signed. The server
+          // checks this against the register rather than trusting it.
+          termsVersionId: terms?.id || null,
           typedName: sigMode === 'type' ? typedName : null,
           declarations: declarations.map((d, i) => ({ index: i, accepted: d })),
         }),
@@ -247,6 +264,22 @@ export default function MembershipSigning({ token, prefill }: Props) {
     <>
       <link href="https://fonts.googleapis.com/css2?family=Dancing+Script&family=Great+Vibes&family=Caveat&display=block" rel="stylesheet" />
       <style dangerouslySetInnerHTML={{ __html: `
+        /* The Terms, rendered from markdown into the dark box. Mono body and
+           the display face for headings — the house style, sized down to sit
+           inside a 400px-tall reader without shouting. */
+        .sign-doc { font-family: 'Google Sans Code', monospace; font-size: 12.5px; line-height: 1.95; color: ${MUTED}; }
+        .sign-doc h1, .sign-doc h2 { font-family: 'Rampant Sans', serif; font-weight: 500; color: ${CREAM};
+                                     font-size: 16px; letter-spacing: .04em; line-height: 1.25; margin: 26px 0 10px; }
+        .sign-doc h3 { font-family: 'Rampant Sans', serif; font-weight: 500; color: ${CREAM}; font-size: 14px; margin: 20px 0 8px; }
+        .sign-doc p { margin: 0 0 12px; }
+        .sign-doc ul, .sign-doc ol { margin: 0 0 14px; padding-left: 18px; }
+        .sign-doc li { margin-bottom: 6px; }
+        .sign-doc li::marker { color: ${GOLD}; }
+        .sign-doc strong { color: ${CREAM}; font-weight: 600; }
+        .sign-doc hr { border: none; border-top: 1px solid rgba(229,212,194,.14); margin: 22px 0; }
+        .sign-doc table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 0 0 14px; }
+        .sign-doc td, .sign-doc th { border-top: 1px solid rgba(229,212,194,.12); padding: 8px 10px 8px 0; text-align: left; vertical-align: top; }
+
         input[type="checkbox"]:checked {
           background: #C9A84C !important;
         }
@@ -334,6 +367,35 @@ export default function MembershipSigning({ token, prefill }: Props) {
                 </div>
               </div>
             ))}
+
+            {/* ── AND THE TERMS THEMSELVES ────────────────────────────────
+                Above this line is the Membership Agreement — what the Club is
+                and what it offers. Below it is the contract: the Terms and
+                Conditions as published in the register, the same text and the
+                same version a member reads at /members/terms. Both are inside
+                the ONE scroll box on purpose, so "scrolled to the end" means
+                the end of both. */}
+            {terms && (
+              <div style={{ marginTop: 36, paddingTop: 28, borderTop: `1px solid rgba(229,212,194,0.14)` }}>
+                <h3 style={{
+                  fontFamily: "'Rampant Sans', serif", fontSize: 20, fontWeight: 500,
+                  color: CREAM, letterSpacing: '0.04em', marginBottom: 6,
+                }}>
+                  {lang === 'en' ? terms.titleEn : terms.titleVn}
+                </h3>
+                <div style={{
+                  fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: MUTED,
+                  letterSpacing: '0.06em', marginBottom: 18,
+                }}>
+                  {t('Version', 'Phiên bản')} {terms.version}
+                  {terms.effectiveDate ? ` · ${t('effective', 'hiệu lực')} ${terms.effectiveDate}` : ''}
+                </div>
+                <div
+                  className="sign-doc"
+                  dangerouslySetInnerHTML={{ __html: lang === 'en' ? terms.htmlEn : terms.htmlVn }}
+                />
+              </div>
+            )}
 
             {!hasScrolledToEnd && (
               <div style={{
