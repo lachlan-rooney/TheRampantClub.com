@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import { emailShell } from '@/lib/email/shell'
 import { svc, deviceOk } from '@/lib/kiosk/server'
 import { resolveMember } from '@/lib/kiosk/resolve'
 
@@ -48,7 +49,7 @@ export async function POST(req: Request) {
       from: 'The Rampant Club <no-reply@therampantclub.com>',
       to: [m.email],
       subject: 'Your kiosk code',
-      html: `<div style="font-family:Georgia,serif;color:#052E20;line-height:1.7;max-width:520px">
+      html: emailShell(`<div style="font-family:Georgia,serif;color:#052E20;line-height:1.7;max-width:520px">
         <p>${first},</p>
         <p>Someone asked to set a new six-digit kiosk code for your membership. If that was you,
            the link below opens your member portal, where you can choose one.</p>
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
         <p style="font-size:13px;opacity:.75">The link works once and expires in 30 minutes.
            If it wasn't you, nothing has changed and you can ignore this — your existing code still works.</p>
         <p style="font-size:13px;opacity:.75">The Rampant Club</p>
-      </div>`,
+      </div>`),
     }).catch(() => { /* silent: the response must not vary */ })
   }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import { emailShell } from '@/lib/email/shell'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
 
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
       from: 'The Rampant Club <membership@therampantclub.com>',
       to: inv.email,
       subject: 'A reminder — your Rampant Club membership agreement',
-      html: `
+      html: emailShell(`
         <div style="font-family: Georgia, serif; max-width: 540px; margin: 0 auto; padding: 32px 24px; color: #052E20;">
           <p style="font-size: 15px; line-height: 1.7;">Dear ${inv.full_name || 'there'},</p>
           <p style="font-size: 15px; line-height: 1.7;">A gentle nudge — your membership agreement for The Rampant Club is still open.
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
             <a href="${link}" style="color: #5E6650;">${link}</a></p>
           <p style="font-size: 11px; color: #5E6650; margin-top: 36px;">— The Rampant Club</p>
         </div>
-      `,
+      `),
     })
   } catch (err) {
     console.error('Reminder email failed:', err)

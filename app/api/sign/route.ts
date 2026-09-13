@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import { emailShell } from '@/lib/email/shell'
 import { vnDateString } from '@/lib/datetime'
 import { provisionMemberAccount } from '@/lib/members/provision'
 
@@ -338,16 +339,16 @@ export async function POST(req: NextRequest) {
         const signatureUrl = `${siteUrl}/images/signature%20(1)%20(1).png`
 
         const memberEmailHtml = `
-          <div style="max-width: 600px; margin: 0 auto; font-family: Georgia, 'Times New Roman', serif; background-color: #E5D4C2;">
+          <div class="trc-ground" style="max-width: 600px; margin: 0 auto; font-family: Georgia, 'Times New Roman', serif; background-color: #E5D4C2;">
             <!-- Header -->
-            <div style="background-color: #E5D4C2; padding: 48px 40px 24px; text-align: center;">
+            <div class="trc-ground" style="background-color: #E5D4C2; padding: 48px 40px 24px; text-align: center;">
               <img src="${lionUrl}" alt="" width="80" style="display: block; margin: 0 auto 24px;" />
               <h1 style="color: #052E20; font-size: 22px; font-weight: 400; letter-spacing: 0.08em; margin: 0;">THE RAMPANT CLUB</h1>
               <p style="color: #5E6650; font-size: 10px; letter-spacing: 0.12em; margin: 10px 0 0; text-transform: uppercase;">Membership Agreement Received</p>
             </div>
 
             <!-- Body -->
-            <div style="background-color: #E5D4C2; padding: 24px 48px 40px;">
+            <div class="trc-ground" style="background-color: #E5D4C2; padding: 24px 48px 40px;">
               <p style="color: #052E20; font-size: 15px; line-height: 1.8; margin: 0 0 20px;">
                 Dear ${fullName},
               </p>
@@ -400,7 +401,7 @@ export async function POST(req: NextRequest) {
         `
 
         const clubEmailHtml = `
-          <div style="max-width: 600px; margin: 0 auto; font-family: Georgia, 'Times New Roman', serif; background-color: #E5D4C2;">
+          <div class="trc-ground" style="max-width: 600px; margin: 0 auto; font-family: Georgia, 'Times New Roman', serif; background-color: #E5D4C2;">
             <div style="padding: 32px 40px;">
               <img src="${lionUrl}" alt="" width="50" style="display: block; margin: 0 0 20px;" />
               <h2 style="color: #052E20; font-size: 18px; font-weight: 400; letter-spacing: 0.06em; margin: 0 0 24px;">New Agreement Signed</h2>
@@ -428,7 +429,10 @@ export async function POST(req: NextRequest) {
           from: 'The Rampant Club <membership@therampantclub.com>',
           to: email,
           subject: 'Your Membership Agreement - The Rampant Club',
-          html: memberEmailHtml,
+          html: emailShell(memberEmailHtml, {
+            title: 'Membership Agreement Received',
+            preheader: 'Your signed Membership Agreement is attached.',
+          }),
           attachments: [attachment],
         })
 
@@ -437,7 +441,10 @@ export async function POST(req: NextRequest) {
           from: 'The Rampant Club <membership@therampantclub.com>',
           to: 'membership@therampantclub.com',
           subject: `New Signed Agreement: ${fullName} (${category})`,
-          html: clubEmailHtml,
+          html: emailShell(clubEmailHtml, {
+            title: 'New Signed Agreement',
+            preheader: `${fullName} — ${category}`,
+          }),
           attachments: [attachment],
         })
       } catch (emailErr) {
