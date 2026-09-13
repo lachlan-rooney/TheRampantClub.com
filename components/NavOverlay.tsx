@@ -98,11 +98,16 @@ interface NavOverlayProps {
 const allCollapsed = (): Record<string, boolean> => Object.fromEntries(MEMBER_GROUPS.map(g => [g.label, true]))
 
 export default function NavOverlay({ variant, dark = false, hideLogo = false }: NavOverlayProps) {
-  // Member links stack two lines, English over Vietnamese. In VN the order
-  // flips — the same swap MemberPage makes with a page's title — so the switch
-  // visibly changes the menu rather than leaving it as it was. Group names
-  // (the welcome guide's names for the same groups) follow the switch too.
+  // Group names (the welcome guide's names for the same groups) follow the
+  // switch, as every label in the member menu does.
   const { lang } = useLang()
+  // ONE LANGUAGE PER ROW IN THE MEMBER MENU.
+  // Every row used to stack English over Vietnamese, which made sense while
+  // the portal had no switch: both readers were served at once. Now the switch
+  // is right there at the top of this menu, so the second line repeats what the
+  // member has just chosen not to read, and the menu is twice as tall for it.
+  // `lines()[0]` is the chosen language; [1] is kept for the PUBLIC nav, which
+  // has no switch and still shows both.
   const lines = (en: string, vn: string) => lang === 'vn' ? [vn, en] : [en, vn]
   const [open, setOpen] = useState(false)
   const [logoInverted, setLogoInverted] = useState(dark)
@@ -341,15 +346,18 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
         @media (max-width: 768px) {
           .nav-lang {
             display: flex; align-items: center; justify-content: space-between; gap: 12px;
-            margin: 10px 0 2px; padding: 10px 0 12px;
-            border-bottom: 1px solid rgba(229, 212, 194, 0.12);
+            margin: 10px 0 2px; padding: 10px 0 2px;
+            /* No rule of its own: the first group below draws one, and the two
+               together read as a double line with a gap in it. */
           }
         }
         .nav-menu button.nav-link .nav-link-en {
           font-family: 'Google Sans Code', monospace; font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
         }
-        .nav-menu button.nav-link .nav-link-vn { font-size: 10.5px; }
-        .nav-foot { margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(5, 46, 32, .14); display: flex; flex-direction: column; gap: 2px; }
+        /* The foot rows carry ONE line each now, so they need their own
+           height — stacked single lines read as one paragraph, not two taps. */
+        .nav-foot { margin-top: 18px; padding-top: 6px; border-top: 1px solid rgba(5, 46, 32, .14); display: flex; flex-direction: column; gap: 0; }
+        .nav-foot .nav-link { padding: 9px 0; }
         .nav-dark .nav-foot { border-top-color: rgba(229, 212, 194, .14); }
         .nav-ink { margin-top: auto; padding-top: 26px; flex-shrink: 0; align-self: flex-end; opacity: .9; pointer-events: none; }
         .nav-ink img { display: block; width: 100%; height: auto; }
@@ -481,7 +489,6 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
               <NavIcon name="home" />
               <span className="nav-link-text">
                 <div className="nav-link-en">{lines('My Dashboard', 'Trang của tôi')[0]}</div>
-                <div className="nav-link-vn">{lines('My Dashboard', 'Trang của tôi')[1]}</div>
               </span>
             </Link>
             {/* PHONES ONLY. The corner switch (app/members/layout.tsx, .m-lang)
@@ -519,7 +526,6 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
                                 <span className="nav-badge">{conciergeUnread > 9 ? '9+' : conciergeUnread}</span>
                               )}
                             </div>
-                            <div className="nav-link-vn">{lines(l.en, l.vn)[1]}</div>
                           </span>
                         </Link>
                       ))}
@@ -533,14 +539,12 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
               <NavIcon name="compass" />
               <span className="nav-link-text">
                 <div className="nav-link-en">{lines('Portal Guide', 'Hướng Dẫn')[0]}</div>
-                <div className="nav-link-vn">{lines('Portal Guide', 'Hướng Dẫn')[1]}</div>
               </span>
             </button>
             <button className="nav-link nav-link-withicon" onClick={handleSignOut} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', marginTop: 4 }}>
               <NavIcon name="signout" />
               <span className="nav-link-text">
                 <div className="nav-link-en">{lines('Sign Out', 'Đăng xuất')[0]}</div>
-                <div className="nav-link-vn">{lines('Sign Out', 'Đăng xuất')[1]}</div>
               </span>
             </button>
             {isAdminUser && (

@@ -25,6 +25,9 @@ export interface BoardNotice {
   pinned: boolean
   author?: string | null
   created_at?: string | null
+  // Optional, and often absent: the board falls back to the English per field.
+  title_vn?: string | null
+  body_vn?: string | null
 }
 
 const CAT: Record<string, { en: string; vn: string }> = {
@@ -60,7 +63,10 @@ export default function CorkBoard({ notices, compact = false, empty }: {
   compact?: boolean
   empty?: React.ReactNode
 }) {
-  const { t } = useLang()
+  const { t, lang } = useLang()
+  // A notice in the member's language where one has been written, and the
+  // English where one has not — decided per field, never per notice.
+  const pick = (en: string, vn?: string | null) => (lang === 'vn' && vn && vn.trim() ? vn : en)
   const [open, setOpen] = useState<string | null>(null)
   const shown = compact ? notices.slice(0, 3) : notices
 
@@ -144,8 +150,8 @@ export default function CorkBoard({ notices, compact = false, empty }: {
               {s.tape && !n.pinned ? <span className="cb-tape" aria-hidden="true" /> : <span className="cb-pin" aria-hidden="true" />}
               {n.pinned && <span className="cb-stamp">{t('Pinned', 'Đã ghim')}</span>}
               <div className="cb-cat">{cat ? t(cat.en, cat.vn) : n.category}</div>
-              <div className="cb-title">{n.title}</div>
-              <p className="cb-body">{n.body}</p>
+              <div className="cb-title">{pick(n.title, n.title_vn)}</div>
+              <p className="cb-body">{pick(n.body, n.body_vn)}</p>
               {!compact && (
                 <div className="cb-foot">
                   <span>{[n.author, ago(n.created_at, t)].filter(Boolean).join(' · ')}</span>

@@ -16,6 +16,11 @@ export interface Notice {
   id: string
   title: string
   body: string
+  // Optional Vietnamese, written by a person and often absent (db/notices_vn.sql).
+  // The board falls back to the English PER FIELD, so a translated title over an
+  // untranslated body is a legitimate state rather than a half-hidden notice.
+  title_vn?: string | null
+  body_vn?: string | null
   category: 'committee' | 'fixture' | 'general' | 'whisky'
   pinned: boolean
   author: string | null

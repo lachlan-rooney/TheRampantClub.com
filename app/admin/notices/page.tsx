@@ -32,6 +32,12 @@ export default function AdminNotices() {
   const [editing, setEditing] = useState<Notice | null>(null)
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
+  const [titleVn, setTitleVn] = useState('')
+  const [bodyVn, setBodyVn] = useState('')
+  // Whether the board can hold Vietnamese yet. db/notices_vn.sql adds the two
+  // columns; until it is run the fields are hidden rather than offered and then
+  // refused by the database on save. Asked once, of the database itself.
+  const [hasVn, setHasVn] = useState<boolean | null>(null)
   const [category, setCategory] = useState<Notice['category']>('general')
   const [pinned, setPinned] = useState(false)
   const [author, setAuthor] = useState('')
@@ -52,16 +58,27 @@ export default function AdminNotices() {
 
   const resetForm = () => {
     setTitle(''); setBody(''); setCategory('general'); setPinned(false); setAuthor('')
+    setTitleVn(''); setBodyVn('')
     setEditing(null); setShowForm(false)
   }
 
+  useEffect(() => {
+    supabase.from('notices').select('title_vn').limit(1)
+      .then(({ error }) => setHasVn(!error))
+  }, [supabase])
+
   const startEdit = (n: Notice) => {
     setTitle(n.title); setBody(n.body); setCategory(n.category); setPinned(n.pinned); setAuthor(n.author || '')
+    setTitleVn(n.title_vn || ''); setBodyVn(n.body_vn || '')
     setEditing(n); setShowForm(true)
   }
 
   const handleSubmit = async () => {
-    const payload = { title, body, category, pinned, author: author || null }
+    // The Vietnamese goes in only where the columns exist, and an empty box is
+    // stored as NULL — "not translated" and "translated to an empty string" are
+    // different things to the board, which falls back per field.
+    const payload: Record<string, unknown> = { title, body, category, pinned, author: author || null }
+    if (hasVn) { payload.title_vn = titleVn.trim() || null; payload.body_vn = bodyVn.trim() || null }
     if (editing) {
       await supabase.from('notices').update(payload).eq('id', editing.id)
     } else {
@@ -109,6 +126,28 @@ export default function AdminNotices() {
             <label style={labelStyle}>{t('Body', 'Nội dung')}</label>
             <textarea style={{ ...inputStyle, resize: 'vertical' }} rows={6} value={body} onChange={e => setBody(e.target.value)} />
           </div>
+          {hasVn === false && (
+            <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 11, lineHeight: 1.7, color: '#D4B85A', opacity: .9 }}>
+              {t('Vietnamese fields need db/notices_vn.sql — run it and this form grows two more boxes.',
+                 'Phần tiếng Việt cần chạy db/notices_vn.sql — chạy xong, biểu mẫu sẽ có thêm hai ô.')}
+            </div>
+          )}
+          {hasVn && (
+            <>
+              <div>
+                <label style={labelStyle}>{t('Title — Vietnamese (optional)', 'Tiêu đề — Tiếng Việt (không bắt buộc)')}</label>
+                <input style={inputStyle} value={titleVn} onChange={e => setTitleVn(e.target.value)} />
+              </div>
+              <div>
+                <label style={labelStyle}>{t('Body — Vietnamese (optional)', 'Nội dung — Tiếng Việt (không bắt buộc)')}</label>
+                <textarea style={{ ...inputStyle, resize: 'vertical' }} rows={6} value={bodyVn} onChange={e => setBodyVn(e.target.value)} />
+                <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10.5, lineHeight: 1.7, opacity: .6, marginTop: 6 }}>
+                  {t('Leave blank and Vietnamese-reading members see the English. Each box falls back on its own.',
+                     'Để trống thì hội viên đọc tiếng Việt sẽ thấy bản tiếng Anh. Mỗi ô tự dự phòng riêng.')}
+                </div>
+              </div>
+            </>
+          )}
           <div style={{ display: 'flex', gap: 16 }}>
             <div style={{ flex: 1 }}>
               <label style={labelStyle}>{t('Category', 'Danh mục')}</label>
