@@ -5,6 +5,7 @@ import AdminNav from './_nav/AdminNav'
 import NotificationBell from '@/components/admin/NotificationBell'
 import ActingChip from '@/components/admin/ActingChip'
 import LangToggle from '@/components/admin/LangToggle'
+import IdleLock from '@/components/admin/IdleLock'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerSupabaseClient()
@@ -16,6 +17,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <>
     <style dangerouslySetInnerHTML={{ __html: `html, body { background: #052E20 !important; }` }} />
+    {/* The portal locks itself after five idle minutes, and on returning to a
+        laptop that was closed for longer than that. It holds members' details;
+        it does not sit open unattended. */}
+    <IdleLock />
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <AdminNav />
       {/* className, not only inline: an inline margin cannot be overridden by the

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import StaffIdle from '@/components/kiosk/StaffIdle'
 
 // ── WHAT INSTALLS ON THE TABLET ────────────────────────────────────────────
 // The site has ONE manifest (public/manifest.json, start_url "/"), so adding the
@@ -53,5 +54,12 @@ export const viewport: Viewport = {
 }
 
 export default function KioskLayout({ children }: { children: React.ReactNode }) {
-  return children
+  return (
+    <>
+      {/* The acting-staff session drops after three idle minutes on EVERY kiosk
+          page, not only on the staff screen where the timer used to live. */}
+      <StaffIdle />
+      {children}
+    </>
+  )
 }

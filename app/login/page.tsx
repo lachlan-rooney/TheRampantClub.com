@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import NavOverlay from '@/components/NavOverlay'
 import LoginTicker from '@/components/LoginTicker'
@@ -33,6 +33,16 @@ function LoginContent() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [forgotSent, setForgotSent] = useState(false)
+  // Why the portal threw them out. Without this line a staff member returning
+  // to a locked laptop sees a log-in screen and assumes something broke — the
+  // sentence is the difference between a security feature and a glitch.
+  // Read from window rather than useSearchParams: this page is deliberately
+  // not forced into client-only rendering for one query parameter.
+  const [lockedWhy, setLockedWhy] = useState<string | null>(null)
+  useEffect(() => {
+    const why = new URLSearchParams(window.location.search).get('locked')
+    if (why === 'idle' || why === 'away') setLockedWhy(why)
+  }, [])
 
   const handleLogin = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
@@ -226,6 +236,13 @@ function LoginContent() {
                   : 'Forgotten password? It happens to the best of us.'}
             </button>
 
+            {lockedWhy && !error && (
+              <div className="login-message" role="status" style={{ color: '#D4B85A' }}>
+                {lockedWhy === 'away'
+                  ? 'Locked while you were away. The portal holds members’ details, so it does not stay open unattended.'
+                  : 'Locked after five minutes without activity. Sign in to carry on.'}
+              </div>
+            )}
             {error && <div className="login-message error" role="alert">{error}</div>}
           </div>
         </div>
