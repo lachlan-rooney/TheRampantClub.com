@@ -20,15 +20,6 @@ import Link from 'next/link'
 // Hero · Benefits · Moodboard · Five Floors · Reciprocal · Blurb · Tiers
 // ═══════════════════════════════════════════════════════════════════
 
-interface MoodboardImage {
-  id: string
-  src: string
-  thumb?: string
-  filename: string
-  noRotate?: boolean
-  hoverSrc?: string
-  filter?: string
-}
 
 function seededRandom(seed: number) {
   const x = Math.sin(seed * 9301 + 49297) * 49297
@@ -161,168 +152,12 @@ function GolfFilm() {
   )
 }
 
-function DraggableImage({
-  img,
-  index,
-  itemSize,
-  multiplier,
-  maxZRef,
-}: {
-  img: MoodboardImage
-  index: number
-  itemSize: number
-  multiplier: number
-  maxZRef: React.MutableRefObject<number>
-}) {
-  const elRef = useRef<HTMLDivElement>(null)
-  const stateRef = useRef<ItemDragState>({
-    initialAngle: img.noRotate ? 0 : (seededRandom(index * 17 + 11) - 0.5) * 64,
-    marginTop: (seededRandom(index * 23 + 5) - 0.5) * 260,
-    marginLeft: (seededRandom(index * 41 + 7) - 0.5) * 300,
-    x: 0,
-    y: 0,
-    lastX: 0,
-    lastY: 0,
-    z: Math.floor(seededRandom(index * 31) * 20) + 1,
-  })
-  const [hovered, setHovered] = useState(false)
-  const clickedRef = useRef(false)
-  const startRef = useRef({ x: 0, y: 0 })
-
-  const applyTransform = useCallback(() => {
-    const el = elRef.current
-    if (!el) return
-    const s = stateRef.current
-    const dragAngle = img.noRotate ? 0 : (s.x + s.y) / multiplier
-    el.style.left = `${s.x}px`
-    el.style.top = `${s.y}px`
-    el.style.transform = `rotate(${s.initialAngle + dragAngle}deg)`
-    el.style.zIndex = String(s.z)
-  }, [multiplier, img.noRotate])
-
-  useEffect(() => {
-    const el = elRef.current
-    if (!el) return
-    el.style.marginTop = `${stateRef.current.marginTop}px`
-    el.style.marginLeft = `${stateRef.current.marginLeft}px`
-    applyTransform()
-  }, [applyTransform])
-
-  const onPointerDown = useCallback((e: React.PointerEvent) => {
-    e.preventDefault()
-    const el = elRef.current
-    if (!el) return
-    el.setPointerCapture(e.pointerId)
-    clickedRef.current = true
-    startRef.current = { x: e.clientX, y: e.clientY }
-    const newZ = maxZRef.current + 1
-    maxZRef.current = newZ
-    stateRef.current.z = newZ
-    el.style.zIndex = String(newZ)
-    el.style.cursor = 'grabbing'
-    el.style.filter = 'drop-shadow(0 28px 40px rgba(5,46,32,0.2)) drop-shadow(0 8px 12px rgba(5,46,32,0.1))'
-    el.style.transition = 'none'
-    el.style.willChange = 'transform'
-  }, [maxZRef])
-
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
-    if (!clickedRef.current) return
-    const s = stateRef.current
-    s.x = s.lastX + (e.clientX - startRef.current.x)
-    s.y = s.lastY + (e.clientY - startRef.current.y)
-    const el = elRef.current
-    if (!el) return
-    const dragAngle = img.noRotate ? 0 : (s.x + s.y) / multiplier
-    el.style.left = `${s.x}px`
-    el.style.top = `${s.y}px`
-    el.style.transform = `rotate(${s.initialAngle + dragAngle}deg)`
-  }, [multiplier, img.noRotate])
-
-  const onPointerUp = useCallback((e: React.PointerEvent) => {
-    if (!clickedRef.current) return
-    const el = elRef.current
-    if (el) el.releasePointerCapture(e.pointerId)
-    clickedRef.current = false
-    const s = stateRef.current
-    s.lastX = s.x
-    s.lastY = s.y
-    if (el) {
-      el.style.cursor = 'grab'
-      el.style.transition = 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), filter 0.3s ease'
-      el.style.filter = 'drop-shadow(0 6px 20px rgba(5,46,32,0.12)) drop-shadow(0 2px 6px rgba(5,46,32,0.06))'
-    }
-  }, [])
-
-  return (
-    <div
-      ref={elRef}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
-      onMouseEnter={() => img.hoverSrc && setHovered(true)}
-      onMouseLeave={() => img.hoverSrc && setHovered(false)}
-      style={{
-        position: 'relative',
-        display: 'inline-block',
-        cursor: 'grab',
-        touchAction: 'none',
-        userSelect: 'none',
-        borderRadius: 8,
-        overflow: 'hidden',
-        filter: 'drop-shadow(0 6px 20px rgba(5,46,32,0.12)) drop-shadow(0 2px 6px rgba(5,46,32,0.06))',
-        transition: 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), filter 0.3s ease',
-      }}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={img.thumb || img.src}
-        alt={img.filename}
-        loading="lazy"
-        decoding="async"
-        draggable={false}
-        style={{
-          width: itemSize,
-          height: 'auto',
-          pointerEvents: 'none',
-          userSelect: 'none',
-          display: 'block',
-          ...(img.filter ? { filter: img.filter } : {}),
-        }}
-      />
-      {img.hoverSrc && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={img.hoverSrc}
-          alt=""
-          draggable={false}
-          style={{
-            position: 'absolute',
-            top: -8,
-            right: 4,
-            transform: `scale(${hovered ? 1 : 0.85})`,
-            transformOrigin: 'top right',
-            width: itemSize * 0.45,
-            height: 'auto',
-            pointerEvents: 'none',
-            opacity: hovered ? 1 : 0,
-            filter: 'url(#cream-recolour)',
-            transition: 'opacity 0.25s ease, transform 0.25s ease',
-          }}
-        />
-      )}
-    </div>
-  )
-}
-
 // ─── Main Page ───────────────────────────────────────────────────
 export default function HomePage() {
   const easterEggs = useEasterEggs()
-  const [images, setImages] = useState<MoodboardImage[]>([])
   const [showGrid, setShowGrid] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
   const [isMobile, setIsMobile] = useState(false)
-  const [loaded, setLoaded] = useState(false)
   const [blurbVisible, setBlurbVisible] = useState(false)
   const [ethosOpen, setEthosOpen] = useState(false)
   const closeEthos = useCallback(() => setEthosOpen(false), [])
@@ -340,38 +175,6 @@ export default function HomePage() {
     }
     checkMobile()
     window.addEventListener('resize', checkMobile)
-
-    const localImages: MoodboardImage[] = [
-      {
-        id: 'lion-painting',
-        src: '/images/Lion-opt.png',
-        filename: 'Lion-opt.png',
-        noRotate: true,
-      },
-      {
-        id: 'library-bar',
-        src: '/images/library-bar-opt.png',
-        filename: 'library-bar-opt.png',
-        noRotate: true,
-        hoverSrc: '/images/PNG/%5BRAMPANT%5D_Logo_Rampants/8.svg',
-      },
-    ]
-
-    fetch('/api/moodboard')
-      .then(r => r.json())
-      .then(data => {
-        const imgs = [...(data.images || []), ...localImages]
-        for (let i = imgs.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [imgs[i], imgs[j]] = [imgs[j], imgs[i]]
-        }
-        setImages(imgs)
-        setLoaded(true)
-      })
-      .catch(() => {
-        setImages(localImages)
-        setLoaded(true)
-      })
 
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
@@ -752,8 +555,12 @@ export default function HomePage() {
             had never been used — the empty state read "The walls are bare."
             YouTube, unlisted: frame-src already allows it, so no CSP change, and
             it does not depend on a Drive share that breaks silently when
-            somebody tidies a folder. /members/upload and /api/moodboard are left
-            in place; nothing else on the site renders them. */}
+            somebody tidies a folder.
+
+            The moodboard itself is GONE as of 2026-09-13 — the page, the
+            endpoint, the admin link to it, and the draggable component and
+            fetch that were still sitting in this file feeding a state nothing
+            rendered. "Left in place" is how an orphan becomes permanent. */}
         <div className="trc-cup">
           <div className="trc-cup-head">
             <div>

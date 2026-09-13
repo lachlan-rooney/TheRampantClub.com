@@ -549,9 +549,6 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
             </button>
             {isAdminUser && (
               <>
-                <Link href="/members/upload" className="nav-admin-link" onClick={() => setOpen(false)}>
-                  Upload
-                </Link>
                 <Link href="/admin" className="nav-admin-link" onClick={() => setOpen(false)}>
                   Admin
                 </Link>

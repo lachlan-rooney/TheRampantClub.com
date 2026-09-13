@@ -26,6 +26,11 @@
 -- The BODY column is English-only for every row in this table; a Vietnamese
 -- body needs a schema change, not a translation.
 --
+-- ALSO APPLIED 2026-09-13: the Guest Policy row said "up to two guests per
+-- visit" while Terms §14.3 says FOUR. The Terms are the contract, so the rule
+-- was the one that was wrong; it now cites the clause it follows, which is what
+-- should stop the two drifting apart again.
+--
 -- Safe to run more than once.
 -- ═══════════════════════════════════════════════════════════════════════════
 
@@ -58,6 +63,13 @@ insert into house_rules (section_title, section_title_vn, body, sort_order) valu
 );
 
 update house_rules set sort_order = 9 where section_title = 'Complaints & Suggestions';
+
+update house_rules
+   set body = 'Each member may introduce up to four guests at a time, as set out in the Terms and Conditions (§14.3). '
+              'Additional guests can be arranged in advance with the Member Experience Manager. '
+              'Guests must be signed in at reception, and the introducing member is responsible for them throughout — '
+              'the Committee trusts members to exercise judgement.'
+ where section_title = 'Guest Policy';
 
 -- ── Proof, printed by the run ──────────────────────────────────────────────
 do $$
