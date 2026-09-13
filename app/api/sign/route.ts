@@ -26,6 +26,19 @@ export async function POST(req: NextRequest) {
       termsVersionId,
     } = body
 
+    // A signature has to exist in one of its two forms BEFORE we generate a
+    // PDF and send two emails. It used to be caught only by a NOT NULL column
+    // at the final insert — so a browser that blocks canvas readback produced a
+    // failure after the applicant had done everything, with the agreement
+    // stored nowhere. See db/signed_agreements_signature.sql.
+    const hasDrawing = typeof signatureDataUrl === 'string' && signatureDataUrl.trim().length > 0
+    const hasTyped = typeof typedName === 'string' && typedName.trim().length > 0
+    if (!hasDrawing && !hasTyped) {
+      return NextResponse.json({
+        error: 'We could not capture your signature. Try the other signing method, or a different browser.',
+      }, { status: 400 })
+    }
+
     // 1. Validate the token
     const { data: invitation, error: invError } = await supabaseAdmin
       .from('signing_invitations')
@@ -236,7 +249,10 @@ export async function POST(req: NextRequest) {
       category,
       signature_method: signatureMethod,
       typed_name: typedName,
-      signature_data_url: signatureDataUrl,
+      // Null rather than '' when the canvas gave nothing: the typed name is
+      // the signature in that case, and an empty string pretending to be an
+      // image helps nobody read this row later.
+      signature_data_url: hasDrawing ? signatureDataUrl : null,
       signed_pdf_url: fileName,
       declarations,
       ip_address: ip,

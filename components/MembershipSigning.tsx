@@ -66,6 +66,9 @@ export default function MembershipSigning({ token, prefill, terms }: Props) {
   const [selectedFont, setSelectedFont] = useState(0)
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  // Failures were an alert() — a browser dialog on a signing page, which reads
+  // as a broken site rather than as the Club telling you something.
+  const [err, setErr] = useState<string | null>(null)
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -175,7 +178,17 @@ export default function MembershipSigning({ token, prefill, terms }: Props) {
 
   const handleSubmit = async () => {
     if (!canSubmit) return
+    // If the canvas refused to give us an image, a TYPED signing can still go
+    // through on the name alone — but a DRAWN one cannot, and the person needs
+    // telling here rather than meeting a failure after the submit.
+    if (sigMode === 'draw' && !getSignatureDataUrl()) {
+      setErr(lang === 'en'
+        ? 'Your signature did not capture. Try again, or use the typed option.'
+        : 'Chữ ký chưa được ghi lại. Vui lòng thử lại hoặc dùng tuỳ chọn nhập tên.')
+      return
+    }
     setSubmitting(true)
+    setErr(null)
     try {
       const res = await fetch('/api/sign', {
         method: 'POST',
@@ -201,10 +214,19 @@ export default function MembershipSigning({ token, prefill, terms }: Props) {
           declarations: declarations.map((d, i) => ({ index: i, accepted: d })),
         }),
       })
-      if (!res.ok) throw new Error('Failed')
+      if (!res.ok) {
+        // The server says what went wrong where it can — an uncaptured
+        // signature, a token that has expired — and that sentence is more use
+        // than "something went wrong".
+        const j = await res.json().catch(() => null)
+        throw new Error(j?.error || '')
+      }
       setSubmitted(true)
-    } catch {
-      alert('Something went wrong. Please try again.')
+    } catch (e) {
+      const msg = e instanceof Error && e.message ? e.message : ''
+      setErr(msg || (lang === 'en'
+        ? 'Something went wrong sending your agreement. Please try again, or contact the Membership Team.'
+        : 'Đã xảy ra lỗi khi gửi thỏa thuận. Vui lòng thử lại hoặc liên hệ Bộ phận Thành viên.'))
     }
     setSubmitting(false)
   }
@@ -641,6 +663,13 @@ export default function MembershipSigning({ token, prefill, terms }: Props) {
               </div>
             )}
           </div>
+
+          {err && (
+            <div role="alert" style={{
+              fontFamily: "'Google Sans Code', monospace", fontSize: 12.5, lineHeight: 1.7,
+              color: '#E8A6A6', textAlign: 'center', marginBottom: 14,
+            }}>{err}</div>
+          )}
 
           {/* Validation hints */}
           {!canSubmit && (
