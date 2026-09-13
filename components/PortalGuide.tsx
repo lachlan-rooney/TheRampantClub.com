@@ -170,7 +170,17 @@ export default function PortalGuide({ name }: { name?: string }) {
       // intercepted a real tap during verification. Explicit replay (?guide=1 or the
       // open-portal-guide event) still works; only the automatic open is suppressed.
       const onConsentGate = url.pathname.startsWith('/members/agree')
-      if (!onConsentGate && (!window.localStorage.getItem(SEEN_KEY) || url.searchParams.get('guide') === '1')) {
+      // AND ONLY ON THE DASHBOARD. The guide is mounted in the member layout, so
+      // "has not seen it yet" was true on every page: a new member who closed it
+      // on the dashboard, then opened the Notice Board from the menu, met it
+      // again there — and again on What's On. Closing it is what marks it seen,
+      // so anyone who navigated away instead of closing was toured repeatedly.
+      // It now greets them once, where they land, and waits to be asked after
+      // that: the menu, the dashboard button, ?guide=1, or the event.
+      const onDashboard = url.pathname === '/members' || url.pathname === '/members/'
+      const asked = url.searchParams.get('guide') === '1'
+      const firstTime = !window.localStorage.getItem(SEEN_KEY) && onDashboard
+      if (!onConsentGate && (firstTime || asked)) {
         setI(0); reset(); setOpen(true)
       }
     } catch { /* */ }
