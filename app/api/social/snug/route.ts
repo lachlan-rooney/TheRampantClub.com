@@ -20,7 +20,6 @@ interface FeedItem {
 export async function GET(req: Request) {
   const actor = await getActor()
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
-  if (!actor.memberNo) return NextResponse.json({ items: [], next: null })
   const before = new URL(req.url).searchParams.get('before')
   const a = svc()
 

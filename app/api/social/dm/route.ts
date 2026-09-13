@@ -11,7 +11,6 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   const actor = await getActor()
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
-  if (!actor.memberNo) return NextResponse.json({ threads: [], blocked: [] })
   const a = svc()
 
   // Readable direct threads (severed ones excluded by RLS).

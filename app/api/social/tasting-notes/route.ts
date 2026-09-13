@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
-import { getActor, svc, socialEmit, canPost, NOT_LINKED } from '@/lib/social/server'
+import { getActor, svc, socialEmit } from '@/lib/social/server'
 import { rederiveAndPersist } from '@/lib/whisky/derive-taste'
 import { getSharp, imagePipelineDownMember } from '@/lib/attachments/image'
 
@@ -18,7 +18,6 @@ const BUCKET = 'member-media'
 export async function GET(req: Request) {
   const actor = await getActor()
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
-  if (!canPost(actor)) return NextResponse.json({ notes: [] })
   const whiskyId = new URL(req.url).searchParams.get('whisky_id')
   const a = svc()
 
@@ -68,7 +67,6 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const actor = await getActor()
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
-  if (!canPost(actor)) return NextResponse.json({ error: NOT_LINKED }, { status: 403 })
 
   const form = await req.formData().catch(() => null)
   if (!form) return NextResponse.json({ error: 'Nothing to save.' }, { status: 400 })

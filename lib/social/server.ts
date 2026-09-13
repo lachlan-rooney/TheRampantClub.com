@@ -28,13 +28,29 @@ export async function getActor(): Promise<Actor | null> {
   return { sb, id: user.id, memberNo: prof?.member_no ?? null, isAdmin: !!prof?.is_admin }
 }
 
-// Who may POST to the shared spaces — the gallery, the Snug, tasting notes,
-// reactions. A linked member, or staff: the owner's rule is that admins and
-// staff can post anywhere, and a staff login has no member number to link.
-// Member-to-member relationships (introductions, blocks) and the concierge
-// line keep the plain `memberNo` check — those only mean anything for a member.
-export const canPost = (actor: Actor) => !!actor.memberNo || actor.isAdmin
-export const NOT_LINKED = 'This account is not linked to a membership, so it cannot post. Speak to the team to link it.'
+// ═══════════════════════════════════════════════════════════════════════════
+// EVERY ACCOUNT THE CLUB ISSUED CAN USE THE WHOLE PORTAL.
+// ───────────────────────────────────────────────────────────────────────────
+// There is no public sign-up: accounts are created at signing
+// (lib/members/provision.ts) or by an admin. So "signed in" already means "the
+// club let this person in", and a second test for a member_no only ever
+// produced a worse experience for the club's own staff — an empty Snug, a
+// concierge line that refused them, a page claiming the membership agreement
+// was not published.
+//
+// member_no says WHICH MEMBERSHIP an account is paired with. It is not a
+// measure of whether an account is real, and it must never gate what someone
+// can see or do. Every social table keys on the profile id (`actor.id`), never
+// on member_no, so nothing here needed it in the first place.
+//
+// It still decides ATTRIBUTION: a staff login posts as The Club, a member
+// posts as themselves. That is the only thing it should decide.
+//
+// There is deliberately NO canPost() helper any more. It existed to answer
+// "is this account allowed?", the answer is now always yes, and a function that
+// always returns true is a gate waiting to be reintroduced by accident. If a
+// surface ever genuinely needs restricting, add the test here with a reason —
+// once — rather than scattering member_no checks back across nine routes.
 
 // Emit a social event onto the spine (activity_events, project_id null). Runs via
 // the SESSION client so actor = auth.uid() = this user (ops_emit_event stamps

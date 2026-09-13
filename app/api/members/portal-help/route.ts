@@ -49,7 +49,6 @@ function rateLimited(actorId: string): boolean {
 export async function POST(req: Request) {
   const actor = await getActor()
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
-  if (!actor.memberNo && !actor.isAdmin) return NextResponse.json({ error: 'Members only.' }, { status: 403 })
   if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ error: 'Help is unavailable right now.' }, { status: 503 })
   if (rateLimited(actor.id)) return NextResponse.json({ error: 'A few too many questions at once — give it a moment, or ask the Concierge.' }, { status: 429 })
 

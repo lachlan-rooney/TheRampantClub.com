@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getActor, svc, socialEmit, canPost, NOT_LINKED } from '@/lib/social/server'
+import { getActor, svc, socialEmit } from '@/lib/social/server'
 import { rederiveAndPersist } from '@/lib/whisky/derive-taste'
 
 // Edit / delete a member's OWN tasting note. Own-only (author = session uid;
@@ -21,7 +21,6 @@ async function ownNote(a: ReturnType<typeof svc>, id: string, uid: string) {
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const actor = await getActor()
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
-  if (!canPost(actor)) return NextResponse.json({ error: NOT_LINKED }, { status: 403 })
   const { id } = await params
   const a = svc()
   const owned = await ownNote(a, id, actor.id)
@@ -52,7 +51,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const actor = await getActor()
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
-  if (!canPost(actor)) return NextResponse.json({ error: NOT_LINKED }, { status: 403 })
   const { id } = await params
   const a = svc()
   const owned = await ownNote(a, id, actor.id)

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getActor, svc, socialEmit, canPost, NOT_LINKED } from '@/lib/social/server'
+import { getActor, svc, socialEmit } from '@/lib/social/server'
 import { parseMediaUrl } from '@/lib/gallery'
 
 // Add a contribution to an event.
@@ -12,7 +12,6 @@ export const dynamic = 'force-dynamic'
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const actor = await getActor()
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
-  if (!canPost(actor)) return NextResponse.json({ error: NOT_LINKED }, { status: 403 })
   const { id } = await params
   const a = svc()
 

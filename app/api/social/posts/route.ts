@@ -14,8 +14,8 @@ const BUCKET = 'member-media'
 export async function POST(req: Request) {
   const actor = await getActor()
   if (!actor) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
-  const isMember = !!actor.memberNo
-  if (!isMember && !actor.isAdmin) return NextResponse.json({ error: 'Members or staff only.' }, { status: 403 })
+  // Any account the club issued may post (lib/social/server.ts says why).
+  // member_no decides only how the post is SIGNED: staff post as The Club.
   const author_kind = actor.isAdmin ? 'house' : 'member'   // staff → The Club
 
   const form = await req.formData().catch(() => null)
