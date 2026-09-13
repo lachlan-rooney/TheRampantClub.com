@@ -33,8 +33,21 @@ export default function MembersLayout({ children }: { children: React.ReactNode 
         /* Kill the blue tap-flash on touch; keep taps feeling instant. */
         a, button { -webkit-tap-highlight-color: transparent; }
 
-        .m-lang { top: calc(56px + env(safe-area-inset-top, 0px)); right: 40px; }
-        @media (max-width: 768px) { .m-lang { top: calc(72px + env(safe-area-inset-top, 0px)); right: 20px; } }
+        /* All of it in the class, none of it inline: an inline display:flex
+           outranks a media query, so the phone rule below silently did nothing
+           and both switches rendered at once. */
+        .m-lang {
+          position: absolute; z-index: 60;
+          display: flex; justify-content: flex-end; align-items: center; gap: 12px;
+          top: calc(56px + env(safe-area-inset-top, 0px)); right: 40px;
+        }
+        /* On a phone this corner control was there but unfindable: it is
+           absolute, so it scrolls away with the page, and a member is almost
+           never at scroll 0 when they want it. Below 768px the switch moves
+           into the menu instead (NavOverlay, members variant) — the burger is
+           fixed, so it is reachable from anywhere on the page. ONE control
+           visible at any width, and the same component in both places. */
+        @media (max-width: 768px) { .m-lang { display: none; } }
 
         /* Reserve room for the mobile bottom tab bar so it never covers content. */
         @media (max-width: 768px) {
@@ -48,10 +61,7 @@ export default function MembersLayout({ children }: { children: React.ReactNode 
           40px in. It was pinned to the very corner here (17px down, 24px in),
           up in the ticker's line — "top right" in words, not the same spot.
           Absolute, not fixed, so it scrolls away with the page as admin's does. */}
-      <div className="m-lang" style={{
-        position: 'absolute', zIndex: 60,
-        display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12,
-      }}>
+      <div className="m-lang">
         <LangToggle />
       </div>
       <LoginTicker />

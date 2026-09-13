@@ -8,6 +8,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { useLang } from '@/lib/lang'
 import { InkFloat } from '@/components/public/kit'
 import { CreamInk, CreamInkDefs } from '@/components/public/CreamInk'
+import LangToggle from '@/components/LangToggle'
 
 // Member nav — grouped by what a member actually comes here to do, each link with
 // a consistent line icon (same visual language as the admin sidebar). Order is
@@ -328,6 +329,22 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
 
         /* Utilities at the foot: quiet mono, not rooms */
         .nav-menu button.nav-link { margin-top: 0 !important; }
+
+        /* The language switch inside the menu — phones only (the desk keeps the
+           corner control, which does not scroll away on a short page). */
+        .nav-lang { display: none; }
+        .nav-lang-label {
+          font-family: 'Google Sans Code', monospace;
+          font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+          color: #B2AA98; opacity: 0.8;
+        }
+        @media (max-width: 768px) {
+          .nav-lang {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            margin: 10px 0 2px; padding: 10px 0 12px;
+            border-bottom: 1px solid rgba(229, 212, 194, 0.12);
+          }
+        }
         .nav-menu button.nav-link .nav-link-en {
           font-family: 'Google Sans Code', monospace; font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
         }
@@ -467,6 +484,15 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
                 <div className="nav-link-vn">{lines('My Dashboard', 'Trang của tôi')[1]}</div>
               </span>
             </Link>
+            {/* PHONES ONLY. The corner switch (app/members/layout.tsx, .m-lang)
+                is absolute and scrolls off the top of a long page, which on a
+                phone is most of the time. It is hidden below 768px and lives
+                here instead, behind the fixed burger. Same LangToggle
+                component, so the two places can never drift apart. */}
+            <div className="nav-lang">
+              <span className="nav-lang-label">{lines('Language', 'Ngôn ngữ')[0]}</span>
+              <LangToggle compact />
+            </div>
             {MEMBER_GROUPS.map(g => {
               const isCollapsed = collapsed[g.label] ?? true
               const groupHasUnread = conciergeUnread > 0 && g.links.some(l => l.href === '/members/concierge')
