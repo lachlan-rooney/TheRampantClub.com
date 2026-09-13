@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
-import { emailShell } from '@/lib/email/shell'
+import { emailShell, EMAIL } from '@/lib/email/shell'
 import { vnDateString } from '@/lib/datetime'
 import { provisionMemberAccount } from '@/lib/members/provision'
 
@@ -335,62 +335,64 @@ export async function POST(req: NextRequest) {
         }
 
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://therampantclub.com'
-        const lionUrl = `${siteUrl}/images/lion-signature-opt.png`
+        // The CREAM mark: the signature lion is inked dark and would vanish on the
+        // club's green. Same drawing, the version made for a dark ground.
+        const lionUrl = `${siteUrl}/images/logo-mark-cream.png`
         const signatureUrl = `${siteUrl}/images/signature%20(1)%20(1).png`
 
         const memberEmailHtml = `
-          <div class="trc-ground" style="max-width: 600px; margin: 0 auto; font-family: Georgia, 'Times New Roman', serif; background-color: #E5D4C2;">
+          <div class="trc-ground" style="max-width: 600px; margin: 0 auto; font-family: Georgia, 'Times New Roman', serif; background-color: ${EMAIL.ground};">
             <!-- Header -->
-            <div class="trc-ground" style="background-color: #E5D4C2; padding: 48px 40px 24px; text-align: center;">
+            <div class="trc-ground" style="background-color: ${EMAIL.ground}; padding: 48px 40px 24px; text-align: center;">
               <img src="${lionUrl}" alt="" width="80" style="display: block; margin: 0 auto 24px;" />
-              <h1 style="color: #052E20; font-size: 22px; font-weight: 400; letter-spacing: 0.08em; margin: 0;">THE RAMPANT CLUB</h1>
-              <p style="color: #5E6650; font-size: 10px; letter-spacing: 0.12em; margin: 10px 0 0; text-transform: uppercase;">Membership Agreement Received</p>
+              <h1 style="color: ${EMAIL.ink}; font-size: 22px; font-weight: 400; letter-spacing: 0.08em; margin: 0;">THE RAMPANT CLUB</h1>
+              <p style="color: ${EMAIL.muted}; font-size: 10px; letter-spacing: 0.12em; margin: 10px 0 0; text-transform: uppercase;">Membership Agreement Received</p>
             </div>
 
             <!-- Body -->
-            <div class="trc-ground" style="background-color: #E5D4C2; padding: 24px 48px 40px;">
-              <p style="color: #052E20; font-size: 15px; line-height: 1.8; margin: 0 0 20px;">
+            <div class="trc-ground" style="background-color: ${EMAIL.ground}; padding: 24px 48px 40px;">
+              <p style="color: ${EMAIL.ink}; font-size: 15px; line-height: 1.8; margin: 0 0 20px;">
                 Dear ${fullName},
               </p>
 
-              <p style="color: #5E6650; font-size: 13px; line-height: 1.85; margin: 0 0 16px;">
+              <p style="color: ${EMAIL.muted}; font-size: 13px; line-height: 1.85; margin: 0 0 16px;">
                 Thank you for submitting your signed Membership Agreement to The Rampant Club. Your application has been received and a copy of the signed document is attached for your records.
               </p>
 
-              <p style="color: #5E6650; font-size: 13px; line-height: 1.85; margin: 0 0 16px;">
+              <p style="color: ${EMAIL.muted}; font-size: 13px; line-height: 1.85; margin: 0 0 16px;">
                 The Membership Committee will now review your application. We do not confirm timelines, but you can expect to hear from us in due course. In the meantime, should you have any questions, please do not hesitate to reach out via our concierge service.
               </p>
 
-              <p style="color: #5E6650; font-size: 13px; line-height: 1.85; margin: 0 0 28px;">
+              <p style="color: ${EMAIL.muted}; font-size: 13px; line-height: 1.85; margin: 0 0 28px;">
                 We look forward to welcoming you.
               </p>
 
               <!-- Submitted details -->
-              <div style="background-color: rgba(5,46,32,0.06); border-radius: 6px; padding: 20px 24px; margin-bottom: 32px;">
-                <p style="color: #052E20; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 14px;">Your Submitted Details</p>
+              <div style="background-color: ${EMAIL.panel}; border-radius: 6px; padding: 20px 24px; margin-bottom: 32px;">
+                <p style="color: ${EMAIL.ink}; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 14px;">Your Submitted Details</p>
                 <table style="width: 100%; border-collapse: collapse;">
-                  <tr><td style="color: #5E6650; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase; width: 110px;">Name</td><td style="color: #052E20; font-size: 12px; padding: 5px 0;">${fullName}</td></tr>
-                  <tr><td style="color: #5E6650; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Email</td><td style="color: #052E20; font-size: 12px; padding: 5px 0;">${email}</td></tr>
-                  <tr><td style="color: #5E6650; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Mobile</td><td style="color: #052E20; font-size: 12px; padding: 5px 0;">${mobile}</td></tr>
-                  ${dateOfBirth ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Date of Birth</td><td style="color: #052E20; font-size: 12px; padding: 5px 0;">${dateOfBirth}</td></tr>` : ''}
-                  ${nationality ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Nationality</td><td style="color: #052E20; font-size: 12px; padding: 5px 0;">${nationality}</td></tr>` : ''}
-                  ${homeAddress ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Address</td><td style="color: #052E20; font-size: 12px; padding: 5px 0;">${homeAddress}</td></tr>` : ''}
-                  ${companyName ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Company</td><td style="color: #052E20; font-size: 12px; padding: 5px 0;">${companyName}</td></tr>` : ''}
-                  ${profession ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Profession</td><td style="color: #052E20; font-size: 12px; padding: 5px 0;">${profession}</td></tr>` : ''}
-                  <tr><td style="color: #5E6650; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Category</td><td style="color: #052E20; font-size: 12px; padding: 5px 0;">${category ? category.charAt(0).toUpperCase() + category.slice(1) : ''} Membership</td></tr>
-                  ${referredBy ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Referred By</td><td style="color: #052E20; font-size: 12px; padding: 5px 0;">${referredBy}</td></tr>` : ''}
+                  <tr><td style="color: ${EMAIL.muted}; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase; width: 110px;">Name</td><td style="color: ${EMAIL.ink}; font-size: 12px; padding: 5px 0;">${fullName}</td></tr>
+                  <tr><td style="color: ${EMAIL.muted}; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Email</td><td style="color: ${EMAIL.ink}; font-size: 12px; padding: 5px 0;">${email}</td></tr>
+                  <tr><td style="color: ${EMAIL.muted}; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Mobile</td><td style="color: ${EMAIL.ink}; font-size: 12px; padding: 5px 0;">${mobile}</td></tr>
+                  ${dateOfBirth ? `<tr><td style="color: ${EMAIL.muted}; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Date of Birth</td><td style="color: ${EMAIL.ink}; font-size: 12px; padding: 5px 0;">${dateOfBirth}</td></tr>` : ''}
+                  ${nationality ? `<tr><td style="color: ${EMAIL.muted}; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Nationality</td><td style="color: ${EMAIL.ink}; font-size: 12px; padding: 5px 0;">${nationality}</td></tr>` : ''}
+                  ${homeAddress ? `<tr><td style="color: ${EMAIL.muted}; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Address</td><td style="color: ${EMAIL.ink}; font-size: 12px; padding: 5px 0;">${homeAddress}</td></tr>` : ''}
+                  ${companyName ? `<tr><td style="color: ${EMAIL.muted}; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Company</td><td style="color: ${EMAIL.ink}; font-size: 12px; padding: 5px 0;">${companyName}</td></tr>` : ''}
+                  ${profession ? `<tr><td style="color: ${EMAIL.muted}; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Profession</td><td style="color: ${EMAIL.ink}; font-size: 12px; padding: 5px 0;">${profession}</td></tr>` : ''}
+                  <tr><td style="color: ${EMAIL.muted}; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Category</td><td style="color: ${EMAIL.ink}; font-size: 12px; padding: 5px 0;">${category ? category.charAt(0).toUpperCase() + category.slice(1) : ''} Membership</td></tr>
+                  ${referredBy ? `<tr><td style="color: ${EMAIL.muted}; font-size: 10px; padding: 5px 0; letter-spacing: 0.04em; text-transform: uppercase;">Referred By</td><td style="color: ${EMAIL.ink}; font-size: 12px; padding: 5px 0;">${referredBy}</td></tr>` : ''}
                 </table>
               </div>
 
               <!-- Chairman signature -->
               <div style="margin-top: 36px; text-align: right;">
-                <p style="color: #052E20; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 12px;">Chairman</p>
+                <p style="color: ${EMAIL.ink}; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 12px;">Chairman</p>
                 <img src="${signatureUrl}" alt="Chairman" width="130" style="display: inline-block;" />
               </div>
             </div>
 
             <!-- Footer -->
-            <div style="background-color: #052E20; padding: 28px 40px; text-align: center;">
+            <div style="background-color: ${EMAIL.ink}; padding: 28px 40px; text-align: center;">
               <img src="${siteUrl}/images/logo-script.svg" alt="The Rampant Club" width="140" style="display: block; margin: 0 auto 16px; opacity: 0.4;" />
               <p style="color: #B2AA98; font-size: 10px; line-height: 1.7; margin: 0;">
                 74A2 Hai Ba Trung, District 1, Ho Chi Minh City<br>
@@ -401,25 +403,25 @@ export async function POST(req: NextRequest) {
         `
 
         const clubEmailHtml = `
-          <div class="trc-ground" style="max-width: 600px; margin: 0 auto; font-family: Georgia, 'Times New Roman', serif; background-color: #E5D4C2;">
+          <div class="trc-ground" style="max-width: 600px; margin: 0 auto; font-family: Georgia, 'Times New Roman', serif; background-color: ${EMAIL.ground};">
             <div style="padding: 32px 40px;">
               <img src="${lionUrl}" alt="" width="50" style="display: block; margin: 0 0 20px;" />
-              <h2 style="color: #052E20; font-size: 18px; font-weight: 400; letter-spacing: 0.06em; margin: 0 0 24px;">New Agreement Signed</h2>
+              <h2 style="color: ${EMAIL.ink}; font-size: 18px; font-weight: 400; letter-spacing: 0.06em; margin: 0 0 24px;">New Agreement Signed</h2>
 
               <table style="width: 100%; border-collapse: collapse;">
-                <tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; width: 120px; border-bottom: 1px solid rgba(5,46,32,0.08);">Name</td><td style="color: #052E20; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(5,46,32,0.08);">${fullName}</td></tr>
-                <tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(5,46,32,0.08);">Category</td><td style="color: #052E20; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(5,46,32,0.08);">${category}</td></tr>
-                <tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(5,46,32,0.08);">Email</td><td style="color: #052E20; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(5,46,32,0.08);">${email}</td></tr>
-                <tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(5,46,32,0.08);">Mobile</td><td style="color: #052E20; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(5,46,32,0.08);">${mobile}</td></tr>
-                ${dateOfBirth ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(5,46,32,0.08);">DOB</td><td style="color: #052E20; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(5,46,32,0.08);">${dateOfBirth}</td></tr>` : ''}
-                ${nationality ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(5,46,32,0.08);">Nationality</td><td style="color: #052E20; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(5,46,32,0.08);">${nationality}</td></tr>` : ''}
-                ${homeAddress ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(5,46,32,0.08);">Address</td><td style="color: #052E20; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(5,46,32,0.08);">${homeAddress}</td></tr>` : ''}
-                ${companyName ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(5,46,32,0.08);">Company</td><td style="color: #052E20; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(5,46,32,0.08);">${companyName}</td></tr>` : ''}
-                ${profession ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(5,46,32,0.08);">Profession</td><td style="color: #052E20; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(5,46,32,0.08);">${profession}</td></tr>` : ''}
-                ${referredBy ? `<tr><td style="color: #5E6650; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase;">Referred By</td><td style="color: #052E20; font-size: 13px; padding: 8px 0;">${referredBy}</td></tr>` : ''}
+                <tr><td style="color: ${EMAIL.muted}; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; width: 120px; border-bottom: 1px solid ${EMAIL.rule};">Name</td><td style="color: ${EMAIL.ink}; font-size: 13px; padding: 8px 0; border-bottom: 1px solid ${EMAIL.rule};">${fullName}</td></tr>
+                <tr><td style="color: ${EMAIL.muted}; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid ${EMAIL.rule};">Category</td><td style="color: ${EMAIL.ink}; font-size: 13px; padding: 8px 0; border-bottom: 1px solid ${EMAIL.rule};">${category}</td></tr>
+                <tr><td style="color: ${EMAIL.muted}; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid ${EMAIL.rule};">Email</td><td style="color: ${EMAIL.ink}; font-size: 13px; padding: 8px 0; border-bottom: 1px solid ${EMAIL.rule};">${email}</td></tr>
+                <tr><td style="color: ${EMAIL.muted}; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid ${EMAIL.rule};">Mobile</td><td style="color: ${EMAIL.ink}; font-size: 13px; padding: 8px 0; border-bottom: 1px solid ${EMAIL.rule};">${mobile}</td></tr>
+                ${dateOfBirth ? `<tr><td style="color: ${EMAIL.muted}; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid ${EMAIL.rule};">DOB</td><td style="color: ${EMAIL.ink}; font-size: 13px; padding: 8px 0; border-bottom: 1px solid ${EMAIL.rule};">${dateOfBirth}</td></tr>` : ''}
+                ${nationality ? `<tr><td style="color: ${EMAIL.muted}; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid ${EMAIL.rule};">Nationality</td><td style="color: ${EMAIL.ink}; font-size: 13px; padding: 8px 0; border-bottom: 1px solid ${EMAIL.rule};">${nationality}</td></tr>` : ''}
+                ${homeAddress ? `<tr><td style="color: ${EMAIL.muted}; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid ${EMAIL.rule};">Address</td><td style="color: ${EMAIL.ink}; font-size: 13px; padding: 8px 0; border-bottom: 1px solid ${EMAIL.rule};">${homeAddress}</td></tr>` : ''}
+                ${companyName ? `<tr><td style="color: ${EMAIL.muted}; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid ${EMAIL.rule};">Company</td><td style="color: ${EMAIL.ink}; font-size: 13px; padding: 8px 0; border-bottom: 1px solid ${EMAIL.rule};">${companyName}</td></tr>` : ''}
+                ${profession ? `<tr><td style="color: ${EMAIL.muted}; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid ${EMAIL.rule};">Profession</td><td style="color: ${EMAIL.ink}; font-size: 13px; padding: 8px 0; border-bottom: 1px solid ${EMAIL.rule};">${profession}</td></tr>` : ''}
+                ${referredBy ? `<tr><td style="color: ${EMAIL.muted}; font-size: 10px; padding: 8px 0; letter-spacing: 0.06em; text-transform: uppercase;">Referred By</td><td style="color: ${EMAIL.ink}; font-size: 13px; padding: 8px 0;">${referredBy}</td></tr>` : ''}
               </table>
 
-              <p style="color: #5E6650; font-size: 11px; margin: 20px 0 0; opacity: 0.5;">Signed PDF attached. Full details in the admin panel.</p>
+              <p style="color: ${EMAIL.muted}; font-size: 11px; margin: 20px 0 0; opacity: 0.5;">Signed PDF attached. Full details in the admin panel.</p>
             </div>
           </div>
         `

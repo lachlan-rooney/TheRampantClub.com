@@ -10,32 +10,25 @@ wording is at the end and needs a Vietnamese translation before it is published.
 ## The fee
 
 > **100,000 VND per person eating.**
-> **Minimum 500,000 VND per booking.**
-
-| Eating | Charged |
-| --- | --- |
-| 2 | 500,000 (the minimum) |
-| 3 | 500,000 (the minimum) |
-| 4 | 500,000 (the minimum) |
-| 5 | 500,000 |
-| 6 | 600,000 |
-| 8 | 800,000 |
-| 12 | 1,200,000 |
+> Charged on the night, with the rest of the bill.
 
 **Per person EATING, not per person at the table.** A member with three guests
-where only two are eating is charged the minimum, not four heads. Don't audit
-it — ask once, take the answer.
+where only two are eating is charged for two. Don't audit it — ask once, take
+the answer.
 
-**Why there is a minimum.** A table of two costs the same setup, service and
-wash-up as a table of five. The floor pays for the work; the per-head rate above
-it pays for the scale.
+**No minimum.** There was one for a day: 500,000 per booking, on the argument
+that a table of two costs the same setup as a table of five. True, and beside
+the point — the fee is not here to recover the cost of the labour. It is here
+so that ordering in is an ordinary, unremarkable thing a member can do, and a
+floor that charges two people for five turns a courtesy into a tariff.
+Removed 2026-09-13.
 
-**Posted to the member's account and payable with club credit**, like anything
-else. It is not a cash charge at the door.
+**On the night, not on account.** It goes on the bill with everything else and
+is settled before they leave, like any other charge (Terms, Schedule Part 2
+§13). Nothing to post, nothing to chase.
 
 **The duty manager may waive it** where the table's beverage spend has been
-substantial. The fee exists to cover labour, not to tax a table that is already
-drinking well — and waiving it is a better story than charging it.
+substantial. Waiving it is a better story than charging it.
 
 ---
 
@@ -69,8 +62,10 @@ a meal service in the bottle-share room.
 3. **Allergens and provenance are the member's.** We take no responsibility for
    food we did not prepare — see §16 of the Rules of Membership. Say it once,
    pleasantly, at the booking, and note it on the booking.
-4. **Notice:** 24 hours for a meal in the Private Dining Room. Snacks to the
-   Rampant Room can be same-day with the duty manager's nod.
+4. **Notice: at the time of booking.** Telling us when they book is enough —
+   for a meal in the Private Dining Room or snacks to the Rampant Room alike.
+   We are not asking anyone to plan a delivery 24 hours ahead of a dinner they
+   have only just arranged.
 5. **The delivery rider does not come in.** Food is met at the entrance and
    carried in by staff. Members' privacy is the point of the building.
 
@@ -79,33 +74,36 @@ a meal service in the bottle-share room.
 ## How a shift handles it
 
 1. Member asks → confirm the room, the number **eating**, and the time.
-2. Quote the fee: *"One hundred thousand per person eating, five hundred
-   thousand minimum — it goes on your account."*
+2. Quote the fee: *"One hundred thousand per person eating — it goes on the
+   bill tonight."*
 3. Note it on the booking, including the allergens line.
 4. Meet the delivery at the entrance. Plate it. Serve it.
 5. Clear as normal. Leftovers go with the member.
-6. Post the fee to the member's account before they leave.
+6. Put the fee on the bill, and settle it with the rest before they leave.
 
-**If the member pushes back on the fee**, the honest answer is the true one: it
-covers the team's time in setting the room, plating, serving and clearing. It is
-not a charge for permission to eat.
+**If the member pushes back on the fee**, don't defend it as cost recovery —
+it isn't, and at 100,000 a head the arithmetic won't carry the argument. Say
+what is true: it is what we charge to lay the table, plate the food and clear
+it, and it is per person eating so a couple pays for two. If they are still
+unhappy and the evening has been a good one, waive it and tell the duty
+manager.
 
 ---
 
 ## The member-facing wording
 
-Ready to lift into a notice, the House Rules, or the concierge's reply. **Needs
-Miss Châu's Vietnamese before it goes anywhere members read** — per the standing
-rule, member-facing Vietnamese is written by a person, not generated.
+**This is live on /members/rules**, as the House Rule "Ordering Food In" —
+English only until Miss Châu has written the Vietnamese, per the standing rule
+that member-facing Vietnamese is written by a person, not generated.
 
 > **Ordering food in**
 >
 > You are welcome to have food delivered to the Club and we will plate and serve
-> it for you. There is a charge of 100,000 VND per person eating, with a minimum
-> of 500,000 VND, posted to your account.
+> it for you. There is a charge of 100,000 VND per person eating, added to your
+> bill on the night.
 >
 > Meals are served in the Private Dining Room, and snacks can come to the
-> Rampant Room. We ask for 24 hours' notice for a meal. We are not able to
+> Rampant Room — telling us when you book is notice enough. We are not able to
 > accommodate food in The Studio, where the artworks and the room's scent are
 > part of the exhibition.
 >
@@ -118,8 +116,6 @@ rule, member-facing Vietnamese is written by a person, not generated.
 ## Open
 
 - **Vietnamese translation** of the member-facing wording — Miss Châu.
-- **Where members read it:** a notice, a House Rules section, or nothing at all
-  (concierge answers on request). Not yet decided.
 - **Watch the kitchen.** If members start ordering in because the Club's own food
   is the weaker option, the fee is not the problem and raising it will not fix
   it. Raise it to 200,000 only if volume becomes an operational burden — never

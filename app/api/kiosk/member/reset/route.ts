@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { emailShell } from '@/lib/email/shell'
+import { emailShell, EMAIL } from '@/lib/email/shell'
 import { svc, deviceOk } from '@/lib/kiosk/server'
 import { resolveMember } from '@/lib/kiosk/resolve'
 
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       from: 'The Rampant Club <no-reply@therampantclub.com>',
       to: [m.email],
       subject: 'Your kiosk code',
-      html: emailShell(`<div style="font-family:Georgia,serif;color:#052E20;line-height:1.7;max-width:520px">
+      html: emailShell(`<div style="font-family:Georgia,serif;color:${EMAIL.ink};line-height:1.7;max-width:520px">
         <p>${first},</p>
         <p>Someone asked to set a new six-digit kiosk code for your membership. If that was you,
            the link below opens your member portal, where you can choose one.</p>

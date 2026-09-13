@@ -42,8 +42,8 @@ insert into house_rules (section_title, section_title_vn, body, sort_order) valu
 (
   'Ordering Food In', null,
   'You are welcome to have food delivered to the Club, and we will plate and serve it for you. '
-  'There is a charge of 100,000 VND per person eating, with a minimum of 500,000 VND, posted to your account. '
-  'Meals are served in the Private Dining Room, and snacks may come to the Rampant Room. We ask for 24 hours'' notice for a meal. '
+  'There is a charge of 100,000 VND per person eating, added to your bill on the night. '
+  'Meals are served in the Private Dining Room, and snacks may come to the Rampant Room — telling us when you book is notice enough. '
   'Food is not taken into The Studio, where the artworks and the scent of the room are part of the exhibition. '
   'Drinks remain ours to pour. And as we have not prepared the food ourselves, we cannot take responsibility for its ingredients or its handling before it reaches us.',
   7
@@ -70,4 +70,5 @@ begin
     v_n, length(v_food), length(v_age);
   if v_food is null or v_age is null then raise exception 'one of the two rules did not land'; end if;
   if position('100,000 VND' in v_food) = 0 then raise exception 'the fee is missing from the food rule'; end if;
+  if position('minimum' in lower(v_food)) > 0 then raise exception 'the minimum was removed on 2026-09-13 — it should not be back'; end if;
 end $$;

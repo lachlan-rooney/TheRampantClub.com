@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { emailShell } from '@/lib/email/shell'
+import { emailShell, EMAIL } from '@/lib/email/shell'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
 
@@ -43,16 +43,16 @@ export async function POST(req: NextRequest) {
       to: inv.email,
       subject: 'A reminder — your Rampant Club membership agreement',
       html: emailShell(`
-        <div style="font-family: Georgia, serif; max-width: 540px; margin: 0 auto; padding: 32px 24px; color: #052E20;">
+        <div style="font-family: Georgia, serif; max-width: 540px; margin: 0 auto; padding: 32px 24px; color: ${EMAIL.ink};">
           <p style="font-size: 15px; line-height: 1.7;">Dear ${inv.full_name || 'there'},</p>
           <p style="font-size: 15px; line-height: 1.7;">A gentle nudge — your membership agreement for The Rampant Club is still open.
             When you have a quiet moment, please complete and sign it at the link below.</p>
           <p style="margin: 28px 0;">
             <a href="${link}" style="background: #052E20; color: #E5D4C2; padding: 12px 22px; text-decoration: none; border-radius: 6px; font-family: 'Helvetica Neue', sans-serif; font-size: 13px; letter-spacing: 0.08em;">Complete the agreement</a>
           </p>
-          <p style="font-size: 11px; color: #5E6650; line-height: 1.7;">If the button doesn't work, paste this link into your browser:<br/>
-            <a href="${link}" style="color: #5E6650;">${link}</a></p>
-          <p style="font-size: 11px; color: #5E6650; margin-top: 36px;">— The Rampant Club</p>
+          <p style="font-size: 11px; color: ${EMAIL.muted}; line-height: 1.7;">If the button doesn't work, paste this link into your browser:<br/>
+            <a href="${link}" style="color: ${EMAIL.muted};">${link}</a></p>
+          <p style="font-size: 11px; color: ${EMAIL.muted}; margin-top: 36px;">— The Rampant Club</p>
         </div>
       `),
     })

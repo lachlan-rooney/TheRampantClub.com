@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { emailShell } from '@/lib/email/shell'
+import { emailShell, EMAIL } from '@/lib/email/shell'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { renderDocument } from '@/lib/documents/render'
 
@@ -46,11 +46,11 @@ export async function POST(req: Request) {
         // The version is in the subject deliberately: without it the email proves
         // nothing once the terms change.
         subject: `${title} — version ${v.version}`,
-        html: emailShell(`<div style="font-family:Georgia,serif;color:#052E20;line-height:1.7;max-width:640px">
+        html: emailShell(`<div style="font-family:Georgia,serif;color:${EMAIL.ink};line-height:1.7;max-width:640px">
           <p style="font-family:monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.7">
             ${title} · version ${v.version} · agreed ${new Date().toLocaleDateString('en-GB')}${prof?.member_no ? `) · ${prof.member_no}` : ''}
           </p>
-          <hr style="border:none;border-top:1px solid rgba(5,46,32,.15);margin:18px 0" />
+          <hr style="border:none;border-top:1px solid ${EMAIL.rule};margin:18px 0" />
           ${renderDocument(vn ? v.body_vn : v.body)}
         </div>`),
       })

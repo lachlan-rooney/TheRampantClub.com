@@ -1,30 +1,38 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// THE EMAIL SHELL — the club's colours survive the reader's dark mode.
+// THE EMAIL SHELL — the club's night palette, so nothing wants to invert it.
 // ───────────────────────────────────────────────────────────────────────────
-// Our emails are cream ground (#E5D4C2) with bottle-green ink, the same as the
-// site. A mail client in dark mode does not know that: Apple Mail, iOS Mail and
-// Outlook INVERT a light email unless told not to, and the result is a muddy
-// near-black card with olive text — recognisably not the club, and worse than
-// plain black on white would have been.
+// THE PROBLEM. Our emails were cream ground with bottle-green ink, like the
+// public site. A mail client in dark mode inverts a LIGHT email, and the
+// result was a muddy near-black card with olive text: recognisably not the
+// club. Declaring color-scheme fixes Apple Mail, iOS Mail and Outlook, but
+// Gmail ignores it and inverts anyway.
 //
-// The fix is three things, and only the first is widely documented:
+// WHAT WAS TRIED AND THROWN AWAY. An 8px cream tile as a background image
+// holds the GROUND through Gmail's inverter — image pixels survive where
+// colours do not. It was measured working. It was also worse: Gmail lightens
+// the TEXT too, and text cannot be an image, so the card came out cream with
+// near-white type on it. Holding half the palette is worse than losing all of
+// it. That approach is gone; do not reach for it again.
 //
-//   1. <meta name="color-scheme" content="light"> and its supported- twin, plus
-//      the same as CSS. Apple Mail, iOS Mail and Outlook then leave the email
-//      alone entirely. This is most of the win.
-//   2. A prefers-color-scheme override that repaints the ground and the ink
-//      back to the club's, for clients that respect media queries but invert
-//      anyway.
-//   3. [data-ogsc] / [data-ogsb] selectors — the attributes the Gmail app
-//      rewrites a message with when it inverts. Gmail is the least obedient
-//      client of the three; locking the GROUND is achievable, and the inline
-//      colours inside mostly survive once the background does.
+// WHAT WORKS. Send the email DARK. Clients invert light emails; they leave
+// dark ones alone, because there is nothing for dark mode to improve. The club
+// already has a night palette — bottle green, cream ink, gold — and it is the
+// one the portal and the kiosk are built in. So the email is on-brand at noon
+// AND immune to inversion at midnight, and it needs no tricks to stay that way.
 //
-// bgcolor="" is repeated as an attribute as well as CSS on purpose: the oldest
-// clients (and a few webmail readers) honour the attribute and ignore the rule.
-//
-// Wrap every outgoing email in this. Ten routes send mail; they can all adopt
-// it as they are next touched.
+// A reader in LIGHT mode gets a dark email. That is a deliberate trade: it is
+// the club's own look, the same as signing in to the portal, and it is
+// identical for every reader — which is worth more than matching the
+// brightness of whatever inbox it lands in.
+
+export const EMAIL = {
+  ground: '#052E20',   // bottle green — the portal's ground
+  panel:  '#0A3526',   // one step up, for a panel inside the ground
+  ink:    '#E5D4C2',   // cream
+  muted:  '#B2AA98',   // cream at conversational weight
+  gold:   '#D4B85A',   // the accent, used for one thing at a time
+  rule:   'rgba(229,212,194,0.14)',
+} as const
 
 export function emailShell(inner: string, opts?: { title?: string; preheader?: string }): string {
   const title = opts?.title || 'The Rampant Club'
@@ -40,29 +48,31 @@ export function emailShell(inner: string, opts?: { title?: string; preheader?: s
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light">
-<meta name="supported-color-schemes" content="light">
+<!-- The email IS dark. Saying so is what stops a client "helping". -->
+<meta name="color-scheme" content="dark">
+<meta name="supported-color-schemes" content="dark light">
 <title>${title}</title>
 <style>
-  :root { color-scheme: light; supported-color-schemes: light; }
-  body { margin: 0; padding: 0; background-color: #E5D4C2; }
-  /* Clients that invert anyway: put the ground back. */
-  @media (prefers-color-scheme: dark) {
-    body, .trc-ground { background-color: #E5D4C2 !important; }
-    .trc-ink { color: #052E20 !important; }
+  :root { color-scheme: dark; supported-color-schemes: dark light; }
+  body { margin: 0; padding: 0; background-color: ${EMAIL.ground}; }
+  /* Belt and braces for the clients that still decide to intervene: in either
+     scheme, the ground is the club's green and the ink is the club's cream. */
+  @media (prefers-color-scheme: light) {
+    body, .trc-ground { background-color: ${EMAIL.ground} !important; }
+    .trc-ink { color: ${EMAIL.ink} !important; }
   }
-  /* The Gmail app rewrites the message with these attributes when it inverts. */
   [data-ogsc] body, [data-ogsc] .trc-ground, [data-ogsb] body, [data-ogsb] .trc-ground {
-    background-color: #E5D4C2 !important;
+    background-color: ${EMAIL.ground} !important;
   }
-  [data-ogsc] .trc-ink { color: #052E20 !important; }
+  [data-ogsc] .trc-ink { color: ${EMAIL.ink} !important; }
+  a { color: ${EMAIL.gold}; }
 </style>
 </head>
-<body bgcolor="#E5D4C2" class="trc-ground" style="margin:0;padding:0;background-color:#E5D4C2;">
+<body bgcolor="${EMAIL.ground}" class="trc-ground" style="margin:0;padding:0;background-color:${EMAIL.ground};">
 ${preheader}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#E5D4C2" class="trc-ground" style="background-color:#E5D4C2;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${EMAIL.ground}" class="trc-ground" style="background-color:${EMAIL.ground};">
   <tr>
-    <td align="center" bgcolor="#E5D4C2" class="trc-ground" style="background-color:#E5D4C2;">
+    <td align="center" bgcolor="${EMAIL.ground}" class="trc-ground" style="background-color:${EMAIL.ground};padding:0;">
 ${inner}
     </td>
   </tr>
