@@ -64,6 +64,46 @@ insert into house_rules (section_title, section_title_vn, body, sort_order) valu
 
 update house_rules set sort_order = 9 where section_title = 'Complaints & Suggestions';
 
+-- ── ADDED 2026-09-14 ──────────────────────────────────────────────────────
+-- THE DOOR. The club now opens at three, takes its last entry at 10:30pm,
+-- calls last orders at 11pm and closes at midnight, seven days.
+delete from house_rules where section_title = 'Last Entry & Closing';
+insert into house_rules (section_title, section_title_vn, body, sort_order) values
+(
+  'Last Entry & Closing', null,
+  'The Club opens at three and closes at midnight, seven days a week. Last entry is 10:30pm and last call is 11pm; '
+  'the room is cleared by 11:30. Members already inside may come and go as they please — last entry means the last '
+  'new arrival, not the last cigarette. No guest may be signed in after 10:30pm, with or without the member present. '
+  'A booked party running late is the duty manager''s to admit: we knew you were coming.',
+  9
+);
+
+-- THE RAMPANT ROOM'S PRICE, which the 14.09 Terms dropped. v2.1 carried
+-- "1,000,000 VND per hour, per person" inside the description of the room; the
+-- new document names the room four times and never prices it, so the figure
+-- existed nowhere a member could read it. It belongs here anyway — a price
+-- should not need a lawyer to change.
+--
+-- The CAP is Lachlan's, 2026-09-14: three million per person, however long
+-- they stay. Nine hours of trading at an uncapped hourly rate would have been
+-- a nine-million surprise on somebody's first long evening.
+delete from house_rules where section_title = 'The Rampant Room';
+insert into house_rules (section_title, section_title_vn, body, sort_order) values
+(
+  'The Rampant Room', null,
+  'The bottle-share room is charged at 1,000,000 VND per person per hour, added to your bill on the night — '
+  'capped at 3,000,000 VND per person however long you stay. Three hours or nine, the most anyone pays is three '
+  'million. No laptops, and no photography: the room is private, and that is most of what you are paying for.',
+  5
+);
+
+-- The rooms read together, so everything below the Rampant Room moves down one.
+update house_rules set sort_order = 6  where section_title = 'Guest Policy';
+update house_rules set sort_order = 7  where section_title = 'Age & Identification';
+update house_rules set sort_order = 8  where section_title = 'Ordering Food In';
+update house_rules set sort_order = 9  where section_title = 'Last Entry & Closing';
+update house_rules set sort_order = 10 where section_title = 'Complaints & Suggestions';
+
 update house_rules
    set body = 'Each member may introduce up to four guests at a time, as set out in the Terms and Conditions (§14.3). '
               'Additional guests can be arranged in advance with the Member Experience Manager. '
