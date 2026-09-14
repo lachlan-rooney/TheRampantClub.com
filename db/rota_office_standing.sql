@@ -107,7 +107,10 @@ select tm.id, d::date, tm.standing_shift, tm.standing_start, tm.standing_end
    and tm.active and tm.on_rota and tm.standing_shift is not null
    and extract(dow from d)::smallint = any(tm.standing_weekdays)
    and not exists (select 1 from rota_shifts s where s.member = tm.id and s.shift_date = d::date)
-   and not exists (select 1 from rota_unavailability u where u.member = tm.id and u.off_date = d::date);
+   -- 2026-09-14: time off lives in staff_time_off as ranges (rota_unavailability
+   -- retired). Public holidays have no team_member_id, so they never skip a day.
+   and not exists (select 1 from staff_time_off o where o.team_member_id = tm.id
+                      and o.start_date <= d::date and o.end_date >= d::date);
 
 -- ── Proof, printed by the run ─────────────────────────────────────────────
 do $$

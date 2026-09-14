@@ -1,3 +1,13 @@
+-- ═════════════════════════════════════════════════════════════════════════
+-- RETIRED 2026-09-14 — DO NOT RUN. Time off lives in staff_time_off (ranges),
+-- which the rota and the calendar both read. Retired by
+-- db/rota_unavailability_retire.sql. The guard below refuses to rebuild the
+-- table; delete it only if you are deliberately reverting that change.
+-- ═════════════════════════════════════════════════════════════════════════
+do $$ begin
+  raise exception 'rota_unavailability was retired 2026-09-14 — time off is staff_time_off. See db/rota_unavailability_retire.sql.';
+end $$;
+
 -- ─────────────────────────────────────────────────────────────────────────
 -- Rota availability — who CAN'T work, per day. Completes autofill: it stops
 -- proposing people on their day off (hard constraint), and manual drag warns.

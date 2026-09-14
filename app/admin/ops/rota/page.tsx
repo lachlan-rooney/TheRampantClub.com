@@ -6,7 +6,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { ConfirmModal, PromptModal, useToast } from '@/components/admin/dialogs'
 import { vnDateString } from '@/lib/datetime'
 import { createShift, updateShift, deleteShift, moveShift } from '@/lib/ops/api'
-import type { RotaShift, RotaShiftType, TeamMember, CoverageTarget, Unavailability } from '@/lib/ops/types'
+import type { RotaShift, RotaShiftType, TeamMember, CoverageTarget, StaffTimeOff, TimeOffKind } from '@/lib/ops/types'
 import { checkWeek, WEEKDAYS, type RotaStaff } from '@/lib/rota/policy'
 import { useLang } from '@/lib/admin-lang'
 
@@ -46,6 +46,14 @@ const SPACE_SHORT: Record<string, string> = {
   'The Dining Room': 'Dining', 'Source & Origin Lab': 'Lab', 'Sports Club': 'Sports',
 }
 const shortSpace = (s: string | null) => (s ? (SPACE_SHORT[s] || s) : '—')
+// Time-off kinds, labelled as /admin/calendar labels them — it is the same row.
+const OFF_KIND: Record<TimeOffKind, { en: string; vi: string }> = {
+  annual_leave:   { en: 'Annual leave',   vi: 'Nghỉ phép' },
+  sick:           { en: 'Sick leave',     vi: 'Nghỉ ốm' },
+  unpaid:         { en: 'Unpaid / other', vi: 'Không lương' },
+  public_holiday: { en: 'Public holiday', vi: 'Ngày lễ' },
+}
+const offRange = (o: StaffTimeOff) => o.start_date === o.end_date ? dayLabel(o.start_date) : `${dayLabel(o.start_date)} – ${dayLabel(o.end_date)}`
 const HOUSE_KIND_SHORT: Record<string, string> = { closure: 'closed', private_hire: 'hire', supplier: 'visit', tasting: 'tasting', other: 'event' }
 // Autofill draft types (proposed assignments + the gaps it couldn't fill).
 // coverFn 'standing' = a person's every-week shift, carrying its own times.
@@ -67,10 +75,14 @@ export default function RotaPage() {
   const [bookings, setBookings] = useState<DemandBooking[]>([])
   const [entries, setEntries] = useState<DemandEntry[]>([])
   const [targets, setTargets] = useState<CoverageTarget[]>([])
-  const [unavail, setUnavail] = useState<Unavailability[]>([])
-  const [upcomingOff, setUpcomingOff] = useState<Unavailability[]>([])
+  // Time off comes from staff_time_off — the same rows /admin/calendar shows.
+  // Until 2026-09-14 the rota kept its own per-day table the calendar never saw.
+  const [timeOff, setTimeOff] = useState<StaffTimeOff[]>([])       // overlapping this week
+  const [upcomingOff, setUpcomingOff] = useState<StaffTimeOff[]>([]) // ending today or later
   const [offMember, setOffMember] = useState('')
-  const [offDate, setOffDate] = useState('')
+  const [offKind, setOffKind] = useState<TimeOffKind>('annual_leave')
+  const [offStart, setOffStart] = useState('')
+  const [offEnd, setOffEnd] = useState('')
   const [offNote, setOffNote] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -182,9 +194,10 @@ export default function RotaPage() {
       supabase.from('calendar_entries').select('id, entry_date, title, space, kind, blocks_space')
         .gte('entry_date', weekStart).lte('entry_date', weekEnd),
       supabase.from('rota_coverage_targets').select('*'),
-      supabase.from('rota_unavailability').select('*').gte('off_date', weekStart).lte('off_date', weekEnd),
-      // Upcoming time off (any future date) — for the month-ahead view + the picker.
-      supabase.from('rota_unavailability').select('*').gte('off_date', vnDateString()).order('off_date'),
+      // Time off OVERLAPPING the week: leave that began last Friday still covers Monday.
+      supabase.from('staff_time_off').select('*').lte('start_date', weekEnd).gte('end_date', weekStart),
+      // Upcoming time off (anything not yet over) — for the list under the grid.
+      supabase.from('staff_time_off').select('*').gte('end_date', vnDateString()).order('start_date'),
     ])
     if (ty) setTypes(ty as RotaShiftType[])
     if (sh) setShifts(sh as RotaShift[])
@@ -193,8 +206,8 @@ export default function RotaPage() {
     setBookings((bk || []) as DemandBooking[])
     setEntries((en || []) as DemandEntry[])
     setTargets((ct || []) as CoverageTarget[])
-    setUnavail((ua || []) as Unavailability[])
-    setUpcomingOff((up || []) as Unavailability[])
+    setTimeOff((ua || []) as StaffTimeOff[])
+    setUpcomingOff((up || []) as StaffTimeOff[])
     setLoading(false)
   }, [weekStart])  // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -239,38 +252,55 @@ export default function RotaPage() {
 
   const proposedIn = (date: string, name: string) => proposals.filter(p => p.shift_date === date && p.shift_name === name)
 
-  // Availability: is this person marked off on this date?
-  const isOff = (memberId: string, date: string) => unavail.some(u => u.member === memberId && u.off_date === date)
-  const toggleOff = async (memberId: string, date: string) => {
-    const existing = unavail.find(u => u.member === memberId && u.off_date === date)
+  // Availability: the person's leave row covering this date, if any. A range
+  // check, since staff_time_off holds ranges. Public holidays are excluded on
+  // purpose — the club opens seven days, so a holiday takes nobody off; they
+  // show in the Time off panel as information only.
+  const offRow = (memberId: string, date: string) => timeOff.find(o =>
+    o.team_member_id === memberId && o.kind !== 'public_holiday' && o.start_date <= date && o.end_date >= date)
+  const isOff = (memberId: string, date: string) => !!offRow(memberId, date)
+  const holidaysOn = (date: string) => timeOff.filter(o => o.kind === 'public_holiday' && o.start_date <= date && o.end_date >= date)
+
+  // Every time-off write goes through /api/admin/time-off, the same route the
+  // calendar uses, so the name snapshot and created_by are written one way.
+  const timeOffApi = async (url: string, init?: RequestInit) => {
+    const res = await fetch(url, { cache: 'no-store', ...init })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`)
+    return j
+  }
+  const postTimeOff = (body: Record<string, unknown>) =>
+    timeOffApi('/api/admin/time-off', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+
+  // The weekly grid. Marking writes a one-day annual-leave row. Clearing takes
+  // only THAT day out: a one-day row goes, a longer booking shrinks or splits
+  // (the route does it) — un-ticking Thursday must not cancel a ten-day holiday.
+  const toggleOff = (memberId: string, date: string) => {
+    const existing = offRow(memberId, date)
     if (existing) {
-      setUnavail(us => us.filter(u => u !== existing))
-      await supabase.from('rota_unavailability').delete().eq('member', memberId).eq('off_date', date)
+      wrap(() => timeOffApi(`/api/admin/time-off?team_member_id=${encodeURIComponent(memberId)}&date=${date}`, { method: 'DELETE' }),
+        () => { if (existing.start_date !== existing.end_date) showToast(`${t('Cleared', 'Đã xóa')} ${dayLabel(date)} ${t('from', 'khỏi')} ${memberName(memberId)} · ${offRange(existing)}.`, 'success') })
     } else {
-      setUnavail(us => [...us, { id: `tmp-${memberId}-${date}`, member: memberId, off_date: date, note: null, created_at: '' }])
-      const { error } = await supabase.from('rota_unavailability').insert({ member: memberId, off_date: date })
-      if (error) { showToast(error.message, 'error'); load() }
+      wrap(() => postTimeOff({ kind: 'annual_leave', team_member_id: memberId, start_date: date, end_date: date }))
     }
   }
-  // Mark a future date off via the picker (any date ≥ today). Upsert so re-marking
-  // updates the note; refresh both the week + the upcoming list.
-  const markOffDate = async () => {
-    if (!offMember || !offDate) { showToast(t('Pick a person and a date.', 'Chọn một người và một ngày.'), 'error'); return }
-    const { error } = await supabase.from('rota_unavailability').upsert({ member: offMember, off_date: offDate, note: offNote.trim() || null }, { onConflict: 'member,off_date' })
-    if (error) { showToast(error.message, 'error'); return }
-    setOffNote(''); setOffDate('')
-    load()
+  // Book a range ahead (any start ≥ today; end defaults to the start).
+  // Public holidays aren't offered: they belong on the calendar, and take nobody off.
+  const markOffRange = () => {
+    const end = offEnd || offStart
+    if (!offMember || !offStart) { showToast(t('Pick a person and a date.', 'Chọn một người và một ngày.'), 'error'); return }
+    if (end < offStart) { showToast(t('End date is before start date.', 'Ngày kết thúc trước ngày bắt đầu.'), 'error'); return }
+    wrap(() => postTimeOff({ kind: offKind, team_member_id: offMember, start_date: offStart, end_date: end, note: offNote.trim() || undefined }),
+      () => { setOffNote(''); setOffStart(''); setOffEnd('') })
   }
-  const clearOff = async (memberId: string, date: string) => {
-    await supabase.from('rota_unavailability').delete().eq('member', memberId).eq('off_date', date)
-    load()
-  }
+  // Remove a whole booking from the upcoming list.
+  const removeOff = (id: string) => wrap(() => timeOffApi(`/api/admin/time-off/${id}`, { method: 'DELETE' }))
 
   // ── Autofill (greedy, propose-a-draft) ──
   // For each active shift cell short of its effective target, pick function-
   // capable people — never lacking the function, never twice in a cell, never
   // two shifts in one day. Fairness: fewest shifts so far this week (stable by
-  // id). Unfillable gaps are LABELLED, never crammed. Availability isn't known.
+  // id). Unfillable gaps are LABELLED, never crammed. Anyone isOff() is skipped.
   const runAutofill = () => {
     const newProps: Proposal[] = []
     const newGaps: Gap[] = []
@@ -753,13 +783,20 @@ export default function RotaPage() {
         <button onClick={() => setShowTimeOff(v => !v)} style={tinyBtn}>{showTimeOff ? '▾' : '▸'} {t('Time off', 'Nghỉ phép')}</button>
         {showTimeOff && (
           <div style={teamPanel}>
-            <div style={{ ...metaText, opacity: 0.7, marginBottom: 10 }}>{t("Mark who can't work each day this week. Autofill won't roster them that day; dragging someone onto their day off warns (you can still override).", 'Đánh dấu ai không thể làm mỗi ngày trong tuần này. Tự động xếp sẽ không xếp họ ngày đó; kéo ai đó vào ngày nghỉ của họ sẽ cảnh báo (bạn vẫn có thể ghi đè).')}</div>
+            <div style={{ ...metaText, opacity: 0.7, marginBottom: 10 }}>{t("Mark who can't work each day this week. Autofill won't roster them that day; dragging someone onto their day off warns (you can still override). This is the same time off as the calendar. Public holidays (◆) are shown for information — the club opens seven days, so they take nobody off.", 'Đánh dấu ai không thể làm mỗi ngày trong tuần này. Tự động xếp sẽ không xếp họ ngày đó; kéo ai đó vào ngày nghỉ của họ sẽ cảnh báo (bạn vẫn có thể ghi đè). Đây cũng là lịch nghỉ trên trang Lịch. Ngày lễ (◆) chỉ để tham khảo — câu lạc bộ mở cửa bảy ngày, nên không ai được tính là nghỉ.')}</div>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
                     <th style={{ ...covTh, textAlign: 'left' }}>{t('Person', 'Người')}</th>
-                    {days.map((d, i) => <th key={d} style={covTh}>{DOW[i]}<div style={{ ...metaText, opacity: 0.5, fontSize: 9 }}>{new Date(d + 'T00:00:00Z').getUTCDate()}</div></th>)}
+                    {days.map((d, i) => {
+                      const hols = holidaysOn(d)
+                      return (
+                        <th key={d} style={covTh}>{DOW[i]}<div style={{ ...metaText, opacity: 0.5, fontSize: 9 }}>{new Date(d + 'T00:00:00Z').getUTCDate()}</div>
+                          {hols.length > 0 && <div title={hols.map(h => h.note || t('Public holiday', 'Ngày lễ')).join(' · ')} style={{ color: '#D4B85A', fontSize: 9, cursor: 'help' }}>◆</div>}
+                        </th>
+                      )
+                    })}
                   </tr>
                 </thead>
                 <tbody>
@@ -767,10 +804,14 @@ export default function RotaPage() {
                     <tr key={m.id}>
                       <td style={{ ...covTd, textAlign: 'left', color: '#E5D4C2' }}>{m.display_name}</td>
                       {days.map(d => {
-                        const off = isOff(m.id, d)
+                        const row = offRow(m.id, d)
+                        const off = !!row
                         return (
                           <td key={d} style={covTd}>
-                            <button onClick={() => toggleOff(m.id, d)} title={off ? t('Marked off — click to clear', 'Đã đánh dấu nghỉ — nhấn để xóa') : t('Available — click to mark off', 'Có mặt — nhấn để đánh dấu nghỉ')}
+                            <button onClick={() => toggleOff(m.id, d)} disabled={busy}
+                              title={row
+                                ? `${t(OFF_KIND[row.kind].en, OFF_KIND[row.kind].vi)} · ${offRange(row)}${row.note ? ` · ${row.note}` : ''} — ${t('click to clear this day only', 'nhấn để chỉ xóa ngày này')}`
+                                : t('Available — click to mark off', 'Có mặt — nhấn để đánh dấu nghỉ')}
                               style={off ? offBtnOn : offBtnOff}>{off ? t('off', 'nghỉ') : '·'}</button>
                           </td>
                         )
@@ -782,16 +823,24 @@ export default function RotaPage() {
               </table>
             </div>
 
-            {/* Ahead-of-time: mark any future date off (leave booked weeks out) */}
-            <div style={{ ...fieldLabel, marginTop: 16, marginBottom: 6 }}>{t('Book time off ahead (any future date)', 'Đăng ký nghỉ trước (bất kỳ ngày tương lai nào)')}</div>
+            {/* Ahead-of-time: book a range off (leave booked weeks out) */}
+            <div style={{ ...fieldLabel, marginTop: 16, marginBottom: 6 }}>{t('Book time off ahead', 'Đăng ký nghỉ trước')}</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <select value={offMember} onChange={e => setOffMember(e.target.value)} style={ruleSelect}>
                 <option value="" style={opt}>{t('— person —', '— người —')}</option>
                 {rotaTeam.map(m => <option key={m.id} value={m.id} style={opt}>{m.display_name}</option>)}
               </select>
-              <input type="date" min={vnDateString()} value={offDate} onChange={e => setOffDate(e.target.value)} style={{ ...ruleSelect, colorScheme: 'dark' }} />
-              <input value={offNote} onChange={e => setOffNote(e.target.value)} placeholder={t('note (leave / sick…)', 'ghi chú (nghỉ phép / ốm…)')} style={{ ...ruleSelect, minWidth: 130 }} />
-              <button onClick={markOffDate} style={tinyBtn}>{t('Mark off', 'Đánh dấu nghỉ')}</button>
+              <select value={offKind} onChange={e => setOffKind(e.target.value as TimeOffKind)} style={ruleSelect}>
+                {(['annual_leave', 'sick', 'unpaid'] as TimeOffKind[]).map(k => <option key={k} value={k} style={opt}>{t(OFF_KIND[k].en, OFF_KIND[k].vi)}</option>)}
+              </select>
+              <input type="date" min={vnDateString()} value={offStart} title={t('From', 'Từ')}
+                onChange={e => { const v = e.target.value; setOffStart(v); setOffEnd(end => !end || end < v ? v : end) }}
+                style={{ ...ruleSelect, colorScheme: 'dark' }} />
+              <span style={{ ...metaText, opacity: 0.6 }}>{t('to', 'đến')}</span>
+              <input type="date" min={offStart || vnDateString()} value={offEnd || offStart} title={t('To', 'Đến')}
+                onChange={e => setOffEnd(e.target.value)} style={{ ...ruleSelect, colorScheme: 'dark' }} />
+              <input value={offNote} onChange={e => setOffNote(e.target.value)} placeholder={t('note (optional)', 'ghi chú (tùy chọn)')} maxLength={200} style={{ ...ruleSelect, minWidth: 130 }} />
+              <button onClick={markOffRange} disabled={busy} style={tinyBtn}>{t('Mark off', 'Đánh dấu nghỉ')}</button>
             </div>
 
             <div style={{ ...fieldLabel, marginTop: 16, marginBottom: 6 }}>{t('Upcoming time off', 'Nghỉ phép sắp tới')}</div>
@@ -799,14 +848,21 @@ export default function RotaPage() {
               <div style={{ ...metaText, opacity: 0.55, fontStyle: 'italic' }}>{t('Nothing booked ahead.', 'Chưa đặt gì trước.')}</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {upcomingOff.map(u => (
-                  <div key={`${u.member}-${u.off_date}`} style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: FAMILY, fontSize: 11, color: '#E5D4C2' }}>
-                    <span style={{ minWidth: 120 }}>{memberName(u.member)}</span>
-                    <span style={{ ...metaText }}>{dayLabel(u.off_date)}</span>
-                    {u.note && <span style={{ ...metaText, opacity: 0.6 }}>· {u.note}</span>}
-                    <button onClick={() => clearOff(u.member, u.off_date)} title={t('Clear', 'Xóa')} style={{ ...typeRemove, marginLeft: 'auto' }}>×</button>
-                  </div>
-                ))}
+                {upcomingOff.map(o => {
+                  const holiday = o.kind === 'public_holiday'
+                  return (
+                    <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontFamily: FAMILY, fontSize: 11, color: holiday ? '#D4B85A' : '#E5D4C2' }}>
+                      {/* A name that has left the active team still reads from the snapshot. */}
+                      <span style={{ minWidth: 120 }}>{holiday ? `◆ ${t('Club-wide', 'Toàn câu lạc bộ')}` : (team.find(m => m.id === o.team_member_id)?.display_name ?? o.member_name ?? '—')}</span>
+                      <span style={{ ...metaText }}>{offRange(o)}</span>
+                      <span style={{ ...metaText, opacity: 0.75 }}>· {t(OFF_KIND[o.kind].en, OFF_KIND[o.kind].vi)}</span>
+                      {o.note && <span style={{ ...metaText, opacity: 0.6 }}>· {o.note}</span>}
+                      {holiday
+                        ? <span title={t('Managed on the calendar. Takes nobody off the rota.', 'Quản lý trên trang Lịch. Không tính ai là nghỉ.')} style={{ ...metaText, opacity: 0.5, marginLeft: 'auto' }}>{t('info only', 'chỉ tham khảo')}</span>
+                        : <button onClick={() => removeOff(o.id)} disabled={busy} title={t('Remove this booking', 'Xóa đăng ký này')} style={{ ...typeRemove, marginLeft: 'auto' }}>×</button>}
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>

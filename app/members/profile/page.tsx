@@ -72,6 +72,9 @@ export default function ProfilePage() {
   const [saveErr, setSaveErr] = useState('')
   const [loading, setLoading] = useState(true)
   const [membership, setMembership] = useState<MembershipData | null>(null)
+  // From the locker wall, not the profile (2026-09-14) — profiles.locker_number
+  // was never filled in and members could write it themselves.
+  const [lockerNos, setLockerNos] = useState<string[]>([])
 
   useEffect(() => {
     const supabase = createBrowserSupabaseClient()
@@ -95,6 +98,10 @@ export default function ProfilePage() {
     fetch('/api/members/membership', { cache: 'no-store' })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setMembership(d) })
+      .catch(() => {})
+    fetch('/api/members/locker', { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.lockers) setLockerNos((d.lockers as { locker_no: string }[]).map(l => l.locker_no)) })
       .catch(() => {})
   }, [])
 
@@ -127,7 +134,7 @@ export default function ProfilePage() {
     { label: t('Email', 'Email'), value: email },
     { label: t('Member Number', 'Số thành viên'), value: profile?.member_no ? `${t('No.', 'Số')} ${profile.member_no.replace(/^TRC-M/i, '')}` : '—' },
     { label: t('Admitted', 'Ngày kết nạp'), value: formatDate(profile?.admitted_at || null, lang) },
-    { label: t('Locker', 'Tủ khoá'), value: profile?.locker_number || '—' },
+    { label: t('Locker', 'Tủ khoá'), value: lockerNos.join(', ') || '—' },
   ]
 
   return (

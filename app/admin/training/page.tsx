@@ -187,8 +187,8 @@ const SECTIONS: SectionDef[] = [
         vn: 'Cổng quản trị tại `/admin` là nơi làm việc của đội ngũ — nơi chúng ta quản lý khách tiềm năng, thành viên, thư viện whisky, khu vực phục vụ và mọi thứ ở giữa. Đây *không* phải trang công khai; chỉ quản trị viên đã đăng nhập mới vào được.' },
       { kind: 'p', en: 'The sidebar is grouped by job-to-be-done:', vn: 'Thanh bên được nhóm theo công việc cần làm:' },
       { kind: 'ul', items: [
-        { en: '**Floor** — what you need at the club: MX Daily (the morning brief), Tonight (service prep), Calendar (bookings), Shift Checklists (opening/closing handover), Harmony Log (end-of-shift AI capture), Notices, Quick Reference.',
-          vn: '**Floor** — những gì bạn cần tại câu lạc bộ: MX Daily (bản tóm tắt buổi sáng), Tonight (chuẩn bị phục vụ), Calendar (đặt chỗ), Shift Checklists (bàn giao mở/đóng ca), Harmony Log (ghi nhận cuối ca bằng AI), Notices, Quick Reference.' },
+        { en: '**Floor** — what you need at the club: MX Daily (the morning brief), Tonight (service prep), Calendar (bookings), Shift Checklists (opening/closing handover), Harmony Log (end-of-shift AI capture), Notices.',
+          vn: '**Floor** — những gì bạn cần tại câu lạc bộ: MX Daily (bản tóm tắt buổi sáng), Tonight (chuẩn bị phục vụ), Calendar (đặt chỗ), Shift Checklists (bàn giao mở/đóng ca), Harmony Log (ghi nhận cuối ca bằng AI), Notices.' },
         { en: '**Intelligence** — the CRM: Pipeline (prospects), Members, User Roster, Pref Candidates (review queue), Member Cards (NFC), Agreements (signed PDFs).',
           vn: '**Intelligence** — phần CRM: Pipeline (khách tiềm năng), Members, User Roster, Pref Candidates (hàng chờ duyệt), Member Cards (thẻ NFC), Agreements (PDF đã ký).' },
         { en: '**Whisky Library** — Inventory, Lockers, Fixtures.',

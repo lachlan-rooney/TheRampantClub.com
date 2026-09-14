@@ -6,17 +6,27 @@
 // a keyboard: when a card is tapped, the reader "types" the UID followed by Enter.
 // We listen globally for keypresses, accumulate the buffer, and treat any
 // alphanumeric run terminated by Enter (or 250ms of silence) as a UID.
+//
+// Two ways in (2026-09-14): TAP a card (the original flow), or CHOOSE a member
+// from the list at the bottom. Member-first exists because Quick Reference was
+// retired — it read a Google Sheet the database replaced — and it was the only
+// place staff could top up a member who hadn't brought their card, link a card
+// after choosing the member, or see/edit a card's expiry. Those jobs live here
+// now, against the same /api/admin/cards/* routes it used.
 
 import { useEffect, useRef, useState } from 'react'
 import { useLang } from '@/lib/admin-lang'
 
+// The credit account on screen. card_uid is null when the card was unlinked
+// but credit was kept; expires_at null means it never expires.
 interface CardLink {
   member_number: string
-  card_uid: string
+  card_uid: string | null
   credit_vnd: number
-  linked_at: string
+  expires_at: string | null
+  linked_at: string | null
 }
-interface SheetMember {
+interface RosterMember {
   member_number: string
   full_name: string
   tier: string
@@ -52,14 +62,33 @@ const btnStyle: React.CSSProperties = {
 }
 const btnPrimary: React.CSSProperties = { ...btnStyle, background: '#5E6650' }
 const btnDanger: React.CSSProperties = { ...btnStyle, background: 'rgba(180, 70, 70, 0.2)' }
+const btnSmall: React.CSSProperties = {
+  background: 'transparent', color: '#B2AA98', border: '1px solid rgba(229,212,194,0.15)',
+  borderRadius: 4, padding: '4px 12px', cursor: 'pointer',
+  fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10,
+}
+
+// An account past its expires_at still shows its balance, struck through, so
+// staff can see what lapsed rather than a misleading zero.
+const isExpired = (expiresAt: string | null | undefined) => !!expiresAt && new Date(expiresAt) < new Date()
 
 export default function AdminCards() {
   const { t } = useLang()
+  // What the panel is about: a tapped card (uid) or a member chosen from the
+  // list (focusNumber). A tap always wins — it clears focusNumber — so the
+  // tap-first flow behaves exactly as it did before member-first existed.
   const [uid, setUid] = useState<string | null>(null)
+  const [focusNumber, setFocusNumber] = useState<string | null>(null)
   const [link, setLink] = useState<CardLink | null>(null)
   const [member, setMember] = useState<Record<string, string> | null>(null)
   const [txs, setTxs] = useState<Transaction[]>([])
-  const [members, setMembers] = useState<SheetMember[]>([])
+  const [members, setMembers] = useState<RosterMember[]>([])
+  // Member-first linking: while set, the next tap links to this member instead
+  // of looking the card up.
+  const [linkTarget, setLinkTarget] = useState<string | null>(null)
+  const [editingExpiry, setEditingExpiry] = useState(false)
+  const [expiryDraft, setExpiryDraft] = useState('')
+  const panelRef = useRef<HTMLDivElement | null>(null)
   const [pickerNumber, setPickerNumber] = useState('')
   const [topupAmount, setTopupAmount] = useState('')
   const [chargeAmount, setChargeAmount] = useState('')
@@ -126,7 +155,11 @@ export default function AdminCards() {
     }
   }
 
-  // Card-reader keystroke listener
+  // Card-reader keystroke listener. It calls through handleScanRef because the
+  // listener is only re-bound when `listening` flips, and a tap now has to see
+  // the CURRENT linkTarget and roster (for the relink warning), not the ones
+  // captured when the listener was attached.
+  const handleScanRef = useRef<(scannedUid: string) => void>(() => {})
   useEffect(() => {
     const ALNUM = /^[0-9A-Za-z]$/
     const flush = () => {
@@ -134,7 +167,7 @@ export default function AdminCards() {
       bufferRef.current = ''
       flushTimerRef.current = null
       if (!buf || buf.length < 4) return
-      handleScan(buf.toUpperCase())
+      handleScanRef.current(buf.toUpperCase())
     }
     const onKey = (e: KeyboardEvent) => {
       if (!listening) return
@@ -160,7 +193,17 @@ export default function AdminCards() {
   }, [listening])
 
   const handleScan = async (scannedUid: string) => {
+    // Member-first link: staff chose the member, then pressed "Tap card to
+    // link". The tap is the card for THAT member, not a lookup.
+    if (linkTarget) {
+      const target = linkTarget
+      setLinkTarget(null)
+      requestLink(scannedUid, target)
+      return
+    }
     setUid(scannedUid)
+    setFocusNumber(null)
+    setEditingExpiry(false); setExpiryDraft('')
     setBusy(true)
     try {
       const r = await fetch(`/api/admin/cards/lookup?uid=${encodeURIComponent(scannedUid)}`)
@@ -185,22 +228,54 @@ export default function AdminCards() {
     }
   }
 
+  handleScanRef.current = handleScan
+
+  // Member-first: load a member's credit account without their card. by-member
+  // returns the card row without member_number, so it's stitched back on.
+  const loadMemberAccount = async (memberNumber: string) => {
+    const r = await fetch(`/api/admin/cards/by-member?member_number=${encodeURIComponent(memberNumber)}`, { cache: 'no-store' })
+    const d = await r.json()
+    setLink(d.card ? { ...d.card, member_number: memberNumber } : null)
+    setTxs(d.transactions || [])
+  }
+
+  const selectMember = async (m: RosterMember) => {
+    setUid(null); setPickerNumber(''); setLinkTarget(null)
+    setEditingExpiry(false); setExpiryDraft('')
+    setTopupAmount(''); setChargeAmount(''); setNote('')
+    setFocusNumber(m.member_number)
+    setMember({ 'Full Name': m.full_name, 'Member No.': m.member_number, 'Tier': m.tier })
+    setLink(null); setTxs([])
+    // The list sits below the panel; bring the panel into view.
+    panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    setBusy(true)
+    try { await loadMemberAccount(m.member_number) }
+    catch { showToast(t('Lookup failed', 'Tra cứu thất bại')) }
+    finally { setBusy(false) }
+  }
+
   const linkCard = async () => {
     if (!uid || !pickerNumber) return
+    await requestLink(uid, pickerNumber)
+  }
+
+  // Both link paths (tap→pick member, member→tap card) come through here so
+  // the relink warning guards each of them.
+  const requestLink = async (linkUid: string, memberNumber: string) => {
     // Confirm before stealing a card from another member.
-    const currentOwner = members.find(m => m.card_uid === uid && m.member_number !== pickerNumber)
+    const currentOwner = members.find(m => m.card_uid === linkUid && m.member_number !== memberNumber)
     if (currentOwner) {
       setConfirmModal({
         kind: 'relink',
-        uid,
+        uid: linkUid,
         fromName:    `${currentOwner.full_name} (${currentOwner.member_number})`,
         fromBalance: currentOwner.credit_vnd,
-        toNumber:    pickerNumber,
-        toName:      members.find(m => m.member_number === pickerNumber)?.full_name || pickerNumber,
+        toNumber:    memberNumber,
+        toName:      members.find(m => m.member_number === memberNumber)?.full_name || memberNumber,
       })
       return
     }
-    await doLinkCard(uid, pickerNumber)
+    await doLinkCard(linkUid, memberNumber)
   }
 
   const doLinkCard = async (linkUid: string, memberNumber: string) => {
@@ -212,8 +287,11 @@ export default function AdminCards() {
     })
     setBusy(false)
     if (r.ok) {
-      showToast(t('Card linked', 'Đã liên kết thẻ'))
-      handleScan(linkUid)
+      showToast(`${t('Card linked', 'Đã liên kết thẻ')}: ${linkUid}`)
+      // Stay on the member if staff came in member-first; otherwise show the
+      // card as the tap flow always has.
+      if (focusNumber === memberNumber) await loadMemberAccount(memberNumber)
+      else handleScan(linkUid)
       loadMembers()
     } else {
       const d = await r.json().catch(() => ({}))
@@ -222,11 +300,13 @@ export default function AdminCards() {
   }
 
   const unlinkCard = () => {
-    if (!uid) return
-    const owner = members.find(m => m.card_uid === uid)
+    // The card on screen: the tapped one, or the member's own card member-first.
+    const cardUid = link?.card_uid || uid
+    if (!cardUid) return
+    const owner = members.find(m => m.card_uid === cardUid)
     setConfirmModal({
       kind: 'unlink',
-      uid,
+      uid: cardUid,
       memberName: owner ? `${owner.full_name} (${owner.member_number})` : t('unknown member', 'thành viên không xác định'),
     })
   }
@@ -241,8 +321,36 @@ export default function AdminCards() {
     setBusy(false)
     if (r.ok) {
       showToast(t('Card unlinked', 'Đã hủy liên kết thẻ'))
-      handleScan(unlinkUid)
+      if (focusNumber) await loadMemberAccount(focusNumber)
+      else handleScan(unlinkUid)
       loadMembers()
+    } else {
+      const d = await r.json().catch(() => ({}))
+      showToast(`${t('Unlink failed', 'Hủy liên kết thất bại')}: ${d.error || r.statusText}`)
+    }
+  }
+
+  // Expiry — lifted from Quick Reference. A bare YYYY-MM-DD is stored by the
+  // route as end-of-day Saigon time; null clears it (never expires).
+  const saveExpiry = async (value: string | null) => {
+    if (!link) return
+    setBusy(true)
+    const r = await fetch('/api/admin/cards/expiry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ member_number: link.member_number, expires_at: value }),
+    })
+    setBusy(false)
+    if (r.ok) {
+      const d = await r.json()
+      setLink(l => l ? { ...l, expires_at: d.expires_at } : l)
+      setEditingExpiry(false); setExpiryDraft('')
+      showToast(d.expires_at
+        ? `${t('Expiry set to', 'Đã đặt hết hạn thành')} ${new Date(d.expires_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`
+        : t('Expiry cleared', 'Đã xóa ngày hết hạn'))
+    } else {
+      const d = await r.json().catch(() => ({}))
+      showToast(`${t('Failed to save expiry', 'Lưu ngày hết hạn thất bại')}: ${d.error || r.statusText}`)
     }
   }
 
@@ -284,12 +392,17 @@ export default function AdminCards() {
       showToast(kind === 'topup' ? `${t('Topped up', 'Đã nạp')} ${fmt(amt)}` : `${t('Charged', 'Đã trừ')} ${fmt(amt)}`)
       setLink(l => l ? { ...l, credit_vnd: d.balance_vnd } : l)
       setTopupAmount(''); setChargeAmount(''); setNote('')
-      // Refresh history
-      if (uid) {
+      // Refresh history (and the list's balances, which the relink warning reads)
+      if (focusNumber) {
+        const br = await fetch(`/api/admin/cards/by-member?member_number=${encodeURIComponent(focusNumber)}`, { cache: 'no-store' })
+        const bd = await br.json()
+        setTxs(bd.transactions || [])
+      } else if (uid) {
         const lr = await fetch(`/api/admin/cards/lookup?uid=${encodeURIComponent(uid)}`)
         const ld = await lr.json()
         setTxs(ld.transactions || [])
       }
+      loadMembers()
     } else {
       const d = await r.json().catch(() => ({}))
       showToast(`${t('Failed', 'Thất bại')}: ${d.error || r.statusText}`)
@@ -299,6 +412,7 @@ export default function AdminCards() {
   const reset = () => {
     setUid(null); setLink(null); setMember(null); setTxs([]); setPickerNumber('')
     setTopupAmount(''); setChargeAmount(''); setNote('')
+    setFocusNumber(null); setLinkTarget(null); setEditingExpiry(false); setExpiryDraft('')
   }
 
   return (
@@ -307,7 +421,7 @@ export default function AdminCards() {
         {t('Member Cards', 'Thẻ hội viên')}
       </h1>
       <p style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#B2AA98', marginBottom: 24, lineHeight: 1.6, maxWidth: 640 }}>
-        {t('Tap a member card on the USB reader to view balance, top up, or charge. Cards link to members from the Google Sheet roster by Member No.', 'Chạm thẻ hội viên lên đầu đọc USB để xem số dư, nạp tiền hoặc trừ tiền. Thẻ được liên kết với hội viên từ danh sách Google Sheet theo Số hội viên.')}
+        {t('Tap a member card on the USB reader to view balance, top up, or charge — or choose a member from the list below if they don’t have their card. Cards link to members in the members roster by Member No.', 'Chạm thẻ hội viên lên đầu đọc USB để xem số dư, nạp tiền hoặc trừ tiền — hoặc chọn hội viên trong danh sách bên dưới nếu họ không mang thẻ. Thẻ được liên kết với hội viên trong danh sách hội viên theo Số hội viên.')}
       </p>
 
       {/* Listening pill */}
@@ -333,7 +447,8 @@ export default function AdminCards() {
         </button>
       </div>
 
-      {!uid ? (
+      <div ref={panelRef} style={{ scrollMarginTop: 24 }} />
+      {!uid && !focusNumber ? (
         <div style={{
           padding: '60px 20px', textAlign: 'center',
           background: 'rgba(229,212,194,0.04)',
@@ -357,19 +472,61 @@ export default function AdminCards() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 24, flexWrap: 'wrap', marginBottom: 24 }}>
             <div>
               <label style={labelStyle}>{t('Card UID', 'Mã UID thẻ')}</label>
-              <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 20, color: '#E5D4C2', letterSpacing: '0.05em' }}>
-                {uid}
-              </div>
+              {uid ? (
+                <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 20, color: '#E5D4C2', letterSpacing: '0.05em' }}>
+                  {uid}
+                </div>
+              ) : link?.card_uid ? (
+                <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 20, color: '#E5D4C2', letterSpacing: '0.05em' }}>
+                  {link.card_uid}
+                </div>
+              ) : (
+                <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: link ? '#D4B85A' : '#B2AA98', marginTop: 4 }}>
+                  {busy && !link ? t('Loading…', 'Đang tải…') : link ? t('Unlinked — credit preserved', 'Đã hủy liên kết — tín dụng được giữ lại') : t('No card linked', 'Chưa liên kết thẻ')}
+                </div>
+              )}
             </div>
             <button onClick={reset} style={btnStyle}>{t('Clear', 'Xóa')}</button>
           </div>
+
+          {/* Member-first link: listen for the next tap and give it to this member */}
+          {focusNumber && !link?.card_uid && !(busy && !link) && (
+            linkTarget ? (
+              <div style={{
+                padding: '14px 16px', marginBottom: 24,
+                background: 'rgba(122,176,122,0.08)',
+                border: '1px dashed rgba(122,176,122,0.4)', borderRadius: 6,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
+              }}>
+                <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#E5D4C2' }}>
+                  {t('Listening… tap a card on the reader to link it to', 'Đang chờ… chạm thẻ lên đầu đọc để liên kết với')} {member?.['Full Name'] || focusNumber}.
+                </span>
+                <button onClick={() => setLinkTarget(null)} style={btnStyle}>{t('Cancel', 'Hủy')}</button>
+              </div>
+            ) : (
+              <div style={{ marginBottom: 24 }}>
+                {!link && (
+                  <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#B2AA98', marginBottom: 10 }}>
+                    <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2', marginRight: 10 }}>{member?.['Full Name'] || focusNumber}</span>
+                    {focusNumber}{member?.['Tier'] ? ` · ${member['Tier']}` : ''} · {t('no credit account yet — link a card to open one', 'chưa có tài khoản tín dụng — liên kết thẻ để mở')}
+                  </div>
+                )}
+                <button
+                  // Linking needs the reader, so un-pause it rather than leave staff tapping into a paused page.
+                  onClick={() => { setListening(true); setLinkTarget(focusNumber) }}
+                  disabled={busy}
+                  style={btnPrimary}
+                >{link ? t('Tap card to relink', 'Chạm thẻ để liên kết lại') : t('Tap card to link', 'Chạm thẻ để liên kết')}</button>
+              </div>
+            )
+          )}
 
           {link ? (
             <>
               {/* Member + balance */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 24, flexWrap: 'wrap', marginBottom: 24 }}>
                 <div>
-                  <label style={labelStyle}>{t('Linked member', 'Hội viên liên kết')}</label>
+                  <label style={labelStyle}>{uid ? t('Linked member', 'Hội viên liên kết') : t('Member', 'Hội viên')}</label>
                   {member ? (
                     <>
                       <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 20, color: '#E5D4C2', marginBottom: 4 }}>
@@ -385,7 +542,7 @@ export default function AdminCards() {
                         {t('Member', 'Hội viên')} {link.member_number}
                       </div>
                       <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#D4B85A' }}>
-                        {t('Sheet lookup failed — name unavailable', 'Tra cứu bảng tính thất bại — không có tên')}
+                        {t('Not in the members roster — name unavailable', 'Không có trong danh sách hội viên — không có tên')}
                       </div>
                     </>
                   )}
@@ -394,11 +551,59 @@ export default function AdminCards() {
                   <label style={{ ...labelStyle, textAlign: 'right' }}>{t('Credit balance', 'Số dư tín dụng')}</label>
                   <div style={{
                     fontFamily: "'Rampant Sans', serif", fontSize: 32,
-                    color: link.credit_vnd > 0 ? '#7AB07A' : link.credit_vnd < 0 ? '#B45656' : '#E5D4C2',
+                    color: isExpired(link.expires_at) ? '#B2AA98' : link.credit_vnd > 0 ? '#7AB07A' : link.credit_vnd < 0 ? '#B45656' : '#E5D4C2',
+                    textDecoration: isExpired(link.expires_at) ? 'line-through' : 'none',
+                    opacity: isExpired(link.expires_at) ? 0.5 : 1,
                   }}>
                     {fmt(link.credit_vnd)}
                   </div>
+                  {isExpired(link.expires_at) && (
+                    <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B45656', letterSpacing: '0.06em' }}>
+                      {t('EXPIRED', 'ĐÃ HẾT HẠN')}
+                    </div>
+                  )}
                 </div>
+              </div>
+
+              {/* Expiry — shown for every account, tapped or chosen */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+                padding: '12px 0', marginBottom: 20,
+                borderTop: '1px solid rgba(229,212,194,0.06)', borderBottom: '1px solid rgba(229,212,194,0.06)',
+                fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11,
+              }}>
+                <span style={{ color: '#B2AA98', opacity: 0.7 }}>{t('Expires:', 'Hết hạn:')}</span>
+                {!editingExpiry ? (
+                  <>
+                    <span style={{ color: isExpired(link.expires_at) ? '#B45656' : '#E5D4C2' }}>
+                      {link.expires_at
+                        ? new Date(link.expires_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                        : t('Never', 'Không bao giờ')}
+                    </span>
+                    <button
+                      onClick={() => { setExpiryDraft(link.expires_at ? link.expires_at.slice(0, 10) : ''); setEditingExpiry(true) }}
+                      style={btnSmall}
+                    >{t('Edit', 'Sửa')}</button>
+                  </>
+                ) : (
+                  <>
+                    <input
+                      type="date"
+                      value={expiryDraft}
+                      onChange={e => setExpiryDraft(e.target.value)}
+                      style={{ ...inputStyle, width: 'auto', padding: '4px 8px', fontSize: 11 }}
+                    />
+                    <button onClick={() => saveExpiry(expiryDraft || null)} disabled={busy} style={{ ...btnSmall, background: '#5E6650', color: '#E5D4C2', border: 'none' }}>{t('Save', 'Lưu')}</button>
+                    <button onClick={() => { setEditingExpiry(false); setExpiryDraft('') }} style={btnSmall}>{t('Cancel', 'Hủy')}</button>
+                    {link.expires_at && (
+                      <button
+                        onClick={() => saveExpiry(null)}
+                        disabled={busy}
+                        style={{ ...btnSmall, color: '#B45656', border: '1px solid rgba(180,86,86,0.4)' }}
+                      >{t('Clear (no expiry)', 'Xóa (không hết hạn)')}</button>
+                    )}
+                  </>
+                )}
               </div>
 
               {/* Top up + charge */}
@@ -490,9 +695,11 @@ export default function AdminCards() {
                 </div>
               )}
 
-              <button onClick={unlinkCard} disabled={busy} style={btnDanger}>{t('Unlink card', 'Hủy liên kết thẻ')}</button>
+              {link.card_uid && (
+                <button onClick={unlinkCard} disabled={busy} style={btnDanger}>{t('Unlink card', 'Hủy liên kết thẻ')}</button>
+              )}
             </>
-          ) : (
+          ) : uid ? (
             <div>
               <label style={labelStyle}>{t("This card isn't linked yet", 'Thẻ này chưa được liên kết')}</label>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
@@ -514,11 +721,11 @@ export default function AdminCards() {
                 </button>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
       )}
 
-      {/* Orphan accounts — credit on members no longer in the sheet */}
+      {/* Orphan accounts — credit on members no longer in the members roster */}
       {orphans.length > 0 && (
         <div style={{ marginTop: 32 }}>
           <button
@@ -530,7 +737,7 @@ export default function AdminCards() {
               fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11,
             }}
           >
-            {showOrphans ? '▾' : '▸'} {orphans.length} {t('orphan account', 'tài khoản mồ côi')}{orphans.length === 1 ? '' : t('s', '')} {t('(member no longer in sheet)', '(hội viên không còn trong bảng tính)')}
+            {showOrphans ? '▾' : '▸'} {orphans.length} {t('orphan account', 'tài khoản mồ côi')}{orphans.length === 1 ? '' : t('s', '')} {t('(member no longer in the roster)', '(hội viên không còn trong danh sách)')}
           </button>
           {showOrphans && (
             <div style={{
@@ -583,7 +790,21 @@ export default function AdminCards() {
             .filter(m => { const q = cardSearch.trim().toLowerCase(); return !q || `${m.member_number} ${m.full_name}`.toLowerCase().includes(q) })
             .sort((a, b) => a.member_number.localeCompare(b.member_number, undefined, { numeric: true }))
             .map(m => (
-              <div key={m.member_number} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '11px 14px', borderTop: '1px solid rgba(229,212,194,0.06)', flexWrap: 'wrap' }}>
+              // Choosing a row opens the member-first panel above — the way to
+              // serve a member who hasn't got their card with them.
+              <div
+                key={m.member_number}
+                role="button" tabIndex={0}
+                onClick={() => selectMember(m)}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectMember(m) } }}
+                title={t('Open this member’s card account', 'Mở tài khoản thẻ của hội viên này')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 14, padding: '11px 14px', borderTop: '1px solid rgba(229,212,194,0.06)', flexWrap: 'wrap',
+                  cursor: 'pointer',
+                  background: focusNumber === m.member_number ? 'rgba(212,184,90,0.08)' : 'transparent',
+                  borderLeft: `2px solid ${focusNumber === m.member_number ? '#D4B85A' : 'transparent'}`,
+                }}
+              >
                 <span style={{ minWidth: 52, fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, color: '#B2AA98' }}>{m.member_number.replace(/^TRC-M/i, '#')}</span>
                 <span style={{ flex: 1, minWidth: 120, fontFamily: "'Rampant Sans', serif", fontSize: 14, color: '#E5D4C2' }}>{m.full_name || '—'}{m.tier ? <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 9, color: '#7E7864' }}> · {m.tier}</span> : null}</span>
                 <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: m.card_uid ? '#D4B85A' : '#7E7864' }}>

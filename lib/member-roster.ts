@@ -6,9 +6,11 @@ import { createClient } from '@supabase/supabase-js'
 // form the old fetchMemberSheet() produced, so it's a drop-in for the roster
 // consumers (cards, membership, kiosk, lookups). Server-only (service role).
 //
-// NOTE: the sheet also held member PREFERENCES (allergies, whisky profile, …)
-// which are NOT in the members table — that's a separate surface (quickref) and
-// still reads the sheet via lib/member-sheet.
+// NOTE: the sheet also held member PREFERENCES (allergies, whisky profile, …).
+// Nothing reads the sheet any more (2026-09-14): preferences and key alerts live
+// in the database and show on the MIS profile (/admin/mis/[member_no]) and the
+// tonight briefs. Quick Reference, the last sheet reader, was retired and its
+// card jobs (expiry, credit without a tap) moved to /admin/cards.
 
 const svc = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 

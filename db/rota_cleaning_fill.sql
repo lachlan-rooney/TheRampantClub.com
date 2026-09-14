@@ -131,7 +131,10 @@ select tm.id, v.d, v.shift, st.start_time, st.end_time
   join rota_shift_types st  on st.name = v.shift
  where not exists (select 1 from rota_shifts s where s.shift_date = v.d and s.shift_name = v.shift)
    and not exists (select 1 from rota_shifts s where s.shift_date = v.d and s.member = tm.id)
-   and not exists (select 1 from rota_unavailability u where u.member = tm.id and u.off_date = v.d);
+   -- 2026-09-14: time off lives in staff_time_off as ranges (rota_unavailability
+   -- retired). Public holidays have no team_member_id, so they never skip a day.
+   and not exists (select 1 from staff_time_off o where o.team_member_id = tm.id
+                      and o.start_date <= v.d and o.end_date >= v.d);
 
 -- ── Proof, printed by the run ─────────────────────────────────────────────
 do $$

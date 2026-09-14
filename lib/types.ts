@@ -5,7 +5,8 @@ export interface Profile {
   member_no: string | null          // FK → members.member_no ('TRC-M001'); null = unlinked (Phase 0a)
   member_number: number | null      // legacy int link key — retire once the admin setter moves to member_no (0b)
   admitted_at: string | null
-  locker_number: string | null
+  // No locker field: lockers live on the wall (`lockers`, by member_no) — see
+  // db/profiles_drop_locker_number.sql (2026-09-14).
   preferred_dram: string | null
   is_admin: boolean
   created_at: string

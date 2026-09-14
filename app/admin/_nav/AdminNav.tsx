@@ -14,33 +14,48 @@ import { useLang } from '@/lib/lang'
 type Item = { href: string; label: string; vn: string; icon: string }
 type Group = { id: string; label: string; vn: string; items: Item[] }
 
-// Reorganised by TEAM (2026-08): On-Site (floor/service), Membership,
-// Cellar & Whisky, Sports & Events, Management. Renamed the two confusing
-// duplicates — "User Roster" → "Access & Logins", ops "Reports" → "Ops Reports".
+// Reorganised by WHO USES IT (2026-09-14). On-Site had grown to 15 and
+// Management to 13, which is where a sidebar stops being read. Seven groups of
+// 3–8, each item placed by what the page does in code rather than its name,
+// most-used first within a group:
+//   On Shift — floor staff, every shift       Member Care — existing members
+//   Membership — recruitment, records, fees   Cellar & Whisky
+//   Events & Content — what members/public see  Management — running the club
+//   Setup — one-off configuration and technical tools
+// Quick Reference is gone: it read a Google Sheet the database replaced, and
+// its two unique jobs (card expiry, credit without a tap) moved to Member Cards.
 const DASHBOARD: Item = { href: '/admin', label: 'Dashboard', vn: 'Bảng điều khiển', icon: 'grid' }
 
 const GROUPS: Group[] = [
   {
     id: 'onsite',
-    label: 'On-Site', vn: 'Tại chỗ',
+    label: 'On Shift', vn: 'Trong ca',
     items: [
       { href: '/admin/tonight', label: 'Tonight', vn: 'Tối nay', icon: 'moon' },
-      { href: '/admin/mx-daily', label: 'MX Daily', vn: 'MX Daily', icon: 'clipboard' },
       { href: '/admin/checklists', label: 'Checklists', vn: 'Danh sách kiểm tra', icon: 'checklist' },
       // Beside Checklists deliberately: that is opening/closing per shift, this
       // is the standing weekly list. Same team, same part of the day.
       { href: '/admin/shifts', label: ADMIN_SURFACE['/admin/shifts'].en, vn: ADMIN_SURFACE['/admin/shifts'].vn, icon: 'clipboard' },
-      { href: '/admin/studio', label: 'The Studio', vn: 'Phòng Studio', icon: 'image' },
-      { href: '/admin/members/link', label: 'Accounts & Memberships', vn: 'Tài khoản & Hội viên', icon: 'link' },
-      { href: '/admin/quickref', label: 'Quick Reference', vn: 'Tra cứu nhanh', icon: 'book' },
       { href: '/admin/cards', label: 'Member Cards', vn: 'Thẻ hội viên', icon: 'card' },
-      { href: '/admin/concierge', label: 'Concierge', vn: 'Quản Gia', icon: 'bell' },
-      { href: '/admin/notices', label: 'Notice Board', vn: 'Bảng Tin', icon: 'megaphone' },
       { href: '/admin/calendar', label: 'Calendar', vn: 'Lịch', icon: 'calendar' },
       { href: '/admin/attendance', label: 'Guest Attendance', vn: 'Khách ghé thăm', icon: 'users' },
       { href: '/admin/harmony', label: 'Harmony Log', vn: 'Nhật ký ca trực', icon: 'heart' },
+      // The staff handbook — read by everyone on the floor, not a management tool.
+      { href: '/admin/training', label: 'Training', vn: 'Đào tạo', icon: 'cap' },
+    ],
+  },
+  {
+    id: 'membercare',
+    label: 'Member Care', vn: 'Chăm sóc hội viên',
+    items: [
+      // The Member Experience Manager's morning check, not floor work.
+      { href: '/admin/mx-daily', label: 'MX Daily', vn: 'MX Daily', icon: 'clipboard' },
+      { href: '/admin/concierge', label: 'Concierge', vn: 'Quản Gia', icon: 'bell' },
+      { href: '/admin/notices', label: 'Notice Board', vn: 'Bảng Tin', icon: 'megaphone' },
       { href: '/admin/snug', label: 'The Snug', vn: 'Phòng Khách', icon: 'cup' },
       { href: '/admin/introductions', label: 'Introductions', vn: 'Giới thiệu', icon: 'people' },
+      { href: '/admin/gifts', label: 'Gifting', vn: 'Quà tặng', icon: 'gift' },
+      { href: '/admin/newsletters', label: 'Newsletter', vn: 'Bản Tin Hội Viên', icon: 'megaphone' },
     ],
   },
   {
@@ -52,10 +67,6 @@ const GROUPS: Group[] = [
       { href: '/admin/mis/candidates', label: 'Pref Candidates', vn: 'Ứng viên ưu tiên', icon: 'star' },
       { href: '/admin/agreements', label: 'Agreements', vn: 'Thỏa thuận', icon: 'signature' },
       { href: '/admin/membership', label: 'Membership Finance', vn: 'Tài chính hội viên', icon: 'receipt' },
-      { href: '/admin/newsletters', label: 'Newsletter', vn: 'Bản Tin Hội Viên', icon: 'megaphone' },
-      { href: '/admin/gifts', label: 'Gifting', vn: 'Quà tặng', icon: 'gift' },
-      { href: '/admin/observatory', label: 'Observatory', vn: 'Đài quan sát', icon: 'eye' },
-      { href: '/admin/decay-fit', label: 'Decay Fit', vn: 'Đường suy giảm', icon: 'trend' },
     ],
   },
   {
@@ -68,15 +79,19 @@ const GROUPS: Group[] = [
     ],
   },
   {
-    id: 'sports',
-    // Named for what members see it as. The member portal calls this "What's On",
-    // and staff looking for the thing a member just asked about should not have to
-    // translate. /admin/calendar also feeds it, but it stays under On-Site because
-    // it is mostly a bookings tool used every shift.
-    label: "What's On", vn: 'Sự Kiện',
+    id: 'events',
+    // Events plus everything published to members or the public. /admin/calendar
+    // also feeds What's On, but it stays under On Shift because it is mostly a
+    // bookings tool used every shift.
+    label: 'Events & Content', vn: 'Sự kiện & Nội dung',
     items: [
       { href: '/admin/fixtures', label: 'Events', vn: 'Sự Kiện', icon: 'trophy' },
       { href: '/admin/gallery', label: 'Event Gallery', vn: 'Thư Viện Sự Kiện', icon: 'image' },
+      // Edits the public /studio artist pages — publishing, not a shift tool.
+      { href: '/admin/studio', label: 'The Studio', vn: 'Phòng Studio', icon: 'image' },
+      { href: '/admin/journal', label: 'Journal', vn: 'Nhật ký', icon: 'pen' },
+      { href: '/admin/press', label: 'Press', vn: 'Báo chí', icon: 'news' },
+      { href: '/admin/rules', label: 'House Rules', vn: 'Nội Quy', icon: 'rules' },
     ],
   },
   {
@@ -84,18 +99,25 @@ const GROUPS: Group[] = [
     label: 'Management', vn: 'Quản lý',
     items: [
       DASHBOARD,
-      { href: '/admin/ops', label: 'Boards', vn: 'Bảng', icon: 'boards' },
-      { href: '/admin/ops/rota', label: 'Rota', vn: 'Lịch trực', icon: 'rota' },
-      { href: '/admin/ops/reports', label: 'Ops Reports', vn: 'Báo cáo vận hành', icon: 'bars' },
       { href: '/admin/reports', label: 'Weekly Report', vn: 'Báo cáo hàng tuần', icon: 'doc' },
+      { href: '/admin/ops/reports', label: 'Ops Reports', vn: 'Báo cáo vận hành', icon: 'bars' },
+      { href: '/admin/ops/rota', label: 'Rota', vn: 'Lịch trực', icon: 'rota' },
+      { href: '/admin/ops', label: 'Boards', vn: 'Bảng', icon: 'boards' },
       { href: '/admin/ops/activity', label: 'Activity', vn: 'Hoạt động', icon: 'pulse' },
-      { href: '/admin/tier-budgets', label: 'Tier Budgets', vn: 'Ngân sách theo hạng', icon: 'layers' },
-      { href: '/admin/training', label: 'Training', vn: 'Đào tạo', icon: 'cap' },
-      { href: '/admin/rules', label: 'House Rules', vn: 'Nội Quy', icon: 'rules' },
-      { href: '/admin/journal', label: 'Journal', vn: 'Nhật ký', icon: 'pen' },
-      { href: '/admin/press', label: 'Press', vn: 'Báo chí', icon: 'news' },
-      { href: '/admin/kiosk', label: 'Kiosk', vn: 'Kiosk', icon: 'tablet' },
+    ],
+  },
+  {
+    id: 'setup',
+    // Configured once, or diagnostic. Observatory and Decay Fit are the
+    // preference-scoring maths, not pages staff work in.
+    label: 'Setup', vn: 'Thiết lập',
+    items: [
       { href: '/admin/members', label: 'Access & Logins', vn: 'Truy cập & Đăng nhập', icon: 'badge' },
+      { href: '/admin/members/link', label: 'Accounts & Memberships', vn: 'Tài khoản & Hội viên', icon: 'link' },
+      { href: '/admin/kiosk', label: 'Kiosk', vn: 'Kiosk', icon: 'tablet' },
+      { href: '/admin/tier-budgets', label: 'Tier Budgets', vn: 'Ngân sách theo hạng', icon: 'layers' },
+      { href: '/admin/observatory', label: 'Observatory', vn: 'Đài quan sát', icon: 'eye' },
+      { href: '/admin/decay-fit', label: 'Decay Fit', vn: 'Đường suy giảm', icon: 'trend' },
     ],
   },
 ]

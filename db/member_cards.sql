@@ -1,7 +1,8 @@
 -- Run once in the Supabase SQL editor.
 --
--- Member roster lives in a Google Sheet (see /api/member-profiles); we key card
--- links by `Member No.` rather than the Supabase profile UUID.
+-- Member roster lives in the `members` table (lib/member-roster.ts; it was a
+-- Google Sheet when this was written); we key card links by `Member No.` rather
+-- than the Supabase profile UUID.
 --
 -- Each card has a unique factory UID; each member has at most one card and a
 -- credit balance in whole VND. Every top-up or charge is recorded in

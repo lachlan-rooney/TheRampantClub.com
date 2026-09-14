@@ -162,11 +162,20 @@ export interface ScalingRule {
   sort_order: number
 }
 
-export interface Unavailability {
+/** A staff_time_off row — the ONE record of who is off (2026-09-14; it
+ *  replaced the rota's per-day rota_unavailability). A range, both ends
+ *  inclusive. team_member_id null = a club-wide public holiday, which the rota
+ *  shows but never treats as anyone being off: the club opens seven days. */
+export type TimeOffKind = 'annual_leave' | 'public_holiday' | 'sick' | 'unpaid'
+export interface StaffTimeOff {
   id: string
-  member: string            // team_members.id
-  off_date: string          // YYYY-MM-DD
+  team_member_id: string | null
+  member_name: string | null  // snapshot, for display after someone leaves
+  kind: TimeOffKind
+  start_date: string          // YYYY-MM-DD
+  end_date: string            // YYYY-MM-DD, ≥ start_date
   note: string | null
+  created_by: string | null
   created_at: string
 }
 

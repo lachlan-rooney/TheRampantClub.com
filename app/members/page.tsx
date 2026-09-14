@@ -60,7 +60,9 @@ export default function MembersPage() {
   const [firstName, setFirstName] = useState<string | undefined>(undefined)
   const [email, setEmail] = useState('')
   const [memberNo, setMemberNo] = useState<string | null>(null)
-  const [lockerNumber, setLockerNumber] = useState<string | null>(null)
+  // Locker numbers from the wall (GET /api/members/locker) — a member may hold
+  // more than one. profiles.locker_number was never filled in (2026-09-14).
+  const [lockerNos, setLockerNos] = useState<string[]>([])
   const [preferredDram, setPreferredDram] = useState<string | null>(null)
   const [notices, setNotices] = useState<BoardNotice[]>([])
   const [noticesLoaded, setNoticesLoaded] = useState(false)
@@ -90,10 +92,15 @@ export default function MembersPage() {
       .limit(1)
       .then(({ data }) => { if (data && data.length) setNextFixture(data[0] as NextFixture) })
 
+    fetch('/api/members/locker', { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.lockers) setLockerNos((d.lockers as { locker_no: string }[]).map(l => l.locker_no)) })
+      .catch(() => {})
+
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) { setProfileLoaded(true); return }
       setEmail(data.user.email || '')
-      supabase.from('profiles').select('display_name, member_no, preferred_dram, locker_number').eq('id', data.user.id).single()
+      supabase.from('profiles').select('display_name, member_no, preferred_dram').eq('id', data.user.id).single()
         .then(({ data: profile }) => {
           const name = profile?.display_name
           if (name) {
@@ -102,7 +109,6 @@ export default function MembersPage() {
             setFirstName(name)
           }
           if (profile?.member_no) setMemberNo(profile.member_no)
-          if (profile?.locker_number) setLockerNumber(profile.locker_number)
           if (profile?.preferred_dram) setPreferredDram(profile.preferred_dram)
           setProfileLoaded(true)
         }, () => setProfileLoaded(true))
@@ -115,9 +121,10 @@ export default function MembersPage() {
     : t('Good evening', 'Chào buổi tối')
   const greeting = timeGreeting && firstName ? `${timeGreeting}, ${firstName}` : timeGreeting
 
+  const lockerLine = lockerNos.join(', ')
   const summary = [
     memberNo && t(`Member No. ${memberNo.replace(/^TRC-M/i, '')}`, `Số thành viên ${memberNo.replace(/^TRC-M/i, '')}`),
-    lockerNumber && t(`Locker ${lockerNumber}`, `Tủ khóa ${lockerNumber}`),
+    lockerLine && t(`Locker ${lockerLine}`, `Tủ khóa ${lockerLine}`),
     preferredDram && t(`Dram of choice: ${preferredDram}`, `Ly ưa thích: ${preferredDram}`),
   ].filter(Boolean).join(' · ')
 
@@ -160,7 +167,7 @@ export default function MembersPage() {
       vn: surfaceName('/members/profile', 'vn'),
       icon: 'card',
       primary: memberNo ? '#' + memberNo.replace(/^TRC-M/i, '') : '\u2014',
-      secondary: lockerNumber ? t('Locker ', 'Tủ khóa ') + lockerNumber : (preferredDram ? t('Dram: ', 'Ly: ') + preferredDram : t('Your details', 'Thông tin của bạn')),
+      secondary: lockerLine ? t('Locker ', 'Tủ khóa ') + lockerLine : (preferredDram ? t('Dram: ', 'Ly: ') + preferredDram : t('Your details', 'Thông tin của bạn')),
     },
     {
       href: '/members/fixtures',

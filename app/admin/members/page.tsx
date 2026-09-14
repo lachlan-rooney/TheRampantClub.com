@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { useLang } from '@/lib/admin-lang'
 
@@ -10,7 +11,9 @@ interface Member {
   display_name: string | null
   member_number: number | null
   admitted_at: string | null
-  locker_number: string | null
+  // Read-only, from the locker wall by member_no. Assigned at /admin/lockers,
+  // never here — the old free-text field was empty and a second source (2026-09-14).
+  lockers: string[]
   preferred_dram: string | null
   is_admin: boolean
 }
@@ -47,7 +50,6 @@ export default function AdminMembers() {
     setExpandedId(m.id)
     setEditValues({
       admitted_at: m.admitted_at,
-      locker_number: m.locker_number,
       is_admin: m.is_admin,
     })
   }
@@ -58,7 +60,6 @@ export default function AdminMembers() {
     // the 0a FK). This page no longer writes the legacy member_number int.
     await supabase.from('profiles').update({
       admitted_at: editValues.admitted_at || null,
-      locker_number: editValues.locker_number || null,
       is_admin: editValues.is_admin ?? false,
     }).eq('id', id)
     setExpandedId(null)
@@ -98,6 +99,16 @@ export default function AdminMembers() {
                 {m.is_admin && (
                   <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', background: 'rgba(229,212,194,0.1)', borderRadius: 4, padding: '2px 8px' }}>{t('Admin', 'Quản trị viên')}</span>
                 )}
+                {m.lockers.length > 0 && (
+                  <Link
+                    href="/admin/lockers"
+                    onClick={e => e.stopPropagation()}
+                    title={t('Managed on the locker wall', 'Quản lý tại tủ khóa')}
+                    style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#D4B85A', background: 'rgba(212,184,90,0.1)', borderRadius: 4, padding: '2px 8px', textDecoration: 'none' }}
+                  >
+                    {t('Locker', 'Tủ khóa')} {m.lockers.join(', ')}
+                  </Link>
+                )}
               </div>
               <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>
                 {m.admitted_at ? new Date(m.admitted_at).toLocaleDateString() : '—'}
@@ -113,14 +124,6 @@ export default function AdminMembers() {
                     style={inputStyle}
                     value={editValues.admitted_at || ''}
                     onChange={e => setEditValues(v => ({ ...v, admitted_at: e.target.value || null }))}
-                  />
-                </div>
-                <div style={{ flex: 1, minWidth: 120 }}>
-                  <label style={labelStyle}>{t('Locker Number', 'Số tủ khóa')}</label>
-                  <input
-                    style={inputStyle}
-                    value={editValues.locker_number || ''}
-                    onChange={e => setEditValues(v => ({ ...v, locker_number: e.target.value || null }))}
                   />
                 </div>
                 <div style={{ flex: 1, minWidth: 120, display: 'flex', alignItems: 'flex-end' }}>

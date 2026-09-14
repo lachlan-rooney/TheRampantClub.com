@@ -13,8 +13,8 @@ interface ProfileRow {
   id: string
   display_name: string | null
   member_number: number | null
+  member_no: string | null
   admitted_at: string | null
-  locker_number: string | null
   preferred_dram: string | null
   is_admin: boolean | null
 }
@@ -32,10 +32,30 @@ export async function GET() {
   // 1. Profiles
   const { data: profiles, error: profilesError } = await admin
     .from('profiles')
-    .select('id, display_name, member_number, admitted_at, locker_number, preferred_dram, is_admin')
+    .select('id, display_name, member_number, member_no, admitted_at, preferred_dram, is_admin')
 
   if (profilesError) {
     return NextResponse.json({ error: profilesError.message }, { status: 500 })
+  }
+
+  // 1b. Lockers, read-only, from the wall (2026-09-14). profiles.locker_number
+  // was a second, empty source that members could write themselves; the wall
+  // is the one place a locker is assigned, so this page only points at it.
+  const { data: wall, error: wallError } = await admin
+    .from('lockers')
+    .select('locker_no, member_no')
+    .not('member_no', 'is', null)
+    .neq('status', 'retired')
+    .order('locker_no', { ascending: true })
+
+  if (wallError) {
+    return NextResponse.json({ error: wallError.message }, { status: 500 })
+  }
+  const lockersByMemberNo = new Map<string, string[]>()
+  for (const l of wall || []) {
+    const list = lockersByMemberNo.get(l.member_no) || []
+    list.push(l.locker_no)
+    lockersByMemberNo.set(l.member_no, list)
   }
 
   // 2. Auth users — listUsers is paginated; iterate.
@@ -60,7 +80,7 @@ export async function GET() {
     display_name: p.display_name,
     member_number: p.member_number,
     admitted_at: p.admitted_at,
-    locker_number: p.locker_number,
+    lockers: p.member_no ? (lockersByMemberNo.get(p.member_no) || []) : [],
     preferred_dram: p.preferred_dram,
     is_admin: p.is_admin === true,
   }))
