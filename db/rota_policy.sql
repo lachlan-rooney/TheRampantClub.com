@@ -67,6 +67,11 @@ alter table team_members add column if not exists fixed_days_off smallint[];
 -- arrangement. Mr Sĩ closes: he is the boss, he is there at the end of the
 -- night, and he is on no mids.
 alter table team_members add column if not exists always_shift text;
+-- Whether this person works EVENINGS at all. Miss Chau is a shift supervisor
+-- and does not: she is daytime only. Without this the roster reads as three
+-- supervisors for seven nights, and the next person to fix a supervisor gap
+-- fixes it by rostering someone who was never available.
+alter table team_members add column if not exists works_evenings boolean not null default true;
 
 alter table team_members drop constraint if exists team_members_morning_weekday_valid;
 alter table team_members add constraint team_members_morning_weekday_valid
@@ -94,6 +99,10 @@ alter table team_members add constraint team_members_fixed_days_off_valid
     )
   );
 
+comment on column team_members.works_evenings is
+  'False = daytime only; never to be rostered on an evening shift, whatever their other flags say. '
+  'Miss Chau is a supervisor who does not work evenings, so the club has TWO supervisors for seven '
+  'nights, not three.';
 comment on column team_members.always_shift is
   'The evening shift this person always works (e.g. Close). NULL = any. Their fixed morning is separate '
   'and unaffected — always_shift governs the EVENINGS only.';
@@ -167,6 +176,9 @@ update team_members set fixed_days_off = '{1}' where display_name = 'Bình';
 update team_members set weekly_hours = 48
  where display_name in ('Mr Sĩ', 'Tiên', 'Hiếu', 'Nhi', 'Bình');
 
+-- Miss Chau supervises, but daytime only — she is not evening cover.
+update team_members set works_evenings = false where display_name = 'Miss Chau';
+
 -- Mr Sĩ closes every night he is on, and is never on a mid.
 update team_members set always_shift = 'Close' where display_name = 'Mr Sĩ';
 
@@ -179,7 +191,7 @@ update team_members set morning_weekday = 5 where display_name = 'Bình';
 
 -- ── Proof, printed by the run ──────────────────────────────────────────────
 do $$
-declare v_types int; v_hours int; v_staff int; v_with_hours int;
+declare v_types int; v_hours int; v_staff int; v_with_hours int; v_evening_sups int;
 begin
   select count(*) into v_types from rota_shift_types;
   select count(*) into v_hours from rota_shift_types where hours is not null;
@@ -188,7 +200,13 @@ begin
   raise notice 'shift types: % (% with hours) · active staff: % (% with contracted hours recorded)',
     v_types, v_hours, v_staff, v_with_hours;
   if v_hours < v_types then raise exception 'a shift type still has no hours — the rota cannot count a week'; end if;
-  raise notice 'NEXT: set is_shift_supervisor on Nhi once her promotion lands — the week depends on her covering the nights Mr Sĩ is off.';
+  -- The bench, or the lack of one.
+  select count(*) into v_evening_sups
+    from team_members where active and is_shift_supervisor and works_evenings;
+  raise notice 'supervisors available for EVENINGS: % (seven nights to cover)', v_evening_sups;
+  if v_evening_sups < 3 then
+    raise notice 'With % there is no bench: one illness on a night the other is off leaves the floor unsupervised.', v_evening_sups;
+  end if;
   if (select count(*) from team_members where active and morning_weekday is not null) <> 5 then
     raise warning 'the five fixed mornings did not all take — check the names match the roster exactly';
   end if;
