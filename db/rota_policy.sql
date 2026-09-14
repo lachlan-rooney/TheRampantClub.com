@@ -167,7 +167,11 @@ on conflict (name) do update set
 --
 -- Still 8.5 hours each, so the six-day week is still 47.5 and still under the
 -- ceiling. That is the only number that did not have to move.
-update rota_shift_types set start_time = '14:30', end_time = '23:00', hours = 8.5 where name = 'Open';
+--
+-- ⚠ SUPERSEDED 2026-09-14 by db/rota_open_two.sql: Open is 14:00 – 22:30, an
+-- hour before the doors and out before last call, still 8.5h. Written here too
+-- so re-running this file cannot put the half-two start back.
+update rota_shift_types set start_time = '14:00', end_time = '22:30', hours = 8.5 where name = 'Open';
 update rota_shift_types set start_time = '16:00', end_time = '00:30', hours = 8.5 where name = 'Close';
 
 -- ── The arrangements that already exist ───────────────────────────────────

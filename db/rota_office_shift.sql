@@ -26,8 +26,12 @@
 --    on the two busiest days there was nobody in the building before opening.
 --    Half an hour of set-up, seven days:
 --
+--    ⚠ SUPERSEDED 2026-09-14 by db/rota_open_two.sql: Open is 14:00 – 22:30
+--    (an hour before the doors, out before last call, still 8.5h). This file
+--    now writes THAT, so re-running it cannot put the half-two start back.
+--
 --      Office  10:00 – 16:00   5.0h paid (1h unpaid lunch)   weekdays only
---      Open    14:30 – 23:00   8.5h   in at half two, doors at three, out at last call
+--      Open    14:00 – 22:30   8.5h   in at two, doors at three, out at half ten
 --      Close   16:00 – 00:30   8.5h   the peak, last call, the room cleared, the lock
 --
 --    STILL 8.5 HOURS. The shift moved, it did not grow — the six-day week is
@@ -84,15 +88,15 @@ delete from rota_shift_types where name = 'Mid';
 delete from rota_coverage_targets where shift_name = 'Mid';
 
 -- ── 3 · The opener arrives before the doors ───────────────────────────────
-update rota_shift_types set start_time = '14:30', end_time = '23:00', hours = 8.5 where name = 'Open';
+update rota_shift_types set start_time = '14:00', end_time = '22:30', hours = 8.5 where name = 'Open';
 update rota_shift_types set start_time = '16:00', end_time = '00:30', hours = 8.5 where name = 'Close';
 
 -- Shifts already rostered carry their own clock times, copied from the type at
 -- the time they were written. The four proposed weeks were written with the old
 -- 15:00 start, so they are corrected here — a rota that says three when the
--- rule says half two is worse than no times at all. Past shifts are left alone:
+-- rule says two is worse than no times at all. Past shifts are left alone:
 -- they record when people actually came in.
-update rota_shifts set start_time = '14:30', end_time = '23:00', updated_at = now()
+update rota_shifts set start_time = '14:00', end_time = '22:30', updated_at = now()
  where shift_name = 'Open' and shift_date >= current_date;
 update rota_shifts set start_time = '10:00', end_time = '16:00', updated_at = now()
  where shift_name = 'Office' and shift_date >= current_date;
@@ -110,8 +114,8 @@ begin
   if v_morning > 0 then raise exception 'the Morning type is still here'; end if;
   if v_mid     > 0 then raise exception 'the Mid type is still here'; end if;
   if v_office  < 1 then raise exception 'the Office type did not arrive'; end if;
-  if v_open_start <> time '14:30' then
-    raise exception 'Open still starts at % — the doors open at 15:00 and somebody has to be in before them', v_open_start;
+  if v_open_start <> time '14:00' then
+    raise exception 'Open starts at % — it begins at 14:00, an hour before the doors (db/rota_open_two.sql)', v_open_start;
   end if;
 
   raise notice 'shift types now: %', (select string_agg(name || ' ' || to_char(start_time,'HH24:MI') || '-' || to_char(end_time,'HH24:MI') || ' (' || hours || 'h)', ' · ' order by sort_order) from rota_shift_types);
