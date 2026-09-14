@@ -14,16 +14,14 @@
 --   3. SIX DAYS EACH — one day off a week, everybody. Hiếu's and Bình's two
 --      days off were tried and dropped on 2026-09-14: two days off plus a
 --      morning leaves four evenings, and four evenings is 40 hours against a
---      48-hour contract. Hiếu keeps Sunday, Bình keeps Monday. A rotating rota is the
---      difference between "everyone shares the weekends" and "the newest
---      person always works Saturday".
+--      48-hour contract. Hiếu keeps Sunday, Bình keeps Monday.
 --   4. NOBODY IS OFF BOTH WEEKEND DAYS. Saturday and Sunday together is the
 --      one pair the rota may never hand out — it is the pattern that quietly
 --      becomes permanent and that everyone else then pays for.
 --
--- Shift types also carried no TIMES, only names (Open/Mid/Close), so hours
--- could not be computed from a plan at all — the durations in the existing
--- rows vary from 5 to 6 hours and many rows have no end time.
+-- Shift types also carried no TIMES, only names, so hours could not be
+-- computed from a plan at all — the durations in the existing rows vary from
+-- 5 to 6 hours and many rows have no end time.
 --
 -- Four additions, no behaviour change on its own:
 --   team_members.weekly_hours       contracted hours; null = not recorded
@@ -79,11 +77,14 @@ alter table team_members add constraint team_members_fixed_days_off_valid
   check (
     fixed_days_off is null
     or (
-      -- every entry a real weekday …
-      not exists (select 1 from unnest(fixed_days_off) d where d < 0 or d > 6)
+      -- every entry a real weekday: the array is CONTAINED BY 0–6. Written
+      -- with array operators rather than `not exists (select … unnest …)`,
+      -- which reads better but is refused — a CHECK constraint cannot contain
+      -- a subquery (ERROR 0A000).
+      fixed_days_off <@ array[0,1,2,3,4,5,6]::smallint[]
       -- … and never Saturday AND Sunday together, which is the pair the rota
       -- may not hand out to anyone, arrangement or not.
-      and not (0 = any(fixed_days_off) and 6 = any(fixed_days_off))
+      and not (fixed_days_off @> array[0,6]::smallint[])
     )
   );
 
@@ -105,25 +106,27 @@ comment on column rota_shift_types.hours is
   'Length in hours. Held explicitly rather than derived, because a shift that crosses midnight '
   'cannot be subtracted naively — the club closes after 00:00 and "end minus start" goes negative.';
 
--- The four shifts the seven-day week is built from. Times are the club's own:
--- open at four, last pour late. Existing rows keep their name and gain times.
+-- The Morning, which did not exist before this file. Existing types keep their
+-- names and gain times below.
 insert into rota_shift_types (name, sort_order, start_time, end_time, hours) values
   ('Morning', -1, '10:00', '15:00', 5.0)
 on conflict (name) do update set
   start_time = excluded.start_time, end_time = excluded.end_time, hours = excluded.hours;
 
 -- THE HOUSE OPENS AT THREE AND CLOSES AT MIDNIGHT (from 2026-09-14). Last call
--- 11pm, the room is empty by 11:30, doors at twelve. Seven days. Every shift here was written for a club
--- that ran to 3am and none of them survive that change: an 18:30–03:00 close
--- is now two and a half hours of a building nobody is in.
+-- 11pm, the room is empty by 11:30, doors at twelve. Seven days. Every shift
+-- was written for a club that ran to 3am and none survived that change: an
+-- 18:30–03:00 close is now two and a half hours of a building nobody is in.
 --
--- Rebuilt around the new night, staggered half an hour apart so the room is
--- never handed over all at once, and the closer stays an hour past the doors
--- for clean-down:
+-- Rebuilt around the new night — the opener leaves after last call, the closer
+-- stays half an hour past the doors for the clean-down:
 --
 --   Open   15:00 – 23:30   doors at three, out after last call
 --   Close  16:00 – 00:30   the peak, the last call, the room cleared, the lock
---   (Mid    16:00 – 00:30   kept as a type for the busy nights, if wanted)
+--
+-- Mid was retired on 2026-09-14 — two shift TYPES, three or four people on
+-- them. The update below is left in so any surviving Mid row still gets sane
+-- times rather than none.
 --
 -- Still 8.5 hours each, so the six-day week is still 47.5 and still under the
 -- ceiling. That is the only number that did not have to move.
@@ -166,7 +169,7 @@ begin
   raise notice 'shift types: % (% with hours) · active staff: % (% with contracted hours recorded)',
     v_types, v_hours, v_staff, v_with_hours;
   if v_hours < v_types then raise exception 'a shift type still has no hours — the rota cannot count a week'; end if;
-  raise notice 'NEXT: set weekly_hours per person, or the rota check will keep saying it cannot check them.';
+  raise notice 'NEXT: set is_shift_supervisor on Nhi once her promotion lands — the week depends on her covering the nights Mr Sĩ is off.';
   if (select count(*) from team_members where active and morning_weekday is not null) <> 5 then
     raise warning 'the five fixed mornings did not all take — check the names match the roster exactly';
   end if;
