@@ -101,17 +101,30 @@ comment on column team_members.morning_weekday is
 alter table rota_shift_types add column if not exists start_time time;
 alter table rota_shift_types add column if not exists end_time   time;
 alter table rota_shift_types add column if not exists hours      numeric(4,2);
+-- Unpaid break inside the shift. The morning runs 10:00–16:00 with an hour for
+-- lunch between twelve and one: six hours in the building, five on the clock.
+alter table rota_shift_types add column if not exists break_minutes int not null default 0;
 
 comment on column rota_shift_types.hours is
-  'Length in hours. Held explicitly rather than derived, because a shift that crosses midnight '
-  'cannot be subtracted naively — the club closes after 00:00 and "end minus start" goes negative.';
+  'PAID hours. Held explicitly rather than derived, for two reasons: a shift that crosses midnight '
+  'cannot be subtracted naively (the club closes after 00:00 and "end minus start" goes negative), and '
+  'a shift with an unpaid break is shorter on the clock than on the wall — the morning is six hours in '
+  'the building and five of them paid.';
+comment on column rota_shift_types.break_minutes is
+  'Unpaid break inside the shift, in minutes. Informational: `hours` is already net of it.';
 
 -- The Morning, which did not exist before this file. Existing types keep their
--- names and gain times below.
-insert into rota_shift_types (name, sort_order, start_time, end_time, hours) values
-  ('Morning', -1, '10:00', '15:00', 5.0)
+-- names and gain times below. The evenings carry no break on record — if a
+-- closer takes one, set break_minutes and reduce hours to match, or the week
+-- will read half an hour longer than it is.
+-- 10:00–16:00 with an hour for lunch between twelve and one. Six hours on the
+-- wall, FIVE paid — which is also what keeps the week at 47.5h: a six-hour
+-- morning would put everyone on 48.5 and over the ceiling.
+insert into rota_shift_types (name, sort_order, start_time, end_time, hours, break_minutes) values
+  ('Morning', -1, '10:00', '16:00', 5.0, 60)
 on conflict (name) do update set
-  start_time = excluded.start_time, end_time = excluded.end_time, hours = excluded.hours;
+  start_time = excluded.start_time, end_time = excluded.end_time,
+  hours = excluded.hours, break_minutes = excluded.break_minutes;
 
 -- THE HOUSE OPENS AT THREE AND CLOSES AT MIDNIGHT (from 2026-09-14). Last call
 -- 11pm, the room is empty by 11:30, doors at twelve. Seven days. Every shift
