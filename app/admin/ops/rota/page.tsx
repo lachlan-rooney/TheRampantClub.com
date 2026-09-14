@@ -123,7 +123,7 @@ export default function RotaPage() {
     const days2 = new Set(worked.map(s2 => new Date(s2.shift_date + 'T00:00:00Z').getUTCDay()))
     previousDaysOff[p.id] = [0, 1, 2, 3, 4, 5, 6].filter(d => !days2.has(d))
   }
-  const policyTypes = types.map(t => ({ name: t.name, hours: Number(t.hours ?? 0), sortOrder: t.sort_order }))
+  const policyTypes = types.map(t => ({ name: t.name, hours: Number(t.hours ?? 0), sortOrder: t.sort_order, weekdays: t.weekdays ?? null }))
   const policyShifts = shifts.map(s2 => ({ member: s2.member, shiftDate: s2.shift_date, shiftName: s2.shift_name }))
   const violations = policyStaff.length && policyTypes.some(t => t.hours > 0)
     ? checkWeek({ weekStart, staff: policyStaff, shiftTypes: policyTypes, shifts: policyShifts, previousDaysOff })
@@ -214,6 +214,12 @@ export default function RotaPage() {
   // ── Coverage: base target + demand-scaled bumps from the active rules ──
   const baseTarget = (shiftName: string, fn: string) =>
     targets.find(t => t.shift_name === shiftName && t.function === fn)?.count ?? 0
+  // Does this shift run on this date? A type with no weekdays runs every day;
+  // on a day it doesn't run its target is zero — no red cell, nothing to fill.
+  const runsOn = (shiftName: string, date: string) => {
+    const wd = types.find(x => x.name === shiftName)?.weekdays
+    return !wd?.length || wd.includes(new Date(date + 'T00:00:00Z').getUTCDay())
+  }
 
   // Which rules fire for a date (from the "What's on" demand) → bump per function.
   const dayBumps = (date: string): Record<string, number> => {
@@ -330,7 +336,7 @@ export default function RotaPage() {
         const cellMembers = new Set(real.map(s => s.member))
         const proposedHere: Proposal[] = []
         for (const fn of FUNCTIONS) {
-          const target = baseTarget(name, fn) + (bumps[fn] || 0)
+          const target = runsOn(name, d) ? baseTarget(name, fn) + (bumps[fn] || 0) : 0
           if (target <= 0) continue
           let present = real.filter(s => memberFns(s.member).includes(fn)).length
                       + proposedHere.filter(p => p.coverFn === fn).length
@@ -627,7 +633,7 @@ export default function RotaPage() {
                     const ghosts = proposedIn(d, name)
                     const cov = isType
                       ? FUNCTIONS.map(fn => {
-                          const req = baseTarget(name, fn) + (bumpsByDay[d]?.[fn] || 0)
+                          const req = runsOn(name, d) ? baseTarget(name, fn) + (bumpsByDay[d]?.[fn] || 0) : 0
                           const pres = inCell(d, name).filter(s => memberFns(s.member).includes(fn)).length
                                      + ghosts.filter(g => g.coverFn === fn).length   // count pending proposals
                           return { fn, req, pres }

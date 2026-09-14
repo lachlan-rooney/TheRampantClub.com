@@ -71,6 +71,8 @@ export interface ShiftType {
   name: string
   hours: number
   sortOrder: number
+  /** Weekdays the shift runs (0=Sun…6=Sat); null/absent = every day. */
+  weekdays?: number[] | null
 }
 
 /** One assignment: a person, a date, a shift type. */
@@ -474,6 +476,10 @@ export function checkWeek(opts: {
   if (anyCleaning) {
     for (const date of dates) {
       for (const name of CLEANING_SHIFTS) {
+        // A shift that does not run that weekday is not missing (Clean Early
+        // is not wanted Tuesday or Wednesday — only the evening cleaner is).
+        const runsOn = shiftTypes.find(t => t.name === name)?.weekdays
+        if (runsOn?.length && !runsOn.includes(weekdayOf(date))) continue
         if (shifts.some(s => s.shiftDate === date && s.shiftName === name)) continue
         out.push({ severity: 'warning', rule: 'cleaning not covered', when: date,
           detail: `Nobody is on ${name} on ${date} — cleaning runs from 09:00 to 23:00, every day.` })

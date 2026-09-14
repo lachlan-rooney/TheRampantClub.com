@@ -124,6 +124,9 @@ export interface RotaShiftType {
   end_time?: string | null
   hours?: number | null
   break_minutes?: number | null
+  /** Weekdays this shift runs (0=Sun…6=Sat); null = every day
+   *  (db/rota_cleaning_fill.sql — Clean Early is off Tue and Wed). */
+  weekdays?: number[] | null
 }
 
 export interface RotaShift {
