@@ -532,8 +532,11 @@ export default function RotaPage() {
               return (
                 <div key={p.id} style={{ minWidth: 128 }}>
                   <div style={{ fontFamily: FAMILY, fontSize: 11.5, color: '#E5D4C2' }}>
-                    {p.name}{p.isSupervisor ? ' ·' : ''}
-                    {p.isSupervisor && <span style={{ color: '#D4B85A' }}> {t('supervisor', 'giám sát')}</span>}
+                    {/* No "· supervisor" label (2026-09-14, Lachlan): Nhi's promotion is
+                        not announced yet. The ROLE is unchanged — isSupervisor still
+                        drives the every-night-supervised rule. To show it again:
+                        {p.isSupervisor && <span style={{ color: '#D4B85A' }}> · {t('supervisor', 'giám sát')}</span>} */}
+                    {p.name}
                   </div>
                   <div style={{ fontFamily: FAMILY, fontSize: 11, color: over || short ? '#E8A6A6' : '#B2AA98' }}>
                     {h.toFixed(2)}h{p.weeklyHours != null ? ` / ${p.weeklyHours}` : ''}
