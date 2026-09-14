@@ -155,6 +155,15 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ locker_no
     .eq('locker_no', locker_no)
     .maybeSingle()
 
+  // Occupied means a MEMBER holds it (2026-09-14). 23 spares holding house
+  // bottles had been clicked to 'occupied' with nobody assigned, and the wall
+  // read as 57% taken. The database refuses it too
+  // (lockers_occupied_needs_member); this says why in words.
+  const memberAfter = 'member_no' in patch ? patch.member_no : prior?.member_no ?? null
+  if (patch.status === 'occupied' && !memberAfter) {
+    return NextResponse.json({ error: 'Assign a member first — a locker is only occupied when a member holds it. Spare lockers can still hold house bottles.' }, { status: 400 })
+  }
+
   const { error } = await sb.from('lockers').update(patch).eq('locker_no', locker_no)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

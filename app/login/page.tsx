@@ -102,8 +102,6 @@ function LoginContent() {
           padding-right: max(24px, calc(150px - (100vw - 1180px) / 2));
         }
         .lg-words { position: relative; }
-        .lg-eyebrow { color: #D4B85A; opacity: 1; }
-        .lg-title { margin-top: 18px; }
         .lg-key { width: clamp(190px, 19vw, 270px); margin: 34px 0 0 clamp(80px, 14vw, 220px); }
 
         .lg-panel { width: 100%; max-width: 440px; justify-self: end; }
@@ -184,7 +182,8 @@ function LoginContent() {
       <div className="lg">
         <div className="pk-wrap lg-grid">
           <div className="lg-words">
-            <div className="lg-rise"><div className="pk-eyebrow lg-eyebrow">The Rampant Club</div></div>
+            {/* No "The Rampant Club" eyebrow above this (2026-09-14, Lachlan) — the
+                nav already carries the name; the page is simply Members. */}
             <div className="lg-rise" style={{ animationDelay: '.06s' }}><h1 className="pk-h1 lg-title">Members</h1></div>
             <div className="lg-rise" style={{ animationDelay: '.12s' }}><p className="pk-sub" style={{ margin: '12px 0 0' }}>Thành viên</p></div>
             <div className="lg-key lg-rise" style={{ animationDelay: '.2s' }}>

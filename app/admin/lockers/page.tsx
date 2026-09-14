@@ -234,7 +234,7 @@ export default function LockersPage() {
         <div style={eyebrow}>{t('Whisky Library', 'Thư viện rượu whisky')}</div>
         <h1 style={pageTitle}>{t('Member lockers', 'Tủ khóa hội viên')}</h1>
         <p style={lede}>
-          {t('The physical wall — every tile is a locker. Click one to assign a member, edit contents, or move it on the grid. Empty tiles wait to be filled; gold tiles are reserved; red-tinted are retired.', 'Bức tường thực tế — mỗi ô là một tủ khóa. Bấm vào một ô để phân bổ hội viên, chỉnh sửa nội dung, hoặc di chuyển ô trên lưới. Ô trống đang chờ được lấp đầy; ô màu vàng là đã đặt trước; ô ánh đỏ là đã ngừng sử dụng.')}
+          {t('The physical wall — every tile is a locker. Click one to assign a member, edit contents, or move it on the grid. Green tiles are held by a member; spare tiles wait for one and may hold house bottles meanwhile; gold tiles are reserved; red-tinted are retired.', 'Bức tường thực tế — mỗi ô là một tủ khóa. Bấm vào một ô để phân bổ hội viên, chỉnh sửa nội dung, hoặc di chuyển ô trên lưới. Ô xanh là của hội viên; ô còn trống đang chờ hội viên và có thể tạm chứa rượu của câu lạc bộ; ô màu vàng là đã đặt trước; ô ánh đỏ là đã ngừng sử dụng.')}
         </p>
       </div>
 
@@ -243,7 +243,8 @@ export default function LockersPage() {
         <Stat label={t('Lockers', 'Tủ khóa')}   value={counts.total} />
         <Stat label={t('Occupied', 'Đang dùng')}  value={counts.occupied} color="#7AB07A" />
         <Stat label={t('Reserved', 'Đã đặt trước')}  value={counts.reserved} color="#D4B85A" />
-        <Stat label={t('Empty', 'Trống')}     value={counts.empty} color="#B2AA98" />
+        {/* 'empty' in the data = no member. Called Spare: many hold house bottles. */}
+        <Stat label={t('Spare', 'Còn trống')}     value={counts.empty} color="#B2AA98" />
         <Stat label={t('Retired', 'Ngừng dùng')}   value={counts.retired} color="#7E7864" />
         <Stat label={t('Bottles', 'Số chai')}   value={counts.bottles} />
         <Stat label={t('Low fill (≤25%)', 'Sắp hết (≤25%)')} value={counts.lowFill} color="#C27070" />
@@ -254,7 +255,7 @@ export default function LockersPage() {
         <div style={{ display: 'flex', gap: 6 }}>
           {(['all', ...STATUSES] as const).map(s => (
             <button key={s} onClick={() => setFilter(s)} style={{ ...chip, ...(filter === s ? chipActive : null) }}>
-              {s === 'all' ? t('All', 'Tất cả') : s}
+              {s === 'all' ? t('All', 'Tất cả') : s === 'empty' ? t('spare', 'còn trống') : s}
             </button>
           ))}
           <button
@@ -367,6 +368,7 @@ export default function LockersPage() {
           members={members}
           whiskies={whiskies}
           onClose={() => setOpenLocker(null)}
+          onError={m => showToast(m, 'error')}
           /* Silent refresh — the drawer is open, we don't want to flip the
              page-level loading flag (which would unmount the drawer with
              everything else). The wall tile updates in place. */
@@ -553,12 +555,13 @@ function Stat({ label, value, color }: { label: string; value: number; color?: s
 }
 
 // ── DRAWER ──────────────────────────────────────────────────────────
-function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
+function LockerDrawer({ locker_no, members, whiskies, onClose, onChange, onError }: {
   locker_no: string
   members: MemberLite[]
   whiskies: WhiskyLite[]
   onClose: () => void
   onChange: () => void
+  onError: (message: string) => void
 }) {
   const { t } = useLang()
   const [locker, setLocker] = useState<Locker | null>(null)
@@ -611,10 +614,17 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
     // anything the server normalised (e.g. member_name on member_no
     // change, updated_at).
     setLocker(prev => prev ? { ...prev, ...(patchBody as Partial<Locker>) } : prev)
-    await fetch(`/api/admin/lockers/${locker_no}`, {
+    const res = await fetch(`/api/admin/lockers/${locker_no}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patchBody),
     })
+    // A refused change used to flip the chip and quietly flip it back. Say why
+    // (e.g. "occupied" with no member, 2026-09-14); the refetch below still
+    // undoes the optimistic update.
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      onError(j.error || t('Could not save that change', 'Không lưu được thay đổi'))
+    }
     load(true)
     onChange()
   }
@@ -764,7 +774,7 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange }: {
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {STATUSES.map(s => (
                   <button key={s} onClick={() => patch({ status: s })} style={{ ...chip, ...(locker.status === s ? chipActive : null) }}>
-                    {s}
+                    {s === 'empty' ? t('spare', 'còn trống') : s}
                   </button>
                 ))}
               </div>
