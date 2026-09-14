@@ -23,17 +23,23 @@
 -- computed from a plan at all — the durations in the existing rows vary from
 -- 5 to 6 hours and many rows have no end time.
 --
--- Four additions, no behaviour change on its own:
+-- Five additions, no behaviour change on its own:
 --   team_members.weekly_hours       contracted hours; null = not recorded
 --   team_members.morning_weekday    0=Sunday … 6=Saturday; null = no anchor
 --   team_members.fixed_days_off     the standing arrangements; null = rotates
---   rota_shift_types.start_time/end_time/hours  what a shift actually is
+--   team_members.always_shift       the evening they always work; null = any
+--   rota_shift_types.start_time/end_time/hours/break_minutes  what a shift is
 --
 -- The Morning type is added because the policy needs it and it did not exist.
--- Its times are a STARTING VALUE (10:00–15:00) — the club has never recorded
--- what the morning shift actually is, and it is editable in the rota's shift
--- types. Everything that counts hours reads it from there, so correcting it
--- there corrects the checks.
+-- 10:00–16:00 with an unpaid hour for lunch between twelve and one: six hours
+-- in the building, five on the clock. Everything that counts hours reads the
+-- shift types, so correcting them there corrects every check.
+--
+-- THESE ARE PLANNED HOURS, NOT WORKED ONES. On a night with nothing booked the
+-- team often go before eleven, so the real week is usually lighter than the
+-- 47.5 this rota plans — which is the right direction to be wrong in, against
+-- a 48-hour ceiling. Nothing in the system records when anyone actually left:
+-- if that ever matters for pay, it needs capturing, and the rota is not it.
 --
 -- NOTHING IS ROSTERED BY THIS FILE. It records what the rules need to read.
 -- The 48-hour week is Lachlan's, stated 2026-09-14, and is set for the five
