@@ -317,6 +317,45 @@ export default function PortalGuide({ name }: { name?: string }) {
         .pg-move:hover { color:#D4B85A; }
         .pg-move .pg-move-ic { color:#D4B85A; display:flex; }
 
+        /* ── ON A DESK TOO (2026-09-14, Lachlan: "you still have to scroll on
+           desktop"). The desk was sized for width only: an 88px title, a 4:5
+           photograph up to 525px tall, 16px row padding — the Whisky slide ran
+           well past a laptop's ~660px of usable height. Everything that takes
+           vertical room is now sized by the window's HEIGHT as well as its
+           width, and the photograph takes the height that is left rather than
+           its own ratio. Budget at 1366x768 (≈657px inside the browser), the
+           five-row Whisky slide: bar 44 + title 54 + lede 56 + list 17 +
+           rows 5×56 + foot 50 + margin 20 ≈ 520px. The phone rules below are
+           untouched. */
+        @media (min-width: 861px) {
+          .pg-top { padding:clamp(10px,1.8vh,18px) clamp(20px,4vw,52px) clamp(6px,1.2vh,12px); }
+          .pg-wrap { padding-bottom:clamp(12px,2.4vh,28px); }
+          .pg-grid { grid-template-columns:minmax(0,1fr) clamp(220px,26vw,360px); gap:clamp(24px,4vw,56px);
+                     align-items:center; padding-top:clamp(2px,1vh,12px); }
+          .pg-title { font-size:clamp(34px,min(6vw,8.2vh),80px); }
+          .pg-lede { font-size:13px; line-height:1.7; margin-top:clamp(8px,1.6vh,18px); }
+          .pg-list { margin-top:clamp(12px,2.6vh,30px); }
+          .pg-row { padding:clamp(6px,1.25vh,14px) 0; gap:14px; grid-template-columns:18px minmax(0,1fr); }
+          .pg-row-ic { padding-top:1px; }
+          .pg-row-name { font-size:clamp(16px,2.4vh,22px); }
+          .pg-row-line { font-size:12px; line-height:1.55; margin-top:3px; }
+          .pg-photo { aspect-ratio:auto; height:min(calc(100dvh - 170px), 520px); }
+          .pg-foot { margin-top:clamp(14px,2.8vh,34px); padding-top:clamp(10px,1.8vh,18px); }
+          /* the last screen */
+          .pg-ask { margin-top:2px; }
+          .pg-sugg { margin:2px 0 clamp(10px,2vh,22px); }
+          .pg-sugg button { padding:clamp(3px,.7vh,7px) 0; font-size:12px; }
+          .pg-move { padding:clamp(8px,1.4vh,14px) 0; font-size:12px; }
+          .pg-answer { margin-top:clamp(10px,2vh,20px); padding-top:clamp(10px,2vh,18px); font-size:12.5px; line-height:1.75; }
+        }
+        /* A short desk window (a laptop with the dock and tabs showing): the
+           words stay, the photograph steps back to a narrow panel. */
+        @media (min-width: 861px) and (max-height: 620px) {
+          .pg-grid { grid-template-columns:minmax(0,1fr) clamp(180px,20vw,260px); }
+          .pg-lede { line-height:1.55; }
+          .pg-row-line { line-height:1.4; }
+        }
+
         /* ── A SCREEN IS A SCREEN. ─────────────────────────────────────────
            Every slide has to fit the phone without scrolling: a guide you
            have to scroll to finish reading is a guide people abandon. The
