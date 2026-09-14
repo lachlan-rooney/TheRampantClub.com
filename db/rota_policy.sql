@@ -11,9 +11,10 @@
 --      Tuesday, Hiếu Wednesday, Nhi Thursday, Bình Friday. These do NOT
 --      rotate — they are the week's fixed points, for prep, deliveries, stock
 --      and the shift tasks, and everything else moves around them.
---   3. DAYS OFF VARY WEEK TO WEEK — except where they are FIXED for a person.
---      Hiếu is off Sunday–Monday and Bình is off Monday–Tuesday, every week,
---      by arrangement; the rest rotate around them. A rotating rota is the
+--   3. SIX DAYS EACH — one day off a week, everybody. Hiếu's and Bình's two
+--      days off were tried and dropped on 2026-09-14: two days off plus a
+--      morning leaves four evenings, and four evenings is 40 hours against a
+--      48-hour contract. Hiếu keeps Sunday, Bình keeps Monday. A rotating rota is the
 --      difference between "everyone shares the weekends" and "the newest
 --      person always works Saturday".
 --   4. NOBODY IS OFF BOTH WEEKEND DAYS. Saturday and Sunday together is the
@@ -58,6 +59,10 @@ alter table team_members add column if not exists weekly_hours numeric(4,1);
 alter table team_members add column if not exists morning_weekday smallint;
 -- Days this person is off EVERY week, by arrangement. Empty/NULL = they rotate.
 alter table team_members add column if not exists fixed_days_off smallint[];
+-- The one evening shift this person always works, where that is the
+-- arrangement. Mr Sĩ closes: he is the boss, he is there at the end of the
+-- night, and he is on no mids.
+alter table team_members add column if not exists always_shift text;
 
 alter table team_members drop constraint if exists team_members_morning_weekday_valid;
 alter table team_members add constraint team_members_morning_weekday_valid
@@ -82,6 +87,9 @@ alter table team_members add constraint team_members_fixed_days_off_valid
     )
   );
 
+comment on column team_members.always_shift is
+  'The evening shift this person always works (e.g. Close). NULL = any. Their fixed morning is separate '
+  'and unaffected — always_shift governs the EVENINGS only.';
 comment on column team_members.fixed_days_off is
   'Weekdays this person is off every week by arrangement (0=Sunday … 6=Saturday). '
   'NULL or empty = their days off rotate. Saturday+Sunday together is refused by constraint.';
@@ -104,19 +112,30 @@ insert into rota_shift_types (name, sort_order, start_time, end_time, hours) val
 on conflict (name) do update set
   start_time = excluded.start_time, end_time = excluded.end_time, hours = excluded.hours;
 
-update rota_shift_types set start_time = '16:00', end_time = '00:45', hours = 8.75 where name = 'Open'  and hours is null;
-update rota_shift_types set start_time = '17:30', end_time = '02:15', hours = 8.75 where name = 'Mid'   and hours is null;
-update rota_shift_types set start_time = '18:30', end_time = '03:15', hours = 8.75 where name = 'Close' and hours is null;
+-- EIGHT AND A HALF, not eight and three-quarters. Six days is one morning (5h)
+-- and five evenings, so an 8.75h evening puts everyone on 48.75h — over the
+-- 48-hour ceiling before a single night runs late. At 8.5h the week is 47.5h,
+-- which leaves half an hour of headroom for the night that always overruns.
+update rota_shift_types set start_time = '16:00', end_time = '00:30', hours = 8.5 where name = 'Open';
+update rota_shift_types set start_time = '17:30', end_time = '02:00', hours = 8.5 where name = 'Mid';
+update rota_shift_types set start_time = '18:30', end_time = '03:00', hours = 8.5 where name = 'Close';
 
 -- ── The arrangements that already exist ───────────────────────────────────
--- Recorded here rather than remembered: Hiếu is off Sunday and Monday, Bình is
--- off Monday and Tuesday. Everyone else rotates around them.
-update team_members set fixed_days_off = '{0,1}' where display_name = 'Hiếu';
-update team_members set fixed_days_off = '{1,2}' where display_name = 'Bình';
+-- Recorded here rather than remembered. One day off each: Hiếu Sunday, Bình
+-- Monday. These two are fixed by arrangement; the others' day off falls where
+-- the week allows it, which with Mr Sĩ closing every Saturday is Sunday for
+-- him and Saturday for Tiên and Nhi.
+update team_members set fixed_days_off = '{0}' where display_name = 'Hiếu';
+update team_members set fixed_days_off = '{1}' where display_name = 'Bình';
 
--- The contracted week, as stated by the owner.
+-- The 48-hour CEILING, as stated by the owner: nobody goes over it. The check
+-- treats this as a maximum as well as a target — short is a fault, and so is
+-- over.
 update team_members set weekly_hours = 48
  where display_name in ('Mr Sĩ', 'Tiên', 'Hiếu', 'Nhi', 'Bình');
+
+-- Mr Sĩ closes every night he is on, and is never on a mid.
+update team_members set always_shift = 'Close' where display_name = 'Mr Sĩ';
 
 -- The fixed mornings: one person per weekday, Monday to Friday.
 update team_members set morning_weekday = 1 where display_name = 'Mr Sĩ';
@@ -140,10 +159,10 @@ begin
   if (select count(*) from team_members where active and morning_weekday is not null) <> 5 then
     raise warning 'the five fixed mornings did not all take — check the names match the roster exactly';
   end if;
-  if not exists (select 1 from team_members where display_name = 'Hiếu' and fixed_days_off = '{0,1}') then
-    raise warning 'Hiếu''s fixed Sunday–Monday did not take — check the name matches the roster exactly';
+  if not exists (select 1 from team_members where display_name = 'Hiếu' and fixed_days_off = '{0}') then
+    raise warning 'Hiếu''s fixed Sunday did not take — check the name matches the roster exactly';
   end if;
-  if not exists (select 1 from team_members where display_name = 'Bình' and fixed_days_off = '{1,2}') then
-    raise warning 'Bình''s fixed Monday–Tuesday did not take — check the name matches the roster exactly';
+  if not exists (select 1 from team_members where display_name = 'Bình' and fixed_days_off = '{1}') then
+    raise warning 'Bình''s fixed Monday did not take — check the name matches the roster exactly';
   end if;
 end $$;

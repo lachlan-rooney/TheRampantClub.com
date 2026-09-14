@@ -44,6 +44,10 @@ export interface RotaStaff {
   weeklyHours: number | null
   morningWeekday: number | null
   fixedDaysOff: number[]
+  /** The evening shift this person always works, if that is the arrangement.
+   *  Mr Sĩ closes — he is the boss, he is there at the end of the night, and
+   *  he is on no mids. Their fixed morning is separate and unaffected. */
+  alwaysShift?: string | null
 }
 
 export interface ShiftType {
@@ -86,13 +90,13 @@ const weekdayOf = (date: string) => new Date(date + 'T00:00:00Z').getUTCDay()
  *  Change these and the planner will tell you within a second whether the week
  *  still closes. */
 export const EVENING_DEMAND: Record<number, number> = {
-  0: 3,  // Sunday
-  1: 2,  // Monday    — only Tiên and Nhi can work it at all
-  2: 3,  // Tuesday
+  0: 3,  // Sunday     — Hiếu is off; Mr Sĩ takes his day off here
+  1: 3,  // Monday     — Bình is off, Mr Sĩ is on his morning
+  2: 4,  // Tuesday
   3: 4,  // Wednesday
   4: 4,  // Thursday
   5: 4,  // Friday
-  6: 3,  // Saturday
+  6: 3,  // Saturday   — Mr Sĩ closes; Tiên and Nhi are off
 }
 
 /** The evening shift types, in the order they are handed out. */
@@ -347,17 +351,32 @@ export function checkWeek(opts: {
       }
     }
 
+    // 4b — the shift they always work, where that is the arrangement
+    if (p.alwaysShift) {
+      const wrong = mine.filter(s => s.shiftName !== 'Morning' && s.shiftName !== p.alwaysShift)
+      for (const w of wrong) {
+        out.push({ severity: 'blocking', rule: 'wrong shift for this person', who: p.name, when: w.shiftDate,
+          detail: `${p.name} is on ${w.shiftName} on ${w.shiftDate} — they always work ${p.alwaysShift}.` })
+      }
+    }
+
     // 5 — contracted hours
     const hours = mine.reduce((t, s) => t + hoursOf(s.shiftName), 0)
     if (p.weeklyHours == null) {
       out.push({ severity: 'warning', rule: 'hours not recorded', who: p.name,
         detail: `${p.name} has no contracted hours on file, so this week cannot be checked against them.` })
-    } else if (hours + 0.001 < p.weeklyHours) {
+    } else if (hours + 1.001 < p.weeklyHours) {
+      // An hour's slack below the ceiling is not "short": six days at 8.5h and
+      // a five-hour morning is 47.5h by design, and flagging that every week
+      // would train everyone to ignore the check.
       out.push({ severity: 'blocking', rule: 'short of contracted hours', who: p.name,
-        detail: `${p.name} is rostered ${hours.toFixed(2)}h against ${p.weeklyHours}h contracted — ${(p.weeklyHours - hours).toFixed(2)}h short.` })
-    } else if (hours > p.weeklyHours + 8) {
-      out.push({ severity: 'warning', rule: 'well over contracted hours', who: p.name,
-        detail: `${p.name} is rostered ${hours.toFixed(2)}h against ${p.weeklyHours}h contracted.` })
+        detail: `${p.name} is rostered ${hours.toFixed(2)}h against ${p.weeklyHours}h — ${(p.weeklyHours - hours).toFixed(2)}h short.` })
+    } else if (hours > p.weeklyHours) {
+      // 48 is a CEILING, not a target to drift past. Over it is a fault, not a
+      // note — the rota is where that gets caught, because the alternative is
+      // catching it in a payroll run or not at all.
+      out.push({ severity: 'blocking', rule: 'over the weekly maximum', who: p.name,
+        detail: `${p.name} is rostered ${hours.toFixed(2)}h against a ${p.weeklyHours}h maximum — ${(hours - p.weeklyHours).toFixed(2)}h over.` })
     }
 
     // 6 — days off should move week to week, for anyone not on a fixed pattern
