@@ -48,7 +48,8 @@ const SPACE_SHORT: Record<string, string> = {
 const shortSpace = (s: string | null) => (s ? (SPACE_SHORT[s] || s) : '—')
 const HOUSE_KIND_SHORT: Record<string, string> = { closure: 'closed', private_hire: 'hire', supplier: 'visit', tasting: 'tasting', other: 'event' }
 // Autofill draft types (proposed assignments + the gaps it couldn't fill).
-interface Proposal { member: string; shift_date: string; shift_name: string; coverFn: string }
+// coverFn 'standing' = a person's every-week shift, carrying its own times.
+interface Proposal { member: string; shift_date: string; shift_name: string; coverFn: string; start_time?: string | null; end_time?: string | null }
 interface Gap { date: string; shift_name: string; function: string; still_needed: number }
 
 export default function RotaPage() {
@@ -143,6 +144,10 @@ export default function RotaPage() {
   // in the week's shifts. So a shift assigned as "Mid" stays visible even after
   // the "Mid" type is renamed/removed — the snapshot is shown, never hidden.
   const typeNames = types.map(t => t.name)
+  // Who can be rostered. A director is an active team member (kiosks, boards,
+  // checklists) but not rota cover; `team` stays whole so their name still
+  // resolves on anything already written.
+  const rotaTeam = team.filter(m => m.on_rota !== false)
   // "15:00–23:30" for a shift: its own times where it has them, else its
   // type's — a chip showing only when someone arrives never said when they leave.
   const hhmm = (v?: string | null) => v ? v.slice(0, 5) : ''
@@ -301,6 +306,23 @@ export default function RotaPage() {
       if (!weekDays.has(s.member)) weekDays.set(s.member, new Set())
       weekDays.get(s.member)!.add(s.shift_date)
     }
+    // Standing shifts first: they are not a choice autofill makes, they are
+    // the week as agreed (Miss Ni in the office 08–16 every weekday). Proposed
+    // for any day the person has nothing yet and is not marked off.
+    for (const m of rotaTeam) {
+      if (!m.standing_shift || !typeNames.includes(m.standing_shift) || !m.standing_weekdays?.length) continue
+      for (const d of days) {
+        if (!m.standing_weekdays.includes(new Date(d + 'T00:00:00Z').getUTCDay())) continue
+        if (dayMembers.get(d)?.has(m.id) || isOff(m.id, d)) continue
+        newProps.push({ member: m.id, shift_date: d, shift_name: m.standing_shift, coverFn: 'standing',
+          start_time: m.standing_start?.slice(0, 5) ?? null, end_time: m.standing_end?.slice(0, 5) ?? null })
+        if (!dayMembers.has(d)) dayMembers.set(d, new Set())
+        dayMembers.get(d)!.add(m.id)
+        if (!weekDays.has(m.id)) weekDays.set(m.id, new Set())
+        weekDays.get(m.id)!.add(d)
+        weekCount.set(m.id, (weekCount.get(m.id) || 0) + 1)
+      }
+    }
     for (const d of days) {
       const bumps = dayBumps(d)
       for (const name of typeNames) {                 // active shift types only
@@ -313,7 +335,7 @@ export default function RotaPage() {
           let present = real.filter(s => memberFns(s.member).includes(fn)).length
                       + proposedHere.filter(p => p.coverFn === fn).length
           while (present < target) {
-            const cand = team
+            const cand = rotaTeam
               .filter(m => (m.functions || []).includes(fn) && !cellMembers.has(m.id) && !dayMembers.get(d)?.has(m.id) && !isOff(m.id, d)
                 && ((weekDays.get(m.id)?.has(d)) || (weekDays.get(m.id)?.size ?? 0) < 5))   // ≤5 distinct days/week
               .sort((a, b) => (weekCount.get(a.id) || 0) - (weekCount.get(b.id) || 0) || a.id.localeCompare(b.id))
@@ -338,7 +360,7 @@ export default function RotaPage() {
   const acceptAutofill = () => {
     if (proposals.length === 0) return
     wrap(async () => {
-      for (const p of proposals) await createShift({ member: p.member, shift_name: p.shift_name, shift_date: p.shift_date })
+      for (const p of proposals) await createShift({ member: p.member, shift_name: p.shift_name, shift_date: p.shift_date, start_time: p.start_time ?? null, end_time: p.end_time ?? null })
     }, () => { setProposals([]); setGaps([]) })
   }
   const discardAutofill = () => { setProposals([]); setGaps([]) }
@@ -358,7 +380,7 @@ export default function RotaPage() {
     setCell({ date, shift_name, editing })
     setDraft(editing
       ? { member: editing.member, shift_name: editing.shift_name, start_time: editing.start_time?.slice(0, 5) || '', end_time: editing.end_time?.slice(0, 5) || '', role: editing.role || '', notes: editing.notes || '' }
-      : { member: team[0]?.id || '', shift_name, start_time: '', end_time: '', role: '', notes: '' })
+      : { member: rotaTeam[0]?.id || '', shift_name, start_time: '', end_time: '', role: '', notes: '' })
   }
   const saveAssign = () => {
     if (!cell || !draft.member) { showToast(t('Pick a team member.', 'Chọn một nhân sự.'), 'error'); return }
@@ -383,6 +405,16 @@ export default function RotaPage() {
     const next = has ? (m.functions || []).filter(f => f !== fn) : [...(m.functions || []), fn]
     setTeam(ts => ts.map(t => t.id === memberId ? { ...t, functions: next } : t))   // optimistic
     const { error } = await supabase.from('team_members').update({ functions: next }).eq('id', memberId)
+    if (error) { showToast(error.message, 'error'); load() }
+  }
+
+  // Take someone off the rota, or put them back. Only hides them here — they
+  // stay active everywhere else team_members is read.
+  const toggleOnRota = async (memberId: string) => {
+    const m = team.find(t => t.id === memberId); if (!m) return
+    const next = m.on_rota === false
+    setTeam(ts => ts.map(t => t.id === memberId ? { ...t, on_rota: next } : t))   // optimistic
+    const { error } = await supabase.from('team_members').update({ on_rota: next }).eq('id', memberId)
     if (error) { showToast(error.message, 'error'); load() }
   }
 
@@ -698,6 +730,11 @@ export default function RotaPage() {
                       </button>
                     )
                   })}
+                  <button onClick={() => toggleOnRota(m.id)}
+                    title={t('Off = still on the team (kiosk, boards, checklists), but never rostered', 'Tắt = vẫn trong nhân sự (kiosk, bảng, checklist), nhưng không xếp ca')}
+                    style={{ ...fnToggle, marginLeft: 8, ...(m.on_rota !== false ? { borderColor: '#E5D4C2', color: '#E5D4C2' } : { opacity: 0.5, textDecoration: 'line-through' }) }}>
+                    {t('On rota', 'Trong lịch')}
+                  </button>
                 </div>
               </div>
             ))}
@@ -784,7 +821,7 @@ export default function RotaPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {team.map(m => (
+                  {rotaTeam.map(m => (
                     <tr key={m.id}>
                       <td style={{ ...covTd, textAlign: 'left', color: '#E5D4C2' }}>{m.display_name}</td>
                       {days.map(d => {
@@ -808,7 +845,7 @@ export default function RotaPage() {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <select value={offMember} onChange={e => setOffMember(e.target.value)} style={ruleSelect}>
                 <option value="" style={opt}>{t('— person —', '— người —')}</option>
-                {team.map(m => <option key={m.id} value={m.id} style={opt}>{m.display_name}</option>)}
+                {rotaTeam.map(m => <option key={m.id} value={m.id} style={opt}>{m.display_name}</option>)}
               </select>
               <input type="date" min={vnDateString()} value={offDate} onChange={e => setOffDate(e.target.value)} style={{ ...ruleSelect, colorScheme: 'dark' }} />
               <input value={offNote} onChange={e => setOffNote(e.target.value)} placeholder={t('note (leave / sick…)', 'ghi chú (nghỉ phép / ốm…)')} style={{ ...ruleSelect, minWidth: 130 }} />
@@ -844,7 +881,7 @@ export default function RotaPage() {
             <div style={fieldLabel}>{t('Team member', 'Nhân sự')}</div>
             <select style={input} value={draft.member} onChange={e => setDraft(d => ({ ...d, member: e.target.value }))}>
               <option value="" style={opt}>{t('— pick —', '— chọn —')}</option>
-              {team.map(m => <option key={m.id} value={m.id} style={opt}>{m.display_name}</option>)}
+              {rotaTeam.map(m => <option key={m.id} value={m.id} style={opt}>{m.display_name}</option>)}
             </select>
             <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
               <div style={{ flex: 1 }}>

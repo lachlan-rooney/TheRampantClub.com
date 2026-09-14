@@ -39,6 +39,14 @@ export interface TeamMember {
    *  fortnight (db/rota_partners.sql). Set on both sides. */
   rota_partner?: string | null
   is_shift_supervisor?: boolean | null
+  /** false = active, but not rostered (db/rota_office_standing.sql). */
+  on_rota?: boolean | null
+  /** A shift worked every week on standing_weekdays (0=Sun…6=Sat), at these
+   *  times. Autofill proposes it for any week it is missing from. */
+  standing_shift?: string | null
+  standing_start?: string | null
+  standing_end?: string | null
+  standing_weekdays?: number[] | null
   id: string
   profile_id: string | null
   display_name: string
