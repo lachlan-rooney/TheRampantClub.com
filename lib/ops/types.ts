@@ -33,6 +33,8 @@ export interface TeamMember {
   weekly_hours?: number | null
   morning_weekday?: number | null
   fixed_days_off?: number[] | null
+  always_shift?: string | null
+  is_shift_supervisor?: boolean | null
   id: string
   profile_id: string | null
   display_name: string
@@ -105,6 +107,11 @@ export interface TaskChecklistItem {
 export interface RotaShiftType {
   name: string
   sort_order: number
+  // Added by db/rota_policy.sql; optional so the page still types before it runs.
+  start_time?: string | null
+  end_time?: string | null
+  hours?: number | null
+  break_minutes?: number | null
 }
 
 export interface RotaShift {

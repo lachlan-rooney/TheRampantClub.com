@@ -154,6 +154,7 @@ export default function Footer() {
                 looks for them. */}
             <div className="trc-footer-address">Three &rsquo;til Midnight</div>
             <div className="trc-footer-address">Seven days</div>
+            <div className="trc-footer-address">Last entry 10:30pm</div>
             <div className="trc-footer-address">Last call 11pm</div>
           </div>
 

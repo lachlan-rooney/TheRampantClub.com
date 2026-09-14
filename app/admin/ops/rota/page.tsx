@@ -7,6 +7,7 @@ import { ConfirmModal, PromptModal, useToast } from '@/components/admin/dialogs'
 import { vnDateString } from '@/lib/datetime'
 import { createShift, updateShift, deleteShift, moveShift } from '@/lib/ops/api'
 import type { RotaShift, RotaShiftType, TeamMember, CoverageTarget, ScalingRule, Unavailability } from '@/lib/ops/types'
+import { checkWeek, WEEKDAYS, type RotaStaff } from '@/lib/rota/policy'
 import { useLang } from '@/lib/admin-lang'
 
 const FAMILY = "'Google Sans Code', monospace"
@@ -87,6 +88,38 @@ export default function RotaPage() {
   const [gaps, setGaps] = useState<Gap[]>([])
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+
+  // ── THE POLICY, CHECKED AGAINST THIS WEEK ────────────────────────────────
+  // The rules live in lib/rota/policy.ts and read the columns db/rota_policy.sql
+  // adds. They are checked against whatever is on screen — generated, dragged
+  // or typed — because a rota that is only correct when a script writes it is
+  // not a rota anyone can edit.
+  const policyStaff: RotaStaff[] = team
+    .filter(m => m.weekly_hours != null || m.morning_weekday != null)
+    .map(m => ({
+      id: m.id,
+      name: m.display_name,
+      isSupervisor: !!m.is_shift_supervisor,
+      weeklyHours: m.weekly_hours ?? null,
+      morningWeekday: m.morning_weekday ?? null,
+      fixedDaysOff: m.fixed_days_off ?? [],
+      alwaysShift: m.always_shift ?? null,
+    }))
+  const policyTypes = types.map(t => ({ name: t.name, hours: Number(t.hours ?? 0), sortOrder: t.sort_order }))
+  const policyShifts = shifts.map(s2 => ({ member: s2.member, shiftDate: s2.shift_date, shiftName: s2.shift_name }))
+  const violations = policyStaff.length && policyTypes.some(t => t.hours > 0)
+    ? checkWeek({ weekStart, staff: policyStaff, shiftTypes: policyTypes, shifts: policyShifts })
+    : []
+  const blocking = violations.filter(v => v.severity === 'blocking')
+  const warnings = violations.filter(v => v.severity === 'warning')
+  const hoursFor = (id: string) => policyShifts
+    .filter(x => x.member === id)
+    .reduce((tot, x) => tot + (policyTypes.find(t => t.name === x.shiftName)?.hours ?? 0), 0)
+  const dayOffFor = (id: string) => {
+    const worked = new Set(policyShifts.filter(x => x.member === id)
+      .map(x => new Date(x.shiftDate + 'T00:00:00Z').getUTCDay()))
+    return [0, 1, 2, 3, 4, 5, 6].filter(d => !worked.has(d)).map(d => WEEKDAYS[d]).join(', ') || '—'
+  }
   const weekEnd = addDays(weekStart, 6)
 
   // Rows = current shift-type names PLUS any snapshotted shift_name still present
@@ -402,6 +435,48 @@ export default function RotaPage() {
         </div>
       </div>
       <p style={lede}>{t("Club-wide weekly rota — who's on which shift. Drag a name to move it across shifts or days; drop onto another name to swap. Week of", 'Lịch làm việc tuần toàn câu lạc bộ — ai làm ca nào. Kéo một tên để chuyển sang ca hoặc ngày khác; thả lên một tên khác để hoán đổi. Tuần của')} {dayLabel(weekStart)} – {dayLabel(weekEnd)}.</p>
+
+      {/* The week against the rules: hours, days off, and what is broken. */}
+      {policyStaff.length > 0 && (
+        <div data-rota-policy={blocking.length ? 'broken' : 'kept'}
+             style={{ margin: '14px 0 6px', padding: '14px 16px', borderRadius: 6,
+                      border: `1px solid ${blocking.length ? 'rgba(194,112,112,0.45)' : 'rgba(229,212,194,0.14)'}`,
+                      background: blocking.length ? 'rgba(194,112,112,0.07)' : 'rgba(229,212,194,0.03)' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+            <span style={eyebrow}>{t('This week against the rules', 'Tuần này so với quy định')}</span>
+            <span style={{ ...metaText, color: blocking.length ? '#E8A6A6' : '#9FBF8F' }}>
+              {blocking.length
+                ? `${blocking.length} ${t('to fix', 'cần sửa')}`
+                : t('all rules kept', 'đạt tất cả quy định')}
+              {warnings.length ? ` · ${warnings.length} ${t('to note', 'ghi chú')}` : ''}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginBottom: blocking.length || warnings.length ? 12 : 0 }}>
+            {policyStaff.map(p => {
+              const h = hoursFor(p.id)
+              const over = p.weeklyHours != null && h > p.weeklyHours
+              const short = p.weeklyHours != null && h + 1.001 < p.weeklyHours
+              return (
+                <div key={p.id} style={{ minWidth: 128 }}>
+                  <div style={{ fontFamily: FAMILY, fontSize: 11.5, color: '#E5D4C2' }}>
+                    {p.name}{p.isSupervisor ? ' ·' : ''}
+                    {p.isSupervisor && <span style={{ color: '#D4B85A' }}> {t('supervisor', 'giám sát')}</span>}
+                  </div>
+                  <div style={{ fontFamily: FAMILY, fontSize: 11, color: over || short ? '#E8A6A6' : '#B2AA98' }}>
+                    {h.toFixed(2)}h{p.weeklyHours != null ? ` / ${p.weeklyHours}` : ''}
+                  </div>
+                  <div style={{ ...metaText, opacity: 0.72 }}>{t('off', 'nghỉ')} {dayOffFor(p.id)}</div>
+                </div>
+              )
+            })}
+          </div>
+          {[...blocking, ...warnings].slice(0, 8).map((v, i) => (
+            <div key={i} style={{ ...metaText, color: v.severity === 'blocking' ? '#E8A6A6' : '#B2AA98', lineHeight: 1.75 }}>
+              {v.severity === 'blocking' ? '✗ ' : '· '}{v.detail}
+            </div>
+          ))}
+        </div>
+      )}
 
       {(proposals.length > 0 || gaps.length > 0) && (
         <div style={autofillBanner}>
