@@ -332,8 +332,14 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
         .nav-group-links { display: flex; flex-direction: column; gap: 0; padding: 0 0 12px 14px; }
         .nav-group-links .nav-link-en { font-size: 22px; }
 
-        /* Utilities at the foot: quiet mono, not rooms */
-        .nav-menu button.nav-link { margin-top: 0 !important; }
+        /* Portal Guide and Sign Out are BUTTONS but read as links like every
+           other item (2026-09-14): the browser's button look is reset here, not
+           inline — an inline padding:0 used to beat the foot spacing and left
+           the two jammed together. */
+        .nav-menu button.nav-link {
+          background: none; border: none; cursor: pointer; text-align: left;
+          width: 100%; font: inherit; color: inherit; margin: 0;
+        }
 
         /* The language switch inside the menu — phones only (the desk keeps the
            corner control, which does not scroll away on a short page). */
@@ -351,13 +357,13 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
                together read as a double line with a gap in it. */
           }
         }
-        .nav-menu button.nav-link .nav-link-en {
-          font-family: 'Google Sans Code', monospace; font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
-        }
         /* The foot rows carry ONE line each now, so they need their own
            height — stacked single lines read as one paragraph, not two taps. */
-        .nav-foot { margin-top: 18px; padding-top: 6px; border-top: 1px solid rgba(5, 46, 32, .14); display: flex; flex-direction: column; gap: 0; }
-        .nav-foot .nav-link { padding: 9px 0; }
+        .nav-foot { margin-top: 18px; padding-top: 10px; border-top: 1px solid rgba(5, 46, 32, .14); display: flex; flex-direction: column; gap: 6px; }
+        .nav-foot .nav-link { padding: 10px 0; }
+        /* Same size as the links inside the groups, so the foot is not a
+           different kind of thing — just the last two rows. */
+        .nav-foot .nav-link-en { font-size: 22px; }
         .nav-dark .nav-foot { border-top-color: rgba(229, 212, 194, .14); }
         .nav-ink { margin-top: auto; padding-top: 26px; flex-shrink: 0; align-self: flex-end; opacity: .9; pointer-events: none; }
         .nav-ink img { display: block; width: 100%; height: auto; }
@@ -535,13 +541,13 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
               )
             })}
             <div className="nav-foot">
-            <button className="nav-link nav-link-withicon" onClick={() => { setOpen(false); window.dispatchEvent(new Event('open-portal-guide')) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', marginTop: 12 }}>
+            <button type="button" className="nav-link nav-link-withicon" onClick={() => { setOpen(false); window.dispatchEvent(new Event('open-portal-guide')) }}>
               <NavIcon name="compass" />
               <span className="nav-link-text">
                 <div className="nav-link-en">{lines('Portal Guide', 'Hướng Dẫn')[0]}</div>
               </span>
             </button>
-            <button className="nav-link nav-link-withicon" onClick={handleSignOut} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', marginTop: 4 }}>
+            <button type="button" className="nav-link nav-link-withicon" onClick={handleSignOut}>
               <NavIcon name="signout" />
               <span className="nav-link-text">
                 <div className="nav-link-en">{lines('Sign Out', 'Đăng xuất')[0]}</div>
