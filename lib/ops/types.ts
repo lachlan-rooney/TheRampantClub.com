@@ -28,6 +28,11 @@ export interface BoardColumn {
 }
 
 export interface TeamMember {
+  // The seven-day rota policy (db/rota_policy.sql). Optional because the
+  // columns arrive with that file and the page must not break before it runs.
+  weekly_hours?: number | null
+  morning_weekday?: number | null
+  fixed_days_off?: number[] | null
   id: string
   profile_id: string | null
   display_name: string
