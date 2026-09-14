@@ -7,7 +7,9 @@ import { ADMIN_SURFACE } from '@/lib/admin/surfaces'
 import { useLang } from '@/lib/lang'
 
 // Grouped admin sidebar. Groups remember their collapsed state in localStorage.
-// The Dashboard sits above the groups as a single landing link.
+// The Dashboard is the first item under Management (2026-09-14, Lachlan: "the
+// dashboard … should be within management") — it used to sit above the groups
+// as a standalone landing link. /admin is still where admin lands.
 
 type Item = { href: string; label: string; vn: string; icon: string }
 type Group = { id: string; label: string; vn: string; items: Item[] }
@@ -81,6 +83,7 @@ const GROUPS: Group[] = [
     id: 'management',
     label: 'Management', vn: 'Quản lý',
     items: [
+      DASHBOARD,
       { href: '/admin/ops', label: 'Boards', vn: 'Bảng', icon: 'boards' },
       { href: '/admin/ops/rota', label: 'Rota', vn: 'Lịch trực', icon: 'rota' },
       { href: '/admin/ops/reports', label: 'Ops Reports', vn: 'Báo cáo vận hành', icon: 'bars' },
@@ -182,7 +185,7 @@ export default function AdminNav() {
   // Pick the single most-specific item that matches the current pathname so
   // overlapping nav prefixes (e.g. /admin/mis vs /admin/mis/pipeline) don't
   // both highlight at the same time.
-  const allHrefs = [DASHBOARD.href, ...GROUPS.flatMap(g => g.items.map(it => it.href))]
+  const allHrefs = GROUPS.flatMap(g => g.items.map(it => it.href))
   const bestMatch = allHrefs
     .filter(h => h === '/admin' ? pathname === '/admin' : (pathname === h || pathname.startsWith(h + '/')))
     .sort((a, b) => b.length - a.length)[0]
@@ -220,10 +223,6 @@ export default function AdminNav() {
       <div style={brandTitle}>Admin</div>
 
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 16 }}>
-        <Link href={DASHBOARD.href} style={{ ...itemLink, ...(isActive(DASHBOARD.href) ? itemLinkActive : null), marginBottom: 12 }}>
-          <NavIcon name={DASHBOARD.icon} />{nm(DASHBOARD)}
-        </Link>
-
         {GROUPS.map(g => {
           const isCollapsed = !!collapsed[g.id]
           const groupActive = g.items.some(it => isActive(it.href))
