@@ -34,6 +34,10 @@ export interface TeamMember {
   morning_weekday?: number | null
   fixed_days_off?: number[] | null
   always_shift?: string | null
+  works_evenings?: boolean | null
+  /** Another team member this person should share a day off with once a
+   *  fortnight (db/rota_partners.sql). Set on both sides. */
+  rota_partner?: string | null
   is_shift_supervisor?: boolean | null
   id: string
   profile_id: string | null

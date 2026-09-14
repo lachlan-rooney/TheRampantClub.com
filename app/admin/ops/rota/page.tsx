@@ -56,6 +56,9 @@ export default function RotaPage() {
   const [weekStart, setWeekStart] = useState<string>(() => mondayOf(vnDateString()))
   const [types, setTypes] = useState<RotaShiftType[]>([])
   const [shifts, setShifts] = useState<RotaShift[]>([])
+  // Last week, member + date only — enough to work out who was off, which is
+  // all the two cross-week rules need.
+  const [prevShifts, setPrevShifts] = useState<{ member: string; shift_date: string }[]>([])
   const [team, setTeam] = useState<TeamMember[]>([])
   const [bookings, setBookings] = useState<DemandBooking[]>([])
   const [entries, setEntries] = useState<DemandEntry[]>([])
@@ -104,11 +107,22 @@ export default function RotaPage() {
       morningWeekday: m.morning_weekday ?? null,
       fixedDaysOff: m.fixed_days_off ?? [],
       alwaysShift: m.always_shift ?? null,
+      pairedWith: m.rota_partner ?? null,
     }))
+  // Who was off last week, per person — only for people who appear on last
+  // week's rota at all. Somebody absent from it was not "off seven days"; they
+  // were on leave, or not yet employed, and neither is a pattern to compare to.
+  const previousDaysOff: Record<string, number[]> = {}
+  for (const p of policyStaff) {
+    const worked = prevShifts.filter(s2 => s2.member === p.id)
+    if (!worked.length) continue
+    const days2 = new Set(worked.map(s2 => new Date(s2.shift_date + 'T00:00:00Z').getUTCDay()))
+    previousDaysOff[p.id] = [0, 1, 2, 3, 4, 5, 6].filter(d => !days2.has(d))
+  }
   const policyTypes = types.map(t => ({ name: t.name, hours: Number(t.hours ?? 0), sortOrder: t.sort_order }))
   const policyShifts = shifts.map(s2 => ({ member: s2.member, shiftDate: s2.shift_date, shiftName: s2.shift_name }))
   const violations = policyStaff.length && policyTypes.some(t => t.hours > 0)
-    ? checkWeek({ weekStart, staff: policyStaff, shiftTypes: policyTypes, shifts: policyShifts })
+    ? checkWeek({ weekStart, staff: policyStaff, shiftTypes: policyTypes, shifts: policyShifts, previousDaysOff })
     : []
   const blocking = violations.filter(v => v.severity === 'blocking')
   const warnings = violations.filter(v => v.severity === 'warning')
@@ -132,9 +146,15 @@ export default function RotaPage() {
   ]
 
   const load = useCallback(async () => {
-    const [{ data: ty }, { data: sh }, { data: tm }, { data: bk }, { data: en }, { data: ct }, { data: sr }, { data: ua }, { data: up }] = await Promise.all([
+    const [{ data: ty }, { data: sh }, { data: pv }, { data: tm }, { data: bk }, { data: en }, { data: ct }, { data: sr }, { data: ua }, { data: up }] = await Promise.all([
       supabase.from('rota_shift_types').select('*').order('sort_order'),
       supabase.from('rota_shifts').select('*').gte('shift_date', weekStart).lte('shift_date', weekEnd),
+      // LAST week too — two rules can only be judged across a pair of weeks:
+      // "days off did not move", and the fortnightly day off Hiếu and Bình are
+      // owed. Kept in its own state rather than widening the query above, which
+      // feeds the grid and the policy check and must stay to this week alone.
+      supabase.from('rota_shifts').select('member, shift_date')
+        .gte('shift_date', addDays(weekStart, -7)).lt('shift_date', weekStart),
       supabase.from('team_members').select('*').eq('active', true).order('display_name'),
       // Demand signal: member bookings + house events for the week (admin RLS).
       supabase.from('bookings').select('booking_date, space, party_size, start_time, session_label')
@@ -149,6 +169,7 @@ export default function RotaPage() {
     ])
     if (ty) setTypes(ty as RotaShiftType[])
     if (sh) setShifts(sh as RotaShift[])
+    setPrevShifts((pv || []) as { member: string; shift_date: string }[])
     if (tm) setTeam(tm as TeamMember[])
     setBookings((bk || []) as DemandBooking[])
     setEntries((en || []) as DemandEntry[])

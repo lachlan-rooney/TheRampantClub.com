@@ -135,8 +135,12 @@ comment on column rota_shift_types.break_minutes is
 -- 10:00–16:00 with an hour for lunch between twelve and one. Six hours on the
 -- wall, FIVE paid — which is also what keeps the week at 47.5h: a six-hour
 -- morning would put everyone on 48.5 and over the ceiling.
+--
+-- RENAMED TO **OFFICE** on 2026-09-14 (db/rota_office_shift.sql) — it is the
+-- desk, not an early bar shift. Inserted under the new name here too, so that
+-- re-running this file cannot resurrect Morning alongside Office.
 insert into rota_shift_types (name, sort_order, start_time, end_time, hours, break_minutes) values
-  ('Morning', -1, '10:00', '16:00', 5.0, 60)
+  ('Office', -1, '10:00', '16:00', 5.0, 60)
 on conflict (name) do update set
   start_time = excluded.start_time, end_time = excluded.end_time,
   hours = excluded.hours, break_minutes = excluded.break_minutes;
@@ -152,14 +156,18 @@ on conflict (name) do update set
 --   Open   15:00 – 23:30   doors at three, out after last call
 --   Close  16:00 – 00:30   the peak, the last call, the room cleared, the lock
 --
--- Mid was retired on 2026-09-14 — two shift TYPES, three or four people on
--- them. The update below is left in so any surviving Mid row still gets sane
--- times rather than none.
+-- Mid was DELETED on 2026-09-14 (db/rota_office_shift.sql) — it was 16:00–00:30,
+-- which is the Close under a second name. Its update is removed from here so
+-- re-running this file cannot bring it back.
+--
+-- The Open starts at 14:30, not 15:00: the doors open at three and somebody has
+-- to be in the building before them. Mon–Fri the Office shift covered that by
+-- accident; Saturday and Sunday have no Office shift, so the two busiest days
+-- had nobody in before opening.
 --
 -- Still 8.5 hours each, so the six-day week is still 47.5 and still under the
 -- ceiling. That is the only number that did not have to move.
-update rota_shift_types set start_time = '15:00', end_time = '23:30', hours = 8.5 where name = 'Open';
-update rota_shift_types set start_time = '16:00', end_time = '00:30', hours = 8.5 where name = 'Mid';
+update rota_shift_types set start_time = '14:30', end_time = '23:00', hours = 8.5 where name = 'Open';
 update rota_shift_types set start_time = '16:00', end_time = '00:30', hours = 8.5 where name = 'Close';
 
 -- ── The arrangements that already exist ───────────────────────────────────
@@ -168,7 +176,12 @@ update rota_shift_types set start_time = '16:00', end_time = '00:30', hours = 8.
 -- the week allows it, which with Mr Sĩ closing every Saturday is Sunday for
 -- him and Saturday for Tiên and Nhi.
 update team_members set fixed_days_off = '{0}' where display_name = 'Hiếu';
-update team_members set fixed_days_off = '{1}' where display_name = 'Bình';
+-- Bình's Monday STOPPED being fixed on 2026-09-14 (db/rota_partners.sql): she
+-- and Hiếu are a couple, and a fixed Monday against his fixed Sunday meant they
+-- never had a day off together. Hers now alternates — Monday one week, Sunday
+-- with him the next. Set to NULL rather than left at '{1}', or the check would
+-- call the fortnight she spends Sunday off a broken rule.
+update team_members set fixed_days_off = null where display_name = 'Bình';
 
 -- The 48-hour CEILING, as stated by the owner: nobody goes over it. The check
 -- treats this as a maximum as well as a target — short is a fault, and so is
@@ -213,7 +226,7 @@ begin
   if not exists (select 1 from team_members where display_name = 'Hiếu' and fixed_days_off = '{0}') then
     raise warning 'Hiếu''s fixed Sunday did not take — check the name matches the roster exactly';
   end if;
-  if not exists (select 1 from team_members where display_name = 'Bình' and fixed_days_off = '{1}') then
-    raise warning 'Bình''s fixed Monday did not take — check the name matches the roster exactly';
+  if exists (select 1 from team_members where display_name = 'Bình' and fixed_days_off is not null) then
+    raise warning 'Bình still has a fixed day off — hers alternates so she can share Sunday with Hiếu';
   end if;
 end $$;

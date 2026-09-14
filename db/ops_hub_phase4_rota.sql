@@ -27,7 +27,12 @@ create table if not exists rota_shift_types (
   name        text primary key,
   sort_order  integer not null default 0
 );
-insert into rota_shift_types (name, sort_order) values ('Open', 0), ('Mid', 1), ('Close', 2)
+-- Seeded Open/Mid/Close originally. MID WAS RETIRED 2026-09-14
+-- (db/rota_office_shift.sql) — it ran 16:00–00:30, which is the Close under a
+-- second name, and it is dropped from the seed so re-running this file cannot
+-- put it back. The Office shift is added by db/rota_policy.sql; times for all
+-- three come from db/rota_office_shift.sql.
+insert into rota_shift_types (name, sort_order) values ('Open', 0), ('Close', 2)
   on conflict (name) do nothing;
 
 -- ── The rota itself ──

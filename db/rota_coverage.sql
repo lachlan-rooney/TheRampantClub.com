@@ -41,10 +41,12 @@ create policy "admin all on rota_scaling_rules" on rota_scaling_rules for all
   using (is_admin_uid(auth.uid())) with check (is_admin_uid(auth.uid()));
 
 -- ── Seeds (STARTING POINT — editable in the panel) ──
--- Base: every shift wants a floor; Mid/Close also want a bar.
+-- Base: every shift wants a floor; the Close also wants a bar.
+-- Mid's two rows are gone — the type was retired 2026-09-14
+-- (db/rota_office_shift.sql), and a target for a shift nobody can be rostered
+-- on is how a coverage panel starts being ignored.
 insert into rota_coverage_targets (shift_name, function, count) values
   ('Open', 'floor', 1),
-  ('Mid',  'floor', 1), ('Mid',  'bar', 1),
   ('Close','floor', 1), ('Close','bar', 1)
 on conflict (shift_name, function) do nothing;
 
