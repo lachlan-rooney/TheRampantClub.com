@@ -6,6 +6,8 @@ import { typeLabel, TYPE_RING } from '@/lib/fixtures'
 import { useLang, pick, type Lang } from '@/lib/lang'
 import MemberPage from '@/components/MemberPage'
 import { CreamInk } from '@/components/public/CreamInk'
+import BookingGuestsModal from '@/components/members/BookingGuestsModal'
+import { GUEST_EDITABLE_STATUSES } from '@/lib/guests'
 
 // The member's month: their bookings, the club's fixtures and the house events,
 // set as a month view with hairline rules rather than boxes, the month itself as
@@ -19,12 +21,13 @@ const INK = '#052E20'
 const SERIF = "'Rampant Sans', serif"
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
 
-interface Booking { booking_id: string; booking_date: string; start_time: string | null; end_time: string | null; session_label: string | null; space: string | null; party_size: number | null; status: string }
+interface Booking { booking_id: string; booking_date: string; start_time: string | null; end_time: string | null; session_label: string | null; space: string | null; party_size: number | null; status: string
+  guests?: { id: string; guest_name: string; signed_in: boolean }[] }
 interface Fixture { id: string; type: string; title: string; date: string; location: string | null; signed_up: boolean }
 interface Entry { id: string; title: string; title_vn?: string | null; entry_date: string; start_time: string | null; end_time: string | null; session_label: string | null; space: string | null; kind: string }
 
 type Item =
-  | { kind: 'booking'; day: string; label: string; sub: string; tint: string; ring: string }
+  | { kind: 'booking'; day: string; label: string; sub: string; tint: string; ring: string; bookingId: string; guests: string[]; editable: boolean; party: number }
   | { kind: 'fixture'; day: string; label: string; sub: string; tint: string; ring: string; signed: boolean; href: string }
   | { kind: 'entry'; day: string; label: string; sub: string; tint: string; ring: string }
 
@@ -67,6 +70,11 @@ export default function MemberCalendarPage() {
   const [fixtures, setFixtures] = useState<Fixture[]>([])
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
+  // Guest names on the member's own bookings (2026-09-14). guestsReady is false
+  // until db/guest_signin.sql has run, and hides the editor rather than show one
+  // that cannot save.
+  const [guestsReady, setGuestsReady] = useState(false)
+  const [guestsFor, setGuestsFor] = useState<{ id: string; label: string } | null>(null)
 
   // 6-week grid starting on the Monday on/before the 1st.
   const grid = useMemo(() => {
@@ -83,7 +91,7 @@ export default function MemberCalendarPage() {
     try {
       const r = await fetch(`/api/members/calendar?from=${rangeFrom}&to=${rangeTo}`, { cache: 'no-store' })
       const j = await r.json()
-      setBookings(j.bookings || []); setFixtures(j.fixtures || []); setEntries(j.entries || [])
+      setBookings(j.bookings || []); setFixtures(j.fixtures || []); setEntries(j.entries || []); setGuestsReady(j.guests_ready === true)
     } catch { /* */ } finally { setLoading(false) }
   }, [rangeFrom, rangeTo])
   useEffect(() => { load() }, [load])
@@ -91,11 +99,13 @@ export default function MemberCalendarPage() {
   const byDay = useMemo(() => {
     const m: Record<string, Item[]> = {}
     const push = (it: Item) => { (m[it.day] ||= []).push(it) }
-    for (const b of bookings) push({ kind: 'booking', day: b.booking_date, label: b.space || t('Your booking', 'Đặt chỗ của bạn'), sub: timeStr(b.start_time, b.end_time, b.session_label, t), tint: 'rgba(212,184,90,0.16)', ring: GOLD })
+    for (const b of bookings) push({ kind: 'booking', day: b.booking_date, label: b.space || t('Your booking', 'Đặt chỗ của bạn'), sub: timeStr(b.start_time, b.end_time, b.session_label, t), tint: 'rgba(212,184,90,0.16)', ring: GOLD,
+      bookingId: b.booking_id, guests: (b.guests || []).map(g => g.guest_name), party: b.party_size || 1,
+      editable: guestsReady && b.booking_date >= todayIso && GUEST_EDITABLE_STATUSES.includes(b.status) })
     for (const f of fixtures) { const ring = RING_ON_GREEN[f.type] || RING_ON_GREEN.other; push({ kind: 'fixture', day: vnDayOf(f.date), label: f.title, sub: typeLabel(f.type, lang) + (f.signed_up ? t(' · you’re in', ' · bạn đã đăng ký') : ''), tint: 'rgba(169,187,132,0.12)', ring, signed: f.signed_up, href: '/members/events' }) }
     for (const e of entries) push({ kind: 'entry', day: e.entry_date, label: pick(lang, e.title, e.title_vn), sub: t(KIND_LABEL[e.kind] || 'Notice', KIND_LABEL_VN[e.kind] || 'Thông báo'), tint: 'rgba(178,170,152,0.12)', ring: HOUSE_MARK })
     return m
-  }, [bookings, fixtures, entries, t, lang])
+  }, [bookings, fixtures, entries, t, lang, guestsReady, todayIso])
 
   const monthRaw = new Date(Date.UTC(cursor.y, cursor.m, 1)).toLocaleDateString(lang === 'vn' ? 'vi-VN' : 'en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' })
   const monthLabel = monthRaw.charAt(0).toUpperCase() + monthRaw.slice(1)
@@ -153,6 +163,11 @@ export default function MemberCalendarPage() {
         a.mc-alabel:hover { color:${GOLD}; }
         .mc-asub { font-family:${MONO}; font-size: 12px; letter-spacing: .08em; margin-top: 6px; opacity: .8; }
         .mc-empty { font-family:${MONO}; font-size: 13px; line-height: 1.9; opacity: .8; padding: 22px 0; }
+        .mc-guests { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 18px; margin-top: 10px;
+                     font-family:${MONO}; font-size: 12px; letter-spacing: .04em; line-height: 1.6; }
+        .mc-gbtn { background: none; border: none; border-bottom: 1px solid currentColor; padding: 0 0 4px; cursor: pointer;
+                   color: ${GOLD}; font-family:${MONO}; font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; }
+        .mc-gbtn:hover { color: ${CREAM}; }
 
         @media (max-width: 860px) {
           .mc-bar { flex-direction: column-reverse; align-items: flex-start; gap: 18px; }
@@ -232,6 +247,16 @@ export default function MemberCalendarPage() {
                             ? <Link href={it.href} className="mc-alabel">{it.signed ? '✓ ' : ''}{it.label}</Link>
                             : <div className="mc-alabel">{it.label}</div>}
                           <div className="mc-asub">{it.sub}</div>
+                          {it.kind === 'booking' && (it.guests.length > 0 || (it.editable && it.party > 1)) && (
+                            <div className="mc-guests">
+                              {it.guests.length > 0 && <span>{t('Guests', 'Khách')}: {it.guests.join(', ')}</span>}
+                              {it.editable && (
+                                <button className="mc-gbtn" onClick={() => setGuestsFor({ id: it.bookingId, label: `${it.label} · ${it.sub}` })}>
+                                  {it.guests.length ? t('Edit guests', 'Sửa tên khách') : t('Name your guests', 'Báo tên khách')}
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -240,6 +265,8 @@ export default function MemberCalendarPage() {
               )
             })}
         </div>
+
+        <BookingGuestsModal bookingId={guestsFor?.id || null} title={guestsFor?.label} onClose={() => setGuestsFor(null)} onChanged={load} />
     </MemberPage>
   )
 }

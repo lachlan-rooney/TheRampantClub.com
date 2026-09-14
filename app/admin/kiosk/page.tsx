@@ -8,7 +8,7 @@ import { useLang } from '@/lib/admin-lang'
 
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
 
-interface Device { id: string; label: string; room: string | null; status: string; enrolled_at: string | null; last_seen_at: string | null; pair_code: string | null }
+interface Device { id: string; label: string; room: string | null; purpose?: 'room' | 'door'; status: string; enrolled_at: string | null; last_seen_at: string | null; pair_code: string | null }
 interface Staff { id: string; display_name: string; role_title: string | null; active: boolean; has_pin: boolean }
 interface MemberPin { member_no: string; full_name: string; has_pin: boolean; set_at: string | null; fails_15m: number; fails_24h: number; locked: boolean; hard_locked: boolean }
 
@@ -19,6 +19,10 @@ export default function AdminKiosk() {
   const [label, setLabel] = useState('')
   const [rooms, setRooms] = useState<string[]>([])
   const [room, setRoom] = useState('')
+  // THE DOOR (2026-09-14): a device is a room tablet or the guest sign-in iPad at
+  // the entrance. doorReady is false until db/guest_signin.sql has run.
+  const [purpose, setPurpose] = useState<'room' | 'door'>('room')
+  const [doorReady, setDoorReady] = useState(false)
   const [mpins, setMpins] = useState<MemberPin[]>([])
   const [pinFor, setPinFor] = useState<Staff | null>(null)
   const [pin, setPin] = useState('')
@@ -29,7 +33,7 @@ export default function AdminKiosk() {
       fetch('/api/admin/kiosk-devices'), fetch('/api/admin/kiosk-devices/pin'),
       fetch('/api/admin/kiosk-devices/member-pins'),
     ])
-    if (d.ok) { const j = await d.json(); setDevices(j.devices || []); setRooms(j.rooms || []) }
+    if (d.ok) { const j = await d.json(); setDevices(j.devices || []); setRooms(j.rooms || []); setDoorReady(j.door_ready === true) }
     if (s.ok) setStaff((await s.json()).staff || [])
     if (m.ok) setMpins((await m.json()).members || [])
   }, [])
@@ -37,8 +41,13 @@ export default function AdminKiosk() {
 
   const addDevice = async () => {
     if (!label.trim()) return
-    const r = await fetch('/api/admin/kiosk-devices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ label, room: room || null }) })
-    if (r.ok) { const j = await r.json(); setMsg(`${t('Pairing code for', 'Mã ghép nối cho')} “${label}”: ${j.pair_code} (${t('valid', 'có hiệu lực')} ${j.expires_in_min} ${t('min — enter it on the tablet at', 'phút — nhập mã trên máy tính bảng tại')} /kiosk/pair)`); setLabel(''); load() }
+    const isDoor = purpose === 'door'
+    const r = await fetch('/api/admin/kiosk-devices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ label, room: isDoor ? null : room || null, purpose }) })
+    if (r.ok) {
+      const j = await r.json()
+      setMsg(`${t('Pairing code for', 'Mã ghép nối cho')} “${label}”: ${j.pair_code} (${t('valid', 'có hiệu lực')} ${j.expires_in_min} ${t('min — enter it on the tablet at', 'phút — nhập mã trên máy tính bảng tại')} /kiosk/pair${isDoor ? t(' — it opens the guest sign-in', ' — máy sẽ mở màn hình đăng ký khách') : ''})`)
+      setLabel(''); setPurpose('room'); load()
+    } else setMsg((await r.json().catch(() => ({})))?.error || t('Could not create.', 'Không thể tạo.'))
   }
   const revoke = async (id: string) => {
     if (!window.confirm(t('Revoke this device? The tablet loses access immediately.', 'Thu hồi thiết bị này? Máy tính bảng sẽ mất quyền truy cập ngay lập tức.'))) return
@@ -71,10 +80,16 @@ export default function AdminKiosk() {
       <div style={sectionLabel}>{t('Enrolled devices', 'Thiết bị đã đăng ký')}</div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
         <input value={label} onChange={e => setLabel(e.target.value)} placeholder={t('Device name (e.g. Floor 4 bar)', 'Tên thiết bị (vd. Quầy bar tầng 4)')} style={input} />
-        <select value={room} onChange={e => setRoom(e.target.value)} style={{ ...input, flex: '0 0 200px' }}>
-          <option value="">{t('Room (for the board)', 'Phòng (cho bảng)')}</option>
-          {rooms.map(r => <option key={r} value={r}>{r}</option>)}
+        <select value={purpose} onChange={e => setPurpose(e.target.value as 'room' | 'door')} style={{ ...input, flex: '0 0 190px' }}>
+          <option value="room">{t('Room tablet', 'Máy tính bảng phòng')}</option>
+          <option value="door" disabled={!doorReady}>{doorReady ? t('Door — guest sign-in', 'Cửa — khách đăng ký') : t('Door (run db/guest_signin.sql)', 'Cửa (cần chạy db/guest_signin.sql)')}</option>
         </select>
+        {purpose === 'room' && (
+          <select value={room} onChange={e => setRoom(e.target.value)} style={{ ...input, flex: '0 0 200px' }}>
+            <option value="">{t('Room (for the board)', 'Phòng (cho bảng)')}</option>
+            {rooms.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+        )}
         <button onClick={addDevice} disabled={!label.trim()} style={{ ...btn, opacity: label.trim() ? 1 : 0.4 }}>{t('Add device', 'Thêm thiết bị')}</button>
       </div>
       {devices.map(d => (
@@ -83,10 +98,15 @@ export default function AdminKiosk() {
             <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 15, color: '#E5D4C2' }}>{d.label}</span>
             <span style={{ ...pill, ...(d.status === 'enrolled' ? pillOk : d.status === 'revoked' ? pillBad : pillPend) }}>{d.status}</span>
             {d.pair_code && <span style={{ fontFamily: MONO, fontSize: 13, color: '#D4B85A', marginLeft: 10 }}>{t('code:', 'mã:')} {d.pair_code}</span>}
-            <select value={d.room || ''} onChange={e => setRoomFor(d.id, e.target.value)} style={{ ...input, flex: 'none', marginLeft: 10, padding: '4px 8px', fontSize: 11 }}>
-              <option value="">{t('no room', 'chưa có phòng')}</option>
-              {rooms.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
+            {d.purpose === 'door' ? (
+              // A door device stands in no room; the database refuses one.
+              <span style={{ ...pill, ...pillPend }}>{t('door · guest sign-in', 'cửa · khách đăng ký')}</span>
+            ) : (
+              <select value={d.room || ''} onChange={e => setRoomFor(d.id, e.target.value)} style={{ ...input, flex: 'none', marginLeft: 10, padding: '4px 8px', fontSize: 11 }}>
+                <option value="">{t('no room', 'chưa có phòng')}</option>
+                {rooms.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            )}
             <div style={{ fontFamily: MONO, fontSize: 9, color: '#7E7864', marginTop: 3 }}>{d.last_seen_at ? `${t('last seen', 'lần cuối')} ${new Date(d.last_seen_at).toLocaleString('en-GB')}` : t('never connected', 'chưa từng kết nối')}</div>
           </div>
           {d.status !== 'revoked' && <button onClick={() => revoke(d.id)} style={revokeBtn}>{t('Revoke', 'Thu hồi')}</button>}

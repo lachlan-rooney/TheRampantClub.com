@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { vnDateString } from '@/lib/datetime'
 import UnitPicker from '@/components/admin/UnitPicker'
+import { GuestNamesField } from '@/components/admin/BookingGuests'
 import { useLang } from '@/lib/admin-lang'
 
 // Admin / Floor / Calendar / New entry — a MEMBER booking (default) OR a
@@ -60,6 +61,8 @@ export default function NewBookingPage() {
   const [partySize, setPartySize] = useState('2')
   const [notes, setNotes] = useState('')
   const [sendConfirmation, setSendConfirmation] = useState(false)
+  // The guests' names, given in advance (2026-09-14) — saved with the booking.
+  const [guestNames, setGuestNames] = useState<string[]>([])
 
   // House-entry fields
   const [title, setTitle] = useState('')
@@ -162,6 +165,7 @@ export default function NewBookingPage() {
           session_label: sessionLabel || null, space,
           party_size: party, unit_ids: unitIds,
           notes: notes || null, send_confirmation: sendConfirmation,
+          guest_names: guestNames.map(n => n.trim()).filter(Boolean),
         }),
       })
       const j = await r.json()
@@ -171,9 +175,14 @@ export default function NewBookingPage() {
         setTimeout(() => router.push('/admin/calendar'), 2600)
         return
       }
+      if (j.guests_error) {
+        showToast(`${t('Booking saved, but the guest names were not', 'Đã lưu đặt chỗ, nhưng chưa lưu được tên khách')}: ${j.guests_error}`, 'error')
+        setTimeout(() => router.push('/admin/calendar'), 2600)
+        return
+      }
       router.push('/admin/calendar')
     } catch (e) { setError((e as Error).message); setSaving(false) }
-  }, [memberNo, bookingDate, startTime, endTime, sessionLabel, space, partySize, unitIds, selectedSeats, notes, sendConfirmation, router, showToast])
+  }, [memberNo, bookingDate, startTime, endTime, sessionLabel, space, partySize, unitIds, selectedSeats, notes, sendConfirmation, guestNames, router, showToast])
 
   const submitHouse = useCallback(async () => {
     if (!title.trim()) { setError(t('A title is required.', 'Cần có tiêu đề.')); return }
@@ -410,6 +419,7 @@ export default function NewBookingPage() {
             <div style={editLabel}>{t('Notes', 'Ghi chú')}</div>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder={t('Special requests, party context, anything the team should know.', 'Yêu cầu đặc biệt, bối cảnh nhóm khách, bất cứ điều gì nhóm cần biết.')} style={{ ...inputStyle, resize: 'vertical' }} />
           </div>
+          <GuestNamesField names={guestNames} onChange={setGuestNames} partySize={partySize ? Number(partySize) : 1} />
           <label style={{
             display: 'flex', alignItems: 'center', gap: 10, marginTop: 18, padding: '12px 14px',
             background: 'rgba(212,184,90,0.06)', border: '1px solid rgba(212,184,90,0.20)', borderRadius: 6,

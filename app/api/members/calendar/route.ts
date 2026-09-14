@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getActor, svc } from '@/lib/social/server'
+import { loadBookingGuests } from '@/lib/guests-server'
 
 // A member's personal calendar for a date window: everything that concerns THEM
 // — their own bookings, the fixtures they can join (with their signed-up flag),
@@ -40,9 +41,18 @@ export async function GET(req: Request) {
       .eq('visibility', 'member').gte('entry_date', from).lte('entry_date', to),
   ])
 
+  // The guest names on the member's OWN bookings (2026-09-14) — the ids above are
+  // already scoped to their member_no, so this cannot reach anyone else's list.
+  // Member-safe fields only.
+  const { ready: guests_ready, byBooking } = await loadBookingGuests(a, (bookings as { booking_id: string }[]).map(b => b.booking_id))
+
   const signedUp = new Set((signups || []).map(s => s.fixture_id))
   return NextResponse.json({
-    bookings,
+    guests_ready,
+    bookings: (bookings as { booking_id: string }[]).map(b => ({
+      ...b,
+      guests: (byBooking.get(b.booking_id) || []).map(g => ({ id: g.id, guest_name: g.guest_name, signed_in: g.signed_in })),
+    })),
     fixtures: (fixtures || []).map(f => ({ ...f, signed_up: signedUp.has(f.id) })),
     entries: entries || [],
   })

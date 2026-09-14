@@ -46,20 +46,45 @@ export async function middleware(request: NextRequest) {
 
   // Public floor kiosks (/kiosk/[floor]) and /kiosk/pair are NOT device-gated —
   // gating them would break the public display. They still get no-store.
-  if (p === '/kiosk' || (p.startsWith('/kiosk/')
-      && !p.startsWith('/kiosk/staff') && !p.startsWith('/kiosk/board') && !p.startsWith('/kiosk/member'))) {
+  const deviceGated = p.startsWith('/kiosk/staff') || p.startsWith('/kiosk/board')
+    || p.startsWith('/kiosk/member') || p.startsWith('/kiosk/door')
+  if (p === '/kiosk' || (p.startsWith('/kiosk/') && !deviceGated)) {
     return noStore(supabaseResponse)
   }
 
-  if (p.startsWith('/kiosk/staff') || p.startsWith('/kiosk/board') || p.startsWith('/kiosk/member')) {
+  if (deviceGated) {
     const token = request.cookies.get('trc_kiosk_device')?.value
     let active = false
-    if (token) { const { data } = await supabase.rpc('kiosk_device_active', { p_token: token }); active = data === true }
+    // ── THE DOOR IS A DEVICE, NOT A ROOM (2026-09-14) ──────────────────────
+    // kiosk_device_purpose answers "live?" and "door or room?" in the one round
+    // trip kiosk_device_active used to take (it stamps last_seen the same way).
+    // Until db/guest_signin.sql has run that function does not exist: fall back
+    // to the old call and treat every live device as a room, so the room tablets
+    // behave exactly as before and /kiosk/door stays shut.
+    let purpose: string | null = null
+    if (token) {
+      const { data, error } = await supabase.rpc('kiosk_device_purpose', { p_token: token })
+      if (!error) { purpose = typeof data === 'string' ? data : null; active = purpose !== null }
+      else {
+        const { data: ok } = await supabase.rpc('kiosk_device_active', { p_token: token })
+        active = ok === true; purpose = active ? 'room' : null
+      }
+    }
     if (!active) {
       const url = request.nextUrl.clone()
       url.pathname = '/kiosk/pair'; url.search = ''
       return noStore(NextResponse.redirect(url))
     }
+
+    // Each kind of device keeps to its own surface. A room tablet cannot open the
+    // guest sign-in, and the door iPad — used by people who are not members —
+    // cannot reach the member PIN pad or the staff shell by a back-gesture.
+    if (p.startsWith('/kiosk/door') !== (purpose === 'door')) {
+      const url = request.nextUrl.clone()
+      url.pathname = purpose === 'door' ? '/kiosk/door' : '/kiosk/board'; url.search = ''
+      return noStore(NextResponse.redirect(url))
+    }
+    if (p.startsWith('/kiosk/door')) return noStore(supabaseResponse)
 
     // ── THE PHASE 2 MODE BOUNDARY ──────────────────────────────────────────
     // Phase 1 gated /kiosk/staff on the DEVICE TOKEN ALONE. In member mode that

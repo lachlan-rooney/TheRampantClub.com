@@ -4,6 +4,8 @@ import { Resend } from 'resend'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
 import { checkBookingAvailability } from '@/lib/booking-availability'
+import { cleanGuestName, isMissingSchema, NOT_SET_UP } from '@/lib/guests'
+import { staffAttribution } from '@/lib/guests-server'
 
 // GET  /api/admin/bookings[?from=YYYY-MM-DD&to=YYYY-MM-DD&space=…&status=…]
 // POST /api/admin/bookings   — create a booking
@@ -142,6 +144,20 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Guest names given at booking time (2026-09-14). Unlike the table holds, a
+  // failure here does NOT roll the booking back — the booking is real either way,
+  // and names can be added on the edit page. The form is told, so it can say so.
+  let guests_error: string | null = null
+  const guestNames = Array.isArray(body.guest_names)
+    ? [...new Set((body.guest_names as unknown[]).map(cleanGuestName).filter((n): n is string => !!n))].slice(0, 50)
+    : []
+  if (guestNames.length) {
+    const added_by = await staffAttribution()
+    const { error: gErr } = await sb.from('booking_guests')
+      .insert(guestNames.map(guest_name => ({ booking_id: data.booking_id, guest_name, added_by, added_by_kind: 'staff' })))
+    if (gErr) guests_error = isMissingSchema(gErr) ? NOT_SET_UP : gErr.message
+  }
+
   // Best-effort confirmation email. Failure logs a warning but does not
   // roll back the booking — the staff can resend from the calendar later.
   let email_sent = false
@@ -174,7 +190,7 @@ export async function POST(req: NextRequest) {
     email_error = 'RESEND_API_KEY not configured'
   }
 
-  return NextResponse.json({ booking: data, email_sent, email_error })
+  return NextResponse.json({ booking: data, email_sent, email_error, guests_error })
 }
 
 function formatBookingDateForSubject(iso: string): string {

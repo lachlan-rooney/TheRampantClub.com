@@ -54,6 +54,25 @@ export interface AutoData {
 
 const STAGES = ['Lead', 'Initial Contact', 'Interview Scheduled', 'Interview Complete', 'Application Received', 'Onboarded']
 
+// WHO COUNTS AS A GUEST WHO CAME IN. Since the door sign-in (2026-09-14,
+// db/guest_signin.sql) guest_visits also holds two kinds of row that are NOT a
+// guest in the club: one the duty manager REFUSED, and one still WAITING on the
+// duty manager. Counting either would inflate "Who's Been In". Before that SQL has
+// run the columns do not exist, the first query errors, and the old count stands —
+// it must never fall through to an empty list that reads as "no guests this week".
+async function countedGuests(sb: SupabaseClient, start: string, end: string): Promise<{ duration_min: number | null; party_size: number | null }[]> {
+  try {
+    const door = await sb.from('guest_visits').select('duration_min, party_size, referred_reason, decision')
+      .gte('visit_date', start).lte('visit_date', end)
+    if (!door.error) {
+      return ((door.data || []) as { duration_min: number | null; party_size: number | null; referred_reason: string | null; decision: string | null }[])
+        .filter(g => g.decision !== 'refused' && !(g.referred_reason && !g.decision))
+    }
+  } catch { /* fall through to the pre-door count */ }
+  return safe<{ duration_min: number | null; party_size: number | null }[]>(
+    sb.from('guest_visits').select('duration_min, party_size').gte('visit_date', start).lte('visit_date', end), [])
+}
+
 // The headline metrics for a [start,end] window (used for both this + prior week).
 async function windowMetrics(sb: SupabaseClient, start: string, end: string): Promise<WeekMetrics> {
   const visits = await safe<{ member_no: string; visit_date: string; duration_min: number | null }[]>(
@@ -62,8 +81,7 @@ async function windowMetrics(sb: SupabaseClient, start: string, end: string): Pr
     sb.from('card_presence').select('member_number, seen_at').gte('seen_at', start).lte('seen_at', end + 'T23:59:59'), [])
   const bookings = await safe<{ party_size: number; status: string; arrived_at: string | null }[]>(
     sb.from('bookings').select('party_size, status, arrived_at').gte('booking_date', start).lte('booking_date', end), [])
-  const guests = await safe<{ duration_min: number | null; party_size: number | null }[]>(
-    sb.from('guest_visits').select('duration_min, party_size').gte('visit_date', start).lte('visit_date', end), [])
+  const guests = await countedGuests(sb, start, end)
   const newMembers = await safe<{ member_no: string }[]>(
     sb.from('members').select('member_no').gte('join_date', start).lte('join_date', end), [])
   const signed = await safe<{ id: string }[]>(

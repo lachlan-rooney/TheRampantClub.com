@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { isAdmin } from '@/lib/admin'
 import { vnDateString } from '@/lib/datetime'
+import { loadBookingGuests } from '@/lib/guests-server'
 
 // GET /api/admin/tonight/briefs[?date=YYYY-MM-DD]
 //
@@ -50,6 +51,7 @@ interface Booking {
   notes: string | null
   status: string
   linked_visit_id: string | null
+  guests?: { id: string; guest_name: string; signed_in: boolean }[]
 }
 
 interface VisitToday {
@@ -113,6 +115,17 @@ export async function GET(req: NextRequest) {
     .in('status', ['confirmed', 'pending', 'arrived'])
     .order('start_time', { ascending: true, nullsFirst: false })
   const bookings = (bookingsRaw || []) as Booking[]
+
+  // The guest names each member gave in advance, with who has already signed in
+  // at the door. Left off entirely (not an empty list) until db/guest_signin.sql
+  // has run, so the page cannot say "no guest names given" about a feature that
+  // does not exist yet.
+  const { ready: guestsReady, byBooking: guestsByBooking } = await loadBookingGuests(sb, bookings.map(b => b.booking_id))
+  if (guestsReady) {
+    for (const b of bookings) {
+      b.guests = (guestsByBooking.get(b.booking_id) || []).map(g => ({ id: g.id, guest_name: g.guest_name, signed_in: g.signed_in }))
+    }
+  }
 
   // Visits already on the floor today — for walk-ins (no booking) so they
   // still get a brief surface.

@@ -6,9 +6,24 @@ import { vnDateString } from '@/lib/datetime'
 
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
 
-interface Guest { id: string; guest_name: string; host_member_no: string | null; visit_date: string; duration_min: number | null; party_size: number; note: string | null }
+interface Guest {
+  id: string; guest_name: string; host_member_no: string | null; visit_date: string; duration_min: number | null; party_size: number; note: string | null
+  // Door sign-ins (db/guest_signin.sql, 2026-09-14). Absent on manual entries and before that SQL has run.
+  signed_in_at?: string | null; on_list?: boolean | null; referred_reason?: string | null
+  decision?: 'admitted' | 'refused' | null; decision_reason?: string | null; decided_by_name?: string | null; decided_at?: string | null
+  host_name?: string | null
+  signature?: 'live' | 'deleted' | null
+}
 
 const fmt = (d: string) => new Date(d + 'T12:00:00+07:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+const hhmm = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' })
+
+// A referral nobody decided within two hours was settled some other way — the
+// door stops accepting a decision on it then (app/api/kiosk/door/shared.ts).
+const STALE_MS = 2 * 3600 * 1000
+
+// Not a guest who came in: refused at the door, or still waiting on the duty manager.
+const counts = (g: Guest) => g.decision !== 'refused' && !(g.referred_reason && !g.decision)
 
 export default function AttendancePage() {
   const { t } = useLang()
@@ -60,7 +75,7 @@ export default function AttendancePage() {
 
   // This-week (VN Mon–Sun) rollup. Compute the boundary PURELY in VN space via
   // UTC accessors — browser-local getDay()/getDate() would be a day off for
-  // admins west of ~UTC-5.
+  // admins west of ~UTC-5. Refusals and undecided referrals are not visits.
   const weekTotals = useMemo(() => {
     const [y, m, d] = vnDateString().split('-').map(Number)
     const base = new Date(Date.UTC(y, m - 1, d))
@@ -69,12 +84,35 @@ export default function AttendancePage() {
     const sun = new Date(mon); sun.setUTCDate(mon.getUTCDate() + 6)
     const from = mon.toISOString().slice(0, 10)
     const to = sun.toISOString().slice(0, 10)
-    const wk = guests.filter(g => g.visit_date >= from && g.visit_date <= to)
+    const wk = guests.filter(g => g.visit_date >= from && g.visit_date <= to && counts(g))
     return { heads: wk.reduce((s, g) => s + (g.party_size || 1), 0), hours: Math.round(wk.reduce((s, g) => s + (g.duration_min || 0), 0) / 60), count: wk.length }
   }, [guests])
 
+  const door = guests.filter(g => g.signed_in_at)
+  const manual = guests.filter(g => !g.signed_in_at)
+
+  const reasonLabel = (r: string | null | undefined) =>
+    r === 'after_last_entry' ? t('after 10:30pm', 'sau 22:30')
+    : r === 'already_signed_in' ? t('already signed in', 'đã đăng ký trước đó')
+    : r === 'not_on_list' ? t('name not given', 'chưa báo tên') : ''
+
+  const status = (g: Guest): { text: string; tone: 'ok' | 'gold' | 'bad' | 'wait' } => {
+    if (!g.referred_reason) return { text: t('On the list', 'Có trong danh sách'), tone: 'ok' }
+    if (g.decision === 'admitted') return { text: `${t('Admitted by', 'Cho vào bởi')} ${g.decided_by_name || t('staff', 'nhân viên')} · ${reasonLabel(g.referred_reason)}`, tone: 'gold' }
+    if (g.decision === 'refused') return { text: `${t('Refused by', 'Từ chối bởi')} ${g.decided_by_name || t('staff', 'nhân viên')} · ${reasonLabel(g.referred_reason)}`, tone: 'bad' }
+    const stale = g.signed_in_at && Date.now() - +new Date(g.signed_in_at) > STALE_MS
+    return { text: `${stale ? t('Not decided at the door', 'Chưa được quyết định tại cửa') : t('Waiting for the duty manager', 'Đang chờ quản lý ca trực')} · ${reasonLabel(g.referred_reason)}`, tone: 'wait' }
+  }
+  const toneStyle = (tone: 'ok' | 'gold' | 'bad' | 'wait'): React.CSSProperties =>
+    tone === 'ok' ? { color: '#7AB07A', borderColor: 'rgba(122,176,122,0.4)' }
+    : tone === 'gold' ? { color: '#D4B85A', borderColor: 'rgba(212,184,90,0.4)' }
+    : tone === 'bad' ? { color: '#C27070', borderColor: 'rgba(194,112,112,0.4)' }
+    : { color: '#E5D4C2', borderColor: 'rgba(229,212,194,0.35)' }
+
   const input: React.CSSProperties = { boxSizing: 'border-box', width: '100%', background: 'rgba(5,46,32,0.5)', color: '#E5D4C2', border: '1px solid rgba(229,212,194,0.14)', borderRadius: 7, padding: '9px 12px', fontFamily: MONO, fontSize: 12, outline: 'none' }
   const label: React.CSSProperties = { fontFamily: MONO, fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#B2AA98', margin: '0 0 4px', display: 'block' }
+  const section: React.CSSProperties = { fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#B2AA98', marginBottom: 8 }
+  const empty: React.CSSProperties = { fontFamily: MONO, fontSize: 12, color: '#B2AA98', opacity: 0.6, fontStyle: 'italic', padding: '16px 0' }
 
   return (
     <div style={{ maxWidth: 860 }}>
@@ -84,7 +122,42 @@ export default function AttendancePage() {
         {weekTotals.count > 0 && ` · ${t('This week', 'Tuần này')}: ${weekTotals.heads} ${t('guests', 'khách')}${weekTotals.hours ? `, ~${weekTotals.hours}h` : ''}`}
       </p>
 
-      <div style={{ border: '1px solid rgba(212,184,90,0.25)', borderRadius: 12, padding: 18, marginBottom: 24, background: 'rgba(5,46,32,0.4)' }}>
+      {/* ── AT THE DOOR ─────────────────────────────────────────────────────
+          Signed in on the door iPad. The signature thumbnail exists for seven
+          days from signing; after that the image is gone and only the record
+          remains. The image is fetched per row from a route that applies the
+          seven-day rule itself, so a late clean-up job can never show an old one. */}
+      <div style={section}>{t('At the door', 'Tại cửa')}</div>
+      {loading ? <div style={{ ...empty, fontStyle: 'normal' }}>{t('Loading…', 'Đang tải…')}</div>
+        : door.length === 0 ? <div style={empty}>{t('No door sign-ins yet.', 'Chưa có lượt đăng ký tại cửa.')}</div>
+        : door.map(g => {
+          const s = status(g)
+          return (
+            <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', border: '1px solid rgba(229,212,194,0.10)', borderRadius: 9, marginBottom: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98', width: 92, flexShrink: 0 }}>{fmt(g.visit_date)}<br />{g.signed_in_at ? hhmm(g.signed_in_at) : ''}</span>
+              <div style={{ flex: 1, minWidth: 180 }}>
+                <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 15, color: '#E5D4C2' }}>{g.guest_name}</div>
+                <div style={{ fontFamily: MONO, fontSize: 10, color: '#B2AA98', marginTop: 3 }}>
+                  {g.host_name || g.host_member_no ? `${t('guest of', 'khách của')} ${g.host_name || g.host_member_no}` : t('no host on the list', 'không có hội viên mời trong danh sách')}
+                </div>
+                <span style={{ display: 'inline-block', marginTop: 6, fontFamily: MONO, fontSize: 9, padding: '2px 8px', borderRadius: 8, border: '1px solid', letterSpacing: '0.04em', ...toneStyle(s.tone) }}>{s.text}</span>
+                {g.decision_reason && <div style={{ fontFamily: MONO, fontSize: 10, color: '#B2AA98', marginTop: 4, fontStyle: 'italic' }}>“{g.decision_reason}”</div>}
+              </div>
+              {g.signature === 'live' ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={`/api/admin/guest-visits/${g.id}/signature`} alt={t('Signature', 'Chữ ký')} loading="lazy"
+                  style={{ width: 132, height: 50, objectFit: 'contain', background: '#E5D4C2', borderRadius: 6, flexShrink: 0 }} />
+              ) : (
+                <span style={{ width: 132, fontFamily: MONO, fontSize: 9, color: '#7E7864', textAlign: 'center', flexShrink: 0, lineHeight: 1.5 }}>
+                  {t('signature deleted after 7 days', 'chữ ký đã xoá sau 7 ngày')}
+                </span>
+              )}
+              <button onClick={() => remove(g.id)} style={{ fontFamily: MONO, fontSize: 10, background: 'none', border: 'none', color: '#8A6A6A', cursor: 'pointer' }}>{t('Remove', 'Xoá')}</button>
+            </div>
+          )
+        })}
+
+      <div style={{ border: '1px solid rgba(212,184,90,0.25)', borderRadius: 12, padding: 18, margin: '28px 0 24px', background: 'rgba(5,46,32,0.4)' }}>
         <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#D4B85A', marginBottom: 12 }}>{t('Log a guest', 'Ghi một khách')}</div>
         {error && <div style={{ fontFamily: MONO, fontSize: 11, color: '#C27070', marginBottom: 10 }}>{error}</div>}
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10, marginBottom: 10 }}>
@@ -100,10 +173,10 @@ export default function AttendancePage() {
         <button onClick={add} disabled={busy || !form.guest_name.trim()} style={{ fontFamily: MONO, fontSize: 11, background: '#D4B85A', color: '#052E20', border: 'none', borderRadius: 7, padding: '9px 18px', fontWeight: 700, cursor: 'pointer', opacity: busy || !form.guest_name.trim() ? 0.5 : 1 }}>{busy ? t('Saving…', 'Đang lưu…') : t('Log guest', 'Ghi khách')}</button>
       </div>
 
-      <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#B2AA98', marginBottom: 8 }}>{t('Recent', 'Gần đây')}</div>
-      {loading ? <div style={{ fontFamily: MONO, fontSize: 12, color: '#B2AA98', opacity: 0.6 }}>{t('Loading…', 'Đang tải…')}</div>
-        : guests.length === 0 ? <div style={{ fontFamily: MONO, fontSize: 12, color: '#B2AA98', opacity: 0.6, fontStyle: 'italic', padding: '16px 0' }}>{t('No guests logged yet.', 'Chưa có khách nào được ghi.')}</div>
-        : guests.map(g => (
+      <div style={section}>{t('Logged by hand', 'Ghi thủ công')}</div>
+      {loading ? <div style={{ ...empty, fontStyle: 'normal' }}>{t('Loading…', 'Đang tải…')}</div>
+        : manual.length === 0 ? <div style={empty}>{t('No guests logged yet.', 'Chưa có khách nào được ghi.')}</div>
+        : manual.map(g => (
           <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', border: '1px solid rgba(229,212,194,0.10)', borderRadius: 9, marginBottom: 6 }}>
             <span style={{ flex: 1, minWidth: 0, fontFamily: "'Rampant Sans', serif", fontSize: 14, color: '#E5D4C2' }}>{g.guest_name}{g.party_size > 1 ? ` +${g.party_size - 1}` : ''}</span>
             <span style={{ fontFamily: MONO, fontSize: 10, color: '#B2AA98' }}>{fmt(g.visit_date)}{g.duration_min ? ` · ${g.duration_min}m` : ''}{g.host_member_no ? ` · ${t('host', 'mời')} ${g.host_member_no.replace(/^TRC-M/i, '#')}` : ''}</span>

@@ -5,6 +5,7 @@ import { useToast, ConfirmModal } from '@/components/admin/dialogs'
 import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
 import UnitPicker from '@/components/admin/UnitPicker'
+import { BookingGuestsEditor } from '@/components/admin/BookingGuests'
 import { useLang } from '@/lib/admin-lang'
 
 // Admin / Floor / Calendar / Edit booking.
@@ -148,6 +149,9 @@ export default function EditBookingPage() {
         <div style={editLabel}>{t('Notes', 'Ghi chú')}</div>
         <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
       </div>
+
+      {/* Guest names save on their own, as they change — not with "Save changes". */}
+      <BookingGuestsEditor bookingId={id} partySize={partySize ? Number(partySize) : 1} />
 
       <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
         <button onClick={save} disabled={saving} style={btnPrimary}>{saving ? t('Saving…', 'Đang lưu…') : t('Save changes', 'Lưu thay đổi')}</button>

@@ -12,8 +12,13 @@ export default async function KioskIndex() {
   const token = (await cookies()).get(DEVICE_COOKIE)?.value
   if (!token) redirect('/kiosk/pair')
   const hash = createHash('sha256').update(token).digest('hex')
-  const { data: dev } = await svc().from('kiosk_devices')
-    .select('revoked_at').eq('token_hash', hash).maybeSingle()
+  // The door iPad's front door is the guest sign-in (2026-09-14). purpose only
+  // exists once db/guest_signin.sql has run; until then every device is a room.
+  const withPurpose = await svc().from('kiosk_devices')
+    .select('revoked_at, purpose').eq('token_hash', hash).maybeSingle()
+  const dev = withPurpose.error
+    ? (await svc().from('kiosk_devices').select('revoked_at').eq('token_hash', hash).maybeSingle()).data
+    : withPurpose.data
   if (!dev || dev.revoked_at) redirect('/kiosk/pair')
-  redirect('/kiosk/board')
+  redirect((dev as { purpose?: string }).purpose === 'door' ? '/kiosk/door' : '/kiosk/board')
 }

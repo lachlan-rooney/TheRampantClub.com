@@ -44,6 +44,8 @@ interface Booking {
   notes: string | null
   status: string
   linked_visit_id: string | null
+  // Names given in advance (db/guest_signin.sql); absent until that has run.
+  guests?: { id: string; guest_name: string; signed_in: boolean }[]
 }
 interface VisitToday {
   visit_id: string
@@ -391,6 +393,16 @@ function BriefCard({ brief, isStarting, onStart }: { brief: Brief; isStarting: b
             {arrived ? `✓ ${b.visit?.phase}` : timeLine}
           </span>
           {b.booking && <span style={cardMeta}>{b.booking.space} · {b.booking.party_size}p</span>}
+          {/* Who the member said is coming, beside the party size, so the floor
+              knows the names before the door does. ✓ = signed in at the door. */}
+          {b.booking?.guests && b.booking.guests.length > 0 && (
+            <span style={{ ...cardMeta, textAlign: 'right', maxWidth: 280 }}>
+              {t('Guests', 'Khách')}: {b.booking.guests.map(g => (g.signed_in ? '✓ ' : '') + g.guest_name).join(', ')}
+            </span>
+          )}
+          {b.booking?.guests && b.booking.guests.length === 0 && b.booking.party_size > 1 && (
+            <span style={{ ...cardMeta, opacity: 0.6 }}>{t('no guest names given', 'chưa có tên khách')}</span>
+          )}
         </div>
       </div>
 

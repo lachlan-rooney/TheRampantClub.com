@@ -17,9 +17,15 @@ export async function POST(req: Request) {
   // to land on the staff sign-in, which is the one screen a tablet standing in a
   // room should never open on.
   const hash = createHash('sha256').update(token as string).digest('hex')
-  const { data: dev } = await svc().from('kiosk_devices').select('room').eq('token_hash', hash).maybeSingle()
+  // The door iPad (purpose = 'door', db/guest_signin.sql) lands on the guest
+  // sign-in instead. Before that SQL the column is absent: read the room alone.
+  let room: string | null = null
+  let purpose: string | null = null
+  const withPurpose = await svc().from('kiosk_devices').select('room, purpose').eq('token_hash', hash).maybeSingle()
+  if (!withPurpose.error) { room = withPurpose.data?.room ?? null; purpose = withPurpose.data?.purpose ?? null }
+  else { const { data: dev } = await svc().from('kiosk_devices').select('room').eq('token_hash', hash).maybeSingle(); room = dev?.room ?? null }
 
-  const res = NextResponse.json({ ok: true, room: dev?.room ?? null, next: '/kiosk/board' })
+  const res = NextResponse.json({ ok: true, room, next: purpose === 'door' ? '/kiosk/door' : '/kiosk/board' })
   res.cookies.set(DEVICE_COOKIE, token as string, deviceCookieOpts)
   return res
 }
