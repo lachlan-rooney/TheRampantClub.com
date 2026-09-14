@@ -25,6 +25,13 @@
 //   4. Every night has a supervisor on it.
 //   5. Everybody reaches their contracted hours.
 //   6. Days off vary from the previous week, for anyone not on a fixed pattern.
+//   7. Hiếu and Bình — a couple — get a day off together once a fortnight.
+//   8. Somebody is cleaning, 09:00 to 23:00, every day.
+//
+// Rules 7 and 8 are WARNINGS. Both are the first things to give in a week where
+// someone is ill, and a rule that turns the whole rota red for them is a rule
+// people switch off. They say "this has not happened yet", which is something a
+// manager can act on while there is still a week to act in.
 //
 // A WORKED EXAMPLE OF RULE 6 NOT BEING FREE. With this roster, Saturday needs
 // three on the floor and two of them are Hiếu and Bình — neither a supervisor.
@@ -124,6 +131,16 @@ export const DAY_SHIFT = 'Office'
  *  the Close, so it was a second name for the same shift. Three or four people
  *  work each night on these two patterns. */
 const EVENING_ORDER = ['Open', 'Close']
+
+/** The cleaning shifts, which tile 09:00 to 23:00 between them and are NOT
+ *  floor cover (db/rota_cleaning.sql).
+ *
+ *  They sit outside every rule above: a cleaner on a Tuesday night does not
+ *  make Tuesday supervised, does not count towards the number wanted on the
+ *  floor, and is not on anybody's 48-hour contract here. Held as a set rather
+ *  than tested by a name prefix, because "Clean" is a word somebody will one
+ *  day put at the front of a floor shift. */
+export const CLEANING_SHIFTS = new Set(['Clean Early', 'Clean Late'])
 
 // ── PLAN ───────────────────────────────────────────────────────────────────
 //
@@ -445,9 +462,32 @@ export function checkWeek(opts: {
       detail: `${p.name} and ${other.name} have had no day off together for two weeks — they should share one every other week.` })
   }
 
+  // 8 — somebody is cleaning, from nine in the morning to eleven at night
+  //
+  // Only asked once the club has started rostering cleaning at all: before
+  // that, every week would come back with fourteen complaints about a shift
+  // nobody has been put on yet, and a check that is wrong on day one never
+  // gets read on day ninety. Once there IS cleaning on the week, a day missing
+  // one of the two halves is the real failure — Monday to Saturday done and
+  // Sunday forgotten is exactly the shape it takes.
+  const anyCleaning = shifts.some(s => CLEANING_SHIFTS.has(s.shiftName))
+  if (anyCleaning) {
+    for (const date of dates) {
+      for (const name of CLEANING_SHIFTS) {
+        if (shifts.some(s => s.shiftDate === date && s.shiftName === name)) continue
+        out.push({ severity: 'warning', rule: 'cleaning not covered', when: date,
+          detail: `Nobody is on ${name} on ${date} — cleaning runs from 09:00 to 23:00, every day.` })
+      }
+    }
+  }
+
   // 4 — a supervisor on every night the club is open
   for (const date of dates) {
-    const onTonight = shifts.filter(s => s.shiftDate === date && s.shiftName !== DAY_SHIFT)
+    // Cleaning is excluded: a cleaner in the building does not make the night
+    // supervised, and counting them would turn "nobody is running the floor"
+    // into a green tick.
+    const onTonight = shifts.filter(s => s.shiftDate === date
+      && s.shiftName !== DAY_SHIFT && !CLEANING_SHIFTS.has(s.shiftName))
     if (onTonight.length === 0) {
       out.push({ severity: 'blocking', rule: 'night with nobody on', when: date,
         detail: `Nobody is rostered for the evening of ${date}.` })

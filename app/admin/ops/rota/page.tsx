@@ -14,9 +14,12 @@ const FAMILY = "'Google Sans Code', monospace"
 const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 // Staff functions (confirmed set). A person can cover several.
-const FUNCTIONS = ['bar', 'floor', 'host', 'gm'] as const
-const FN_COLOR: Record<string, string> = { bar: '#D4B85A', floor: '#7AB07A', host: '#8FB3D9', gm: '#C2A0D9' }
-const FN_LABEL: Record<string, string> = { bar: 'Bar', floor: 'Floor', host: 'Host', gm: 'GM' }
+// 'clean' added 2026-09-14 with the cleaning shifts (db/rota_cleaning.sql) —
+// without it a cleaner has no function, and a person with no function can be
+// dropped into a bar shift by anyone who clicks the wrong cell.
+const FUNCTIONS = ['bar', 'floor', 'host', 'gm', 'clean'] as const
+const FN_COLOR: Record<string, string> = { bar: '#D4B85A', floor: '#7AB07A', host: '#8FB3D9', gm: '#C2A0D9', clean: '#C99A6E' }
+const FN_LABEL: Record<string, string> = { bar: 'Bar', floor: 'Floor', host: 'Host', gm: 'GM', clean: 'Clean' }
 
 // Date-only maths in UTC to avoid local-tz off-by-one; the anchor is the VN day.
 function mondayOf(iso: string): string {
@@ -140,6 +143,19 @@ export default function RotaPage() {
   // in the week's shifts. So a shift assigned as "Mid" stays visible even after
   // the "Mid" type is renamed/removed — the snapshot is shown, never hidden.
   const typeNames = types.map(t => t.name)
+  // "15:00–23:30" for a shift: its own times where it has them, else its
+  // type's — a chip showing only when someone arrives never said when they leave.
+  const hhmm = (v?: string | null) => v ? v.slice(0, 5) : ''
+  const typeTimes = (name: string) => {
+    const ty = types.find(x => x.name === name)
+    return ty?.start_time ? `${hhmm(ty.start_time)}–${hhmm(ty.end_time)}` : ''
+  }
+  const shiftTimes = (s: RotaShift) => {
+    const ty = types.find(x => x.name === s.shift_name)
+    const start = s.start_time || ty?.start_time
+    const end = s.end_time || ty?.end_time
+    return start || end ? `${hhmm(start) || '?'}–${hhmm(end) || '?'}` : ''
+  }
   const rowNames = [
     ...typeNames,
     ...[...new Set(shifts.map(s => s.shift_name))].filter(n => !typeNames.includes(n)),
@@ -572,7 +588,7 @@ export default function RotaPage() {
                 return (
                 <tr key={name}>
                   <td style={{ ...td, fontFamily: FAMILY, fontSize: 12, color: isType ? '#E5D4C2' : '#7E7864' }}>
-                    {name}{!isType && <span title={t('retired shift name — kept on existing shifts', 'tên ca đã ngừng — giữ trên các ca hiện có')} style={{ ...metaText, opacity: 0.5 }}> · {t('retired', 'đã ngừng')}</span>}
+                    {name}{isType && typeTimes(name) && <div style={{ ...metaText, opacity: 0.6, marginTop: 2 }}>{typeTimes(name)}</div>}{!isType && <span title={t('retired shift name — kept on existing shifts', 'tên ca đã ngừng — giữ trên các ca hiện có')} style={{ ...metaText, opacity: 0.5 }}> · {t('retired', 'đã ngừng')}</span>}
                   </td>
                   {days.map(d => {
                     // Under-staffing: required (base + day bumps) vs present (assigned who HAVE the function).
@@ -607,9 +623,9 @@ export default function RotaPage() {
                             onDrop={e => { e.stopPropagation(); onDropChip(s) }}
                             onClick={() => { if (didDrag.current) { didDrag.current = false; return } openAssign(d, name, s) }}
                             style={{ ...chip, ...(dragId === s.id ? chipDragging : null) }}
-                            title={[s.start_time && `${s.start_time.slice(0, 5)}–${s.end_time?.slice(0, 5) || ''}`, fns.length ? fns.map(f => FN_LABEL[f] || f).join('/') : null].filter(Boolean).join(' · ')}
+                            title={[shiftTimes(s), fns.length ? fns.map(f => FN_LABEL[f] || f).join('/') : null].filter(Boolean).join(' · ')}
                           >
-                            <span>{memberName(s.member)}{s.start_time ? <span style={{ opacity: 0.6 }}> · {s.start_time.slice(0, 5)}</span> : null}</span>
+                            <span>{memberName(s.member)}{shiftTimes(s) ? <span style={{ opacity: 0.6 }}> · {shiftTimes(s)}</span> : null}</span>
                             {fns.length > 0 && (
                               <span style={{ display: 'inline-flex', gap: 3, marginLeft: 6, flexShrink: 0 }}>
                                 {fns.map(f => <span key={f} title={FN_LABEL[f] || f} style={{ ...fnDot, background: FN_COLOR[f] || '#B2AA98' }} />)}
