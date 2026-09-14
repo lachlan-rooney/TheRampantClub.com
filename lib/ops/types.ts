@@ -149,6 +149,9 @@ export interface CoverageTarget {
   function: string          // bar / floor / host / gm
   count: number
 }
+/** UNUSED since 2026-09-14: demand-scaling rules were removed from the rota
+ *  page (see the note above baseTarget there). Kept because the rows still sit
+ *  in rota_scaling_rules, switched off — this is their shape if they return. */
 export interface ScalingRule {
   id: string
   trigger_type: 'session_covers' | 'event_present' | 'day_covers'

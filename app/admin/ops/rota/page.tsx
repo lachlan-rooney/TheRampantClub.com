@@ -6,7 +6,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { ConfirmModal, PromptModal, useToast } from '@/components/admin/dialogs'
 import { vnDateString } from '@/lib/datetime'
 import { createShift, updateShift, deleteShift, moveShift } from '@/lib/ops/api'
-import type { RotaShift, RotaShiftType, TeamMember, CoverageTarget, ScalingRule, Unavailability } from '@/lib/ops/types'
+import type { RotaShift, RotaShiftType, TeamMember, CoverageTarget, Unavailability } from '@/lib/ops/types'
 import { checkWeek, WEEKDAYS, type RotaStaff } from '@/lib/rota/policy'
 import { useLang } from '@/lib/admin-lang'
 
@@ -67,7 +67,6 @@ export default function RotaPage() {
   const [bookings, setBookings] = useState<DemandBooking[]>([])
   const [entries, setEntries] = useState<DemandEntry[]>([])
   const [targets, setTargets] = useState<CoverageTarget[]>([])
-  const [rules, setRules] = useState<ScalingRule[]>([])
   const [unavail, setUnavail] = useState<Unavailability[]>([])
   const [upcomingOff, setUpcomingOff] = useState<Unavailability[]>([])
   const [offMember, setOffMember] = useState('')
@@ -167,7 +166,7 @@ export default function RotaPage() {
   ]
 
   const load = useCallback(async () => {
-    const [{ data: ty }, { data: sh }, { data: pv }, { data: tm }, { data: bk }, { data: en }, { data: ct }, { data: sr }, { data: ua }, { data: up }] = await Promise.all([
+    const [{ data: ty }, { data: sh }, { data: pv }, { data: tm }, { data: bk }, { data: en }, { data: ct }, { data: ua }, { data: up }] = await Promise.all([
       supabase.from('rota_shift_types').select('*').order('sort_order'),
       supabase.from('rota_shifts').select('*').gte('shift_date', weekStart).lte('shift_date', weekEnd),
       // LAST week too — two rules can only be judged across a pair of weeks:
@@ -183,7 +182,6 @@ export default function RotaPage() {
       supabase.from('calendar_entries').select('id, entry_date, title, space, kind, blocks_space')
         .gte('entry_date', weekStart).lte('entry_date', weekEnd),
       supabase.from('rota_coverage_targets').select('*'),
-      supabase.from('rota_scaling_rules').select('*').order('sort_order'),
       supabase.from('rota_unavailability').select('*').gte('off_date', weekStart).lte('off_date', weekEnd),
       // Upcoming time off (any future date) — for the month-ahead view + the picker.
       supabase.from('rota_unavailability').select('*').gte('off_date', vnDateString()).order('off_date'),
@@ -195,7 +193,6 @@ export default function RotaPage() {
     setBookings((bk || []) as DemandBooking[])
     setEntries((en || []) as DemandEntry[])
     setTargets((ct || []) as CoverageTarget[])
-    setRules((sr || []) as ScalingRule[])
     setUnavail((ua || []) as Unavailability[])
     setUpcomingOff((up || []) as Unavailability[])
     setLoading(false)
@@ -211,7 +208,16 @@ export default function RotaPage() {
     entries: entries.filter(e => e.entry_date === date),
   })
 
-  // ── Coverage: base target + demand-scaled bumps from the active rules ──
+  // ── Coverage: base target per shift × function ──
+  //
+  // DEMAND-SCALING RULES WERE REMOVED 2026-09-14 (Lachlan: "get rid of the
+  // demand rules"). They added to a target when bookings crossed a threshold,
+  // and in fifteen bookings since June no day passed 10 covers against
+  // thresholds of 12 and 24 — the only one that ever fired was "event → +1
+  // host", which asked for a second closer the rota cannot supply. How many
+  // work each night is decided by EVENING_DEMAND in lib/rota/policy.ts.
+  // THE WAY BACK: the three rows are still in rota_scaling_rules, switched
+  // off (active = false); revert this commit and set them active again.
   const baseTarget = (shiftName: string, fn: string) =>
     targets.find(t => t.shift_name === shiftName && t.function === fn)?.count ?? 0
   // Does this shift run on this date? A type with no weekdays runs every day;
@@ -219,25 +225,6 @@ export default function RotaPage() {
   const runsOn = (shiftName: string, date: string) => {
     const wd = types.find(x => x.name === shiftName)?.weekdays
     return !wd?.length || wd.includes(new Date(date + 'T00:00:00Z').getUTCDay())
-  }
-
-  // Which rules fire for a date (from the "What's on" demand) → bump per function.
-  const dayBumps = (date: string): Record<string, number> => {
-    const dq = demandFor(date)
-    const dayCovers = dq.bookings.reduce((s, b) => s + (b.party_size || 0), 0)
-    const sess = new Map<string, number>()
-    for (const b of dq.bookings) { const k = b.session_label || 'unspec'; sess.set(k, (sess.get(k) || 0) + (b.party_size || 0)) }
-    const maxSession = sess.size ? Math.max(...sess.values()) : 0
-    const hasEvent = dq.entries.length > 0
-    const out: Record<string, number> = {}
-    for (const r of rules) {
-      if (!r.active) continue
-      const fires = r.trigger_type === 'day_covers' ? dayCovers >= r.threshold
-        : r.trigger_type === 'session_covers' ? maxSession >= r.threshold
-        : hasEvent  // event_present
-      if (fires) out[r.function] = (out[r.function] || 0) + r.delta
-    }
-    return out
   }
 
   // Config writes (admin-RLS direct; config, no spine event — like shift names).
@@ -248,21 +235,6 @@ export default function RotaPage() {
     })
     if (count > 0) await supabase.from('rota_coverage_targets').upsert({ shift_name: shiftName, function: fn, count }, { onConflict: 'shift_name,function' })
     else await supabase.from('rota_coverage_targets').delete().eq('shift_name', shiftName).eq('function', fn)
-  }
-  const updateRule = async (id: string, patch: Partial<ScalingRule>) => {
-    setRules(rs => rs.map(r => r.id === id ? { ...r, ...patch } : r))
-    const { error } = await supabase.from('rota_scaling_rules').update(patch).eq('id', id)
-    if (error) { showToast(error.message, 'error'); load() }
-  }
-  const addRule = async () => {
-    const { data, error } = await supabase.from('rota_scaling_rules')
-      .insert({ trigger_type: 'day_covers', threshold: 20, function: 'floor', delta: 1, sort_order: rules.length }).select().single()
-    if (error) { showToast(error.message, 'error'); return }
-    if (data) setRules(rs => [...rs, data as ScalingRule])
-  }
-  const removeRule = async (id: string) => {
-    setRules(rs => rs.filter(r => r.id !== id))
-    await supabase.from('rota_scaling_rules').delete().eq('id', id)
   }
 
   const proposedIn = (date: string, name: string) => proposals.filter(p => p.shift_date === date && p.shift_name === name)
@@ -330,13 +302,12 @@ export default function RotaPage() {
       }
     }
     for (const d of days) {
-      const bumps = dayBumps(d)
       for (const name of typeNames) {                 // active shift types only
         const real = inCell(d, name)
         const cellMembers = new Set(real.map(s => s.member))
         const proposedHere: Proposal[] = []
         for (const fn of FUNCTIONS) {
-          const target = runsOn(name, d) ? baseTarget(name, fn) + (bumps[fn] || 0) : 0
+          const target = runsOn(name, d) ? baseTarget(name, fn) : 0
           if (target <= 0) continue
           let present = real.filter(s => memberFns(s.member).includes(fn)).length
                       + proposedHere.filter(p => p.coverFn === fn).length
@@ -371,9 +342,6 @@ export default function RotaPage() {
   }
   const discardAutofill = () => { setProposals([]); setGaps([]) }
 
-  // Per-day demand bumps, precomputed once per render.
-  const bumpsByDay: Record<string, Record<string, number>> = {}
-  for (const d of days) bumpsByDay[d] = dayBumps(d)
 
   const wrap = async (fn: () => Promise<unknown>, after?: () => void) => {
     setBusy(true)
@@ -629,11 +597,11 @@ export default function RotaPage() {
                     {name}{isType && typeTimes(name) && <div style={{ ...metaText, opacity: 0.6, marginTop: 2 }}>{typeTimes(name)}</div>}{!isType && <span title={t('retired shift name — kept on existing shifts', 'tên ca đã ngừng — giữ trên các ca hiện có')} style={{ ...metaText, opacity: 0.5 }}> · {t('retired', 'đã ngừng')}</span>}
                   </td>
                   {days.map(d => {
-                    // Under-staffing: required (base + day bumps) vs present (assigned who HAVE the function).
+                    // Under-staffing: required (base target) vs present (assigned who HAVE the function).
                     const ghosts = proposedIn(d, name)
                     const cov = isType
                       ? FUNCTIONS.map(fn => {
-                          const req = runsOn(name, d) ? baseTarget(name, fn) + (bumpsByDay[d]?.[fn] || 0) : 0
+                          const req = runsOn(name, d) ? baseTarget(name, fn) : 0
                           const pres = inCell(d, name).filter(s => memberFns(s.member).includes(fn)).length
                                      + ghosts.filter(g => g.coverFn === fn).length   // count pending proposals
                           return { fn, req, pres }
@@ -748,7 +716,7 @@ export default function RotaPage() {
         )}
       </div>
 
-      {/* Coverage — base targets per shift × function + demand-scaling rules (tunable) */}
+      {/* Coverage — base targets per shift × function */}
       <div style={{ marginTop: 12 }}>
         <button onClick={() => setShowCoverage(v => !v)} style={tinyBtn}>{showCoverage ? '▾' : '▸'} {t('Coverage targets', 'Mục tiêu nhân lực')}</button>
         {showCoverage && (
@@ -775,38 +743,6 @@ export default function RotaPage() {
                   {types.length === 0 && <tr><td colSpan={FUNCTIONS.length + 1} style={{ ...covTd, ...metaText, opacity: 0.6 }}>{t('Add a shift name first.', 'Thêm tên ca trước.')}</td></tr>}
                 </tbody>
               </table>
-            </div>
-
-            <div style={{ ...fieldLabel, marginBottom: 6 }}>{t('Demand-scaling rules', 'Quy tắc điều chỉnh theo nhu cầu')}</div>
-            <div style={{ ...metaText, opacity: 0.6, marginBottom: 8, fontSize: 10 }}>{t("When a day's demand crosses a threshold, add to a function's target. Tune freely — these are data, not code.", 'Khi nhu cầu trong ngày vượt ngưỡng, tăng mục tiêu của một vai trò. Tùy chỉnh thoải mái — đây là dữ liệu, không phải mã.')}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {rules.map(r => (
-                <div key={r.id} style={ruleRow}>
-                  <button onClick={() => updateRule(r.id, { active: !r.active })} title={r.active ? t('Active — click to disable', 'Đang bật — nhấn để tắt') : t('Disabled — click to enable', 'Đang tắt — nhấn để bật')}
-                    style={{ ...fnToggle, ...(r.active ? { background: '#7AB07A', color: '#052E20', borderColor: '#7AB07A' } : { opacity: 0.5 }) }}>
-                    {r.active ? t('on', 'bật') : t('off', 'tắt')}
-                  </button>
-                  <span style={{ ...metaText, fontSize: 11 }}>{t('When', 'Khi')}</span>
-                  <select value={r.trigger_type} onChange={e => updateRule(r.id, { trigger_type: e.target.value as ScalingRule['trigger_type'] })} style={ruleSelect}>
-                    <option value="session_covers" style={opt}>{t('covers in a session', 'lượt khách trong một phiên')}</option>
-                    <option value="day_covers" style={opt}>{t('covers in the day', 'lượt khách trong ngày')}</option>
-                    <option value="event_present" style={opt}>{t('an event is on', 'có sự kiện diễn ra')}</option>
-                  </select>
-                  {r.trigger_type !== 'event_present' && (
-                    <>
-                      <span style={{ ...metaText, fontSize: 11 }}>≥</span>
-                      <input type="number" min={0} value={r.threshold} onChange={e => updateRule(r.id, { threshold: Math.max(0, parseInt(e.target.value) || 0) })} style={{ ...covInput, width: 52 }} />
-                    </>
-                  )}
-                  <span style={{ ...metaText, fontSize: 11 }}>→ +</span>
-                  <input type="number" min={1} value={r.delta} onChange={e => updateRule(r.id, { delta: Math.max(1, parseInt(e.target.value) || 1) })} style={{ ...covInput, width: 44 }} />
-                  <select value={r.function} onChange={e => updateRule(r.id, { function: e.target.value })} style={ruleSelect}>
-                    {FUNCTIONS.map(f => <option key={f} value={f} style={opt}>{FN_LABEL[f]}</option>)}
-                  </select>
-                  <button onClick={() => removeRule(r.id)} title={t('Remove rule', 'Xóa quy tắc')} style={{ ...typeRemove, marginLeft: 'auto' }}>×</button>
-                </div>
-              ))}
-              <button onClick={addRule} style={{ ...tinyBtn, alignSelf: 'flex-start', marginTop: 4 }}>{t('+ add rule', '+ thêm quy tắc')}</button>
             </div>
           </div>
         )}
@@ -976,7 +912,6 @@ const covTag: React.CSSProperties = { fontFamily: FAMILY, fontSize: 9, letterSpa
 const covTh: React.CSSProperties = { fontFamily: FAMILY, fontSize: 10, color: '#B2AA98', fontWeight: 500, padding: '4px 8px', letterSpacing: '0.06em' }
 const covTd: React.CSSProperties = { padding: '3px 8px', textAlign: 'center', fontFamily: FAMILY, fontSize: 11 }
 const covInput: React.CSSProperties = { width: 46, background: 'rgba(5,46,32,0.5)', color: '#E5D4C2', border: '1px solid rgba(229,212,194,0.18)', borderRadius: 5, padding: '5px 6px', fontFamily: FAMILY, fontSize: 12, textAlign: 'center', outline: 'none' }
-const ruleRow: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', padding: '4px 0' }
 const ruleSelect: React.CSSProperties = { background: 'rgba(5,46,32,0.5)', color: '#E5D4C2', border: '1px solid rgba(229,212,194,0.18)', borderRadius: 5, padding: '5px 8px', fontFamily: FAMILY, fontSize: 11, outline: 'none' }
 const ghostChip: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, background: 'rgba(212,184,90,0.06)', color: '#E5D4C2', border: '1px dashed rgba(212,184,90,0.5)', borderRadius: 4, padding: '4px 8px', fontFamily: FAMILY, fontSize: 11, opacity: 0.9 }
 const ghostDrop: React.CSSProperties = { background: 'transparent', border: 'none', color: '#C27070', cursor: 'pointer', fontFamily: FAMILY, fontSize: 13, lineHeight: 1, padding: '0 1px' }
