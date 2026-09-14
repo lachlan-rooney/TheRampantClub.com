@@ -146,9 +146,15 @@ export default function Footer() {
           {/* Opening Times */}
           <div className="trc-footer-hours">
             <div className="trc-footer-heading">Opening Times</div>
-            <div className="trc-footer-address">Four &rsquo;til Last Pour</div>
-            <div className="trc-footer-address">Mon&ndash;Sat</div>
-            <div className="trc-footer-address">Sundays, by appointment</div>
+            {/* Seven days and a midnight close, from 14 Sep 2026. It used to
+                read "Four 'til Last Pour · Mon–Sat · Sundays, by appointment",
+                which was true of a club that opened at four and ran until the
+                room emptied itself. Both halves of that changed on the same
+                day, and the footer is the first place a prospective member
+                looks for them. */}
+            <div className="trc-footer-address">Three &rsquo;til Midnight</div>
+            <div className="trc-footer-address">Seven days</div>
+            <div className="trc-footer-address">Last call 11pm</div>
           </div>
 
           {/* Address logo */}

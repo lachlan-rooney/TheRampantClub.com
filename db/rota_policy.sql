@@ -112,8 +112,8 @@ insert into rota_shift_types (name, sort_order, start_time, end_time, hours) val
 on conflict (name) do update set
   start_time = excluded.start_time, end_time = excluded.end_time, hours = excluded.hours;
 
--- THE HOUSE CLOSES AT MIDNIGHT (from 2026-09-14). Last call 11pm, the room is
--- empty by 11:30, doors at twelve. Every shift here was written for a club
+-- THE HOUSE OPENS AT THREE AND CLOSES AT MIDNIGHT (from 2026-09-14). Last call
+-- 11pm, the room is empty by 11:30, doors at twelve. Seven days. Every shift here was written for a club
 -- that ran to 3am and none of them survive that change: an 18:30–03:00 close
 -- is now two and a half hours of a building nobody is in.
 --
@@ -121,15 +121,15 @@ on conflict (name) do update set
 -- never handed over all at once, and the closer stays an hour past the doors
 -- for clean-down:
 --
---   Open   15:30 – 00:00   set up, first through the door, out at close
---   Mid    16:00 – 00:30   the middle of the service
---   Close  16:30 – 01:00   last call, the room cleared, the tills, the lock
+--   Open   15:00 – 23:30   doors at three, out after last call
+--   Close  16:00 – 00:30   the peak, the last call, the room cleared, the lock
+--   (Mid    16:00 – 00:30   kept as a type for the busy nights, if wanted)
 --
 -- Still 8.5 hours each, so the six-day week is still 47.5 and still under the
 -- ceiling. That is the only number that did not have to move.
-update rota_shift_types set start_time = '15:30', end_time = '00:00', hours = 8.5 where name = 'Open';
+update rota_shift_types set start_time = '15:00', end_time = '23:30', hours = 8.5 where name = 'Open';
 update rota_shift_types set start_time = '16:00', end_time = '00:30', hours = 8.5 where name = 'Mid';
-update rota_shift_types set start_time = '16:30', end_time = '01:00', hours = 8.5 where name = 'Close';
+update rota_shift_types set start_time = '16:00', end_time = '00:30', hours = 8.5 where name = 'Close';
 
 -- ── The arrangements that already exist ───────────────────────────────────
 -- Recorded here rather than remembered. One day off each: Hiếu Sunday, Bình
