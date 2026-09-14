@@ -80,6 +80,12 @@ export interface HouseRule {
   section_title: string
   section_title_vn: string | null
   body: string
+  body_vn: string | null
+  /** Who wrote the Vietnamese: 'human' is never overwritten by the translator
+   *  at /api/admin/translate; 'machine' is a draft it may replace. Null means
+   *  there is no Vietnamese yet. */
+  body_vn_source: 'human' | 'machine' | null
+  title_vn_source: 'human' | 'machine' | null
   sort_order: number
   updated_at: string
 }

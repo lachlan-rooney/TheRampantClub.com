@@ -55,9 +55,15 @@ export default function RulesPage() {
                         {lang === 'vn' ? r.section_title : r.section_title_vn}
                       </div>
                     )}
-                    <p className="hr-p">
-                      {r.body}
-                    </p>
+                    {/* The toggle decides the language of the rule itself, not
+                        just its heading. Where no Vietnamese has been written
+                        or translated yet, pick() falls back to the English —
+                        a rule half-shown is worse than a rule in the wrong
+                        language. Each paragraph of the source is kept as one,
+                        so a rule with sub-clauses reads as it was written. */}
+                    {pick(lang, r.body, r.body_vn).split(/\n\s*\n/).map((para, i) => (
+                      <p className="hr-p" key={i}>{para}</p>
+                    ))}
                   </section>
                 ))}
               </article>
@@ -106,7 +112,10 @@ const CSS = `
   .hr-h { font-family: ${SERIF}; font-weight: 400; font-size: clamp(28px, 3.2vw, 42px); line-height: 1; margin: 0; padding-right: 48px; }
   .hr-alt { font-family: ${SERIF}; font-size: clamp(17px, 1.7vw, 20px); line-height: 1.2; opacity: .58; margin-top: 8px; }
   .hr-p { font-family: ${MONO}; font-size: 13.5px; line-height: 2; margin: 20px 0 0; opacity: .9; }
-  .hr-rule:first-of-type .hr-p::first-letter { font-family: ${SERIF}; float: left; font-size: 64px; line-height: .82; margin: 7px 6px 0 0; }
+  /* The drop cap belongs to the FIRST paragraph of the first rule only — a
+     rule with sub-clauses renders several .hr-p and would otherwise get one on
+     every one of them. */
+  .hr-rule:first-of-type .hr-p:first-of-type::first-letter { font-family: ${SERIF}; float: left; font-size: 64px; line-height: .82; margin: 7px 6px 0 0; }
 
   .pk-cta.hr-cta { color: #E5D4C2; margin-top: 44px; }
 

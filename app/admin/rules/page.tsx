@@ -30,7 +30,9 @@ export default function AdminRules() {
   const [sectionTitle, setSectionTitle] = useState('')
   const [sectionTitleVn, setSectionTitleVn] = useState('')
   const [body, setBody] = useState('')
+  const [bodyVn, setBodyVn] = useState('')
   const [sortOrder, setSortOrder] = useState('0')
+  const [translating, setTranslating] = useState(false)
 
   const supabase = createBrowserSupabaseClient()
 
@@ -47,27 +49,55 @@ export default function AdminRules() {
   useEffect(() => { load() }, [])
 
   const resetForm = () => {
-    setSectionTitle(''); setSectionTitleVn(''); setBody(''); setSortOrder('0')
+    setSectionTitle(''); setSectionTitleVn(''); setBody(''); setBodyVn(''); setSortOrder('0')
     setEditing(null); setShowForm(false)
   }
 
   const startEdit = (r: HouseRule) => {
     setSectionTitle(r.section_title); setSectionTitleVn(r.section_title_vn || '')
-    setBody(r.body); setSortOrder(r.sort_order.toString())
+    setBody(r.body); setBodyVn(r.body_vn || ''); setSortOrder(r.sort_order.toString())
     setEditing(r); setShowForm(true)
   }
 
+  // Typing in a Vietnamese box marks that field as WRITTEN BY A PERSON, and the
+  // translator never touches a field marked that way again. Only a real change
+  // counts: opening a machine translation, reading it and saving without edits
+  // would otherwise lock it as human work and freeze a rough draft in place.
+  const changed = (now: string, before: string | null | undefined) =>
+    now.trim() !== (before || '').trim()
+
   const handleSubmit = async () => {
-    const payload = {
+    const payload: Record<string, unknown> = {
       section_title: sectionTitle, section_title_vn: sectionTitleVn || null,
-      body, sort_order: parseInt(sortOrder) || 0,
+      body, body_vn: bodyVn || null, sort_order: parseInt(sortOrder) || 0,
     }
+    if (changed(sectionTitleVn, editing?.section_title_vn)) payload.title_vn_source = sectionTitleVn ? 'human' : null
+    if (changed(bodyVn, editing?.body_vn))                  payload.body_vn_source  = bodyVn ? 'human' : null
     if (editing) {
       await supabase.from('house_rules').update(payload).eq('id', editing.id)
     } else {
       await supabase.from('house_rules').insert(payload)
     }
     resetForm(); load()
+  }
+
+  // Fill in the Vietnamese that nobody has written yet. Never overwrites a
+  // field marked 'human' — the report says how many it left alone.
+  const runTranslate = async () => {
+    setTranslating(true)
+    try {
+      const res = await fetch('/api/admin/translate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}),
+      })
+      const out = await res.json().catch(() => null)
+      if (!res.ok) { showToast(out?.error || t('Translation failed.', 'Dịch thất bại.'), 'error'); return }
+      const firstFailure = out?.failed?.[0]?.why
+      showToast(firstFailure ? `${out.summary} — ${firstFailure}` : out.summary,
+        out?.failed?.length ? 'error' : 'success')
+      load()
+    } finally {
+      setTranslating(false)
+    }
   }
 
   const requestRemove = (r: HouseRule) => setConfirmRule(r)
@@ -92,7 +122,12 @@ export default function AdminRules() {
           {t('House Rules', 'Nội Quy')}
         </h1>
         {!showForm && (
-          <button onClick={() => { resetForm(); setShowForm(true) }} style={btnStyle}>{t('+ New Rule', '+ Nội quy mới')}</button>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button onClick={runTranslate} disabled={translating} style={{ ...btnStyle, opacity: translating ? 0.5 : 1 }}>
+              {translating ? t('Translating…', 'Đang dịch…') : t('Translate to Vietnamese', 'Dịch sang Tiếng Việt')}
+            </button>
+            <button onClick={() => { resetForm(); setShowForm(true) }} style={btnStyle}>{t('+ New Rule', '+ Nội quy mới')}</button>
+          </div>
         )}
       </div>
 
@@ -119,6 +154,13 @@ export default function AdminRules() {
             <label style={labelStyle}>{t('Body', 'Nội dung')}</label>
             <textarea style={{ ...inputStyle, resize: 'vertical' }} rows={6} value={body} onChange={e => setBody(e.target.value)} />
           </div>
+          <div>
+            <label style={labelStyle}>
+              {t('Body (Vietnamese)', 'Nội dung (Tiếng Việt)')}
+              {editing?.body_vn_source === 'machine' && ` — ${t('machine translation; edit it and it becomes yours', 'bản dịch máy; sửa là thành của bạn')}`}
+            </label>
+            <textarea style={{ ...inputStyle, resize: 'vertical' }} rows={6} value={bodyVn} onChange={e => setBodyVn(e.target.value)} />
+          </div>
           <div style={{ display: 'flex', gap: 12 }}>
             <button onClick={handleSubmit} style={btnStyle}>{editing ? t('Update', 'Cập nhật') : t('Create', 'Tạo mới')}</button>
             <button onClick={resetForm} style={{ ...btnStyle, opacity: 0.5 }}>{t('Cancel', 'Hủy')}</button>
@@ -132,6 +174,14 @@ export default function AdminRules() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11, color: '#B2AA98', minWidth: 24 }}>{r.sort_order}</span>
               <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 14, color: '#E5D4C2' }}>{r.section_title}</span>
+              {/* Where the Vietnamese came from, at a glance — so nobody has to
+                  open a rule to find out whether it has been read by a person. */}
+              <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 9, letterSpacing: '0.06em',
+                color: r.body_vn_source === 'human' ? '#D4B85A' : '#B2AA98', opacity: r.body_vn ? 0.9 : 0.4 }}>
+                {!r.body_vn ? t('NO VN', 'CHƯA CÓ TV')
+                  : r.body_vn_source === 'human' ? t('VN · BY HAND', 'TV · NGƯỜI DỊCH')
+                  : t('VN · MACHINE', 'TV · DỊCH MÁY')}
+              </span>
             </div>
             <div style={{ display: 'flex', gap: 12 }}>
               <button onClick={() => startEdit(r)} style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.5, cursor: 'pointer' }}>{t('Edit', 'Sửa')}</button>
