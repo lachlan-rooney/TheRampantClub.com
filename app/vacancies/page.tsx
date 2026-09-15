@@ -24,6 +24,11 @@ export default function VacanciesPage() {
       <style dangerouslySetInnerHTML={{ __html: `
         .vc-crest { display: block; width: 92px; height: auto; margin: 0 0 0 -10px; }
         .vc-tray { width: 100%; max-width: 440px; margin-left: auto; }
+        /* One of the team, in the club's white dress with the green lion on the
+           pocket (owner's staff.png, 2026-09-15) — where the butler's tray drew. */
+        .vc-photo { display: block; width: 100%; max-width: 440px; height: auto; margin-left: auto;
+                    aspect-ratio: 3994 / 4796; object-fit: cover; border-radius: 10px;
+                    box-shadow: 0 18px 44px rgba(5,46,32,.16); }
 
         .vc-list { list-style: none; margin: 0; padding: 0; }
         .vc-item { display: grid; grid-template-columns: 56px 1fr 1fr; gap: 12px 40px; align-items: baseline;
@@ -56,7 +61,11 @@ export default function VacanciesPage() {
           <Rise delay={.12}><div className="pk-sub">Vị trí tuyển dụng</div></Rise>
         </div>
         <Rise delay={.15}>
-          <InkFloat name="butler-tray" width="100%" rot={6} dur={8} className="vc-tray" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="vc-photo" alt="A member of The Rampant Club team, bottle in hand"
+               src="/images/brand/staff-800.webp"
+               srcSet="/images/brand/staff-800.webp 800w, /images/brand/staff-1600.webp 1600w"
+               sizes="(max-width: 860px) 90vw, 440px" />
         </Rise>
       </header>
 
