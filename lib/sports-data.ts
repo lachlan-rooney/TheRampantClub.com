@@ -90,6 +90,8 @@ export const TROPHIES: Trophy[] = [
     established: 2025,
     metal: 'pewter',
     description: 'Annual rooftop putting championship. Nine holes. No mulligans. No excuses.',
+    // The club's "Rampant" irons (owner's TRC Rooftop Putting, 2026-09-15).
+    image: '/images/brand/rooftop-putting-540.webp',
   },
 ]
 
