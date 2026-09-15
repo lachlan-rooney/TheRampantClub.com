@@ -95,6 +95,15 @@ export default function AdminFixtures() {
     setSignupDeadline(vnInputValue(f.signup_deadline))
     setResults(f.results || ''); setOpsProjectId(f.ops_project_id || '')
     setEditing(f); setShowForm(true)
+    // The form renders at the TOP of the page, above the list. Clicking Edit on
+    // an event further down opened it off-screen, so the click looked like it did
+    // nothing (2026-09-15, Lachlan: "clicking edit can't do anything"). Bring it
+    // to the eye once it has rendered, and put the cursor in the title.
+    requestAnimationFrame(() => {
+      const form = document.getElementById('event-form')
+      form?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      form?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true })
+    })
   }
 
   const handleSubmit = async () => {
@@ -108,11 +117,18 @@ export default function AdminFixtures() {
       results: results || null,
       ops_project_id: opsProjectId || null,
     }
-    if (editing) {
-      await supabase.from('fixtures').update(payload).eq('id', editing.id)
-    } else {
-      await supabase.from('fixtures').insert(payload)
+    // The result used to be ignored: a refused or failed save closed the form as
+    // if it had worked. Now a failure says why and keeps the form open with the
+    // edits still in it. `.select('id')` makes an update that touched no row
+    // (e.g. refused by RLS, which returns no error) visible as a failure too.
+    const { data, error } = editing
+      ? await supabase.from('fixtures').update(payload).eq('id', editing.id).select('id')
+      : await supabase.from('fixtures').insert(payload).select('id')
+    if (error || !data?.length) {
+      showToast(`${editing ? t('Update failed:', 'Cập nhật thất bại:') : t('Create failed:', 'Tạo thất bại:')} ${error?.message || t('the change was not saved — check you are signed in as an admin.', 'thay đổi chưa được lưu — hãy kiểm tra bạn đang đăng nhập bằng tài khoản quản trị.')}`, 'error')
+      return
     }
+    showToast(editing ? t('Event updated', 'Đã cập nhật sự kiện') : t('Event created', 'Đã tạo sự kiện'), 'success')
     resetForm(); load()
   }
 
@@ -152,7 +168,7 @@ export default function AdminFixtures() {
       </div>
 
       {showForm && (
-        <div style={{ padding: 24, background: 'rgba(229,212,194,0.03)', borderRadius: 8, marginBottom: 32, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div id="event-form" style={{ padding: 24, background: 'rgba(229,212,194,0.03)', borderRadius: 8, marginBottom: 32, display: 'flex', flexDirection: 'column', gap: 16, scrollMarginTop: 24 }}>
           <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2' }}>
             {editing ? `${t('Editing:', 'Đang sửa:')} ${editing.title}` : t('New Event', 'Sự kiện mới')}
           </div>
