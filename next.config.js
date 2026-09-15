@@ -36,11 +36,21 @@ const nextConfig = {
   // keep in one list.
   // The keys are matched against ROUTE paths, and a key that matches nothing
   // fails silently — the build succeeds and production breaks exactly as before.
-  // So the four routes that call sharp are named explicitly AND covered by a
-  // glob, rather than trusting one pattern to be right.
+  //
+  // ⚠ NO CATCH-ALL (2026-09-15). This list used to begin with '/api/**/*' as a
+  // safety net for a mistyped key. That net copied libvips into EVERY API
+  // function: measured on a real build, 202 of 202 API routes carried 33.9 MB
+  // of it — ~6.8 GB of duplicate native library per deployment, when 5 routes
+  // use sharp. The free Vercel team ran out of function storage (10 GB).
+  //
+  // So the list is now the whole truth: every route whose imports reach sharp
+  // (all through lib/attachments/image.ts). /api/admin/studio was covered ONLY
+  // by the catch-all, so it is named here or its image uploads would fail with
+  // ERR_DLOPEN_FAILED again. A NEW route that imports lib/attachments/image must
+  // be added below — find them with:  grep -rl "attachments/image" app lib
   outputFileTracingIncludes: {
-    '/api/**/*': SHARP_NATIVE,
     '/api/admin/entries/[type]/[id]/attachment': SHARP_NATIVE,
+    '/api/admin/studio': SHARP_NATIVE,
     '/api/members/events/[id]/media/upload': SHARP_NATIVE,
     '/api/social/posts': SHARP_NATIVE,
     '/api/social/tasting-notes': SHARP_NATIVE,
