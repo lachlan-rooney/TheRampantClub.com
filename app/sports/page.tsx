@@ -473,6 +473,12 @@ export default function SportsPage() {
                 })}
               </div>
               <div>
+                {/* Lawn games, in the club's own picture (2026-09-15). A photo, so it
+                    sits in the column at full width — the 72–120px heading art that
+                    Tennis uses would shrink it past reading. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/images/brand/croquet-lawn-1080.webp" alt="Croquet on the lawn at The Rampant Club" loading="lazy"
+                  style={{ display: 'block', width: '100%', height: 'auto', borderRadius: 10, marginBottom: 28 }} />
                 <p className="sp-copy" style={{ opacity: .7 }}>
                   The Sports Club is open to all members of The Rampant Club. Fixtures are announced via the members&rsquo; area and by word of mouth at the bar. The Committee welcomes suggestions for new activities, provided they can be conducted with dignity, or at least plausible dignity.
                 </p>

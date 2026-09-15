@@ -69,6 +69,9 @@ export const TROPHIES: Trophy[] = [
     established: 2024,
     metal: 'silver',
     description: 'Mixed doubles round-robin into a knockout. White attire encouraged.',
+    // The club's own tennis still life — racquet, tins of balls — not a photo of
+    // the shield, which is still to be commissioned (2026-09-15).
+    image: '/images/brand/racket-shelves-540.webp',
   },
   {
     id: 'padel-cup',
@@ -77,6 +80,8 @@ export const TROPHIES: Trophy[] = [
     established: 2025,
     metal: 'bronze',
     description: 'Monthly ladder culminating in an end-of-year final. Ego-free zone (in theory).',
+    // The club's trophies-on-the-bench image, standing in until the cup exists (2026-09-15).
+    image: '/images/brand/trophy-bench-540.webp',
   },
   {
     id: 'rooftop-putting',

@@ -403,6 +403,18 @@ export default function HomePage() {
                           transform: rotate(4deg); filter: drop-shadow(6px 10px 10px rgba(5,46,32,.14));
                           transition: transform .6s cubic-bezier(.16,.84,.44,1); }
         .trc-tiers-head:hover .trc-tiers-lion { transform: rotate(-3deg) translateY(-6px); }
+        /* The club's own invitation — "Sincere invitation to our club", the gold
+           lion on cream — beside "By Invitation" (2026-09-15). A photograph, so
+           larger than the ink lion it replaced: at 150px its gold lettering is
+           lost. Same tilt, same rise, same place. */
+        .trc-tiers-invite { width: clamp(150px, 20vw, 260px); aspect-ratio: 4 / 5; height: auto; object-fit: cover;
+                            margin-right: 4%; border-radius: 10px; transform: rotate(3deg);
+                            box-shadow: 8px 14px 28px rgba(5,46,32,.18);
+                            transition: transform .6s cubic-bezier(.16,.84,.44,1); }
+        .trc-tiers-head:hover .trc-tiers-invite { transform: rotate(-2deg) translateY(-6px); }
+        @media (max-width: 600px) {
+          .trc-tiers-invite { width: 150px; justify-self: end; margin: -10px 0 0; order: -1; }
+        }
         @media (max-width: 600px) {
           .trc-tiers-head { grid-template-columns: 1fr; }
           .trc-tiers-lion { width: 96px; justify-self: end; margin: -10px 0 0; order: -1; }
@@ -660,8 +672,8 @@ export default function HomePage() {
               </a>
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/ink/lion-suit.webp" alt="" aria-hidden="true" className="trc-tiers-lion trc-tiers-rise"
-                 style={{ animationDelay: '.24s' }} />
+            <img src="/images/brand/invitation-540.webp" alt="A Rampant Club invitation, the gold lion on cream" loading="lazy"
+                 className="trc-tiers-invite trc-tiers-rise" style={{ animationDelay: '.24s' }} />
           </div>
 
           <div className="trc-tiers-grid">
