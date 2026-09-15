@@ -195,14 +195,25 @@ export function renderReportBody(r: ReportRow, mode: Mode): string {
   })()
   html += section('Who’s Been In', 'Attendance & time in the club this week', `
     <table role="presentation" style="width:100%;border-collapse:collapse"><tr>
-      ${stat(String(u.visits), 'member visits', delta(d.deltas.visits))}
-      ${stat(String(u.unique_members), 'unique members', delta(d.deltas.unique_members))}
-      ${stat(`${u.avg_minutes}m`, 'avg stay')}
-      ${stat(u.guest_heads > 0 ? String(u.guest_heads) : String(u.footfall_unique), u.guest_heads > 0 ? 'guests in' : 'footfall (taps)', u.guest_heads > 0 ? undefined : delta(d.deltas.footfall_unique))}
+      ${/* 2026-09-15: people who came in (taps, visits, arrived bookings, guests)
+            and bookings made — the same count as the calendar's live strip. A report
+            frozen before then has no attendance field and shows its visits as it did. */ ''}
+      ${u.attendance != null
+        ? stat(String(u.attendance), 'people in', delta(d.deltas.attendance))
+        : stat(String(u.visits), 'member visits', delta(d.deltas.visits))}
+      ${stat(String(u.unique_members), u.attendance != null ? 'members in' : 'unique members', delta(d.deltas.unique_members))}
+      ${u.attendance != null
+        ? stat(String(u.bookings), u.booked_people ? `bookings · ${u.booked_people} booked` : 'bookings')
+        : stat(`${u.avg_minutes}m`, 'avg stay')}
+      ${u.guest_heads > 0
+        ? stat(String(u.guest_heads), 'guests in')
+        : u.attendance != null
+          ? stat(u.guest_proxy > 0 ? `~${u.guest_proxy}` : '0', u.guest_proxy > 0 ? 'guests (est.)' : 'guests')
+          : stat(String(u.footfall_unique), 'footfall (taps)', delta(d.deltas.footfall_unique))}
     </tr></table>
     ${chartBlock(mode, lineChart(u.visits_by_day.map(x => ({ label: x.label, count: x.count })), 'dark'), barsHtml(u.visits_by_day.map(x => ({ label: x.label, value: x.count }))))}
     ${attendanceLine}
-    ${d.member_of_week ? `<div style="font-size:13px;color:${MUTED};margin-top:6px">Member of the week: <span style="color:${CREAM}">${esc(d.member_of_week.name)}</span> — ${d.member_of_week.visits} visits.</div>` : ''}
+    ${d.member_of_week && d.member_of_week.visits >= 2 ? `<div style="font-size:13px;color:${MUTED};margin-top:6px">Member of the week: <span style="color:${CREAM}">${esc(d.member_of_week.name)}</span> — ${d.member_of_week.visits} visits.</div>` : ''}
   `)
 
   // Events

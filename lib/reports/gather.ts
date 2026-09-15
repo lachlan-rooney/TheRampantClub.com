@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { summariseFinancials, type Financials } from './financials'
+import { weekAttendance } from '@/lib/attendance'
 
 // Aggregates a VN week into a FROZEN snapshot for the weekly report. Runs the
 // same fan-out for the week and the prior week to compute week-over-week deltas.
@@ -39,6 +40,12 @@ export interface WeekMetrics {
   new_members: number
   signed: number
   pipeline_movements: number
+  // ── Arrivals, counted exactly as the live attendance strip on /admin/calendar
+  //    counts them (lib/attendance.ts), 2026-09-15. Optional: a report frozen
+  //    before then does not carry them, and render.ts falls back to the fields above.
+  attendance?: number        // member-days + guests who actually came in
+  member_days?: number
+  booked_people?: number     // party sizes on bookings not cancelled or no-show
 }
 
 export interface AutoData {
@@ -89,8 +96,18 @@ async function windowMetrics(sb: SupabaseClient, start: string, end: string): Pr
   const moves = await safe<{ id: string }[]>(
     sb.from('prospect_activity').select('id').gte('created_at', start).lte('created_at', end + 'T23:59:59'), [])
 
+  // WHO CAME IN, counted the way the calendar's live strip counts it: a card
+  // tap, a started visit, or a booking marked arrived — once per member per day —
+  // plus guests. Counting recorded visits alone reported ONE member for 7–13 Sep,
+  // when six had tapped in and five bookings had been made (2026-09-15). If the
+  // attendance read fails, the older visit-only figures stand rather than a blank.
+  const att = await weekAttendance(sb, start, end).catch(() => null)
+
   const days = eachDay(start, end)
-  const visitsByDay = days.map(d => ({ day: d, label: dayLabel(d), count: visits.filter(v => v.visit_date === d).length }))
+  // "By day" follows people in, not recorded visits, when the arrivals count is available.
+  const visitsByDay = att
+    ? att.by_day.map(x => ({ day: x.date, label: dayLabel(x.date), count: x.attendance }))
+    : days.map(d => ({ day: d, label: dayLabel(d), count: visits.filter(v => v.visit_date === d).length }))
   const closed = visits.filter(v => typeof v.duration_min === 'number')
   const footfallSet = new Set(presence.map(p => `${p.member_number}|${p.seen_at.slice(0, 10)}`))
   const footfallByDay = days.map(d => ({ day: d, count: new Set(presence.filter(p => p.seen_at.slice(0, 10) === d).map(p => p.member_number)).size }))
@@ -98,7 +115,7 @@ async function windowMetrics(sb: SupabaseClient, start: string, end: string): Pr
   const memberMinutes = closed.reduce((s, v) => s + (v.duration_min || 0), 0)
   return {
     visits: visits.length,
-    unique_members: new Set(visits.map(v => v.member_no)).size,
+    unique_members: att ? att.members : new Set(visits.map(v => v.member_no)).size,
     avg_minutes: closed.length ? Math.round(memberMinutes / closed.length) : 0,
     total_member_minutes: memberMinutes,
     guest_visits: guests.length,
@@ -113,6 +130,9 @@ async function windowMetrics(sb: SupabaseClient, start: string, end: string): Pr
     new_members: newMembers.length,
     signed: signed.length,
     pipeline_movements: moves.length,
+    attendance: att?.attendance,
+    member_days: att?.member_days,
+    booked_people: att?.bookings.people,
   }
 }
 
@@ -187,6 +207,7 @@ export async function gatherWeek(sb: SupabaseClient, start: string, end: string,
     member_of_week: motw,
     deltas: {
       visits: delta(thisW.visits, priorW.visits),
+      attendance: delta(thisW.attendance ?? thisW.visits, priorW.attendance ?? priorW.visits),
       footfall_unique: delta(thisW.footfall_unique, priorW.footfall_unique),
       unique_members: delta(thisW.unique_members, priorW.unique_members),
       new_members: delta(thisW.new_members, priorW.new_members),
