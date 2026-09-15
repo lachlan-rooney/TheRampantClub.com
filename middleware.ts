@@ -46,8 +46,11 @@ export async function middleware(request: NextRequest) {
 
   // Public floor kiosks (/kiosk/[floor]) and /kiosk/pair are NOT device-gated —
   // gating them would break the public display. They still get no-store.
+  // /kiosk/finder (2026-09-15) is the Flavour Finder opened from the board — gated
+  // like the board so it only runs on a paired ROOM tablet, and a door device is
+  // sent back to /kiosk/door by the purpose check below.
   const deviceGated = p.startsWith('/kiosk/staff') || p.startsWith('/kiosk/board')
-    || p.startsWith('/kiosk/member') || p.startsWith('/kiosk/door')
+    || p.startsWith('/kiosk/member') || p.startsWith('/kiosk/door') || p.startsWith('/kiosk/finder')
   if (p === '/kiosk' || (p.startsWith('/kiosk/') && !deviceGated)) {
     return noStore(supabaseResponse)
   }

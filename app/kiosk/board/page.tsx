@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation'
 import { menuForSpace, SPACE_TO_FLOOR } from '@/lib/kiosk/floors'
 
 // THE EVENT BOARD — the idle state, and the only way into either other mode.
-// No identity, no PII. Everything shown comes from kiosk_board(), which returns a
-// fixed set of non-PII columns; this page cannot render a member name because it
-// is never sent one.
+// No identity. The event comes from kiosk_board(), a fixed set of non-PII columns.
+// Since 2026-09-15 the board ALSO lists tonight's bookings for this room by name —
+// the owner's call: the floor tablets are internal (see app/api/kiosk/board).
 
 const SERIF = "'Rampant Sans', Georgia, serif"
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
@@ -20,7 +20,10 @@ interface Board {
   note: string | null; note_vn: string | null
   starts_at: string | null; ends_at: string | null
   next_transition_at: string | null; now_at: string
+  bookings?: BoardBooking[]
 }
+interface BoardBooking { id: string; time: string | null; name: string; nickname: string | null; party: number | null; arrived: boolean }
+const MAX_BOOKINGS = 6   // the board never scrolls; more than this collapses to "+N more"
 type Nfc = 'idle' | 'scanning' | 'gesture' | 'unsupported' | 'denied'
 interface Tap { member_no: string; first_name: string | null }
 
@@ -89,8 +92,9 @@ export default function KioskBoard() {
 
   // ── the board itself ────────────────────────────────────────────────────
   // Re-fetch at next_transition_at, so a tablet left on for days advances with no
-  // reload and no client-side state to go stale. Capped at 5 min so a long quiet
-  // stretch still refreshes, floored at 5s so a just-passed transition can't spin.
+  // reload and no client-side state to go stale. Capped at 1 min (was 5) so a
+  // booking made or marked arrived shows within a minute; floored at 5s so a
+  // just-passed transition can't spin.
   const load = useCallback(async () => {
     try {
       const r = await fetch('/api/kiosk/board', { cache: 'no-store' })
@@ -98,7 +102,7 @@ export default function KioskBoard() {
       setB(j.board || null)
       const next = j.board?.next_transition_at ? +new Date(j.board.next_transition_at) - Date.now() : 60_000
       if (timer.current) clearTimeout(timer.current)
-      timer.current = setTimeout(load, Math.min(Math.max(next + 1000, 5_000), 300_000))
+      timer.current = setTimeout(load, Math.min(Math.max(next + 1000, 5_000), 60_000))
     } catch {
       if (timer.current) clearTimeout(timer.current)
       timer.current = setTimeout(load, 30_000)
@@ -233,6 +237,41 @@ export default function KioskBoard() {
         )}
       </div>
 
+      {/* ── TONIGHT'S BOOKINGS ─────────────────────────────────────────────
+          Hidden while the keypad is open, so it never competes for the room the
+          panel needs. */}
+      {!panel && (b?.bookings?.length ?? 0) > 0 && (
+        <div style={{ borderTop: '1px solid rgba(229,212,194,.14)', paddingTop: 'clamp(10px,2vh,18px)', flexShrink: 1, minHeight: 0, overflow: 'hidden' }}>
+          <div style={{ fontFamily: MONO, fontSize: 12, letterSpacing: '.16em', textTransform: 'uppercase', color: '#D4B85A', marginBottom: 10 }}>
+            Booked tonight <span style={{ color: 'rgba(229,212,194,.4)' }}>· Đặt chỗ tối nay</span>
+          </div>
+          {b!.bookings!.slice(0, MAX_BOOKINGS).map(k => (
+            <div key={k.id} style={{ display: 'flex', alignItems: 'baseline', gap: 'clamp(12px,2.4vw,26px)', padding: '5px 0', flexWrap: 'wrap' }}>
+              <span style={{ fontFamily: MONO, fontSize: 15, color: 'rgba(229,212,194,.7)', minWidth: 52 }}>{k.time || '—'}</span>
+              <span style={{ fontFamily: SERIF, fontSize: 'clamp(18px,2.4vw,26px)' }}>
+                {k.name}
+                {k.nickname && <span style={{ color: 'rgba(229,212,194,.45)', fontSize: '.75em' }}> · {k.nickname}</span>}
+              </span>
+              {k.party != null && (
+                <span style={{ fontFamily: MONO, fontSize: 13, color: 'rgba(229,212,194,.55)' }}>
+                  party of {k.party} <span style={{ color: 'rgba(229,212,194,.35)' }}>· {k.party} khách</span>
+                </span>
+              )}
+              {k.arrived && (
+                <span style={{ fontFamily: MONO, fontSize: 12, letterSpacing: '.1em', textTransform: 'uppercase', color: '#8FA37A' }}>
+                  Arrived <span style={{ opacity: .6 }}>· Đã đến</span>
+                </span>
+              )}
+            </div>
+          ))}
+          {b!.bookings!.length > MAX_BOOKINGS && (
+            <div style={{ fontFamily: MONO, fontSize: 12, color: 'rgba(229,212,194,.45)', marginTop: 4 }}>
+              +{b!.bookings!.length - MAX_BOOKINGS} more
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── SIGN IN, ON THE BOARD ─────────────────────────────────────────
           Optimised for members, with the sign-in opportunity always visible. The
           card tap is a shortcut that pre-fills the number and greets them by first
@@ -242,6 +281,9 @@ export default function KioskBoard() {
       {!panel ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
           <button onClick={() => { setPanel(true); bump() }} style={primaryBtn}>Member sign in</button>
+          {/* No sign-in needed — the finder is public, and it returns here on its own. */}
+          {/* menuBtn was written for an <a>; a <button> also needs the browser's grey fill removed. */}
+          <button onClick={() => router.push('/kiosk/finder')} style={{ ...menuBtn, background: 'none', cursor: 'pointer' }}>Flavour Finder</button>
           {menuForSpace(b?.room) && (
             <a href={menuForSpace(b?.room)!} target="_blank" rel="noopener noreferrer" style={menuBtn}>
               Tonight&rsquo;s menu ↗
