@@ -35,6 +35,11 @@ interface Entry {
   kind: string
 }
 
+// Named columns, not '*'. A place staff added for this member is their own row
+// (RLS: own-or-admin), and it carries staff-only fields — the note from the Zalo
+// call, who entered it. The page needs none of that (2026-09-15).
+const SIGNUP_COLS = 'id, fixture_id, user_id, signed_up_at'
+
 const CREAM = '#E5D4C2'
 const GOLD = '#D4B85A'
 const INK = '#052E20'
@@ -180,7 +185,7 @@ export default function WhatsOnPage() {
       if (user) setUserId(user.id)
       const [{ data: f }, { data: s }, { data: c }, { data: en }] = await Promise.all([
         supabase.from('fixtures').select('*').order('date', { ascending: false }),
-        supabase.from('fixture_signups').select('*'),
+        supabase.from('fixture_signups').select(SIGNUP_COLS),
         supabase.rpc('fixture_signup_counts'),
         supabase.from('calendar_entries')
           .select('id, title, title_vn, description, entry_date, start_time, end_time, session_label, space, kind')
@@ -226,7 +231,7 @@ export default function WhatsOnPage() {
       // screen is now wrong in a way the member can see.
     }
     const [{ data }, { data: c }] = await Promise.all([
-      supabase.from('fixture_signups').select('*'),
+      supabase.from('fixture_signups').select(SIGNUP_COLS),
       supabase.rpc('fixture_signup_counts'),
     ])
     if (data) setSignups(data)
@@ -268,7 +273,10 @@ export default function WhatsOnPage() {
     const closed = deadlinePassed(f)
     const count = counts[f.id] || 0
     const cap = f.max_signups
-    const full = cap != null && count >= cap
+    // Staff can mark an event full before every name is in — places taken on Zalo
+    // are gone even if the count has not caught up (2026-09-15). A member who
+    // already has a place still sees "You're in" and can withdraw.
+    const full = !!f.is_full || (cap != null && count >= cap)
     const rel = relativeDate(new Date(f.date).getTime(), t)
     const fill = cap != null && cap > 0 ? Math.min(100, Math.round((count / cap) * 100)) : 0
     return (

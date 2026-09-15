@@ -127,8 +127,11 @@ export async function gatherWeek(sb: SupabaseClient, start: string, end: string,
   // Events
   const fixtures = await safe<{ id: string; sport: string; title: string; date: string; max_signups: number | null }[]>(
     sb.from('fixtures').select('id, sport, title, date, max_signups').gte('date', start).lte('date', end + 'T23:59:59'), [])
-  const counts = await safe<{ fixture_id: string; count: number }[]>(sb.rpc('fixture_signup_counts'), [])
-  const countMap = new Map((counts || []).map(c => [c.fixture_id, Number(c.count)]))
+  // fixture_signup_counts() returns (fixture_id, signups). This read `count`, which
+  // is never there, so every event reported 0 sign-ups (found 2026-09-15). It now
+  // counts staff-added places too, because the function counts every row.
+  const counts = await safe<{ fixture_id: string; signups?: number; count?: number }[]>(sb.rpc('fixture_signup_counts'), [])
+  const countMap = new Map((counts || []).map(c => [c.fixture_id, Number(c.signups ?? c.count ?? 0)]))
   const cal = await safe<{ kind: string }[]>(
     sb.from('calendar_entries').select('kind').gte('entry_date', start).lte('entry_date', end), [])
   const calByKind: Record<string, number> = {}

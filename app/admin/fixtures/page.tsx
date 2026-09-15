@@ -9,6 +9,7 @@ import type { Fixture } from '@/lib/types'
 import { FIXTURE_TYPES, TYPE_COLOR, typeLabel } from '@/lib/fixtures'
 import ShareBox from '@/components/admin/ShareBox'
 import AttachmentField from '@/components/admin/AttachmentField'
+import FixtureAttendees, { type RosterMember } from '@/components/admin/FixtureAttendees'
 import { vnInputValue, vnInputToISO, vnEventLabel } from '@/lib/datetime'
 
 const inputStyle: React.CSSProperties = {
@@ -31,7 +32,9 @@ export default function AdminFixtures() {
   const { t, lang } = useLang()
   const [fixtures, setFixtures] = useState<Fixture[]>([])
   const [signupCounts, setSignupCounts] = useState<Record<string, number>>({})
-  const [roster, setRoster] = useState<Record<string, string[]>>({})   // ADMIN-ONLY: fixture_id → member names
+  // The roster to add attendees from. undefined while loading, null if it failed —
+  // adding by name still works then.
+  const [members, setMembers] = useState<RosterMember[] | null | undefined>(undefined)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Fixture | null>(null)
   const [type, setType] = useState<Fixture['type']>('golf')
@@ -57,30 +60,26 @@ export default function AdminFixtures() {
     if (data) setFixtures(data)
     const { data: pj } = await supabase.from('projects').select('id, name').eq('status', 'active').order('name')
     if (pj) setProjects(pj)
-    const { data: signups } = await supabase.from('fixture_signups').select('fixture_id, user_id')
+    // Counts only here. Every row is one place — portal sign-ups and people staff
+    // added alike — and admins read all of them under RLS. The NAMES now come from
+    // the attendees route when a row is opened, not from a profiles lookup that
+    // could only ever name people with a portal login (2026-09-15).
+    const { data: signups, error: sErr } = await supabase.from('fixture_signups').select('fixture_id')
+    if (sErr) showToast(`${t('Could not load sign-up counts:', 'Không tải được số lượt đăng ký:')} ${sErr.message}`, 'error')
     if (signups) {
       const counts: Record<string, number> = {}
-      const byFixture: Record<string, string[]> = {}
-      signups.forEach((s: { fixture_id: string; user_id: string }) => {
-        counts[s.fixture_id] = (counts[s.fixture_id] || 0) + 1
-        ;(byFixture[s.fixture_id] ||= []).push(s.user_id)
-      })
+      signups.forEach((s: { fixture_id: string }) => { counts[s.fixture_id] = (counts[s.fixture_id] || 0) + 1 })
       setSignupCounts(counts)
-      // Roster (WHO) — admin-only: resolve user_id → member name via profiles
-      // (admin-readable). The member view + public /sports never run this.
-      const ids = [...new Set(signups.map((s: { user_id: string }) => s.user_id))]
-      if (ids.length) {
-        const { data: profs } = await supabase.from('profiles').select('id, display_name').in('id', ids)
-        const nameById: Record<string, string> = {}
-        ;(profs || []).forEach((p: { id: string; display_name: string | null }) => { nameById[p.id] = p.display_name || p.id.slice(0, 8) })
-        const ros: Record<string, string[]> = {}
-        Object.entries(byFixture).forEach(([fid, uids]) => { ros[fid] = uids.map(u => nameById[u] || u.slice(0, 8)) })
-        setRoster(ros)
-      } else setRoster({})
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    fetch('/api/admin/mis/members', { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(d => setMembers(((d.members || []) as RosterMember[]).map(m => ({ member_no: m.member_no, full_name: m.full_name, nickname: m.nickname, status: m.status }))))
+      .catch(() => setMembers(null))
+  }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
   const resetForm = () => {
     setType('golf'); setTitle(''); setDescription(''); setDate(''); setLocation('')
@@ -251,9 +250,6 @@ export default function AdminFixtures() {
                 <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>
                   {vnEventLabel(f.date)} · {f.location || '—'}
                 </span>
-                <span style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#B2AA98' }}>
-                  {signupCounts[f.id] || 0} {t('signed up', 'đã đăng ký')}
-                </span>
                 {f.ops_project_id && (
                   <a href={`/admin/ops/${f.ops_project_id}`} style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#9E8FC4', textDecoration: 'none' }} title={t('Open the linked Ops Hub board', 'Mở bảng Ops Hub đã liên kết')}>{t('⊙ ops board →', '⊙ bảng ops →')}</a>
                 )}
@@ -263,6 +259,12 @@ export default function AdminFixtures() {
                 <button onClick={() => requestRemove(f)} style={{ background: 'none', border: 'none', fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#E5D4C2', opacity: 0.5, cursor: 'pointer' }}>{t('Delete', 'Xóa')}</button>
               </div>
             </div>
+            {/* Who is coming — ADMIN-ONLY. Replaces the old roster line, which could
+                only name people who had signed up in the portal themselves. The
+                count shown is every place: portal sign-ups plus staff-added. */}
+            <FixtureAttendees fixture={f} count={signupCounts[f.id] || 0} roster={members}
+              showToast={showToast} onChanged={load} />
+
             {/* On the ROW, not only in the create form: the events that most need
                 artwork are the ones already in the calendar. Ken Grier exists
                 already and has to be attachable without being recreated. */}
@@ -271,8 +273,8 @@ export default function AdminFixtures() {
             {/* The share draft. Every fixture is member-visible by RLS, so there is
                 no visibility condition here — unlike calendar entries, where a
                 staff-only row must get no box at all.
-                The roster BELOW is admin-only and deliberately not passed in:
-                ShareInput has no field for it. */}
+                The attendee list ABOVE is admin-only and deliberately not passed
+                in: ShareInput has no field for it. */}
             <ShareBox entityType="fixture" entityId={f.id} entry={{
               type: f.type,
               title: f.title,
@@ -282,13 +284,6 @@ export default function AdminFixtures() {
               capped: f.max_signups != null,
               url: 'https://therampantclub.com/members/events',
             }} />
-
-            {/* ADMIN-ONLY roster — who signed up (member view + public /sports stay counts-only) */}
-            {roster[f.id]?.length > 0 && (
-              <div style={{ fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 10, color: '#8B8576', paddingLeft: 2 }}>
-                ↳ {roster[f.id].join(' · ')}
-              </div>
-            )}
           </div>
         ))}
       </div>

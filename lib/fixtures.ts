@@ -10,6 +10,18 @@
 // need RSVPs with a cap, and the capacity machinery (fixture_signups, the
 // FOR UPDATE lock in fixture_signup(), the deadline check) exists here and is
 // proven. A second copy would have to be hardened a second time.
+/** A column this code expects is not in the database yet (db/fixture_attendees.sql
+ *  not run). 42703 is Postgres on a select; PGRST204 is PostgREST refusing an
+ *  insert/update naming an unknown column. Callers fall back to today's behaviour
+ *  on this and ONLY this — any other error is still an error (2026-09-15). */
+export const isMissingColumn = (e: { code?: string; message?: string } | null | undefined): boolean =>
+  !!e && (e.code === '42703' || e.code === 'PGRST204' || /column .* does not exist|could not find the .* column/i.test(e.message || ''))
+
+/** Names compared the way staff type them: "Chau" must match "Châu", and đ is not
+ *  a d-with-a-mark to NFD, so it is folded by hand (as the booking search does). */
+export const foldName = (s: string | null | undefined): string =>
+  (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().replace(/\s+/g, ' ').trim()
+
 export const SPORT_TYPES = ['golf', 'tennis', 'padel', 'hash'] as const
 export const HOUSE_TYPES = ['dinner', 'tasting', 'social', 'other'] as const
 export const FIXTURE_TYPES = [...SPORT_TYPES, ...HOUSE_TYPES] as const

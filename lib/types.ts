@@ -67,12 +67,16 @@ export interface Fixture {
   results: string | null
   ops_project_id: string | null   // optional navigable link to an Ops Hub board
   created_at: string
+  // Staff's manual "this is full" (db/fixture_attendees.sql). Optional because the
+  // row simply lacks it until that SQL has run — absent means not full.
+  is_full?: boolean
 }
 
 export interface FixtureSignup {
   id: string
   fixture_id: string
-  user_id: string
+  // Null for a place staff added for someone with no portal login (2026-09-15).
+  user_id: string | null
   signed_up_at: string
 }
 
