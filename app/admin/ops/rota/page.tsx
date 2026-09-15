@@ -9,6 +9,8 @@ import { createShift, updateShift, deleteShift, moveShift } from '@/lib/ops/api'
 import type { RotaShift, RotaShiftType, TeamMember, CoverageTarget, StaffTimeOff, TimeOffKind } from '@/lib/ops/types'
 import { checkWeek, WEEKDAYS, type RotaStaff } from '@/lib/rota/policy'
 import { useLang } from '@/lib/admin-lang'
+import RotaRulesEditor from '@/components/admin/RotaRulesEditor'
+import ShiftTypeEditor from '@/components/admin/ShiftTypeEditor'
 
 const FAMILY = "'Google Sans Code', monospace"
 const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -95,6 +97,10 @@ export default function RotaPage() {
   const [showTeam, setShowTeam] = useState(false)
   const [showCoverage, setShowCoverage] = useState(false)
   const [showTimeOff, setShowTimeOff] = useState(false)
+  // The rules and the shift times, editable here from 2026-09-15 — each change
+  // to them in the week before took an SQL file.
+  const [showRules, setShowRules] = useState(false)
+  const [showShiftTimes, setShowShiftTimes] = useState(false)
 
   // Drag state. dragId = the shift being dragged; didDrag distinguishes a real
   // drag from a click (so click-to-edit still works alongside drag-to-move).
@@ -144,6 +150,15 @@ export default function RotaPage() {
   const hoursFor = (id: string) => policyShifts
     .filter(x => x.member === id)
     .reduce((tot, x) => tot + (policyTypes.find(t => t.name === x.shiftName)?.hours ?? 0), 0)
+  // For the Shift times editor: who, on the week on screen, a new paid length
+  // for one shift type would push over their contracted hours. A note before
+  // saving, not a block — the policy panel above says it properly once saved.
+  const overHoursIf = (typeName: string, newHours: number) => policyStaff
+    .filter(p => p.weeklyHours != null)
+    .map(p => ({ p, h: policyShifts.filter(x => x.member === p.id).reduce((tot, x) =>
+      tot + (x.shiftName === typeName ? newHours : (policyTypes.find(ty => ty.name === x.shiftName)?.hours ?? 0)), 0) }))
+    .filter(({ p, h }) => h > p.weeklyHours! && h > hoursFor(p.id))
+    .map(({ p, h }) => `${p.name} ${h.toFixed(2)}h / ${p.weeklyHours}`)
   const dayOffFor = (id: string) => {
     const worked = new Set(policyShifts.filter(x => x.member === id)
       .map(x => new Date(x.shiftDate + 'T00:00:00Z').getUTCDay()))
@@ -868,6 +883,30 @@ export default function RotaPage() {
                 })}
               </div>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* Rota rules per person — hours, office day, days off, always-works, the
+          pair, standing shift. Supervisor status is deliberately absent (see
+          components/admin/RotaRulesEditor.tsx). */}
+      <div style={{ marginTop: 12 }}>
+        <button onClick={() => setShowRules(v => !v)} style={tinyBtn}>{showRules ? '▾' : '▸'} {t('Rota rules per person', 'Quy định lịch theo từng người')}</button>
+        {showRules && (
+          <div style={{ ...teamPanel, maxWidth: 760 }}>
+            <RotaRulesEditor rotaTeam={rotaTeam} team={team} typeNames={typeNames}
+              hoursThisWeek={hoursFor} t={t} showToast={showToast} onSaved={load} />
+          </div>
+        )}
+      </div>
+
+      {/* Shift times — start, end, break, paid hours, weekdays per shift type */}
+      <div style={{ marginTop: 12 }}>
+        <button onClick={() => setShowShiftTimes(v => !v)} style={tinyBtn}>{showShiftTimes ? '▾' : '▸'} {t('Shift times', 'Giờ ca')}</button>
+        {showShiftTimes && (
+          <div style={{ ...teamPanel, maxWidth: 760 }}>
+            <ShiftTypeEditor types={types} today={vnDateString()} overHoursIf={overHoursIf}
+              t={t} showToast={showToast} onSaved={load} />
           </div>
         )}
       </div>
