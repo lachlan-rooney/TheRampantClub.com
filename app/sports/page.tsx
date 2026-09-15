@@ -89,7 +89,7 @@ function IndexRule({ n, sport }: { n: number; sport?: string }) {
 
 // ── One sport ────────────────────────────────────────────────────
 function SportSection({
-  id, sportId, n, title, vn, copy, details, image,
+  id, sportId, n, title, vn, copy, details, image, media,
 }: {
   id: string
   sportId: string
@@ -99,6 +99,10 @@ function SportSection({
   copy: string[]
   details?: { label: string; value: string }[]
   image?: { src: string; alt: string }
+  /** The sport's own film or photograph, at the head of the right-hand column
+   *  (2026-09-15). `cutout` = a transparent-background portrait: no frame, so
+   *  it stands on the cream rather than in a box. */
+  media?: { kind: 'video'; src: string; label: string } | { kind: 'image'; src: string; alt: string; cutout?: boolean }
 }) {
   return (
     <section id={id} className="sp-section" style={{ ...WRAP, scrollMarginTop: 90 }}>
@@ -122,6 +126,18 @@ function SportSection({
             {copy.map((para, i) => <p key={i} className="sp-copy">{para}</p>)}
           </div>
           <div>
+            {media?.kind === 'video' && (
+              <div className="sp-media">
+                <video autoPlay muted loop playsInline preload="metadata" aria-label={media.label}>
+                  <source src={media.src} type="video/mp4" />
+                </video>
+              </div>
+            )}
+            {media?.kind === 'image' && (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={media.src} alt={media.alt} loading="lazy"
+                   className={media.cutout ? 'sp-media-cutout' : 'sp-media sp-media-img'} />
+            )}
             {details && <Details rows={details} />}
             <SportOdds sport={sportId} />
           </div>
@@ -236,6 +252,13 @@ export default function SportsPage() {
         }
         .sp-section:hover .sp-index-line::after { transform: scaleX(1); }
         .sp-section-art { width: clamp(72px, 9vw, 120px); height: auto; opacity: .9; flex-shrink: 0; }
+        /* A sport's own film or photo at the head of its right-hand column. The
+           tennis film is 4:5 portrait, so it is held to a width that keeps the
+           details beneath it within reach rather than a screen away. */
+        .sp-media { display: block; width: 100%; max-width: 420px; margin: 0 0 28px; border-radius: 10px; overflow: hidden;
+                    background: rgba(5,46,32,.06); }
+        .sp-media video, .sp-media-img { display: block; width: 100%; height: auto; }
+        .sp-media-cutout { display: block; width: 100%; max-width: 400px; height: auto; margin: 0 0 20px; }
 
         .sp-split { display: grid; grid-template-columns: 1.15fr .85fr; gap: 64px; margin-top: 40px; align-items: start; }
 
@@ -397,6 +420,7 @@ export default function SportsPage() {
           title="The Sài Gòn Open"
           vn="Giải Quần Vợt Sài Gòn"
           image={{ src: '/images/tennis-opt.png', alt: 'Tennis' }}
+          media={{ kind: 'video', src: '/images/sports/tennis.mp4', label: 'The Rampant Club tennis film' }}
           copy={[
             "An annual doubles tournament open to all members and their guests, held at a local court that the Committee secures through means it prefers not to discuss. The Sài Gòn Open has been running since 2024 and has already produced three disputed line calls, one broken racquet, and a lifelong friendship.",
             "Mixed doubles is encouraged. Singles is tolerated. The Committee does not recognise “social tennis” as a category.",
@@ -417,6 +441,7 @@ export default function SportsPage() {
           n={3}
           title="The Rampant Padel Club"
           vn="Câu Lạc Bộ Padel Rampant"
+          media={{ kind: 'image', src: '/images/brand/padel-visor-1080.webp', alt: 'A player in the Rampant Club visor', cutout: true }}
           copy={[
             "The newest addition to the Club's sporting calendar. Monthly sessions for members who have discovered padel and now won't stop talking about it.",
             "The Committee acknowledges that padel is, in fact, a real sport and not simply “tennis with walls”. Court bookings are managed by the Sports Secretary, who is learning the rules as we go. Coaching is available from a member who spent three weeks in Barcelona and returned with strong opinions.",
