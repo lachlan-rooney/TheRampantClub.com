@@ -90,7 +90,10 @@ export const TROPHIES: Trophy[] = [
 
 // ── Hall of Champions ──────────────────────────────────────────
 export const WINNERS: Winner[] = [
-  { trophy: 'rampant-cup',     year: 2026, winner: 'Team Vu',       result: '14½ – 13½', notes: 'Decided on the eighteenth at Đà Lạt.' },
+  // The real 2026 result (Lachlan, 2026-09-15: "Team Lan won") — played at The
+  // Bluffs, Hồ Tràm, 14–15 August. The placeholder score and "decided at Đà Lạt"
+  // note from the page's first build are gone; no score was given, so none shows.
+  { trophy: 'rampant-cup',     year: 2026, winner: 'Team Lân' },
   { trophy: 'rampant-cup',     year: 2025, winner: 'Team Lân',      result: '15 – 13',   notes: 'A controversial line on the seventh.' },
   { trophy: 'rampant-cup',     year: 2024, winner: 'Team Lân',      result: '14 – 14 (T)', notes: 'Tie. The Cup remained at the Captain\'s for a year.' },
   { trophy: 'saigon-open',     year: 2026, winner: 'Pioneer 042 / Pioneer 011', result: '6-4, 7-5', notes: 'Mixed doubles. Tightly contested.' },

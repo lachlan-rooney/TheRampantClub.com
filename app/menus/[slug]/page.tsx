@@ -7,6 +7,8 @@ import { notFound } from 'next/navigation'
 import { PublicPage, Rise, BleedImage, InkFloat, MONO, SERIF } from '@/components/public/kit'
 import InkStill from '@/components/public/menus/InkStill'
 import { FLOOR_MARK, ROOM_PHOTO } from '@/components/public/menus/rooms'
+import { useLang } from '@/lib/lang'
+import LangToggle from '@/components/LangToggle'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ONE FLOOR'S MENU — the cover of it, and the way in.
@@ -23,6 +25,7 @@ interface FloorMenu {
   name: string
   vn: string
   kind: string
+  vnKind: string
   pdf: string
 }
 
@@ -33,12 +36,19 @@ const MENUS: Record<string, FloorMenu> = {
     name: 'The Library Bar',
     vn: 'Quầy Bar Thư Viện',
     kind: 'Cocktails & Spirits',
+    vnKind: 'Cocktail & Rượu Mạnh',
     pdf: '/documents/menus/library-bar.pdf',
   },
   // Others to come — drop a PDF in /public/documents/menus/<slug>.pdf and add the entry here.
 }
 
 const CSS = `
+  /* The EN/VN switch (2026-09-15) — same spot as /menus and the member portal,
+     and visible on phones too: the public phone menu has no switch of its own. */
+  .mp-lang { position: absolute; z-index: 60; top: calc(56px + env(safe-area-inset-top, 0px)); right: 40px; }
+  @media (max-width: 768px) { .mp-lang { top: calc(70px + env(safe-area-inset-top, 0px)); right: 20px; } }
+  .mp-en-only { font-family: ${MONO}; font-size: 12px; line-height: 1.8; opacity: .7; margin: 14px 0 0; }
+
   .mp-mast { padding-bottom: 72px; }
   .mp-back { display: inline-block; margin-bottom: 34px; color: inherit; text-decoration: none;
              font-family: ${MONO}; font-size: 12px; letter-spacing: .08em; }
@@ -75,6 +85,9 @@ const CSS = `
 
 export default function FloorMenuPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
+  // Before the not-found exit, so the hook order never depends on the slug.
+  const { lang, t } = useLang()
+  const vn = lang === 'vn'
   const menu = MENUS[slug]
   if (!menu) notFound()
 
@@ -86,22 +99,26 @@ export default function FloorMenuPage({ params }: { params: Promise<{ slug: stri
       <NavOverlay variant="public" />
       <PublicPage>
         <style dangerouslySetInnerHTML={{ __html: CSS }} />
+        <div className="mp-lang"><LangToggle tone="light" /></div>
 
         <header className="pk-wrap pk-mast mp-mast">
           <div>
             <Rise>
-              <Link href="/menus" className="mp-back"><span className="pk-go">←</span>All menus</Link>
+              <Link href="/menus" className="mp-back"><span className="pk-go">←</span>{t('All menus', 'Tất cả thực đơn')}</Link>
             </Rise>
-            <Rise delay={.08}><h1 className="pk-h1">{menu.name}</h1></Rise>
-            <Rise delay={.14}><div className="pk-sub">{menu.vn}</div></Rise>
-            <Rise delay={.2}><div className="mp-kind">{menu.kind}</div></Rise>
+            <Rise delay={.08}><h1 className="pk-h1">{vn ? menu.vn : menu.name}</h1></Rise>
+            <Rise delay={.14}><div className="pk-sub">{vn ? menu.name : menu.vn}</div></Rise>
+            <Rise delay={.2}><div className="mp-kind">{vn ? menu.vnKind : menu.kind}</div></Rise>
+            {/* Said plainly, so the switch does not promise a Vietnamese menu that
+                does not exist yet — the PDF is English only (2026-09-15). */}
+            {vn && <Rise delay={.22}><p className="mp-en-only">Thực đơn hiện chỉ có bằng tiếng Anh.</p></Rise>}
             <Rise delay={.26}>
               <div className="mp-actions">
                 <a href={menu.pdf} target="_blank" rel="noopener noreferrer" className="pk-cta">
-                  Open in new tab <span className="pk-go">↗</span>
+                  {t('Open in new tab', 'Mở trong tab mới')} <span className="pk-go">↗</span>
                 </a>
                 <a href={menu.pdf} download className="pk-cta">
-                  Download PDF <span className="pk-go">↓</span>
+                  {t('Download PDF', 'Tải PDF')} <span className="pk-go">↓</span>
                 </a>
               </div>
             </Rise>
@@ -124,10 +141,10 @@ export default function FloorMenuPage({ params }: { params: Promise<{ slug: stri
             right surface — it just was not what the code claimed to be. */}
         <section className="pk-wrap mp-view">
           <Rise>
-            <p className="mp-note mp-desk">The menu opens in your PDF viewer.</p>
-            <p className="mp-note mp-phone">Tap to view the full menu.</p>
+            <p className="mp-note mp-desk">{t('The menu opens in your PDF viewer.', 'Thực đơn sẽ mở trong trình xem PDF của bạn.')}</p>
+            <p className="mp-note mp-phone">{t('Tap to view the full menu.', 'Chạm để xem toàn bộ thực đơn.')}</p>
             <a href={menu.pdf} target="_blank" rel="noopener noreferrer" className="mp-big">
-              View the menu&nbsp;<span className="pk-go">→</span>
+              {t('View the menu', 'Xem thực đơn')}&nbsp;<span className="pk-go">→</span>
             </a>
           </Rise>
           <Rise delay={.12}>

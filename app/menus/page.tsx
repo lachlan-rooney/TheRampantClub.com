@@ -5,6 +5,8 @@ import NavOverlay from '@/components/NavOverlay'
 import { PublicPage, Masthead, Rise, inkSrc, MONO } from '@/components/public/kit'
 import InkStill from '@/components/public/menus/InkStill'
 import { FLOOR_MARK, ROOM_PHOTO } from '@/components/public/menus/rooms'
+import { useLang } from '@/lib/lang'
+import LangToggle from '@/components/LangToggle'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE MENUS — one door per floor.
@@ -74,6 +76,12 @@ const MENUS: FloorMenu[] = [
 ]
 
 const CSS = `
+  /* The EN/VN switch (2026-09-15) — the member portal's spot: 56px down, 40px
+     in. Public pages have no switch in their phone menu, so unlike the portal it
+     stays visible below 768px instead of moving into the menu. */
+  .mn-lang { position: absolute; z-index: 60; top: calc(56px + env(safe-area-inset-top, 0px)); right: 40px; }
+  @media (max-width: 768px) { .mn-lang { top: calc(70px + env(safe-area-inset-top, 0px)); right: 20px; } }
+
   .mn-list { padding-top: 20px; padding-bottom: 140px; display: grid; gap: 120px; }
   .mn-link { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 72px; align-items: center;
              color: inherit; text-decoration: none; }
@@ -107,15 +115,24 @@ const CSS = `
 `
 
 export default function MenusIndex() {
+  // Vietnamese labels here are a first draft (2026-09-15) — Miss Châu to review.
+  // Room names stay recognisable in both: the chosen language leads, the other
+  // sits underneath, because a member looking for a room needs the word on the door.
+  const { lang, t } = useLang()
+  const vn = lang === 'vn'
   return (
     <>
       <NavOverlay variant="public" />
       <PublicPage>
         <style dangerouslySetInnerHTML={{ __html: CSS }} />
+        <div className="mn-lang"><LangToggle tone="light" /></div>
 
         <Masthead
-          title="The Menus"
-          lede={<>Each floor has its own offering. Cocktails by the Library Bar, bottle-share in the Rampant Room, private dining on the third, experimental work in the Source &amp; Origin Lab.</>}
+          title={t('The Menus', 'Thực Đơn')}
+          lede={t(
+            'Each floor has its own offering. Cocktails by the Library Bar, bottle-share in the Rampant Room, private dining on the third, experimental work in the Source & Origin Lab.',
+            'Mỗi tầng có thực đơn riêng. Cocktail tại Library Bar, chia sẻ chai tại Rampant Room, bữa tối riêng tư ở tầng ba, và những thử nghiệm tại Source & Origin Lab.',
+          )}
           art={
             <InkStill className="mn-still" objects={[
               { name: 'glass',       w: '46%', top: '24%', left: '30%', rot: -5,  dur: 9,   z: 2 },
@@ -127,7 +144,7 @@ export default function MenusIndex() {
           }
         />
 
-        <section className="pk-wrap mn-list" aria-label="The menus">
+        <section className="pk-wrap mn-list" aria-label={t('The menus', 'Thực đơn')}>
           {MENUS.map((m, i) => {
             const Tag = (m.available ? Link : 'div') as React.ElementType
             const photo = ROOM_PHOTO[m.slug]
@@ -157,14 +174,14 @@ export default function MenusIndex() {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={inkSrc(mark)} alt="" aria-hidden="true" className="mn-lion" />
                       )}
-                      <span className="mn-floor">FLOOR {m.floor}</span>
+                      <span className="mn-floor">{t(`FLOOR ${m.floor}`, `TẦNG ${m.floor}`)}</span>
                     </div>
-                    <h2 className="pk-h2 mn-name">{m.name}</h2>
-                    <div className="mn-vn">{m.vn}</div>
-                    <div className="mn-kind">{m.kind} &middot; {m.vnKind}</div>
+                    <h2 className="pk-h2 mn-name">{vn ? m.vn : m.name}</h2>
+                    <div className="mn-vn">{vn ? m.name : m.vn}</div>
+                    <div className="mn-kind">{vn ? m.vnKind : m.kind}</div>
                     {m.available
-                      ? <span className="pk-cta">View menu <span className="pk-go">→</span></span>
-                      : <span className="mn-soon">Coming soon</span>}
+                      ? <span className="pk-cta">{t('View menu', 'Xem thực đơn')} <span className="pk-go">→</span></span>
+                      : <span className="mn-soon">{t('Coming soon', 'Sắp ra mắt')}</span>}
                   </div>
                 </Tag>
               </Rise>
