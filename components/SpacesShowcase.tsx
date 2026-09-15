@@ -404,6 +404,16 @@ export default function SpacesShowcase({ variant }: { variant: 'internal' | 'pub
                         {t('A members-only whisky was created for the occasion — the Octave Auchentoshan 14, bottled for the exhibition.',
                           'Một loại whisky dành riêng cho hội viên đã được tạo ra cho dịp này — Octave Auchentoshan 14, đóng chai riêng cho triển lãm.')}
                       </p>
+                      {/* The Octave's own artwork for that bottle — the "Octave 14" in pixel
+                          art under the Octave wordmark (owner's TRC Octave Digital,
+                          2026-09-15). It illustrates the sentence above, so it needs no
+                          words of its own; it is not a photograph of the exhibition. */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/images/brand/octave-digital-540.webp"
+                           srcSet="/images/brand/octave-digital-540.webp 540w, /images/brand/octave-digital-1080.webp 1080w"
+                           sizes="(max-width: 860px) 80vw, 340px" loading="lazy"
+                           alt={t('The Octave 14 — artwork for the members-only bottle', 'The Octave 14 — tác phẩm cho chai dành riêng hội viên')}
+                           style={{ display: 'block', width: '100%', maxWidth: 340, height: 'auto', borderRadius: 10, margin: '6px 0 18px' }} />
                       <Cta href="/studio" style={{ marginTop: 8 }}>{bare(t('Past exhibitions →', 'Các Triển Lãm Trước →'))}</Cta>
                     </Rise>
                   ) : s.id === 'sports' ? (
