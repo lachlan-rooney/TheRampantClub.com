@@ -12,7 +12,7 @@ export async function GET() {
   if (!actor?.isAdmin) return NextResponse.json({ error: 'Staff only.' }, { status: 403 })
   const a = svc()
   const [{ data: events }, { data: fixtures }] = await Promise.all([
-    a.from('events').select('id, title, category, event_date, description, source, creator_name, status, created_at').order('created_at', { ascending: false }).limit(400),
+    a.from('events').select('id, title, category, event_date, description, fixture_id, source, creator_name, status, created_at').order('created_at', { ascending: false }).limit(400),
     a.from('fixtures').select('id, title, sport, date').order('date', { ascending: false }).limit(120),
   ])
   const ids = (events || []).map(e => e.id)

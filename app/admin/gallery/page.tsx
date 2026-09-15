@@ -10,6 +10,7 @@ interface EventRow {
   id: string; title: string; category: string; event_date: string | null
   description: string | null; source: 'club' | 'member'; creator_name: string | null
   status: 'visible' | 'hidden'; media_count: number; media_hidden: number
+  fixture_id: string | null
 }
 interface Media {
   id: string; kind: 'image' | 'link'; url: string; caption: string | null
@@ -38,6 +39,20 @@ export default function AdminGalleryPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Editing a folder and a caption (2026-09-15). Staff could only hide or delete,
+  // so fixing a misspelt title meant deleting the folder and its photos.
+  const [editId, setEditId] = useState<string | null>(null)
+  const [eTitle, setETitle] = useState('')
+  const [eCategory, setECategory] = useState('social')
+  const [eDate, setEDate] = useState('')
+  const [eDescription, setEDescription] = useState('')
+  const [eFixtureId, setEFixtureId] = useState('')
+  const [eSaving, setESaving] = useState(false)
+  const [eError, setEError] = useState<string | null>(null)
+  const [captionId, setCaptionId] = useState<string | null>(null)
+  const [captionDraft, setCaptionDraft] = useState('')
+  const [captionError, setCaptionError] = useState<string | null>(null)
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
@@ -50,7 +65,7 @@ export default function AdminGalleryPage() {
 
   const openEvent = async (id: string) => {
     if (expanded === id) { setExpanded(null); return }
-    setExpanded(id); setMedia([])
+    setExpanded(id); setMedia([]); setCaptionId(null)
     const r = await fetch(`/api/admin/events/${id}`, { cache: 'no-store' })
     const j = await r.json()
     setMedia(j.media || [])
@@ -89,6 +104,43 @@ export default function AdminGalleryPage() {
     try { await fetch(`/api/admin/events/${expanded}/media/${mid}`, { method: 'DELETE' }) } catch { /* */ }
   }
 
+  const startEdit = (e: EventRow) => {
+    setEditId(e.id); setETitle(e.title); setECategory(e.category); setEDate(e.event_date || '')
+    setEDescription(e.description || ''); setEFixtureId(e.fixture_id || ''); setEError(null)
+  }
+  const saveEdit = async () => {
+    if (!editId || eSaving) return
+    setESaving(true); setEError(null)
+    try {
+      const r = await fetch(`/api/admin/events/${editId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: eTitle, category: eCategory, event_date: eDate || null, description: eDescription || null,
+          fixture_id: eCategory === 'fixture' && eFixtureId ? eFixtureId : null,
+        }),
+      })
+      const j = await r.json().catch(() => ({}))
+      // A failed save keeps the form open with the edits in it, and says why.
+      if (!r.ok) { setEError(j.error || t('Could not save.', 'Không thể lưu.')); return }
+      setEvents(list => list.map(x => x.id === editId ? { ...x, ...j.event } : x))
+      setEditId(null)
+    } catch { setEError(t('Could not save.', 'Không thể lưu.')) } finally { setESaving(false) }
+  }
+  const startCaption = (m: Media) => { setCaptionId(m.id); setCaptionDraft(m.caption || ''); setCaptionError(null) }
+  const saveCaption = async () => {
+    if (!captionId || !expanded) return
+    setCaptionError(null)
+    try {
+      const r = await fetch(`/api/admin/events/${expanded}/media/${captionId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ caption: captionDraft }),
+      })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok) { setCaptionError(j.error || t('Could not save.', 'Không thể lưu.')); return }
+      setMedia(list => list.map(x => x.id === captionId ? { ...x, caption: j.media?.caption ?? null } : x))
+      setCaptionId(null)
+    } catch { setCaptionError(t('Could not save.', 'Không thể lưu.')) }
+  }
+
   const memberCount = events.filter(e => e.source === 'member').length
   const shown = useMemo(() => events.filter(e =>
     filter === 'all' ? true : filter === 'member' ? e.source === 'member' : e.status === filter
@@ -110,7 +162,7 @@ export default function AdminGalleryPage() {
 
       <h1 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 26, color: '#E5D4C2', marginBottom: 4 }}>{t('Event Gallery', 'Thư Viện Sự Kiện')}</h1>
       <p style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98', marginBottom: 22, letterSpacing: '0.04em' }}>
-        {t('Events members click into to see and add photos & links. Members create their own too — hide or remove anything here.', 'Sự kiện mà hội viên bấm vào để xem và thêm ảnh & liên kết. Hội viên cũng tự tạo — ẩn hoặc xoá bất cứ thứ gì tại đây.')}
+        {t('Events members click into to see and add photos & links. Members create their own too — edit, hide or remove anything here.', 'Sự kiện mà hội viên bấm vào để xem và thêm ảnh & liên kết. Hội viên cũng tự tạo — sửa, ẩn hoặc xoá bất cứ thứ gì tại đây.')}
         {memberCount > 0 && ` · ${memberCount} ${t('member-created', 'do hội viên tạo')}`}
       </p>
 
@@ -161,12 +213,46 @@ export default function AdminGalleryPage() {
                 {e.media_hidden > 0 && ` · ${e.media_hidden} ${t('hidden', 'đã ẩn')}`}
               </div>
             </button>
+            <button className="agx-btn" disabled={busy === e.id} onClick={() => (editId === e.id ? setEditId(null) : startEdit(e))}>{editId === e.id ? t('Close', 'Đóng') : t('Edit', 'Sửa')}</button>
             <button className="agx-btn" disabled={busy === e.id} onClick={() => setEventStatus(e.id, e.status === 'visible' ? 'hidden' : 'visible')}>{e.status === 'visible' ? t('Hide', 'Ẩn') : t('Show', 'Hiện')}</button>
             <button className="agx-btn" disabled={busy === e.id} onClick={() => deleteEvent(e.id)} style={{ color: '#C27070', borderColor: 'rgba(194,112,112,0.3)' }}>{t('Delete', 'Xoá')}</button>
           </div>
 
+          {editId === e.id && (
+            <div style={{ border: '1px solid rgba(212,184,90,0.25)', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: 14, background: 'rgba(5,46,32,0.4)' }}>
+              <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#D4B85A', marginBottom: 10 }}>{t('Edit this folder', 'Sửa thư mục này')}</div>
+              {eError && <div style={{ fontFamily: MONO, fontSize: 11, color: '#C27070', marginBottom: 10 }}>{eError}</div>}
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+                <input className="agx-input" value={eTitle} onChange={ev => setETitle(ev.target.value)} placeholder={t('Event title', 'Tiêu đề sự kiện')} maxLength={120} autoFocus />
+                <select className="agx-select" value={eCategory} onChange={ev => setECategory(ev.target.value)}>
+                  {GALLERY_CATEGORIES.map(c => <option key={c.key} value={c.key}>{t(c.en, c.vn)}</option>)}
+                </select>
+                <input className="agx-input" type="date" value={eDate} onChange={ev => setEDate(ev.target.value)} />
+              </div>
+              {eCategory === 'fixture' && fixtures.length > 0 && (
+                <select className="agx-select" value={eFixtureId} onChange={ev => setEFixtureId(ev.target.value)} style={{ width: '100%', marginBottom: 10 }}>
+                  <option value="">{t('— link to a fixture (optional) —', '— liên kết với trận đấu (tuỳ chọn) —')}</option>
+                  {fixtures.map(f => <option key={f.id} value={f.id}>{f.title} · {fmtDate(f.date)}</option>)}
+                </select>
+              )}
+              <input className="agx-input" value={eDescription} onChange={ev => setEDescription(ev.target.value)} placeholder={t('A note (optional)', 'Ghi chú (tuỳ chọn)')} maxLength={600} style={{ width: '100%', marginBottom: 12 }} />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="agx-btn gold" onClick={saveEdit} disabled={eSaving} style={{ opacity: eSaving ? 0.5 : 1 }}>{eSaving ? t('Saving…', 'Đang lưu…') : t('Save changes', 'Lưu thay đổi')}</button>
+                <button className="agx-btn" onClick={() => setEditId(null)}>{t('Cancel', 'Huỷ')}</button>
+              </div>
+            </div>
+          )}
+
           {expanded === e.id && (
             <div style={{ border: '1px solid rgba(229,212,194,0.10)', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: 14 }}>
+              {captionId && (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+                  <input className="agx-input" value={captionDraft} onChange={ev => setCaptionDraft(ev.target.value)} placeholder={t('Caption', 'Chú thích')} maxLength={300} style={{ flex: 1, minWidth: 200 }} autoFocus />
+                  <button className="agx-btn gold" onClick={saveCaption}>{t('Save caption', 'Lưu chú thích')}</button>
+                  <button className="agx-btn" onClick={() => setCaptionId(null)}>{t('Cancel', 'Huỷ')}</button>
+                  {captionError && <span style={{ fontFamily: MONO, fontSize: 11, color: '#C27070' }}>{captionError}</span>}
+                </div>
+              )}
               {media.length === 0 ? (
                 <div style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98', opacity: 0.6 }}>{t('No contributions yet.', 'Chưa có đóng góp nào.')}</div>
               ) : (
@@ -177,6 +263,7 @@ export default function AdminGalleryPage() {
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <a href={m.url} target="_blank" rel="noopener noreferrer"><img src={m.url} alt="" loading="lazy" /></a>
                         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', gap: 4, padding: 4, background: 'rgba(5,46,32,0.75)' }}>
+                          <button onClick={() => startCaption(m)} title={m.caption || ''} style={{ flex: 1, fontFamily: MONO, fontSize: 8, background: 'none', border: 'none', color: '#D4B85A', cursor: 'pointer' }}>{t('Caption', 'Chú thích')}</button>
                           <button onClick={() => setMediaStatus(m.id, m.status === 'visible' ? 'hidden' : 'visible')} style={{ flex: 1, fontFamily: MONO, fontSize: 8, background: 'none', border: 'none', color: '#E5D4C2', cursor: 'pointer' }}>{m.status === 'visible' ? t('Hide', 'Ẩn') : t('Show', 'Hiện')}</button>
                           <button onClick={() => deleteMedia(m.id)} style={{ flex: 1, fontFamily: MONO, fontSize: 8, background: 'none', border: 'none', color: '#C27070', cursor: 'pointer' }}>{t('Del', 'Xoá')}</button>
                         </div>
@@ -187,6 +274,7 @@ export default function AdminGalleryPage() {
                     <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, opacity: m.status === 'hidden' ? 0.4 : 1 }}>
                       <a href={m.url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, fontFamily: MONO, fontSize: 11, color: '#D4B85A', textDecoration: 'none' }}>{m.provider || 'Link'}{m.caption ? ` — ${m.caption}` : ''} ↗</a>
                       <span style={{ fontFamily: MONO, fontSize: 9, color: '#7E7864' }}>{m.source === 'club' ? 'The Club' : m.submitter_name}</span>
+                      <button className="agx-btn" onClick={() => startCaption(m)}>{t('Edit caption', 'Sửa chú thích')}</button>
                       <button className="agx-btn" onClick={() => setMediaStatus(m.id, m.status === 'visible' ? 'hidden' : 'visible')}>{m.status === 'visible' ? t('Hide', 'Ẩn') : t('Show', 'Hiện')}</button>
                       <button className="agx-btn" onClick={() => deleteMedia(m.id)} style={{ color: '#C27070', borderColor: 'rgba(194,112,112,0.3)' }}>{t('Delete', 'Xoá')}</button>
                     </div>
