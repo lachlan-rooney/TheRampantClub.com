@@ -7,6 +7,9 @@ export interface Trophy {
   established: number
   metal: 'gold' | 'silver' | 'bronze' | 'pewter'
   description: string
+  /** A photograph of the real trophy. When set, the cabinet shows it in the lit
+   *  case instead of the drawn CSS cup (which stays for trophies not yet photographed). */
+  image?: string
 }
 
 export interface Winner {
@@ -56,6 +59,8 @@ export const TROPHIES: Trophy[] = [
     established: 2024,
     metal: 'silver',
     description: 'Annual Ryder-Cup-style invitational. Team Vu vs Team Lân. Two days. One trophy.',
+    // The real cup, "THE RAMPANT CUP" on the base (2026-09-15, Lachlan).
+    image: '/images/trc/trophy-gold-1600.webp',
   },
   {
     id: 'saigon-open',

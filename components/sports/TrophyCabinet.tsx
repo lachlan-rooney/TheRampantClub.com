@@ -51,6 +51,12 @@ export default function TrophyCabinet() {
         }
         .trophy-card:hover .trophy-case { box-shadow: inset 0 0 0 1px rgba(212,184,90,.35), 0 22px 46px rgba(0,0,0,.34); }
         .trophy-scale { transform: scale(1.7); }
+        /* A photographed trophy fills its case — the photo already has its own
+           light and backdrop, so the drawn-cup vignette stays out of its way. */
+        .trophy-case.has-photo { overflow: hidden; background: #0b0906; }
+        .trophy-photo { width: 100%; height: 100%; object-fit: cover; object-position: 50% 42%; display: block;
+                        transition: transform .8s cubic-bezier(.22,1,.36,1); }
+        .trophy-card:hover .trophy-photo { transform: scale(1.04); }
         .trophy-card:hover .trophy-cup { transform: rotateY(15deg) rotateX(-3deg); }
         .trophy-go { display: inline-block; transition: transform .35s ease; }
         .trophy-card:hover .trophy-go { transform: translateX(7px); }
@@ -202,14 +208,19 @@ export default function TrophyCabinet() {
         <div className="trophy-grid">
           {TROPHIES.map(t => (
             <button key={t.id} type="button" className="trophy-card" onClick={() => setActive(t)}>
-              <div className="trophy-case">
-                <div className="trophy-scale">
-                  <div className="trophy-cup" style={{ color: 'transparent' }}>
-                    <div className="trophy-bowl" style={{ background: METAL_GRADIENTS[t.metal], borderColor: METAL_GRADIENTS[t.metal] }} />
-                    <div className="trophy-stem" style={{ background: METAL_GRADIENTS[t.metal] }} />
-                    <div className="trophy-base" style={{ background: METAL_GRADIENTS[t.metal] }} />
+              <div className={t.image ? 'trophy-case has-photo' : 'trophy-case'}>
+                {t.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className="trophy-photo" src={t.image} alt={t.name} loading="lazy" />
+                ) : (
+                  <div className="trophy-scale">
+                    <div className="trophy-cup" style={{ color: 'transparent' }}>
+                      <div className="trophy-bowl" style={{ background: METAL_GRADIENTS[t.metal], borderColor: METAL_GRADIENTS[t.metal] }} />
+                      <div className="trophy-stem" style={{ background: METAL_GRADIENTS[t.metal] }} />
+                      <div className="trophy-base" style={{ background: METAL_GRADIENTS[t.metal] }} />
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
               <div className="trophy-name">{t.name}</div>
               <div className="trophy-sport">{t.sport}</div>
