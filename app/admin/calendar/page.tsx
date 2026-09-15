@@ -9,6 +9,7 @@ import { useLang } from '@/lib/admin-lang'
 import ShareBox from '@/components/admin/ShareBox'
 import { isShareable } from '@/lib/share/draft'
 import AttachmentField from '@/components/admin/AttachmentField'
+import AttendanceStrip from '@/components/admin/AttendanceStrip'
 
 // Admin / Floor / Calendar
 //
@@ -307,6 +308,11 @@ export default function CalendarPage() {
           <button onClick={() => setShowTO(true)} style={btnSecondary}>{t('＋ Time off / holiday', '＋ Nghỉ phép / ngày lễ')}</button>
         </div>
       </div>
+
+      {/* Live attendance for the week on screen (2026-09-15). `bookings` changes on
+          every calendar reload, so marking arrived / starting a visit updates it
+          at once rather than on the next minute's poll. */}
+      <AttendanceStrip from={from} to={to} refreshKey={bookings} />
 
       <div style={toolbar}>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
