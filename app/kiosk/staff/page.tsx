@@ -98,6 +98,8 @@ export default function KioskStaff() {
       <div style={{ textAlign: 'center', width: 'min(640px, 94vw)' }}>
         <div style={kicker}>The Rampant Club · Floor</div>
         <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 26, color: '#E5D4C2', margin: '10px 0 22px' }}>Who’s on the floor?</div>
+        {/* The way back is the bottom bar's Home (components/kiosk/KioskBar), on
+            every screen a room tablet can reach. This picker had NO exit before it. */}
         {roster.length === 0 ? (
           <div style={muted}>No staff PINs set yet. An admin sets them in the portal.</div>
         ) : (
@@ -116,7 +118,8 @@ export default function KioskStaff() {
 }
 
 function Center({ children }: { children: React.ReactNode }) {
-  return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>{children}</div>
+  // Less the bottom bar (--kiosk-bar, KioskBar), so the keypad is never under it.
+  return <div style={{ minHeight: 'calc(100dvh - var(--kiosk-bar, 0px))', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>{children}</div>
 }
 
 const kicker: React.CSSProperties = { fontFamily: MONO, fontSize: 11, color: '#D4B85A', letterSpacing: '0.16em', textTransform: 'uppercase' }

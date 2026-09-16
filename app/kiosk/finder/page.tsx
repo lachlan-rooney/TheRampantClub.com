@@ -15,8 +15,6 @@ import TouchFinder from '@/components/whisky/TouchFinder'
 
 const IDLE_MS = 90_000
 
-const MONO = "'Google Sans Code', 'DM Mono', monospace"
-
 export default function KioskFinder() {
   const router = useRouter()
   const last = useRef(Date.now())
@@ -31,19 +29,15 @@ export default function KioskFinder() {
   }, [home])
 
   return (
-    <TouchFinder
-      eyebrow="The Rampant Club"
-      top={
-        <div className="pk-wrap" style={{ paddingTop: 22 }}>
-          <button onClick={home} style={{
-            background: 'none', border: '1px solid rgba(229,212,194,.25)', borderRadius: 8, cursor: 'pointer',
-            color: '#E5D4C2', fontFamily: MONO, fontSize: 13, letterSpacing: '.1em', textTransform: 'uppercase',
-            padding: '14px 22px', minHeight: 48,
-          }}>
-            ← Back <span style={{ color: 'rgba(229,212,194,.45)' }}>· Quay lại</span>
-          </button>
-        </div>
-      }
-    />
+    <>
+      {/* The finder SCROLLS, so it reserves the bar's height at the foot rather
+          than subtracting it from a fixed height as the board does. */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        .cf-foot { padding-bottom: calc(72px + var(--kiosk-bar, 0px)); }
+      ` }} />
+      {/* Home is the bottom bar's (components/kiosk/KioskBar) — one way back on
+          every screen, not a second button competing with it here. */}
+      <TouchFinder eyebrow="The Rampant Club" />
+    </>
   )
 }

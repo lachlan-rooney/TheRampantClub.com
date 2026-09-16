@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { menuForSpace, SPACE_TO_FLOOR } from '@/lib/kiosk/floors'
+import { SPACE_TO_FLOOR } from '@/lib/kiosk/floors'
 
 // THE EVENT BOARD — the idle state, and the only way into either other mode.
 // No identity. The event comes from kiosk_board(), a fixed set of non-PII columns.
@@ -186,8 +186,10 @@ export default function KioskBoard() {
     : s === 'live' ? ['This evening', 'Tối nay']
     : s === 'wind_down' ? ['Drawing to a close', 'Sắp kết thúc'] : null
 
+  // The board fills the screen exactly, so it must take the bottom bar's height
+  // off rather than let the bar sit over its buttons (--kiosk-bar, KioskBar).
   return (
-    <div style={{ height: '100dvh', background: GROUND, color: INK, display: 'flex', flexDirection: 'column', padding: 'clamp(14px,3.5vh,40px) clamp(16px,6vw,64px)', overflow: 'hidden', gap: 12 }}>
+    <div style={{ height: 'calc(100dvh - var(--kiosk-bar, 0px))', background: GROUND, color: INK, display: 'flex', flexDirection: 'column', padding: 'clamp(14px,3.5vh,40px) clamp(16px,6vw,64px)', overflow: 'hidden', gap: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontFamily: MONO, fontSize: 13, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(229,212,194,.55)' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           {b?.room && SPACE_TO_FLOOR[b.room] && logoExt && (
@@ -202,9 +204,9 @@ export default function KioskBoard() {
         </span>
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 20 }}>
           {clock}
-          {/* Staff live in the corner. This screen belongs to members; the staff
-              shell is somewhere they go, not something the room looks at. */}
-          <button onClick={() => router.push('/kiosk/staff')} style={staffCorner}>Staff</button>
+          {/* Staff used to live in this corner. They now live in the bottom bar
+              (components/kiosk/KioskBar) with everything else that navigates —
+              one Staff button on the screen, not two. */}
         </span>
       </div>
 
@@ -280,15 +282,10 @@ export default function KioskBoard() {
           while six digits are entered, in a room with other people. */}
       {!panel ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          {/* Sign-in only. The Flavour Finder and the room's menu moved to the
+              bottom bar (components/kiosk/KioskBar) — they were on this row too,
+              and the same button twice on one screen reads as two things. */}
           <button onClick={() => { setPanel(true); bump() }} style={primaryBtn}>Member sign in</button>
-          {/* No sign-in needed — the finder is public, and it returns here on its own. */}
-          {/* menuBtn was written for an <a>; a <button> also needs the browser's grey fill removed. */}
-          <button onClick={() => router.push('/kiosk/finder')} style={{ ...menuBtn, background: 'none', cursor: 'pointer' }}>Flavour Finder</button>
-          {menuForSpace(b?.room) && (
-            <a href={menuForSpace(b?.room)!} target="_blank" rel="noopener noreferrer" style={menuBtn}>
-              Tonight&rsquo;s menu ↗
-            </a>
-          )}
           <div style={{ fontFamily: MONO, fontSize: 12, color: 'rgba(229,212,194,.45)', lineHeight: 1.7, marginLeft: 4 }}>
             {nfc === 'scanning'
               ? <>or hold your card to the tablet<br /><span style={{ color: 'rgba(229,212,194,.3)' }}>hoặc chạm thẻ vào máy</span></>
@@ -397,10 +394,4 @@ const primaryBtn: React.CSSProperties = {
   background: '#E5D4C2', color: '#052E20', border: 'none', borderRadius: 8,
   fontFamily: MONO, fontSize: 14, letterSpacing: '.08em', textTransform: 'uppercase',
   padding: '18px 34px', cursor: 'pointer', minHeight: 56,
-}
-const menuBtn: React.CSSProperties = {
-  fontFamily: MONO, fontSize: 14, letterSpacing: '.08em', textTransform: 'uppercase',
-  color: '#D4B85A', textDecoration: 'none',
-  border: '1px solid rgba(212,184,90,.45)', borderRadius: 8,
-  padding: '17px 30px', minHeight: 56, display: 'flex', alignItems: 'center',
 }

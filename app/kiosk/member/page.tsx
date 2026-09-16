@@ -310,7 +310,8 @@ export default function KioskMember() {
 // the left is fixed and answers "is this mine", the right scrolls and answers
 // "what's on". Only the right scrolls, so the fixed column can never be lost.
 const twoCol: React.CSSProperties = {
-  height: '100dvh', background: GROUND, color: INK, display: 'flex',
+  // Less the bottom bar, or it would sit over the Done button (--kiosk-bar, KioskBar).
+  height: 'calc(100dvh - var(--kiosk-bar, 0px))', background: GROUND, color: INK, display: 'flex',
   gap: 'clamp(20px,4vw,64px)', padding: 'clamp(16px,4vh,44px) clamp(20px,5vw,64px)', overflow: 'hidden',
 }
 const fixedCol: React.CSSProperties = {
@@ -340,7 +341,7 @@ const doneBtn: React.CSSProperties = {
 }
 
 const wrap: React.CSSProperties = {
-  minHeight: '100vh', background: GROUND, color: INK,
+  minHeight: 'calc(100dvh - var(--kiosk-bar, 0px))', background: GROUND, color: INK,
   display: 'flex', flexDirection: 'column', padding: '5vh 6vw',
 }
 const field: React.CSSProperties = {

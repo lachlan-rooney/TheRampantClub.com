@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import StaffIdle from '@/components/kiosk/StaffIdle'
+import KioskBar from '@/components/kiosk/KioskBar'
 
 // ── WHAT INSTALLS ON THE TABLET ────────────────────────────────────────────
 // The site has ONE manifest (public/manifest.json, start_url "/"), so adding the
@@ -60,6 +61,9 @@ export default function KioskLayout({ children }: { children: React.ReactNode })
           page, not only on the staff screen where the timer used to live. */}
       <StaffIdle />
       {children}
+      {/* Home / Finder / Menu / Staff on every screen a room tablet can reach.
+          It hides itself on the door, the pairing screen and the floor displays. */}
+      <KioskBar />
     </>
   )
 }

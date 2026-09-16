@@ -218,6 +218,9 @@ export default function KioskDoor() {
       <h1 style={display}>Welcome{firstName ? `, ${firstName}` : ''}.</h1>
       <div style={vn}>Chào mừng quý khách{firstName ? `, ${firstName}` : ''}.</div>
       <p style={{ ...lede, marginTop: 24 }}>Please come in.<br /><span style={{ opacity: 0.75 }}>Mời quý khách vào.</span></p>
+      {/* It clears itself, but the NEXT guest should not have to wait for a timer
+          they cannot see. (2026-09-16 — every screen gets a way onward.) */}
+      <button style={{ ...ghost, marginTop: 40 }} onClick={reset}>Next guest · Khách tiếp theo</button>
     </div>
   )
 
@@ -229,6 +232,9 @@ export default function KioskDoor() {
       <p style={{ ...lede, marginTop: 24 }}>Please wait — the duty manager will be with you.<br />
         <span style={{ opacity: 0.75 }}>Vui lòng chờ — quản lý ca trực sẽ đến ngay.</span></p>
       <button style={{ ...ghost, marginTop: 60 }} onClick={() => { setErr(''); setStep('staff') }}>Duty manager · Quản lý ca trực</button>
+      {/* The only step that led forward and never back. The guest's entry is already
+          recorded and waiting for the duty manager; this just returns the screen. */}
+      <button style={{ ...ghost, marginTop: 14, border: 'none' }} onClick={reset}>← Back · Quay lại</button>
     </div>
   )
 
@@ -306,12 +312,14 @@ export default function KioskDoor() {
       <div style={diamond} />
       <h1 style={display}>Welcome{outcome.first_name ? `, ${outcome.first_name}` : ''}.</h1>
       <div style={vn}>Chào mừng quý khách{outcome.first_name ? `, ${outcome.first_name}` : ''}.</div>
+      <button style={{ ...ghost, marginTop: 40 }} onClick={reset}>Next guest · Khách tiếp theo</button>
     </div>
   ) : (
     <div style={{ textAlign: 'center' }}>
       <div style={diamond} />
       <h1 style={{ ...display, fontSize: 'clamp(34px, 5.4vw, 54px)' }}>Thank you.</h1>
       <div style={vn}>Cảm ơn quý khách.</div>
+      <button style={{ ...ghost, marginTop: 40 }} onClick={reset}>Next guest · Khách tiếp theo</button>
     </div>
   )
 
