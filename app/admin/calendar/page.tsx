@@ -8,7 +8,6 @@ import { vnDateString } from '@/lib/datetime'
 import { useLang } from '@/lib/admin-lang'
 import ShareBox from '@/components/admin/ShareBox'
 import { isShareable } from '@/lib/share/draft'
-import AttachmentField from '@/components/admin/AttachmentField'
 import AttendanceStrip from '@/components/admin/AttendanceStrip'
 
 // Admin / Floor / Calendar
@@ -410,13 +409,16 @@ export default function CalendarPage() {
                           <button onClick={() => setConfirmDeleteEntry(e)} style={cardActionBtn}>{t('Remove', 'Xoá')}</button>
                         </div>
 
-                        {/* Attachable whatever the visibility — a staff-only
-                            entry's file is served only to admins. The prompt
-                            inside changes with visibility, because what happens
-                            to the file changes with it. */}
-                        <AttachmentField entityType="calendar_entry" entityId={e.id}
-                                         memberVisible={e.visibility === 'member'} />
-
+                        {/* NO FILE BOX ON THE CALENDAR (2026-09-17). It sat under
+                            every entry in the list — heading, a three-line gold
+                            warning, a button and a formats line, repeated down the
+                            page — and the owner called it what it was. In fourteen
+                            months not one calendar entry had a file attached; all
+                            five that exist are on fixtures. Artwork stays on
+                            /admin/fixtures, where it is used and where those five
+                            live. To bring it back, restore this one element (the
+                            API, storage and the member-visibility rules are
+                            untouched). */}
                         {/* A STAFF-ONLY ENTRY GETS NO BOX — not a disabled one.
                             Every private booking here is titled with a member's
                             name, and `attendee` is prompted with "e.g. Mr Nguyen
