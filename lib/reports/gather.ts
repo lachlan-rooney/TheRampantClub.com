@@ -48,11 +48,53 @@ export interface WeekMetrics {
   booked_people?: number     // party sizes on bookings not cancelled or no-show
 }
 
+// ── WHAT THE SYSTEM ALREADY KNOWS AND THE REPORT NEVER SAID (2026-09-17) ─────
+// The owner: "barely any pulls from across the system". It was true — the report
+// read visits, bookings, prospects and fixtures, and left the rest of the club
+// to be typed into eight text boxes. Money, the team's week, complaints and the
+// press are all recorded already. Each block is separately guarded: a club with
+// no till data still gets a report, it just says less.
+
+/** Money that actually exists in the system: membership fees and card top-ups.
+ *  There is NO expense table and no bar till — so this is revenue recorded here,
+ *  never "profit", and the report must not imply otherwise. */
+export interface MoneyBlock {
+  week: {
+    membership_total: number
+    membership_count: number
+    payments: { name: string; tier: string; amount: number; method: string }[]
+    card_topups: number
+    card_charges: number
+  }
+  mtd: {
+    month_label: string
+    membership: number
+    card_topups: number
+    total: number
+    /** From finance_settings (USD target × rate), null if never configured. */
+    target_vnd: number | null
+    cost_base_vnd: number | null
+    pct_of_target: number | null
+  }
+}
+
+/** The team's week: the shift board, what staff actually did, complaints, cover. */
+export interface OpsBlock {
+  tasks: { total: number; done: number; in_progress: number; blocked: number; not_started: number; pct_done: number | null }
+  staff_actions: number
+  top_actions: { what: string; count: number }[]
+  complaints: { opened: number; resolved: number; open_now: number }
+  away: { name: string; kind: string; start: string; end: string }[]
+}
+
 export interface AutoData {
   period: { start: string; end: string; label: string }
   usage: WeekMetrics
+  money?: MoneyBlock
+  ops?: OpsBlock
+  press?: { title: string; outlet: string | null; link: string | null; date: string }[]
   events: { fixtures: { title: string; sport: string; date: string; signups: number; max: number | null }[]; calendar_by_kind: Record<string, number> }
-  pipeline: { funnel: { stage: string; count: number }[]; conversion_pct: number; movements: Record<string, number>; interviews: { name: string; date: string; interviewer: string | null }[]; signed: number }
+  pipeline: { funnel: { stage: string; count: number }[]; conversion_pct: number; movements: Record<string, number>; interviews: { name: string; date: string; interviewer: string | null }[]; signed: number; new_leads?: number; onboarded?: { name: string; tier: string }[] }
   members: { new_total: number; by_tier: Record<string, number>; complimentary: number; paid: number }
   member_of_week: { member_no: string; name: string; visits: number } | null
   deltas: Record<string, number | null>
@@ -138,6 +180,94 @@ async function windowMetrics(sb: SupabaseClient, start: string, end: string): Pr
 
 const delta = (a: number, b: number) => a - b
 
+// ── MONEY ───────────────────────────────────────────────────────────────────
+// Membership fees (membership_payments, active rows only — a voided receipt is
+// not revenue) plus member card top-ups. Month-to-date runs from the 1st of the
+// week's closing month to the week's end, so the figure never counts days the
+// report has not reached. The target comes from finance_settings in USD; if the
+// rate or the target is missing we show the money and no target rather than
+// inventing a denominator.
+async function moneyBlock(sb: SupabaseClient, start: string, end: string): Promise<MoneyBlock> {
+  const monthStart = end.slice(0, 7) + '-01'
+  const pays = async (from: string, to: string) => safe<{ amount_vnd: number; member_name_snap: string; tier_snap: string; payment_method: string }[]>(
+    sb.from('membership_payments').select('amount_vnd, member_name_snap, tier_snap, payment_method')
+      .eq('status', 'active').gt('amount_vnd', 0).gte('payment_date', from).lte('payment_date', to), [])
+  const cards = async (from: string, to: string) => safe<{ amount_vnd: number; kind: string }[]>(
+    sb.from('card_transactions').select('amount_vnd, kind').gte('created_at', from).lte('created_at', to + 'T23:59:59'), [])
+
+  const [wkPays, wkCards, mPays, mCards, settings] = await Promise.all([
+    pays(start, end), cards(start, end), pays(monthStart, end), cards(monthStart, end),
+    safe<{ monthly_target_usd: number | null; monthly_cost_base_usd: number | null; usd_vnd_rate: number | null } | null>(
+      sb.from('finance_settings').select('monthly_target_usd, monthly_cost_base_usd, usd_vnd_rate').maybeSingle(), null),
+  ])
+
+  const split = (rows: { amount_vnd: number; kind: string }[]) => {
+    let topups = 0, charges = 0
+    for (const t of rows) {
+      const a = Number(t.amount_vnd) || 0
+      if (t.kind === 'topup' || a > 0) topups += Math.abs(a); else charges += Math.abs(a)
+    }
+    return { topups, charges }
+  }
+  const wkCard = split(wkCards), mCard = split(mCards)
+  const sum = (rows: { amount_vnd: number }[]) => rows.reduce((s, p) => s + (Number(p.amount_vnd) || 0), 0)
+  const rate = Number(settings?.usd_vnd_rate) || 0
+  const target = settings?.monthly_target_usd && rate ? Number(settings.monthly_target_usd) * rate : null
+  const mtdTotal = sum(mPays) + mCard.topups
+
+  return {
+    week: {
+      membership_total: sum(wkPays),
+      membership_count: wkPays.length,
+      payments: wkPays.map(p => ({ name: p.member_name_snap, tier: p.tier_snap, amount: Number(p.amount_vnd) || 0, method: p.payment_method })),
+      card_topups: wkCard.topups,
+      card_charges: wkCard.charges,
+    },
+    mtd: {
+      month_label: new Date(end + 'T00:00:00Z').toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }),
+      membership: sum(mPays),
+      card_topups: mCard.topups,
+      total: mtdTotal,
+      target_vnd: target,
+      cost_base_vnd: settings?.monthly_cost_base_usd && rate ? Number(settings.monthly_cost_base_usd) * rate : null,
+      pct_of_target: target ? Math.round((mtdTotal / target) * 100) : null,
+    },
+  }
+}
+
+// ── THE TEAM'S WEEK ─────────────────────────────────────────────────────────
+// The shift board is reported as it stands, including when nothing was ticked:
+// at the time of writing every task instance in the system is 'not_started', and
+// a report that quietly omitted that would be hiding the most useful thing on it.
+async function opsBlock(sb: SupabaseClient, start: string, end: string): Promise<OpsBlock> {
+  const [tasks, acts, opened, resolved, openNow, away] = await Promise.all([
+    safe<{ status: string }[]>(sb.from('shift_task_instances').select('status').gte('shift_date', start).lte('shift_date', end), []),
+    safe<{ verb: string; object_type: string }[]>(sb.from('activity_events').select('verb, object_type').gte('created_at', start).lte('created_at', end + 'T23:59:59'), []),
+    safe<{ id: string }[]>(sb.from('complaints').select('id').gte('reported_at', start).lte('reported_at', end + 'T23:59:59'), []),
+    safe<{ id: string }[]>(sb.from('complaints').select('id').gte('resolved_at', start).lte('resolved_at', end + 'T23:59:59'), []),
+    safe<{ id: string }[]>(sb.from('complaints').select('id').neq('status', 'resolved'), []),
+    // Anyone whose leave OVERLAPS the week, not only leave that starts in it.
+    safe<{ member_name: string; kind: string; start_date: string; end_date: string }[]>(
+      sb.from('staff_time_off').select('member_name, kind, start_date, end_date').lte('start_date', end).gte('end_date', start), []),
+  ])
+
+  const by = (s: string) => tasks.filter(t => t.status === s).length
+  const done = by('done')
+  const verbs: Record<string, number> = {}
+  for (const a of acts) { const k = `${a.verb} ${a.object_type}`; verbs[k] = (verbs[k] || 0) + 1 }
+
+  return {
+    tasks: {
+      total: tasks.length, done, in_progress: by('in_progress'), blocked: by('blocked'), not_started: by('not_started'),
+      pct_done: tasks.length ? Math.round((done / tasks.length) * 100) : null,
+    },
+    staff_actions: acts.length,
+    top_actions: Object.entries(verbs).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([what, count]) => ({ what, count })),
+    complaints: { opened: opened.length, resolved: resolved.length, open_now: openNow.length },
+    away: away.map(a => ({ name: a.member_name, kind: a.kind, start: a.start_date, end: a.end_date })),
+  }
+}
+
 export async function gatherWeek(sb: SupabaseClient, start: string, end: string, opts: { includeFinancials: boolean }): Promise<{ auto: AutoData; financials: Financials | null }> {
   const priorEnd = addDays(start, -1)
   const priorStart = addDays(priorEnd, -(eachDay(start, end).length - 1))
@@ -169,13 +299,28 @@ export async function gatherWeek(sb: SupabaseClient, start: string, end: string,
   const interviews = await safe<{ full_name: string; interview_date: string; interviewer: string | null }[]>(
     sb.from('prospects').select('full_name, interview_date, interviewer').gte('interview_date', start).lte('interview_date', end), [])
 
-  // New members detail
-  const newMemRows = await safe<{ tier: string }[]>(
-    sb.from('members').select('tier').gte('join_date', start).lte('join_date', end), [])
+  // New members detail — with names, so the report can say who joined rather
+  // than only how many.
+  const newMemRows = await safe<{ tier: string; full_name: string }[]>(
+    sb.from('members').select('tier, full_name').gte('join_date', start).lte('join_date', end), [])
   const byTier: Record<string, number> = {}
   for (const m of newMemRows) byTier[m.tier] = (byTier[m.tier] || 0) + 1
   const periods = await safe<{ complimentary: boolean }[]>(
     sb.from('membership_periods').select('complimentary').gte('start_date', start).lte('start_date', end), [])
+
+  // Money, the team's week, and the press — the three the report never carried.
+  // Each is independently guarded, so an empty table costs that block and
+  // nothing else.
+  const [money, ops, press] = await Promise.all([
+    moneyBlock(sb, start, end).catch(() => undefined),
+    opsBlock(sb, start, end).catch(() => undefined),
+    safe<{ title: string; outlet: string | null; link: string | null; published_at: string }[]>(
+      sb.from('press_items').select('title, outlet, link, published_at')
+        .eq('is_published', true).gte('published_at', start).lte('published_at', end), []),
+  ])
+
+  // A lead created this week, counted from the pipeline's own audit trail.
+  const newLeads = movesRows.filter(m => m.event_type === 'created').length
 
   // Member of the week (top visits)
   const wkVisits = await safe<{ member_no: string }[]>(
@@ -192,6 +337,9 @@ export async function gatherWeek(sb: SupabaseClient, start: string, end: string,
   const auto: AutoData = {
     period: { start, end, label: `${new Date(start + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })} – ${new Date(end + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}` },
     usage: thisW,
+    money,
+    ops,
+    press: press.map(p => ({ title: p.title, outlet: p.outlet, link: p.link, date: p.published_at })),
     events: {
       fixtures: fixtures.map(f => ({ title: f.title, sport: f.sport, date: f.date, signups: countMap.get(f.id) || 0, max: f.max_signups })),
       calendar_by_kind: calByKind,
@@ -202,6 +350,8 @@ export async function gatherWeek(sb: SupabaseClient, start: string, end: string,
       movements,
       interviews: interviews.map(i => ({ name: i.full_name, date: i.interview_date, interviewer: i.interviewer })),
       signed: thisW.signed,
+      new_leads: newLeads,
+      onboarded: newMemRows.map(m => ({ name: m.full_name, tier: m.tier })),
     },
     members: { new_total: newMemRows.length, by_tier: byTier, complimentary: periods.filter(p => p.complimentary).length, paid: periods.filter(p => !p.complimentary).length },
     member_of_week: motw,

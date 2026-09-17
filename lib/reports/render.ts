@@ -1,6 +1,6 @@
 import type { AutoData } from './gather'
 import type { Financials } from './financials'
-import { lineChart, donut, funnel, hbars, stackedBars, PALETTE } from './charts'
+import { donut, funnel, hbars, stackedBars, PALETTE } from './charts'
 
 // Shared report renderer. Two surfaces from one section builder:
 //  • hosted page  → inline SVG charts (crisp, from charts.ts)
@@ -75,7 +75,9 @@ function section(title: string, sub: string, inner: string): string {
 function stat(value: string, label: string, extra = ''): string {
   return `<td style="padding:5px;width:25%;vertical-align:top">
     <div style="background:${CARD};border:1px solid rgba(212,184,90,0.16);border-radius:10px;padding:15px 10px;text-align:center">
-      <div style="font-family:${SERIF};font-size:27px;color:${GOLD};line-height:1;font-weight:600">${value}${extra}</div>
+      ${/* A currency figure must not break mid-number: "2,200,000" over two lines
+            with the ₫ stranded below read as two amounts in the email. */ ''}
+      <div style="font-family:${SERIF};font-size:27px;color:${GOLD};line-height:1;font-weight:600;white-space:nowrap">${value}${extra}</div>
       <div style="font-family:'Google Sans Code',monospace;font-size:8px;letter-spacing:0.1em;text-transform:uppercase;color:${MUTED};margin-top:7px">${esc(label)}</div>
     </div>
   </td>`
@@ -159,6 +161,102 @@ function actionsSection(items: ActionItem[] | undefined): string {
   return section('Actions This Week', 'Owned & moving', `<table role="presentation" style="width:100%;border-collapse:collapse">${rows}</table>`)
 }
 
+// ── WHAT THE SYSTEM WROTE ───────────────────────────────────────────────────
+// A drafted paragraph sits under the figures it describes, never instead of
+// them: the numbers are the report, the sentence is the reading of them.
+function prose(body: string | undefined): string {
+  if (!body || !body.trim()) return ''
+  return `<div style="font-size:13.5px;line-height:1.75;color:${CREAM};margin-top:12px;white-space:pre-wrap">${renderProse(body)}</div>`
+}
+
+// THE TEN-SECOND READ (2026-09-17). Three lines, at the top, before anything
+// that needs scrolling — the owner's report went out to an investor who had to
+// hunt through eight sections for what changed.
+function summaryBlock(lines: string[]): string {
+  if (!lines.length) return ''
+  return `<div style="border-left:3px solid ${GOLD};background:rgba(212,184,90,0.06);padding:16px 20px;border-radius:0 8px 8px 0;margin:0 0 26px">
+    ${lines.map((l, i) => `<div style="font-family:${SERIF};font-size:15px;color:${CREAM};line-height:1.55;padding:${i ? '7px' : '0'} 0 0 16px;position:relative">
+      <span style="position:absolute;left:0;top:${i ? 15 : 8}px;width:5px;height:5px;background:${GOLD};transform:rotate(45deg)"></span>${renderProse(l)}</div>`).join('')}
+  </div>`
+}
+
+// A bar with a target behind it. Used for the month against its target and for
+// the shift board — both are "how far through are we", and a percentage alone
+// hides whether the denominator is real.
+function progress(label: string, value: number, max: number, valueText: string, tone = GOLD): string {
+  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0
+  return `<div style="margin:10px 0 0">
+    <table role="presentation" style="width:100%;border-collapse:collapse"><tr>
+      <td style="font-size:12.5px;color:${MUTED};padding:0 0 5px">${esc(label)}</td>
+      <td style="font-family:'Google Sans Code',monospace;font-size:12.5px;color:${CREAM};text-align:right;padding:0 0 5px;white-space:nowrap">${esc(valueText)}</td>
+    </tr></table>
+    <div style="background:rgba(229,212,194,0.10);border-radius:6px;height:10px">
+      <div style="background:${tone};width:${Math.max(pct, 1)}%;height:10px;border-radius:6px;font-size:0;line-height:10px">&nbsp;</div>
+    </div>
+  </div>`
+}
+
+// ── MONEY ───────────────────────────────────────────────────────────────────
+// Membership fees and member card top-ups are the only money the club records.
+// The section says so in plain words, every week: a figure an investor might
+// read as turnover has to carry what it does not include.
+function moneySection(d: AutoData, note?: string): string {
+  const m = d.money
+  if (!m) return ''
+  const w = m.week, t = m.mtd
+  const stats = `<table role="presentation" style="width:100%;border-collapse:collapse"><tr>
+    ${/* EVERY TILE SAYS ITS WINDOW. "Card top-ups" appeared here for the week and
+          again under Financials for the month, and "of month target" appeared in
+          the summary row above — the same words twice, meaning different things
+          (2026-09-17). The percentage lives in the bar below, not in a tile. */ ''}
+    ${/* Short labels: at email width a four-tile row gave "FEES THIS WEEK" three
+          lines of its own. The section's subtitle already says these are weekly. */ ''}
+    ${stat(vnd(w.membership_total), w.membership_count ? `fees · ${w.membership_count} paid` : 'fees · week')}
+    ${stat(vnd(w.card_topups), 'top-ups · week')}
+    ${stat(vnd(w.card_charges), 'card spend · week')}
+    ${stat(vnd(t.total), 'month to date')}
+  </tr></table>`
+  // TWO MONTH TOTALS IN ONE REPORT IS A QUESTION, NOT A FIGURE. This one runs to
+  // the week's end; the Financials section below covers the whole month, so a
+  // top-up banked on the 14th appears there and not here. Both are labelled with
+  // the window they cover rather than both saying "this month" (2026-09-17).
+  const to = new Date(d.period.end + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+  const target = t.target_vnd
+    ? progress(`${t.month_label} to ${to}`, t.total, t.target_vnd, `${vnd(t.total)} of ${vnd(t.target_vnd)}`)
+    : ''
+  const cost = t.cost_base_vnd
+    ? `<div style="font-size:12px;color:${MUTED};margin-top:8px">Monthly cost base, as configured: ${vnd(t.cost_base_vnd)}.</div>` : ''
+  const paid = w.payments.length
+    ? `<div style="font-size:13px;color:${CREAM};margin-top:10px">${w.payments.map(p => `${esc(p.name)} <span style="color:${MUTED}">${esc(p.tier)} · ${vnd(p.amount)} · ${esc(p.method)}</span>`).join('<br>')}</div>` : ''
+  return section('Money', 'Membership fees & member card activity', `${stats}${target}${cost}${paid}${prose(note)}
+    <div style="font-size:11.5px;color:${MUTED};font-style:italic;margin-top:10px">Recorded revenue only — membership fees and card top-ups. The club keeps no till feed or expense ledger, so this is not profit.</div>`)
+}
+
+// ── THE TEAM'S WEEK ─────────────────────────────────────────────────────────
+function opsSection(d: AutoData, note?: string): string {
+  const o = d.ops
+  if (!o) return ''
+  const t = o.tasks
+  const board = t.total
+    ? progress('Shift tasks marked done', t.done, t.total, `${t.done} of ${t.total}`, t.done ? SAGE : RED)
+    : `<div style="font-size:13px;color:${MUTED}">No shift tasks were set for this week.</div>`
+  const blocked = t.blocked ? `<div style="font-size:12.5px;color:${RED};margin-top:6px">${t.blocked} blocked.</div>` : ''
+  const actions = o.top_actions.length
+    ? `<div style="font-size:12.5px;color:${MUTED};margin-top:10px">${o.staff_actions} staff actions recorded · ${o.top_actions.map(a => `${esc(a.what)} ×${a.count}`).join(' · ')}</div>` : ''
+  const comp = `<div style="font-size:12.5px;color:${MUTED};margin-top:6px">Complaints: ${o.complaints.opened} opened, ${o.complaints.resolved} resolved, <span style="color:${o.complaints.open_now ? CREAM : MUTED}">${o.complaints.open_now} still open</span>.</div>`
+  const away = o.away.length
+    ? `<div style="font-size:12.5px;color:${MUTED};margin-top:6px">Away: ${o.away.map(a => `${esc(a.name)} (${esc(a.kind.replace(/_/g, ' '))})`).join(' · ')}</div>` : ''
+  return section('The Team’s Week', 'Shift board, actions & complaints', `${board}${blocked}${actions}${comp}${away}${prose(note)}`)
+}
+
+function pressSection(d: AutoData): string {
+  const p = d.press || []
+  if (!p.length) return ''
+  return section('In the Press', 'Published this week', p.map(i => `<div style="font-size:13.5px;color:${CREAM};padding:7px 0;border-top:1px solid rgba(229,212,194,0.08)">
+    ${i.link ? `<a href="${esc(i.link)}" style="color:${CREAM};text-decoration:underline">${esc(i.title)}</a>` : esc(i.title)}
+    ${i.outlet ? `<span style="color:${MUTED}"> · ${esc(i.outlet)}</span>` : ''}</div>`).join(''))
+}
+
 export function renderReportBody(r: ReportRow, mode: Mode): string {
   const d = r.auto_data
   const n = r.narrative || {}
@@ -173,6 +271,18 @@ export function renderReportBody(r: ReportRow, mode: Mode): string {
       <div style="width:40px;height:2px;background:${GOLD};margin:16px auto 0;opacity:0.6"></div>
     </div>
   </div>`
+
+  // The week in three lines, then the four figures it turns on — both drafted
+  // and gathered by the system, so they are there whether or not anyone typed.
+  html += summaryBlock((n.summary || '').split('\n').map(s => s.trim()).filter(Boolean))
+  html += `<table role="presentation" style="width:100%;border-collapse:collapse;margin:0 0 30px"><tr>
+    ${stat(String(u.attendance ?? u.visits), 'people in', delta(d.deltas.attendance ?? d.deltas.visits))}
+    ${stat(String(u.bookings), u.booked_people ? `bookings · ${u.booked_people} booked` : 'bookings')}
+    ${stat(String(d.members.new_total), 'joined', delta(d.deltas.new_members))}
+    ${d.money?.mtd.pct_of_target != null
+      ? stat(`${d.money.mtd.pct_of_target}%`, 'of month target')
+      : stat(String(d.pipeline.funnel.reduce((s, f) => s + f.count, 0)), 'in the pipeline')}
+  </tr></table>`
 
   if (n.moment_of_week?.trim()) html += callout('Moment of the week', renderProse(n.moment_of_week))
 
@@ -198,23 +308,37 @@ export function renderReportBody(r: ReportRow, mode: Mode): string {
       ${/* 2026-09-15: people who came in (taps, visits, arrived bookings, guests)
             and bookings made — the same count as the calendar's live strip. A report
             frozen before then has no attendance field and shows its visits as it did. */ ''}
-      ${u.attendance != null
-        ? stat(String(u.attendance), 'people in', delta(d.deltas.attendance))
-        : stat(String(u.visits), 'member visits', delta(d.deltas.visits))}
+      ${/* NOT THE SAME FOUR FIGURES AGAIN. People in and bookings lead the report
+            in the summary row above; repeating them here two centimetres later
+            made the page read as a stutter (2026-09-17). This row carries what
+            that one cannot: who, how long, and how many turned up of those booked. */ ''}
       ${stat(String(u.unique_members), u.attendance != null ? 'members in' : 'unique members', delta(d.deltas.unique_members))}
       ${u.attendance != null
-        ? stat(String(u.bookings), u.booked_people ? `bookings · ${u.booked_people} booked` : 'bookings')
+        ? stat(String(u.arrived), u.bookings ? `arrived of ${u.bookings}` : 'arrived')
         : stat(`${u.avg_minutes}m`, 'avg stay')}
+      ${memberHours > 0
+        ? stat(`${memberHours}h`, 'in the club')
+        : stat(String(u.footfall_unique), 'card taps', delta(d.deltas.footfall_unique))}
       ${u.guest_heads > 0
         ? stat(String(u.guest_heads), 'guests in')
         : u.attendance != null
           ? stat(u.guest_proxy > 0 ? `~${u.guest_proxy}` : '0', u.guest_proxy > 0 ? 'guests (est.)' : 'guests')
           : stat(String(u.footfall_unique), 'footfall (taps)', delta(d.deltas.footfall_unique))}
     </tr></table>
-    ${chartBlock(mode, lineChart(u.visits_by_day.map(x => ({ label: x.label, count: x.count })), 'dark'), barsHtml(u.visits_by_day.map(x => ({ label: x.label, value: x.count }))))}
+    ${/* A WEEK IS SEVEN BARS, NOT A GRAPH. With one member in on Thursday the line
+          chart drew a single dot climbing off a flat floor and read as a fault.
+          The same day bars now serve both the page and the email (2026-09-17). */ ''}
+    ${barsHtml(u.visits_by_day.map(x => ({ label: x.label, value: x.count })))}
     ${attendanceLine}
+    ${prose(n.people)}
     ${d.member_of_week && d.member_of_week.visits >= 2 ? `<div style="font-size:13px;color:${MUTED};margin-top:6px">Member of the week: <span style="color:${CREAM}">${esc(d.member_of_week.name)}</span> — ${d.member_of_week.visits} visits.</div>` : ''}
   `)
+
+  // MONEY SECOND, behind only who came in — the owner ranked it first of the
+  // four sections, and it sat fourth behind Events (2026-09-17). Each of these
+  // renders only when the week's gather found something, so an older frozen
+  // report is unchanged.
+  html += moneySection(d, n.money)
 
   // Events
   const evF = d.events.fixtures || []
@@ -240,8 +364,15 @@ export function renderReportBody(r: ReportRow, mode: Mode): string {
     ${tierSegs.length ? chartBlock(mode, donut(tierSegs, 'dark'), barsHtml(tierSegs.map(t => ({ label: t.label, value: t.value })))) : ''}
     ${chartBlock(mode, funnel(d.pipeline.funnel, 'dark'), barsHtml(d.pipeline.funnel.map(f => ({ label: f.stage, value: f.count }))))}
     ${(d.pipeline.interviews || []).length ? `<div style="font-size:13px;color:${CREAM};margin-top:8px">Interviews this week: ${d.pipeline.interviews.map(i => `${esc(i.name)}${i.interviewer ? ` (with ${esc(i.interviewer)})` : ''}`).join(' · ')}</div>` : ''}
+    ${(d.pipeline.onboarded || []).length ? `<div style="font-size:13px;color:${CREAM};margin-top:8px">Joined this week: ${d.pipeline.onboarded!.map(o => `${esc(o.name)} <span style="color:${MUTED}">(${esc(o.tier)})</span>`).join(' · ')}</div>` : ''}
+    ${d.pipeline.new_leads ? `<div style="font-size:13px;color:${MUTED};margin-top:6px">${d.pipeline.new_leads} new lead${d.pipeline.new_leads === 1 ? '' : 's'} entered the pipeline.</div>` : ''}
+    ${prose(n.members)}
     ${n.interviews_commentary?.trim() ? `<div style="font-size:14px;line-height:1.7;color:${CREAM};margin-top:10px;white-space:pre-wrap">${renderProse(n.interviews_commentary)}</div>` : ''}
   `)
+
+  // The team's week sits with the people sections, not adrift after the press.
+  html += opsSection(d, n.operations)
+  html += pressSection(d)
 
   html += narrative('Marketing Initiatives', n.marketing)
   html += narrative('Cost-Cutting', n.cost_cutting)
@@ -256,11 +387,11 @@ export function renderReportBody(r: ReportRow, mode: Mode): string {
     const f = r.financials as Financials
     const momGroups = f.mom.map(m => ({ label: m.label, parts: { Membership: m.membership, 'Card top-ups': m.card_topups, Gifting: m.gifting } }))
     const momBars = f.mom.map(m => ({ label: m.label, value: Math.round((m.membership + m.card_topups) / 1_000_000), suffix: 'M' }))
-    html += section(`Financials · ${esc(f.month_label)}`, 'Revenue this month, and the trend', `
+    html += section(`Financials · ${esc(f.month_label)}`, 'The whole month to date, and the six-month trend', `
       <table role="presentation" style="width:100%;border-collapse:collapse"><tr>
         ${stat(vnd(f.total_revenue), 'total revenue', f.delta_pct != null ? delta(f.delta_pct) : '')}
         ${stat(vnd(f.membership.total), `membership · ${f.membership.count}`)}
-        ${stat(vnd(f.card.topups), 'card top-ups')}
+        ${stat(vnd(f.card.topups), 'top-ups · month')}
         ${stat(vnd(f.gifting.total), 'gifting spend')}
       </tr></table>
       ${chartBlock(mode, stackedBars(momGroups, ['Membership', 'Card top-ups', 'Gifting'], 'dark'), barsHtml(momBars))}

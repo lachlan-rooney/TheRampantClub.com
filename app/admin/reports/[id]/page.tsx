@@ -15,13 +15,21 @@ const SERIF = "'Rampant Sans', serif"
 interface Report {
   id: string; period_start: string; period_end: string; status: string
   headline: string | null; narrative: Record<string, string>; include_financials: boolean
-  auto_data: { usage?: { visits?: number; unique_members?: number }; generated_at?: string }
+  auto_data: { usage?: { visits?: number; unique_members?: number; attendance?: number }; generated_at?: string }
   share_token: string
   send_postponed_to: string | null
 }
 
-const FIELDS: { key: string; label: string; labelVi: string; hint: string; hintVi: string; rows: number }[] = [
-  { key: 'headline', label: 'Headline', labelVi: 'Tiêu đề', hint: 'The strapline on the cover', hintVi: 'Dòng phụ đề trên trang bìa', rows: 1 },
+// THE SECTIONS THE SYSTEM WRITES (2026-09-17) sit at the top, because they are
+// the report now: the owner reads them, changes what he disagrees with, and
+// approves. Editing one marks it as his, and no later draft overwrites it.
+const FIELDS: { key: string; label: string; labelVi: string; hint: string; hintVi: string; rows: number; auto?: boolean }[] = [
+  { key: 'headline', label: 'Headline', labelVi: 'Tiêu đề', hint: 'The strapline on the cover', hintVi: 'Dòng phụ đề trên trang bìa', rows: 1, auto: true },
+  { key: 'summary', label: 'The week in three lines', labelVi: 'Tuần qua trong ba dòng', hint: 'One per line — sits at the very top', hintVi: 'Mỗi dòng một ý — hiển thị ở đầu báo cáo', rows: 3, auto: true },
+  { key: 'people', label: 'Who came in', labelVi: 'Ai đã đến', hint: 'Attendance, bookings and guests', hintVi: 'Lượt đến, đặt chỗ và khách mời', rows: 3, auto: true },
+  { key: 'money', label: 'Money', labelVi: 'Tài chính', hint: 'Fees, card activity and the month so far', hintVi: 'Phí, hoạt động thẻ và tháng này', rows: 3, auto: true },
+  { key: 'members', label: 'Members & pipeline', labelVi: 'Hội viên & nguồn tiềm năng', hint: 'Who joined, leads and interviews', hintVi: 'Ai gia nhập, khách tiềm năng và phỏng vấn', rows: 3, auto: true },
+  { key: 'operations', label: 'The team’s week', labelVi: 'Tuần của đội ngũ', hint: 'Shift board, complaints and cover', hintVi: 'Bảng ca, khiếu nại và nhân sự', rows: 3, auto: true },
   { key: 'moment_of_week', label: 'Moment of the week', labelVi: 'Khoảnh khắc của tuần', hint: 'A highlight — sits in a gold callout', hintVi: 'Điểm nhấn — hiển thị trong khung vàng', rows: 2 },
   { key: 'interviews_commentary', label: 'Interviews & pipeline commentary', labelVi: 'Phỏng vấn & bình luận về nguồn hội viên tiềm năng', hint: 'Colour on this week&rsquo;s prospects', hintVi: 'Nhận định về các ứng viên tuần này', rows: 3 },
   { key: 'marketing', label: 'Marketing initiatives', labelVi: 'Sáng kiến tiếp thị', hint: 'What went out, what&rsquo;s planned', hintVi: 'Đã triển khai gì, dự kiến gì', rows: 3 },
@@ -39,6 +47,7 @@ export default function ReportEditor() {
   const [fin, setFin] = useState(false)
   const [saving, setSaving] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [writing, setWriting] = useState(false)
   const [acting, setActing] = useState(false)
   const [msg, setMsg] = useState('')
   const [activity, setActivity] = useState<{ id: string; event_type: string; created_at: string; note: string | null }[]>([])
@@ -83,6 +92,8 @@ export default function ReportEditor() {
     setSaving(true); setMsg('')
     const res = await fetch(`/api/admin/reports/${id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      // __auto rides along so the record of which sections are still the
+      // system's survives the save.
       body: JSON.stringify({ ...nar, headline: nar.headline || '', include_financials: fin }),
     })
     setSaving(false)
@@ -96,6 +107,35 @@ export default function ReportEditor() {
     setTimeout(() => setMsg(''), 2500)
   }
 
+  // ── ONE PRESS: re-read the week, then write it up ─────────────────────────
+  // Takes ~20s (a gather plus the drafting call), so the button says what it is
+  // doing rather than sitting dead. Anything the owner has edited is left alone
+  // and reported back as kept.
+  const writeUp = async () => {
+    setWriting(true); setMsg('')
+    const res = await fetch(`/api/admin/reports/${id}/draft-narrative`, { method: 'POST' })
+    const d = await res.json().catch(() => ({}))
+    setWriting(false)
+    if (res.ok) {
+      await load()
+      setMsg([d.summary, ...(d.warnings || [])].filter(Boolean).join(' · '))
+      setTimeout(() => setMsg(''), d.warnings?.length ? 20000 : 4000)
+      return
+    }
+    setMsg(d.error || t('Could not write the report.', 'Không thể soạn báo cáo.'))
+    setTimeout(() => setMsg(''), 8000)
+  }
+
+  // Editing a section makes it the owner's: drop it from __auto so the next
+  // draft leaves it exactly as written.
+  const edit = (key: string, value: string) => {
+    setNar(v => {
+      const auto = new Set((v.__auto || '').split(',').filter(Boolean))
+      auto.delete(key)
+      return { ...v, [key]: value, __auto: [...auto].join(',') }
+    })
+  }
+
   if (!r) return <div style={{ fontFamily: MONO, fontSize: 12, color: '#B2AA98' }}>{t('Loading…', 'Đang tải…')}</div>
 
   return (
@@ -105,12 +145,16 @@ export default function ReportEditor() {
         <div>
           <h1 style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 500, color: '#E5D4C2' }}>{r.headline || t('Weekly Report', 'Báo cáo tuần')}</h1>
           <div style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98', marginTop: 4 }}>
-            {r.period_start} – {r.period_end} · {r.status.replace('_', ' ')} · {r.auto_data?.usage?.visits ?? 0} {t('visits', 'lượt ghé')}, {r.auto_data?.usage?.unique_members ?? 0} {t('members', 'hội viên')}
+            {r.period_start} – {r.period_end} · {r.status.replace('_', ' ')} · {r.auto_data?.usage?.attendance ?? r.auto_data?.usage?.visits ?? 0} {t('people in', 'lượt đến')}, {r.auto_data?.usage?.unique_members ?? 0} {t('members', 'hội viên')}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <a href={`/reports/${r.share_token}`} target="_blank" rel="noreferrer" style={btnGhost}>{t('Preview ↗', 'Xem trước ↗')}</a>
-          <button onClick={refresh} disabled={refreshing || locked} style={{ ...btnGhost, opacity: refreshing || locked ? 0.5 : 1 }}>{refreshing ? t('Refreshing…', 'Đang làm mới…') : t('Refresh data', 'Làm mới dữ liệu')}</button>
+          <button onClick={refresh} disabled={refreshing || writing || locked} style={{ ...btnGhost, opacity: refreshing || writing || locked ? 0.5 : 1 }}>{refreshing ? t('Refreshing…', 'Đang làm mới…') : t('Refresh data', 'Làm mới dữ liệu')}</button>
+          {/* The whole report in one press: the numbers, then the words. */}
+          <button onClick={writeUp} disabled={writing || refreshing || locked} style={{ ...btnGold, opacity: writing || refreshing || locked ? 0.5 : 1 }}>
+            {writing ? t('Reading the week…', 'Đang đọc tuần qua…') : t('Write it up', 'Soạn báo cáo')}
+          </button>
         </div>
       </div>
 
@@ -130,7 +174,7 @@ export default function ReportEditor() {
             {f.rows === 1 ? (
               <input style={input} disabled={locked} value={nar[f.key] || ''} onChange={e => setNar(v => ({ ...v, [f.key]: e.target.value }))} />
             ) : (
-              <textarea style={{ ...input, resize: 'vertical' }} rows={f.rows} disabled={locked} value={nar[f.key] || ''} onChange={e => setNar(v => ({ ...v, [f.key]: e.target.value }))} />
+              <textarea style={{ ...input, resize: 'vertical' }} rows={f.rows} disabled={locked} value={nar[f.key] || ''} onChange={e => edit(f.key, e.target.value)} />
             )}
             <div style={{ fontFamily: MONO, fontSize: 9, color: '#7E7864', marginTop: 3 }} dangerouslySetInnerHTML={{ __html: t(f.hint, f.hintVi) }} />
           </div>

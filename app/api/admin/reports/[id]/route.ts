@@ -10,7 +10,11 @@ import { isAdmin } from '@/lib/admin'
 export const dynamic = 'force-dynamic'
 const svc = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
-const NARRATIVE_KEYS = ['headline', 'interviews_commentary', 'marketing', 'cost_cutting', 'successes', 'guests_note', 'moment_of_week', 'closing_note']
+// The sections the system drafts (2026-09-17) save through here too. Without
+// them on this list an owner could edit a drafted section, press Save, and watch
+// it vanish — the write is silently dropped by the whitelist.
+const AUTO_KEYS = ['summary', 'people', 'money', 'members', 'operations']
+const NARRATIVE_KEYS = ['headline', ...AUTO_KEYS, 'interviews_commentary', 'marketing', 'cost_cutting', 'successes', 'guests_note', 'moment_of_week', 'closing_note']
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -38,6 +42,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const narrative = { ...(cur.narrative || {}) }
   for (const k of NARRATIVE_KEYS) if (typeof body[k] === 'string') narrative[k] = String(body[k]).slice(0, 5000)
+
+  // WHICH SECTIONS ARE STILL THE SYSTEM'S. The editor drops a key from __auto the
+  // moment it is typed in, and only keys listed here may be redrafted. Filtered
+  // against the known list so nothing arbitrary can be written into it, and it can
+  // only ever SHRINK on a save — an edit never hands a section back to the machine.
+  if (typeof body.__auto === 'string') {
+    const was = new Set(String((cur.narrative || {}).__auto || '').split(',').filter(Boolean))
+    const now = body.__auto.split(',').map((s: string) => s.trim()).filter((s: string) => AUTO_KEYS.includes(s) || s === 'headline')
+    narrative.__auto = now.filter((k: string) => was.size === 0 || was.has(k)).join(',')
+  }
 
   const patch: Record<string, unknown> = { narrative, updated_at: new Date().toISOString() }
   if (typeof body.headline === 'string') patch.headline = String(body.headline).slice(0, 200)
