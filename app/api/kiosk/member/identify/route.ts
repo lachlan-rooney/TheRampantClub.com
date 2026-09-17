@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { svc, deviceOk } from '@/lib/kiosk/server'
+import { uidCandidates } from '@/lib/cards/uid'
 
 // Card tap → who to greet. DEVICE-GATED, and deliberately NOT /api/kiosk/lookup:
 // that endpoint returns the full name AND the credit balance, which is right for
@@ -33,9 +34,14 @@ export async function POST(req: Request) {
 
   const a = svc()
   // Same normalisation the admin link/lookup uses, so a card linked there resolves here.
-  const { data: card } = await a.from('member_cards')
-    .select('member_number').eq('card_uid', uid.toUpperCase().trim()).maybeSingle()
-  if (!card) return NextResponse.json({ found: false })
+  // A card typed in by the desk reader is a decimal number; the same card read
+  // over NFC is hex. Match either (lib/cards/uid), or a tap never finds anyone.
+  const { data: cards } = await a.from('member_cards')
+    .select('member_number').in('card_uid', uidCandidates(uid))
+  const card = (cards || [])[0]
+  // The scanned code goes back with a miss so the screen can show WHAT it read —
+  // a tap that silently does nothing is unreportable and unfixable.
+  if (!card) return NextResponse.json({ found: false, scanned: uid.toUpperCase().trim() })
 
   const { data: m } = await a.from('members')
     .select('member_no, full_name, nickname').eq('member_no', card.member_number).maybeSingle()

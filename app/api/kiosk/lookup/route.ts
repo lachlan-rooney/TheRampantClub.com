@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { DEMO_MEMBERS_BY_NUMBER } from '@/lib/demo-members'
 import { fetchMembers } from '@/lib/member-roster'
+import { uidCandidates } from '@/lib/cards/uid'
 
 // Public-ish kiosk endpoint. Anyone with the physical card UID can fetch the
 // associated member's display name + balance. No admin auth — by the time a UID
@@ -24,13 +25,15 @@ export async function GET(req: NextRequest) {
   if (!normalised) return NextResponse.json({ error: 'invalid uid' }, { status: 400 })
 
   const supabase = await createServerSupabaseClient()
-  const { data: link } = await supabase
+  // The desk reader types a decimal; a tablet reads the same card as hex. Match
+  // every equivalent spelling (lib/cards/uid) rather than one convention.
+  const { data: links } = await supabase
     .from('member_cards')
     .select('member_number, credit_vnd, expires_at')
-    .eq('card_uid', normalised)
-    .maybeSingle()
+    .in('card_uid', uidCandidates(normalised))
+  const link = (links || [])[0]
 
-  if (!link) return NextResponse.json({ found: false })
+  if (!link) return NextResponse.json({ found: false, scanned: normalised })
 
   // Look up the member name from the Google Sheet — same source used elsewhere.
   let displayName: string | null = null

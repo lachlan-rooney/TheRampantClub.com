@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
 import { demoAsSheetMember } from '@/lib/demo-members'
 import { fetchMembers } from '@/lib/member-roster'
+import { uidCandidates } from '@/lib/cards/uid'
 
 export async function GET(req: NextRequest) {
   if (!(await isAdmin())) {
@@ -12,11 +13,12 @@ export async function GET(req: NextRequest) {
   if (!uid) return NextResponse.json({ error: 'uid required' }, { status: 400 })
 
   const supabase = await createServerSupabaseClient()
-  const { data: link, error } = await supabase
+  // Desk reader (decimal) and tablet tap (hex) are the same card — match either.
+  const { data: links, error } = await supabase
     .from('member_cards')
     .select('member_number, card_uid, credit_vnd, expires_at, linked_at')
-    .eq('card_uid', uid.toUpperCase())
-    .maybeSingle()
+    .in('card_uid', uidCandidates(uid))
+  const link = (links || [])[0]
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!link) return NextResponse.json({ link: null, member: null, transactions: [] })

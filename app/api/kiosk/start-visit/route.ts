@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { vnDateString } from '@/lib/datetime'
+import { uidCandidates } from '@/lib/cards/uid'
 
 // POST /api/kiosk/start-visit
 // Body: { uid }
@@ -37,7 +38,10 @@ export async function POST(req: NextRequest) {
 
   // Resolve the card to a member_no. If the card isn't linked, return
   // 200 with found=false so the kiosk doesn't surface a noisy error.
-  const { data: card } = await sb.from('member_cards').select('member_number').eq('card_uid', uid).maybeSingle()
+  // Either spelling of the number (lib/cards/uid): the desk reader types decimal,
+  // a tap reads hex, and they are the same card.
+  const { data: cards } = await sb.from('member_cards').select('member_number').in('card_uid', uidCandidates(uid))
+  const card = (cards || [])[0]
   if (!card) return NextResponse.json({ ok: true, found: false })
 
   const member_no = card.member_number

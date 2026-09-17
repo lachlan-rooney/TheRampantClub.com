@@ -24,7 +24,11 @@ interface Board {
 }
 interface BoardBooking { id: string; time: string | null; name: string; nickname: string | null; party: number | null; arrived: boolean }
 const MAX_BOOKINGS = 6   // the board never scrolls; more than this collapses to "+N more"
-type Nfc = 'idle' | 'scanning' | 'gesture' | 'unsupported' | 'denied'
+// 'off' and 'error' exist because "touch the screen to enable card tap" was
+// shown for EVERY failure (2026-09-17): NFC switched off on the tablet, a
+// tablet with no NFC at all, a refused permission — all of it looked like a
+// screen waiting to be touched, and touching it changed nothing.
+type Nfc = 'idle' | 'scanning' | 'gesture' | 'unsupported' | 'denied' | 'off' | 'error'
 interface Tap { member_no: string; first_name: string | null }
 
 const ABANDON_MS = 15_000  // a tap-and-walk-away must not leave a name on the bar
@@ -38,6 +42,10 @@ export default function KioskBoard() {
   const [b, setB] = useState<Board | null>(null)
   const [clock, setClock] = useState('')
   const [nfc, setNfc] = useState<Nfc>('idle')
+  // What the tablet actually said, and what it actually read — both were thrown
+  // away, which left "it doesn't work" with nothing behind it.
+  const [nfcWhy, setNfcWhy] = useState('')
+  const [unknownCard, setUnknownCard] = useState<string | null>(null)
   // The room's logo, if one has been added. Try SVG, fall back to PNG, and if
   // neither exists show nothing at all — never a broken image on a bar top.
   // See public/images/floors/README.md: drop a file in, no code change needed.
@@ -122,7 +130,14 @@ export default function KioskBoard() {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid }),
       })
       const j = await r.json()
-      if (!j.found) return
+      // A card we cannot place used to do NOTHING — no greeting, no message, no
+      // trace. Show what was read, so staff can say which card and we can link it.
+      if (!j.found) {
+        setUnknownCard(String(j.scanned || uid))
+        setTimeout(() => setUnknownCard(null), 20_000)
+        return
+      }
+      setUnknownCard(null)
       // The first name goes through sessionStorage, not the URL — a name in the
       // address bar would sit in history long after the member has walked away.
       // Answer the tap here: greet them, open the keypad, pre-fill the number.
@@ -138,16 +153,32 @@ export default function KioskBoard() {
       const reader = new window.NDEFReader()
       await reader.scan()
       scanning.current = true
-      setNfc('scanning')
+      setNfc('scanning'); setNfcWhy('')
       reader.addEventListener('reading', (e: { serialNumber?: string }) => {
         const uid = e.serialNumber?.toUpperCase().replace(/:/g, '') || ''
         if (uid) onTap(uid)
       })
+      // A card the tablet can sense but cannot read — an older door-entry card,
+      // for instance — fires this and nothing else. Silence here reads as a
+      // broken tablet, so say it.
+      reader.addEventListener('readingerror', () => {
+        setUnknownCard('unreadable')
+      })
       return true
     } catch (e) {
       scanning.current = false
-      const msg = (e as Error)?.message || ''
-      setNfc(/denied|not allowed/i.test(msg) ? 'denied' : 'gesture')
+      const err = e as { name?: string; message?: string }
+      const name = err?.name || ''
+      const msg = err?.message || ''
+      // The browser distinguishes these, and each has a different answer:
+      //   NotAllowedError  — permission refused, or no user gesture yet
+      //   NotSupportedError— this tablet has no NFC hardware at all
+      //   NotReadableError — NFC exists but is switched off in Android settings
+      if (/NotSupported/i.test(name)) { setNfc('unsupported'); setNfcWhy('This device has no NFC.') }
+      else if (/NotReadable/i.test(name)) { setNfc('off'); setNfcWhy('NFC is switched off in the tablet’s own settings.') }
+      else if (/NotAllowed/i.test(name) || /denied|not allowed/i.test(msg)) { setNfc('denied'); setNfcWhy('Chrome refused NFC for this site.') }
+      else if (name || msg) { setNfc('error'); setNfcWhy(`${name}${name && msg ? ': ' : ''}${msg}`.slice(0, 120)) }
+      else setNfc('gesture')
       return false
     }
   }, [onTap])
@@ -286,13 +317,31 @@ export default function KioskBoard() {
               bottom bar (components/kiosk/KioskBar) — they were on this row too,
               and the same button twice on one screen reads as two things. */}
           <button onClick={() => { setPanel(true); bump() }} style={primaryBtn}>Member sign in</button>
+          {/* A BUTTON, NOT AN INSTRUCTION TO TOUCH THE SCREEN. Web NFC needs a
+              real gesture, and "touch the screen" gave staff nowhere to press
+              and no sign anything had happened (2026-09-17). */}
+          {nfc !== 'scanning' && nfc !== 'unsupported' && (
+            <button onClick={() => startNfc()} style={tapBtn}>Enable card tap</button>
+          )}
           <div style={{ fontFamily: MONO, fontSize: 12, color: 'rgba(229,212,194,.45)', lineHeight: 1.7, marginLeft: 4 }}>
             {nfc === 'scanning'
               ? <>or hold your card to the tablet<br /><span style={{ color: 'rgba(229,212,194,.3)' }}>hoặc chạm thẻ vào máy</span></>
-              : nfc === 'denied' ? 'card tap blocked — allow NFC in browser settings'
-              : nfc === 'unsupported' ? ''
-              : <>touch the screen to enable card tap<br /><span style={{ color: 'rgba(229,212,194,.3)' }}>chạm màn hình để bật thẻ</span></>}
+              : nfcWhy
+                ? <span style={{ color: '#C49555' }}>{nfcWhy}</span>
+                : nfc === 'unsupported'
+                  // A laptop, an iPhone, or a tablet without the hardware. Telling
+                  // someone to press a button that cannot help them wastes their
+                  // evening — say so instead, and leave the keypad as the way in.
+                  ? <span style={{ color: '#C49555' }}>This device cannot read cards — sign in with your number and code.</span>
+                  : <>press Enable card tap, then hold your card to the tablet<br /><span style={{ color: 'rgba(229,212,194,.3)' }}>nhấn bật thẻ, rồi chạm thẻ vào máy</span></>}
           </div>
+          {unknownCard && (
+            <div style={{ fontFamily: MONO, fontSize: 12, color: '#C49555', lineHeight: 1.7, marginLeft: 4 }}>
+              {unknownCard === 'unreadable'
+                ? 'A card was there but could not be read — it may be an older type this tablet cannot use.'
+                : <>Card read, but not linked to a member — <span style={{ color: '#E5D4C2' }}>{unknownCard}</span></>}
+            </div>
+          )}
         </div>
       ) : (
         <div style={panelWrap} onPointerDown={bump}>
@@ -389,6 +438,14 @@ const padKey: React.CSSProperties = {
   height: 'clamp(46px, 8.2vh, 72px)', borderRadius: 10, cursor: 'pointer',
   background: 'rgba(229,212,194,.06)', border: '1px solid rgba(229,212,194,.18)',
   color: '#E5D4C2', fontFamily: MONO, fontSize: 'clamp(18px, 3.4vh, 26px)',
+}
+// Outlined, beside the filled "Member sign in" — it is the second thing you do,
+// not the first. (The old menuBtn style went with the board's menu link.)
+const tapBtn: React.CSSProperties = {
+  fontFamily: MONO, fontSize: 14, letterSpacing: '.08em', textTransform: 'uppercase',
+  color: '#D4B85A', background: 'none', cursor: 'pointer',
+  border: '1px solid rgba(212,184,90,.45)', borderRadius: 8,
+  padding: '17px 30px', minHeight: 56,
 }
 const primaryBtn: React.CSSProperties = {
   background: '#E5D4C2', color: '#052E20', border: 'none', borderRadius: 8,

@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
 import { vnDateString } from '@/lib/datetime'
+import { uidCandidates } from '@/lib/cards/uid'
 
 // POST /api/admin/visits/start-from-card
 // Body: { uid: string }
@@ -47,7 +48,10 @@ export async function POST(req: NextRequest) {
   // Path 2 — card UID lookup (kiosk tap).
   if (!member_no && typeof body.uid === 'string' && body.uid.trim()) {
     const uid = body.uid.trim().toUpperCase()
-    const { data: card } = await sb.from('member_cards').select('member_number').eq('card_uid', uid).maybeSingle()
+    // Either spelling of the card's number (lib/cards/uid) — a tap reads hex, the
+    // desk reader typed decimal.
+    const { data: cards } = await sb.from('member_cards').select('member_number').in('card_uid', uidCandidates(uid))
+    const card = (cards || [])[0]
     if (!card) return NextResponse.json({ error: 'card not linked to a member' }, { status: 404 })
     member_no = card.member_number
   }
