@@ -294,15 +294,27 @@ export function renderReportBody(r: ReportRow, mode: Mode): string {
   // Who's been in & how long — attendance + time in the club
   const memberHours = Math.round(u.total_member_minutes / 60)
   const guestHours = Math.round(u.guest_minutes / 60)
-  const attendanceLine = (() => {
-    const parts: string[] = []
-    if (memberHours > 0) parts.push(`Members spent <span style="color:${CREAM}">~${memberHours}h</span> in the club`)
-    if (u.guest_heads > 0) parts.push(`<span style="color:${CREAM}">${u.guest_heads}</span> guest${u.guest_heads === 1 ? '' : 's'} logged${guestHours > 0 ? ` (~${guestHours}h)` : ''}`)
-    else if (u.guest_proxy > 0) parts.push(`~${u.guest_proxy} guests (estimated from party sizes)`)
-    const line = parts.join(' · ')
-    const note = n.guests_note ? (line ? ' · ' : '') + esc(n.guests_note) : ''
-    return (line || note) ? `<div style="font-size:12.5px;color:${MUTED};margin-top:8px">${line}${note}</div>` : ''
+  // ── MEMBERS AND GUESTS, ON THEIR OWN LINES (2026-09-17, owner's ask) ───────
+  // They are counted by different means and one line hid that. Member hours come
+  // only from visits with a recorded duration — ~5h from ONE logged visit in a
+  // week seven people came in — so the line carries what it is built from rather
+  // than implying it is the week's total. Guests are the door log where there is
+  // one, and the booking party-size estimate where there is not; the estimate
+  // says so in the sentence, never dressed as a count.
+  const row = (label: string, body: string) => `<div style="font-size:12.5px;color:${MUTED};margin-top:7px">
+    <span style="font-family:'Google Sans Code',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:${GOLD};margin-right:9px">${esc(label)}</span>${body}</div>`
+  const membersLine = row('Members', u.timed_visits
+    ? `<span style="color:${CREAM}">~${memberHours}h</span> in the club, from ${u.timed_visits} visit${u.timed_visits === 1 ? '' : 's'} with a recorded time`
+    : memberHours > 0
+      ? `<span style="color:${CREAM}">~${memberHours}h</span> in the club`
+      : 'no visit lengths were recorded this week')
+  const guestsLine = (() => {
+    const note = n.guests_note ? ` · ${esc(n.guests_note)}` : ''
+    if (u.guest_heads > 0) return row('Guests', `<span style="color:${CREAM}">${u.guest_heads}</span> signed in${guestHours > 0 ? `, <span style="color:${CREAM}">~${guestHours}h</span> in the club` : ', no time recorded'}${note}`)
+    if (u.guest_proxy > 0) return row('Guests', `none signed in at the door · <span style="color:${CREAM}">~${u.guest_proxy}</span> estimated from booking party sizes${note}`)
+    return note ? row('Guests', note.slice(3)) : ''
   })()
+  const attendanceLine = membersLine + guestsLine
   html += section('Who’s Been In', 'Attendance & time in the club this week', `
     <table role="presentation" style="width:100%;border-collapse:collapse"><tr>
       ${/* 2026-09-15: people who came in (taps, visits, arrived bookings, guests)

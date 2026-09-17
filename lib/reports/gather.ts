@@ -28,6 +28,10 @@ export interface WeekMetrics {
   unique_members: number
   avg_minutes: number
   total_member_minutes: number   // sum of closed member-visit durations
+  /** How many visits that total is actually built from. "Members spent ~5h" read
+   *  as the whole week's time in the club when it came from ONE logged visit out
+   *  of seven people in (2026-09-17) — the hours need their denominator. */
+  timed_visits?: number
   guest_visits: number           // guest-attendance records logged
   guest_heads: number            // actual guests (sum of party sizes)
   guest_minutes: number          // sum of guest durations
@@ -160,6 +164,7 @@ async function windowMetrics(sb: SupabaseClient, start: string, end: string): Pr
     unique_members: att ? att.members : new Set(visits.map(v => v.member_no)).size,
     avg_minutes: closed.length ? Math.round(memberMinutes / closed.length) : 0,
     total_member_minutes: memberMinutes,
+    timed_visits: closed.length,
     guest_visits: guests.length,
     guest_heads: guests.reduce((s, g) => s + (g.party_size || 1), 0),
     guest_minutes: guests.reduce((s, g) => s + (g.duration_min || 0), 0),

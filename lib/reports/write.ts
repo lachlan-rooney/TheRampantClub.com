@@ -99,6 +99,13 @@ function facts(auto: AutoData, financials: Financials | null) {
       arrived: u.arrived,
       guests_logged: u.guest_heads,
       guests_estimated_from_party_sizes: u.guest_proxy,
+      // Time is reported for members and guests SEPARATELY, and the member hours
+      // are only as good as the visits that carry a duration — so the count of
+      // those comes too, and the prompt's "use each figure for what its name
+      // says" rule keeps the two apart.
+      member_hours_from_timed_visits: Math.round(u.total_member_minutes / 60),
+      visits_with_a_recorded_time: u.timed_visits ?? null,
+      guest_hours_recorded: Math.round(u.guest_minutes / 60),
       people_in_by_day: u.visits_by_day.filter(d => d.count > 0).map(d => `${d.label}: ${d.count} people in`),
     },
     money: auto.money ? {
