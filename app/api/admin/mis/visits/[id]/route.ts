@@ -86,6 +86,25 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     if (next === 'continuum' && !before.departure_time && !body.departure_time) {
       patch.departure_time = now
     }
+
+    // ── HOW LONG THEY STAYED, WORKED OUT RATHER THAN TYPED (2026-09-17) ──────
+    // Both ends of a visit are stamped here — arrival on the way into accord,
+    // departure on the way into continuum — and NOTHING turned them into a
+    // duration: not this route, not a trigger. duration_min was stored only if a
+    // caller happened to send a number, so the weekly report's member hours came
+    // from the rare visit where someone typed one. For 7-13 Sept that was ONE
+    // visit out of seven people in, reported as "~5h in the club".
+    //
+    // Derived only when both ends exist and nobody has set a duration, so a
+    // typed correction always wins and re-opening a phase never overwrites one.
+    const arrival = patch.arrival_time ?? body.arrival_time ?? before.arrival_time
+    const departure = patch.departure_time ?? body.departure_time ?? before.departure_time
+    if (arrival && departure && before.duration_min == null && body.duration_min == null) {
+      const mins = Math.round((new Date(departure as string).getTime() - new Date(arrival as string).getTime()) / 60000)
+      // A negative span means the stamps are the wrong way round; a span over a
+      // day means one is wrong. Neither is a stay, so neither is recorded.
+      if (mins > 0 && mins <= 1440) patch.duration_min = mins
+    }
     if (next === 'closed') {
       const finalNote = typeof body.data_for_next_overture === 'string'
         ? body.data_for_next_overture

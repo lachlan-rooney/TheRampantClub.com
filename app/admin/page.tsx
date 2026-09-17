@@ -5,6 +5,7 @@ import { ConfirmModal, useToast } from '@/components/admin/dialogs'
 import Link from 'next/link'
 import { Donut, Sparkline, HBars, StackedBars, LineChart, Funnel, PALETTE } from './_charts/Charts'
 import { useLang } from '@/lib/admin-lang'
+import ArrivalsRow from '@/components/admin/ArrivalsRow'
 
 // Admin / Dashboard
 //
@@ -96,6 +97,9 @@ export default function AdminDashboard() {
         <div>
           <div style={eyebrow}>{t('Data centre', 'Trung tâm dữ liệu')}</div>
           <h1 style={pageTitle}>{t('Dashboard', 'Bảng điều khiển')}</h1>
+          {/* Marking someone in is the most frequent thing anyone does here, and
+              it was buried three screens deep. It leads the dashboard now. */}
+          <ArrivalsRow />
           <p style={lede}>{t('Everything the system knows, at a glance. Every tile is a link — click into anything that catches your eye.', 'Tất cả những gì hệ thống biết, trong một cái nhìn. Mỗi ô là một liên kết — nhấp vào bất cứ điều gì thu hút bạn.')}</p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>

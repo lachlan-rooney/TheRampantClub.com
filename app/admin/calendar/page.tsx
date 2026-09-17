@@ -9,6 +9,7 @@ import { useLang } from '@/lib/admin-lang'
 import ShareBox from '@/components/admin/ShareBox'
 import { isShareable } from '@/lib/share/draft'
 import AttendanceStrip from '@/components/admin/AttendanceStrip'
+import ArrivalsRow from '@/components/admin/ArrivalsRow'
 
 // Admin / Floor / Calendar
 //
@@ -312,6 +313,10 @@ export default function CalendarPage() {
           every calendar reload, so marking arrived / starting a visit updates it
           at once rather than on the next minute's poll. */}
       <AttendanceStrip from={from} to={to} refreshKey={bookings} />
+
+      {/* Tonight's people, with the three buttons that used to be scattered over
+          the booking cards, the Tonight wall and the guest form (2026-09-17). */}
+      <ArrivalsRow />
 
       <div style={toolbar}>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>

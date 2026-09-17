@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import SignaturePad, { type SignaturePadHandle } from '@/components/SignaturePad'
+import ArrivalsRow from '@/components/admin/ArrivalsRow'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE DOOR.  Guest sign-in on the entrance iPad.  (Decided 2026-09-14.)
@@ -34,7 +35,7 @@ const WAIT_MS = 10 * 60_000     // but a guest waiting for the manager is not hu
 const DONE_MS = 8_000
 const MIN_INK = 40              // px of stroke — a tap is not a signature
 
-type Step = 'welcome' | 'name' | 'sign' | 'done' | 'waiting' | 'staff' | 'pin' | 'decide' | 'decided'
+type Step = 'welcome' | 'name' | 'sign' | 'done' | 'waiting' | 'staff' | 'pin' | 'decide' | 'decided' | 'arrivals'
 interface Staff { id: string; display_name: string; role_title?: string | null }
 interface Review { staff_name: string; guest_name: string; reason: string; on_list: boolean | null; host: string | null; signed_in_at: string }
 
@@ -160,6 +161,13 @@ export default function KioskDoor() {
       <p style={{ ...lede, marginTop: 28 }}>Guests, please sign in.<br /><span style={{ opacity: 0.75 }}>Khách mời, vui lòng đăng ký vào cửa.</span></p>
       <button style={{ ...primary, marginTop: 34 }} onClick={e => { e.stopPropagation(); setStep('name') }}>Begin · Bắt đầu</button>
       <div style={{ ...fine, marginTop: 30 }}>Members need not sign in here · Hội viên không cần đăng ký tại đây</div>
+      {/* THE STAFF WAY IN. Tonight's list carries member names, so it lives one
+          tap behind the greeting rather than on a screen a guest is reading over
+          (2026-09-17). The idle timer returns this tablet to Welcome by itself. */}
+      <button style={{ ...fine, marginTop: 26, background: 'none', border: 'none', cursor: 'pointer', opacity: .45, textDecoration: 'underline' }}
+              onClick={e => { e.stopPropagation(); setStep('arrivals') }}>
+        Staff · who’s in tonight
+      </button>
     </div>
   )
 
@@ -320,6 +328,15 @@ export default function KioskDoor() {
       <h1 style={{ ...display, fontSize: 'clamp(34px, 5.4vw, 54px)' }}>Thank you.</h1>
       <div style={vn}>Cảm ơn quý khách.</div>
       <button style={{ ...ghost, marginTop: 40 }} onClick={reset}>Next guest · Khách tiếp theo</button>
+    </div>
+  )
+
+  else if (step === 'arrivals') body = (
+    <div>
+      <div style={kicker}>Staff · Nhân viên</div>
+      <h2 style={{ ...heading, marginBottom: 14 }}>Who’s in tonight</h2>
+      <ArrivalsRow endpoint="/api/kiosk/door/arrivals" compact />
+      <button style={{ ...ghost, marginTop: 18 }} onClick={reset}>← Back · Quay lại</button>
     </div>
   )
 
