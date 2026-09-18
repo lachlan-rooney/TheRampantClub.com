@@ -212,6 +212,39 @@ export default function KioskBoard() {
     if (!scanning.current && nfc !== 'unsupported' && nfc !== 'denied') { startNfc() }
   }, [b, nfc, startNfc])
 
+  // ── A USB CARD READER IS A KEYBOARD (2026-09-18) ──────────────────────────
+  // The Library Bar tablet has no NFC radio at all — Chrome answers
+  // NotSupportedError, which is the hardware talking and not something code can
+  // fix. But the club already owns Tagtix CK06 readers: plugged into the
+  // tablet's USB-C port, one behaves as a keyboard, TYPES the card number and
+  // presses Enter. That is also the number already stored against every member,
+  // so it matches without conversion.
+  //
+  // Same buffer-and-flush as /admin/cards: characters are collected, Enter (or
+  // a 250ms gap — a reader types far faster than a person) sends them. Typing
+  // into a field is never captured, so the surname box and the PIN pad are
+  // untouched. With no reader attached this listens and never fires.
+  useEffect(() => {
+    let buf = ''
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const flush = () => {
+      const v = buf; buf = ''; timer = null
+      if (v.length >= 4) onTap(v.toUpperCase())
+    }
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
+      if (e.key === 'Enter') { if (timer) clearTimeout(timer); flush(); return }
+      if (e.key.length === 1 && /^[0-9A-Za-z]$/.test(e.key)) {
+        buf += e.key
+        if (timer) clearTimeout(timer)
+        timer = setTimeout(flush, 250)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => { window.removeEventListener('keydown', onKey); if (timer) clearTimeout(timer) }
+  }, [onTap])
+
   const s = b?.state ?? 'no_event'
   const eyebrow = s === 'arrival' ? ['Doors are open', 'Cửa đã mở']
     : s === 'live' ? ['This evening', 'Tối nay']
@@ -332,7 +365,7 @@ export default function KioskBoard() {
                   // A laptop, an iPhone, or a tablet without the hardware. Telling
                   // someone to press a button that cannot help them wastes their
                   // evening — say so instead, and leave the keypad as the way in.
-                  ? <span style={{ color: '#C49555' }}>This device cannot read cards — sign in with your number and code.</span>
+                  ? <span style={{ color: '#C49555' }}>This tablet has no card reader built in — plug a USB card reader into it, or sign in with your surname and code.</span>
                   : <>press Enable card tap, then hold your card to the tablet<br /><span style={{ color: 'rgba(229,212,194,.3)' }}>nhấn bật thẻ, rồi chạm thẻ vào máy</span></>}
           </div>
           {unknownCard && (
