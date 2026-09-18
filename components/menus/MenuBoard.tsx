@@ -29,7 +29,11 @@ import {
 //     ("350K VND"), not in dong with a symbol
 //   · the crest lion enormous and barely-there behind the list, bleeding off
 //     the right edge
-//   · one ink drawing in the bottom corner, half off the page
+//
+// The card also puts an ink drawing in the bottom corner. That was built and
+// then taken out on the owner's instruction — at the foot of a scrolling page
+// it read as a dark blob rather than as a flourish, which is the difference
+// between a printed page that ends and a web page that just stops.
 //
 // Two services, and the switch between them is the first thing on the screen:
 // PLATES go anywhere in the club; DINING is set menus, downstairs, sat down.
@@ -113,19 +117,22 @@ export default function MenuBoard({
           </p>
         )}
 
-        {shown.map(v => (
-          <section key={v.slug} className="mb-venue">
-            <VenueHead v={v} lang={lang} />
-            {service === 'plates'
-              ? <ul className="mb-list">
-                  {v.plates.map(p => (
-                    <PlateRow key={p.id} p={p} open={open === p.id}
-                              onToggle={() => setOpen(o => (o === p.id ? null : p.id))} />
-                  ))}
-                </ul>
-              : v.sets.map(s => <SetMenu key={s.id} s={s} />)}
-          </section>
-        ))}
+        {/* Wrapped so a landscape tablet can set them side by side. */}
+        <div className="mb-venues">
+          {shown.map(v => (
+            <section key={v.slug} className="mb-venue">
+              <VenueHead v={v} lang={lang} />
+              {service === 'plates'
+                ? <ul className="mb-list">
+                    {v.plates.map(p => (
+                      <PlateRow key={p.id} p={p} open={open === p.id}
+                                onToggle={() => setOpen(o => (o === p.id ? null : p.id))} />
+                    ))}
+                  </ul>
+                : v.sets.map(s => <SetMenu key={s.id} s={s} />)}
+            </section>
+          ))}
+        </div>
 
         <p className="mb-legal">
           {t('Dishes are prepared by our partner kitchens and plated here. Please tell any of the team about allergies or dietary needs before ordering — we will check with the kitchen.',
@@ -133,8 +140,6 @@ export default function MenuBoard({
         </p>
       </div>
 
-      {/* The drawing in the corner, half off the page, as on the card. */}
-      <img src="/images/ink/butler-tray.webp" alt="" aria-hidden="true" className="mb-ink" />
     </div>
   )
 }
@@ -282,14 +287,8 @@ const CSS = `
       --mono: 'Google Sans Code','DM Mono',monospace;
       --serif: 'Rampant Sans', Georgia, serif;
       color: var(--cream); position: relative; overflow: hidden; }
-/* The padding-bottom is not decoration: it is the room the corner drawing
-   stands in. Without it the ink sits on top of the last paragraph, which is
-   the allergy line — the one piece of text on this page that must never be
-   hard to read. */
-/* 200px clears a 168px-wide drawing that is very nearly square (the tray is
-   500x541), sitting 14px below the edge. Kiosk scales both. */
-.mb-inner { max-width: 760px; position: relative; z-index: 1; padding-bottom: 200px; }
-.mb.is-kiosk .mb-inner { max-width: 900px; padding-bottom: 275px; }
+.mb-inner { max-width: 760px; position: relative; z-index: 1; padding-bottom: 40px; }
+.mb.is-kiosk .mb-inner { max-width: 900px; padding-bottom: 48px; }
 
 /* The lion, enormous and barely there, bleeding off the right edge — the
    card's signature. Faint enough that the prices sitting over it stay the
@@ -298,10 +297,6 @@ const CSS = `
 .mb-watermark {
   position: absolute; right: -22%; top: 90px; height: 84%; width: auto;
   opacity: .032; pointer-events: none; user-select: none; z-index: 0;
-}
-.mb-ink {
-  position: absolute; left: -26px; bottom: -14px; width: 168px;
-  opacity: .45; pointer-events: none; user-select: none; z-index: 0;
 }
 
 .mb-masthead { text-align: center; padding-bottom: 34px; }
@@ -405,9 +400,38 @@ const CSS = `
 .mb.is-kiosk .mb-course-dish { font-size: 19px; }
 .mb.is-kiosk .mb-tag { font-size: 11px; padding: 5px 11px; }
 .mb.is-kiosk .mb-meta { font-size: 12px; }
-.mb.is-kiosk .mb-ink { width: 230px; }
-.mb.is-kiosk .mb-row:hover .mb-name { color: inherit; }
+.mb.is-kiosk .mb.is-kiosk .mb-row:hover .mb-name { color: inherit; }
 .mb.is-kiosk .mb-item.is-open .mb-name { color: var(--gold); }
+
+/* ── A TABLET LYING DOWN ────────────────────────────────────────────────────
+   A room tablet in landscape is about 800px tall, and the portrait layout put
+   ONE of seven dishes above the bar: the crest, the wordmark, the tabs and the
+   standfirst between them ate 60% of the screen, while the list ran down a
+   narrow column leaving half the glass empty.
+   Nobody scrolls a menu they have not been given a reason to scroll, so on a
+   short wide screen the titling shrinks and the restaurants sit side by side.
+   Keyed on height as well as width, so a phone held sideways is not caught. */
+@media (min-width: 1000px) and (max-height: 900px) {
+  .mb.is-kiosk .mb-inner { max-width: 1180px; padding-bottom: 40px; }
+  .mb.is-kiosk .mb-masthead { padding-bottom: 14px; }
+  .mb.is-kiosk .mb-crest { height: 42px; }
+  .mb.is-kiosk .mb-wordmark { font-size: 19px; margin-top: 7px; }
+  .mb.is-kiosk .mb-tab { font-size: 21px; padding: 10px 4px 12px; }
+  .mb.is-kiosk .mb-note { font-size: 12.5px; margin-bottom: 26px; max-width: 74ch; }
+  /* Multi-column, not a two-column grid: grid rows align to the tallest cell,
+     so a restaurant with one dish left a hole the height of a restaurant with
+     three. Columns let a short venue and the next one stack in the same
+     column. break-inside keeps a restaurant whole. */
+  .mb.is-kiosk .mb-venues { columns: 2; column-gap: 56px; }
+  .mb.is-kiosk .mb-venue { margin-bottom: 34px; break-inside: avoid;
+                           -webkit-column-break-inside: avoid; }
+  .mb.is-kiosk .mb-vhead { margin-bottom: 12px; }
+  .mb.is-kiosk .mb-logo { height: 54px; }
+  .mb.is-kiosk .mb-name { font-size: 18px; }
+  .mb.is-kiosk .mb-price { font-size: 16px; min-width: 118px; }
+  .mb.is-kiosk .mb-row { padding: 8px 0; min-height: 0; }
+  .mb.is-kiosk   .mb.is-kiosk .mb-legal { margin-top: 26px; }
+}
 
 @media (max-width: 600px) {
   .mb-tab { font-size: 16px; }
@@ -415,8 +439,7 @@ const CSS = `
   .mb-price { font-size: 13px; min-width: 88px; }
   .mb-row { gap: 14px; }
   .mb-watermark { right: -34%; opacity: .035; }
-  .mb-ink { width: 118px; opacity: .4; }
-  .mb-crest { height: 58px; }
+    .mb-crest { height: 58px; }
   .mb-wordmark { font-size: 21px; }
 }
 `
