@@ -41,7 +41,9 @@ const INK_BY_PATH: Record<string, Ink> = {
   '/members/journey': 'glass',        // a whisky journey — not the golf flag
   '/members/gifts': 'lion-bottle',
   '/members/gallery': 'girl-toast',
-  '/members/menus': 'butler-tray',    // it arrives at your chair on a tray
+  // NOT butler-tray: MenuBoard draws that one in its own bottom corner, off the
+  // printed card, and the same drawing twice on one page reads as a mistake.
+  '/members/menus': 'lion-suit',
   '/members/whisky': 'lion-bottle',
   '/members/whisky/finder': 'glass-botanical',
 }

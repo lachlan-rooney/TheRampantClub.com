@@ -57,11 +57,9 @@ export default function KioskMenuPage() {
         .km { min-height: 100dvh; background: #052E20; color: #E5D4C2;
               padding: 40px clamp(24px, 5vw, 64px)
                        calc(56px + var(--kiosk-bar, 0px)); }
-        .km-head { font-family: 'Rampant Sans', Georgia, serif;
-                   font-size: clamp(34px, 5vw, 52px); margin: 0 0 6px; font-weight: 500; }
-        .km-sub { font-family: 'Google Sans Code', monospace; font-size: 12px;
-                  letter-spacing: .2em; text-transform: uppercase;
-                  color: #D4B85A; margin-bottom: 34px; }
+        /* The page heading lives in MenuBoard's masthead now — the crest and
+           wordmark off the printed card — so this page draws no title of its
+           own and does not say the club's name twice. */
         .km-msg { font-family: 'Google Sans Code', monospace; font-size: 15px;
                   opacity: .6; padding: 60px 0; }
         .km-printed { display: inline-block; margin-top: 36px;
@@ -71,13 +69,13 @@ export default function KioskMenuPage() {
                       border-bottom: 1px solid rgba(229,212,194,.3); padding-bottom: 4px; }
       ` }} />
 
-      <div className="km-sub">{t('The Rampant Club', 'The Rampant Club')}</div>
-      <h1 className="km-head">{t('Menus', 'Thực đơn')}</h1>
-
       {err && <p className="km-msg">{t('The menu could not be loaded. Please ask a member of the team.',
                                         'Không tải được thực đơn. Vui lòng hỏi nhân viên.')}</p>}
       {!err && venues === null && <p className="km-msg">{t('Loading…', 'Đang tải…')}</p>}
-      {!err && venues !== null && <MenuBoard venues={venues} variant="kiosk" />}
+      {/* The crest and wordmark, as on the printed card — the tablet has no
+          page title of its own, and a member picking it up should see whose
+          menu it is before anything else. */}
+      {!err && venues !== null && <MenuBoard venues={venues} variant="kiosk" masthead />}
 
       {/* The room's printed menu, kept but demoted. It opens in a new tab, which
           is why it is not in the bar any more. */}

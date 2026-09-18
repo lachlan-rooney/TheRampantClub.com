@@ -160,11 +160,18 @@ export function groupByVenue(plates: MenuPlate[], sets: MenuSet[]): MenuVenueGro
     (order.get(a.slug) ?? 0) - (order.get(b.slug) ?? 0) || a.name.localeCompare(b.name))
 }
 
-/** Đồng, the way it is written here: grouped with full stops, and a
- *  non-breaking space before the symbol — Vietnamese convention, and without it
- *  the ₫ sits on top of the last digit in the mono face.
+/** Prices the way the club's own printed menus write them: "350K VND".
+ *
+ *  Taken from the Library Bar menu rather than invented, so the tablet on the
+ *  table and the card beside it agree.
+ *
+ *  Above a million it switches to the full number — "1.850K VND" is ambiguous
+ *  to an English reader, who sees 1.85K, while "1.850.000 VND" reads correctly
+ *  in both languages. Under a million the K form is unambiguous and shorter.
+ *
  *  `null` is "price on request" — never 0, which would read as free. */
-export function dong(v: number | null | undefined): string | null {
+export function price(v: number | null | undefined): string | null {
   if (v === null || v === undefined) return null
-  return new Intl.NumberFormat('vi-VN').format(v) + ' ₫'
+  if (v >= 1_000_000) return new Intl.NumberFormat('vi-VN').format(v) + ' VND'
+  return Math.round(v / 1000) + 'K VND'
 }

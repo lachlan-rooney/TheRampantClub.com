@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ConfirmModal, useToast } from '@/components/admin/dialogs'
 import {
-  ALLERGENS, DIETARY, ALLERGEN_LABEL, DIETARY_LABEL, dong, mediaUrl,
+  ALLERGENS, DIETARY, ALLERGEN_LABEL, DIETARY_LABEL, price, mediaUrl,
   type Allergen, type Dietary,
 } from '@/lib/menus/types'
 
@@ -453,7 +453,7 @@ function ItemForm({ it, first, last, onMove, onSave, onDelete, onToast }: {
           {!d.allergens_confirmed && <span className="am-flag">allergens unconfirmed</span>}
           {!d.is_active && <span className="am-flag is-quiet">hidden</span>}
         </div>
-        <div className="am-itemprice">{dong(d.price_vnd) ?? 'on request'}</div>
+        <div className="am-itemprice">{price(d.price_vnd) ?? 'on request'}</div>
         <div className="am-nudge">
           <button disabled={first} onClick={() => onMove(-1)}>↑</button>
           <button disabled={last} onClick={() => onMove(1)}>↓</button>
@@ -537,7 +537,7 @@ function SetForm({
       <div className="am-itemhead">
         <button className="am-disc" onClick={() => setOpen(o => !o)}>{open ? '−' : '+'}</button>
         <div className="am-itemname">{d.name_en} <span className="am-flag is-quiet">{courses.length} courses</span></div>
-        <div className="am-itemprice">{dong(d.price_per_head_vnd) ?? 'on request'}</div>
+        <div className="am-itemprice">{price(d.price_per_head_vnd) ?? 'on request'}</div>
         <div className="am-nudge">
           <button disabled={first} onClick={() => onMove(-1)}>↑</button>
           <button disabled={last} onClick={() => onMove(1)}>↓</button>

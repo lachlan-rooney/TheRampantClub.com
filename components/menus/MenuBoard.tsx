@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useLang, pick } from '@/lib/lang'
 import {
-  ALLERGEN_LABEL, DIETARY_LABEL, dong, mediaUrl,
+  ALLERGEN_LABEL, DIETARY_LABEL, price, mediaUrl,
   type Allergen, type Dietary, type MenuPlate, type MenuSet, type MenuVenueGroup,
 } from '@/lib/menus/types'
 
@@ -11,116 +11,145 @@ import {
 // THE MENU, ON BOTH SURFACES
 // ───────────────────────────────────────────────────────────────────────────
 // One component for the members' portal and the room tablets, because a menu
-// that differs between the phone in a member's hand and the tablet on the
-// table beside them is a menu that will be wrong in one of the two places.
-// What changes between them is size and touch, not content — `variant` sets
-// the scale and nothing else.
+// that differs between the phone in a member's hand and the tablet on the table
+// beside them is a menu that will be wrong in one of the two places. `variant`
+// changes size and touch, never content.
+//
+// ── BUILT TO MATCH THE PRINTED CARD ───────────────────────────────────────
+// The owner's brief was "look roughly like the Library Bar menu", so this is
+// drawn from that PDF rather than from taste:
+//
+//   · item names in the MONO face, section headings in the serif — the
+//     opposite way round from most of this site, and the printed menu's most
+//     distinctive move
+//   · no dotted leaders and no rule between items. The card has neither; it
+//     separates by whitespace alone, and dotted leaders were making the web
+//     version read like a spreadsheet
+//   · the price right-aligned in its own column, written the club's way
+//     ("350K VND"), not in dong with a symbol
+//   · the crest lion enormous and barely-there behind the list, bleeding off
+//     the right edge
+//   · one ink drawing in the bottom corner, half off the page
 //
 // Two services, and the switch between them is the first thing on the screen:
+// PLATES go anywhere in the club; DINING is set menus, downstairs, sat down.
 //
-//   PLATES  — small dishes to share, brought to wherever you are sitting.
-//   DINING  — set menus, cooked downstairs, sat down.
+// A dish opens in place — nothing navigates, nothing opens a modal. On a tablet
+// standing on a table during service, a modal is something a member has to
+// dismiss before the next person can read the menu, and it will be left open.
 //
-// A dish opens in place. Nothing navigates away, nothing opens a modal: on a
-// tablet standing on a table during service, a modal is something a member has
-// to dismiss before the next person can read the menu, and it will be left
-// open. Tapping a second dish closes the first.
-//
-// This is a MENU, not a shop. There is no basket and no "order" button — the
-// team takes the order. Anything that looks like a checkout would be a promise
-// the club has not built yet.
+// This is a MENU, not a shop: no basket, no "order" button. The team takes the
+// order, and anything resembling a checkout would promise something the club
+// has not built.
 // ═══════════════════════════════════════════════════════════════════════════
 
 type Service = 'plates' | 'dining'
 
 export default function MenuBoard({
-  venues, variant = 'member',
+  venues, variant = 'member', masthead = false,
 }: {
   venues: MenuVenueGroup[]
   variant?: 'member' | 'kiosk'
+  /** The crest and wordmark above the list, as on the printed card. Off in the
+   *  members' portal, where MemberPage has already given the page a masthead
+   *  and a second one would just say the club's name twice. */
+  masthead?: boolean
 }) {
   const { t, lang } = useLang()
   const [service, setService] = useState<Service>('plates')
   const [open, setOpen] = useState<string | null>(null)
 
   const withPlates = useMemo(() => venues.filter(v => v.plates.length), [venues])
-  const withSets   = useMemo(() => venues.filter(v => v.sets.length), [venues])
+  const withSets = useMemo(() => venues.filter(v => v.sets.length), [venues])
   const shown = service === 'plates' ? withPlates : withSets
-  const big = variant === 'kiosk'
 
   return (
-    <div className={`mb ${big ? 'is-kiosk' : ''}`}>
+    <div className={`mb ${variant === 'kiosk' ? 'is-kiosk' : ''}`}>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
-      {/* ── The choice of service, and what it means ──────────────────── */}
-      <div className="mb-switch" role="tablist">
-        <button role="tab" aria-selected={service === 'plates'}
-                className={`mb-tab ${service === 'plates' ? 'is-on' : ''}`}
-                onClick={() => { setService('plates'); setOpen(null) }}>
-          {t('Plates', 'Món nhỏ')}
-          <span className="mb-tab-sub">{t('anywhere in the club', 'phục vụ khắp câu lạc bộ')}</span>
-        </button>
-        <button role="tab" aria-selected={service === 'dining'}
-                className={`mb-tab ${service === 'dining' ? 'is-on' : ''}`}
-                onClick={() => { setService('dining'); setOpen(null) }}>
-          {t('The Dining Room', 'Phòng ăn')}
-          <span className="mb-tab-sub">{t('set menus, sat down', 'thực đơn cố định, dùng tại bàn')}</span>
-        </button>
+      {/* The lion behind everything, off the right edge. Decorative only —
+          hidden from screen readers, and it must never catch a tap meant for
+          the dish underneath it. */}
+      <img src="/images/logo-mark-cream.svg" alt="" aria-hidden="true" className="mb-watermark" />
+
+      <div className="mb-inner">
+        {masthead && (
+          <header className="mb-masthead">
+            <img src="/images/logo-mark-cream.svg" alt="" aria-hidden="true" className="mb-crest" />
+            <div className="mb-wordmark">The Rampant Club</div>
+          </header>
+        )}
+
+        <div className="mb-switch" role="tablist">
+          <button role="tab" aria-selected={service === 'plates'}
+                  className={`mb-tab ${service === 'plates' ? 'is-on' : ''}`}
+                  onClick={() => { setService('plates'); setOpen(null) }}>
+            {t('Plates', 'Món nhỏ')}
+            <span className="mb-tab-sub">{t('anywhere in the club', 'phục vụ khắp câu lạc bộ')}</span>
+          </button>
+          <button role="tab" aria-selected={service === 'dining'}
+                  className={`mb-tab ${service === 'dining' ? 'is-on' : ''}`}
+                  onClick={() => { setService('dining'); setOpen(null) }}>
+            {t('The Dining Room', 'Phòng ăn')}
+            <span className="mb-tab-sub">{t('set menus, sat down', 'thực đơn cố định, dùng tại bàn')}</span>
+          </button>
+        </div>
+
+        <p className="mb-note">
+          {service === 'plates'
+            ? t('Small dishes to share, plated in our kitchen and brought to you wherever you are sitting. Ask any of the team.',
+                'Các món nhỏ dùng chung, được bày biện tại bếp của chúng tôi và phục vụ ngay tại chỗ quý vị ngồi. Vui lòng gọi nhân viên.')
+            : t('Cooked in our dining room and served at the table downstairs. These are not available elsewhere in the club, and need to be arranged in advance.',
+                'Được nấu tại phòng ăn và phục vụ tại bàn ở tầng dưới. Không phục vụ ở khu vực khác, và cần đặt trước.')}
+        </p>
+
+        {!shown.length && (
+          <p className="mb-empty">
+            {t('Nothing is published on this menu yet.', 'Chưa có món nào trên thực đơn này.')}
+          </p>
+        )}
+
+        {shown.map(v => (
+          <section key={v.slug} className="mb-venue">
+            <VenueHead v={v} lang={lang} />
+            {service === 'plates'
+              ? <ul className="mb-list">
+                  {v.plates.map(p => (
+                    <PlateRow key={p.id} p={p} open={open === p.id}
+                              onToggle={() => setOpen(o => (o === p.id ? null : p.id))} />
+                  ))}
+                </ul>
+              : v.sets.map(s => <SetMenu key={s.id} s={s} />)}
+          </section>
+        ))}
+
+        <p className="mb-legal">
+          {t('Dishes are prepared by our partner kitchens and plated here. Please tell any of the team about allergies or dietary needs before ordering — we will check with the kitchen.',
+             'Các món được chế biến bởi nhà bếp đối tác và bày biện tại đây. Vui lòng báo nhân viên về dị ứng hoặc chế độ ăn trước khi gọi món — chúng tôi sẽ kiểm tra với nhà bếp.')}
+        </p>
       </div>
 
-      <p className="mb-note">
-        {service === 'plates'
-          ? t('Small dishes to share, plated in our kitchen and brought to you wherever you are sitting. Ask any of the team.',
-              'Các món nhỏ dùng chung, được bày biện tại bếp của chúng tôi và phục vụ ngay tại chỗ quý vị ngồi. Vui lòng gọi nhân viên.')
-          : t('Cooked in our dining room and served at the table downstairs. These are not available elsewhere in the club, and need to be arranged in advance.',
-              'Được nấu tại phòng ăn và phục vụ tại bàn ở tầng dưới. Không phục vụ ở khu vực khác, và cần đặt trước.')}
-      </p>
-
-      {!shown.length && (
-        <p className="mb-empty">
-          {t('Nothing is published on this menu yet.', 'Chưa có món nào trên thực đơn này.')}
-        </p>
-      )}
-
-      {shown.map(v => (
-        <section key={v.slug} className="mb-venue">
-          <VenueHead v={v} lang={lang} />
-          {service === 'plates'
-            ? <ul className="mb-list">
-                {v.plates.map(p => (
-                  <PlateRow key={p.id} p={p} open={open === p.id}
-                            onToggle={() => setOpen(o => (o === p.id ? null : p.id))} />
-                ))}
-              </ul>
-            : v.sets.map(s => <SetMenu key={s.id} s={s} />)}
-        </section>
-      ))}
-
-      {/* The line that has to be on every menu we serve from someone else's
-          kitchen, and the reason `allergens_confirmed` exists. */}
-      <p className="mb-legal">
-        {t('Dishes are prepared by our partner kitchens and plated here. Please tell any of the team about allergies or dietary needs before ordering — we will check with the kitchen.',
-           'Các món được chế biến bởi nhà bếp đối tác và bày biện tại đây. Vui lòng báo nhân viên về dị ứng hoặc chế độ ăn trước khi gọi món — chúng tôi sẽ kiểm tra với nhà bếp.')}
-      </p>
+      {/* The drawing in the corner, half off the page, as on the card. */}
+      <img src="/images/ink/butler-tray.webp" alt="" aria-hidden="true" className="mb-ink" />
     </div>
   )
 }
 
 // ── A restaurant's heading ──────────────────────────────────────────────────
-// The logo if we have one, the name if we do not. A partner who has not sent
-// artwork yet still gets a proper heading rather than a broken image.
+// The printed card has one house name at the top; this has several, because the
+// club is plating from several kitchens. The logo does the work where there is
+// one, and a partner who has not sent artwork still gets a proper heading.
 
 function VenueHead({ v, lang }: { v: MenuVenueGroup; lang: string }) {
   const logo = mediaUrl(v.logo_path)
   const tagline = pick(lang as 'en' | 'vn', v.tagline_en, v.tagline_vn)
   return (
-    <header className="mb-vhead" style={v.accent_hex ? { borderTopColor: v.accent_hex } : undefined}>
+    <header className="mb-vhead">
       {logo
         /* eslint-disable-next-line @next/next/no-img-element */
-        ? <img src={logo} alt={v.name} className="mb-logo" />
+        ? <><img src={logo} alt={v.name} className="mb-logo" /><span className="mb-sr">{v.name}</span></>
         : <h2 className="mb-vname">{v.name}</h2>}
       {tagline && <div className="mb-vtag">{tagline}</div>}
-      {logo && <span className="mb-vname-sr">{v.name}</span>}
     </header>
   )
 }
@@ -133,16 +162,15 @@ function PlateRow({ p, open, onToggle }: { p: MenuPlate; open: boolean; onToggle
   const name = pick(l, p.name_en, p.name_vn)
   const desc = pick(l, p.description_en, p.description_vn)
   const avail = pick(l, p.availability_en, p.availability_vn)
-  const price = dong(p.price_vnd)
+  const money = price(p.price_vnd)
   const hasMore = !!(desc || avail || p.photo_path || p.allergens.length || p.dietary.length)
 
   return (
     <li className={`mb-item ${open ? 'is-open' : ''}`}>
       <button className="mb-row" onClick={onToggle} aria-expanded={open} disabled={!hasMore}>
         <span className="mb-name">{name}</span>
-        <span className="mb-rule" aria-hidden="true" />
         <span className="mb-price">
-          {price ?? <em className="mb-tbc">{t('on request', 'liên hệ')}</em>}
+          {money ?? <em className="mb-tbc">{t('on request', 'liên hệ')}</em>}
         </span>
       </button>
 
@@ -171,19 +199,19 @@ function PlateRow({ p, open, onToggle }: { p: MenuPlate; open: boolean; onToggle
 function SetMenu({ s }: { s: MenuSet }) {
   const { t, lang } = useLang()
   const l = lang as 'en' | 'vn'
-  const price = dong(s.price_per_head_vnd)
+  const money = price(s.price_per_head_vnd)
   const stand = pick(l, s.standfirst_en, s.standfirst_vn)
 
   return (
     <article className="mb-set">
-      <div className="mb-set-head">
-        <h3 className="mb-set-name">{pick(l, s.name_en, s.name_vn)}</h3>
-        <div className="mb-set-price">
-          {price ? <>{price} <span className="mb-perhead">{t('per person', 'mỗi người')}</span></>
-                 : <em className="mb-tbc">{t('price on request', 'giá liên hệ')}</em>}
-        </div>
+      <div className="mb-row is-static">
+        <span className="mb-name is-set">{pick(l, s.name_en, s.name_vn)}</span>
+        <span className="mb-price">
+          {money ? <>{money}<span className="mb-perhead">{t('per person', 'mỗi người')}</span></>
+                 : <em className="mb-tbc">{t('on request', 'liên hệ')}</em>}
+        </span>
       </div>
-      {stand && <p className="mb-desc">{stand}</p>}
+      {stand && <p className="mb-desc mb-set-stand">{stand}</p>}
 
       <ol className="mb-courses">
         {s.courses.map(c => (
@@ -198,7 +226,6 @@ function SetMenu({ s }: { s: MenuSet }) {
         ))}
       </ol>
 
-      {/* The two facts that stop a booking going wrong. */}
       {(s.min_covers || s.notice_hours) && (
         <div className="mb-meta">
           {s.min_covers ? <span>{t('Minimum', 'Tối thiểu')} {s.min_covers} {t('covers', 'khách')}</span> : null}
@@ -243,17 +270,38 @@ function Tags({ allergens, dietary, confirmed, small }: {
 }
 
 const CSS = `
-/* A menu is a narrow document. Dotted leaders running the full width of a
-   desktop window read as a spreadsheet, and a dish name a metre from its own
-   price is a dish nobody connects to its price. Capped here rather than by the
-   page, so the kiosk and the portal agree. */
-.mb { --cream: #E5D4C2; --gold: #D4B85A; --hair: rgba(229,212,194,.16);
+.mb { --cream: #E5D4C2; --gold: #D4B85A; --hair: rgba(229,212,194,.14);
       --mono: 'Google Sans Code','DM Mono',monospace;
-      --serif: 'Rampant Sans', Georgia, serif; color: var(--cream);
-      max-width: 780px; }
-.mb.is-kiosk { max-width: 920px; }
+      --serif: 'Rampant Sans', Georgia, serif;
+      color: var(--cream); position: relative; overflow: hidden; }
+/* The padding-bottom is not decoration: it is the room the corner drawing
+   stands in. Without it the ink sits on top of the last paragraph, which is
+   the allergy line — the one piece of text on this page that must never be
+   hard to read. */
+/* 200px clears a 168px-wide drawing that is very nearly square (the tray is
+   500x541), sitting 14px below the edge. Kiosk scales both. */
+.mb-inner { max-width: 760px; position: relative; z-index: 1; padding-bottom: 200px; }
+.mb.is-kiosk .mb-inner { max-width: 900px; padding-bottom: 275px; }
 
-.mb-switch { display: flex; gap: 0; border-bottom: 1px solid var(--hair); margin-bottom: 22px; }
+/* The lion, enormous and barely there, bleeding off the right edge — the
+   card's signature. Faint enough that the prices sitting over it stay the
+   thing you read; pointer-events:none so it can never eat a tap meant for a
+   dish. */
+.mb-watermark {
+  position: absolute; right: -22%; top: 90px; height: 84%; width: auto;
+  opacity: .032; pointer-events: none; user-select: none; z-index: 0;
+}
+.mb-ink {
+  position: absolute; left: -26px; bottom: -14px; width: 168px;
+  opacity: .45; pointer-events: none; user-select: none; z-index: 0;
+}
+
+.mb-masthead { text-align: center; padding-bottom: 34px; }
+.mb-crest { height: 76px; width: auto; display: inline-block; }
+.mb-wordmark { font-family: var(--serif); font-size: 27px; letter-spacing: .07em;
+               text-transform: uppercase; margin-top: 12px; }
+
+.mb-switch { display: flex; border-bottom: 1px solid var(--hair); margin-bottom: 22px; }
 .mb-tab { flex: 1; background: none; border: none; cursor: pointer; text-align: left;
           padding: 14px 4px 16px; color: rgba(229,212,194,.5);
           font-family: var(--serif); font-size: 19px; line-height: 1.1;
@@ -261,48 +309,54 @@ const CSS = `
 .mb-tab.is-on { color: var(--cream); border-bottom-color: var(--gold); }
 .mb-tab:hover { color: var(--cream); }
 .mb-tab-sub { display: block; font-family: var(--mono); font-size: 10px; letter-spacing: .12em;
-              text-transform: uppercase; opacity: .55; margin-top: 7px; font-weight: 400; }
+              text-transform: uppercase; opacity: .55; margin-top: 7px; }
 
 .mb-note { font-family: var(--mono); font-size: 12px; line-height: 1.9;
-           color: rgba(229,212,194,.62); margin: 0 0 40px; max-width: 62ch; }
+           color: rgba(229,212,194,.6); margin: 0 0 46px; max-width: 60ch; }
 .mb-empty { font-family: var(--mono); font-size: 13px; opacity: .55; padding: 40px 0; }
 
-.mb-venue { margin-bottom: 52px; }
-.mb-vhead { border-top: 1px solid var(--gold); padding-top: 16px; margin-bottom: 10px; }
-/* Partner logos arrive in wildly different shapes — Le Corto is a wide
-   wordmark, Cure & Pickle a circular badge. Constraining BOTH height and width
-   lets each sit at its natural size without one dwarfing the other, and a
-   circle at 34px was unreadable. */
+/* The card separates sections with space, not rules. */
+.mb-venue { margin-bottom: 62px; }
+.mb-vhead { margin-bottom: 18px; }
 .mb-logo { height: 64px; width: auto; max-width: 230px; object-fit: contain;
            object-position: left center; display: block; }
-.mb-vname { font-family: var(--serif); font-size: 22px; margin: 0; font-weight: 500; }
+.mb-vname { font-family: var(--serif); font-size: 23px; margin: 0; font-weight: 500;
+            letter-spacing: .03em; }
 .mb-vtag { font-family: var(--mono); font-size: 10px; letter-spacing: .16em;
-           text-transform: uppercase; opacity: .5; margin-top: 8px; }
-.mb-vname-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+           text-transform: uppercase; opacity: .5; margin-top: 9px; }
+.mb-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
+/* THE LIST. Mono names, price in its own right-aligned column, nothing between
+   the rows — the printed card's layout, and the reason it reads like a menu. */
 .mb-list { list-style: none; margin: 0; padding: 0; }
-.mb-item { border-bottom: 1px solid var(--hair); }
-.mb-row { display: flex; align-items: baseline; gap: 12px; width: 100%;
-          background: none; border: none; cursor: pointer; text-align: left;
-          padding: 17px 0; color: inherit; }
+.mb-row { display: flex; align-items: baseline; gap: 24px; width: 100%;
+          background: none; border: none; text-align: left; cursor: pointer;
+          padding: 7px 0; color: inherit; }
+.mb-row.is-static { cursor: default; }
 .mb-row[disabled] { cursor: default; }
-.mb-name { font-family: var(--serif); font-size: 17px; line-height: 1.25; flex-shrink: 0; max-width: 72%; }
-.mb-rule { flex: 1; border-bottom: 1px dotted rgba(229,212,194,.25); transform: translateY(-4px); }
-.mb-price { font-family: var(--mono); font-size: 13px; white-space: nowrap; padding-left: 4px; }
+.mb-name { font-family: var(--mono); font-size: 15px; line-height: 1.7; flex: 1; }
+.mb-name.is-set { font-family: var(--serif); font-size: 20px; letter-spacing: .02em; }
+.mb-price { font-family: var(--mono); font-size: 15px; white-space: nowrap;
+            text-align: right; min-width: 108px; }
 .mb-tbc { font-style: normal; opacity: .5; font-size: 11px;
           letter-spacing: .1em; text-transform: uppercase; }
+.mb-perhead { display: block; font-size: 9px; letter-spacing: .12em;
+              text-transform: uppercase; opacity: .5; margin-top: 3px; }
 .mb-item.is-open .mb-name { color: var(--gold); }
+.mb-row:hover .mb-name { color: var(--gold); }
+.mb-row[disabled]:hover .mb-name { color: inherit; }
 
-.mb-body { padding: 0 0 22px; max-width: 64ch; }
-.mb-photo { width: 100%; max-width: 380px; aspect-ratio: 4 / 3; object-fit: cover;
-            border-radius: 2px; display: block; margin-bottom: 16px; }
+.mb-body { padding: 4px 0 20px; max-width: 62ch; }
+.mb-photo { width: 100%; max-width: 360px; aspect-ratio: 4 / 3; object-fit: cover;
+            display: block; margin-bottom: 16px; }
 .mb-desc { font-family: var(--mono); font-size: 12.5px; line-height: 1.95;
-           color: rgba(229,212,194,.78); margin: 0 0 14px; }
+           color: rgba(229,212,194,.72); margin: 0 0 14px; }
+.mb-set-stand { margin-top: 6px; }
 
 .mb-tags { display: flex; flex-wrap: wrap; gap: 7px; margin: 12px 0; }
 .mb-tag { font-family: var(--mono); font-size: 9.5px; letter-spacing: .12em;
           text-transform: uppercase; padding: 4px 9px; border: 1px solid var(--hair);
-          border-radius: 2px; opacity: .8; }
+          opacity: .8; }
 .mb-tag.is-diet { border-color: rgba(176,193,142,.4); color: #B0C18E; }
 .mb-tag.is-ask { border-color: rgba(212,184,90,.45); color: var(--gold); opacity: 1; }
 .mb-tags.is-small .mb-tag { font-size: 9px; padding: 3px 7px; }
@@ -311,46 +365,46 @@ const CSS = `
            font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase;
            opacity: .5; margin-top: 12px; }
 
-.mb-set { border-bottom: 1px solid var(--hair); padding: 22px 0 26px; }
-.mb-set-head { display: flex; justify-content: space-between; align-items: baseline;
-               gap: 18px; flex-wrap: wrap; margin-bottom: 12px; }
-.mb-set-name { font-family: var(--serif); font-size: 20px; margin: 0; font-weight: 500; }
-.mb-set-price { font-family: var(--mono); font-size: 14px; white-space: nowrap; }
-.mb-perhead { font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; opacity: .55; }
-.mb-courses { list-style: none; margin: 16px 0 0; padding: 0;
-              border-left: 1px solid var(--hair); }
-.mb-course { padding: 0 0 18px 20px; }
+.mb-set { padding: 4px 0 30px; }
+.mb-courses { list-style: none; margin: 14px 0 0; padding: 0; }
+.mb-course { padding: 0 0 16px; }
 .mb-course-label { font-family: var(--mono); font-size: 9.5px; letter-spacing: .18em;
-                   text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
-.mb-course-dish { font-family: var(--serif); font-size: 16px; line-height: 1.3; }
+                   text-transform: uppercase; color: var(--gold); margin-bottom: 5px; }
+.mb-course-dish { font-family: var(--mono); font-size: 15px; line-height: 1.6; }
 .mb-course-note { font-family: var(--mono); font-size: 11.5px; line-height: 1.85;
-                  opacity: .6; margin-top: 5px; }
+                  opacity: .58; margin-top: 4px; }
 
 .mb-legal { font-family: var(--mono); font-size: 10.5px; line-height: 1.95;
-            color: rgba(229,212,194,.42); margin-top: 40px; max-width: 70ch;
+            color: rgba(229,212,194,.4); margin-top: 48px; max-width: 68ch;
             border-top: 1px solid var(--hair); padding-top: 20px; }
 
-/* The tablet stands on a table and is read at arm's length, often by two
-   people at once, so everything grows and the hover states go away. */
+/* The tablet stands on a table and is read at arm's length, often by two people
+   at once, so everything grows and hover goes away. */
 .mb.is-kiosk .mb-tab { font-size: 26px; padding: 18px 6px 20px; }
 .mb.is-kiosk .mb-tab-sub { font-size: 12px; }
 .mb.is-kiosk .mb-note { font-size: 14px; }
-.mb.is-kiosk .mb-name { font-size: 22px; }
-.mb.is-kiosk .mb-row { padding: 22px 0; min-height: 64px; }
-.mb.is-kiosk .mb-price { font-size: 16px; }
+.mb.is-kiosk .mb-name { font-size: 21px; }
+.mb.is-kiosk .mb-name.is-set { font-size: 26px; }
+.mb.is-kiosk .mb-price { font-size: 19px; min-width: 140px; }
+.mb.is-kiosk .mb-row { padding: 12px 0; min-height: 56px; }
 .mb.is-kiosk .mb-desc { font-size: 15px; }
-.mb.is-kiosk .mb-vname { font-size: 27px; }
+.mb.is-kiosk .mb-vname { font-size: 28px; }
 .mb.is-kiosk .mb-logo { height: 70px; max-width: 300px; }
-.mb.is-kiosk .mb-set-name { font-size: 25px; }
-.mb.is-kiosk .mb-course-dish { font-size: 20px; }
+.mb.is-kiosk .mb-course-dish { font-size: 19px; }
 .mb.is-kiosk .mb-tag { font-size: 11px; padding: 5px 11px; }
 .mb.is-kiosk .mb-meta { font-size: 12px; }
+.mb.is-kiosk .mb-ink { width: 230px; }
 .mb.is-kiosk .mb-row:hover .mb-name { color: inherit; }
 .mb.is-kiosk .mb-item.is-open .mb-name { color: var(--gold); }
 
 @media (max-width: 600px) {
   .mb-tab { font-size: 16px; }
-  .mb-name { font-size: 15.5px; max-width: 64%; }
-  .mb-switch { gap: 0; }
+  .mb-name { font-size: 14px; }
+  .mb-price { font-size: 13px; min-width: 88px; }
+  .mb-row { gap: 14px; }
+  .mb-watermark { right: -34%; opacity: .035; }
+  .mb-ink { width: 118px; opacity: .4; }
+  .mb-crest { height: 58px; }
+  .mb-wordmark { font-size: 21px; }
 }
 `
