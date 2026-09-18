@@ -5,6 +5,7 @@ import { useLang } from '@/lib/lang'
 import LangToggle from '@/components/LangToggle'
 import { timeRemaining } from '@/lib/tet/queries'
 import { vnd, type CaskBoardRow, type Countdown, type TetCategory } from '@/lib/tet/types'
+import TetEnquiry, { type EnquiryTarget } from '@/components/tet/TetEnquiry'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE TẾT PROGRAMME, AS A BUYER SEES IT
@@ -39,6 +40,7 @@ export default function TetProgramme({
 }) {
   const { t, lang } = useLang()
   const [reduced, setReduced] = useState(true)   // the 50% bottling, the story
+  const [target, setTarget] = useState<EnquiryTarget | null>(null)
   const vn = lang === 'vn'
 
   const blend = categories.find(c => c.kind === 'blend')
@@ -87,7 +89,16 @@ export default function TetProgramme({
         </section>
       )}
 
-      {blend && <CategoryIntro c={blend} vn={vn} />}
+      {blend && (
+        <CategoryIntro c={blend} vn={vn} action={
+          <button
+            onClick={() => setTarget({ kind: 'blend', title: vn ? blend.name_vn : blend.name_en })}
+            style={cta}
+          >
+            {provisional ? t('Register interest', 'Đăng ký quan tâm') : t('Enquire', 'Liên hệ đặt hàng')}
+          </button>
+        } />
+      )}
       {cask && <CategoryIntro c={cask} vn={vn} />}
 
       <section className="tet-wrap" style={{ marginTop: 30, paddingBottom: 70 }}>
@@ -114,7 +125,14 @@ export default function TetProgramme({
           </p>
         ) : (
           <div className="tet-grid" style={{ marginTop: 20 }}>
-            {casks.map(c => <CaskCard key={c.cask_ref} c={c} reduced={reduced} vn={vn} t={t} />)}
+            {casks.map(c => (
+              <CaskCard key={c.cask_ref} c={c} reduced={reduced} vn={vn} t={t} provisional={!!provisional}
+                        onChoose={() => setTarget({
+                          kind: 'cask', cask_ref: c.cask_ref,
+                          title: `${c.cask_ref} · ${c.distillery}`,
+                          target_abv: reduced ? 50 : null,
+                        })} />
+            ))}
           </div>
         )}
 
@@ -123,6 +141,10 @@ export default function TetProgramme({
              'Nội dung trang này không phải là lời chào bán. Đơn hàng được hoàn tất bằng hóa đơn của Duncan Taylor Việt Nam. Không dành cho người dưới 18 tuổi.')}
         </p>
       </section>
+
+      {target && (
+        <TetEnquiry target={target} provisional={!!provisional} onClose={() => setTarget(null)} />
+      )}
     </main>
   )
 }
@@ -163,7 +185,7 @@ function Countdown({ cd, t }: { cd: Countdown; t: (en: string, vn: string) => st
   )
 }
 
-function CategoryIntro({ c, vn }: { c: TetCategory; vn: boolean }) {
+function CategoryIntro({ c, vn, action }: { c: TetCategory; vn: boolean; action?: React.ReactNode }) {
   const name = vn ? c.name_vn : c.name_en
   const stand = vn ? c.standfirst_vn : c.standfirst_en
   const body = vn ? c.body_vn : c.body_en
@@ -173,12 +195,18 @@ function CategoryIntro({ c, vn }: { c: TetCategory; vn: boolean }) {
         <h2 style={{ fontFamily: SERIF, fontSize: 'clamp(24px,3.4vw,34px)', fontWeight: 500, margin: 0 }}>{name}</h2>
         {stand && <p style={{ fontFamily: MONO, fontSize: 13.5, lineHeight: 1.9, color: 'rgba(229,212,194,.8)', marginTop: 10, maxWidth: 640 }}>{stand}</p>}
         {body && <p style={{ fontFamily: MONO, fontSize: 12.5, lineHeight: 1.9, color: MUTED, marginTop: 8, maxWidth: 640 }}>{body}</p>}
+        {action && <div style={{ marginTop: 16 }}>{action}</div>}
       </div>
     </section>
   )
 }
 
-function CaskCard({ c, reduced, vn, t }: { c: CaskBoardRow; reduced: boolean; vn: boolean; t: (en: string, v: string) => string }) {
+function CaskCard({ c, reduced, vn, t, provisional, onChoose }: {
+  c: CaskBoardRow; reduced: boolean; vn: boolean
+  t: (en: string, v: string) => string
+  provisional: boolean
+  onChoose: () => void
+}) {
   const held = c.status !== 'available'
   const bottles = reduced ? c.bottles_reduced : c.bottles_cask_strength
   const unit = reduced ? c.unit_vnd_reduced : c.unit_vnd_cask_strength
@@ -224,8 +252,27 @@ function CaskCard({ c, reduced, vn, t }: { c: CaskBoardRow; reduced: boolean; vn
       {note && !c.is_placeholder && (
         <p style={{ fontFamily: MONO, fontSize: 11.5, lineHeight: 1.8, color: MUTED, marginTop: 12 }}>{note}</p>
       )}
+
+      {/* A cask that is genuinely held back offers nothing to press: the board
+          shows what is gone as well as what is there, and a button on a cask
+          somebody else has would be a lie with a form attached. */}
+      {held ? (
+        <div style={{ fontFamily: MONO, fontSize: 11, color: MUTED, marginTop: 14 }}>
+          {c.status === 'reserved' ? t('Not available', 'Không còn') : t('Being confirmed', 'Đang xác nhận')}
+        </div>
+      ) : (
+        <button onClick={onChoose} style={{ ...cta, width: '100%', marginTop: 14 }}>
+          {provisional ? t('Register interest', 'Đăng ký quan tâm') : t('Reserve this cask', 'Giữ thùng này')}
+        </button>
+      )}
     </article>
   )
+}
+
+const cta: React.CSSProperties = {
+  fontFamily: MONO, fontSize: 11.5, letterSpacing: '.1em', textTransform: 'uppercase',
+  padding: '12px 20px', minHeight: 44, borderRadius: 8, cursor: 'pointer',
+  background: 'none', color: GOLD, border: `1px solid ${GOLD}66`,
 }
 
 const toggle = (on: boolean): React.CSSProperties => ({
