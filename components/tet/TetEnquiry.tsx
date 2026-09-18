@@ -3,14 +3,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLang } from '@/lib/lang'
 
-// THE ONE FORM. It takes an enquiry while the programme is provisional and a
-// reservation once it is not — the page never asks the buyer which, because the
-// buyer cannot know and should not have to.
+// THE FORM, IN THE SITE'S LANGUAGE.
 //
-// Five fields, three of them required. A corporate buyer filling this in on a
-// phone between meetings will not finish a longer one, and everything else
-// (personalisation, split delivery, the tax code for the invoice) is a
-// conversation that happens after somebody replies.
+// It was a bordered panel floating on a dim backdrop — the admin portal's
+// furniture again, on the one screen where a buyer actually commits to
+// something. Now it is the page's own ground, its own display type, and
+// hairline fields: a rule under the words, nothing boxed.
+//
+// Five fields, three required. A corporate buyer filling this in on a phone
+// between meetings will not finish a longer one, and the tax code, the
+// personalisation and the split delivery are a conversation that happens after
+// somebody replies.
 //
 // The 18+ confirmation is not asked again: it was given at the door, and asking
 // twice reads as a form that was not paying attention.
@@ -34,13 +37,16 @@ export default function TetEnquiry({
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [done, setDone] = useState<{ reference: string; mode: string } | null>(null)
-  const firstField = useRef<HTMLInputElement>(null)
+  const first = useRef<HTMLInputElement>(null)
 
-  useEffect(() => { firstField.current?.focus() }, [])
+  useEffect(() => { first.current?.focus() }, [])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    // The page behind must not scroll under the form.
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev }
   }, [onClose])
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -69,61 +75,88 @@ export default function TetEnquiry({
   }
 
   return (
-    <div style={backdrop} onClick={onClose}>
-      <div style={panel} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
+    <div style={sheet} role="dialog" aria-modal="true">
+      <style dangerouslySetInnerHTML={{ __html: `
+        .tq-field {
+          width: 100%; background: none; border: none; border-radius: 0;
+          border-bottom: 1px solid rgba(229,212,194,.22);
+          color: #E5D4C2; font-family: 'Google Sans Code','DM Mono',monospace;
+          font-size: 15px; line-height: 1.6; padding: 14px 0; outline: none;
+        }
+        .tq-field::placeholder { color: rgba(229,212,194,.38); }
+        .tq-field:focus { border-bottom-color: #D4B85A; }
+        .tq-close {
+          background: none; border: none; cursor: pointer; padding: 6px;
+          color: rgba(229,212,194,.6); font-family: 'Google Sans Code',monospace;
+          font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+        }
+        .tq-close:hover { color: #E5D4C2; }
+      ` }} />
+
+      <div style={{ position: 'absolute', top: 18, right: 20 }}>
+        <button onClick={onClose} className="tq-close">{t('Close', 'Đóng')} ✕</button>
+      </div>
+
+      <div style={inner}>
         {done ? (
           <>
-            <div style={eyebrow}>{done.mode === 'reservation' ? t('Reserved', 'Đã giữ chỗ') : t('Thank you', 'Cảm ơn quý vị')}</div>
-            <h2 style={heading}>{done.reference}</h2>
-            <p style={body}>
+            <div className="pk-eyebrow">
+              {done.mode === 'reservation' ? t('Reserved', 'Đã giữ chỗ') : t('Thank you', 'Cảm ơn quý vị')}
+            </div>
+            <h2 className="pk-h2" style={{ marginTop: 14 }}>{done.reference}</h2>
+            <p className="pk-lede">
               {done.mode === 'reservation'
                 ? t('That cask is held for you while we prepare the invoice. We will be in touch to confirm.',
                     'Thùng rượu được giữ cho quý vị trong khi chúng tôi chuẩn bị hóa đơn. Chúng tôi sẽ liên hệ để xác nhận.')
-                : t('We have your details and will come back to you with the cask list and prices as soon as they are confirmed.',
-                    'Chúng tôi đã nhận thông tin và sẽ liên hệ lại với danh sách thùng và bảng giá ngay khi được xác nhận.')}
+                : t('We have your details, and we will come to you first with the cask list and prices as soon as they are confirmed.',
+                    'Chúng tôi đã nhận thông tin, và sẽ liên hệ với quý vị đầu tiên khi có danh sách thùng và bảng giá.')}
             </p>
-            <p style={{ ...fine, marginTop: 14 }}>
+            <p className="pk-meta" style={{ marginTop: 18 }}>
               {t('Keep this reference — it is how we will find you.', 'Vui lòng giữ mã này — chúng tôi sẽ dùng để tra cứu.')}
             </p>
-            <button onClick={onClose} style={primary}>{t('Close', 'Đóng')}</button>
+            <button onClick={onClose} className="pk-cta">{t('Close', 'Đóng')} <span className="pk-go">→</span></button>
           </>
         ) : (
           <>
-            <div style={eyebrow}>
+            <div className="pk-eyebrow">
               {provisional ? t('Register interest', 'Đăng ký quan tâm') : t('Reserve', 'Giữ chỗ')}
             </div>
-            <h2 style={heading}>{target.title}</h2>
-            <p style={body}>
+            <h2 className="pk-h2" style={{ marginTop: 14 }}>{target.title}</h2>
+            <p className="pk-lede">
               {provisional
-                ? t('The cask list and prices are still being confirmed. Leave your details and we will come to you first, before it goes any wider.',
+                ? t('The cask list and prices are still being confirmed. Leave your details and we will come to you first.',
                     'Danh sách thùng và bảng giá đang được xác nhận. Hãy để lại thông tin, chúng tôi sẽ liên hệ với quý vị trước tiên.')
                 : t('This holds it while we prepare your invoice. Nothing is charged here.',
                     'Thao tác này giữ chỗ trong khi chúng tôi chuẩn bị hóa đơn. Không có khoản thanh toán nào tại đây.')}
             </p>
 
-            <form onSubmit={submit} style={{ marginTop: 18 }}>
-              <input ref={firstField} value={form.company_name} onChange={set('company_name')} style={field}
+            <form onSubmit={submit} style={{ marginTop: 34 }}>
+              <input ref={first} className="tq-field" value={form.company_name} onChange={set('company_name')}
                      placeholder={t('Company', 'Công ty')} aria-label={t('Company', 'Công ty')} />
-              <input value={form.contact_name} onChange={set('contact_name')} style={field}
+              <input className="tq-field" value={form.contact_name} onChange={set('contact_name')}
                      placeholder={t('Your name', 'Tên của quý vị')} aria-label={t('Your name', 'Tên của quý vị')} />
-              <input value={form.contact_email} onChange={set('contact_email')} style={field} type="email"
+              <input className="tq-field" type="email" value={form.contact_email} onChange={set('contact_email')}
                      placeholder={t('Email', 'Email')} aria-label={t('Email', 'Email')} />
-              <input value={form.contact_phone} onChange={set('contact_phone')} style={field}
+              <input className="tq-field" value={form.contact_phone} onChange={set('contact_phone')}
                      placeholder={t('Phone or Zalo (optional)', 'Điện thoại hoặc Zalo (không bắt buộc)')} aria-label={t('Phone', 'Điện thoại')} />
-              <textarea value={form.message} onChange={set('message')} rows={3} style={{ ...field, resize: 'vertical', paddingTop: 12 }}
+              <textarea className="tq-field" rows={2} value={form.message} onChange={set('message')}
+                        style={{ resize: 'vertical' }}
                         placeholder={t('Anything we should know (optional)', 'Điều gì chúng tôi nên biết (không bắt buộc)')} />
 
-              {err && <div style={error}>{err}</div>}
+              {err && <p className="pk-meta" style={{ color: '#C27070', marginTop: 16 }}>{err}</p>}
 
-              <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-                <button type="submit" disabled={busy || !ready} style={{ ...primary, opacity: busy || !ready ? 0.45 : 1, marginTop: 0 }}>
-                  {busy ? t('Sending…', 'Đang gửi…') : provisional ? t('Send', 'Gửi') : t('Reserve', 'Giữ chỗ')}
+              <div style={{ display: 'flex', gap: 28, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                <button type="submit" disabled={busy || !ready} className="pk-cta"
+                        style={{ opacity: busy || !ready ? .4 : 1, cursor: busy || !ready ? 'not-allowed' : 'pointer' }}>
+                  {busy ? t('Sending', 'Đang gửi') : provisional ? t('Send', 'Gửi') : t('Reserve', 'Giữ chỗ')} <span className="pk-go">→</span>
                 </button>
-                <button type="button" onClick={onClose} style={ghost}>{t('Cancel', 'Huỷ')}</button>
+                <button type="button" onClick={onClose} className="tq-close" style={{ padding: 0 }}>
+                  {t('Cancel', 'Huỷ')}
+                </button>
               </div>
             </form>
 
-            <p style={fine}>
+            <p className="pk-meta" style={{ marginTop: 40, maxWidth: 520, lineHeight: 1.9 }}>
               {t('You confirmed you are 18 or over when you entered. Nothing here is an offer for sale; any order is completed on invoice.',
                  'Quý vị đã xác nhận từ 18 tuổi trở lên khi vào trang. Nội dung này không phải lời chào bán; đơn hàng hoàn tất bằng hóa đơn.')}
             </p>
@@ -134,45 +167,13 @@ export default function TetEnquiry({
   )
 }
 
-const SERIF = "'Rampant Sans', Georgia, serif"
-const MONO = "'Google Sans Code', 'DM Mono', monospace"
-
-const backdrop: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(3,20,14,.72)', backdropFilter: 'blur(3px)',
-  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 9000,
+// The page's own ground, edge to edge — not a card floating on a dimmed copy
+// of the page behind it.
+const sheet: React.CSSProperties = {
+  position: 'fixed', inset: 0, zIndex: 9000,
+  background: '#052E20', color: '#E5D4C2',
+  overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
 }
-const panel: React.CSSProperties = {
-  width: 'min(460px, 100%)', maxHeight: '90dvh', overflowY: 'auto',
-  background: '#052E20', border: '1px solid rgba(212,184,90,.3)', borderRadius: 14,
-  padding: '24px 26px', color: '#E5D4C2',
-}
-const eyebrow: React.CSSProperties = {
-  fontFamily: MONO, fontSize: 10.5, letterSpacing: '.18em', textTransform: 'uppercase', color: '#D4B85A',
-}
-const heading: React.CSSProperties = {
-  fontFamily: SERIF, fontSize: 26, fontWeight: 500, margin: '10px 0 0', lineHeight: 1.15,
-}
-const body: React.CSSProperties = {
-  fontFamily: MONO, fontSize: 12.5, lineHeight: 1.9, color: 'rgba(229,212,194,.75)', marginTop: 10,
-}
-const field: React.CSSProperties = {
-  width: '100%', minHeight: 48, padding: '0 14px', marginBottom: 10, borderRadius: 8, boxSizing: 'border-box',
-  background: 'rgba(229,212,194,.07)', border: '1px solid rgba(229,212,194,.22)',
-  color: '#E5D4C2', fontFamily: MONO, fontSize: 15, outline: 'none',
-}
-const primary: React.CSSProperties = {
-  flex: 1, minHeight: 48, marginTop: 14, borderRadius: 8, cursor: 'pointer',
-  background: '#E5D4C2', color: '#052E20', border: 'none',
-  fontFamily: MONO, fontSize: 12.5, letterSpacing: '.1em', textTransform: 'uppercase',
-}
-const ghost: React.CSSProperties = {
-  minHeight: 48, padding: '0 18px', borderRadius: 8, cursor: 'pointer',
-  background: 'none', color: '#E5D4C2', border: '1px solid rgba(229,212,194,.28)',
-  fontFamily: MONO, fontSize: 12.5, letterSpacing: '.1em', textTransform: 'uppercase',
-}
-const error: React.CSSProperties = {
-  fontFamily: MONO, fontSize: 12, color: '#C27070', marginTop: 4, lineHeight: 1.7,
-}
-const fine: React.CSSProperties = {
-  fontFamily: MONO, fontSize: 10, color: 'rgba(229,212,194,.4)', lineHeight: 1.8, marginTop: 18,
+const inner: React.CSSProperties = {
+  width: 'min(620px, 100%)', padding: 'clamp(64px, 12vh, 140px) 24px 80px',
 }
