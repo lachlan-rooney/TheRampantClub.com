@@ -191,16 +191,24 @@ function PlateRow({ p, open, onToggle }: { p: MenuPlate; open: boolean; onToggle
         </span>
       </button>
 
-      {open && (
-        <div className="mb-body">
-          {p.photo_path && (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={mediaUrl(p.photo_path)!} alt="" className="mb-photo" loading="lazy" />
-          )}
-          {desc && <p className="mb-desc">{desc}</p>}
-          <Tags allergens={p.allergens} dietary={p.dietary} confirmed={p.allergens_confirmed} />
-          {/* The wait is already on the row above; only availability is left. */}
-          {avail && <div className="mb-meta"><span>{avail}</span></div>}
+      {/* Always mounted, so it can animate CLOSED as well as open — a panel
+          that glides out and then vanishes is worse than one that never moved.
+          The grid 0fr→1fr trick animates to the content's real height without
+          anyone having to measure it or guess a max-height that clips. */}
+      {hasMore && (
+        <div className="mb-panel" aria-hidden={!open}>
+          <div className="mb-panel-in">
+            <div className="mb-body">
+              {p.photo_path && (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={mediaUrl(p.photo_path)!} alt="" className="mb-photo" loading="lazy" />
+              )}
+              {desc && <p className="mb-desc">{desc}</p>}
+              <Tags allergens={p.allergens} dietary={p.dietary} confirmed={p.allergens_confirmed} />
+              {/* The wait is already on the row above; only availability is left. */}
+              {avail && <div className="mb-meta"><span>{avail}</span></div>}
+            </div>
+          </div>
         </div>
       )}
     </li>
@@ -293,9 +301,14 @@ const CSS = `
 /* The lion, enormous and barely there, bleeding off the right edge — the
    card's signature. Faint enough that the prices sitting over it stay the
    thing you read; pointer-events:none so it can never eat a tap meant for a
-   dish. */
+   dish.
+   Sized in vh and NOT as a percentage of the container: it was 84% of .mb, so
+   opening a dish grew the container and the lion grew with it, which made a
+   background animate every time somebody tapped something. It is wallpaper.
+   It should not know the menu exists. */
 .mb-watermark {
-  position: absolute; right: -22%; top: 90px; height: 84%; width: auto;
+  position: absolute; right: -22%; top: 90px;
+  height: min(860px, 82vh); width: auto;
   opacity: .032; pointer-events: none; user-select: none; z-index: 0;
 }
 
@@ -332,11 +345,26 @@ const CSS = `
 /* THE LIST. Mono names, price in its own right-aligned column, nothing between
    the rows — the printed card's layout, and the reason it reads like a menu. */
 .mb-list { list-style: none; margin: 0; padding: 0; }
+/* THE ROW, AND THE BLUE BAR THAT WAS ACROSS IT.
+   Two separate browser defaults, both landing on a button that happens to be
+   the full width of the page:
+     · the TAP HIGHLIGHT — a translucent slab a touch device paints over the
+       whole element on touch. On a tablet this is the "big blue line".
+     · the FOCUS RING — Chrome's default outline, which after a tap stays on
+       the row until something else is touched.
+   Both are turned off and replaced, NOT simply deleted: a keyboard user still
+   needs to see where they are, so :focus-visible (keyboard only, never a
+   mouse or a finger) gets a gold bar down the left instead. */
 .mb-row { display: flex; align-items: baseline; gap: 24px; width: 100%;
           background: none; border: none; text-align: left; cursor: pointer;
-          padding: 7px 0; color: inherit; }
+          padding: 7px 0; color: inherit;
+          -webkit-tap-highlight-color: transparent;
+          transition: opacity .2s ease; }
+.mb-row:focus { outline: none; }
+.mb-row:focus-visible { outline: none; box-shadow: inset 3px 0 0 var(--gold); }
 .mb-row.is-static { cursor: default; }
 .mb-row[disabled] { cursor: default; }
+.mb-row:active { opacity: .62; }
 .mb-name { font-family: var(--mono); font-size: 15px; line-height: 1.7; flex: 1; }
 .mb-name.is-set { font-family: var(--serif); font-size: 20px; letter-spacing: .02em; }
 .mb-price { font-family: var(--mono); font-size: 15px; white-space: nowrap;
@@ -353,7 +381,20 @@ const CSS = `
 .mb-row:hover .mb-name { color: var(--gold); }
 .mb-row[disabled]:hover .mb-name { color: inherit; }
 
+/* The reveal. grid-template-rows 0fr → 1fr is the one way to transition to a
+   height nobody has measured; the inner element must be overflow:hidden with
+   min-height:0 or the row refuses to collapse below its content. */
+.mb-panel { display: grid; grid-template-rows: 0fr; opacity: 0;
+            transition: grid-template-rows .34s cubic-bezier(.22,.7,.3,1),
+                        opacity .26s ease; }
+.mb-item.is-open .mb-panel { grid-template-rows: 1fr; opacity: 1; }
+.mb-panel-in { overflow: hidden; min-height: 0; }
 .mb-body { padding: 4px 0 20px; max-width: 62ch; }
+
+/* Somebody who has asked for less movement gets the panel, not the animation. */
+@media (prefers-reduced-motion: reduce) {
+  .mb-panel { transition: none; }
+}
 .mb-photo { width: 100%; max-width: 360px; aspect-ratio: 4 / 3; object-fit: cover;
             display: block; margin-bottom: 16px; }
 .mb-desc { font-family: var(--mono); font-size: 12.5px; line-height: 1.95;
