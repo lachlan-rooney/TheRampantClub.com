@@ -41,6 +41,7 @@ const INK_BY_PATH: Record<string, Ink> = {
   '/members/journey': 'glass',        // a whisky journey — not the golf flag
   '/members/gifts': 'lion-bottle',
   '/members/gallery': 'girl-toast',
+  '/members/menus': 'butler-tray',    // it arrives at your chair on a tray
   '/members/whisky': 'lion-bottle',
   '/members/whisky/finder': 'glass-botanical',
 }

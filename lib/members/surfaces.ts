@@ -20,7 +20,14 @@ export const SURFACE: Record<string, SurfaceName> = {
   // Settled by Miss Châu, 2026-09-10: Bảng Tin, not Bảng Thông Báo.
   '/members/notices':        { en: 'Notice Board',   vn: 'Bảng Tin' },
   '/members/spaces':         { en: 'Our Spaces',     vn: 'Không gian' },
+  // Two different things with almost the same name, on purpose:
+  //   /menus         — the PUBLIC floor menus, still PDFs, linked from the site.
+  //   /members/menus — what the club is actually serving: the partner plates and
+  //                    the dining room's set menus, live from the database.
+  // The members' nav points at the second; the first stays registered because
+  // the public page and the kiosk both still link to it.
   '/menus':                  { en: 'The Menus',      vn: 'Thực Đơn' },
+  '/members/menus':          { en: 'The Menus',      vn: 'Thực Đơn' },
   '/members/snug':           { en: 'The Snug',       vn: 'Phòng Khách' },
   '/members/concierge':      { en: 'The Concierge',  vn: 'Quản Gia' },
   '/members/whisky':         { en: 'Whisky Library', vn: 'Thư Viện Whisky' },

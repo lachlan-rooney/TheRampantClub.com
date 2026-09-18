@@ -89,6 +89,9 @@ const GROUPS: Group[] = [
       { href: '/admin/gallery', label: 'Event Gallery', vn: 'Thư Viện Sự Kiện', icon: 'image' },
       // Edits the public /studio artist pages — publishing, not a shift tool.
       { href: '/admin/studio', label: 'The Studio', vn: 'Phòng Studio', icon: 'image' },
+      // The food menus members and the room tablets read — edited here, live
+      // the moment it saves, no deploy.
+      { href: '/admin/menus', label: 'The Menus', vn: 'Thực Đơn', icon: 'menu' },
       { href: '/admin/journal', label: 'Journal', vn: 'Nhật ký', icon: 'pen' },
       { href: '/admin/press', label: 'Press', vn: 'Báo chí', icon: 'news' },
       { href: '/admin/rules', label: 'House Rules', vn: 'Nội Quy', icon: 'rules' },
@@ -161,6 +164,8 @@ const ICONS: Record<string, string> = {
   rules: '<rect x="3" y="2.4" width="10" height="11.2" rx="1.5"/><path d="M5.6 5.8h4.8M5.6 8.2h4.8M5.6 10.6h3"/>',
   pen: '<path d="M10.8 2.4l2.8 2.8L6 12.8l-3.2.5.5-3.2z"/><path d="M9.7 3.5l2.8 2.8"/>',
   news: '<rect x="2" y="3" width="12" height="10" rx="1"/><path d="M4.5 6h5M4.5 8.4h5M4.5 10.8h3M11 6h1.5v4.8H11z"/>',
+  // A cloche: the menus are food, and every other icon here is paperwork.
+  menu: '<path d="M2.2 11.6h11.6"/><path d="M3.6 11.6a4.4 4.4 0 0 1 8.8 0"/><path d="M8 7.2V5.9"/><circle cx="8" cy="4.9" r="1"/>',
   tablet: '<rect x="4" y="2" width="8" height="12" rx="1.5"/><path d="M7 12h2"/>',
   badge: '<rect x="3" y="2.5" width="10" height="11" rx="1.5"/><circle cx="8" cy="6.4" r="1.6"/><path d="M5.6 11a2.5 2.5 0 014.8 0M6.5 2.5h3"/>',
 }

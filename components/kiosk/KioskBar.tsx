@@ -23,7 +23,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 // first: otherwise the next person to pick up the tablet inherits their session.
 // Both logouts are fired every time — each is a no-op when there is no session.
 
-const SHOW_ON = ['/kiosk/board', '/kiosk/finder', '/kiosk/member', '/kiosk/staff']
+const SHOW_ON = ['/kiosk/board', '/kiosk/finder', '/kiosk/member', '/kiosk/staff', '/kiosk/menu']
 
 const S = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
 
@@ -37,26 +37,13 @@ const ICONS: Record<string, ReactNode> = {
 export default function KioskBar() {
   const pathname = usePathname() || ''
   const router = useRouter()
-  const [menuHref, setMenuHref] = useState<string | null>(null)
-
   const on = SHOW_ON.some(h => pathname === h || pathname.startsWith(h + '/'))
 
-  // The room decides which menu this tablet offers, and only the board API knows
-  // the room. Asked once per screen; a room with no menu simply has no Menu tab.
-  useEffect(() => {
-    if (!on) return
-    let dead = false
-    fetch('/api/kiosk/board', { cache: 'no-store' })
-      .then(r => (r.ok ? r.json() : null))
-      .then(async j => {
-        const room = j?.board?.room
-        if (!room || dead) return
-        const { menuForSpace } = await import('@/lib/kiosk/floors')
-        if (!dead) setMenuHref(menuForSpace(room))
-      })
-      .catch(() => {})
-    return () => { dead = true }
-  }, [on, pathname])
+  // The Menu tab used to appear only in rooms that had a PDF, and opened it in
+  // a new browser tab — which on a tablet standing in the Library meant a PDF
+  // viewer the next member had to find their way out of. Every room now gets
+  // the same tab, it stays inside the kiosk shell, and /kiosk/menu still offers
+  // the room's own printed menu underneath when there is one.
 
   if (!on) return null
 
@@ -121,12 +108,10 @@ export default function KioskBar() {
             <span className="kbar-label">Flavour Finder<span className="kbar-vn">Tìm hương vị</span></span>
           </button>
 
-          {menuHref && (
-            <a href={menuHref} target="_blank" rel="noopener noreferrer" className="kbar-tab">
-              <span className="kbar-icon" aria-hidden>{ICONS.menu}</span>
-              <span className="kbar-label">Menu<span className="kbar-vn">Thực đơn</span></span>
-            </a>
-          )}
+          <button onClick={() => router.push('/kiosk/menu')} className={`kbar-tab ${isActive('/kiosk/menu') ? 'is-active' : ''}`}>
+            <span className="kbar-icon" aria-hidden>{ICONS.menu}</span>
+            <span className="kbar-label">Menu<span className="kbar-vn">Thực đơn</span></span>
+          </button>
 
           <button onClick={() => router.push('/kiosk/staff')} className={`kbar-tab ${isActive('/kiosk/staff') ? 'is-active' : ''}`}>
             <span className="kbar-icon" aria-hidden>{ICONS.staff}</span>
