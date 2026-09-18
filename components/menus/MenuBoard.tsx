@@ -269,7 +269,12 @@ const CSS = `
 
 .mb-venue { margin-bottom: 52px; }
 .mb-vhead { border-top: 1px solid var(--gold); padding-top: 16px; margin-bottom: 10px; }
-.mb-logo { height: 34px; width: auto; max-width: 200px; object-fit: contain; display: block; }
+/* Partner logos arrive in wildly different shapes — Le Corto is a wide
+   wordmark, Cure & Pickle a circular badge. Constraining BOTH height and width
+   lets each sit at its natural size without one dwarfing the other, and a
+   circle at 34px was unreadable. */
+.mb-logo { height: 64px; width: auto; max-width: 230px; object-fit: contain;
+           object-position: left center; display: block; }
 .mb-vname { font-family: var(--serif); font-size: 22px; margin: 0; font-weight: 500; }
 .mb-vtag { font-family: var(--mono); font-size: 10px; letter-spacing: .16em;
            text-transform: uppercase; opacity: .5; margin-top: 8px; }
@@ -335,7 +340,7 @@ const CSS = `
 .mb.is-kiosk .mb-price { font-size: 16px; }
 .mb.is-kiosk .mb-desc { font-size: 15px; }
 .mb.is-kiosk .mb-vname { font-size: 27px; }
-.mb.is-kiosk .mb-logo { height: 44px; max-width: 260px; }
+.mb.is-kiosk .mb-logo { height: 70px; max-width: 300px; }
 .mb.is-kiosk .mb-set-name { font-size: 25px; }
 .mb.is-kiosk .mb-course-dish { font-size: 20px; }
 .mb.is-kiosk .mb-tag { font-size: 11px; padding: 5px 11px; }
