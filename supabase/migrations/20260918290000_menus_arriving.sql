@@ -32,7 +32,8 @@
 -- "coming soon" line. Its dishes go in the next migration.
 --
 -- ⚠ NAMES are exactly as the owner typed them, including "FUJIYAMA Sushi" in
---   capitals and "Hoa Tuc" without its diacritics. A restaurant's name is its
+--   capitals. "Hoa Tuc" was corrected to "Hoa Túc" in 20260918330000 once
+--   their logo settled the spelling. A restaurant's name is its
 --   own; correcting one is not a tidy-up, it is a mistake with a straight face.
 --   Worth confirming with each of them.
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -63,7 +64,7 @@ grant select on public.menu_venues_public to authenticated;
 -- ── The new restaurants ────────────────────────────────────────────────────
 insert into public.menu_venues (slug, name, kind, logo_path, display_order, is_placeholder, arriving_on)
 values
-  ('hoa-tuc',         'Hoa Tuc',            'partner', null, 40, true, date '2026-09-23'),
+  ('hoa-tuc',         'Hoa Túc',            'partner', null, 40, true, date '2026-09-23'),
   ('rico-taco',       'Rico Taco',          'partner', null, 50, true, date '2026-09-23'),
   ('fujiyama-sushi',  'FUJIYAMA Sushi',     'partner', null, 60, true, date '2026-09-23'),
   -- Serving, not arriving: no date.
