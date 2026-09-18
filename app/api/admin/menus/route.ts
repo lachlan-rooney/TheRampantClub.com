@@ -30,7 +30,7 @@ const FIELDS: Record<string, string[]> = {
   venue: [
     'slug', 'name', 'kind', 'tagline_en', 'tagline_vn', 'logo_path', 'accent_hex',
     'contact_name', 'contact_phone', 'contact_email', 'contact_note',
-    'display_order', 'is_active', 'is_placeholder',
+    'arriving_on', 'display_order', 'is_active', 'is_placeholder',
   ],
   item: [
     'venue_id', 'slug', 'section_en', 'section_vn',

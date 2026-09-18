@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { groupByVenue, type MenuPlate, type MenuSet, type MenuVenueGroup } from './types'
+import { groupByVenue, type MenuPlate, type MenuSet, type MenuVenue, type MenuVenueGroup } from './types'
 
 // ONE reader, two callers.
 //
@@ -20,17 +20,25 @@ export interface MenuData {
 }
 
 export async function readMenus(sb: SupabaseClient): Promise<MenuData> {
-  const [plates, sets] = await Promise.all([
+  // THREE reads, and the venues one is not optional. The dish views join from
+  // menu_items OUT to the venue, so a restaurant with nothing on it produces no
+  // rows at all — which is how Le Corto silently disappeared, and why a
+  // restaurant announced but not yet open could not be shown. The venues are
+  // the spine; the dishes hang off them.
+  const [venueRows, plates, sets] = await Promise.all([
+    sb.from('menu_venues_public').select('*').order('display_order'),
     sb.from('menu_plates_public').select('*').order('venue_order').order('display_order'),
     sb.from('menu_dining_public').select('*').order('venue_order').order('display_order'),
   ])
 
   // A failed read is not an empty menu. Surfacing it as empty would have the
   // kiosk quietly show "nothing on tonight" during service.
+  if (venueRows.error) throw new Error(venueRows.error.message)
   if (plates.error) throw new Error(plates.error.message)
   if (sets.error) throw new Error(sets.error.message)
 
   const venues = groupByVenue(
+    (venueRows.data ?? []) as MenuVenue[],
     (plates.data ?? []) as MenuPlate[],
     (sets.data ?? []) as MenuSet[],
   )

@@ -33,6 +33,7 @@ interface Venue {
   logo_path: string | null; accent_hex: string | null
   contact_name: string | null; contact_phone: string | null
   contact_email: string | null; contact_note: string | null
+  arriving_on: string | null
   display_order: number; is_active: boolean; is_placeholder: boolean
 }
 interface Item {
@@ -404,6 +405,16 @@ function VenueForm({ v, onSave, onDelete, onToast }: {
         <Upload shape="logo" current={d.logo_path} onPath={p => set('logo_path')(p || null)} onToast={onToast} />
         <Field label="Accent colour" value={d.accent_hex} onChange={set('accent_hex')} hint="#RRGGBB" />
       </div>
+      {/* Set while a restaurant is announced but not open. The menu then shows
+          its logo and "Arriving <date>" and none of its dishes, so placeholder
+          items can sit ready without being served. CLEAR IT on opening day —
+          though a date in the past stops announcing itself anyway. */}
+      <div className="am-row2">
+        <Field label="Arriving on" value={d.arriving_on} type="date"
+               onChange={set('arriving_on')}
+               hint="blank = serving now; a date hides its dishes" />
+        <div />
+      </div>
       <details className="am-details">
         <summary>Contact — staff only, never shown to members</summary>
         <div className="am-row2">
@@ -426,6 +437,7 @@ function VenueForm({ v, onSave, onDelete, onToast }: {
           logo_path: d.logo_path, accent_hex: d.accent_hex || null,
           contact_name: d.contact_name, contact_phone: d.contact_phone,
           contact_email: d.contact_email, contact_note: d.contact_note,
+          arriving_on: d.arriving_on,
           display_order: d.display_order, is_active: d.is_active, is_placeholder: d.is_placeholder,
         })}>Save restaurant</button>
         <button className="am-del" onClick={onDelete}>Remove</button>

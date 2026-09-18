@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useLang, pick } from '@/lib/lang'
 import {
-  ALLERGEN_LABEL, DIETARY_LABEL, price, mediaUrl,
+  ALLERGEN_LABEL, DIETARY_LABEL, price, mediaUrl, arriving,
   type Allergen, type Dietary, type MenuPlate, type MenuSet, type MenuVenueGroup,
 } from '@/lib/menus/types'
 
@@ -63,7 +63,13 @@ export default function MenuBoard({
   const [service, setService] = useState<Service>('plates')
   const [open, setOpen] = useState<string | null>(null)
 
-  const withPlates = useMemo(() => venues.filter(v => v.plates.length), [venues])
+  const l = lang as 'en' | 'vn'
+  // A restaurant that has been announced but has not opened appears on the
+  // Plates tab with its date and no dishes — including where placeholder
+  // dishes exist, which they do for El Gaucho and Le Corto. It is not repeated
+  // under Dining, because nobody has said which service it arrives with.
+  const withPlates = useMemo(
+    () => venues.filter(v => v.plates.length || arriving(v.arriving_on, l)), [venues, l])
   const withSets = useMemo(() => venues.filter(v => v.sets.length), [venues])
   const shown = service === 'plates' ? withPlates : withSets
 
@@ -119,15 +125,20 @@ export default function MenuBoard({
 
         {/* Wrapped so a landscape tablet can set them side by side. */}
         <div className="mb-venues">
-          {shown.map(v => (
-            <section key={v.slug} className="mb-venue">
-              <VenueHead v={v} lang={lang} />
-              {service === 'plates'
-                ? <PlateList plates={v.plates} lang={lang} open={open}
-                             onToggle={id => setOpen(o => (o === id ? null : id))} />
-                : v.sets.map(s => <SetMenu key={s.id} s={s} />)}
-            </section>
-          ))}
+          {shown.map(v => {
+            const soon = arriving(v.arriving_on, l)
+            return (
+              <section key={v.slug} className={`mb-venue${soon ? ' is-soon' : ''}`}>
+                <VenueHead v={v} lang={lang} />
+                {soon
+                  ? <div className="mb-soon">{soon}</div>
+                  : service === 'plates'
+                    ? <PlateList plates={v.plates} lang={lang} open={open}
+                                 onToggle={id => setOpen(o => (o === id ? null : id))} />
+                    : v.sets.map(s => <SetMenu key={s.id} s={s} />)}
+              </section>
+            )
+          })}
         </div>
 
         <p className="mb-legal">
@@ -371,7 +382,12 @@ const CSS = `
 /* The card separates sections with space, not rules. */
 .mb-venue { margin-bottom: 62px; }
 .mb-vhead { margin-bottom: 18px; }
-.mb-logo { height: 64px; width: auto; max-width: 230px; object-fit: contain;
+/* A FIXED BOX, not a fixed height. Partner marks arrive in every shape there
+   is: Le Corto is a wide wordmark, Cure & Pickle a circle, Iberico a tall
+   crest. A fixed height flattered the wide ones and shrank the tall ones to
+   47px wide and unreadable. Every logo now fits inside the same box and is
+   scaled to fit it, which is the only way they sit together as equals. */
+.mb-logo { width: 210px; height: 84px; object-fit: contain;
            object-position: left center; display: block; }
 .mb-vname { font-family: var(--serif); font-size: 23px; margin: 0; font-weight: 500;
             letter-spacing: .03em; }
@@ -382,6 +398,14 @@ const CSS = `
 /* A named list inside one restaurant. Quieter than the venue's own heading —
    it is a subdivision, not a second restaurant — but in the serif, so it reads
    as a heading rather than as another dish. */
+/* An announced restaurant. Deliberately quiet — it is a promise, not a menu,
+   and it must not compete with the food that can actually be ordered tonight.
+   The whole block dims so the eye passes over it on the way to the real list. */
+.mb-venue.is-soon { opacity: .62; }
+.mb-soon { font-family: var(--mono); font-size: 11px; letter-spacing: .18em;
+           text-transform: uppercase; color: var(--gold); padding: 2px 0 4px; }
+.mb.is-kiosk .mb-soon { font-size: 13px; }
+
 .mb-group + .mb-group { margin-top: 26px; }
 .mb-section { font-family: var(--serif); font-size: 15px; font-weight: 500;
               letter-spacing: .16em; text-transform: uppercase;
@@ -483,7 +507,7 @@ const CSS = `
 .mb.is-kiosk .mb-row { padding: 12px 0; min-height: 56px; }
 .mb.is-kiosk .mb-desc { font-size: 15px; }
 .mb.is-kiosk .mb-vname { font-size: 28px; }
-.mb.is-kiosk .mb-logo { height: 70px; max-width: 300px; }
+.mb.is-kiosk .mb-logo { width: 260px; height: 100px; }
 .mb.is-kiosk .mb-course-dish { font-size: 19px; }
 .mb.is-kiosk .mb-tag { font-size: 11px; padding: 5px 11px; }
 .mb.is-kiosk .mb-meta { font-size: 12px; }
@@ -513,7 +537,7 @@ const CSS = `
   .mb.is-kiosk .mb-venue { margin-bottom: 34px; break-inside: avoid;
                            -webkit-column-break-inside: avoid; }
   .mb.is-kiosk .mb-vhead { margin-bottom: 12px; }
-  .mb.is-kiosk .mb-logo { height: 54px; }
+  .mb.is-kiosk .mb-logo { width: 200px; height: 74px; }
   .mb.is-kiosk .mb-name { font-size: 18px; }
   .mb.is-kiosk .mb-price { font-size: 16px; min-width: 118px; }
   .mb.is-kiosk .mb-row { padding: 8px 0; min-height: 0; }
