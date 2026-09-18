@@ -68,8 +68,20 @@ export default function MenuBoard({
   // Plates tab with its date and no dishes — including where placeholder
   // dishes exist, which they do for El Gaucho and Le Corto. It is not repeated
   // under Dining, because nobody has said which service it arrives with.
+  // SERVING FIRST, COMING SOON BELOW — regardless of the display order set in
+  // admin, which interleaved them. A member scanning this menu wants to know
+  // what they can eat tonight; a restaurant that opens on the 23rd is news, not
+  // an option, and it should not sit between two kitchens that are cooking.
+  //
+  // The sort is stable (ES2019), so the admin's display order still decides the
+  // running order WITHIN each half — and on the 23rd, when arriving() starts
+  // returning null for those dates, they rejoin the top group in their proper
+  // places with nothing to change here.
   const withPlates = useMemo(
-    () => venues.filter(v => v.plates.length || arriving(v.arriving_on, l)), [venues, l])
+    () => venues
+      .filter(v => v.plates.length || arriving(v.arriving_on, l))
+      .sort((a, b) => (arriving(a.arriving_on, l) ? 1 : 0) - (arriving(b.arriving_on, l) ? 1 : 0)),
+    [venues, l])
   const withSets = useMemo(() => venues.filter(v => v.sets.length), [venues])
   const shown = service === 'plates' ? withPlates : withSets
 
