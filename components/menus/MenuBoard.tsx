@@ -87,20 +87,24 @@ export default function MenuBoard({
             {t('Plates', 'Món nhỏ')}
             <span className="mb-tab-sub">{t('anywhere in the club', 'phục vụ khắp câu lạc bộ')}</span>
           </button>
+          {/* The owner's own framing, and a better one than mine: "set menus,
+              sat down" describes what it looks like; "private catering for
+              large groups" says what it is FOR, which is what a member is
+              deciding between. */}
           <button role="tab" aria-selected={service === 'dining'}
                   className={`mb-tab ${service === 'dining' ? 'is-on' : ''}`}
                   onClick={() => { setService('dining'); setOpen(null) }}>
             {t('The Dining Room', 'Phòng ăn')}
-            <span className="mb-tab-sub">{t('set menus, sat down', 'thực đơn cố định, dùng tại bàn')}</span>
+            <span className="mb-tab-sub">{t('private catering, by arrangement', 'tiệc riêng, đặt trước')}</span>
           </button>
         </div>
 
         <p className="mb-note">
           {service === 'plates'
-            ? t('Small dishes to share, plated in our kitchen and brought to you wherever you are sitting. Ask any of the team.',
-                'Các món nhỏ dùng chung, được bày biện tại bếp của chúng tôi và phục vụ ngay tại chỗ quý vị ngồi. Vui lòng gọi nhân viên.')
-            : t('Cooked in our dining room and served at the table downstairs. These are not available elsewhere in the club, and need to be arranged in advance.',
-                'Được nấu tại phòng ăn và phục vụ tại bàn ở tầng dưới. Không phục vụ ở khu vực khác, và cần đặt trước.')}
+            ? t('Quick-order small plates to share, sent up from the kitchens above us and plated here. Ask any of the team and it comes to wherever you are sitting.',
+                'Món nhỏ gọi nhanh để dùng chung, được gửi từ các nhà bếp phía trên và bày biện tại đây. Chỉ cần gọi nhân viên, món sẽ được mang đến tận chỗ quý vị ngồi.')
+            : t('Private catering for larger groups, cooked in our dining room and served at the table downstairs. Not available elsewhere in the club, and arranged in advance.',
+                'Tiệc riêng cho nhóm đông, được nấu tại phòng ăn và phục vụ tại bàn ở tầng dưới. Không phục vụ ở khu vực khác, và cần đặt trước.')}
         </p>
 
         {!shown.length && (
@@ -168,7 +172,15 @@ function PlateRow({ p, open, onToggle }: { p: MenuPlate; open: boolean; onToggle
   return (
     <li className={`mb-item ${open ? 'is-open' : ''}`}>
       <button className="mb-row" onClick={onToggle} aria-expanded={open} disabled={!hasMore}>
-        <span className="mb-name">{name}</span>
+        <span className="mb-name">
+          {name}
+          {/* The whole promise of this menu is that it is quick, so the wait is
+              on the row rather than hidden behind a tap. It is how a member
+              actually chooses between two plates at eleven at night. */}
+          {p.lead_time_minutes ? (
+            <span className="mb-wait">{p.lead_time_minutes} {t('min', 'phút')}</span>
+          ) : null}
+        </span>
         <span className="mb-price">
           {money ?? <em className="mb-tbc">{t('on request', 'liên hệ')}</em>}
         </span>
@@ -182,12 +194,8 @@ function PlateRow({ p, open, onToggle }: { p: MenuPlate; open: boolean; onToggle
           )}
           {desc && <p className="mb-desc">{desc}</p>}
           <Tags allergens={p.allergens} dietary={p.dietary} confirmed={p.allergens_confirmed} />
-          <div className="mb-meta">
-            {p.lead_time_minutes ? (
-              <span>{t('About', 'Khoảng')} {p.lead_time_minutes} {t('minutes', 'phút')}</span>
-            ) : null}
-            {avail && <span>{avail}</span>}
-          </div>
+          {/* The wait is already on the row above; only availability is left. */}
+          {avail && <div className="mb-meta"><span>{avail}</span></div>}
         </div>
       )}
     </li>
@@ -340,6 +348,10 @@ const CSS = `
             text-align: right; min-width: 108px; }
 .mb-tbc { font-style: normal; opacity: .5; font-size: 11px;
           letter-spacing: .1em; text-transform: uppercase; }
+/* Quiet enough that the dish name still leads the line. */
+.mb-wait { font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+           opacity: .4; margin-left: 14px; white-space: nowrap; }
+.mb.is-kiosk .mb-wait { font-size: 12px; margin-left: 18px; }
 .mb-perhead { display: block; font-size: 9px; letter-spacing: .12em;
               text-transform: uppercase; opacity: .5; margin-top: 3px; }
 .mb-item.is-open .mb-name { color: var(--gold); }
