@@ -100,6 +100,7 @@ const GROUPS: Group[] = [
     items: [
       DASHBOARD,
       { href: '/admin/reports', label: 'Weekly Report', vn: 'Báo cáo hàng tuần', icon: 'doc' },
+      { href: '/admin/tet', label: 'Tết Programme', vn: 'Chương trình Tết', icon: 'gift' },
       { href: '/admin/ops/reports', label: 'Ops Reports', vn: 'Báo cáo vận hành', icon: 'bars' },
       { href: '/admin/ops/rota', label: 'Rota', vn: 'Lịch trực', icon: 'rota' },
       { href: '/admin/ops', label: 'Boards', vn: 'Bảng', icon: 'boards' },

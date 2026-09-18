@@ -81,6 +81,41 @@ export interface CaskBoardRow {
 
   /** bottles_reduced − bottles_cask_strength. The whole story of the offer. */
   extra_bottles: number
+
+  /** 55%, the middle option (added 2026-09-18). On a cask already at or below
+   *  55% these equal the cask-strength figures: there is no 55% bottling of a
+   *  51% cask, and the board says so rather than inventing one. */
+  bottles_55: number
+  unit_vnd_55: number
+  total_vnd_55: number
+  extra_bottles_55: number
+}
+
+/** One row of the published tier ladder. Terms, not prices — these are the
+ *  same four tiers that appear on the leaflet. */
+export interface VolumeTier {
+  label_en: string
+  label_vn: string
+  min_bottles: number
+  max_bottles: number | null
+  discount_pct: number
+  sleeve_price_vnd: number
+}
+
+/** A blend as the browser may see it — no UK list price, no cost. */
+export interface BlendBoardRow {
+  sku: string
+  name_en: string
+  name_vn: string
+  expression: string | null
+  age_years: number | null
+  abv_pct: number
+  bottle_size_ml: number
+  min_order_bottles: number
+  display_order: number
+  is_placeholder: boolean
+  tier_min_bottles: number
+  unit_vnd_with_sleeve: number | null
 }
 
 export interface CaskQuote {
@@ -101,6 +136,12 @@ export interface CaskQuote {
   currency: 'VND'
   is_placeholder: boolean
   pricing_version_id: string
+  /** admin calls only — tet_quote_cask returns these three when p_admin is
+   *  true (foundations §9b). They were missing from this type, so the Quote
+   *  Builder could not read the margin the database was already sending. */
+  landed_cost_vnd?: number
+  gross_margin_pct?: number
+  gross_profit_vnd?: number
 }
 
 /* ------------------------------------------------------------------ */

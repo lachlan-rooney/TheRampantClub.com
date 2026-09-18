@@ -16,6 +16,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
+  BlendBoardRow,
   BlendLineInput,
   BlendQuote,
   CaskBoardRow,
@@ -28,6 +29,7 @@ import type {
   ReservationContact,
   ReservationReceipt,
   TetCategory,
+  VolumeTier,
 } from './types'
 import { isQuoteError } from './types'
 
@@ -60,6 +62,33 @@ export async function getCaskBoard(db: DB): Promise<CaskBoardRow[]> {
     .order('display_order')
   if (error) throw error
   return (data ?? []) as CaskBoardRow[]
+}
+
+/**
+ * The blends, one row per SKU per tier (the view is a deliberate cross join,
+ * so a page can show the ladder). Deduplicated to one row per SKU here, at the
+ * lowest tier, because that is what a page lists.
+ */
+export async function getBlendBoard(db: DB): Promise<BlendBoardRow[]> {
+  const { data, error } = await db
+    .from('tet_blend_board')
+    .select('*')
+    .order('display_order')
+    .order('tier_min_bottles')
+  if (error) throw error
+  const seen = new Set<string>()
+  return ((data ?? []) as BlendBoardRow[]).filter(r => !seen.has(r.sku) && seen.add(r.sku))
+}
+
+/** The published tier ladder. Terms rather than prices, so it shows even while
+ *  every per-bottle figure is still a placeholder. */
+export async function getTiers(db: DB): Promise<VolumeTier[]> {
+  const { data, error } = await db
+    .from('tet_volume_tiers')
+    .select('label_en, label_vn, min_bottles, max_bottles, discount_pct, sleeve_price_vnd')
+    .order('min_bottles')
+  if (error) throw error
+  return (data ?? []) as VolumeTier[]
 }
 
 export async function getCask(

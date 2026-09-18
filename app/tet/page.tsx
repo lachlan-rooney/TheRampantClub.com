@@ -2,7 +2,7 @@ import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 import type { Metadata } from 'next'
 import { TET_COOKIE, tetPassValid } from '@/lib/tet/gate'
-import { getCategories, getCaskBoard, getCountdown } from '@/lib/tet/queries'
+import { getCategories, getCaskBoard, getBlendBoard, getTiers, getCountdown } from '@/lib/tet/queries'
 import TetGate from '@/components/tet/TetGate'
 import TetProgramme from '@/components/tet/TetProgramme'
 
@@ -29,19 +29,29 @@ export default async function TetPage() {
   const pass = (await cookies()).get(TET_COOKIE)?.value
   if (!tetPassValid(pass)) return <TetGate />
 
+  // NEVER A CACHED BOARD. supabase-js calls fetch, and Next caches fetch — so a
+  // server-rendered page will happily serve yesterday's availability. Caught on
+  // 18 Sept: four casks had been marked sold and the page still showed them as
+  // held. On a board whose whole job is to say what is gone, a stale answer is
+  // worse than a slow one.
   const db = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { auth: { persistSession: false } },
+    {
+      auth: { persistSession: false },
+      global: { fetch: (url: RequestInfo | URL, init?: RequestInit) => fetch(url, { ...init, cache: 'no-store' }) },
+    },
   )
 
   // Each is guarded separately: a programme with no casks yet should still show
   // its countdown, and a missing countdown should not take the page down.
-  const [categories, casks, countdown] = await Promise.all([
+  const [categories, casks, blends, tiers, countdown] = await Promise.all([
     getCategories(db).catch(() => []),
     getCaskBoard(db).catch(() => []),
+    getBlendBoard(db).catch(() => []),
+    getTiers(db).catch(() => []),
     getCountdown(db).catch(() => null),
   ])
 
-  return <TetProgramme categories={categories} casks={casks} countdown={countdown} />
+  return <TetProgramme categories={categories} casks={casks} blends={blends} tiers={tiers} countdown={countdown} />
 }
