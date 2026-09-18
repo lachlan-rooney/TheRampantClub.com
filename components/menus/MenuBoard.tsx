@@ -130,12 +130,19 @@ export default function MenuBoard({
             return (
               <section key={v.slug} className={`mb-venue${soon ? ' is-soon' : ''}`}>
                 <VenueHead v={v} lang={lang} />
-                {soon
-                  ? <div className="mb-soon">{soon}</div>
-                  : service === 'plates'
-                    ? <PlateList plates={v.plates} lang={lang} open={open}
-                                 onToggle={id => setOpen(o => (o === id ? null : id))} />
-                    : v.sets.map(s => <SetMenu key={s.id} s={s} />)}
+                {/* The date, and then the food anyway. An announced restaurant
+                    that has already sent its menu should show it: that is a
+                    preview a member can look forward to, and hiding it wastes
+                    the only interesting thing about a restaurant that is not
+                    open yet. The date sits above the list, not beside it, so
+                    nobody reads a price as available tonight.
+                    Fiction is kept out a different way — the invented
+                    placeholder dishes are switched off, not hidden here. */}
+                {soon && <div className="mb-soon">{soon}</div>}
+                {service === 'plates'
+                  ? <PlateList plates={v.plates} lang={lang} open={open}
+                               onToggle={id => setOpen(o => (o === id ? null : id))} />
+                  : v.sets.map(s => <SetMenu key={s.id} s={s} />)}
               </section>
             )
           })}

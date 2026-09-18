@@ -31,16 +31,45 @@ export async function readMenus(sb: SupabaseClient): Promise<MenuData> {
     sb.from('menu_dining_public').select('*').order('venue_order').order('display_order'),
   ])
 
-  // A failed read is not an empty menu. Surfacing it as empty would have the
-  // kiosk quietly show "nothing on tonight" during service.
-  if (venueRows.error) throw new Error(venueRows.error.message)
+  // A failed read of the DISHES is not an empty menu. Surfacing it as empty
+  // would have the kiosk quietly show "nothing on tonight" during service.
   if (plates.error) throw new Error(plates.error.message)
   if (sets.error) throw new Error(sets.error.message)
 
-  const venues = groupByVenue(
-    (venueRows.data ?? []) as MenuVenue[],
-    (plates.data ?? []) as MenuPlate[],
-    (sets.data ?? []) as MenuSet[],
-  )
+  const plateRows = (plates.data ?? []) as MenuPlate[]
+  const setRows = (sets.data ?? []) as MenuSet[]
+
+  // ── THE VENUES VIEW IS ALLOWED TO BE MISSING ────────────────────────────
+  // A deploy reaches production before somebody runs the migration, and for
+  // about an hour this exact gap took the menu down on the tablets and in the
+  // members' portal mid-afternoon. Code that needs a new view must survive not
+  // having it yet: we fall back to deriving the restaurants from the dish rows,
+  // which is precisely how this worked before the view existed.
+  //
+  // What is lost in the fallback is what only the view carries — the arriving
+  // date, and restaurants that have no dishes at all. Both fail SAFE: a
+  // restaurant shows its food without its "arriving" line, rather than the
+  // whole menu showing nothing.
+  const venueRecords: MenuVenue[] = venueRows.error
+    ? deriveVenues(plateRows, setRows)
+    : (venueRows.data ?? []) as MenuVenue[]
+
+  const venues = groupByVenue(venueRecords, plateRows, setRows)
   return { venues, empty: venues.every(v => !v.plates.length && !v.sets.length) }
+}
+
+/** The restaurants implied by the dishes, for when the venues view is not
+ *  there. Deliberately private to this file: it is a safety net, not an API. */
+function deriveVenues(plates: MenuPlate[], sets: MenuSet[]): MenuVenue[] {
+  const byslug = new Map<string, MenuVenue>()
+  for (const r of [...plates, ...sets]) {
+    if (byslug.has(r.venue_slug)) continue
+    byslug.set(r.venue_slug, {
+      slug: r.venue_slug, name: r.venue_name, kind: r.venue_kind,
+      tagline_en: r.venue_tagline_en, tagline_vn: r.venue_tagline_vn,
+      logo_path: r.venue_logo_path, accent_hex: r.venue_accent_hex,
+      arriving_on: null, display_order: r.venue_order, is_placeholder: false,
+    })
+  }
+  return [...byslug.values()]
 }
