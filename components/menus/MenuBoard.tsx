@@ -43,18 +43,32 @@ import {
 // standing on a table during service, a modal is something a member has to
 // dismiss before the next person can read the menu, and it will be left open.
 //
-// This is a MENU, not a shop: no basket, no "order" button. The team takes the
-// order, and anything resembling a checkout would promise something the club
-// has not built.
+// IT IS STILL NOT A SHOP. Nothing is charged here and no payment exists
+// anywhere in the system. On the room tablet a member can build a list with
+// +/- and confirm it, for one reason the owner gave plainly: "so the staff
+// member doesn't mess up the order and has it confirmed with the member".
+// The failure being prevented is a wrong order, not an unpaid one — so the
+// tray says what it is for, the word "pay" appears nowhere, and the total is
+// there to be read back, not settled.
 // ═══════════════════════════════════════════════════════════════════════════
 
 type Service = 'plates' | 'cocktails' | 'dining'
 
 export default function MenuBoard({
   venues, variant = 'member', masthead = false,
+  ordering = false, onConfirm, confirmBusy = false, orderOpen = false,
 }: {
   venues: MenuVenueGroup[]
   variant?: 'member' | 'kiosk'
+  /** The +/- steppers and the confirm tray. Kiosk only: a member's phone is a
+   *  menu, not a way to send the kitchen something from outside the building. */
+  ordering?: boolean
+  onConfirm?: (lines: { item_id: string; qty: number }[]) => void | Promise<void>
+  confirmBusy?: boolean
+  /** True while the room already has an order waiting for staff. The steppers
+   *  stay usable — a member who forgot the olives can add them and confirm
+   *  again, which replaces the open order rather than opening a second. */
+  orderOpen?: boolean
   /** The crest and wordmark above the list, as on the printed card. Off in the
    *  members' portal, where MemberPage has already given the page a masthead
    *  and a second one would just say the club's name twice. */
@@ -63,6 +77,9 @@ export default function MenuBoard({
   const { t, lang } = useLang()
   const [service, setService] = useState<Service>('plates')
   const [open, setOpen] = useState<string | null>(null)
+  // Quantities by item id. Held here rather than in the page because the rows
+  // are rendered here; the page only ever sees the finished list.
+  const [qty, setQty] = useState<Record<string, number>>({})
 
   const l = lang as 'en' | 'vn'
   // What a member can eat tonight, and what is still to come — kept apart
@@ -84,6 +101,19 @@ export default function MenuBoard({
   const shown = service === 'plates' ? withPlates
               : service === 'cocktails' ? withCocktails
               : withSets
+
+  // What has been chosen, across every tab — a member picks a plate, then a
+  // drink, and the tray has to hold both. Looked up from the venues rather
+  // than stored alongside the count, so a price edited mid-service is reflected
+  // before anybody confirms rather than after.
+  const chosen = useMemo(() => {
+    const all = venues.flatMap(v => v.plates)
+    return all
+      .filter(p => (qty[p.id] ?? 0) > 0 && p.price_vnd != null)
+      .map(p => ({ p, n: qty[p.id] }))
+  }, [venues, qty])
+  const total = chosen.reduce((s2, c) => s2 + (c.p.price_vnd ?? 0) * c.n, 0)
+  const count = chosen.reduce((s2, c) => s2 + c.n, 0)
 
   // THE LINE-UP. One heading and the logos side by side, rather than four
   // near-identical blocks each repeating the same date down the page.
@@ -178,7 +208,9 @@ export default function MenuBoard({
                          hideName={v.kind === 'house' && shown.length === 1} />
               {service !== 'dining'
                 ? <PlateList plates={v.plates} lang={lang} open={open}
-                             onToggle={id => setOpen(o => (o === id ? null : id))} />
+                             onToggle={id => setOpen(o => (o === id ? null : id))}
+                             qty={ordering ? qty : undefined}
+                             onQty={ordering ? (id, n) => setQty(q => ({ ...q, [id]: n })) : undefined} />
                 : v.sets.map(s => <SetMenu key={s.id} s={s} />)}
             </section>
           ))}
@@ -201,6 +233,41 @@ export default function MenuBoard({
             </div>
           </section>
         ))}
+
+        {/* THE TRAY. Sticky above the kiosk bar so it is reachable from
+            anywhere in a long menu — a member who chose a plate at the top and
+            a drink at the bottom should not have to scroll back to confirm. */}
+        {ordering && (count > 0 || orderOpen) && (
+          <div className="mb-tray" role="status">
+            <div className="mb-tray-in">
+              <div className="mb-tray-lines">
+                {chosen.map(c => (
+                  <span key={c.p.id} className="mb-tray-line">
+                    <b>{c.n}</b> {pick(l, c.p.name_en, c.p.name_vn)}
+                  </span>
+                ))}
+                {!count && orderOpen && (
+                  <span className="mb-tray-line is-quiet">
+                    {t('Your order is with the team.', 'Yêu cầu của quý vị đã được chuyển cho nhân viên.')}
+                  </span>
+                )}
+              </div>
+              <div className="mb-tray-right">
+                <span className="mb-tray-total">{price(total) ?? ''}</span>
+                <button className="mb-tray-go" disabled={!count || confirmBusy}
+                        onClick={() => onConfirm?.(chosen.map(c => ({ item_id: c.p.id, qty: c.n })))}>
+                  {confirmBusy ? t('Sending…', 'Đang gửi…')
+                    : orderOpen ? t('Update the order', 'Cập nhật yêu cầu')
+                    : t('Confirm this order', 'Xác nhận yêu cầu')}
+                </button>
+              </div>
+            </div>
+            <div className="mb-tray-note">
+              {t('Nothing is charged here. Confirming it lets the team read it back and get it right.',
+                 'Không có khoản thanh toán nào tại đây. Xác nhận để nhân viên đọc lại và phục vụ đúng yêu cầu.')}
+            </div>
+          </div>
+        )}
 
         <p className="mb-legal">
           {t('Dishes are prepared by our partner kitchens and plated here. Please tell any of the team about allergies or dietary needs before ordering — we will check with the kitchen.',
@@ -244,9 +311,11 @@ function VenueHead({ v, lang, hideName = false }: {
 // tacos were a thing. A restaurant with a single list gets NO heading — one
 // heading over one group is furniture, not information.
 
-function PlateList({ plates, lang, open, onToggle }: {
+function PlateList({ plates, lang, open, onToggle, qty, onQty }: {
   plates: MenuPlate[]; lang: string
   open: string | null; onToggle: (id: string) => void
+  qty?: Record<string, number>
+  onQty?: (id: string, n: number) => void
 }) {
   const l = lang as 'en' | 'vn'
   const groups = useMemo(() => {
@@ -270,7 +339,9 @@ function PlateList({ plates, lang, open, onToggle }: {
           {headed && g.label && <h3 className="mb-section">{g.label}</h3>}
           <ul className="mb-list">
             {g.items.map(p => (
-              <PlateRow key={p.id} p={p} open={open === p.id} onToggle={() => onToggle(p.id)} />
+              <PlateRow key={p.id} p={p} open={open === p.id} onToggle={() => onToggle(p.id)}
+                        qty={qty?.[p.id]}
+                        onQty={onQty ? (n: number) => onQty(p.id, n) : undefined} />
             ))}
           </ul>
         </div>
@@ -281,7 +352,13 @@ function PlateList({ plates, lang, open, onToggle }: {
 
 // ── One small dish ──────────────────────────────────────────────────────────
 
-function PlateRow({ p, open, onToggle }: { p: MenuPlate; open: boolean; onToggle: () => void }) {
+function PlateRow({ p, open, onToggle, qty, onQty }: {
+  p: MenuPlate; open: boolean; onToggle: () => void
+  /** Undefined where ordering is off — the members' portal is a menu, not a
+   *  way to send the kitchen anything. */
+  qty?: number
+  onQty?: (next: number) => void
+}) {
   const { t, lang } = useLang()
   const l = lang as 'en' | 'vn'
   const name = pick(l, p.name_en, p.name_vn)
@@ -289,23 +366,44 @@ function PlateRow({ p, open, onToggle }: { p: MenuPlate; open: boolean; onToggle
   const avail = pick(l, p.availability_en, p.availability_vn)
   const money = price(p.price_vnd)
   const hasMore = !!(desc || avail || p.photo_path || p.allergens.length || p.dietary.length)
+  // Only something with a price can be ordered. "On request" means the club has
+  // not agreed a price with the kitchen, and a member should be talking to a
+  // person about it rather than adding it to a list.
+  const canOrder = !!onQty && p.price_vnd != null
+  const n = qty ?? 0
 
   return (
-    <li className={`mb-item ${open ? 'is-open' : ''}`}>
-      <button className="mb-row" onClick={onToggle} aria-expanded={open} disabled={!hasMore}>
-        <span className="mb-name">
-          {name}
-          {/* The whole promise of this menu is that it is quick, so the wait is
-              on the row rather than hidden behind a tap. It is how a member
-              actually chooses between two plates at eleven at night. */}
-          {p.lead_time_minutes ? (
-            <span className="mb-wait">{p.lead_time_minutes} {t('min', 'phút')}</span>
-          ) : null}
-        </span>
+    <li className={`mb-item ${open ? 'is-open' : ''} ${n > 0 ? 'is-wanted' : ''}`}>
+      {/* A DIV, not a button. The row used to be one, and a stepper cannot live
+          inside a button — nested buttons are invalid and the inner taps get
+          swallowed. The name is its own button now; the stepper is a sibling. */}
+      <div className="mb-row">
+        <button className="mb-open" onClick={onToggle} aria-expanded={open} disabled={!hasMore}>
+          <span className="mb-name">
+            {name}
+            {/* The whole promise of this menu is that it is quick, so the wait is
+                on the row rather than hidden behind a tap. It is how a member
+                actually chooses between two plates at eleven at night. */}
+            {p.lead_time_minutes ? (
+              <span className="mb-wait">{p.lead_time_minutes} {t('min', 'phút')}</span>
+            ) : null}
+          </span>
+        </button>
+
+        {canOrder && (
+          <span className="mb-step">
+            <button className="mb-step-btn" onClick={() => onQty!(Math.max(0, n - 1))}
+                    disabled={n === 0} aria-label={`${t('One fewer', 'Bớt một')} ${name}`}>−</button>
+            <span className="mb-step-n" aria-live="polite">{n || ''}</span>
+            <button className="mb-step-btn" onClick={() => onQty!(Math.min(50, n + 1))}
+                    aria-label={`${t('One more', 'Thêm một')} ${name}`}>+</button>
+          </span>
+        )}
+
         <span className="mb-price">
           {money ?? <em className="mb-tbc">{t('on request', 'liên hệ')}</em>}
         </span>
-      </button>
+      </div>
 
       {/* Always mounted, so it can animate CLOSED as well as open — a panel
           that glides out and then vanishes is worse than one that never moved.
@@ -512,16 +610,61 @@ const CSS = `
    Both are turned off and replaced, NOT simply deleted: a keyboard user still
    needs to see where they are, so :focus-visible (keyboard only, never a
    mouse or a finger) gets a gold bar down the left instead. */
-.mb-row { display: flex; align-items: baseline; gap: 24px; width: 100%;
-          background: none; border: none; text-align: left; cursor: pointer;
-          padding: 7px 0; color: inherit;
-          -webkit-tap-highlight-color: transparent;
-          transition: opacity .2s ease; }
-.mb-row:focus { outline: none; }
-.mb-row:focus-visible { outline: none; box-shadow: inset 3px 0 0 var(--gold); }
+.mb-row { display: flex; align-items: baseline; gap: 18px; width: 100%;
+          padding: 7px 0; color: inherit; }
+.mb-open { flex: 1; min-width: 0; background: none; border: none; text-align: left;
+           cursor: pointer; padding: 0; color: inherit; font: inherit;
+           -webkit-tap-highlight-color: transparent; transition: opacity .2s ease; }
+.mb-open:focus { outline: none; }
+.mb-open:focus-visible { outline: none; box-shadow: inset 3px 0 0 var(--gold); }
+.mb-open[disabled] { cursor: default; }
+.mb-open:active { opacity: .62; }
 .mb-row.is-static { cursor: default; }
-.mb-row[disabled] { cursor: default; }
-.mb-row:active { opacity: .62; }
+
+/* THE STEPPER. Big enough to hit standing up, and quiet until it is used —
+   a row of bright controls down a menu would compete with the food. */
+.mb-step { display: inline-flex; align-items: center; gap: 2px; flex: 0 0 auto;
+           -webkit-tap-highlight-color: transparent; }
+.mb-step-btn { width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
+               background: none; border: 1px solid var(--hair); color: var(--cream);
+               font-family: var(--mono); font-size: 17px; line-height: 1;
+               display: flex; align-items: center; justify-content: center;
+               transition: border-color .15s ease, color .15s ease; }
+.mb-step-btn:hover { border-color: var(--gold); color: var(--gold); }
+.mb-step-btn:disabled { opacity: .3; cursor: default; border-color: var(--hair); color: var(--cream); }
+.mb-step-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.mb-step-n { min-width: 26px; text-align: center; font-family: var(--mono);
+             font-size: 14px; color: var(--gold); }
+.mb-item.is-wanted .mb-name { color: var(--gold); }
+.mb.is-kiosk .mb-step-btn { width: 44px; height: 44px; font-size: 21px; }
+.mb.is-kiosk .mb-step-n { min-width: 34px; font-size: 17px; }
+
+/* THE TRAY */
+.mb-tray { position: sticky; bottom: calc(var(--kiosk-bar, 0px) + 10px); z-index: 30;
+           margin: 34px 0 6px; padding: 14px 18px;
+           background: rgba(4, 37, 26, .97); backdrop-filter: blur(12px);
+           border: 1px solid rgba(212,184,90,.4); border-radius: 3px; }
+.mb-tray-in { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+.mb-tray-lines { flex: 1; min-width: 180px; display: flex; flex-wrap: wrap; gap: 4px 16px;
+                 font-family: var(--mono); font-size: 12px; line-height: 1.7; }
+.mb-tray-line b { color: var(--gold); font-weight: 400; }
+.mb-tray-line.is-quiet { opacity: .6; }
+.mb-tray-right { display: flex; align-items: center; gap: 18px; flex: 0 0 auto; }
+.mb-tray-total { font-family: var(--mono); font-size: 16px; white-space: nowrap; }
+.mb-tray-go { background: var(--gold); color: #052E20; border: none; border-radius: 2px;
+              font-family: var(--mono); font-size: 11.5px; letter-spacing: .12em;
+              text-transform: uppercase; padding: 12px 20px; cursor: pointer;
+              -webkit-tap-highlight-color: transparent; }
+.mb-tray-go:disabled { opacity: .45; cursor: default; }
+.mb-tray-note { font-family: var(--mono); font-size: 10px; line-height: 1.7;
+                opacity: .5; margin-top: 10px; }
+.mb.is-kiosk .mb-tray-lines { font-size: 14px; }
+.mb.is-kiosk .mb-tray-total { font-size: 20px; }
+.mb.is-kiosk .mb-tray-go { font-size: 14px; padding: 16px 26px; }
+.mb.is-kiosk .mb-tray-note { font-size: 12px; }
+@media (max-width: 600px) {
+  .mb-tray-right { width: 100%; justify-content: space-between; }
+}
 .mb-name { font-family: var(--mono); font-size: 15px; line-height: 1.7; flex: 1; }
 .mb-name.is-set { font-family: var(--serif); font-size: 20px; letter-spacing: .02em; }
 .mb-price { font-family: var(--mono); font-size: 15px; white-space: nowrap;
@@ -535,8 +678,8 @@ const CSS = `
 .mb-perhead { display: block; font-size: 9px; letter-spacing: .12em;
               text-transform: uppercase; opacity: .5; margin-top: 3px; }
 .mb-item.is-open .mb-name { color: var(--gold); }
-.mb-row:hover .mb-name { color: var(--gold); }
-.mb-row[disabled]:hover .mb-name { color: inherit; }
+.mb-open:hover .mb-name { color: var(--gold); }
+.mb-open[disabled]:hover .mb-name { color: inherit; }
 
 /* The reveal. grid-template-rows 0fr → 1fr is the one way to transition to a
    height nobody has measured; the inner element must be overflow:hidden with
@@ -598,7 +741,7 @@ const CSS = `
 .mb.is-kiosk .mb-course-dish { font-size: 19px; }
 .mb.is-kiosk .mb-tag { font-size: 11px; padding: 5px 11px; }
 .mb.is-kiosk .mb-meta { font-size: 12px; }
-.mb.is-kiosk .mb.is-kiosk .mb-row:hover .mb-name { color: inherit; }
+.mb.is-kiosk .mb.is-kiosk .mb-open:hover .mb-name { color: inherit; }
 .mb.is-kiosk .mb-item.is-open .mb-name { color: var(--gold); }
 
 /* ── A TABLET LYING DOWN ────────────────────────────────────────────────────
