@@ -182,18 +182,24 @@ export function groupByVenue(
   return [...byslug.values()]
 }
 
-/** "Arriving 23 September", in the reader's language. Null once the day has
- *  come, so a date nobody remembered to clear stops announcing the past. */
-export function arriving(iso: string | null, lang: 'en' | 'vn'): string | null {
+/** The date a restaurant opens, in the reader's language — "23 September" /
+ *  "23 tháng 9" — or null once the day has come, so a date nobody remembered
+ *  to clear stops announcing the past and the restaurant quietly joins the
+ *  restaurants that are actually cooking. */
+export function arrivingDate(iso: string | null, lang: 'en' | 'vn'): string | null {
   if (!iso) return null
-  // Compared at Ho Chi Minh City's date, not the browser's.
+  // Compared at Ho Chi Minh City's date, not the browser's: a member in London
+  // must not see a Saigon restaurant open a day early.
   const today = new Date(new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }))
   const when = new Date(iso + 'T00:00:00')
   if (when <= today) return null
-  const d = when.toLocaleDateString(lang === 'vn' ? 'vi-VN' : 'en-GB',
+  return when.toLocaleDateString(lang === 'vn' ? 'vi-VN' : 'en-GB',
     { day: 'numeric', month: 'long', timeZone: 'Asia/Ho_Chi_Minh' })
-  return lang === 'vn' ? `Sẽ phục vụ từ ${d}` : `Arriving ${d}`
 }
+
+/** True while a restaurant is announced but not yet open. */
+export const isArriving = (iso: string | null, lang: 'en' | 'vn'): boolean =>
+  arrivingDate(iso, lang) !== null
 
 /** Prices the way the club's own printed menus write them: "350K VND".
  *

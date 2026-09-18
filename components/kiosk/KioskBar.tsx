@@ -1,6 +1,7 @@
 'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
+import LangToggle from '@/components/LangToggle'
 import { useEffect, useState, type ReactNode } from 'react'
 
 // THE WAY BACK, ON EVERY SCREEN (2026-09-16 — the owner: "all areas of the kiosk
@@ -94,6 +95,18 @@ export default function KioskBar() {
           letter-spacing: .08em; text-transform: uppercase; line-height: 1.25; text-align: center;
         }
         .kbar-vn { display: block; font-size: 9px; letter-spacing: .04em; text-transform: none; opacity: .5; }
+        /* The switch sits in its own slot, narrower than a tab because it is a
+           setting rather than a destination, and scaled up so it is a real
+           target for a standing person rather than a 10px pill. */
+        .kbar-lang {
+          flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
+          padding: 0 22px 0 8px;
+        }
+        .kbar-lang > div { transform: scale(1.5); transform-origin: center; }
+        @media (max-width: 640px) {
+          .kbar-lang { padding: 0 10px 0 4px; }
+          .kbar-lang > div { transform: scale(1.25); }
+        }
         @media (prefers-reduced-motion: reduce) { .kbar-tab, .kbar-tab::before { transition: none; } }
       ` }} />
       <nav className="kbar" aria-label="Kiosk navigation">
@@ -117,6 +130,21 @@ export default function KioskBar() {
             <span className="kbar-icon" aria-hidden>{ICONS.staff}</span>
             <span className="kbar-label">Staff<span className="kbar-vn">Nhân viên</span></span>
           </button>
+
+          {/* THE LANGUAGE SWITCH, WHICH THE KIOSK DID NOT HAVE AT ALL.
+              Every other surface in the club carries one; a member standing at
+              a tablet in the Library had no way to read the menu in Vietnamese.
+              It belongs in the bar rather than on the menu page, because the
+              board, the Flavour Finder and the staff screen were all missing it
+              too — one control fixes every kiosk screen.
+              Scaled up rather than restyled: LangToggle is shared with admin
+              and the member portal, and forking it for a touch target is how
+              one control quietly becomes two that drift apart. On /kiosk the
+              choice is React state only (lib/lang), so it resets for the next
+              member instead of leaving the tablet in somebody else's language. */}
+          <div className="kbar-lang">
+            <LangToggle />
+          </div>
         </div>
       </nav>
     </>

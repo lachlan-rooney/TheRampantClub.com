@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useLang, pick } from '@/lib/lang'
 import {
-  ALLERGEN_LABEL, DIETARY_LABEL, price, mediaUrl, arriving,
+  ALLERGEN_LABEL, DIETARY_LABEL, price, mediaUrl, arrivingDate, isArriving,
   type Allergen, type Dietary, type MenuPlate, type MenuSet, type MenuVenueGroup,
 } from '@/lib/menus/types'
 
@@ -64,26 +64,33 @@ export default function MenuBoard({
   const [open, setOpen] = useState<string | null>(null)
 
   const l = lang as 'en' | 'vn'
-  // A restaurant that has been announced but has not opened appears on the
-  // Plates tab with its date and no dishes — including where placeholder
-  // dishes exist, which they do for El Gaucho and Le Corto. It is not repeated
-  // under Dining, because nobody has said which service it arrives with.
-  // SERVING FIRST, COMING SOON BELOW — regardless of the display order set in
-  // admin, which interleaved them. A member scanning this menu wants to know
-  // what they can eat tonight; a restaurant that opens on the 23rd is news, not
-  // an option, and it should not sit between two kitchens that are cooking.
-  //
-  // The sort is stable (ES2019), so the admin's display order still decides the
-  // running order WITHIN each half — and on the 23rd, when arriving() starts
-  // returning null for those dates, they rejoin the top group in their proper
-  // places with nothing to change here.
-  const withPlates = useMemo(
-    () => venues
-      .filter(v => v.plates.length || arriving(v.arriving_on, l))
-      .sort((a, b) => (arriving(a.arriving_on, l) ? 1 : 0) - (arriving(b.arriving_on, l) ? 1 : 0)),
-    [venues, l])
-  const withSets = useMemo(() => venues.filter(v => v.sets.length), [venues])
+  // What a member can eat tonight, and what is still to come — kept apart
+  // rather than interleaved by the admin's display order. A restaurant that
+  // opens on the 23rd is news, not an option, and should not sit between two
+  // kitchens that are actually cooking.
+  const serving = useMemo(() => venues.filter(v => !isArriving(v.arriving_on, l)), [venues, l])
+  const withPlates = useMemo(() => serving.filter(v => v.plates.length), [serving])
+  const withSets = useMemo(() => serving.filter(v => v.sets.length), [serving])
   const shown = service === 'plates' ? withPlates : withSets
+
+  // THE LINE-UP. One heading and the logos side by side, rather than four
+  // near-identical blocks each repeating the same date down the page.
+  // Grouped BY DATE, so if a fifth restaurant is announced for October it gets
+  // its own heading instead of being quietly folded into September's. On the
+  // 23rd arrivingDate() returns null for these and the whole block disappears
+  // by itself — the restaurants reappear above with their menus, and there is
+  // nothing to run and nothing to remember.
+  const comingSoon = useMemo(() => {
+    const by = new Map<string, { when: string; venues: MenuVenueGroup[] }>()
+    for (const v of venues) {
+      const when = arrivingDate(v.arriving_on, l)
+      if (!when || !v.arriving_on) continue
+      const g = by.get(v.arriving_on) ?? { when, venues: [] }
+      g.venues.push(v)
+      by.set(v.arriving_on, g)
+    }
+    return [...by.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, g]) => g)
+  }, [venues, l])
 
   return (
     <div className={`mb ${variant === 'kiosk' ? 'is-kiosk' : ''}`}>
@@ -137,28 +144,34 @@ export default function MenuBoard({
 
         {/* Wrapped so a landscape tablet can set them side by side. */}
         <div className="mb-venues">
-          {shown.map(v => {
-            const soon = arriving(v.arriving_on, l)
-            return (
-              <section key={v.slug} className={`mb-venue${soon ? ' is-soon' : ''}`}>
-                <VenueHead v={v} lang={lang} />
-                {/* The date, and then the food anyway. An announced restaurant
-                    that has already sent its menu should show it: that is a
-                    preview a member can look forward to, and hiding it wastes
-                    the only interesting thing about a restaurant that is not
-                    open yet. The date sits above the list, not beside it, so
-                    nobody reads a price as available tonight.
-                    Fiction is kept out a different way — the invented
-                    placeholder dishes are switched off, not hidden here. */}
-                {soon && <div className="mb-soon">{soon}</div>}
-                {service === 'plates'
-                  ? <PlateList plates={v.plates} lang={lang} open={open}
-                               onToggle={id => setOpen(o => (o === id ? null : id))} />
-                  : v.sets.map(s => <SetMenu key={s.id} s={s} />)}
-              </section>
-            )
-          })}
+          {shown.map(v => (
+            <section key={v.slug} className="mb-venue">
+              <VenueHead v={v} lang={lang} />
+              {service === 'plates'
+                ? <PlateList plates={v.plates} lang={lang} open={open}
+                             onToggle={id => setOpen(o => (o === id ? null : id))} />
+                : v.sets.map(s => <SetMenu key={s.id} s={s} />)}
+            </section>
+          ))}
         </div>
+
+        {/* The line-up, under the food that can be ordered now. Plates tab
+            only: nobody has said which service these arrive with, and
+            announcing them twice would read as two different announcements. */}
+        {service === 'plates' && comingSoon.map(g => (
+          <section key={g.when} className="mb-coming">
+            <h3 className="mb-coming-head">{t('Coming', 'Sắp có')} {g.when}</h3>
+            <div className="mb-coming-row">
+              {g.venues.map(v => {
+                const logo = mediaUrl(v.logo_path)
+                return logo
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  ? <img key={v.slug} src={logo} alt={v.name} className="mb-coming-logo" />
+                  : <span key={v.slug} className="mb-coming-name">{v.name}</span>
+              })}
+            </div>
+          </section>
+        ))}
 
         <p className="mb-legal">
           {t('Dishes are prepared by our partner kitchens and plated here. Please tell any of the team about allergies or dietary needs before ordering — we will check with the kitchen.',
@@ -417,13 +430,27 @@ const CSS = `
 /* A named list inside one restaurant. Quieter than the venue's own heading —
    it is a subdivision, not a second restaurant — but in the serif, so it reads
    as a heading rather than as another dish. */
-/* An announced restaurant. Deliberately quiet — it is a promise, not a menu,
-   and it must not compete with the food that can actually be ordered tonight.
-   The whole block dims so the eye passes over it on the way to the real list. */
-.mb-venue.is-soon { opacity: .62; }
-.mb-soon { font-family: var(--mono); font-size: 11px; letter-spacing: .18em;
-           text-transform: uppercase; color: var(--gold); padding: 2px 0 4px; }
-.mb.is-kiosk .mb-soon { font-size: 13px; }
+/* THE LINE-UP. One heading and the marks side by side — four near-identical
+   blocks each repeating the same date read as a fault, where a row of logos
+   reads as an announcement. Quieter than the menu above it, because it is a
+   promise rather than something anyone can order tonight. */
+.mb-coming { margin-top: 12px; padding-top: 26px; border-top: 1px solid var(--hair); }
+.mb-coming-head { font-family: var(--serif); font-size: 15px; font-weight: 500;
+                  letter-spacing: .18em; text-transform: uppercase;
+                  color: var(--gold); margin: 0 0 22px; }
+.mb-coming-row { display: flex; flex-wrap: wrap; align-items: center;
+                 gap: 34px 46px; opacity: .72; }
+.mb-coming-logo { width: 140px; height: 58px; object-fit: contain;
+                  object-position: center; display: block; }
+.mb-coming-name { font-family: var(--serif); font-size: 19px; letter-spacing: .03em; }
+.mb.is-kiosk .mb-coming-head { font-size: 17px; }
+.mb.is-kiosk .mb-coming-logo { width: 180px; height: 74px; }
+.mb.is-kiosk .mb-coming-name { font-size: 23px; }
+@media (max-width: 600px) {
+  .mb-coming-row { gap: 24px 30px; }
+  .mb-coming-logo { width: 104px; height: 46px; }
+  .mb-coming-name { font-size: 16px; }
+}
 
 .mb-group + .mb-group { margin-top: 26px; }
 .mb-section { font-family: var(--serif); font-size: 15px; font-weight: 500;
