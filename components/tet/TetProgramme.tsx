@@ -9,6 +9,7 @@ import { vnd, type BlendBoardRow, type CaskBoardRow, type Countdown, type TetCat
 import TetEnquiry, { type EnquiryTarget } from '@/components/tet/TetEnquiry'
 import TetTiers from '@/components/tet/TetTiers'
 import SleeveStudio, { type SleeveDesign } from '@/components/tet/SleeveStudio'
+import TetTimeline from '@/components/tet/TetTimeline'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE TẾT PROGRAMME — built from the public kit, like the rest of the site.
@@ -66,7 +67,6 @@ export default function TetProgramme({
       </div>
 
       <Masthead
-        eyebrow="Duncan Taylor × The Rampant Club"
         title={<>Tết<br />Đinh Mùi</>}
         sub="2027"
         lede={t('Whisky for the companies you thank at Tết — three blends in a sleeve carrying your name, or a single cask with every bottle numbered.',
@@ -82,7 +82,7 @@ export default function TetProgramme({
       </Masthead>
 
       {countdown && <NextGate cd={countdown} t={t} />}
-      {countdown && <Dates cd={countdown} t={t} locale={vn ? 'vi-VN' : 'en-GB'} />}
+      {countdown && <TetTimeline cd={countdown} t={t} locale={vn ? 'vi-VN' : 'en-GB'} />}
 
       {/* ── THE BLENDS ────────────────────────────────────────────────── */}
       <section className="pk-wrap pk-section">
@@ -227,10 +227,17 @@ function NextGate({ cd, t }: { cd: Countdown; t: (en: string, vn: string) => str
   const [now, setNow] = useState(fetchedAt)
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id) }, [])
 
+  // The owner's words, and better than mine: a deadline means nothing until it
+  // says what shuts. "Casks close" is jargon; "the window closes to order casks
+  // from Scotland" is the actual constraint — they are bottled at Huntly and
+  // put on a ship.
   const gates = [
-    { label: t('until the casks close', 'đến hạn đặt thùng'), date: cd.cutoffs.cask.date },
-    { label: t('until the artwork must be agreed', 'đến hạn chốt thiết kế'), date: cd.cutoffs.artwork.date },
-    { label: t('until the blends close', 'đến hạn đặt rượu pha trộn'), date: cd.cutoffs.blend.date },
+    { label: t('until the window closes to order casks from Scotland',
+               'đến khi đóng cửa sổ đặt thùng từ Scotland'), date: cd.cutoffs.cask.date },
+    { label: t('until the sleeve artwork must be agreed',
+               'đến hạn chốt thiết kế hộp'), date: cd.cutoffs.artwork.date },
+    { label: t('until the last order for the blends',
+               'đến hạn đặt cuối cho rượu pha trộn'), date: cd.cutoffs.blend.date },
   ]
     .map(g => ({ ...g, r: timeRemaining(g.date, cd.now, now, fetchedAt) }))
     .filter(g => !g.r.past)
@@ -247,46 +254,14 @@ function NextGate({ cd, t }: { cd: Countdown; t: (en: string, vn: string) => str
                     borderTop: '1px solid rgba(229,212,194,.14)', paddingTop: 22 }}>
         <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 'clamp(34px,5vw,58px)', lineHeight: 1, color: GOLD, fontVariantNumeric: 'tabular-nums' }}>
           {g.r.days}
-          <span style={{ fontFamily: MONO, fontSize: 'clamp(13px,1.4vw,16px)', color: CREAM, marginLeft: 8 }}>
-            {t('days', 'ngày')} {pad(g.r.hours)}:{pad(g.r.minutes)}:{pad(g.r.seconds)}
+          {/* A margin is not a space: "43days" is what a margin gives you when
+              the number and the word are separate elements. */}
+          <span style={{ fontFamily: MONO, fontSize: 'clamp(13px,1.4vw,16px)', color: CREAM, marginLeft: 10 }}>
+            {`${t('days', 'ngày')} ${pad(g.r.hours)}:${pad(g.r.minutes)}:${pad(g.r.seconds)}`}
           </span>
         </div>
         <div className="pk-meta" style={{ fontSize: 12.5 }}>{g.label}</div>
       </div>
-    </section>
-  )
-}
-
-function Dates({ cd, t, locale }: { cd: Countdown; t: (en: string, vn: string) => string; locale: string }) {
-  const fetchedAt = useMemo(() => Date.now(), [])
-  const [now, setNow] = useState(fetchedAt)
-  useEffect(() => { const id = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(id) }, [])
-
-  // A date is not language-neutral: "31 October 2026" reads as "31 tháng 10,
-  // 2026" to the buyer this offer is mostly aimed at. The dates were the last
-  // English left on a page that otherwise switched.
-  const fmt = (iso: string) =>
-    new Date(iso + 'T12:00:00+07:00').toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' })
-
-  const line = (date: string) => {
-    const r = timeRemaining(date, cd.now, now, fetchedAt)
-    return (
-      <>
-        {fmt(date)}
-        <span style={{ opacity: .55 }}>{r.past ? ` · ${t('passed', 'đã qua')}` : ` · ${r.days} ${t('days', 'ngày')}`}</span>
-      </>
-    )
-  }
-
-  return (
-    <section className="pk-wrap" style={{ paddingTop: 20 }}>
-      <Details rows={[
-        { label: t('Casks, last order', 'Hạn đặt thùng'), value: line(cd.cutoffs.cask.date) },
-        { label: t('Blends, last order', 'Hạn đặt pha trộn'), value: line(cd.cutoffs.blend.date) },
-        { label: t('Artwork agreed', 'Chốt thiết kế'), value: line(cd.cutoffs.artwork.date) },
-        { label: t('In your hands', 'Giao tận tay'), value: line(cd.in_hand_date) },
-        { label: t('Tết', 'Tết'), value: fmt(cd.festival_date) },
-      ]} />
     </section>
   )
 }
