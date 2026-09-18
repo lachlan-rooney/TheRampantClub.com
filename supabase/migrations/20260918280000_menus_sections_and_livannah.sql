@@ -83,6 +83,19 @@ grant select on public.menu_plates_public to authenticated;
 --   "_99" is read as 99,000₫ — consistent with the rest of their list and with
 --   what the club charges elsewhere.
 --
+--   4. THE 20% UPLIFT APPLIES HERE TOO. Livannah's numbers are what THEY
+--      charge, so they are cost_vnd, and the member price is cost x 1.2 —
+--      the same arrangement as Iberico. Without this the club would have
+--      served all seventeen dishes at cost and made nothing on any of them.
+--
+--      Rounded UP to the next whole thousand, not to the nearest. Five of the
+--      seventeen do not land on a round figure (99,000 x 1.2 = 118,800), and a
+--      price like that is two problems: no menu in Saigon prints it, and the
+--      club's own price() helper renders it as "119K" while the database holds
+--      118,800 — the screen and the till disagreeing by 200 dong. Rounding up
+--      keeps the uplift at or above 20% in every case; the exact figures are
+--      printed at the bottom of this file.
+--
 --   Raw is marked ONLY on the tartare, which is raw by definition. Whether
 --   their salmon, tuna, scallop and roe are served raw is a question for the
 --   kitchen, not a guess for me. Allergens are unconfirmed throughout, so
@@ -100,11 +113,13 @@ with l as (select id from public.menu_venues where slug = 'livannah')
 insert into public.menu_items (
   venue_id, slug, section_en, section_vn, name_en, name_vn,
   description_en, description_vn, dietary, allergens, allergens_confirmed,
-  price_vnd, display_order, is_active, is_placeholder
+  cost_vnd, price_vnd, display_order, is_active, is_placeholder
 )
 select l.id, v.slug, v.sec_en, v.sec_vn, v.name_en, v.name_vn,
        v.desc_en, v.desc_vn, v.dietary, '{}'::text[], false,
-       v.price, v.ord, true, false
+       v.cost,
+       (ceil(v.cost * 1.2 / 1000) * 1000)::int,
+       v.ord, true, false
 from l, (values
   -- ── Skewers ──────────────────────────────────────────────────────────────
   ('duck-cakes','Skewers','Xiên nướng','Crispy Duck Cakes','Bánh vịt chiên giòn',
@@ -153,7 +168,7 @@ from l, (values
   ('taco-ikura','Nori Tacos','Taco rong biển','Salmon Roe','Trứng cá hồi',
    'Nori, rice, cucumber, carrot, avocado.','Rong biển, cơm, dưa leo, cà rốt, bơ.',
    '{}'::text[],85000,190)
-) as v(slug, sec_en, sec_vn, name_en, name_vn, desc_en, desc_vn, dietary, price, ord)
+) as v(slug, sec_en, sec_vn, name_en, name_vn, desc_en, desc_vn, dietary, cost, ord)
 on conflict (venue_id, slug) do update
   set section_en     = excluded.section_en,
       section_vn     = excluded.section_vn,
@@ -162,14 +177,18 @@ on conflict (venue_id, slug) do update
       description_en = excluded.description_en,
       description_vn = excluded.description_vn,
       dietary        = excluded.dietary,
+      cost_vnd       = excluded.cost_vnd,
       price_vnd      = excluded.price_vnd,
       display_order  = excluded.display_order;
 
 -- Read it back and check it against the reply before anyone serves from it.
-select v.name as venue,
-       coalesce(i.section_en,'—') as section,
+-- The uplift is printed, not asserted: anything under 20.0% is a bug.
+select coalesce(i.section_en,'—') as section,
        i.name_en, i.name_vn,
-       to_char(i.price_vnd, 'FM999,999,999') || '₫' as price
+       to_char(i.cost_vnd, 'FM999,999,999') || '₫'  as they_charge_us,
+       to_char(i.price_vnd,'FM999,999,999') || '₫'  as member_pays,
+       round(((i.price_vnd::numeric / i.cost_vnd) - 1) * 100, 1) || '%' as uplift,
+       case when i.price_vnd % 1000 = 0 then 'ok' else '⚠ not a round thousand' end as rounding
   from public.menu_items i
   join public.menu_venues v on v.id = i.venue_id
  where v.slug = 'livannah'

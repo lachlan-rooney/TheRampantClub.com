@@ -208,5 +208,12 @@ export function arriving(iso: string | null, lang: 'en' | 'vn'): string | null {
 export function price(v: number | null | undefined): string | null {
   if (v === null || v === undefined) return null
   if (v >= 1_000_000) return new Intl.NumberFormat('vi-VN').format(v) + ' VND'
-  return Math.round(v / 1000) + 'K VND'
+  // A price that is NOT a whole thousand is printed in full. The K form would
+  // round it — 118,800 would read as "119K" while the till charged 118,800 —
+  // and a menu that disagrees with the bill by two hundred dong is worse than
+  // an ugly number. Prices are written as round thousands everywhere they are
+  // set, so this is a guard against a future one that is not, rather than a
+  // case that exists today.
+  if (v % 1000 !== 0) return new Intl.NumberFormat('vi-VN').format(v) + ' VND'
+  return v / 1000 + 'K VND'
 }

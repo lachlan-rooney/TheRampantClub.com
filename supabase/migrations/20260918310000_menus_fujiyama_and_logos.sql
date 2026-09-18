@@ -51,12 +51,13 @@ update public.menu_venues set logo_path = '/images/partners/rico-taco-600.webp'
 update public.menu_venues set logo_path = '/images/partners/hoa-tuc-600.webp'
  where slug = 'hoa-tuc' and logo_path is null;
 
--- ── Iberico is live ────────────────────────────────────────────────────────
--- Confirmed by the owner. Belt and braces: it must have no arriving date, or
--- its menu sits under a "coming soon" line.
+-- ── Iberico and FUJIYAMA are live ──────────────────────────────────────────
+-- Both confirmed by the owner. A restaurant with a menu and a date would show
+-- its food under a "coming soon" line, which is not what either of these is.
+-- That leaves Le Corto, El Gaucho, Hoa Tuc and Rico Taco arriving on the 23rd.
 update public.menu_venues
    set arriving_on = null, is_placeholder = false
- where slug = 'iberico';
+ where slug in ('iberico', 'fujiyama-sushi');
 
 -- ── The invented dishes, switched off ──────────────────────────────────────
 -- El Gaucho's and Le Corto's stand-ins only. Livannah's, Iberico's and the
