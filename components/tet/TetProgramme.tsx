@@ -57,8 +57,12 @@ export default function TetProgramme({
 
   return (
     <PublicPage ground={GROUND} ink={CREAM}>
-      <div style={{ position: 'absolute', top: 24, right: 24, zIndex: 40 }}>
-        <LangToggle tone="light" />
+      {/* THE SWITCH STAYS WITH YOU. It was absolute, so it scrolled away after
+          the masthead — on a page this long that is the same as not having one.
+          And it was tone="light", which is the control for a CREAM page: on
+          this ground it all but disappeared. */}
+      <div style={{ position: 'fixed', top: 18, right: 18, zIndex: 8000 }}>
+        <LangToggle />
       </div>
 
       <Masthead
@@ -78,7 +82,7 @@ export default function TetProgramme({
       </Masthead>
 
       {countdown && <NextGate cd={countdown} t={t} />}
-      {countdown && <Dates cd={countdown} t={t} />}
+      {countdown && <Dates cd={countdown} t={t} locale={vn ? 'vi-VN' : 'en-GB'} />}
 
       {/* ── THE BLENDS ────────────────────────────────────────────────── */}
       <section className="pk-wrap pk-section">
@@ -253,13 +257,16 @@ function NextGate({ cd, t }: { cd: Countdown; t: (en: string, vn: string) => str
   )
 }
 
-function Dates({ cd, t }: { cd: Countdown; t: (en: string, vn: string) => string }) {
+function Dates({ cd, t, locale }: { cd: Countdown; t: (en: string, vn: string) => string; locale: string }) {
   const fetchedAt = useMemo(() => Date.now(), [])
   const [now, setNow] = useState(fetchedAt)
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(id) }, [])
 
+  // A date is not language-neutral: "31 October 2026" reads as "31 tháng 10,
+  // 2026" to the buyer this offer is mostly aimed at. The dates were the last
+  // English left on a page that otherwise switched.
   const fmt = (iso: string) =>
-    new Date(iso + 'T12:00:00+07:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' })
+    new Date(iso + 'T12:00:00+07:00').toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' })
 
   const line = (date: string) => {
     const r = timeRemaining(date, cd.now, now, fetchedAt)

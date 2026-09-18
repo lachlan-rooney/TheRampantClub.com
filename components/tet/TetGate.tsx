@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useLang } from '@/lib/lang'
+import LangToggle from '@/components/LangToggle'
 
 // THE DOOR, AS A VISITOR SEES IT. One screen: confirm 18 or over, type the
 // password. Both in one submission, because the server requires both and two
@@ -57,6 +58,12 @@ export default function TetGate() {
 
   return (
     <main style={wrap}>
+      {/* The door asks for a password in two languages, so it has to offer the
+          switch as well. A Vietnamese buyer should not have to read English to
+          find out how to read Vietnamese. */}
+      <div style={{ position: 'fixed', top: 18, right: 18 }}>
+        <LangToggle />
+      </div>
       <div style={{ width: 'min(420px, 100%)' }}>
         <div style={eyebrow}>The Rampant Club · Duncan Taylor</div>
         <h1 style={title}>Tết Đinh Mùi 2027</h1>

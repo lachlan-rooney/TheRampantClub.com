@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useLang } from '@/lib/lang'
+import LangToggle from '@/components/LangToggle'
 
 // THE FORM, IN THE SITE'S LANGUAGE.
 //
@@ -136,7 +137,10 @@ export default function TetEnquiry({
         .tq-close:hover { color: #E5D4C2; }
       ` }} />
 
-      <div style={{ position: 'absolute', top: 18, right: 20 }}>
+      {/* The sheet covers the page, and the switch with it — so it carries its
+          own, or a buyer who wants the other language has to abandon the form. */}
+      <div style={{ position: 'absolute', top: 16, right: 18, display: 'flex', gap: 14, alignItems: 'center' }}>
+        <LangToggle compact />
         <button onClick={onClose} className="tq-close">{t('Close', 'Đóng')} ✕</button>
       </div>
 
