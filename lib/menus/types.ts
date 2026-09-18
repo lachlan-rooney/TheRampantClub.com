@@ -60,6 +60,11 @@ export interface MenuVenueFields {
 export interface MenuPlate extends MenuVenueFields {
   id: string
   slug: string
+  /** Optional named group within one restaurant — Livannah run a skewer list
+   *  and a nori taco list. Null where a restaurant offers a single list, and
+   *  the board draws no heading in that case. */
+  section_en: string | null
+  section_vn: string | null
   name_en: string
   name_vn: string | null
   description_en: string | null

@@ -123,12 +123,8 @@ export default function MenuBoard({
             <section key={v.slug} className="mb-venue">
               <VenueHead v={v} lang={lang} />
               {service === 'plates'
-                ? <ul className="mb-list">
-                    {v.plates.map(p => (
-                      <PlateRow key={p.id} p={p} open={open === p.id}
-                                onToggle={() => setOpen(o => (o === p.id ? null : p.id))} />
-                    ))}
-                  </ul>
+                ? <PlateList plates={v.plates} lang={lang} open={open}
+                             onToggle={id => setOpen(o => (o === id ? null : id))} />
                 : v.sets.map(s => <SetMenu key={s.id} s={s} />)}
             </section>
           ))}
@@ -160,6 +156,47 @@ function VenueHead({ v, lang }: { v: MenuVenueGroup; lang: string }) {
         : <h2 className="mb-vname">{v.name}</h2>}
       {tagline && <div className="mb-vtag">{tagline}</div>}
     </header>
+  )
+}
+
+// ── A restaurant's dishes, grouped if it offers more than one list ──────────
+// Livannah run a skewer menu and a nori taco menu; without headings the two
+// would read as one long list under one logo and a member would never know the
+// tacos were a thing. A restaurant with a single list gets NO heading — one
+// heading over one group is furniture, not information.
+
+function PlateList({ plates, lang, open, onToggle }: {
+  plates: MenuPlate[]; lang: string
+  open: string | null; onToggle: (id: string) => void
+}) {
+  const l = lang as 'en' | 'vn'
+  const groups = useMemo(() => {
+    const out: { key: string; label: string; items: MenuPlate[] }[] = []
+    for (const p of plates) {
+      const label = pick(l, p.section_en, p.section_vn)
+      const key = p.section_en ?? ''
+      const last = out[out.length - 1]
+      if (last && last.key === key) last.items.push(p)
+      else out.push({ key, label, items: [p] })
+    }
+    return out
+  }, [plates, l])
+
+  const headed = groups.length > 1
+
+  return (
+    <>
+      {groups.map(g => (
+        <div key={g.key} className={headed ? 'mb-group' : undefined}>
+          {headed && g.label && <h3 className="mb-section">{g.label}</h3>}
+          <ul className="mb-list">
+            {g.items.map(p => (
+              <PlateRow key={p.id} p={p} open={open === p.id} onToggle={() => onToggle(p.id)} />
+            ))}
+          </ul>
+        </div>
+      ))}
+    </>
   )
 }
 
@@ -341,6 +378,15 @@ const CSS = `
 .mb-vtag { font-family: var(--mono); font-size: 10px; letter-spacing: .16em;
            text-transform: uppercase; opacity: .5; margin-top: 9px; }
 .mb-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* A named list inside one restaurant. Quieter than the venue's own heading —
+   it is a subdivision, not a second restaurant — but in the serif, so it reads
+   as a heading rather than as another dish. */
+.mb-group + .mb-group { margin-top: 26px; }
+.mb-section { font-family: var(--serif); font-size: 15px; font-weight: 500;
+              letter-spacing: .16em; text-transform: uppercase;
+              color: var(--gold); opacity: .85; margin: 0 0 8px; }
+.mb.is-kiosk .mb-section { font-size: 17px; }
 
 /* THE LIST. Mono names, price in its own right-aligned column, nothing between
    the rows — the printed card's layout, and the reason it reads like a menu. */

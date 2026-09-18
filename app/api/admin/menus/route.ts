@@ -33,7 +33,8 @@ const FIELDS: Record<string, string[]> = {
     'display_order', 'is_active', 'is_placeholder',
   ],
   item: [
-    'venue_id', 'slug', 'name_en', 'name_vn', 'description_en', 'description_vn',
+    'venue_id', 'slug', 'section_en', 'section_vn',
+    'name_en', 'name_vn', 'description_en', 'description_vn',
     'allergens', 'dietary', 'allergens_confirmed', 'photo_path',
     'price_vnd', 'cost_vnd', 'lead_time_minutes',
     'availability_en', 'availability_vn',
