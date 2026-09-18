@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLang } from '@/lib/lang'
 
 // The gated kiosk shell (device session already verified by middleware). Layer 2:
 // the staff picker (attribution). Tap your name → PIN → you're the acting staff.
@@ -14,6 +15,7 @@ const IDLE_MS = 180_000   // 3 min idle → back to the picker
 interface Staff { id: string; display_name: string; role_title?: string | null }
 
 export default function KioskStaff() {
+  const { t } = useLang()
   const [me, setMe] = useState<Staff | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [roster, setRoster] = useState<Staff[]>([])
@@ -55,22 +57,82 @@ export default function KioskStaff() {
 
   if (!loaded) return <Center><div style={muted}>…</div></Center>
 
-  // ── Acting: the (empty, secure) shell ──
+  // ── Acting: the floor screen ───────────────────────────────────────────
+  // This was an empty "Phase 1 secure shell". It now carries the food-order
+  // process, which is the first thing a staff member actually needs from it.
+  //
+  // ⚠ IT IS HERE AND NOWHERE ELSE, DELIBERATELY. Two lines of it are not for
+  //   members: the club's 20% margin, and which card pays for the food. This
+  //   screen is behind a staff PIN and drops back to the picker after three
+  //   minutes untouched, which is the only reason those lines are on a tablet
+  //   that stands in a public room at all. Nothing here may be moved to the
+  //   board, the menu or the members' portal.
+  //
+  // Bilingual, because the process names Miss Lan and the kitchen team — the
+  // people who most need to read it are not the people most likely to read
+  // English.
   if (me) return (
-    <Center>
-      <div style={{ textAlign: 'center' }}>
+    <Scroll>
+      <div style={{ width: 'min(760px, 100%)', margin: '0 auto' }}>
         <div style={kicker}>The Rampant Club · Floor</div>
-        <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 30, color: '#E5D4C2', margin: '12px 0 4px' }}>Good evening, {me.display_name}.</div>
-        <div style={muted}>The floor is yours. The briefing, the Accord and the Continuum arrive here next.</div>
-        <div style={shellNote}>Phase 1 · secure shell · the Ritual surfaces land in Phase 2</div>
-        <button onClick={logout} style={switchBtn}>I’m done · switch user</button>
-        {/* The hand-back. Exiting staff mode returns the tablet to the BOARD, which
-            is where a member picks it up — and where they enter their own PIN. */}
-        <button onClick={async () => { await fetch('/api/kiosk/staff/logout', { method: 'POST' }); window.location.href = '/kiosk/board' }} style={boardBtn}>
-          Hand over · back to the board
-        </button>
+        <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 28, color: '#E5D4C2', margin: '12px 0 26px' }}>
+          {t('Good evening', 'Chào buổi tối')}, {me.display_name}.
+        </div>
+
+        <div style={procHead}>{t('Taking a food order', 'Quy trình nhận đơn món ăn')}</div>
+        <ol style={steps}>
+          {[
+            [t('Take the order from the guest — work from the choices they confirmed on the tablet, not from memory.',
+               'Nhận yêu cầu từ khách — theo đúng các món khách đã xác nhận trên máy tính bảng, không dựa vào trí nhớ.')],
+            [t('Order from the restaurant on Zalo, or call them.',
+               'Đặt món với nhà hàng qua Zalo, hoặc gọi điện.')],
+            [t('Collect it — or ask Miss Lan to go for it.',
+               'Đi lấy món — hoặc nhờ chị Lan đi lấy giúp.')],
+            [t('Pay with the Silver credit card (Rượu Ngon). Get the red invoice using our company details.',
+               'Thanh toán bằng thẻ tín dụng Silver (Rượu Ngon). Lấy hoá đơn đỏ theo thông tin công ty.')],
+            [t('Plate it up nicely in the kitchen.',
+               'Bày biện món ăn đẹp mắt tại bếp.')],
+            [t('Present it to the member.',
+               'Phục vụ khách.')],
+            [t('Miss Châu invoices them next week. Nothing is paid at the table.',
+               'Chị Châu sẽ xuất hoá đơn vào tuần sau. Khách không thanh toán tại bàn.')],
+          ].map(([line], i) => (
+            <li key={i} style={step}>
+              <span style={stepNo}>{i + 1}</span>
+              <span>{line}</span>
+            </li>
+          ))}
+        </ol>
+
+        <div style={noteBox}>
+          <div style={noteLine}>
+            <b style={noteB}>{t('Do not add anything to the price.', 'Không cộng thêm gì vào giá.')}</b>{' '}
+            {t('The club’s 20% is already built into what the tablet shows.',
+               'Giá hiển thị trên máy tính bảng đã bao gồm 20% của câu lạc bộ.')}
+          </div>
+          <div style={noteLine}>
+            <b style={noteB}>{t('The 100,000₫ plating fee is per head, and only if they bring their own food.',
+                                 'Phí bày biện 100.000₫/người, chỉ áp dụng khi khách mang đồ ăn riêng.')}</b>{' '}
+            {t('A member who orders through us does not pay it.',
+               'Khách đặt món qua câu lạc bộ thì không phải trả phí này.')}
+          </div>
+          <div style={{ ...noteLine, opacity: .6 }}>
+            {t('This process is being refined next week.', 'Quy trình sẽ được hoàn thiện vào tuần sau.')}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 30 }}>
+          <button onClick={logout} style={switchBtn}>{t('I’m done · switch user', 'Xong · đổi người')}</button>
+          {/* The hand-back. Exiting staff mode returns the tablet to the BOARD,
+              which is where a member picks it up. */}
+          <button onClick={async () => { await fetch('/api/kiosk/staff/logout', { method: 'POST' }); window.location.href = '/kiosk/board' }} style={boardBtn}>
+            {t('Hand over · back to the board', 'Bàn giao · về màn hình chính')}
+          </button>
+        </div>
+        <div style={shellNote}>{t('Staff only. Do not leave this screen open on the floor.',
+                                   'Chỉ dành cho nhân viên. Không để màn hình này mở trên sàn.')}</div>
       </div>
-    </Center>
+    </Scroll>
   )
 
   // ── PIN pad ──
@@ -117,6 +179,12 @@ export default function KioskStaff() {
   )
 }
 
+/** The process is longer than a screen on a tablet, so this one scrolls rather
+ *  than centring and clipping. */
+function Scroll({ children }: { children: React.ReactNode }) {
+  return <div style={{ minHeight: 'calc(100dvh - var(--kiosk-bar, 0px))', padding: '36px 24px 40px', overflowY: 'auto' }}>{children}</div>
+}
+
 function Center({ children }: { children: React.ReactNode }) {
   // Less the bottom bar (--kiosk-bar, KioskBar), so the keypad is never under it.
   return <div style={{ minHeight: 'calc(100dvh - var(--kiosk-bar, 0px))', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>{children}</div>
@@ -127,6 +195,13 @@ const muted: React.CSSProperties = { fontFamily: MONO, fontSize: 13, color: '#B2
 const shellNote: React.CSSProperties = { fontFamily: MONO, fontSize: 10, color: '#7E7864', letterSpacing: '0.06em', marginTop: 24 }
 const switchBtn: React.CSSProperties = { marginTop: 28, background: 'transparent', border: '1px solid rgba(178,170,152,0.3)', borderRadius: 24, padding: '12px 28px', fontFamily: MONO, fontSize: 13, color: '#B2AA98', cursor: 'pointer' }
 const boardBtn: React.CSSProperties = { display: 'block', margin: '14px auto 0', background: 'transparent', border: '1px solid rgba(229,212,194,0.28)', borderRadius: 8, padding: '10px 20px', fontFamily: MONO, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#E5D4C2', cursor: 'pointer' }
+const procHead: React.CSSProperties = { fontFamily: MONO, fontSize: 12, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#D4B85A', paddingBottom: 12, borderBottom: '1px solid rgba(229,212,194,0.16)' }
+const steps: React.CSSProperties = { listStyle: 'none', margin: '18px 0 0', padding: 0 }
+const step: React.CSSProperties = { display: 'flex', gap: 16, alignItems: 'flex-start', padding: '11px 0', fontFamily: MONO, fontSize: 15, lineHeight: 1.65, color: '#E5D4C2' }
+const stepNo: React.CSSProperties = { flex: '0 0 auto', width: 26, color: '#D4B85A', fontSize: 15 }
+const noteBox: React.CSSProperties = { marginTop: 26, padding: '16px 18px', border: '1px solid rgba(212,184,90,0.35)', borderRadius: 3 }
+const noteLine: React.CSSProperties = { fontFamily: MONO, fontSize: 13, lineHeight: 1.8, color: '#E5D4C2', marginBottom: 8 }
+const noteB: React.CSSProperties = { color: '#D4B85A', fontWeight: 400 }
 const grid: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14 }
 const nameBtn: React.CSSProperties = { padding: '24px 16px', background: 'rgba(229,212,194,0.04)', border: '1px solid rgba(212,184,90,0.25)', borderRadius: 14, cursor: 'pointer' }
 const backBtn: React.CSSProperties = { background: 'transparent', border: 'none', color: '#B2AA98', fontFamily: MONO, fontSize: 12, cursor: 'pointer', marginBottom: 8 }
