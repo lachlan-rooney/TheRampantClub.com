@@ -35,8 +35,9 @@ import {
 // it read as a dark blob rather than as a flourish, which is the difference
 // between a printed page that ends and a web page that just stops.
 //
-// Two services, and the switch between them is the first thing on the screen:
-// PLATES go anywhere in the club; DINING is set menus, downstairs, sat down.
+// Three services, and the switch between them is the first thing on the screen:
+// PLATES go anywhere in the club, THE BAR is the club's own drinks, and DINING
+// is set menus, downstairs, sat down.
 //
 // A dish opens in place — nothing navigates, nothing opens a modal. On a tablet
 // standing on a table during service, a modal is something a member has to
@@ -47,7 +48,7 @@ import {
 // has not built.
 // ═══════════════════════════════════════════════════════════════════════════
 
-type Service = 'plates' | 'dining'
+type Service = 'plates' | 'cocktails' | 'dining'
 
 export default function MenuBoard({
   venues, variant = 'member', masthead = false,
@@ -69,9 +70,20 @@ export default function MenuBoard({
   // opens on the 23rd is news, not an option, and should not sit between two
   // kitchens that are actually cooking.
   const serving = useMemo(() => venues.filter(v => !isArriving(v.arriving_on, l)), [venues, l])
-  const withPlates = useMemo(() => serving.filter(v => v.plates.length), [serving])
+  // The same venues, narrowed to one service each: a restaurant appears under
+  // Plates only if it has plates, and the bar under Cocktails only if it has
+  // drinks. Filtering the DISHES rather than tagging the venue means one
+  // kitchen could one day do both without anything here changing.
+  const byService = (kind: 'plate' | 'cocktail') =>
+    serving
+      .map(v => ({ ...v, plates: v.plates.filter(p => p.service === kind) }))
+      .filter(v => v.plates.length)
+  const withPlates = useMemo(() => byService('plate'), [serving])
+  const withCocktails = useMemo(() => byService('cocktail'), [serving])
   const withSets = useMemo(() => serving.filter(v => v.sets.length), [serving])
-  const shown = service === 'plates' ? withPlates : withSets
+  const shown = service === 'plates' ? withPlates
+              : service === 'cocktails' ? withCocktails
+              : withSets
 
   // THE LINE-UP. One heading and the logos side by side, rather than four
   // near-identical blocks each repeating the same date down the page.
@@ -116,6 +128,13 @@ export default function MenuBoard({
             {t('Plates', 'Món nhỏ')}
             <span className="mb-tab-sub">{t('anywhere in the club', 'phục vụ khắp câu lạc bộ')}</span>
           </button>
+          <button role="tab" aria-selected={service === 'cocktails'}
+                  className={`mb-tab ${service === 'cocktails' ? 'is-on' : ''}`}
+                  onClick={() => { setService('cocktails'); setOpen(null) }}>
+            {t('The Bar', 'Quầy bar')}
+            <span className="mb-tab-sub">{t('cocktails and soft drinks', 'cocktail và nước giải khát')}</span>
+          </button>
+
           {/* The owner's own framing, and a better one than mine: "set menus,
               sat down" describes what it looks like; "private catering for
               large groups" says what it is FOR, which is what a member is
@@ -132,6 +151,9 @@ export default function MenuBoard({
           {service === 'plates'
             ? t('Quick-order small plates to share, sent up from the kitchens above us and plated here. Ask any of the team and it comes to wherever you are sitting.',
                 'Món nhỏ gọi nhanh để dùng chung, được gửi từ các nhà bếp phía trên và bày biện tại đây. Chỉ cần gọi nhân viên, món sẽ được mang đến tận chỗ quý vị ngồi.')
+            : service === 'cocktails'
+            ? t('Mixed at the Library Bar and carried to you. The whisky list is a separate thing entirely — ask for it.',
+                'Được pha tại Library Bar và mang đến tận nơi. Danh sách whisky là một phần riêng — vui lòng hỏi nhân viên.')
             : t('Private catering for larger groups, cooked in our dining room and served at the table downstairs. Not available elsewhere in the club, and arranged in advance.',
                 'Tiệc riêng cho nhóm đông, được nấu tại phòng ăn và phục vụ tại bàn ở tầng dưới. Không phục vụ ở khu vực khác, và cần đặt trước.')}
         </p>
@@ -146,8 +168,15 @@ export default function MenuBoard({
         <div className="mb-venues">
           {shown.map(v => (
             <section key={v.slug} className="mb-venue">
-              <VenueHead v={v} lang={lang} />
-              {service === 'plates'
+              {/* The club's own name is suppressed where it would be the only
+                  heading on the tab: the masthead has already said it on the
+                  tablet, and on a phone it sits inside the club's own portal.
+                  The tagline still shows, which is where "Complimentary this
+                  evening" lives. A PARTNER's name is never suppressed — a
+                  member has to know whose kitchen a dish came out of. */}
+              <VenueHead v={v} lang={lang}
+                         hideName={v.kind === 'house' && shown.length === 1} />
+              {service !== 'dining'
                 ? <PlateList plates={v.plates} lang={lang} open={open}
                              onToggle={id => setOpen(o => (o === id ? null : id))} />
                 : v.sets.map(s => <SetMenu key={s.id} s={s} />)}
@@ -188,9 +217,16 @@ export default function MenuBoard({
 // club is plating from several kitchens. The logo does the work where there is
 // one, and a partner who has not sent artwork still gets a proper heading.
 
-function VenueHead({ v, lang }: { v: MenuVenueGroup; lang: string }) {
+function VenueHead({ v, lang, hideName = false }: {
+  v: MenuVenueGroup; lang: string; hideName?: boolean
+}) {
   const logo = mediaUrl(v.logo_path)
   const tagline = pick(lang as 'en' | 'vn', v.tagline_en, v.tagline_vn)
+  if (hideName) {
+    return tagline
+      ? <header className="mb-vhead"><div className="mb-vtag is-lead">{tagline}</div></header>
+      : null
+  }
   return (
     <header className="mb-vhead">
       {logo
@@ -425,6 +461,11 @@ const CSS = `
             letter-spacing: .03em; }
 .mb-vtag { font-family: var(--mono); font-size: 10px; letter-spacing: .16em;
            text-transform: uppercase; opacity: .5; margin-top: 9px; }
+/* Standing alone where the venue name is suppressed, it has to carry the line
+   on its own — so it is gold and readable rather than a whisper under a name
+   that is not there. */
+.mb-vtag.is-lead { margin-top: 0; font-size: 11px; opacity: 1; color: var(--gold); }
+.mb.is-kiosk .mb-vtag.is-lead { font-size: 13px; }
 .mb-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
 /* A named list inside one restaurant. Quieter than the venue's own heading —
@@ -591,7 +632,10 @@ const CSS = `
 }
 
 @media (max-width: 600px) {
-  .mb-tab { font-size: 16px; }
+  /* Three tabs where there were two: the label shrinks rather than wrapping
+     "The Dining Room" onto a third line and shoving the menu down the page. */
+  .mb-tab { font-size: 13.5px; padding: 12px 3px 14px; }
+  .mb-tab-sub { font-size: 8.5px; letter-spacing: .08em; }
   .mb-name { font-size: 14px; }
   .mb-price { font-size: 13px; min-width: 88px; }
   .mb-row { gap: 14px; }

@@ -38,6 +38,7 @@ interface Venue {
 }
 interface Item {
   id: string; venue_id: string; slug: string
+  service: 'plate' | 'cocktail'
   section_en: string | null; section_vn: string | null
   name_en: string; name_vn: string | null
   description_en: string | null; description_vn: string | null
@@ -475,9 +476,18 @@ function ItemForm({ it, first, last, onMove, onSave, onDelete, onToast }: {
 
       {open && (
         <>
+          {/* Which tab it appears under. A dish added from this screen defaults
+              to Plates; the bar's drinks are the exception, not the rule. */}
+          <div className="am-checks" style={{ marginBottom: 14 }}>
+            <Check label="This is a drink (shows under The Bar)"
+                   on={d.service === 'cocktail'}
+                   onChange={b => set('service')(b ? 'cocktail' : 'plate')} />
+          </div>
+
           {/* A named list inside this restaurant — Livannah have skewers and
-              nori tacos. Leave both blank where there is only one list; a
-              heading over a single group is clutter. */}
+              nori tacos, the bar has Cocktails and Non-Alcoholic. Leave both
+              blank where there is only one list; a heading over a single group
+              is clutter. */}
           <div className="am-row2">
             <Field label="Section (EN)" value={d.section_en} onChange={set('section_en')}
                    hint="optional, e.g. Nori Tacos" />
@@ -520,6 +530,7 @@ function ItemForm({ it, first, last, onMove, onSave, onDelete, onToast }: {
 
           <div className="am-actions">
             <button className="am-save" onClick={() => onSave({
+              service: d.service,
               section_en: d.section_en, section_vn: d.section_vn,
               name_en: d.name_en, name_vn: d.name_vn,
               description_en: d.description_en, description_vn: d.description_vn,
