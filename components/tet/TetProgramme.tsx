@@ -7,6 +7,8 @@ import { PublicPage, Masthead, SectionHead, BleedImage, Details, Cta, Rise, MONO
 import { timeRemaining } from '@/lib/tet/queries'
 import { vnd, type BlendBoardRow, type CaskBoardRow, type Countdown, type TetCategory, type VolumeTier } from '@/lib/tet/types'
 import TetEnquiry, { type EnquiryTarget } from '@/components/tet/TetEnquiry'
+import TetTiers from '@/components/tet/TetTiers'
+import SleeveStudio, { type SleeveDesign } from '@/components/tet/SleeveStudio'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE TẾT PROGRAMME — built from the public kit, like the rest of the site.
@@ -45,6 +47,7 @@ export default function TetProgramme({
   const vn = lang === 'vn'
   const [strength, setStrength] = useState<Strength>('50')
   const [target, setTarget] = useState<EnquiryTarget | null>(null)
+  const [design, setDesign] = useState<SleeveDesign | null>(null)
 
   const blendCat = categories.find(c => c.kind === 'blend')
   const caskCat = categories.find(c => c.kind === 'cask')
@@ -74,6 +77,7 @@ export default function TetProgramme({
         <Cta onClick={openBlend}>{t('Register interest', 'Đăng ký quan tâm')}</Cta>
       </Masthead>
 
+      {countdown && <NextGate cd={countdown} t={t} />}
       {countdown && <Dates cd={countdown} t={t} />}
 
       {/* ── THE BLENDS ────────────────────────────────────────────────── */}
@@ -102,24 +106,36 @@ export default function TetProgramme({
         </div>
 
         {tiers.length > 0 && (
-          <div style={{ marginTop: 44 }}>
-            <Rise><div className="pk-eyebrow">{t('The more you take', 'Đặt càng nhiều')}</div></Rise>
-            <div style={{ marginTop: 14 }}>
-              <Details rows={tiers.map(tier => ({
-                label: vn ? tier.label_vn : tier.label_en,
-                value: tier.discount_pct > 0
-                  ? `${Math.round(tier.discount_pct * 100)}% ${t('off the bottle price', 'giảm giá mỗi chai')}`
-                  : t('list price', 'giá niêm yết'),
-              }))} />
-            </div>
-            <p className="pk-meta" style={{ marginTop: 14, maxWidth: 560, lineHeight: 1.9 }}>
-              {t('The tier is set by the total across all three, so a mixed order still climbs. Sleeves are printed with your company’s name; the setup is waived from 250 bottles.',
-                 'Mức chiết khấu tính trên tổng số chai của cả ba dòng, nên đơn hàng pha trộn vẫn được nâng mức. Hộp in tên công ty; miễn phí thiết kế từ 250 chai.')}
+          <div style={{ marginTop: 52 }}>
+            <TetTiers tiers={tiers} provisional={provisional} />
+            <p className="pk-meta" style={{ marginTop: 22, maxWidth: 560, lineHeight: 1.9 }}>
+              {t('The tier is set by the total across all three, so a mixed order still climbs. Sleeves are printed with your company’s name.',
+                 'Mức chiết khấu tính trên tổng số chai của cả ba dòng, nên đơn hàng pha trộn vẫn được nâng mức. Hộp in tên công ty.')}
             </p>
           </div>
         )}
 
         <Cta onClick={openBlend}>{t('Register interest', 'Đăng ký quan tâm')}</Cta>
+      </section>
+
+      {/* ── THE SLEEVE STUDIO ─────────────────────────────────────────
+          The question a buyer is actually asking is "what will it look like
+          with our logo on it". Prose cannot answer that. */}
+      <section className="pk-wrap pk-section">
+        <SectionHead
+          eyebrow={t('Make it yours', 'Cá nhân hoá')}
+          title={t('The sleeve', 'Hộp đựng')}
+        />
+        <p className="pk-lede">
+          {t('Every bottle comes in a sleeve printed with your name. Set the colour, drop your logo on it, and write the line that goes underneath.',
+             'Mỗi chai đều có hộp in tên công ty. Chọn màu, tải logo lên, và viết dòng chữ bên dưới.')}
+        </p>
+        <div style={{ marginTop: 44 }}>
+          <SleeveStudio onUse={d => {
+            setDesign(d)
+            setTarget({ kind: 'blend', title: d.company || (blendCat ? (vn ? blendCat.name_vn : blendCat.name_en) : 'Duncan Taylor') })
+          }} />
+        </div>
       </section>
 
       <div style={{ marginTop: 90 }}>
@@ -180,12 +196,62 @@ export default function TetProgramme({
         </p>
       </footer>
 
-      {target && <TetEnquiry target={target} provisional={provisional} onClose={() => setTarget(null)} />}
+      {target && (
+        <TetEnquiry
+          target={target}
+          provisional={provisional}
+          // The design only travels with a blend enquiry: a sleeve is a blend
+          // thing, and attaching it to a cask would promise something the cask
+          // offer does not include.
+          design={target.kind === 'blend' && design ? design : undefined}
+          onClose={() => setTarget(null)}
+        />
+      )}
     </PublicPage>
   )
 }
 
 /* ---------------------------------------------------------------- */
+
+// THE GATE THAT IS ACTUALLY NEXT, COUNTING DOWN.
+// Five dates in a list are a reference; one of them moving is a reason to act
+// today. It ticks every second, corrected for the visitor's own clock, and it
+// names which gate it is — a bare number counting down to nothing in particular
+// is decoration.
+function NextGate({ cd, t }: { cd: Countdown; t: (en: string, vn: string) => string }) {
+  const fetchedAt = useMemo(() => Date.now(), [])
+  const [now, setNow] = useState(fetchedAt)
+  useEffect(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id) }, [])
+
+  const gates = [
+    { label: t('until the casks close', 'đến hạn đặt thùng'), date: cd.cutoffs.cask.date },
+    { label: t('until the artwork must be agreed', 'đến hạn chốt thiết kế'), date: cd.cutoffs.artwork.date },
+    { label: t('until the blends close', 'đến hạn đặt rượu pha trộn'), date: cd.cutoffs.blend.date },
+  ]
+    .map(g => ({ ...g, r: timeRemaining(g.date, cd.now, now, fetchedAt) }))
+    .filter(g => !g.r.past)
+    .sort((a, b) => (a.r.days * 86400 + a.r.hours * 3600 + a.r.minutes * 60 + a.r.seconds)
+                  - (b.r.days * 86400 + b.r.hours * 3600 + b.r.minutes * 60 + b.r.seconds))
+
+  const g = gates[0]
+  if (!g) return null
+  const pad = (n: number) => String(n).padStart(2, '0')
+
+  return (
+    <section className="pk-wrap" style={{ paddingTop: 8 }}>
+      <div style={{ display: 'flex', gap: 18, alignItems: 'baseline', flexWrap: 'wrap',
+                    borderTop: '1px solid rgba(229,212,194,.14)', paddingTop: 22 }}>
+        <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 'clamp(34px,5vw,58px)', lineHeight: 1, color: GOLD, fontVariantNumeric: 'tabular-nums' }}>
+          {g.r.days}
+          <span style={{ fontFamily: MONO, fontSize: 'clamp(13px,1.4vw,16px)', color: CREAM, marginLeft: 8 }}>
+            {t('days', 'ngày')} {pad(g.r.hours)}:{pad(g.r.minutes)}:{pad(g.r.seconds)}
+          </span>
+        </div>
+        <div className="pk-meta" style={{ fontSize: 12.5 }}>{g.label}</div>
+      </div>
+    </section>
+  )
+}
 
 function Dates({ cd, t }: { cd: Countdown; t: (en: string, vn: string) => string }) {
   const fetchedAt = useMemo(() => Date.now(), [])

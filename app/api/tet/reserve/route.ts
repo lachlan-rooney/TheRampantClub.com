@@ -93,6 +93,9 @@ export async function POST(req: Request) {
       bottling_strength: kind === 'cask' ? (targetAbv && targetAbv < 60 ? 'reduced' : 'cask_strength') : null,
       line_items: lines, total_bottles: lines.reduce((s: number, l: { qty?: number }) => s + (Number(l?.qty) || 0), 0) || null,
       message: message || null, source: str(body?.source, 40) || 'tet-page',
+      // The sleeve design, as they left it in the studio. Colour, words and the
+      // storage path of their logo — the conversation, already half had.
+      personalisation: body?.personalisation && typeof body.personalisation === 'object' ? body.personalisation : {},
     }).select('reference').single()
     if (error) return NextResponse.json({ error: 'save_failed', message: error.message }, { status: 500 })
     return NextResponse.json({ mode: 'enquiry', reference: data.reference })

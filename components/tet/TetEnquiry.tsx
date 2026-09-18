@@ -25,11 +25,31 @@ export interface EnquiryTarget {
   target_abv?: number | null
 }
 
+/** What the sleeve studio hands over. The file is uploaded here, at the moment
+ *  the buyer actually sends something — never while they are still playing. */
+export interface EnquiryDesign {
+  sleeve_hex: string
+  text_hex: string
+  company: string
+  message: string
+  foil: boolean
+  logo_preview?: string
+  logo_file?: File
+}
+
+const fileToDataUrl = (f: File) => new Promise<string>((res, rej) => {
+  const r = new FileReader()
+  r.onload = () => res(String(r.result))
+  r.onerror = () => rej(new Error('read failed'))
+  r.readAsDataURL(f)
+})
+
 export default function TetEnquiry({
-  target, provisional, onClose,
+  target, provisional, design, onClose,
 }: {
   target: EnquiryTarget
   provisional: boolean
+  design?: EnquiryDesign
   onClose: () => void
 }) {
   const { t, lang } = useLang()
@@ -59,11 +79,34 @@ export default function TetEnquiry({
     if (busy || !ready) return
     setBusy(true); setErr('')
     try {
+      // The logo goes up first, and only now. If it fails the enquiry still
+      // goes — losing a whole enquiry over an image would be the wrong trade,
+      // and the design is recorded either way so we know to ask for the file.
+      let logo_path: string | null = null
+      if (design?.logo_file) {
+        try {
+          const data_url = await fileToDataUrl(design.logo_file)
+          const up = await fetch('/api/tet/artwork', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data_url }),
+          })
+          const uj = await up.json().catch(() => ({}))
+          if (up.ok) logo_path = uj.path
+        } catch { /* the enquiry is worth more than the file */ }
+      }
+
+      const personalisation = design ? {
+        sleeve_hex: design.sleeve_hex, text_hex: design.text_hex,
+        company: design.company, message: design.message, foil: design.foil,
+        logo_path, logo_filename: design.logo_file?.name ?? null,
+      } : undefined
+
       const r = await fetch('/api/tet/reserve', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form, kind: target.kind, cask_ref: target.cask_ref ?? null,
           target_abv: target.target_abv ?? null, locale: lang, source: 'tet-page',
+          ...(personalisation ? { personalisation } : {}),
         }),
       })
       const j = await r.json().catch(() => ({}))
@@ -129,6 +172,31 @@ export default function TetEnquiry({
                 : t('This holds it while we prepare your invoice. Nothing is charged here.',
                     'Thao tác này giữ chỗ trong khi chúng tôi chuẩn bị hóa đơn. Không có khoản thanh toán nào tại đây.')}
             </p>
+
+            {/* What they designed, so they can see it is coming with them. */}
+            {design && (
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 26 }}>
+                <div style={{
+                  width: 54, height: 82, borderRadius: 4, background: design.sleeve_hex,
+                  border: '1px solid rgba(229,212,194,.18)', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0,
+                }}>
+                  {design.logo_preview
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    ? <img src={design.logo_preview} alt="" style={{ maxWidth: '78%', maxHeight: '70%', objectFit: 'contain' }} />
+                    : <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 10, color: design.text_hex, opacity: .8, padding: 4, textAlign: 'center' }}>
+                        {design.company || '—'}
+                      </span>}
+                </div>
+                <div className="pk-meta" style={{ lineHeight: 1.8 }}>
+                  {t('Your sleeve comes with this enquiry', 'Thiết kế hộp sẽ được gửi kèm')}
+                  <br />
+                  <span style={{ opacity: .6 }}>
+                    {design.sleeve_hex}{design.logo_file ? ` · ${design.logo_file.name}` : ` · ${t('no logo yet', 'chưa có logo')}`}
+                  </span>
+                </div>
+              </div>
+            )}
 
             <form onSubmit={submit} style={{ marginTop: 34 }}>
               <input ref={first} className="tq-field" value={form.company_name} onChange={set('company_name')}
