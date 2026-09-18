@@ -26,8 +26,9 @@ values
   ('cure-and-pickle', 'Cure & Pickle', 'partner',
    null, null, 15, false),
 
+  -- No tagline: their logo already reads "ARGENTINIAN STEAKHOUSE" under the bull.
   ('el-gaucho', 'El Gaucho', 'partner',
-   'Argentinian steakhouse', 'Nhà hàng bít tết Argentina', 20, true),
+   null, null, 20, true),
 
   -- No tagline: their logo already reads "WINE DINING" under the wordmark, so
   -- a tagline beneath it would print the same words twice.
@@ -47,6 +48,8 @@ update public.menu_venues set logo_path = '/images/partners/cure-and-pickle-600.
  where slug = 'cure-and-pickle' and logo_path is null;
 update public.menu_venues set logo_path = '/images/partners/le-corto-600.webp'
  where slug = 'le-corto' and logo_path is null;
+update public.menu_venues set logo_path = '/images/partners/el-gaucho-600.webp'
+ where slug = 'el-gaucho' and logo_path is null;
 
 
 -- ── The one dish we actually serve ─────────────────────────────────────────
