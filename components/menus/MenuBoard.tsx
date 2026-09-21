@@ -248,7 +248,7 @@ export default function MenuBoard({
                 ))}
                 {!count && orderOpen && (
                   <span className="mb-tray-line is-quiet">
-                    {t('Your order is with the team.', 'Yêu cầu của quý vị đã được chuyển cho nhân viên.')}
+                    {t('Your order is written down below.', 'Yêu cầu của quý vị được ghi bên dưới.')}
                   </span>
                 )}
               </div>
@@ -263,8 +263,8 @@ export default function MenuBoard({
               </div>
             </div>
             <div className="mb-tray-note">
-              {t('Nothing is charged here. Confirming it lets the team read it back and get it right.',
-                 'Không có khoản thanh toán nào tại đây. Xác nhận để nhân viên đọc lại và phục vụ đúng yêu cầu.')}
+              {t('Nothing is charged here. Confirm, then press the button on your table to call a server — they place the order for you.',
+                 'Không có khoản thanh toán nào tại đây. Xác nhận, sau đó nhấn nút trên bàn để gọi nhân viên — nhân viên sẽ đặt món giúp quý vị.')}
             </div>
           </div>
         )}

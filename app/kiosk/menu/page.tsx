@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLang } from '@/lib/lang'
 import MenuBoard from '@/components/menus/MenuBoard'
-import { price, type MenuVenueGroup } from '@/lib/menus/types'
+import OrderPanel, { type Order } from '@/components/menus/OrderPanel'
+import { type MenuVenueGroup } from '@/lib/menus/types'
 
 // THE MENU ON THE ROOM TABLET.
 //
@@ -28,18 +29,8 @@ import { price, type MenuVenueGroup } from '@/lib/menus/types'
 
 const IDLE_MS = 4 * 60 * 1000
 
-interface OrderLine {
-  id: string; venue_name: string; name_en: string; name_vn: string | null
-  unit_price_vnd: number; qty: number; line_total_vnd: number
-}
-interface Order {
-  id: string; room: string; status: 'pending' | 'ordered'
-  total_vnd: number; created_at: string; ordered_at: string | null
-  lines: OrderLine[]
-}
-
 export default function KioskMenuPage() {
-  const { t, lang } = useLang()
+  const { t } = useLang()
   const router = useRouter()
   const [venues, setVenues] = useState<MenuVenueGroup[] | null>(null)
   const [printed, setPrinted] = useState<string | null>(null)
@@ -112,51 +103,11 @@ export default function KioskMenuPage() {
         />
       )}
 
-      {/* ── WHAT THE ROOM HAS ASKED FOR ──────────────────────────────────
-          Sits at the foot of the menu where it was built, on the owner's
-          decision. The cost, accepted openly: anyone standing at the tablet
-          can clear it. That is survivable precisely because nothing is
-          charged — clearing loses a request, not money. If it becomes a
-          nuisance in service, this block moves behind the Staff PIN and
-          nothing else changes. */}
+      {/* The panel lives in components/menus/OrderPanel — see the note at the
+          top of that file for why the call-a-server instruction leads it. */}
       {order && (
-        <section className={`km-order ${order.status === 'ordered' ? 'is-placed' : ''}`}>
-          <div className="km-order-head">
-            <span className="km-order-when">
-              {order.status === 'ordered'
-                ? t('Placed with the kitchen', 'Đã chuyển cho nhà bếp')
-                : t('Waiting for the team', 'Đang chờ nhân viên')}
-            </span>
-            <span className="km-order-total">{price(order.total_vnd)}</span>
-          </div>
-
-          <ul className="km-order-lines">
-            {order.lines.map(li => (
-              <li key={li.id}>
-                <span className="km-qty">{li.qty}</span>
-                <span className="km-what">
-                  {lang === 'vn' ? (li.name_vn || li.name_en) : li.name_en}
-                  <span className="km-from">{li.venue_name}</span>
-                </span>
-                <span className="km-line-total">{price(li.line_total_vnd)}</span>
-              </li>
-            ))}
-          </ul>
-
-          <div className="km-order-acts">
-            {order.status === 'pending' && (
-              <button className="km-act is-go" disabled={busy} onClick={() => send('PATCH')}>
-                {t('I have ordered this', 'Tôi đã đặt món này')}
-              </button>
-            )}
-            <button className="km-act" disabled={busy} onClick={() => send('DELETE')}>
-              {t('Clear', 'Xoá')}
-            </button>
-            <span className="km-staffnote">
-              {t('For the team. Nothing here is charged.', 'Dành cho nhân viên. Không có khoản thanh toán nào.')}
-            </span>
-          </div>
-        </section>
+        <OrderPanel order={order} busy={busy}
+                    onPlaced={() => send('PATCH')} onClear={() => send('DELETE')} />
       )}
 
       {/* The room's printed menu, kept but demoted. It opens in a new tab, which
@@ -183,32 +134,4 @@ const CSS = `
               color: rgba(229,212,194,.6); text-decoration: none;
               border-bottom: 1px solid rgba(229,212,194,.3); padding-bottom: 4px; }
 
-.km-order { margin-top: 44px; border: 1px solid rgba(212,184,90,.45);
-            border-radius: 3px; padding: 22px 24px; max-width: 920px; }
-.km-order.is-placed { border-color: rgba(176,193,142,.5); }
-.km-order-head { display: flex; justify-content: space-between; align-items: baseline;
-                 gap: 16px; padding-bottom: 14px; border-bottom: 1px solid rgba(229,212,194,.14); }
-.km-order-when { font-family: ${MONO}; font-size: 12px; letter-spacing: .18em;
-                 text-transform: uppercase; color: #D4B85A; }
-.km-order.is-placed .km-order-when { color: #B0C18E; }
-.km-order-total { font-family: ${MONO}; font-size: 20px; }
-
-.km-order-lines { list-style: none; margin: 14px 0 0; padding: 0; }
-.km-order-lines li { display: flex; align-items: baseline; gap: 18px; padding: 9px 0; }
-.km-qty { font-family: ${MONO}; font-size: 19px; color: #D4B85A; min-width: 34px; }
-.km-what { flex: 1; font-family: ${MONO}; font-size: 18px; line-height: 1.4; }
-.km-from { display: block; font-size: 11px; letter-spacing: .12em;
-           text-transform: uppercase; opacity: .45; margin-top: 3px; }
-.km-line-total { font-family: ${MONO}; font-size: 16px; opacity: .7; white-space: nowrap; }
-
-.km-order-acts { display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-                 margin-top: 20px; padding-top: 18px;
-                 border-top: 1px solid rgba(229,212,194,.14); }
-.km-act { background: none; border: 1px solid rgba(229,212,194,.28); border-radius: 2px;
-          color: #E5D4C2; font-family: ${MONO}; font-size: 13px; letter-spacing: .1em;
-          text-transform: uppercase; padding: 14px 22px; cursor: pointer;
-          -webkit-tap-highlight-color: transparent; }
-.km-act.is-go { background: #B0C18E; border-color: #B0C18E; color: #052E20; }
-.km-act:disabled { opacity: .45; cursor: default; }
-.km-staffnote { font-family: ${MONO}; font-size: 11px; opacity: .42; }
 `
