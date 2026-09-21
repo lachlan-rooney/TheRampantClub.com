@@ -183,7 +183,7 @@ export default function OriginPage() {
           <Rise><h2 className="pk-h2">Membership is by invitation or referral only.</h2></Rise>
           <Rise delay={.1}>
             <p className="pk-lede">
-              We do not advertise. We do not accept applications. If The Rampant Club is for you, we will
+              We do not advertise. We do not currently accept applications. If The Rampant Club is for you, we will
               most likely meet through one of our Lions.
             </p>
           </Rise>

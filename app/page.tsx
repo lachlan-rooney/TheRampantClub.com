@@ -688,7 +688,7 @@ export default function HomePage() {
               <div className="trc-tiers-eyebrow trc-tiers-rise">Membership · Thành Viên</div>
               <h2 className="trc-tiers-title trc-tiers-rise" style={{ animationDelay: '.06s' }}>By Invitation</h2>
               <p className="trc-tiers-lede trc-tiers-rise" style={{ animationDelay: '.14s' }}>
-                Membership is by invitation or referral only. We do not accept applications.
+                Membership is by invitation or referral only. We do not currently accept applications.
               </p>
               {/* Somewhere to go from here: the club's own membership address,
                   the one the footer already carries. */}
