@@ -33,7 +33,11 @@ interface W {
 }
 interface Done { before: number | null; after: number; changed: boolean }
 
-const STEPS = [0, 10, 25, 50, 75, 90, 100]
+// Shortcuts beside the slider, not instead of it. A slider alone makes 25%
+// a small act of aim; chips alone cannot say 62%. The admin page has used a
+// step-5 slider since it was built, and this matches it so two people counting
+// the same bottle on different screens record the same number.
+const STEPS = [0, 25, 50, 75, 100]
 
 export default function KioskStocktake() {
   const { t } = useLang()
@@ -42,6 +46,9 @@ export default function KioskStocktake() {
   const [err, setErr] = useState('')
   const [q, setQ] = useState('')
   const [openId, setOpenId] = useState<string | null>(null)
+  // The slider's working value for whichever bottle is open. Seeded from what
+  // is on record so a bottle that has not moved needs no dragging at all.
+  const [draft, setDraft] = useState(100)
   const [busy, setBusy] = useState<string | null>(null)
   const [done, setDone] = useState<Map<string, Done>>(new Map())
   const [startedAt] = useState(() => new Date().toISOString())
@@ -153,7 +160,10 @@ export default function KioskStocktake() {
       <ul className="st-list">
         {shown.map(w => (
           <li key={w.id} className={`st-item ${openId === w.id ? 'is-open' : ''}`}>
-            <button className="st-row" onClick={() => setOpenId(o => (o === w.id ? null : w.id))}>
+            <button className="st-row" onClick={() => {
+              setOpenId(o => (o === w.id ? null : w.id))
+              setDraft(w.current_fill_pct ?? 100)
+            }}>
               <span className="st-name">
                 {w.name}
                 <span className="st-sub">{[w.distillery, w.region].filter(Boolean).join(' · ') || '—'}</span>
@@ -167,20 +177,36 @@ export default function KioskStocktake() {
 
             {openId === w.id && (
               <div className="st-panel">
+                {/* THE SLIDER, as on the admin page: 0-100 in fives. The big
+                    number is the read-out, because a thumb covers the track at
+                    exactly the moment somebody wants to check the value. */}
+                <div className="st-slide">
+                  <input
+                    type="range" min={0} max={100} step={5} value={draft}
+                    onChange={e => setDraft(Number(e.target.value))}
+                    className="st-range" aria-label={t('Fill level', 'Mức rượu')}
+                  />
+                  <span className="st-val">{draft}%</span>
+                </div>
+
                 <div className="st-steps">
-                  {STEPS.map(s => (
-                    <button key={s} className={`st-step ${w.current_fill_pct === s ? 'is-now' : ''}`}
-                            disabled={busy === w.id} onClick={() => save(w, s)}>
-                      {s}%
-                    </button>
+                  {STEPS.map(v => (
+                    <button key={v} className={`st-step ${draft === v ? 'is-now' : ''}`}
+                            onClick={() => setDraft(v)}>{v}%</button>
                   ))}
                 </div>
-                {/* Counting a bottle that has not moved is still counting it —
-                    otherwise the session only ever records the losses. */}
-                <button className="st-same" disabled={busy === w.id}
-                        onClick={() => record(w, w.current_fill_pct ?? 0, false)}>
-                  {t('No change', 'Không đổi')}
-                </button>
+
+                <div className="st-acts">
+                  <button className="st-save" disabled={busy === w.id} onClick={() => save(w, draft)}>
+                    {busy === w.id ? t('Saving…', 'Đang lưu…') : `${t('Save', 'Lưu')} ${draft}%`}
+                  </button>
+                  {/* Counting a bottle that has not moved is still counting it —
+                      otherwise the session only ever records the losses. */}
+                  <button className="st-same" disabled={busy === w.id}
+                          onClick={() => record(w, w.current_fill_pct ?? 0, false)}>
+                    {t('No change', 'Không đổi')}
+                  </button>
+                </div>
               </div>
             )}
           </li>
@@ -243,17 +269,39 @@ const CSS = `
 .st-never { font-style: normal; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; opacity: .5; color: #E5D4C2; }
 .st-item.is-open { background: rgba(229,212,194,.04); }
 
-.st-panel { padding: 4px 2px 20px; }
-.st-steps { display: flex; flex-wrap: wrap; gap: 10px; }
-.st-step { flex: 1 1 88px; min-height: 62px; background: rgba(229,212,194,.05);
+.st-panel { padding: 8px 2px 22px; }
+
+.st-slide { display: flex; align-items: center; gap: 18px; margin-bottom: 16px; }
+.st-range { flex: 1; -webkit-appearance: none; appearance: none; height: 44px;
+            background: transparent; cursor: pointer; }
+.st-range::-webkit-slider-runnable-track { height: 10px; border-radius: 5px;
+            background: rgba(229,212,194,.18); }
+.st-range::-moz-range-track { height: 10px; border-radius: 5px; background: rgba(229,212,194,.18); }
+/* 44px thumb: this is dragged with a thumb, standing up, beside a shelf. */
+.st-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none;
+            width: 44px; height: 44px; margin-top: -17px; border-radius: 50%;
+            background: #D4B85A; border: none; }
+.st-range::-moz-range-thumb { width: 44px; height: 44px; border-radius: 50%;
+            background: #D4B85A; border: none; }
+.st-val { font-family: ${MONO}; font-size: 30px; color: #D4B85A; min-width: 92px;
+          text-align: right; }
+
+.st-steps { display: flex; flex-wrap: wrap; gap: 8px; }
+.st-step { flex: 1 1 60px; min-height: 48px; background: rgba(229,212,194,.05);
            border: 1px solid rgba(229,212,194,.2); border-radius: 4px; color: #E5D4C2;
-           font-family: ${MONO}; font-size: 19px; cursor: pointer;
+           font-family: ${MONO}; font-size: 16px; cursor: pointer;
            -webkit-tap-highlight-color: transparent; }
 .st-step.is-now { border-color: #D4B85A; color: #D4B85A; }
 .st-step:active { background: rgba(212,184,90,.2); }
-.st-same { margin-top: 12px; width: 100%; min-height: 54px; background: none;
+
+.st-acts { display: flex; gap: 10px; margin-top: 16px; }
+.st-save { flex: 2; min-height: 60px; background: #D4B85A; color: #052E20; border: none;
+           border-radius: 4px; font-family: ${MONO}; font-size: 17px; letter-spacing: .06em;
+           cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.st-save:disabled { opacity: .5; cursor: default; }
+.st-same { flex: 1; min-height: 60px; background: none;
            border: 1px dashed rgba(229,212,194,.3); border-radius: 4px; color: rgba(229,212,194,.8);
-           font-family: ${MONO}; font-size: 14px; letter-spacing: .1em; text-transform: uppercase;
+           font-family: ${MONO}; font-size: 13px; letter-spacing: .08em; text-transform: uppercase;
            cursor: pointer; }
 
 .st-tray { position: fixed; left: 0; right: 0; bottom: var(--kiosk-bar, 0px); z-index: 40;
