@@ -124,6 +124,15 @@ export default function KioskStaff() {
           <ArrivalsRow endpoint="/api/kiosk/staff/arrivals" />
         </div>
 
+        {/* The way into the stocktake. It lives here rather than in the bottom
+            bar because it is a job somebody is sent to do, not a place they
+            wander to — and the count needs the PIN it already asked for. */}
+        <div style={{ ...procHead, marginTop: 34 }}>{t('Stocktake', 'Kiểm kê')}</div>
+        <button onClick={() => { window.location.href = '/kiosk/stocktake' }} style={stockBtn}>
+          {t('Count the back bar', 'Kiểm kê quầy bar')}
+          <span style={stockBtnSub}>{t('search a bottle, tap its level, finish', 'tìm chai, chọn mức, kết thúc')}</span>
+        </button>
+
         <div style={{ ...procHead, marginTop: 38 }}>{t('Taking a food order', 'Quy trình nhận đơn món ăn')}</div>
         {!floor && <div style={{ ...muted, margin: '16px 0' }}>…</div>}
         {floor && (
@@ -230,6 +239,8 @@ const step: React.CSSProperties = { display: 'flex', gap: 16, alignItems: 'flex-
 const stepNo: React.CSSProperties = { flex: '0 0 auto', width: 26, color: '#D4B85A', fontSize: 15 }
 const noteBox: React.CSSProperties = { marginTop: 26, padding: '16px 18px', border: '1px solid rgba(212,184,90,0.35)', borderRadius: 3 }
 const noteLine: React.CSSProperties = { fontFamily: MONO, fontSize: 13, lineHeight: 1.8, color: '#E5D4C2', marginBottom: 8 }
+const stockBtn: React.CSSProperties = { display: 'block', width: '100%', textAlign: 'left', marginTop: 16, padding: '20px 22px', background: 'rgba(212,184,90,0.1)', border: '1px solid rgba(212,184,90,0.45)', borderRadius: 4, color: '#D4B85A', fontFamily: MONO, fontSize: 17, letterSpacing: '0.06em', cursor: 'pointer' }
+const stockBtnSub: React.CSSProperties = { display: 'block', fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#B2AA98', marginTop: 6 }
 const onShiftRow: React.CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: 8, margin: '0 0 30px' }
 const onShiftPill: React.CSSProperties = { display: 'inline-flex', alignItems: 'baseline', gap: 8, padding: '6px 12px', border: '1px solid rgba(229,212,194,0.18)', borderRadius: 20, fontFamily: MONO, fontSize: 12, color: '#B2AA98' }
 const onShiftMe: React.CSSProperties = { borderColor: 'rgba(212,184,90,0.5)', color: '#D4B85A' }

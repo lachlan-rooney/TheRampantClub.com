@@ -24,7 +24,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 // first: otherwise the next person to pick up the tablet inherits their session.
 // Both logouts are fired every time — each is a no-op when there is no session.
 
-const SHOW_ON = ['/kiosk/board', '/kiosk/finder', '/kiosk/member', '/kiosk/staff', '/kiosk/menu']
+const SHOW_ON = ['/kiosk/board', '/kiosk/finder', '/kiosk/member', '/kiosk/staff', '/kiosk/menu', '/kiosk/stocktake']
 
 const S = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
 

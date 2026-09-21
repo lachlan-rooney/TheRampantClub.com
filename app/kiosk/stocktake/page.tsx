@@ -1,0 +1,270 @@
+'use client'
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useLang } from '@/lib/lang'
+
+// STOCKTAKE, ON THE TABLET, IN THE ROOM WHERE THE BOTTLES ARE.
+//
+// The admin stocktake needs an admin login. The people who count bottles have
+// a kiosk PIN and no login, so the count has never once been finished: 333
+// bottles, 0 sessions, and a weekly shift task that has sat "not started" every
+// week it has appeared.
+//
+// ── SEARCH IS THE WHOLE THING ─────────────────────────────────────────────
+// 333 bottles is unusable as a list. The search box is focused, matches name,
+// distillery and region, and is the first thing on the screen — someone
+// standing at the back bar types three letters, taps the fill, and moves on.
+//
+// ── COUNTED BOTTLES LEAVE ─────────────────────────────────────────────────
+// Anything already counted this session drops out of the list rather than
+// sinking to the bottom. On a phone-sized screen "sunk to the bottom" is the
+// same as "still in the way", and the question the counter is answering is
+// always "what have I not done yet".
+//
+// No idle timeout. A stocktake takes an hour and involves long pauses with the
+// tablet face-down on a shelf; bouncing to the board mid-count would lose the
+// session and is exactly how this ends up never being finished again.
+
+interface W {
+  id: string; name: string; distillery: string | null; region: string | null
+  current_fill_pct: number | null
+  last_fill_updated_at: string | null
+  last_fill_updated_email: string | null
+}
+interface Done { before: number | null; after: number; changed: boolean }
+
+const STEPS = [0, 10, 25, 50, 75, 90, 100]
+
+export default function KioskStocktake() {
+  const { t } = useLang()
+  const [staff, setStaff] = useState<{ name: string } | null>(null)
+  const [all, setAll] = useState<W[] | null>(null)
+  const [err, setErr] = useState('')
+  const [q, setQ] = useState('')
+  const [openId, setOpenId] = useState<string | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [done, setDone] = useState<Map<string, Done>>(new Map())
+  const [startedAt] = useState(() => new Date().toISOString())
+  const [finished, setFinished] = useState<{ reviewed: number; changed: number } | null>(null)
+  const search = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    fetch('/api/kiosk/staff/whisky', { cache: 'no-store' })
+      .then(async r => {
+        const j = await r.json().catch(() => ({}))
+        if (!r.ok) throw new Error(j.error || 'Could not load the catalogue.')
+        return j
+      })
+      .then(j => { setAll(j.whiskies); setStaff(j.staff); setTimeout(() => search.current?.focus(), 80) })
+      .catch(e => setErr(String(e.message || e)))
+  }, [])
+
+  const shown = useMemo(() => {
+    if (!all) return []
+    const needle = q.trim().toLowerCase()
+    return all
+      .filter(w => !done.has(w.id))
+      .filter(w => !needle || `${w.name} ${w.distillery ?? ''} ${w.region ?? ''}`.toLowerCase().includes(needle))
+      .slice(0, needle ? 40 : 60)
+  }, [all, q, done])
+
+  const record = useCallback((w: W, after: number, changed: boolean) => {
+    setDone(prev => new Map(prev).set(w.id, { before: w.current_fill_pct ?? null, after, changed }))
+    setOpenId(null)
+    setQ('')
+    search.current?.focus()
+  }, [])
+
+  const save = async (w: W, fill: number) => {
+    setBusy(w.id)
+    try {
+      const r = await fetch('/api/kiosk/staff/whisky', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: w.id, fill_pct: fill }),
+      })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok) { setErr(j.error || 'That did not save.'); return }
+      setErr('')
+      setAll(prev => prev?.map(x => x.id === w.id ? { ...x, current_fill_pct: fill } : x) ?? prev)
+      record(w, fill, (w.current_fill_pct ?? null) !== fill)
+    } catch { setErr(t('Could not reach the club just now.', 'Không thể kết nối lúc này.')) }
+    finally { setBusy(null) }
+  }
+
+  const finish = async () => {
+    if (!done.size || !all) return
+    setBusy('__finish__')
+    try {
+      const byId = new Map(all.map(w => [w.id, w]))
+      const summary = [...done.entries()].map(([id, d]) => ({
+        id, name: byId.get(id)?.name ?? id,
+        fill_before: d.before, fill_after: d.after, changed: d.changed,
+      }))
+      const r = await fetch('/api/kiosk/staff/whisky', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ started_at: startedAt, summary }),
+      })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok) { setErr(j.error || 'That did not save.'); return }
+      setFinished({ reviewed: j.session.reviewed_count, changed: j.session.changed_count })
+      setDone(new Map())
+    } catch { setErr(t('Could not reach the club just now.', 'Không thể kết nối lúc này.')) }
+    finally { setBusy(null) }
+  }
+
+  const changedCount = [...done.values()].filter(d => d.changed).length
+
+  return (
+    <main className="st">
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
+
+      <div className="st-head">
+        <div>
+          <div className="st-kicker">{t('Stocktake', 'Kiểm kê')}</div>
+          <div className="st-who">{staff ? staff.name : '…'}</div>
+        </div>
+        <div className="st-tally">
+          <b>{done.size}</b> {t('counted', 'đã đếm')}
+          {all && <span className="st-of"> / {all.length}</span>}
+        </div>
+      </div>
+
+      {err && <div className="st-err">{err}</div>}
+
+      {finished && (
+        <div className="st-done">
+          {t('Stocktake saved.', 'Đã lưu phiên kiểm kê.')}{' '}
+          {finished.reviewed} {t('counted', 'đã đếm')}, {finished.changed} {t('changed', 'thay đổi')}.
+          <button className="st-again" onClick={() => setFinished(null)}>{t('Count more', 'Đếm tiếp')}</button>
+        </div>
+      )}
+
+      {/* The search box, first and focused. Nothing else on this screen matters
+          if a person cannot find the bottle in their hand. */}
+      <input
+        ref={search} className="st-search" value={q} onChange={e => setQ(e.target.value)}
+        placeholder={t('Search a bottle — name, distillery, region', 'Tìm chai — tên, nhà máy, vùng')}
+        autoComplete="off" spellCheck={false} enterKeyHint="search"
+        aria-label={t('Search', 'Tìm kiếm')}
+      />
+
+      {!all && !err && <p className="st-msg">{t('Loading the catalogue…', 'Đang tải danh mục…')}</p>}
+
+      <ul className="st-list">
+        {shown.map(w => (
+          <li key={w.id} className={`st-item ${openId === w.id ? 'is-open' : ''}`}>
+            <button className="st-row" onClick={() => setOpenId(o => (o === w.id ? null : w.id))}>
+              <span className="st-name">
+                {w.name}
+                <span className="st-sub">{[w.distillery, w.region].filter(Boolean).join(' · ') || '—'}</span>
+              </span>
+              <span className="st-now">
+                {w.current_fill_pct == null
+                  ? <em className="st-never">{t('never counted', 'chưa đếm')}</em>
+                  : `${w.current_fill_pct}%`}
+              </span>
+            </button>
+
+            {openId === w.id && (
+              <div className="st-panel">
+                <div className="st-steps">
+                  {STEPS.map(s => (
+                    <button key={s} className={`st-step ${w.current_fill_pct === s ? 'is-now' : ''}`}
+                            disabled={busy === w.id} onClick={() => save(w, s)}>
+                      {s}%
+                    </button>
+                  ))}
+                </div>
+                {/* Counting a bottle that has not moved is still counting it —
+                    otherwise the session only ever records the losses. */}
+                <button className="st-same" disabled={busy === w.id}
+                        onClick={() => record(w, w.current_fill_pct ?? 0, false)}>
+                  {t('No change', 'Không đổi')}
+                </button>
+              </div>
+            )}
+          </li>
+        ))}
+        {all && !shown.length && (
+          <li className="st-msg">
+            {q ? t('Nothing matches that.', 'Không tìm thấy.')
+               : t('Everything on screen has been counted.', 'Đã đếm hết các chai hiển thị.')}
+          </li>
+        )}
+      </ul>
+
+      {done.size > 0 && (
+        <div className="st-tray">
+          <div className="st-tray-txt">
+            <b>{done.size}</b> {t('counted', 'đã đếm')} · {changedCount} {t('changed', 'thay đổi')}
+          </div>
+          <button className="st-finish" disabled={busy === '__finish__'} onClick={finish}>
+            {busy === '__finish__' ? t('Saving…', 'Đang lưu…') : t('Finish stocktake', 'Kết thúc kiểm kê')}
+          </button>
+        </div>
+      )}
+    </main>
+  )
+}
+
+const MONO = "'Google Sans Code','DM Mono',monospace"
+const CSS = `
+.st { min-height: 100dvh; background: #052E20; color: #E5D4C2;
+      padding: 28px clamp(18px,4vw,48px) calc(120px + var(--kiosk-bar, 0px)); }
+.st-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.st-kicker { font-family: ${MONO}; font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: #D4B85A; }
+.st-who { font-family: 'Rampant Sans', Georgia, serif; font-size: 26px; margin-top: 6px; }
+.st-tally { font-family: ${MONO}; font-size: 14px; text-align: right; }
+.st-tally b { color: #D4B85A; font-size: 22px; font-weight: 400; }
+.st-of { opacity: .45; }
+.st-err { font-family: ${MONO}; font-size: 13px; color: #E0A0A0; border-left: 3px solid #C27070;
+          padding: 10px 14px; margin: 16px 0; }
+.st-done { font-family: ${MONO}; font-size: 14px; color: #B0C18E; border: 1px solid rgba(176,193,142,.45);
+           padding: 14px 16px; margin: 18px 0; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.st-again { background: none; border: 1px solid rgba(229,212,194,.3); border-radius: 2px; color: #E5D4C2;
+            font-family: ${MONO}; font-size: 12px; padding: 8px 14px; cursor: pointer; }
+
+.st-search { width: 100%; box-sizing: border-box; margin: 22px 0 6px; padding: 18px 18px;
+             background: rgba(229,212,194,.06); border: 1px solid rgba(229,212,194,.22);
+             border-radius: 3px; color: #E5D4C2; font-family: ${MONO}; font-size: 19px; outline: none; }
+.st-search:focus { border-color: #D4B85A; }
+.st-search::placeholder { color: rgba(229,212,194,.4); }
+
+.st-msg { font-family: ${MONO}; font-size: 14px; opacity: .55; padding: 26px 2px; list-style: none; }
+.st-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.st-item { border-bottom: 1px solid rgba(229,212,194,.13); }
+.st-row { display: flex; align-items: center; gap: 16px; width: 100%; background: none; border: none;
+          text-align: left; cursor: pointer; padding: 16px 2px; color: inherit;
+          -webkit-tap-highlight-color: transparent; }
+.st-name { flex: 1; font-family: ${MONO}; font-size: 17px; line-height: 1.35; }
+.st-sub { display: block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+          opacity: .42; margin-top: 4px; }
+.st-now { font-family: ${MONO}; font-size: 18px; color: #D4B85A; white-space: nowrap; }
+.st-never { font-style: normal; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; opacity: .5; color: #E5D4C2; }
+.st-item.is-open { background: rgba(229,212,194,.04); }
+
+.st-panel { padding: 4px 2px 20px; }
+.st-steps { display: flex; flex-wrap: wrap; gap: 10px; }
+.st-step { flex: 1 1 88px; min-height: 62px; background: rgba(229,212,194,.05);
+           border: 1px solid rgba(229,212,194,.2); border-radius: 4px; color: #E5D4C2;
+           font-family: ${MONO}; font-size: 19px; cursor: pointer;
+           -webkit-tap-highlight-color: transparent; }
+.st-step.is-now { border-color: #D4B85A; color: #D4B85A; }
+.st-step:active { background: rgba(212,184,90,.2); }
+.st-same { margin-top: 12px; width: 100%; min-height: 54px; background: none;
+           border: 1px dashed rgba(229,212,194,.3); border-radius: 4px; color: rgba(229,212,194,.8);
+           font-family: ${MONO}; font-size: 14px; letter-spacing: .1em; text-transform: uppercase;
+           cursor: pointer; }
+
+.st-tray { position: fixed; left: 0; right: 0; bottom: var(--kiosk-bar, 0px); z-index: 40;
+           display: flex; align-items: center; justify-content: space-between; gap: 16px;
+           padding: 14px clamp(18px,4vw,48px);
+           background: rgba(4,37,26,.97); backdrop-filter: blur(12px);
+           border-top: 1px solid rgba(212,184,90,.4); }
+.st-tray-txt { font-family: ${MONO}; font-size: 14px; }
+.st-tray-txt b { color: #D4B85A; font-size: 20px; font-weight: 400; }
+.st-finish { background: #D4B85A; color: #052E20; border: none; border-radius: 2px;
+             font-family: ${MONO}; font-size: 14px; letter-spacing: .1em; text-transform: uppercase;
+             padding: 16px 24px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.st-finish:disabled { opacity: .5; cursor: default; }
+`

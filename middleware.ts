@@ -54,6 +54,10 @@ export async function middleware(request: NextRequest) {
   const deviceGated = p.startsWith('/kiosk/staff') || p.startsWith('/kiosk/board')
     || p.startsWith('/kiosk/member') || p.startsWith('/kiosk/door') || p.startsWith('/kiosk/finder')
     || p.startsWith('/kiosk/menu')
+    // /kiosk/stocktake (2026-09-21) writes the whisky catalogue's fill levels,
+    // so it is gated like the rest — and the route behind it additionally
+    // requires a staff PIN, because a count is attributed to a person.
+    || p.startsWith('/kiosk/stocktake')
   if (p === '/kiosk' || (p.startsWith('/kiosk/') && !deviceGated)) {
     return noStore(supabaseResponse)
   }
