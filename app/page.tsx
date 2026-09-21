@@ -58,20 +58,37 @@ function useScrollReveal(threshold = 0.15) {
 
 
 // `short` is the name set large; the description carries the rest.
+// ── THE PRICES ────────────────────────────────────────────────────────────
+// Owner's figures, 21 Sept 2026. They are not in the database: there is no
+// tier or fee table, and the only prior evidence was five Legacy payments at
+// five different amounts (100m–180m₫). US$5,000 is ~130m₫ at today's rate,
+// which matches two of those five exactly — so this is the list price and the
+// higher ones were their own arrangements.
+//
+// Quoted in US dollars because that is how the club quotes them, and NOT
+// converted to đồng here: a hard-coded VND figure would be wrong within weeks
+// and nobody would notice, which is the same fault as a "this evening" offer
+// that ran for two days.
+//
+// "a year" comes from membership_periods, which opens a 1-year period per
+// payment. Worth confirming before anybody pays against it.
 const TIERS = [
   {
     name: 'The Legacy Membership',
     short: 'Legacy',
+    price: 'US$5,000',
     desc: 'For established individuals shaping their communities. Full use of the Club and its shared resources, balanced through mutual consideration rather than formal limits.',
   },
   {
     name: 'The Pioneer Membership',
     short: 'Pioneer',
+    price: 'US$3,000',
     desc: 'For emerging leaders and rising creatives under 33. Full access to all areas, events, and member privileges at a preferential rate designed to nurture the next generation.',
   },
   {
     name: 'The Corporate Membership',
     short: 'Corporate',
+    price: 'US$8,000',
     desc: 'Three nominated representative seats per company. Access to all spaces, events, and networking opportunities \u2014 ideal for hosting, relationship-building, and representation.',
   },
 ]
@@ -458,6 +475,14 @@ export default function HomePage() {
           font-size: clamp(34px, 3.6vw, 48px); line-height: 1;
           margin-top: 26px;
         }
+        .trc-tier-price {
+          font-family: 'Google Sans Code', 'DM Mono', monospace;
+          font-size: 17px; letter-spacing: .04em; margin-top: 14px;
+          display: flex; align-items: baseline; gap: 10px;
+        }
+        .trc-tier-per {
+          font-size: 10px; letter-spacing: .18em; text-transform: uppercase; opacity: .5;
+        }
         .trc-tier-desc {
           font-family: 'Google Sans Code', 'DM Mono', monospace;
           font-size: 12px; line-height: 1.9; opacity: .8;
@@ -684,6 +709,12 @@ export default function HomePage() {
                   <span className="trc-tier-line" />
                 </div>
                 <div className="trc-tier-name">{tier.short}</div>
+                {/* Under the title, as asked. Set in the mono face rather than
+                    the display serif so it reads as a fact about the tier and
+                    not as a second, competing heading. */}
+                <div className="trc-tier-price">
+                  {tier.price}<span className="trc-tier-per">a year</span>
+                </div>
                 <p className="trc-tier-desc">{tier.desc}</p>
               </div>
             ))}
