@@ -24,6 +24,11 @@ interface Floor {
     notes: { lead_en: string; lead_vn: string; en: string; vn: string }[]
     footnote: Bi
   }
+  shiftRules?: {
+    title: Bi
+    rows: { shift: string; time: string; en: string; vn: string }[]
+    footnote: Bi
+  }
 }
 
 export default function KioskStaff() {
@@ -127,6 +132,28 @@ export default function KioskStaff() {
         {/* The way into the stocktake. It lives here rather than in the bottom
             bar because it is a job somebody is sent to do, not a place they
             wander to — and the count needs the PIN it already asked for. */}
+        {floor?.shiftRules && (
+          <>
+            <div style={{ ...procHead, marginTop: 34 }}>
+              {t(floor.shiftRules.title.en, floor.shiftRules.title.vn)}
+            </div>
+            <div style={ruleBox}>
+              {floor.shiftRules.rows.map((r, i) => (
+                <div key={i} style={ruleRow}>
+                  <span style={ruleWhen}>
+                    <b style={ruleName}>{r.shift}</b>
+                    <span style={ruleTime}>{r.time}</span>
+                  </span>
+                  <span style={ruleText}>{t(r.en, r.vn)}</span>
+                </div>
+              ))}
+              <div style={{ ...ruleText, opacity: .55, marginTop: 4 }}>
+                {t(floor.shiftRules.footnote.en, floor.shiftRules.footnote.vn)}
+              </div>
+            </div>
+          </>
+        )}
+
         <div style={{ ...procHead, marginTop: 34 }}>{t('Stocktake', 'Kiểm kê')}</div>
         <button onClick={() => { window.location.href = '/kiosk/stocktake' }} style={stockBtn}>
           {t('Count the back bar', 'Kiểm kê quầy bar')}
@@ -245,6 +272,12 @@ const onShiftRow: React.CSSProperties = { display: 'flex', flexWrap: 'wrap', gap
 const onShiftPill: React.CSSProperties = { display: 'inline-flex', alignItems: 'baseline', gap: 8, padding: '6px 12px', border: '1px solid rgba(229,212,194,0.18)', borderRadius: 20, fontFamily: MONO, fontSize: 12, color: '#B2AA98' }
 const onShiftMe: React.CSSProperties = { borderColor: 'rgba(212,184,90,0.5)', color: '#D4B85A' }
 const onShiftWhen: React.CSSProperties = { fontSize: 10, opacity: 0.6 }
+const ruleBox: React.CSSProperties = { border: '1px solid rgba(212,184,90,0.28)', borderRadius: 3, padding: '16px 18px', margin: '14px 0 0' }
+const ruleRow: React.CSSProperties = { display: 'flex', gap: 16, alignItems: 'baseline', padding: '9px 0', borderBottom: '1px solid rgba(229,212,194,0.1)', flexWrap: 'wrap' }
+const ruleWhen: React.CSSProperties = { flex: '0 0 auto', minWidth: 150, display: 'flex', flexDirection: 'column', gap: 2 }
+const ruleName: React.CSSProperties = { fontFamily: MONO, fontSize: 14, color: '#D4B85A', fontWeight: 400, letterSpacing: '.06em' }
+const ruleTime: React.CSSProperties = { fontFamily: MONO, fontSize: 12, color: '#E5D4C2' }
+const ruleText: React.CSSProperties = { flex: 1, minWidth: 200, fontFamily: MONO, fontSize: 12.5, lineHeight: 1.75, color: '#B2AA98' }
 const noteB: React.CSSProperties = { color: '#D4B85A', fontWeight: 400 }
 const grid: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14 }
 const nameBtn: React.CSSProperties = { padding: '24px 16px', background: 'rgba(229,212,194,0.04)', border: '1px solid rgba(212,184,90,0.25)', borderRadius: 14, cursor: 'pointer' }

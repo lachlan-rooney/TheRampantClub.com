@@ -17,11 +17,12 @@
 //   1. Fixed days off are absolute. Hiếu Sun–Mon, Bình Mon–Tue (or whatever is
 //      in team_members.fixed_days_off) — never assigned, never negotiated.
 //   2. Nobody is off both Saturday and Sunday. The pair that becomes permanent.
-//   3. One fixed OFFICE day each, on a named weekday — Mr Sĩ Monday, Tiên
+//   3. One fixed OPEN day each, on a named weekday — Mr Sĩ Monday, Tiên
 //      Tuesday, Hiếu Wednesday, Nhi Thursday, Bình Friday. These never move;
-//      the evenings and the days off rotate around them. (The column is still
-//      morning_weekday — the shift was called Morning until 2026-09-14 and
-//      renaming a live column to rename a shift is not a trade worth making.)
+//      the rest of the week rotates around them. (The column is still
+//      morning_weekday — the shift was called Morning until 2026-09-14, then
+//      Office, and is the Open from 2026-09-21. Renaming a live column every
+//      time the shift is renamed is not a trade worth making.)
 //   4. Every night has a supervisor on it.
 //   5. Everybody reaches their contracted hours.
 //   6. Days off vary from the previous week, for anyone not on a fixed pattern.
@@ -118,13 +119,23 @@ export const EVENING_DEMAND: Record<number, number> = {
   6: 3,  // Saturday   — Mr Sĩ closes; Tiên and Nhi are off
 }
 
-/** The daytime shift — the one fixed weekday shift each person works.
+/** The fixed weekday shift each floor person works — the OPEN, from
+ *  2026-09-21.
  *
- *  Named "Office" from 2026-09-14, and named ONCE here rather than typed as a
- *  literal in five places, because the last rename had to be chased through
- *  the file by hand. It is not a bar shift: it is the desk, the deliveries, the
- *  stock and the paperwork, 10:00–16:00 with an hour for lunch. */
-export const DAY_SHIFT = 'Office'
+ *  THE OFFICE SHIFT IS NOW FOR OFFICE STAFF ONLY. The owner's rule: "the
+ *  office shift is only team members working in the office like Miss Ni, Miss
+ *  Chau". Until now the five people who work the floor each had one Office day
+ *  a week — Mr Sĩ Monday, Tiên Tuesday, Hiếu Wednesday, Nhi Thursday, Bình
+ *  Friday — which put bar staff on a desk shift and gave the real office staff
+ *  a shift type they shared with people who were not in the office.
+ *
+ *  That fixed weekday does not disappear; it becomes the OPEN. The person in
+ *  at 14:00 sets the bar up by 15:00 and then reports to Miss Chau for the
+ *  day's requirements, which is the work the office day was really for.
+ *
+ *  Named ONCE here rather than typed as a literal in five places, because the
+ *  last rename had to be chased through the file by hand. */
+export const DAY_SHIFT = 'Open'
 
 /** The evening shift types, in the order they are handed out.
  *
@@ -241,6 +252,21 @@ export function planWeek(opts: {
       return true
     }
     const d = order[i]
+    // THE FIXED OPEN IS EXTRA COVER, AND THAT IS NOW A DECISION, NOT AN
+    // ACCIDENT. While the fixed weekday was the Office it ended at 16:00, so
+    // that person was no use for the evening and the night needed its full
+    // complement behind them. The Open runs to 22:00, so Tuesday to Friday
+    // now has FIVE on the floor where it had four.
+    //
+    // Subtracting the fixed Open from the night's demand was tried and
+    // reverted in the same sitting: it leaves 20 evening slots for 25 shifts
+    // people are owed, so no week solves at all and the planner returns the
+    // five fixed Opens and nothing else. Making it work needs a second day off
+    // for everyone (5 shifts, 44h) — which is a staffing decision and not one
+    // to smuggle in through an arithmetic tweak.
+    //
+    // See scripts/rota-plan-check.mts: it prints the hours this produces
+    // against each contract, which is how the 53h week below was found.
     const want = demand[d] ?? 0
     const pool = staff.filter(p => canWork(p, d))
     // Rotate the pool by the cycle so consecutive weeks differ, then prefer
@@ -307,10 +333,23 @@ export function planWeek(opts: {
     solved = search(0)
   }
 
+  // ONE OPEN A NIGHT, AND EVERYBODY ELSE COMES IN AT THREE.
+  //
+  // This used to alternate Open/Close/Open/Close down the night, which on a
+  // four-person Thursday put two people on at 14:00. The rule now is one: the
+  // Open sets the bar up between 14:00 and 15:00 and reports to Miss Chau, and
+  // a second person standing there while they do it is an hour nobody needed.
+  //
+  // Where somebody's FIXED Open falls on this day, that is the night's Open
+  // and every other person Closes. Saturday and Sunday have no fixed Open —
+  // nobody's weekday lands there — so the first person chosen takes it, which
+  // is what gives the weekend the 14:00 start the owner asked for.
   for (let d = 0; d < 7; d++) {
     const ids = chosen[d] ?? []
+    const alreadyOpen = staff.some(p => morningOn[p.id] === d)
     ids.forEach((id, k) => {
-      shifts.push({ member: id, shiftDate: addDays(weekStart, d), shiftName: EVENING_ORDER[k % EVENING_ORDER.length] })
+      const shiftName = (!alreadyOpen && k === 0) ? EVENING_ORDER[0] : EVENING_ORDER[1]
+      shifts.push({ member: id, shiftDate: addDays(weekStart, d), shiftName })
     })
   }
 

@@ -69,7 +69,36 @@ export async function GET() {
     date: serviceDate,
     onShift,
     process: PROCESS,
+    shiftRules: SHIFT_RULES,
   })
+}
+
+// ── THE SHIFT TIMES, from 2026-09-21 ───────────────────────────────────────
+// The owner set these and they apply seven days a week: "Open is now at 2pm…
+// From 2-3 they must set up the bar as quick as possible, then report to Miss
+// Chau for dayshift requirements that day. The other shifts will begin at 3pm."
+// Saturday and Sunday take the 2pm start too, because the club opens at 3pm
+// every day of the week.
+//
+// It lives here rather than in a notice on a wall because the tablet is the
+// thing a floor member of staff actually looks at, and a rule nobody can find
+// is a rule nobody follows.
+
+const SHIFT_RULES = {
+  title: { en: 'Shift times', vn: 'Giờ làm việc' },
+  rows: [
+    { shift: 'Open', time: '14:00 – 22:00',
+      en: 'In at 2pm. Set the bar up as quickly as you can, then report to Miss Châu at 3pm for the day’s requirements. One person a day, seven days a week.',
+      vn: 'Có mặt lúc 14:00. Chuẩn bị quầy bar nhanh nhất có thể, sau đó báo cáo chị Châu lúc 15:00 để nhận yêu cầu trong ngày. Mỗi ngày một người, cả bảy ngày.' },
+    { shift: 'Close', time: '15:00 – 00:00',
+      en: 'In at 3pm, when the doors open. Through to midnight.',
+      vn: 'Có mặt lúc 15:00, khi câu lạc bộ mở cửa. Làm đến nửa đêm.' },
+    { shift: 'Office', time: '—',
+      en: 'Office staff only — Miss Ni and Miss Châu. Nobody on the floor is rostered to the office any more.',
+      vn: 'Chỉ dành cho nhân viên văn phòng — chị Ni và chị Châu. Nhân viên phục vụ không còn ca văn phòng.' },
+  ],
+  footnote: { en: 'The club opens at 3pm and closes at midnight, seven days a week.',
+              vn: 'Câu lạc bộ mở cửa lúc 15:00 và đóng cửa lúc nửa đêm, cả bảy ngày.' },
 }
 
 // ── The process, as the owner wrote it ─────────────────────────────────────
