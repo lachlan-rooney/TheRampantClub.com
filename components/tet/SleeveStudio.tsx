@@ -158,10 +158,21 @@ export default function SleeveStudio({ onUse }: { onUse: (d: SleeveDesign) => vo
                       className={`ss-swatch ${hex.toLowerCase() === s.hex.toLowerCase() ? 'is-on' : ''}`}
                       style={{ background: s.hex }} title={vn ? s.vn : s.en} aria-label={vn ? s.vn : s.en} />
             ))}
-            <input value={hex} onChange={e => setHex(e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`)}
-                   maxLength={7} spellCheck={false} aria-label={t('Hex colour', 'Mã màu hex')}
-                   className="ss-input" style={{ width: 96, padding: '6px 0', fontSize: 12.5, letterSpacing: '.08em' }} />
           </div>
+
+          {/* The hex field sat in the swatch row with no label but its own
+              contents — a box reading #052E20 looks like a read-out of the
+              swatch you just clicked, not somewhere to type your brand colour.
+              Saying so is the whole fix. */}
+          <label style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginTop: 18 }}>
+            <span className="pk-meta" style={{ fontSize: 12.5, opacity: .75 }}>
+              {t('Custom Hex Code', 'Mã màu Hex riêng')}
+            </span>
+            <input value={hex} onChange={e => setHex(e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`)}
+                   maxLength={7} spellCheck={false} placeholder="#052E20"
+                   aria-label={t('Custom Hex Code', 'Mã màu Hex riêng')}
+                   className="ss-input" style={{ width: 96, padding: '6px 0', fontSize: 12.5, letterSpacing: '.08em' }} />
+          </label>
 
           <div style={{ marginTop: 30 }}>
             <div className="pk-eyebrow">{t('Your logo', 'Logo của quý vị')}</div>
@@ -199,7 +210,13 @@ export default function SleeveStudio({ onUse }: { onUse: (d: SleeveDesign) => vo
           <label style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 24, cursor: 'pointer' }}>
             <input type="checkbox" checked={foil} onChange={e => setFoil(e.target.checked)}
                    style={{ width: 17, height: 17, accentColor: '#D4B85A' }} />
-            <span className="pk-meta" style={{ fontSize: 12.5 }}>{t('Gold foil rule', 'Đường kẻ nhũ vàng')}</span>
+            <span className="pk-meta" style={{ fontSize: 12.5 }}>
+              {t('Gold foil detailing', 'Chi tiết ép nhũ vàng')}
+              <span style={{ display: 'block', opacity: .55, marginTop: 3 }}>
+                {t('The header line and the hairline, foiled in gold. Your logo prints as you supply it either way.',
+                   'Dòng tiêu đề và đường kẻ mảnh được ép nhũ vàng. Logo của quý vị vẫn in đúng như tệp gốc.')}
+              </span>
+            </span>
           </label>
 
           <button onClick={use} className="pk-cta">

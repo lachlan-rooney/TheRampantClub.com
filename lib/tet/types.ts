@@ -89,6 +89,20 @@ export interface CaskBoardRow {
   unit_vnd_55: number
   total_vnd_55: number
   extra_bottles_55: number
+
+  /** 45% and 40% (added 2026-09-21). Same rule as 55%, and 40% is the floor:
+   *  Scotch below 40% abv is not Scotch, and the quote refuses it. A board
+   *  served before the migration has run simply has these absent — which is
+   *  why every one of them is optional, and why the page checks. */
+  bottles_45?: number | null
+  unit_vnd_45?: number | null
+  total_vnd_45?: number | null
+  extra_bottles_45?: number | null
+
+  bottles_40?: number | null
+  unit_vnd_40?: number | null
+  total_vnd_40?: number | null
+  extra_bottles_40?: number | null
 }
 
 /** One row of the published tier ladder. Terms, not prices — these are the
