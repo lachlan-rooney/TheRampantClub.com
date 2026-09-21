@@ -10,7 +10,7 @@ import TetEnquiry, { type EnquiryTarget } from '@/components/tet/TetEnquiry'
 import TetTiers from '@/components/tet/TetTiers'
 import SleeveStudio, { type SleeveDesign } from '@/components/tet/SleeveStudio'
 import TetTimeline from '@/components/tet/TetTimeline'
-import TetBleed from '@/components/tet/TetBleed'
+import TetPlate, { TET_PLATE_CSS } from '@/components/tet/TetPlate'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE TẾT PROGRAMME — built from the public kit, like the rest of the site.
@@ -20,10 +20,22 @@ import TetBleed from '@/components/tet/TetBleed'
 // of this page was a wall of bordered cards — the admin portal's furniture on
 // a page meant for a buyer.
 //
-// Pictures are Duncan Taylor's own photography now, not the club's stock art:
-// an Octave in Scottish heather, a cooper closing a cask at Huntly, a bottle on
-// rock. Was: the invitation for the masthead, the
-// bottle in its bag for the gifting, the Octave artwork for the casks.
+// PICTURES ARE SHOWN WHOLE. They used to be full-bleed bands, which sounds
+// generous and is the opposite: a band crops the photograph to the band's
+// shape, and on a picture of a bottle the part that does not fit IS the
+// bottle. Every photograph here is now a TetPlate, framed at its own aspect
+// ratio, so nothing is cut off at any screen width. See components/tet/TetPlate.
+//
+// Two pictures were dropped rather than re-framed. The Blend 18 and the Black
+// Bull 30 are pack shots on a WHITE background — on this green ground they
+// are white boxes with a bottle in them, and no amount of framing fixes that.
+// The Black Bull was also in the Octave section, which is single casks: it is
+// a blend, so it was arguing against the words next to it.
+//
+// The masthead carries the Duncan Taylor crest instead. It is the right mark
+// for a page that is a Duncan Taylor programme, it is gold on green rather
+// than a white rectangle, and it is drawn from the high-resolution master and
+// tinted, not scaled up from a thumbnail.
 //
 // NO PRICE APPEARS WHILE ANYTHING IS PROVISIONAL. What can be shown honestly
 // is the SHAPE of the offer — the tier ladder (published terms, not prices),
@@ -70,6 +82,9 @@ export default function TetProgramme({
   const vn = lang === 'vn'
   const [strength, setStrength] = useState<Strength>('50')
   const [target, setTarget] = useState<EnquiryTarget | null>(null)
+  // One at a time. Several open at once turns the list back into the wall of
+  // text it was, and nothing is being compared side by side anyway.
+  const [openCask, setOpenCask] = useState<string | null>(null)
   const [design, setDesign] = useState<SleeveDesign | null>(null)
 
   // ── ONLY OFFER A STRENGTH THE BOARD CAN ANSWER FOR ──────────────────────
@@ -91,6 +106,7 @@ export default function TetProgramme({
 
   return (
     <PublicPage ground={GROUND} ink={CREAM}>
+      <style dangerouslySetInnerHTML={{ __html: TET_PLATE_CSS + CASK_CSS }} />
       {/* THE SWITCH STAYS WITH YOU. It was absolute, so it scrolled away after
           the masthead — on a page this long that is the same as not having one.
           And it was tone="light", which is the control for a CREAM page: on
@@ -105,9 +121,11 @@ export default function TetProgramme({
         lede={t('Whisky for the companies you thank at Tết — three blends in a sleeve carrying your name, or a single cask with every bottle numbered.',
                 'Rượu whisky để tri ân đối tác dịp Tết — ba dòng pha trộn trong hộp in tên công ty, hoặc trọn một thùng đơn với từng chai được đánh số.')}
         art={
-          <div className="pk-thumb" style={{ aspectRatio: '4 / 5' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '4% 6%' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/tet/blend.webp" alt="" width={620} height={880} />
+            <img src="/images/tet/dt-crest.png" width={560} height={568}
+                 alt="Duncan Taylor Scotch Whisky"
+                 style={{ width: '100%', maxWidth: 300, height: 'auto', display: 'block' }} />
           </div>
         }
       >
@@ -115,29 +133,36 @@ export default function TetProgramme({
       </Masthead>
 
       {countdown && <NextGate cd={countdown} t={t} />}
+
       {/* The first photograph, straight under the masthead — an Octave in
-          Scottish heather. Loaded eagerly and at high priority because it is
-          the page's first impression; everything below it waits its turn. */}
-      <TetBleed
-        src="/images/tet/hero.webp" sm="/images/tet/hero-sm.webp" width={1700} smWidth={900} eager
-        height="clamp(300px, 50vw, 620px)" position="50% 55%" strength={10}
-        alt={t('An Octave single malt among Scottish heather',
-               'Một chai Octave single malt giữa đồng thạch nam Scotland')}
-      />
+          Scottish heather. Eager and high priority because it is the page's
+          first impression; everything below it waits its turn. As a band this
+          one lost its neck and its base to the crop. */}
+      <section className="pk-wrap" style={{ paddingTop: 64 }}>
+        <TetPlate
+          src="/images/tet/hero.webp" sm="/images/tet/hero-sm.webp"
+          width={1700} height={950} smWidth={900} eager
+          alt={t('An Octave single malt among Scottish heather',
+                 'Một chai Octave single malt giữa đồng thạch nam Scotland')}
+          caption={t('The Octave · Scottish heather', 'The Octave · Đồng thạch nam Scotland')}
+        />
+      </section>
 
       {countdown && <TetTimeline cd={countdown} t={t} locale={vn ? 'vi-VN' : 'en-GB'} />}
 
       {/* ── THE BLENDS ────────────────────────────────────────────────── */}
       <section className="pk-wrap pk-section">
-        <SectionHead
-          eyebrow={t('From fifty bottles', 'Từ năm mươi chai')}
-          title={blendCat ? (vn ? blendCat.name_vn : blendCat.name_en) : 'Duncan Taylor'}
-        />
-        {blendCat && (
-          <p className="pk-lede">{vn ? blendCat.standfirst_vn : blendCat.standfirst_en}</p>
-        )}
+        <Rise>
+          <SectionHead
+            eyebrow={t('From fifty bottles', 'Từ năm mươi chai')}
+            title={blendCat ? (vn ? blendCat.name_vn : blendCat.name_en) : 'Duncan Taylor'}
+          />
+          {blendCat && (
+            <p className="pk-lede">{vn ? blendCat.standfirst_vn : blendCat.standfirst_en}</p>
+          )}
+        </Rise>
 
-        <div style={{ marginTop: 40 }}>
+        <Rise delay={.08} style={{ marginTop: 40 }}>
           <Details rows={blends.map(b => ({
             label: b.expression || b.sku,
             value: (
@@ -150,7 +175,7 @@ export default function TetProgramme({
               </>
             ),
           }))} />
-        </div>
+        </Rise>
 
         {tiers.length > 0 && (
           <div style={{ marginTop: 52 }}>
@@ -163,16 +188,28 @@ export default function TetProgramme({
         )}
 
         <Cta onClick={openBlend}>{t('Register interest', 'Đăng ký quan tâm')}</Cta>
+
+        <div style={{ marginTop: 72 }}>
+          <TetPlate
+            src="/images/tet/bar.webp" sm="/images/tet/bar-sm.webp"
+            width={1200} height={700} smWidth={820}
+            alt={t('An Octave bottle on the back bar',
+                   'Chai Octave trên quầy bar')}
+            caption={t('Poured, not shelved', 'Để rót, không để trưng')}
+          />
+        </div>
       </section>
 
       {/* ── THE SLEEVE STUDIO ─────────────────────────────────────────
           The question a buyer is actually asking is "what will it look like
           with our logo on it". Prose cannot answer that. */}
       <section className="pk-wrap pk-section">
-        <SectionHead
-          eyebrow={t('Make it yours', 'Cá nhân hoá')}
-          title={t('The sleeve', 'Hộp đựng')}
-        />
+        <Rise>
+          <SectionHead
+            eyebrow={t('Make it yours', 'Cá nhân hoá')}
+            title={t('The sleeve', 'Hộp đựng')}
+          />
+        </Rise>
         <p className="pk-lede">
           {t('Every bottle comes in a sleeve printed with your name. Set the colour, drop your logo on it, and write the line that goes underneath.',
              'Mỗi chai đều có hộp in tên công ty. Chọn màu, tải logo lên, và viết dòng chữ bên dưới.')}
@@ -185,45 +222,36 @@ export default function TetProgramme({
         </div>
       </section>
 
-      <div style={{ marginTop: 90 }}>
-        {/* Was the club's bottle-and-bag stock shot, which is about the club
-            rather than about this offer. An Octave on Scottish rock says what
-            is actually being sold. */}
-        <TetBleed
-          src="/images/tet/rock.webp" sm="/images/tet/rock-sm.webp"
-          width={1400} smWidth={760}
-          height="clamp(260px, 40vw, 500px)" position="50% 45%"
-          alt={t('An Octave single malt on Scottish rock',
-                 'Chai Octave single malt trên đá Scotland')}
-        />
-      </div>
-
-      {/* Before the casks, the man who closes them. This is the picture that
-          makes the cask section mean something: a real cooper, in Huntly,
-          doing the thing being sold. */}
-      <div style={{ marginTop: 90 }}>
-        <TetBleed
-          src="/images/tet/cooper-band.webp" sm="/images/tet/cooper-band-sm.webp"
-          width={1500} smWidth={820}
-          height="clamp(260px, 42vw, 520px)" position="50% 40%"
-          alt={t('A cooper closing a cask at Huntly',
-                 'Thợ đóng thùng tại Huntly')}
-        />
-      </div>
+      {/* Before the casks: the man who closes them, and the thing itself. Side
+          by side because they are one argument — a single cask is a place and
+          a pair of hands, not a product line. Each keeps its own shape; they
+          stack on a phone rather than shrinking to stamps. */}
+      <section className="pk-wrap" style={{ paddingTop: 96 }}>
+        <div className="tp-pair">
+          <TetPlate
+            src="/images/tet/cooper-band.webp" sm="/images/tet/cooper-band-sm.webp"
+            width={1500} height={760} smWidth={820} maxWidth={620}
+            alt={t('A cooper closing a cask at Huntly', 'Thợ đóng thùng tại Huntly')}
+            caption={t('Huntly · the cooperage', 'Huntly · xưởng đóng thùng')}
+          />
+          <TetPlate
+            src="/images/tet/rock.webp" sm="/images/tet/rock-sm.webp"
+            width={1400} height={780} smWidth={760} maxWidth={620}
+            alt={t('An Octave single malt on Scottish rock', 'Chai Octave single malt trên đá Scotland')}
+            caption={t('One cask · every bottle numbered', 'Một thùng · từng chai đánh số')}
+          />
+        </div>
+      </section>
 
       {/* ── THE CASKS ─────────────────────────────────────────────────── */}
       <section className="pk-wrap pk-section">
-        <SectionHead
-          eyebrow={t('Fourteen single casks', 'Mười bốn thùng đơn')}
-          title={caskCat ? (vn ? caskCat.name_vn : caskCat.name_en) : 'The Octave Selection'}
-          art={
-            <div className="pk-thumb" style={{ width: 'clamp(120px, 18vw, 200px)', aspectRatio: '1 / 1' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/tet/blackbull.webp" alt="" width={700} height={950} loading="lazy" />
-            </div>
-          }
-        />
-        {caskCat && <p className="pk-lede">{vn ? caskCat.standfirst_vn : caskCat.standfirst_en}</p>}
+        <Rise>
+          <SectionHead
+            eyebrow={t('Fourteen single casks', 'Mười bốn thùng đơn')}
+            title={caskCat ? (vn ? caskCat.name_vn : caskCat.name_en) : 'The Octave Selection'}
+          />
+          {caskCat && <p className="pk-lede">{vn ? caskCat.standfirst_vn : caskCat.standfirst_en}</p>}
+        </Rise>
 
         {/* THE TOGGLE IS THE ARGUMENT. Duty and tax are charged on value, not
             on alcohol, so bottling a strong young cask at 50% multiplies the
@@ -241,6 +269,8 @@ export default function TetProgramme({
         <div style={{ marginTop: 24 }}>
           {casks.map(c => (
             <CaskRow key={c.cask_ref} c={c} strength={strength} vn={vn} t={t} provisional={provisional}
+                     open={openCask === c.cask_ref}
+                     onToggle={() => setOpenCask(o => o === c.cask_ref ? null : c.cask_ref)}
                      onChoose={() => setTarget({
                        kind: 'cask', cask_ref: c.cask_ref,
                        title: `${c.cask_ref} · ${c.distillery}`,
@@ -248,6 +278,15 @@ export default function TetProgramme({
                      })} />
           ))}
         </div>
+      </section>
+
+      <section className="pk-wrap" style={{ paddingTop: 96 }}>
+        <TetPlate
+          src="/images/tet/river.webp" sm="/images/tet/river-sm.webp"
+          width={1400} height={620} smWidth={820}
+          alt={t('A bottle by the water in Speyside', 'Chai rượu bên dòng nước ở Speyside')}
+          caption={t('Fons et origo · the source', 'Fons et origo · khởi nguồn')}
+        />
       </section>
 
       <footer className="pk-wrap" style={{ paddingTop: 80, paddingBottom: 110 }}>
@@ -329,11 +368,31 @@ function NextGate({ cd, t }: { cd: Countdown; t: (en: string, vn: string) => str
   )
 }
 
-function CaskRow({ c, strength, vn, t, provisional, onChoose }: {
+// ═══════════════════════════════════════════════════════════════════════════
+// A CASK, WHICH OPENS WHERE IT SITS.
+// ───────────────────────────────────────────────────────────────────────────
+// Fourteen casks were fourteen identical lines of small type. Everything that
+// makes one cask different from the next — the wood it sat in, the year it
+// went in, what it actually tastes like — was in the database and on none of
+// the page. A buyer choosing between Glen A and Glen B had a distillery name
+// and a bottle count to do it with.
+//
+// The row opens in place rather than into a modal. A modal would cover the
+// strength buttons, which are the one control that changes what the row says;
+// opening downward keeps the comparison on screen, and closing it leaves you
+// exactly where you were in a long list.
+//
+// The height animates with grid-template-rows: 0fr → 1fr. A tasting note has
+// no height anybody can know in advance, and max-height guesses either clip a
+// long note or crawl through empty space on a short one.
+// ═══════════════════════════════════════════════════════════════════════════
+function CaskRow({ c, strength, vn, t, provisional, onChoose, open, onToggle }: {
   c: CaskBoardRow; strength: Strength; vn: boolean
   t: (en: string, v: string) => string
   provisional: boolean
   onChoose: () => void
+  open: boolean
+  onToggle: () => void
 }) {
   const gone = c.status !== 'available'
   const spec = STRENGTHS.find(s => s.key === strength) ?? STRENGTHS[0]
@@ -349,57 +408,136 @@ function CaskRow({ c, strength, vn, t, provisional, onChoose }: {
   // says so instead of showing a gain of nothing as if it were a choice. This
   // used to be asked about 55% alone, which meant a 48% cask offered a "50%"
   // bottling that silently repeated its cask-strength count.
-  //
-  // The null check is the same sentence for a different reason: the 45% and
-  // 40% columns arrive with a migration, and until it has run the figure is
-  // simply absent. Either way the honest answer is "not this one", never
-  // "undefined".
   const asked = strength === 'cask' ? null : Number(strength)
   const noSuchStrength = asked !== null && c.cask_abv_pct <= asked
+  const note = vn ? (c.tasting_note_vn || c.tasting_note_en) : c.tasting_note_en
 
   return (
-    <div style={{
-      display: 'grid', gridTemplateColumns: 'minmax(0,1.3fr) minmax(0,1fr) auto',
-      gap: 18, alignItems: 'baseline', padding: '16px 0',
-      borderTop: '1px solid rgba(229,212,194,.14)', opacity: gone ? .42 : 1,
-    }}>
-      <div style={{ minWidth: 0 }}>
-        <div className="pk-h3">{c.distillery}</div>
-        <div className="pk-meta" style={{ marginTop: 4 }}>
-          {c.cask_ref} · {c.region} · {c.age_years}{t('yo', ' năm')} · {c.cask_abv_pct}%
+    <div className={`ck ${open ? 'is-open' : ''}`} style={{ opacity: gone ? .42 : 1 }}>
+      <button className="ck-head" onClick={onToggle} aria-expanded={open}>
+        <span className="ck-name">
+          <span className="pk-h3">{c.distillery}</span>
+          <span className="pk-meta ck-sub">
+            {c.cask_ref} · {c.region} · {c.age_years}{t('yo', ' năm')} · {c.cask_abv_pct}%
+          </span>
+        </span>
+
+        <span className="pk-meta ck-figs">
+          {noSuchStrength ? (
+            <span style={{ opacity: .6 }}>{t(`already below ${asked}%`, `đã dưới ${asked}%`)}</span>
+          ) : (
+            <>
+              <span style={{ color: CREAM, fontSize: 15 }}>{bottles}</span> {t('bottles', 'chai')}
+              {gain > 0 && <span style={{ color: SAGE }}> · +{gain}</span>}
+            </>
+          )}
+          {!provisional && (
+            <span style={{ display: 'block', marginTop: 4, color: CREAM }}>{vnd(num(spec.unit))}</span>
+          )}
+        </span>
+
+        <span className="ck-chev" aria-hidden>
+          {gone
+            ? <span className="pk-eyebrow" style={{ color: AMBER }}>
+                {c.status === 'sold' ? t('Sold', 'Đã bán') : t('Being confirmed', 'Đang xác nhận')}
+              </span>
+            : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>}
+        </span>
+      </button>
+
+      <div className="ck-wrap">
+        <div className="ck-inner">
+          <div className="ck-body">
+            <div>
+              {note
+                ? <p className="ck-note">{note}</p>
+                : <p className="ck-note" style={{ opacity: .45 }}>
+                    {t('The tasting note is written when the cask is confirmed with Huntly.',
+                       'Ghi chú hương vị sẽ được viết khi thùng được xác nhận với Huntly.')}
+                  </p>}
+
+              {/* WHAT THE STRENGTH BUTTONS ACTUALLY DO, in a sentence, for this
+                  cask. The number above answers "how many"; this answers "why",
+                  and it is the argument the whole section is making. */}
+              {!noSuchStrength && gain > 0 && (
+                <p className="ck-gain">
+                  {t(`Bottled at ${asked}% this cask gives ${gain} more bottles than at cask strength — duty is charged on value, not on alcohol.`,
+                     `Đóng chai ở ${asked}%, thùng này cho thêm ${gain} chai so với nguyên độ — thuế tính trên giá trị, không theo nồng độ.`)}
+                </p>
+              )}
+            </div>
+
+            <dl className="ck-spec">
+              <div><dt>{t('Cask', 'Thùng')}</dt><dd>{c.cask_type}{c.wood ? ` · ${c.wood}` : ''}</dd></div>
+              {c.vintage_year && <div><dt>{t('Filled', 'Năm vào thùng')}</dt><dd>{c.vintage_year}</dd></div>}
+              <div><dt>{t('Region', 'Vùng')}</dt><dd>{c.region}</dd></div>
+              <div>
+                <dt>{t('Colour', 'Màu')}</dt>
+                <dd>
+                  {c.colour_hex
+                    ? <span className="ck-swatch" style={{ background: c.colour_hex }} />
+                    : <span style={{ opacity: .45 }}>—</span>}
+                </dd>
+              </div>
+            </dl>
+          </div>
+
+          {!gone && (
+            <button onClick={onChoose} className="pk-cta" style={{ marginTop: 18 }}>
+              {provisional ? t('Interest', 'Quan tâm') : t('Reserve', 'Giữ chỗ')} <span className="pk-go">→</span>
+            </button>
+          )}
         </div>
-      </div>
-
-      <div className="pk-meta" style={{ fontSize: 12.5 }}>
-        {noSuchStrength ? (
-          <span style={{ opacity: .6 }}>{t(`already below ${asked}%`, `đã dưới ${asked}%`)}</span>
-        ) : (
-          <>
-            <span style={{ color: CREAM, fontSize: 15 }}>{bottles}</span> {t('bottles', 'chai')}
-            {gain > 0 && <span style={{ color: SAGE }}> · +{gain}</span>}
-          </>
-        )}
-        {!provisional && (
-          <span style={{ display: 'block', marginTop: 4, color: CREAM }}>
-            {vnd(num(spec.unit))}
-          </span>
-        )}
-      </div>
-
-      <div style={{ textAlign: 'right' }}>
-        {gone ? (
-          <span className="pk-eyebrow" style={{ color: AMBER }}>
-            {c.status === 'sold' ? t('Sold', 'Đã bán') : t('Being confirmed', 'Đang xác nhận')}
-          </span>
-        ) : (
-          <button onClick={onChoose} className="pk-cta" style={{ marginTop: 0 }}>
-            {provisional ? t('Interest', 'Quan tâm') : t('Reserve', 'Giữ chỗ')} <span className="pk-go">→</span>
-          </button>
-        )}
       </div>
     </div>
   )
 }
+
+const CASK_CSS = `
+.ck { border-top: 1px solid rgba(229,212,194,.14); }
+.ck-head { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr) auto;
+           gap: 18px; align-items: baseline; width: 100%; text-align: left;
+           background: none; border: none; padding: 16px 0; cursor: pointer;
+           color: inherit; font: inherit; -webkit-tap-highlight-color: transparent; }
+.ck-head:hover .ck-name .pk-h3, .ck.is-open .ck-name .pk-h3 { color: ${GOLD}; }
+.ck-name .pk-h3 { display: block; transition: color .3s ease; }
+.ck-sub { display: block; margin-top: 4px; }
+.ck-figs { font-size: 12.5px; }
+.ck-chev { display: flex; justify-content: flex-end; align-items: center;
+           color: rgba(229,212,194,.5); transition: transform .4s cubic-bezier(.16,.84,.44,1); }
+.ck.is-open .ck-chev { transform: rotate(180deg); color: ${GOLD}; }
+
+/* 0fr → 1fr: animates to a height nobody had to measure. */
+.ck-wrap { display: grid; grid-template-rows: 0fr;
+           transition: grid-template-rows .5s cubic-bezier(.16,.84,.44,1); }
+.ck.is-open .ck-wrap { grid-template-rows: 1fr; }
+.ck-inner { overflow: hidden; }
+.ck.is-open .ck-inner { padding-bottom: 26px; }
+
+.ck-body { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(0,1fr);
+           gap: clamp(20px, 4vw, 56px); padding-top: 4px; }
+@media (max-width: 720px) { .ck-body { grid-template-columns: 1fr; gap: 22px; }
+                            .ck-head { grid-template-columns: minmax(0,1fr) auto; }
+                            .ck-figs { grid-column: 1 / -1; } }
+
+.ck-note { font-family: ${MONO}; font-size: 13.5px; line-height: 1.95;
+           color: rgba(229,212,194,.8); margin: 0; max-width: 56ch; }
+.ck-gain { font-family: ${MONO}; font-size: 12px; line-height: 1.85;
+           color: ${SAGE}; margin: 14px 0 0; max-width: 56ch; }
+
+.ck-spec { margin: 0; font-family: ${MONO}; font-size: 12px; }
+.ck-spec > div { display: grid; grid-template-columns: 96px 1fr; gap: 12px; padding: 7px 0;
+                 border-top: 1px solid rgba(229,212,194,.1); }
+.ck-spec dt { letter-spacing: .12em; text-transform: uppercase; opacity: .45; margin: 0; }
+.ck-spec dd { margin: 0; color: rgba(229,212,194,.85); }
+.ck-swatch { display: inline-block; width: 42px; height: 14px; border-radius: 2px;
+             border: 1px solid rgba(229,212,194,.25); vertical-align: middle; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ck-wrap, .ck-chev, .ck-name .pk-h3 { transition: none; }
+}
+`
 
 const pick = (on: boolean): React.CSSProperties => ({
   fontFamily: MONO, fontSize: 12, letterSpacing: '.1em', textTransform: 'uppercase',
