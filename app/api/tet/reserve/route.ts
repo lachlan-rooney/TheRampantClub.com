@@ -1,3 +1,4 @@
+import { notifyTetEnquiry } from '@/lib/tet/notify'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
@@ -98,6 +99,22 @@ export async function POST(req: Request) {
       personalisation: body?.personalisation && typeof body.personalisation === 'object' ? body.personalisation : {},
     }).select('reference').single()
     if (error) return NextResponse.json({ error: 'save_failed', message: error.message }, { status: 500 })
+
+    // TELL SOMEBODY. Awaited so it actually runs before the function is frozen
+    // — a fire-and-forget promise on a serverless platform is a promise that
+    // may never resolve — but its result is never allowed to affect the reply.
+    // The enquiry is already saved; a mail outage must not become a 500 that
+    // sends a buyer away thinking the form is broken.
+    const sent = await notifyTetEnquiry({
+      reference: data.reference, mode: 'enquiry',
+      company, name, email, phone: phone || null,
+      kind, caskRef,
+      bottles: lines.reduce((s2: number, l: { qty?: number }) => s2 + (Number(l?.qty) || 0), 0) || null,
+      message: message || null, locale,
+      personalised: !!(body?.personalisation && Object.keys(body.personalisation as object).length),
+    })
+    if (!sent.sent) console.error('[tet] enquiry', data.reference, 'saved but NOT notified:', sent.error)
+
     return NextResponse.json({ mode: 'enquiry', reference: data.reference })
   }
 
@@ -128,6 +145,20 @@ export async function POST(req: Request) {
   if (data && typeof data === 'object' && 'error' in data) {
     return NextResponse.json({ error: data.error, message: readable(String(data.error)) }, { status: 409 })
   }
+  // A reservation holds a cask, so it matters more than an enquiry, not less.
+  const ref = (data as { reference?: string } | null)?.reference
+  if (ref) {
+    const sent = await notifyTetEnquiry({
+      reference: ref, mode: 'reservation',
+      company, name, email, phone: phone || null,
+      kind, caskRef,
+      bottles: lines.reduce((s2: number, l: { qty?: number }) => s2 + (Number(l?.qty) || 0), 0) || null,
+      message: message || null, locale,
+      personalised: !!(body?.personalisation && Object.keys(body.personalisation as object).length),
+    })
+    if (!sent.sent) console.error('[tet] reservation', ref, 'saved but NOT notified:', sent.error)
+  }
+
   return NextResponse.json({ mode: 'reservation', ...data })
 }
 
