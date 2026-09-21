@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { Reveal } from '@/components/tet/TetScroll'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // A PLATE — a photograph shown whole.
@@ -22,14 +22,17 @@ import { useEffect, useRef, useState } from 'react'
 //
 // So there is no parallax here. Parallax needs the image to be bigger than its
 // frame — that surplus is what slides — and surplus is the crop we just got rid
-// of. Motion that costs you the subject is not worth having. The plate moves on
-// arrival instead: it rises and fades in once, which reads on a long page and
-// takes nothing away from the picture.
+// of. Motion that costs you the subject is not worth having.
+//
+// The plate is UNCOVERED on arrival instead: components/tet/TetScroll wipes the
+// frame open from the bottom while the picture settles from 1.06 to 1. A
+// photograph that fades up looks like a slow image load, which is the one
+// association a photograph must not have.
 // ═══════════════════════════════════════════════════════════════════════════
 
 export default function TetPlate({
   src, sm, width, height, smWidth = 900, alt = '', caption, eager = false,
-  maxWidth = 1120, align = 'start',
+  maxWidth = 1120, align = 'start', step = 0,
 }: {
   src: string
   /** The phone-sized file. Same picture, fewer pixels. */
@@ -45,29 +48,13 @@ export default function TetPlate({
   eager?: boolean
   maxWidth?: number
   align?: 'start' | 'center'
+  /** Place in the stagger, so a pair of plates does not arrive as one slab. */
+  step?: number
 }) {
-  const ref = useRef<HTMLElement>(null)
-  const [seen, setSeen] = useState(eager)
-
-  useEffect(() => {
-    if (eager || seen) return
-    const el = ref.current
-    if (!el) return
-    if (typeof IntersectionObserver === 'undefined') { setSeen(true); return }
-    const io = new IntersectionObserver(([e]) => {
-      if (e.isIntersecting) { setSeen(true); io.disconnect() }
-    }, { rootMargin: '0px 0px -8% 0px' })
-    io.observe(el)
-    return () => io.disconnect()
-  }, [eager, seen])
-
   return (
-    <figure
-      ref={ref}
-      className={`tp ${seen ? 'is-in' : ''}`}
-      style={{ maxWidth, marginInline: align === 'center' ? 'auto' : undefined }}
-    >
-      <div className="tp-frame" style={{ aspectRatio: `${width} / ${height}` }}>
+    <figure className="tp" style={{ maxWidth, marginInline: align === 'center' ? 'auto' : undefined }}>
+      <Reveal variant="wipe" step={step} className="tp-frame"
+              style={{ aspectRatio: `${width} / ${height}` }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
@@ -78,16 +65,18 @@ export default function TetPlate({
           fetchPriority={eager ? 'high' : 'auto'}
           decoding="async"
         />
-      </div>
-      {caption && <figcaption className="tp-cap">{caption}</figcaption>}
+      </Reveal>
+      {caption && (
+        <Reveal step={step + 1}>
+          <figcaption className="tp-cap">{caption}</figcaption>
+        </Reveal>
+      )}
     </figure>
   )
 }
 
 export const TET_PLATE_CSS = `
-.tp { margin: 0; opacity: 0; transform: translateY(18px);
-      transition: opacity .9s cubic-bezier(.16,.84,.44,1), transform .9s cubic-bezier(.16,.84,.44,1); }
-.tp.is-in { opacity: 1; transform: none; }
+.tp { margin: 0; }
 
 /* A hairline, not a box — the picture has edges of its own. */
 .tp-frame { position: relative; width: 100%; overflow: hidden; border-radius: 2px;
@@ -106,7 +95,4 @@ export const TET_PLATE_CSS = `
            align-items: start; }
 @media (max-width: 780px) { .tp-pair { grid-template-columns: 1fr; gap: 44px; } }
 
-@media (prefers-reduced-motion: reduce) {
-  .tp { opacity: 1; transform: none; transition: none; }
-}
 `

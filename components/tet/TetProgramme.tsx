@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLang } from '@/lib/lang'
 import LangToggle from '@/components/LangToggle'
-import { PublicPage, Masthead, SectionHead, Details, Cta, Rise, MONO, GOLD } from '@/components/public/kit'
+import { PublicPage, Masthead, SectionHead, Details, Cta, MONO, GOLD } from '@/components/public/kit'
 import { timeRemaining } from '@/lib/tet/queries'
 import { vnd, type BlendBoardRow, type CaskBoardRow, type Countdown, type TetCategory, type VolumeTier } from '@/lib/tet/types'
 import TetEnquiry, { type EnquiryTarget } from '@/components/tet/TetEnquiry'
@@ -11,6 +11,7 @@ import TetTiers from '@/components/tet/TetTiers'
 import SleeveStudio, { type SleeveDesign } from '@/components/tet/SleeveStudio'
 import TetTimeline from '@/components/tet/TetTimeline'
 import TetPlate, { TET_PLATE_CSS } from '@/components/tet/TetPlate'
+import { Reveal, ScrollRail, TET_SCROLL_CSS } from '@/components/tet/TetScroll'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE TẾT PROGRAMME — built from the public kit, like the rest of the site.
@@ -115,7 +116,8 @@ export default function TetProgramme({
 
   return (
     <PublicPage ground={GROUND} ink={CREAM}>
-      <style dangerouslySetInnerHTML={{ __html: TET_PLATE_CSS + CASK_CSS }} />
+      <style dangerouslySetInnerHTML={{ __html: TET_PLATE_CSS + CASK_CSS + TET_SCROLL_CSS }} />
+      <ScrollRail />
       {/* THE SWITCH STAYS WITH YOU. It was absolute, so it scrolled away after
           the masthead — on a page this long that is the same as not having one.
           And it was tone="light", which is the control for a CREAM page: on
@@ -161,17 +163,19 @@ export default function TetProgramme({
 
       {/* ── THE BLENDS ────────────────────────────────────────────────── */}
       <section className="pk-wrap pk-section">
-        <Rise>
+        <Reveal>
           <SectionHead
             eyebrow={t('From fifty bottles', 'Từ năm mươi chai')}
             title={blendCat ? (vn ? blendCat.name_vn : blendCat.name_en) : 'Duncan Taylor'}
           />
-          {blendCat && (
+        </Reveal>
+        {blendCat && (
+          <Reveal step={1}>
             <p className="pk-lede">{vn ? blendCat.standfirst_vn : blendCat.standfirst_en}</p>
-          )}
-        </Rise>
+          </Reveal>
+        )}
 
-        <Rise delay={.08} style={{ marginTop: 40 }}>
+        <Reveal step={2} style={{ marginTop: 40 }}>
           <Details rows={blends.map(b => ({
             label: b.expression || b.sku,
             value: (
@@ -184,7 +188,7 @@ export default function TetProgramme({
               </>
             ),
           }))} />
-        </Rise>
+        </Reveal>
 
         {tiers.length > 0 && (
           <div style={{ marginTop: 52 }}>
@@ -213,16 +217,18 @@ export default function TetProgramme({
           The question a buyer is actually asking is "what will it look like
           with our logo on it". Prose cannot answer that. */}
       <section className="pk-wrap pk-section">
-        <Rise>
+        <Reveal>
           <SectionHead
             eyebrow={t('Make it yours', 'Cá nhân hoá')}
             title={t('The sleeve', 'Hộp đựng')}
           />
-        </Rise>
+        </Reveal>
+        <Reveal step={1}>
         <p className="pk-lede">
           {t('Every bottle comes in a sleeve printed with your name. Set the colour, drop your logo on it, and write the line that goes underneath.',
              'Mỗi chai đều có hộp in tên công ty. Chọn màu, tải logo lên, và viết dòng chữ bên dưới.')}
         </p>
+        </Reveal>
         <div style={{ marginTop: 44 }}>
           <SleeveStudio onUse={d => {
             setDesign(d)
@@ -246,6 +252,7 @@ export default function TetProgramme({
           <TetPlate
             src="/images/tet/char.webp" sm="/images/tet/char-sm.webp"
             width={1152} height={768} smWidth={820} maxWidth={620}
+            step={2}
             alt={t('A cask being charred', 'Thùng gỗ đang được nung cháy bề mặt')}
             caption={t('The char that makes the whisky', 'Lớp than tạo nên hương vị')}
           />
@@ -254,30 +261,37 @@ export default function TetProgramme({
 
       {/* ── THE CASKS ─────────────────────────────────────────────────── */}
       <section className="pk-wrap pk-section">
-        <Rise>
+        <Reveal>
           <SectionHead
             eyebrow={t('Fourteen single casks', 'Mười bốn thùng đơn')}
             title={caskCat ? (vn ? caskCat.name_vn : caskCat.name_en) : 'The Octave Selection'}
           />
-          {caskCat && <p className="pk-lede">{vn ? caskCat.standfirst_vn : caskCat.standfirst_en}</p>}
-        </Rise>
+        </Reveal>
+        {caskCat && (
+          <Reveal step={1}>
+            <p className="pk-lede">{vn ? caskCat.standfirst_vn : caskCat.standfirst_en}</p>
+          </Reveal>
+        )}
 
         {/* THE TOGGLE IS THE ARGUMENT. Duty and tax are charged on value, not
             on alcohol, so bottling a strong young cask at 50% multiplies the
             bottles without multiplying the tax — and on a weak old cask it
             does almost nothing. The page shows both, honestly. */}
-        <div style={{ display: 'flex', gap: 22, alignItems: 'baseline', marginTop: 40, flexWrap: 'wrap' }}>
+        <Reveal step={2} style={{ display: 'flex', gap: 22, alignItems: 'baseline', marginTop: 40, flexWrap: 'wrap' }}>
           <span className="pk-eyebrow">{t('Bottled at', 'Đóng chai ở')}</span>
           {offered.map(s => (
             <button key={s.key} onClick={() => setStrength(s.key)} style={pick(strength === s.key)}>
               {t(s.en, s.vn)}
             </button>
           ))}
-        </div>
+        </Reveal>
 
+        {/* The list arrives in order, capped at eight steps — fourteen rows
+            each waiting on the one above is a queue, not a reveal. */}
         <div style={{ marginTop: 24 }}>
-          {casks.map(c => (
-            <CaskRow key={c.cask_ref} c={c} strength={strength} vn={vn} t={t} provisional={provisional}
+          {casks.map((c, i) => (
+            <Reveal key={c.cask_ref} variant="slide" step={Math.min(i, 8)}>
+            <CaskRow c={c} strength={strength} vn={vn} t={t} provisional={provisional}
                      open={openCask === c.cask_ref}
                      onToggle={() => setOpenCask(o => o === c.cask_ref ? null : c.cask_ref)}
                      onChoose={() => setTarget({
@@ -285,6 +299,7 @@ export default function TetProgramme({
                        title: `${c.cask_ref} · ${c.distillery}`,
                        target_abv: strength === 'cask' ? null : Number(strength),
                      })} />
+            </Reveal>
           ))}
         </div>
       </section>
