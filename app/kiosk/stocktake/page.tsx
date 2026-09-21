@@ -32,6 +32,8 @@ interface W {
   last_fill_updated_email: string | null
 }
 interface Done { after: number; changed: boolean; missing: boolean }
+interface Bi { en: string; vn: string }
+interface Guide { title: Bi; steps: Bi[]; notes: Bi[] }
 
 // Shortcuts beside the slider, not instead of it. A slider alone makes 25%
 // a small act of aim; chips alone cannot say 62%. The admin page has used a
@@ -55,6 +57,10 @@ export default function KioskStocktake() {
   // rejoins the count in progress instead of starting a second one.
   const [since, setSince] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
+  const [guide, setGuide] = useState<Guide | null>(null)
+  // Shut by default. Somebody on their fourth stocktake should not have to
+  // scroll past the instructions to reach the search box.
+  const [guideOpen, setGuideOpen] = useState(false)
   const [finished, setFinished] = useState<{ reviewed: number; changed: number; missing: string[] } | null>(null)
   const search = useRef<HTMLInputElement>(null)
 
@@ -66,7 +72,7 @@ export default function KioskStocktake() {
         return j
       })
       .then(j => {
-        setAll(j.whiskies); setStaff(j.staff); setSince(j.since)
+        setAll(j.whiskies); setStaff(j.staff); setSince(j.since); setGuide(j.guide ?? null)
         // Whatever this person has already counted today — rebuilt from the
         // fill history, so the tablet sleeping at bottle 200 costs nothing.
         setDone(new Map((j.counted ?? []).map((c: { whisky_id: string; fill_pct: number; changed: boolean; missing: boolean }) =>
@@ -174,6 +180,30 @@ export default function KioskStocktake() {
             </div>
           )}
           <button className="st-again" onClick={() => setFinished(null)}>{t('Count more', 'Đếm tiếp')}</button>
+        </div>
+      )}
+
+      {/* The instructions, on the tablet, one tap away — a printed sheet drifts
+          from the buttons the moment a label changes, and the person holding a
+          bottle is not holding a printout. Shut by default so it never stands
+          between somebody and the search box. */}
+      {guide && (
+        <div className="st-guide">
+          <button className="st-guide-btn" onClick={() => setGuideOpen(o => !o)} aria-expanded={guideOpen}>
+            {guideOpen ? '−' : '?'} {t(guide.title.en, guide.title.vn)}
+          </button>
+          {guideOpen && (
+            <div className="st-guide-body">
+              <ol className="st-guide-steps">
+                {guide.steps.map((g, i) => (
+                  <li key={i}><span>{i + 1}</span>{t(g.en, g.vn)}</li>
+                ))}
+              </ol>
+              {guide.notes.map((n, i) => (
+                <p key={i} className="st-guide-note">{t(n.en, n.vn)}</p>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -294,6 +324,19 @@ const CSS = `
 .st-again { background: none; border: 1px solid rgba(229,212,194,.3); border-radius: 2px; color: #E5D4C2;
             font-family: ${MONO}; font-size: 12px; padding: 8px 14px; cursor: pointer; }
 
+.st-guide { margin-top: 18px; }
+.st-guide-btn { background: none; border: 1px solid rgba(229,212,194,.22); border-radius: 20px;
+                color: rgba(229,212,194,.8); font-family: ${MONO}; font-size: 13px;
+                letter-spacing: .1em; text-transform: uppercase; padding: 10px 18px;
+                cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.st-guide-body { margin-top: 14px; padding: 18px 20px;
+                 border: 1px solid rgba(229,212,194,.16); border-radius: 4px; }
+.st-guide-steps { list-style: none; margin: 0; padding: 0; }
+.st-guide-steps li { display: flex; gap: 14px; padding: 7px 0; font-family: ${MONO};
+                     font-size: 14px; line-height: 1.65; }
+.st-guide-steps li span { flex: 0 0 auto; width: 20px; color: #D4B85A; }
+.st-guide-note { font-family: ${MONO}; font-size: 13px; line-height: 1.7; color: #D4B85A;
+                 opacity: .85; margin: 12px 0 0; }
 .st-search { width: 100%; box-sizing: border-box; margin: 22px 0 6px; padding: 18px 18px;
              background: rgba(229,212,194,.06); border: 1px solid rgba(229,212,194,.22);
              border-radius: 3px; color: #E5D4C2; font-family: ${MONO}; font-size: 19px; outline: none; }

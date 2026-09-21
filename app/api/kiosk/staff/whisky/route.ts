@@ -86,6 +86,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     staff: me,
     since,
+    guide: GUIDE,
     whiskies: data ?? [],
     counted: [...counted.entries()].map(([whisky_id, r]) => ({
       whisky_id,
@@ -94,6 +95,43 @@ export async function GET(req: NextRequest) {
       missing: r.note === NOTE.missing,
     })),
   })
+}
+
+// ── THE INSTRUCTIONS, ON THE TABLET ───────────────────────────────────────
+// A printed sheet drifts from the buttons the moment a label changes, and the
+// person holding a bottle is not holding a printout. Served with the catalogue
+// he is already fetching rather than as a second request, and bilingual for the
+// obvious reason: the people who count bottles here read Vietnamese first.
+//
+// It lives HERE rather than in the page so there is one copy of the wording,
+// and changing it does not need a deploy of the screen.
+
+const GUIDE = {
+  title: { en: 'How to do this', vn: 'Hướng dẫn' },
+  steps: [
+    { en: 'Work along the shelf, bottle by bottle. The list on screen is for finding a bottle, not for ordering your work.',
+      vn: 'Làm theo kệ, từng chai một. Danh sách trên màn hình chỉ để tìm chai, không phải thứ tự công việc.' },
+    { en: 'Type three or four letters of the name. It searches the name, the distillery and the region.',
+      vn: 'Gõ ba hoặc bốn chữ của tên chai. Tìm theo tên, nhà máy và vùng.' },
+    { en: 'Hold the bottle up and set the slider to match it. Full 100, shoulder 75, half 50, a quarter 25, empty 0.',
+      vn: 'Cầm chai lên và kéo thanh trượt cho khớp. Đầy 100, tới vai 75, một nửa 50, một phần tư 25, hết 0.' },
+    { en: 'Tap Save. The button shows the number back — check it before you tap.',
+      vn: 'Bấm Lưu. Nút hiện lại con số — kiểm tra trước khi bấm.' },
+    { en: 'If the bottle has not moved, tap No change. A bottle you checked is still a bottle you counted.',
+      vn: 'Nếu chai không thay đổi, bấm Không đổi. Chai đã kiểm tra vẫn là chai đã đếm.' },
+    { en: 'On the shelf but not in the search? Tap “Add to the catalogue” and type only what the label says.',
+      vn: 'Có trên kệ nhưng tìm không ra? Bấm “Thêm vào danh mục” và chỉ gõ đúng tên trên nhãn.' },
+    { en: 'In the list but not on the shelf? Tap “Not on the shelf”. Never just skip it.',
+      vn: 'Có trong danh sách nhưng không có trên kệ? Bấm “Không có trên kệ”. Đừng bỏ qua.' },
+    { en: 'When every shelf is done, tap Finish stocktake and wait for “Stocktake saved”.',
+      vn: 'Khi xong hết các kệ, bấm Kết thúc kiểm kê và đợi thấy “Đã lưu phiên kiểm kê”.' },
+  ],
+  notes: [
+    { en: 'Interrupted? Put the tablet down and come back. Every bottle is saved as you go and you will pick up where you left off.',
+      vn: 'Bị gián đoạn? Cứ đặt máy xuống rồi quay lại. Mỗi chai được lưu ngay, anh sẽ tiếp tục đúng chỗ đang làm.' },
+    { en: 'More than 2 bottles unaccounted for: find out why before you go home.',
+      vn: 'Chênh lệch trên 2 chai: phải tìm ra nguyên nhân trước khi về.' },
+  ],
 }
 
 // ── One bottle ─────────────────────────────────────────────────────────────
