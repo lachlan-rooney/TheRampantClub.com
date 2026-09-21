@@ -33,7 +33,8 @@ interface W {
 }
 interface Done { after: number; changed: boolean; missing: boolean }
 interface Bi { en: string; vn: string }
-interface Guide { title: Bi; steps: Bi[]; notes: Bi[] }
+interface GuideSection { head: Bi; numbered: boolean; lines: Bi[] }
+interface Guide { title: Bi; standfirst: Bi; sections: GuideSection[]; rule: Bi }
 
 // Shortcuts beside the slider, not instead of it. A slider alone makes 25%
 // a small act of aim; chips alone cannot say 62%. The admin page has used a
@@ -194,14 +195,23 @@ export default function KioskStocktake() {
           </button>
           {guideOpen && (
             <div className="st-guide-body">
-              <ol className="st-guide-steps">
-                {guide.steps.map((g, i) => (
-                  <li key={i}><span>{i + 1}</span>{t(g.en, g.vn)}</li>
-                ))}
-              </ol>
-              {guide.notes.map((n, i) => (
-                <p key={i} className="st-guide-note">{t(n.en, n.vn)}</p>
+              <p className="st-guide-stand">{t(guide.standfirst.en, guide.standfirst.vn)}</p>
+              {guide.sections.map((sec, si) => (
+                <section key={si} className="st-guide-sec">
+                  <h2 className="st-guide-head">{t(sec.head.en, sec.head.vn)}</h2>
+                  <ol className="st-guide-steps">
+                    {sec.lines.map((g, i) => (
+                      <li key={i}>
+                        <span>{sec.numbered ? i + 1 : '·'}</span>{t(g.en, g.vn)}
+                      </li>
+                    ))}
+                  </ol>
+                </section>
               ))}
+              <p className="st-guide-note">{t(guide.rule.en, guide.rule.vn)}</p>
+              <button className="st-guide-close" onClick={() => setGuideOpen(false)}>
+                {t('Close', 'Đóng')}
+              </button>
             </div>
           )}
         </div>
@@ -335,8 +345,19 @@ const CSS = `
 .st-guide-steps li { display: flex; gap: 14px; padding: 7px 0; font-family: ${MONO};
                      font-size: 14px; line-height: 1.65; }
 .st-guide-steps li span { flex: 0 0 auto; width: 20px; color: #D4B85A; }
-.st-guide-note { font-family: ${MONO}; font-size: 13px; line-height: 1.7; color: #D4B85A;
-                 opacity: .85; margin: 12px 0 0; }
+.st-guide-stand { font-family: ${MONO}; font-size: 13px; line-height: 1.7;
+                  opacity: .6; margin: 0 0 20px; }
+.st-guide-sec { margin-bottom: 22px; }
+.st-guide-head { font-family: ${MONO}; font-size: 11px; letter-spacing: .2em;
+                 text-transform: uppercase; color: #D4B85A; margin: 0 0 8px;
+                 padding-bottom: 7px; border-bottom: 1px solid rgba(229,212,194,.14); font-weight: 400; }
+.st-guide-note { font-family: ${MONO}; font-size: 14px; line-height: 1.7; color: #D4B85A;
+                 margin: 18px 0 0; padding: 14px 16px;
+                 border: 1px solid rgba(212,184,90,.4); border-radius: 4px; }
+.st-guide-close { margin-top: 18px; width: 100%; min-height: 52px; background: none;
+                  border: 1px solid rgba(229,212,194,.25); border-radius: 4px; color: #E5D4C2;
+                  font-family: ${MONO}; font-size: 13px; letter-spacing: .1em;
+                  text-transform: uppercase; cursor: pointer; }
 .st-search { width: 100%; box-sizing: border-box; margin: 22px 0 6px; padding: 18px 18px;
              background: rgba(229,212,194,.06); border: 1px solid rgba(229,212,194,.22);
              border-radius: 3px; color: #E5D4C2; font-family: ${MONO}; font-size: 19px; outline: none; }

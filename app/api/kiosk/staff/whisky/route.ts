@@ -108,30 +108,80 @@ export async function GET(req: NextRequest) {
 
 const GUIDE = {
   title: { en: 'How to do this', vn: 'Hướng dẫn' },
-  steps: [
-    { en: 'Work along the shelf, bottle by bottle. The list on screen is for finding a bottle, not for ordering your work.',
-      vn: 'Làm theo kệ, từng chai một. Danh sách trên màn hình chỉ để tìm chai, không phải thứ tự công việc.' },
-    { en: 'Type three or four letters of the name. It searches the name, the distillery and the region.',
-      vn: 'Gõ ba hoặc bốn chữ của tên chai. Tìm theo tên, nhà máy và vùng.' },
-    { en: 'Hold the bottle up and set the slider to match it. Full 100, shoulder 75, half 50, a quarter 25, empty 0.',
-      vn: 'Cầm chai lên và kéo thanh trượt cho khớp. Đầy 100, tới vai 75, một nửa 50, một phần tư 25, hết 0.' },
-    { en: 'Tap Save. The button shows the number back — check it before you tap.',
-      vn: 'Bấm Lưu. Nút hiện lại con số — kiểm tra trước khi bấm.' },
-    { en: 'If the bottle has not moved, tap No change. A bottle you checked is still a bottle you counted.',
-      vn: 'Nếu chai không thay đổi, bấm Không đổi. Chai đã kiểm tra vẫn là chai đã đếm.' },
-    { en: 'On the shelf but not in the search? Tap “Add to the catalogue” and type only what the label says.',
-      vn: 'Có trên kệ nhưng tìm không ra? Bấm “Thêm vào danh mục” và chỉ gõ đúng tên trên nhãn.' },
-    { en: 'In the list but not on the shelf? Tap “Not on the shelf”. Never just skip it.',
-      vn: 'Có trong danh sách nhưng không có trên kệ? Bấm “Không có trên kệ”. Đừng bỏ qua.' },
-    { en: 'When every shelf is done, tap Finish stocktake and wait for “Stocktake saved”.',
-      vn: 'Khi xong hết các kệ, bấm Kết thúc kiểm kê và đợi thấy “Đã lưu phiên kiểm kê”.' },
+  standfirst: {
+    en: 'Weekly. Allow 60–90 minutes. This job is done on the Rampant Room tablet.',
+    vn: 'Hàng tuần. Khoảng 60–90 phút. Công việc này làm trên máy tính bảng phòng Rampant.',
+  },
+  sections: [
+    {
+      head: { en: 'Before you start', vn: 'Trước khi bắt đầu' },
+      numbered: true,
+      lines: [
+        { en: 'Take the Rampant Room tablet off its stand. Have your PIN.',
+          vn: 'Lấy máy tính bảng phòng Rampant khỏi giá. Chuẩn bị mã PIN của anh.' },
+        { en: 'Tap Staff on the bottom bar, tap your name, enter your PIN.',
+          vn: 'Bấm Nhân viên ở thanh dưới, chọn tên anh, nhập mã PIN.' },
+        { en: 'Tap Count the back bar.',
+          vn: 'Bấm Kiểm kê quầy bar.' },
+        { en: 'Your name shows at the top of this screen. If it shows someone else, tap Staff and switch.',
+          vn: 'Tên anh hiện ở đầu màn hình này. Nếu là tên người khác, bấm Nhân viên và đổi lại.' },
+      ],
+    },
+    {
+      head: { en: 'How to count', vn: 'Cách đếm' },
+      numbered: true,
+      lines: [
+        { en: 'Work along the shelf, bottle by bottle, picking up what is physically there. The list on screen is for finding a bottle, not for ordering your work.',
+          vn: 'Làm theo kệ, từng chai một, cầm chai thật lên. Danh sách trên màn hình chỉ để tìm chai, không phải thứ tự công việc.' },
+        { en: 'Type three or four letters of the name — "octa", "talis", "ardb". It searches the name, the distillery and the region.',
+          vn: 'Gõ ba hoặc bốn chữ của tên chai — "octa", "talis", "ardb". Tìm theo tên, nhà máy và vùng.' },
+        { en: 'Tap the bottle in the results.',
+          vn: 'Bấm vào chai trong kết quả.' },
+        { en: 'Hold the bottle up and set the slider to match it. Full 100, down to the shoulder 75, half 50, a quarter left 25, empty 0. The slider moves in fives for anything in between.',
+          vn: 'Cầm chai lên và kéo thanh trượt cho khớp. Đầy 100, tới vai chai 75, một nửa 50, còn một phần tư 25, hết 0. Thanh trượt chạy theo bước 5 cho các mức ở giữa.' },
+        { en: 'Tap Save. The button shows the number back to you — check that figure before you tap it.',
+          vn: 'Bấm Lưu. Nút hiện lại con số — kiểm tra con số đó trước khi bấm.' },
+        { en: 'The bottle disappears from the list. That is correct: what remains on screen is what you have not done.',
+          vn: 'Chai biến mất khỏi danh sách. Như vậy là đúng: những gì còn lại là những gì chưa đếm.' },
+        { en: 'If the bottle has not moved since last time, tap No change instead. Do this — a bottle you checked and found untouched is still a bottle you counted.',
+          vn: 'Nếu chai không thay đổi so với lần trước, bấm Không đổi. Vẫn phải bấm — chai đã kiểm tra và không đổi vẫn là chai đã đếm.' },
+      ],
+    },
+    {
+      head: { en: 'Two things that will happen', vn: 'Hai tình huống sẽ gặp' },
+      numbered: false,
+      lines: [
+        { en: 'A bottle is on the shelf but the search finds nothing. Tap "Add … to the catalogue", then set its level as normal. Type only what the label says — do not guess the distillery.',
+          vn: 'Có chai trên kệ nhưng tìm không ra. Bấm "Thêm … vào danh mục", rồi chọn mức rượu như bình thường. Chỉ gõ đúng tên trên nhãn — đừng đoán nhà máy.' },
+        { en: 'A bottle is in the list but not on the shelf. Tap Not on the shelf. It is recorded as empty and flagged. Do not skip it — a bottle you skip looks the same as a bottle you never reached.',
+          vn: 'Có chai trong danh sách nhưng không có trên kệ. Bấm Không có trên kệ. Chai được ghi nhận là hết và được đánh dấu. Đừng bỏ qua — chai bị bỏ qua trông giống hệt chai chưa kiểm.' },
+      ],
+    },
+    {
+      head: { en: 'When you finish', vn: 'Khi xong' },
+      numbered: true,
+      lines: [
+        { en: 'Tap Finish stocktake at the bottom.',
+          vn: 'Bấm Kết thúc kiểm kê ở dưới cùng.' },
+        { en: 'Wait for "Stocktake saved".',
+          vn: 'Đợi thấy "Đã lưu phiên kiểm kê".' },
+        { en: 'It will list anything that was not on the shelf.',
+          vn: 'Màn hình sẽ liệt kê những chai không có trên kệ.' },
+      ],
+    },
+    {
+      head: { en: 'If you are interrupted', vn: 'Nếu bị gián đoạn' },
+      numbered: false,
+      lines: [
+        { en: 'Put the tablet down and come back. Every bottle is saved the moment you tap Save, and reopening Count the back bar picks up exactly where you left off, with everything you have already done still marked off. You do not need to start again.',
+          vn: 'Cứ đặt máy xuống rồi quay lại. Mỗi chai được lưu ngay khi bấm Lưu, và khi mở lại Kiểm kê quầy bar anh sẽ tiếp tục đúng chỗ đang làm, những chai đã đếm vẫn được ghi nhận. Không cần làm lại từ đầu.' },
+      ],
+    },
   ],
-  notes: [
-    { en: 'Interrupted? Put the tablet down and come back. Every bottle is saved as you go and you will pick up where you left off.',
-      vn: 'Bị gián đoạn? Cứ đặt máy xuống rồi quay lại. Mỗi chai được lưu ngay, anh sẽ tiếp tục đúng chỗ đang làm.' },
-    { en: 'More than 2 bottles unaccounted for: find out why before you go home.',
-      vn: 'Chênh lệch trên 2 chai: phải tìm ra nguyên nhân trước khi về.' },
-  ],
+  rule: {
+    en: 'If more than 2 bottles are unaccounted for, find out why before you go home.',
+    vn: 'Nếu chênh lệch trên 2 chai, phải tìm ra nguyên nhân trước khi về.',
+  },
 }
 
 // ── One bottle ─────────────────────────────────────────────────────────────
