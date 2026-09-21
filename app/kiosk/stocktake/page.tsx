@@ -31,7 +31,7 @@ interface W {
   last_fill_updated_at: string | null
   last_fill_updated_email: string | null
 }
-interface Done { before: number | null; after: number; changed: boolean }
+interface Done { after: number; changed: boolean; missing: boolean }
 
 // Shortcuts beside the slider, not instead of it. A slider alone makes 25%
 // a small act of aim; chips alone cannot say 62%. The admin page has used a
@@ -51,8 +51,11 @@ export default function KioskStocktake() {
   const [draft, setDraft] = useState(100)
   const [busy, setBusy] = useState<string | null>(null)
   const [done, setDone] = useState<Map<string, Done>>(new Map())
-  const [startedAt] = useState(() => new Date().toISOString())
-  const [finished, setFinished] = useState<{ reviewed: number; changed: number } | null>(null)
+  // The session's start comes from the SERVER, not from this tab. A reload
+  // rejoins the count in progress instead of starting a second one.
+  const [since, setSince] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false)
+  const [finished, setFinished] = useState<{ reviewed: number; changed: number; missing: string[] } | null>(null)
   const search = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -62,7 +65,14 @@ export default function KioskStocktake() {
         if (!r.ok) throw new Error(j.error || 'Could not load the catalogue.')
         return j
       })
-      .then(j => { setAll(j.whiskies); setStaff(j.staff); setTimeout(() => search.current?.focus(), 80) })
+      .then(j => {
+        setAll(j.whiskies); setStaff(j.staff); setSince(j.since)
+        // Whatever this person has already counted today — rebuilt from the
+        // fill history, so the tablet sleeping at bottle 200 costs nothing.
+        setDone(new Map((j.counted ?? []).map((c: { whisky_id: string; fill_pct: number; changed: boolean; missing: boolean }) =>
+          [c.whisky_id, { after: c.fill_pct, changed: c.changed, missing: c.missing }])))
+        setTimeout(() => search.current?.focus(), 80)
+      })
       .catch(e => setErr(String(e.message || e)))
   }, [])
 
@@ -75,45 +85,61 @@ export default function KioskStocktake() {
       .slice(0, needle ? 40 : 60)
   }, [all, q, done])
 
-  const record = useCallback((w: W, after: number, changed: boolean) => {
-    setDone(prev => new Map(prev).set(w.id, { before: w.current_fill_pct ?? null, after, changed }))
-    setOpenId(null)
-    setQ('')
-    search.current?.focus()
-  }, [])
-
-  const save = async (w: W, fill: number) => {
+  // EVERY kind of count goes through the server — a reading, "no change" and
+  // "not on the shelf" alike. Nothing is recorded only in this tab, because a
+  // count that lives in a browser is a count that a flat battery erases.
+  const save = async (w: W, kind: 'count' | 'same' | 'missing', fill?: number) => {
     setBusy(w.id)
     try {
       const r = await fetch('/api/kiosk/staff/whisky', {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: w.id, fill_pct: fill }),
+        body: JSON.stringify({ id: w.id, kind, fill_pct: fill }),
       })
       const j = await r.json().catch(() => ({}))
       if (!r.ok) { setErr(j.error || 'That did not save.'); return }
       setErr('')
-      setAll(prev => prev?.map(x => x.id === w.id ? { ...x, current_fill_pct: fill } : x) ?? prev)
-      record(w, fill, (w.current_fill_pct ?? null) !== fill)
+      setAll(prev => prev?.map(x => x.id === w.id ? { ...x, current_fill_pct: j.fill_pct } : x) ?? prev)
+      setDone(prev => new Map(prev).set(w.id, { after: j.fill_pct, changed: !!j.changed, missing: !!j.missing }))
+      setOpenId(null); setQ(''); search.current?.focus()
     } catch { setErr(t('Could not reach the club just now.', 'Không thể kết nối lúc này.')) }
     finally { setBusy(null) }
+  }
+
+  // A bottle on the shelf that is not in the catalogue. Name only: the person
+  // counting knows what it says on the label and nothing else, and a guessed
+  // distillery would be fiction in the catalogue.
+  const addBottle = async () => {
+    const name = q.trim()
+    if (name.length < 2) return
+    setAdding(true)
+    try {
+      const r = await fetch('/api/kiosk/staff/whisky', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'add', name }),
+      })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok) { setErr(j.error || 'Could not add that.'); return }
+      setErr('')
+      setAll(prev => (prev && !prev.some(x => x.id === j.whisky.id)) ? [...prev, j.whisky] : prev)
+      setOpenId(j.whisky.id); setDraft(100)
+    } catch { setErr(t('Could not reach the club just now.', 'Không thể kết nối lúc này.')) }
+    finally { setAdding(false) }
   }
 
   const finish = async () => {
     if (!done.size || !all) return
     setBusy('__finish__')
     try {
-      const byId = new Map(all.map(w => [w.id, w]))
-      const summary = [...done.entries()].map(([id, d]) => ({
-        id, name: byId.get(id)?.name ?? id,
-        fill_before: d.before, fill_after: d.after, changed: d.changed,
-      }))
+      // No summary is sent: the server builds it from the fill history, so the
+      // count is whatever was actually recorded and not whatever this tab
+      // happens to remember.
       const r = await fetch('/api/kiosk/staff/whisky', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ started_at: startedAt, summary }),
+        body: JSON.stringify({ action: 'finish', started_at: since }),
       })
       const j = await r.json().catch(() => ({}))
       if (!r.ok) { setErr(j.error || 'That did not save.'); return }
-      setFinished({ reviewed: j.session.reviewed_count, changed: j.session.changed_count })
+      setFinished({ reviewed: j.session.reviewed_count, changed: j.session.changed_count, missing: j.missing ?? [] })
       setDone(new Map())
     } catch { setErr(t('Could not reach the club just now.', 'Không thể kết nối lúc này.')) }
     finally { setBusy(null) }
@@ -142,6 +168,11 @@ export default function KioskStocktake() {
         <div className="st-done">
           {t('Stocktake saved.', 'Đã lưu phiên kiểm kê.')}{' '}
           {finished.reviewed} {t('counted', 'đã đếm')}, {finished.changed} {t('changed', 'thay đổi')}.
+          {finished.missing.length > 0 && (
+            <div className="st-missing-list">
+              {t('Not on the shelf', 'Không có trên kệ')}: {finished.missing.join(', ')}
+            </div>
+          )}
           <button className="st-again" onClick={() => setFinished(null)}>{t('Count more', 'Đếm tiếp')}</button>
         </div>
       )}
@@ -197,24 +228,37 @@ export default function KioskStocktake() {
                 </div>
 
                 <div className="st-acts">
-                  <button className="st-save" disabled={busy === w.id} onClick={() => save(w, draft)}>
+                  <button className="st-save" disabled={busy === w.id} onClick={() => save(w, 'count', draft)}>
                     {busy === w.id ? t('Saving…', 'Đang lưu…') : `${t('Save', 'Lưu')} ${draft}%`}
                   </button>
                   {/* Counting a bottle that has not moved is still counting it —
                       otherwise the session only ever records the losses. */}
-                  <button className="st-same" disabled={busy === w.id}
-                          onClick={() => record(w, w.current_fill_pct ?? 0, false)}>
+                  <button className="st-same" disabled={busy === w.id} onClick={() => save(w, 'same')}>
                     {t('No change', 'Không đổi')}
                   </button>
                 </div>
+                {/* In the catalogue, not on the shelf. Recorded as zero with a
+                    loud note: for stock purposes absent is nothing available,
+                    and last week's reading dropping to 0 is exactly the signal
+                    the count exists to produce. */}
+                <button className="st-missing" disabled={busy === w.id} onClick={() => save(w, 'missing')}>
+                  {t('Not on the shelf', 'Không có trên kệ')}
+                </button>
               </div>
             )}
           </li>
         ))}
         {all && !shown.length && (
           <li className="st-msg">
-            {q ? t('Nothing matches that.', 'Không tìm thấy.')
-               : t('Everything on screen has been counted.', 'Đã đếm hết các chai hiển thị.')}
+            {q ? (
+              <>
+                {t('Nothing matches that.', 'Không tìm thấy.')}
+                <button className="st-add" disabled={adding} onClick={addBottle}>
+                  {adding ? t('Adding…', 'Đang thêm…')
+                          : `${t('Add', 'Thêm')} “${q.trim()}” ${t('to the catalogue', 'vào danh mục')}`}
+                </button>
+              </>
+            ) : t('Everything on screen has been counted.', 'Đã đếm hết các chai hiển thị.')}
           </li>
         )}
       </ul>
@@ -295,6 +339,14 @@ const CSS = `
 .st-step:active { background: rgba(212,184,90,.2); }
 
 .st-acts { display: flex; gap: 10px; margin-top: 16px; }
+.st-missing { margin-top: 10px; width: 100%; min-height: 48px; background: none;
+              border: 1px solid rgba(194,112,112,.4); border-radius: 4px; color: #C27070;
+              font-family: ${MONO}; font-size: 12px; letter-spacing: .1em;
+              text-transform: uppercase; cursor: pointer; }
+.st-add { display: block; margin-top: 14px; padding: 16px 20px; background: rgba(212,184,90,.12);
+          border: 1px solid rgba(212,184,90,.5); border-radius: 4px; color: #D4B85A;
+          font-family: ${MONO}; font-size: 15px; cursor: pointer; }
+.st-missing-list { width: 100%; font-size: 12px; color: #C27070; margin-top: 8px; line-height: 1.7; }
 .st-save { flex: 2; min-height: 60px; background: #D4B85A; color: #052E20; border: none;
            border-radius: 4px; font-family: ${MONO}; font-size: 17px; letter-spacing: .06em;
            cursor: pointer; -webkit-tap-highlight-color: transparent; }
