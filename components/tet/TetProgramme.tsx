@@ -20,11 +20,20 @@ import TetPlate, { TET_PLATE_CSS } from '@/components/tet/TetPlate'
 // of this page was a wall of bordered cards — the admin portal's furniture on
 // a page meant for a buyer.
 //
-// PICTURES ARE SHOWN WHOLE. They used to be full-bleed bands, which sounds
+// PICTURES ARE SHOWN WHOLE, AND THEY ARE NOT CROPPED EITHER. They used to be full-bleed bands, which sounds
 // generous and is the opposite: a band crops the photograph to the band's
 // shape, and on a picture of a bottle the part that does not fit IS the
 // bottle. Every photograph here is now a TetPlate, framed at its own aspect
 // ratio, so nothing is cut off at any screen width. See components/tet/TetPlate.
+//
+// The second half of that took another pass. Boxing the files I had only ever
+// preserved the ratio of MY OWN CROPS — the first version had resized the
+// source photography to fit the bands with fit:'cover', so the frame was
+// honest about a picture that had already lost its edges. These are the
+// photographs at their native shape, lifted from Duncan Taylor's own decks
+// (The Octave Brand Guidelines, The Octave, the 2025 deck) where they sit as
+// embedded images at full resolution, and exported with fit:'inside' so no
+// pixel is thrown away: 1828×1372 stays 1.332, 1082×592 stays 1.828.
 //
 // Two pictures were dropped rather than re-framed. The Blend 18 and the Black
 // Bull 30 are pack shots on a WHITE background — on this green ground they
@@ -140,11 +149,11 @@ export default function TetProgramme({
           one lost its neck and its base to the crop. */}
       <section className="pk-wrap" style={{ paddingTop: 64 }}>
         <TetPlate
-          src="/images/tet/hero.webp" sm="/images/tet/hero-sm.webp"
-          width={1700} height={950} smWidth={900} eager
-          alt={t('An Octave single malt among Scottish heather',
-                 'Một chai Octave single malt giữa đồng thạch nam Scotland')}
-          caption={t('The Octave · Scottish heather', 'The Octave · Đồng thạch nam Scotland')}
+          src="/images/tet/burn.webp" sm="/images/tet/burn-sm.webp"
+          width={1400} height={1051} smWidth={820} eager
+          alt={t('An Octave blended malt beside a Highland burn',
+                 'Chai Octave blended malt bên dòng suối vùng cao nguyên')}
+          caption={t('The Octave · Campbeltown', 'The Octave · Campbeltown')}
         />
       </section>
 
@@ -191,11 +200,11 @@ export default function TetProgramme({
 
         <div style={{ marginTop: 72 }}>
           <TetPlate
-            src="/images/tet/bar.webp" sm="/images/tet/bar-sm.webp"
-            width={1200} height={700} smWidth={820}
-            alt={t('An Octave bottle on the back bar',
-                   'Chai Octave trên quầy bar')}
-            caption={t('Poured, not shelved', 'Để rót, không để trưng')}
+            src="/images/tet/flight.webp" sm="/images/tet/flight-sm.webp"
+            width={1106} height={738} smWidth={820}
+            alt={t('Five samples poured into Glencairn glasses',
+                   'Năm mẫu rượu rót trong ly Glencairn')}
+            caption={t('Tasted before it is chosen', 'Nếm thử trước khi chọn')}
           />
         </div>
       </section>
@@ -229,16 +238,16 @@ export default function TetProgramme({
       <section className="pk-wrap" style={{ paddingTop: 96 }}>
         <div className="tp-pair">
           <TetPlate
-            src="/images/tet/cooper-band.webp" sm="/images/tet/cooper-band-sm.webp"
-            width={1500} height={760} smWidth={820} maxWidth={620}
-            alt={t('A cooper closing a cask at Huntly', 'Thợ đóng thùng tại Huntly')}
+            src="/images/tet/cooper.webp" sm="/images/tet/cooper-sm.webp"
+            width={1082} height={592} smWidth={820} maxWidth={620}
+            alt={t('A cooper at work among the casks', 'Thợ đóng thùng làm việc giữa những thùng rượu')}
             caption={t('Huntly · the cooperage', 'Huntly · xưởng đóng thùng')}
           />
           <TetPlate
-            src="/images/tet/rock.webp" sm="/images/tet/rock-sm.webp"
-            width={1400} height={780} smWidth={760} maxWidth={620}
-            alt={t('An Octave single malt on Scottish rock', 'Chai Octave single malt trên đá Scotland')}
-            caption={t('One cask · every bottle numbered', 'Một thùng · từng chai đánh số')}
+            src="/images/tet/char.webp" sm="/images/tet/char-sm.webp"
+            width={1152} height={768} smWidth={820} maxWidth={620}
+            alt={t('A cask being charred', 'Thùng gỗ đang được nung cháy bề mặt')}
+            caption={t('The char that makes the whisky', 'Lớp than tạo nên hương vị')}
           />
         </div>
       </section>
@@ -282,9 +291,10 @@ export default function TetProgramme({
 
       <section className="pk-wrap" style={{ paddingTop: 96 }}>
         <TetPlate
-          src="/images/tet/river.webp" sm="/images/tet/river-sm.webp"
-          width={1400} height={620} smWidth={820}
-          alt={t('A bottle by the water in Speyside', 'Chai rượu bên dòng nước ở Speyside')}
+          src="/images/tet/moss.webp" sm="/images/tet/moss-sm.webp"
+          width={1400} height={933} smWidth={820}
+          alt={t('An Octave single malt on a Speyside hillside',
+                 'Chai Octave single malt trên sườn đồi Speyside')}
           caption={t('Fons et origo · the source', 'Fons et origo · khởi nguồn')}
         />
       </section>
