@@ -290,11 +290,35 @@ export default function TetProgramme({
           </Reveal>
         )}
 
+        {/* THE OFFER — the owner's words, 2026-09-22: "Every octave bought
+            this tet will be shipped out with its cask end!" Nothing added to
+            it: no size, weight or finish is promised, because none was given.
+            The drawing is a cask end — the staves, the hoops' line — and it
+            draws itself once, when it arrives. */}
+        <Reveal step={2}>
+          <div className="ck-offer">
+            <svg className="ck-end" viewBox="0 0 64 64" aria-hidden>
+              <circle cx="32" cy="32" r="29" />
+              <circle cx="32" cy="32" r="24" />
+              {[-16, -8, 0, 8, 16].map(x => (
+                <line key={x} x1={32 + x} y1={32 - Math.sqrt(24 * 24 - x * x)} x2={32 + x} y2={32 + Math.sqrt(24 * 24 - x * x)} />
+              ))}
+            </svg>
+            <div>
+              <div className="pk-eyebrow" style={{ color: '#D4B85A' }}>{t('This Tết only', 'Chỉ trong dịp Tết này')}</div>
+              <p className="ck-offer-line">
+                {t('Every Octave bought this Tết is shipped with its cask end.',
+                   'Mỗi thùng Octave mua trong dịp Tết này sẽ được giao kèm mặt thùng của chính nó.')}
+              </p>
+            </div>
+          </div>
+        </Reveal>
+
         {/* THE TOGGLE IS THE ARGUMENT. Duty and tax are charged on value, not
             on alcohol, so bottling a strong young cask at 50% multiplies the
             bottles without multiplying the tax — and on a weak old cask it
             does almost nothing. The page shows both, honestly. */}
-        <Reveal step={2} style={{ display: 'flex', gap: 22, alignItems: 'baseline', marginTop: 40, flexWrap: 'wrap' }}>
+        <Reveal step={3} style={{ display: 'flex', gap: 22, alignItems: 'baseline', marginTop: 40, flexWrap: 'wrap' }}>
           <span className="pk-eyebrow">{t('Bottled at', 'Đóng chai ở')}</span>
           {offered.map(s => (
             <button key={s.key} onClick={() => setStrength(s.key)} style={pick(strength === s.key)}>
@@ -567,6 +591,18 @@ function CaskRow({ c, strength, vn, t, provisional, onChoose, open, onToggle }: 
 }
 
 const CASK_CSS = `
+.ck-offer { display: grid; grid-template-columns: 64px 1fr; gap: 24px; align-items: center;
+            margin-top: 44px; padding: 26px 0; border-top: 1px solid rgba(212,184,90,.45);
+            border-bottom: 1px solid rgba(212,184,90,.45); }
+.ck-offer-line { font-family: 'Rampant Sans', Georgia, serif; font-size: clamp(21px, 2.6vw, 30px);
+                 line-height: 1.2; margin: 8px 0 0; color: #E5D4C2; }
+.ck-end { width: 64px; height: 64px; fill: none; stroke: #D4B85A; stroke-width: 1.2; }
+.ck-end * { stroke-dasharray: 190; stroke-dashoffset: 190;
+            transition: stroke-dashoffset 1.6s cubic-bezier(.16,.84,.44,1) .35s; }
+.ck-end line { transition-delay: .9s; }
+.tr.is-in .ck-end * { stroke-dashoffset: 0; }
+@media (max-width: 560px) { .ck-offer { grid-template-columns: 44px 1fr; gap: 16px; } .ck-end { width: 44px; height: 44px; } }
+@media (prefers-reduced-motion: reduce) { .ck-end * { transition: none; stroke-dashoffset: 0; } }
 .ck { border-top: 1px solid rgba(229,212,194,.14); }
 .ck-head { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr) auto;
            gap: 18px; align-items: baseline; width: 100%; text-align: left;

@@ -19,12 +19,18 @@ import { useLang } from '@/lib/lang'
 // right-hand edge. There is no glue flap after it. Inside its thin gold frame
 // (x 4792–6372, y 673–2306) the swirls cover the top right and the bottom;
 // the clear red between them, found by scanning every row for gold, is
-// x 4820–6015, y 998–1846. The logo starts centred THERE, not on the face's
-// middle — the top swirl reaches into the right of the face, and a wide logo
-// centred on the face would sit on the gold.
+// x 4820–6015, y 998–1846. That region SIZES the logo; it does not place it.
+// It was also the starting point until the owner said "Centre it is slightly
+// off left of centre" — the clear red is 165 px left of the face's middle,
+// because the swirl takes the top right. Centred means centred in the gold
+// frame, and that is where a logo lands and where "Centre it" puts it back.
 //
-// ACTUAL SIZE is one artwork pixel to one CSS pixel, scrolled to the face. Its
-// 695 KB file only loads when asked for; the page shows a 148 or 297 KB one.
+// There was an ACTUAL SIZE view (one artwork pixel to one CSS pixel). The owner
+// removed it, 2026-09-22: "Just whole sleeve is good."
+//
+// DOWNLOAD AS PNG draws the finished sleeve in the browser — the 3200 px
+// artwork with the logo composited at its box — so a buyer can send it to
+// whoever signs it off. Nothing is uploaded to make it.
 //
 // The logo never leaves the browser until an enquiry is actually sent, and then
 // only into a private bucket. Its position travels with it, in the artwork's
@@ -36,6 +42,8 @@ export const SLEEVE = { w: 6431, h: 2387 }
 export const FACE = { x: 4770, y: 612, w: 1644, h: 1731 }
 /** Inside the face's gold frame — the logo can be moved anywhere in here. */
 const FRAME = { x: 4792, y: 673, w: 1580, h: 1633 }
+/** The middle of the frame — where "centred" is. */
+const MIDDLE = { cx: FRAME.x + FRAME.w / 2, cy: FRAME.y + FRAME.h / 2 }
 /** The clear red between the swirls — where the logo starts. */
 export const CLEAR = { x: 4820, y: 998, w: 1195, h: 848 }
 
@@ -62,12 +70,11 @@ export default function SleeveStudio({ onUse }: { onUse: (d: SleeveDesign) => vo
   const { t } = useLang()
   const [logo, setLogo] = useState<{ url: string; file: File; ar: number } | null>(null)
   const [scale, setScale] = useState(0.8)
-  const [centre, setCentre] = useState({ cx: CLEAR.x + CLEAR.w / 2, cy: CLEAR.y + CLEAR.h / 2 })
-  const [mode, setMode] = useState<'fit' | 'actual'>('fit')
+  const [centre, setCentre] = useState(MIDDLE)
+  const [saving, setSaving] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [err, setErr] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
-  const viewRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x: number; y: number; cx: number; cy: number } | null>(null)
 
@@ -95,21 +102,12 @@ export default function SleeveStudio({ onUse }: { onUse: (d: SleeveDesign) => vo
     img.onload = () => {
       if (logo?.url) URL.revokeObjectURL(logo.url)
       setLogo({ url, file: f, ar: img.naturalWidth / img.naturalHeight || 1 })
-      setScale(0.8); setCentre({ cx: CLEAR.x + CLEAR.w / 2, cy: CLEAR.y + CLEAR.h / 2 })
+      setScale(0.8); setCentre(MIDDLE)
     }
     img.onerror = () => { URL.revokeObjectURL(url); setErr(t('That image could not be read.', 'Không đọc được ảnh này.')) }
     img.src = url
   }
   useEffect(() => () => { if (logo?.url) URL.revokeObjectURL(logo.url) }, [logo?.url])
-
-  // Actual size opens on the face, not on the end flap six thousand pixels away.
-  useEffect(() => {
-    const v = viewRef.current
-    if (mode !== 'actual' || !v) return
-    const aim = box ?? CLEAR
-    v.scrollLeft = aim.x + aim.w / 2 - v.clientWidth / 2
-    v.scrollTop = aim.y + aim.h / 2 - v.clientHeight / 2
-  }, [mode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Dragging works in the artwork's pixels whatever size it is drawn at.
   const artPerPx = () => SLEEVE.w / (stageRef.current?.getBoundingClientRect().width || SLEEVE.w)
@@ -134,32 +132,53 @@ export default function SleeveStudio({ onUse }: { onUse: (d: SleeveDesign) => vo
     e.preventDefault(); setCentre(c => keepInFrame(c.cx + v[0], c.cy + v[1]))
   }
 
+  // The finished sleeve as a PNG. 3200 px wide, not the 6431 master: a PNG of
+  // the master is tens of megabytes, far past what anyone can email, and this
+  // is for looking at — the printer works from the logo file itself.
+  const download = async () => {
+    setErr(''); setSaving(true)
+    try {
+      const load = (src: string) => new Promise<HTMLImageElement>((ok, no) => {
+        const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = src
+      })
+      const art = await load('/images/tet/sleeve-3200.webp')
+      const k = art.naturalWidth / SLEEVE.w
+      const c = document.createElement('canvas')
+      c.width = art.naturalWidth; c.height = art.naturalHeight
+      const g = c.getContext('2d')!
+      g.drawImage(art, 0, 0)
+      if (logo && box) {
+        const l = await load(logo.url)
+        g.imageSmoothingQuality = 'high'
+        g.drawImage(l, box.x * k, box.y * k, box.w * k, box.h * k)
+      }
+      const blob = await new Promise<Blob | null>(ok => c.toBlob(ok, 'image/png'))
+      if (!blob) throw new Error('no blob')
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = 'TRC-Tet-2027-sleeve.png'
+      document.body.appendChild(a); a.click(); a.remove()
+      setTimeout(() => URL.revokeObjectURL(a.href), 10_000)
+    } catch {
+      setErr(t('The PNG could not be made. Try again, or send the design with an enquiry.',
+               'Không tạo được tệp PNG. Vui lòng thử lại, hoặc gửi thiết kế kèm yêu cầu.'))
+    } finally { setSaving(false) }
+  }
+
   const use = () => onUse({ sleeve: 'dt-tet-2027', logo_box: box, logo_preview: logo?.url, logo_file: logo?.file })
 
   return (
     <div>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
-      <div ref={viewRef} className={`ss-view is-${mode}`}>
-        <div ref={stageRef} className="ss-stage" style={mode === 'actual' ? { width: SLEEVE.w } : undefined}>
-          {/* TWO ELEMENTS, NOT ONE REPOINTED. Swapping src on the same <img>
-              from a srcset to a single file left Chrome applying the old
-              srcset's density (1600w in a 1180px slot = 1.356), so the 6431 px
-              file reported itself as 4742 — measured in a browser. A separate
-              element per view starts clean. */}
-          {mode === 'actual' ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img key="actual" className="ss-art" draggable={false} width={SLEEVE.w} height={SLEEVE.h}
-                 src="/images/tet/sleeve-full.webp"
-                 alt={t('The Duncan Taylor Tết sleeve, flat, at actual size', 'Hộp Tết Duncan Taylor, trải phẳng, kích thước thật')} />
-          ) : (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img key="fit" className="ss-art" draggable={false} width={SLEEVE.w} height={SLEEVE.h}
-                 src="/images/tet/sleeve-1600.webp"
-                 srcSet="/images/tet/sleeve-1600.webp 1600w, /images/tet/sleeve-3200.webp 3200w"
-                 sizes="(max-width: 900px) 100vw, 1180px"
-                 alt={t('The Duncan Taylor Tết sleeve, flat, before folding', 'Hộp Tết Duncan Taylor, trải phẳng trước khi gấp')} />
-          )}
+      <div className="ss-view">
+        <div ref={stageRef} className="ss-stage">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="ss-art" draggable={false} width={SLEEVE.w} height={SLEEVE.h}
+               src="/images/tet/sleeve-1600.webp"
+               srcSet="/images/tet/sleeve-1600.webp 1600w, /images/tet/sleeve-3200.webp 3200w"
+               sizes="(max-width: 900px) 100vw, 1180px"
+               alt={t('The Duncan Taylor Tết sleeve, flat, before folding', 'Hộp Tết Duncan Taylor, trải phẳng trước khi gấp')} />
           {!logo && (
             <button type="button" className="ss-slot" style={onArt(CLEAR)} onClick={() => fileRef.current?.click()}>
               {t('Your logo here', 'Logo của quý vị')}
@@ -210,26 +229,22 @@ export default function SleeveStudio({ onUse }: { onUse: (d: SleeveDesign) => vo
             <input type="range" min={20} max={100} step={1} value={Math.round(scale * 100)} className="ss-range"
                    onChange={e => setScale(+e.target.value / 100)} aria-label={t('Logo size', 'Kích thước logo')} />
             <div style={{ marginTop: 8 }}>
-              <button className="ss-link" onClick={() => setCentre({ cx: CLEAR.x + CLEAR.w / 2, cy: CLEAR.y + CLEAR.h / 2 })}>{t('Centre it', 'Căn giữa')}</button>
+              <button className="ss-link" onClick={() => setCentre(MIDDLE)}>{t('Centre it', 'Căn giữa')}</button>
               <span className="pk-meta" style={{ opacity: .5, marginLeft: 12, fontSize: 11.5 }}>{t('or drag it on the sleeve', 'hoặc kéo trên hộp')}</span>
             </div>
           </div>
         )}
 
-        <div>
-          <div className="pk-eyebrow">{t('View', 'Xem')}</div>
-          <div style={{ display: 'flex', gap: 16, marginTop: 10 }}>
-            <button className={`ss-toggle ${mode === 'fit' ? 'is-on' : ''}`} onClick={() => setMode('fit')}>{t('Whole sleeve', 'Toàn bộ hộp')}</button>
-            <button className={`ss-toggle ${mode === 'actual' ? 'is-on' : ''}`} onClick={() => setMode('actual')}>
-              {t('Actual size', 'Kích thước thật')} <span style={{ opacity: .55 }}>· 6,431 × 2,387 px</span>
-            </button>
-          </div>
-        </div>
       </div>
 
-      <button onClick={use} className="pk-cta">
-        {t('Send this design with an enquiry', 'Gửi thiết kế này kèm yêu cầu')} <span className="pk-go">→</span>
-      </button>
+      <div className="ss-actions">
+        <button onClick={use} className="pk-cta" style={{ marginTop: 0 }}>
+          {t('Send this design with an enquiry', 'Gửi thiết kế này kèm yêu cầu')} <span className="pk-go">→</span>
+        </button>
+        <button onClick={download} className="pk-cta" style={{ marginTop: 0, opacity: saving ? .5 : .8 }} disabled={saving}>
+          {saving ? t('Making the PNG…', 'Đang tạo PNG…') : t('Download as PNG', 'Tải về PNG')} <span className="pk-go">↓</span>
+        </button>
+      </div>
     </div>
   )
 }
@@ -256,8 +271,6 @@ export function SleeveFaceThumb({ design, width = 88 }: { design: SleeveDesign; 
 
 const CSS = `
 .ss-view { position: relative; width: 100%; border-radius: 3px; }
-.ss-view.is-actual { overflow: auto; max-height: 78vh; background: rgba(229,212,194,.04);
-                     border: 1px solid rgba(229,212,194,.14); overscroll-behavior: contain; }
 .ss-stage { position: relative; width: 100%; }
 .ss-art { display: block; width: 100%; height: auto; user-select: none; -webkit-user-drag: none; pointer-events: none;
           filter: drop-shadow(0 18px 34px rgba(0,0,0,.4)); }
@@ -270,7 +283,6 @@ const CSS = `
            font-family: 'Google Sans Code', monospace; font-size: clamp(8px, 1vw, 13px); letter-spacing: .16em;
            text-transform: uppercase; color: rgba(229,212,194,.8); }
 .ss-slot:hover { border-color: #D4B85A; color: #E5D4C2; }
-.ss-view.is-actual .ss-slot { font-size: 40px; }
 .ss-controls { display: flex; flex-wrap: wrap; gap: 26px 44px; align-items: flex-start; margin-top: 30px; }
 .ss-drop { border: 1px dashed rgba(229,212,194,.28); border-radius: 8px; padding: 14px 18px; text-align: center; cursor: pointer;
            background: none; font-family: 'Google Sans Code', monospace; font-size: 12px; color: rgba(229,212,194,.7); }
@@ -278,9 +290,6 @@ const CSS = `
 .ss-range { width: 200px; margin-top: 12px; accent-color: #D4B85A; }
 .ss-link { background: none; border: none; padding: 0; cursor: pointer; font-family: 'Google Sans Code', monospace;
            font-size: 12px; color: #D4B85A; border-bottom: 1px solid rgba(212,184,90,.5); }
-.ss-toggle { background: none; border: none; padding: 2px 0; cursor: pointer; font-family: 'Google Sans Code', monospace;
-             font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: rgba(229,212,194,.55);
-             border-bottom: 1px solid transparent; }
-.ss-toggle.is-on { color: #D4B85A; border-bottom-color: #D4B85A; }
+.ss-actions { display: flex; flex-wrap: wrap; gap: 14px 36px; align-items: center; margin-top: 36px; }
 @media (prefers-reduced-motion: reduce) { .ss-logo { transition: none; } }
 `

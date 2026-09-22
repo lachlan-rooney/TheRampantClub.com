@@ -1,5 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// TẾT PAGE — the sleeve studio, the header photograph and the foot, in a real
+// TẾT PAGE — the sleeve studio, the PNG, the cask-end offer, the timeline, the
+// header photograph and the foot, in a real
 // browser past the password.   (dev server on :3001)
 //   node tests/tet/sleeve-ui.test.mjs
 // Uses /tmp/test-logo.png if present, else makes one with a transparent ground.
@@ -31,7 +32,10 @@ await p.setInputFiles('.ss-controls input[type=file]', '/tmp/test-logo.png'); aw
 const k = artBox.width / SLEEVE.w
 const lb = async () => { const r = await p.locator('.ss-logo').boundingBox(); return { x: (r.x - artBox.x) / k, y: (r.y - artBox.y) / k, w: r.width / k, h: r.height / k } }
 let L = await lb()
-t(L.x >= CLEAR.x - 2 && L.x + L.w <= CLEAR.x + CLEAR.w + 2 && L.y >= CLEAR.y - 2 && L.y + L.h <= CLEAR.y + CLEAR.h + 2, 'the uploaded logo lands inside the clear red between the swirls', JSON.stringify(Object.fromEntries(Object.entries(L).map(([a, v]) => [a, Math.round(v)]))))
+const MID = { cx: FRAME.x + FRAME.w / 2, cy: FRAME.y + FRAME.h / 2 }
+const off = l => ({ dx: Math.round(l.x + l.w / 2 - MID.cx), dy: Math.round(l.y + l.h / 2 - MID.cy) })
+// Tolerance: 6 artwork px is under one screen pixel at this width.
+t(Math.abs(off(L).dx) <= 6 && Math.abs(off(L).dy) <= 6, 'the uploaded logo lands centred on the blank face', JSON.stringify(off(L)))
 await p.screenshot({ path: '/tmp/s-fit.png', clip: { x: artBox.x, y: artBox.y - 10, width: artBox.width, height: artBox.height + 20 } })
 // drag far to the right and down: must stay inside the gold frame
 const lr = await p.locator('.ss-logo').boundingBox()
@@ -39,16 +43,24 @@ await p.mouse.move(lr.x + lr.width / 2, lr.y + lr.height / 2); await p.mouse.dow
 L = await lb()
 t(L.x + L.w <= FRAME.x + FRAME.w + 2 && L.y + L.h <= FRAME.y + FRAME.h + 2 && L.x > CLEAR.x, 'dragging moves it, and it cannot leave the blank face\'s gold frame', `right ${Math.round(L.x + L.w)} ≤ ${FRAME.x + FRAME.w}, bottom ${Math.round(L.y + L.h)} ≤ ${FRAME.y + FRAME.h}`)
 await p.click('text=Centre it'); await p.waitForTimeout(200)
+// the owner's report: "Centre it is slightly off left of centre" — it was 165 px left
+L = await lb(); t(Math.abs(off(L).dx) <= 6 && Math.abs(off(L).dy) <= 6, '"Centre it" puts it in the middle of the face, not left of it', JSON.stringify(off(L)))
 const w0 = (await lb()).w; await p.locator('.ss-range').fill('40'); await p.waitForTimeout(200); const w1 = (await lb()).w
 t(w1 < w0 * 0.6, 'the size slider shrinks it', `${Math.round(w0)} → ${Math.round(w1)} artwork px`)
 await p.locator('.ss-range').fill('80')
-// actual size
-await p.click('text=Actual size'); await p.waitForTimeout(2500)
-const act = await p.evaluate(() => { const v = document.querySelector('.ss-view'), i = document.querySelector('.ss-art'); return { nat: i.naturalWidth, drawn: Math.round(i.getBoundingClientRect().width), left: Math.round(v.scrollLeft), vw: v.clientWidth } })
-t(act.nat === 6431 && act.drawn === 6431, 'Actual size draws the full 6431 px artwork one-to-one', JSON.stringify(act))
-t(act.left > 4000, 'and opens scrolled to the blank face, not the end flap', `scrollLeft ${act.left}`)
-const vb = await p.locator('.ss-view').boundingBox(); await p.screenshot({ path: '/tmp/s-actual.png', clip: { x: vb.x, y: vb.y, width: vb.width, height: Math.min(vb.height, 800) } })
-await p.click('text=Whole sleeve'); await p.waitForTimeout(600)
+t(await p.locator('text=Actual size').count() === 0, 'the Actual size view is gone — whole sleeve only')
+// download as PNG: the finished sleeve, logo composited where the page shows it
+const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 20000 }), p.click('text=Download as PNG')])
+await dl.saveAs('/tmp/s-download.png')
+const png = await sharp('/tmp/s-download.png').metadata()
+t(png.format === 'png' && png.width === 3200 && Math.abs(png.width / png.height - SLEEVE.w / SLEEVE.h) < 0.01, 'the PNG is the whole sleeve at 3200 px', `${png.format} ${png.width}x${png.height} · ${dl.suggestedFilename()}`)
+// Compare it with the bare artwork: the logo region must differ, the rest must not.
+L = await lb(); const kk = 3200 / SLEEVE.w
+const region = async (src, r) => (await sharp(src).extract(r).removeAlpha().raw().toBuffer())
+const diff = async r => { const [x, y] = [await region('/tmp/s-download.png', r), await region('public/images/tet/sleeve-3200.webp', r)]; let d = 0; for (let i = 0; i < x.length; i++) d += Math.abs(x[i] - y[i]); return d / x.length }
+const inLogo = await diff({ left: Math.round(L.x * kk), top: Math.round(L.y * kk), width: Math.round(L.w * kk), height: Math.round(L.h * kk) })
+const onFront = await diff({ left: 1600, top: 400, width: 600, height: 400 })
+t(inLogo > 8 && onFront < 1.5, 'the logo is in the PNG exactly where it sits on the page, and nothing else changed', `mean diff in logo box ${inLogo.toFixed(1)}, elsewhere ${onFront.toFixed(2)}`)
 // send with an enquiry → the face preview carries the logo
 await p.click('text=Send this design with an enquiry'); await p.waitForTimeout(1200)
 t(await p.locator('text=Your sleeve comes with this enquiry').isVisible(), 'the enquiry opens with the sleeve attached')
@@ -56,6 +68,42 @@ const thumb = await p.evaluate(() => { const el = [...document.querySelectorAll(
 t(thumb >= 2, 'its preview shows the logo on the face', `${thumb} logo images`)
 const sheet = await p.locator('text=Your sleeve comes with this enquiry').boundingBox(); await p.screenshot({ path: '/tmp/s-enquiry.png', clip: { x: Math.max(0, sheet.x - 130), y: sheet.y - 40, width: 620, height: 150 } })
 await p.keyboard.press('Escape'); await p.goto('http://localhost:3001/tet', { waitUntil: 'networkidle' })
+// THE OFFER
+const offer = p.locator('.ck-offer'); await offer.scrollIntoViewIfNeeded(); await p.waitForTimeout(2800)
+const of = await offer.evaluate(el => ({ text: el.textContent, dash: getComputedStyle(el.querySelector('.ck-end circle')).strokeDashoffset }))
+t(/Every Octave bought this Tết is shipped with its cask end/.test(of.text), 'the cask-end offer is on the page', of.text.slice(0, 90))
+t(parseFloat(of.dash) === 0, 'and its cask end has drawn itself', `dashoffset ${of.dash}`)
+await p.screenshot({ path: '/tmp/s-offer.png', clip: await offer.boundingBox() })
+
+// THE TIMELINE — plays in order, counts up, answers the pointer and the keys
+const tl = p.locator('.tl'); await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(300)
+await tl.scrollIntoViewIfNeeded(); await p.waitForTimeout(450)
+const mid = await p.$$eval('.tl-stop', els => els.map(e => ({ n: (e.querySelector('.tl-date').textContent.match(/· (\d+)/) || [])[1], op: +getComputedStyle(e.querySelector('.tl-label')).opacity })))
+await p.waitForTimeout(3600)
+const end = await p.$$eval('.tl-stop', els => els.map(e => ({ n: (e.querySelector('.tl-date').textContent.match(/· (\d+)/) || [])[1], op: +getComputedStyle(e.querySelector('.tl-label')).opacity })))
+t(end.length >= 4 && end.every(s => s.op > 0.95), 'every gate is shown once it has played', JSON.stringify(end))
+t(mid.some((s, i) => s.n !== undefined && +s.n < +end[i].n), 'the day counts run up rather than appearing', `early ${mid.map(s => s.n).join(',')} → ${end.map(s => s.n).join(',')}`)
+t(mid[mid.length - 1].op < end[end.length - 1].op, 'the far gate (Tết) arrives after the near ones', `Tết opacity early ${mid[mid.length - 1].op.toFixed(2)}`)
+const box = await tl.boundingBox(), y0 = box.y + box.height / 2
+const s1 = await p.locator('.tl-stop').nth(1).boundingBox()
+await p.mouse.move(s1.x + s1.width / 2, s1.y + s1.height / 2); await p.waitForTimeout(600)
+const hov = await p.evaluate(() => ({ act: [...document.querySelectorAll('.tl-stop')].findIndex(e => e.classList.contains('is-active')), more: document.querySelector('.tl-stop.is-active .tl-more')?.getBoundingClientRect().height, text: document.querySelector('.tl-stop.is-active .tl-more')?.textContent, reach: document.querySelector('.tl-reach').getBoundingClientRect().width, dim: +getComputedStyle(document.querySelector('.tl-stop:not(.is-active) .tl-label')).opacity }))
+const days = end[1].n
+t(hov.act === 1 && hov.more > 8 && new RegExp(`${days} days from today · \\d+ before Tết`).test(hov.text), 'hovering a gate opens its figures', JSON.stringify(hov))
+t(hov.reach > 50 && hov.dim < 0.5, 'and fills the rail to it while the others step back', `reach ${Math.round(hov.reach)}px, others at ${hov.dim}`)
+await p.screenshot({ path: '/tmp/s-tl-hover.png', clip: { x: box.x - 20, y: box.y, width: box.width + 40, height: box.height } })
+// between gates: a date follows the pointer
+const g0 = await p.locator('.tl-stop').nth(0).boundingBox(), g1 = await p.locator('.tl-stop').nth(1).boundingBox()
+await p.mouse.move((g0.x + g1.x) / 2 + 6, y0); await p.waitForTimeout(300)
+const cur = await p.evaluate(() => document.querySelector('.tl-cursor-cap')?.textContent)
+t(!!cur && /\d+ days/.test(cur), 'between gates, the date under the pointer is shown', cur)
+await p.screenshot({ path: '/tmp/s-tl-scrub.png', clip: { x: box.x - 20, y: box.y, width: box.width + 40, height: box.height } })
+await p.mouse.move(box.x + 10, box.y - 200); await p.waitForTimeout(300)
+t(await p.locator('.tl-stop.is-active').count() === 0 && await p.locator('.tl-cursor').count() === 0, 'moving away clears it')
+// keys
+await p.locator('.tl-stop').first().focus(); await p.keyboard.press('Enter'); await p.keyboard.press('ArrowRight'); await p.waitForTimeout(300)
+t(await p.locator('.tl-stop').nth(1).evaluate(e => e.classList.contains('is-active') && document.activeElement === e), 'Enter opens a gate and the arrow keys walk the rail')
+
 // the foot of the page
 const over = p.locator('.tp-over'); await over.scrollIntoViewIfNeeded(); await p.waitForTimeout(1600)
 const ov = await over.evaluate(el => ({ text: el.textContent.trim(), crest: Math.round(el.querySelector('img').getBoundingClientRect().width), font: getComputedStyle(el.querySelector('span')).fontFamily }))
