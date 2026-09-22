@@ -11,9 +11,9 @@
 //   · Five 8-hour shifts, 40 hours, two rest days — every person, every week.
 //   · No shift over 8 paid hours. The 30-minute break (Art 109) falls INSIDE
 //     the eight and is paid, which is why S1–S4 carry no break_minutes.
-//   · The week runs SUNDAY to SATURDAY. The three-week cycle is built on that
-//     week; measured Monday to Sunday it drops people to one rest day at every
-//     rotation boundary. The rota page shows Sunday-first weeks to match.
+//   · The week runs MONDAY to SUNDAY (owner, 22 September, after a day on
+//     Sunday–Saturday weeks for a rotating cycle that has since been replaced
+//     by a fixed weekly pattern — lib/rota/pattern.ts).
 //   · Exactly one supervisor closes, every night, and the close runs to 00:30.
 //   · The floor meets the planned coverage: four at peak Tuesday to Friday
 //     (S4 exists for that), three the other nights. See PLAN_COVER.
@@ -35,13 +35,16 @@
 //   · "days off must move week to week" — the cycle moves them itself
 //   · the fortnightly shared day off for a couple — not part of the new rules
 //   · planWeek(), the old generator. It solved the one-long-night model and
-//     nothing on the site called it. The replacement is the three-week cycle
-//     in lib/rota/cycle.ts, which is a lookup rather than a search.
+//     nothing on the site called it. The replacement is the fixed weekly
+//     pattern in lib/rota/pattern.ts.
 // The Open and Close shift types, their coverage targets, the switched-off
 // demand rules and the columns those rules read were removed the same day
 // (supabase/migrations/20260922100000_rota_retire_old_rules.sql, which also
 // holds the way back). Past Open and Close rota rows are kept: shift_name is a
 // snapshot, and those rows are the record of what was rostered.
+//
+// The cycle's DUTY shift is gone with the cycle; 'Duty' stays in OFF_FLOOR so a
+// side-jobs shift is never mistaken for floor cover if it returns.
 //
 // Monthly rules — at least four rest days a month, at most 40 overtime hours
 // a month — need a month of rota, not a week, and are not checked here.
@@ -73,8 +76,8 @@ export const PLAN_COVER: { from: number; to: number; peak: number; other: number
  *  rather than a name prefix, because "Clean" is a word somebody will one day
  *  put at the front of a floor shift. */
 export const CLEANING_SHIFTS = new Set(['Clean Early', 'Clean Late'])
-/** Rostered and paid, but not on the floor: the office, cleaning, and the
- *  cycle's DUTY shift (see lib/rota/cycle.ts — its hours are not yet set). */
+/** Rostered and paid, but not on the floor: the office, cleaning, and side
+ *  jobs ('Duty'), should they be rostered again. */
 export const OFF_FLOOR = new Set(['Office', 'Duty', ...CLEANING_SHIFTS])
 
 export interface RotaStaff {
@@ -124,8 +127,8 @@ export const addDays = (start: string, n: number) => {
   return iso(d)
 }
 export const weekdayOf = (date: string) => new Date(date + 'T00:00:00Z').getUTCDay()
-/** The Sunday a date's rota week starts on. */
-export const sundayOf = (date: string) => addDays(date, -weekdayOf(date))
+/** The Monday a date's rota week starts on. */
+export const mondayOf = (date: string) => addDays(date, -((weekdayOf(date) + 6) % 7))
 
 const clock = (t: string) => { const [h, m] = t.split(':').map(Number); return h + (m || 0) / 60 }
 const fmt = (h: number) => `${String(Math.floor(h) % 24).padStart(2, '0')}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`
@@ -153,7 +156,7 @@ export function paidHours(s: PlannedShift, types: ShiftType[]): number {
 // ── CHECK ──────────────────────────────────────────────────────────────────
 
 export function checkWeek(opts: {
-  /** The Sunday the week starts on. */
+  /** The Monday the week starts on. */
   weekStart: string
   staff: RotaStaff[]
   shiftTypes: ShiftType[]
@@ -167,9 +170,9 @@ export function checkWeek(opts: {
   const supervisor = (id: string) => !!staff.find(p => p.id === id)?.isSupervisor
   const dayName = (date: string) => `${WEEKDAYS[weekdayOf(date)]} ${date.slice(8)}/${date.slice(5, 7)}`
 
-  if (weekdayOf(weekStart) !== 0) {
-    out.push({ severity: 'warning', rule: 'week does not start on Sunday',
-      detail: `The rota week runs Sunday to Saturday; this one starts on a ${WEEKDAYS[weekdayOf(weekStart)]}, so the rest-day count is measured over the wrong seven days.` })
+  if (weekdayOf(weekStart) !== 1) {
+    out.push({ severity: 'warning', rule: 'week does not start on Monday',
+      detail: `The rota week runs Monday to Sunday; this one starts on a ${WEEKDAYS[weekdayOf(weekStart)]}, so the rest-day count is measured over the wrong seven days.` })
   }
 
   for (const p of staff) {

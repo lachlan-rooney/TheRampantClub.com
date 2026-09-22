@@ -7,16 +7,16 @@ import { ConfirmModal, PromptModal, useToast } from '@/components/admin/dialogs'
 import { vnDateString } from '@/lib/datetime'
 import { createShift, updateShift, deleteShift, moveShift } from '@/lib/ops/api'
 import type { RotaShift, RotaShiftType, TeamMember, CoverageTarget, StaffTimeOff, TimeOffKind } from '@/lib/ops/types'
-import { checkWeek, WEEKDAYS, paidHours, sundayOf, CLEANING_SHIFTS, type RotaStaff } from '@/lib/rota/policy'
+import { checkWeek, WEEKDAYS, paidHours, mondayOf, CLEANING_SHIFTS, type RotaStaff } from '@/lib/rota/policy'
 import { useLang } from '@/lib/admin-lang'
 import RotaRulesEditor from '@/components/admin/RotaRulesEditor'
 import ShiftTypeEditor from '@/components/admin/ShiftTypeEditor'
 
 const FAMILY = "'Google Sans Code', monospace"
-// SUNDAY FIRST from 2026-09-22. The rota week runs Sunday to Saturday: the
-// three-week cycle is built on it, and on a Monday–Sunday week it would show
-// people one rest day at every rotation boundary that is not really there.
-const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+// Monday first. Sunday-first weeks were tried for one day (22 September) for a
+// rotating cycle; the owner found them confusing and the cycle was replaced by
+// a fixed weekly pattern that is safe on Monday–Sunday weeks.
+const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 // Staff functions (confirmed set). A person can cover several.
 // 'clean' added 2026-09-14 with the cleaning shifts (db/rota_cleaning.sql) —
@@ -64,7 +64,7 @@ export default function RotaPage() {
   const supabase = createBrowserSupabaseClient()
   const { showToast, toastNode } = useToast()
 
-  const [weekStart, setWeekStart] = useState<string>(() => sundayOf(vnDateString()))
+  const [weekStart, setWeekStart] = useState<string>(() => mondayOf(vnDateString()))
   const [types, setTypes] = useState<RotaShiftType[]>([])
   const [shifts, setShifts] = useState<RotaShift[]>([])
   // Last week, member + date only — enough to work out who was off, which is
@@ -512,7 +512,7 @@ export default function RotaPage() {
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button onClick={() => setWeekStart(w => addDays(w, -7))} style={tinyBtn}>{t('‹ Prev', '‹ Trước')}</button>
-          <button onClick={() => setWeekStart(sundayOf(vnDateString()))} style={tinyBtn}>{t('This week', 'Tuần này')}</button>
+          <button onClick={() => setWeekStart(mondayOf(vnDateString()))} style={tinyBtn}>{t('This week', 'Tuần này')}</button>
           <button onClick={() => setWeekStart(w => addDays(w, 7))} style={tinyBtn}>{t('Next ›', 'Sau ›')}</button>
           <button onClick={runAutofill} disabled={busy} style={{ ...tinyBtn, color: '#D4B85A', borderColor: 'rgba(212,184,90,0.45)' }}>{t('✦ Autofill week', '✦ Tự động xếp tuần')}</button>
         </div>

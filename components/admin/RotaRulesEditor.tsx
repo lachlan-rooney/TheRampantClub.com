@@ -39,8 +39,8 @@ import type { TeamMember } from '@/lib/ops/types'
 
 const FAMILY = "'Google Sans Code', monospace"
 
-// Shown Sunday → Saturday, the rota week (policy.ts WEEKDAYS: 0 = Sunday).
-const WEEK_ORDER = [0, 1, 2, 3, 4, 5, 6]
+// Shown Monday → Sunday, the rota week; stored 0 = Sunday … 6 = Saturday.
+const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]
 const DAY_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const DAY_VI = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
 
