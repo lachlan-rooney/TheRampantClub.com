@@ -5,7 +5,7 @@ import { surfaceName } from '@/lib/members/surfaces'
 import { useState, useCallback, useEffect, useRef, Fragment } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
-import { GlassFilters, GLASS_CSS, useGlassSnapshot, useRefractsBackdrop } from '@/components/nav/Glass'
+import { GlassFilters, GLASS_CSS, useGlassSnapshot } from '@/components/nav/Glass'
 import { useLang } from '@/lib/lang'
 import { InkFloat } from '@/components/public/kit'
 import { CreamInk, CreamInkDefs } from '@/components/public/CreamInk'
@@ -128,14 +128,9 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
   useEffect(() => { if (open) setCollapsed(allCollapsed()) }, [open])
   const toggleGroup = (label: string) => setCollapsed(c => ({ ...c, [label]: !c[label] }))
   const navRef = useRef<HTMLDivElement>(null)
-  // The glass (components/nav/Glass): a refracted copy of the page behind the
-  // open menu in every browser, and a live refraction behind the button in
-  // Chromium only, where backdrop-filter can take an SVG filter.
+  // The glass (components/nav/Glass): a hazy, refracted copy of the page
+  // behind the open menu, in every browser. The button has none.
   const glassLens = useGlassSnapshot(open)
-  const refracts = useRefractsBackdrop()
-  useEffect(() => {
-    document.documentElement.classList.toggle('glass-refract', refracts)
-  }, [refracts])
   const triggerRef = useRef<HTMLButtonElement>(null)
   const logoRef = useRef<HTMLImageElement>(null)
   const handleSignOut = useCallback(async () => {

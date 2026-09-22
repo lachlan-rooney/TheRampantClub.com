@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // GLASS — the menu and its button, refracting what is behind them.
@@ -25,20 +25,20 @@ import { useEffect, useRef, useState } from 'react'
 //   not move while the menu is open — the scrim takes the pointer, so the copy
 //   stays true for as long as anyone can see it. It is thrown away on close.
 //
-//   THE BUTTON floats over the page while it scrolls, so a copy would be
-//   stale after one frame, and re-copying the whole page every frame is not
-//   a cost worth paying for a 40px diamond. Chromium gets the real thing
-//   through backdrop-filter; everything else gets a frosted blur, which is
-//   what the glass looks like with the refraction taken out.
+//   THE BUTTON HAS NO GLASS (owner, 2026-09-22: "remove the glass thing from
+//   surrounding the little dropdown diamond button"). It had a frosted disc,
+//   refracting live in Chromium; the diamond stands on its own again.
+//
+//   HAZIER (same day, "make it hazier on the menu"): the panel's copy of the
+//   page is blurred far more after it is bent, so it reads as frosted glass
+//   rather than a rippled window. The ripple is kept, just under the haze.
 //
 // Written here rather than installed: liquid-glass-js does the copy trick
 // but is at 0.1.0 with one release, and keeps element ids in its copy — which
 // would put duplicate ids on every page that has a menu. This strips them.
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** The filter definitions, rendered once. Two strengths: the panel is large
- *  and can take a broad, slow ripple; the button is small and needs a finer
- *  one or the diamond simply smears. */
+/** The panel's filter, rendered once. */
 export function GlassFilters() {
   return (
     <svg aria-hidden width="0" height="0" style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
@@ -47,28 +47,12 @@ export function GlassFilters() {
           <feTurbulence type="fractalNoise" baseFrequency="0.006 0.011" numOctaves="2" seed="11" result="noise" />
           <feGaussianBlur in="noise" stdDeviation="3" result="soft" />
           <feDisplacementMap in="SourceGraphic" in2="soft" scale="46" xChannelSelector="R" yChannelSelector="G" result="bent" />
-          <feGaussianBlur in="bent" stdDeviation="1.4" />
-        </filter>
-        <filter id="trc-glass-sm" x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
-          <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="1" seed="4" result="noise" />
-          <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" xChannelSelector="R" yChannelSelector="G" />
+          {/* The haze. Was 1.4 — a rippled window; 7 is frosted glass. */}
+          <feGaussianBlur in="bent" stdDeviation="7" />
         </filter>
       </defs>
     </svg>
   )
-}
-
-/** True only where an SVG filter inside backdrop-filter actually renders.
- *  `CSS.supports` cannot answer this — Safari says yes and draws nothing — so
- *  it is asked of the engine: navigator.userAgentData exists in Chromium only,
- *  including on Android, and NOT in Chrome for iOS, which is WebKit. */
-export function useRefractsBackdrop(): boolean {
-  const [yes, setYes] = useState(false)
-  useEffect(() => {
-    const nav = navigator as Navigator & { userAgentData?: { brands?: { brand: string }[] } }
-    setYes(!!nav.userAgentData?.brands?.some(b => /Chromium|Google Chrome|Microsoft Edge/.test(b.brand)))
-  }, [])
-  return yes
 }
 
 /** Keeps a refracted copy of the page inside the returned ref while `open`.
@@ -157,22 +141,12 @@ export const GLASS_CSS = `
 /* With the glass underneath, the panel stops painting its own ground. */
 .nav-menu.has-glass, .nav-dark .nav-menu.has-glass { background: transparent; }
 
-/* THE BUTTON. A small disc of glass behind the diamond. */
-.nav-trigger::before { content: ''; position: absolute; inset: -6px; border-radius: 50%;
-                       background: rgba(234, 220, 203, .22);
-                       -webkit-backdrop-filter: blur(8px) saturate(1.4); backdrop-filter: blur(8px) saturate(1.4);
-                       box-shadow: inset 0 1px 0 rgba(255,255,255,.45), inset 0 -1px 0 rgba(0,0,0,.06),
-                                   0 4px 14px rgba(0,0,0,.12);
-                       z-index: -1; }
-.nav-dark .nav-trigger::before { background: rgba(4, 37, 26, .28); }
-html.glass-refract .nav-trigger::before { backdrop-filter: url(#trc-glass-sm) blur(2px) saturate(1.3); }
 
 /* Somebody who has asked for less transparency gets the solid menu back. */
 @media (prefers-reduced-transparency: reduce) {
   .nav-glass { display: none; }
   .nav-menu.has-glass { background: #EADCCB; }
   .nav-dark .nav-menu.has-glass { background: #04251A; }
-  .nav-trigger::before { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(234,220,203,.9); }
 }
 @media (prefers-reduced-motion: reduce) { .nav-glass { transition: none; } }
 `
