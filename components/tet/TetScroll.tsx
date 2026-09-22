@@ -111,9 +111,9 @@ export const TET_SCROLL_CSS = `
 .tr-wipe { clip-path: inset(0 0 100% 0); transition: clip-path 1.15s var(--tr-ease);
            transition-delay: calc(var(--i, 0) * var(--tr-step)); }
 .tr-wipe.is-in { clip-path: inset(0 0 0 0); }
-.tr-wipe img { transform: scale(1.06); transition: transform 1.6s var(--tr-ease);
-               transition-delay: calc(var(--i, 0) * var(--tr-step)); }
-.tr-wipe.is-in img { transform: none; }
+.tr-wipe > img { transform: scale(1.06); transition: transform 1.6s var(--tr-ease);
+                 transition-delay: calc(var(--i, 0) * var(--tr-step)); }
+.tr-wipe.is-in > img { transform: none; }
 
 .tr-rail { position: fixed; top: 0; left: 0; right: 0; height: 1px; z-index: 9000;
            background: rgba(229,212,194,.1); pointer-events: none; }
@@ -121,7 +121,7 @@ export const TET_SCROLL_CSS = `
                 transform-origin: 0 50%; transform: scaleX(0); }
 
 @media (prefers-reduced-motion: reduce) {
-  .tr, .tr-wipe img { opacity: 1 !important; transform: none !important;
+  .tr, .tr-wipe > img { opacity: 1 !important; transform: none !important;
                       clip-path: none !important; transition: none !important; }
   .tr-rail { display: none; }
 }

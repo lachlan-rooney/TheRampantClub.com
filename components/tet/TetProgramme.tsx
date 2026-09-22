@@ -143,11 +143,17 @@ export default function TetProgramme({
         lede={t('Whisky for the companies you thank at Tết — three blends in a sleeve carrying your name, or a single cask with every bottle numbered.',
                 'Rượu whisky để tri ân đối tác dịp Tết — ba dòng pha trộn trong hộp in tên công ty, hoặc trọn một thùng đơn với từng chai được đánh số.')}
         art={
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '4% 6%' }}>
+          /* The Octave Huntly 27 by the fire, from The Octave Brand Guidelines,
+             at its own 2:3 — the owner: "a portrait Octave bottle photo… the
+             beautiful ones". The Duncan Taylor crest that stood here moved to
+             the foot of the page, as "brought to you by". */
+          <div className="pk-thumb" style={{ aspectRatio: '800 / 1201', maxWidth: 360, marginInline: 'auto' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/tet/dt-crest.png" width={900} height={913}
-                 alt="Duncan Taylor Scotch Whisky"
-                 style={{ width: '100%', maxWidth: 300, height: 'auto', display: 'block' }} />
+            <img src="/images/tet/octave-fire.webp"
+                 srcSet="/images/tet/octave-fire-sm.webp 480w, /images/tet/octave-fire.webp 800w"
+                 sizes="(max-width: 780px) 70vw, 360px" width={800} height={1201}
+                 alt={t('The Octave Huntly 27 by the fire, a glass poured', 'The Octave Huntly 27 bên lò sưởi, một ly đã rót')}
+                 fetchPriority="high" />
           </div>
         }
       >
@@ -205,8 +211,8 @@ export default function TetProgramme({
           <div style={{ marginTop: 52 }}>
             <TetTiers tiers={tiers} provisional={provisional} />
             <p className="pk-meta" style={{ marginTop: 22, maxWidth: 560, lineHeight: 1.9 }}>
-              {t('The tier is set by the total across all three, so a mixed order still climbs. Sleeves are printed with your company’s name.',
-                 'Mức chiết khấu tính trên tổng số chai của cả ba dòng, nên đơn hàng pha trộn vẫn được nâng mức. Hộp in tên công ty.')}
+              {t('The tier is set by the total across all three, so a mixed order still climbs. Every sleeve carries your logo.',
+                 'Mức chiết khấu tính trên tổng số chai của cả ba dòng, nên đơn hàng pha trộn vẫn được nâng mức. Mỗi hộp đều in logo của quý vị.')}
             </p>
           </div>
         )}
@@ -236,14 +242,14 @@ export default function TetProgramme({
         </Reveal>
         <Reveal step={1}>
         <p className="pk-lede">
-          {t('Every bottle comes in a sleeve printed with your name. Set the colour, drop your logo on it, and write the line that goes underneath.',
-             'Mỗi chai đều có hộp in tên công ty. Chọn màu, tải logo lên, và viết dòng chữ bên dưới.')}
+          {t('Every bottle comes in Duncan Taylor’s Tết sleeve. Put your logo on its blank face and see it where it will print.',
+             'Mỗi chai đều có hộp Tết của Duncan Taylor. Đặt logo của quý vị lên mặt trống và xem vị trí sẽ in.')}
         </p>
         </Reveal>
         <div style={{ marginTop: 44 }}>
           <SleeveStudio onUse={d => {
             setDesign(d)
-            setTarget({ kind: 'blend', title: d.company || (blendCat ? (vn ? blendCat.name_vn : blendCat.name_en) : 'Duncan Taylor') })
+            setTarget({ kind: 'blend', title: blendCat ? (vn ? blendCat.name_vn : blendCat.name_en) : 'Duncan Taylor' })
           }} />
         </div>
       </section>
@@ -322,6 +328,17 @@ export default function TetProgramme({
           alt={t('An Octave single malt on a Speyside hillside',
                  'Chai Octave single malt trên sườn đồi Speyside')}
           caption={t('Fons et origo · the source', 'Fons et origo · khởi nguồn')}
+          overlay={
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(12px, 1.6vw, 20px)' }}>
+              <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 'clamp(20px, 2.8vw, 36px)', lineHeight: 1,
+                             color: '#E5D4C2', letterSpacing: '.01em' }}>
+                {t('brought to you by', 'được mang đến bởi')}
+              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/tet/dt-crest.png" width={900} height={913} alt="Duncan Taylor Scotch Whisky"
+                   style={{ width: 'clamp(58px, 7vw, 92px)', height: 'auto', display: 'block' }} />
+            </div>
+          }
         />
       </section>
 

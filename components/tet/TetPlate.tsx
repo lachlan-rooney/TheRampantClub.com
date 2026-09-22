@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { Reveal } from '@/components/tet/TetScroll'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -32,7 +33,7 @@ import { Reveal } from '@/components/tet/TetScroll'
 
 export default function TetPlate({
   src, sm, width, height, smWidth = 900, alt = '', caption, eager = false,
-  maxWidth = 1120, align = 'start', step = 0,
+  maxWidth = 1120, align = 'start', step = 0, overlay,
 }: {
   src: string
   /** The phone-sized file. Same picture, fewer pixels. */
@@ -50,6 +51,8 @@ export default function TetPlate({
   align?: 'start' | 'center'
   /** Place in the stagger, so a pair of plates does not arrive as one slab. */
   step?: number
+  /** Laid over the photograph, bottom-left, on a soft shade so it reads. */
+  overlay?: ReactNode
 }) {
   return (
     <figure className="tp" style={{ maxWidth, marginInline: align === 'center' ? 'auto' : undefined }}>
@@ -65,6 +68,7 @@ export default function TetPlate({
           fetchPriority={eager ? 'high' : 'auto'}
           decoding="async"
         />
+        {overlay && <div className="tp-over">{overlay}</div>}
       </Reveal>
       {caption && (
         <Reveal step={step + 1}>
@@ -81,7 +85,12 @@ export const TET_PLATE_CSS = `
 /* A hairline, not a box — the picture has edges of its own. */
 .tp-frame { position: relative; width: 100%; overflow: hidden; border-radius: 2px;
             background: rgba(229,212,194,.05); }
-.tp-frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* The PHOTOGRAPH only — "> img". An overlay can carry an image of its own
+   (the Duncan Taylor crest), and ".tp-frame img" stretched it to fill. */
+.tp-frame > img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.tp-over { position: absolute; inset: 0; display: flex; align-items: flex-end;
+           padding: clamp(18px, 3.2vw, 44px); pointer-events: none;
+           background: linear-gradient(to top, rgba(4,20,14,.72), rgba(4,20,14,0) 58%); }
 
 .tp-cap { margin-top: 14px; padding-top: 12px;
           border-top: 1px solid rgba(229,212,194,.16);

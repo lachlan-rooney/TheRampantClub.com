@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { SleeveFaceThumb, type SleeveDesign } from '@/components/tet/SleeveStudio'
 import { useLang } from '@/lib/lang'
 import LangToggle from '@/components/LangToggle'
 
@@ -26,17 +27,10 @@ export interface EnquiryTarget {
   target_abv?: number | null
 }
 
-/** What the sleeve studio hands over. The file is uploaded here, at the moment
- *  the buyer actually sends something — never while they are still playing. */
-export interface EnquiryDesign {
-  sleeve_hex: string
-  text_hex: string
-  company: string
-  message: string
-  foil: boolean
-  logo_preview?: string
-  logo_file?: File
-}
+/** What the sleeve studio hands over (components/tet/SleeveStudio). The file
+ *  is uploaded here, at the moment the buyer actually sends something — never
+ *  while they are still playing. */
+export type EnquiryDesign = SleeveDesign
 
 
 export default function TetEnquiry({
@@ -105,9 +99,11 @@ export default function TetEnquiry({
         } catch { /* the enquiry is worth more than the file */ }
       }
 
+      // Where the logo goes, in the artwork's own pixels, so whoever prepares
+      // the print file needs nothing but this record and the uploaded file.
       const personalisation = design ? {
-        sleeve_hex: design.sleeve_hex, text_hex: design.text_hex,
-        company: design.company, message: design.message, foil: design.foil,
+        sleeve: design.sleeve, artwork_px: '6431x2387',
+        logo_box: design.logo_box,
         logo_path, logo_filename: design.logo_file?.name ?? null,
       } : undefined
 
@@ -189,23 +185,12 @@ export default function TetEnquiry({
             {/* What they designed, so they can see it is coming with them. */}
             {design && (
               <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 26 }}>
-                <div style={{
-                  width: 54, height: 82, borderRadius: 4, background: design.sleeve_hex,
-                  border: '1px solid rgba(229,212,194,.18)', display: 'flex',
-                  alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0,
-                }}>
-                  {design.logo_preview
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    ? <img src={design.logo_preview} alt="" style={{ maxWidth: '78%', maxHeight: '70%', objectFit: 'contain' }} />
-                    : <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 10, color: design.text_hex, opacity: .8, padding: 4, textAlign: 'center' }}>
-                        {design.company || '—'}
-                      </span>}
-                </div>
+                <SleeveFaceThumb design={design} />
                 <div className="pk-meta" style={{ lineHeight: 1.8 }}>
                   {t('Your sleeve comes with this enquiry', 'Thiết kế hộp sẽ được gửi kèm')}
                   <br />
                   <span style={{ opacity: .6 }}>
-                    {design.sleeve_hex}{design.logo_file ? ` · ${design.logo_file.name}` : ` · ${t('no logo yet', 'chưa có logo')}`}
+                    {design.logo_file ? design.logo_file.name : t('no logo yet', 'chưa có logo')}
                   </span>
                 </div>
               </div>
