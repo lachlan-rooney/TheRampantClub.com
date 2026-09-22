@@ -71,9 +71,12 @@ export default function SleeveStudio({ onUse }: { onUse: (d: SleeveDesign) => vo
     if (!/^image\/(png|jpeg|webp)$/.test(f.type)) {
       setErr(t('PNG, JPEG or WebP, please.', 'Vui lòng dùng PNG, JPEG hoặc WebP.')); return
     }
-    if (f.size > 2 * 1024 * 1024) {
-      setErr(t(`That file is ${(f.size / 1048576).toFixed(1)}MB. The limit is 2MB.`,
-               `Tệp ${(f.size / 1048576).toFixed(1)}MB. Giới hạn là 2MB.`)); return
+    // 5MB from 2026-09-21. The file goes browser → storage on a signed URL,
+    // so this number is a choice rather than a platform ceiling; the bucket's
+    // own file_size_limit enforces the same 5MB on the real upload.
+    if (f.size > 5 * 1024 * 1024) {
+      setErr(t(`That file is ${(f.size / 1048576).toFixed(1)}MB. The limit is 5MB.`,
+               `Tệp ${(f.size / 1048576).toFixed(1)}MB. Giới hạn là 5MB.`)); return
     }
     if (logo?.url) URL.revokeObjectURL(logo.url)
     setLogo({ url: URL.createObjectURL(f), file: f })
@@ -192,7 +195,7 @@ export default function SleeveStudio({ onUse }: { onUse: (d: SleeveDesign) => vo
                 </div>
               ) : (
                 <button onClick={() => fileRef.current?.click()} className="ss-drop">
-                  {t('Add a PNG, JPEG or WebP — up to 2MB', 'Thêm tệp PNG, JPEG hoặc WebP — tối đa 2MB')}
+                  {t('Add a PNG, JPEG or WebP — up to 5MB', 'Thêm tệp PNG, JPEG hoặc WebP — tối đa 5MB')}
                 </button>
               )}
               {err && <p className="pk-meta" style={{ color: '#C27070', marginTop: 10 }}>{err}</p>}

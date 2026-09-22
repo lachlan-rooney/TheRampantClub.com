@@ -334,6 +334,19 @@ export default function HomePage() {
         .trc-empty p:last-child { font-size: 12px; letter-spacing: 0.06em; }
 
         /* ── Section helpers ── */
+        .trc-tet { background: #052E20; color: var(--trc-cream);
+                   padding: clamp(64px, 9vw, 120px) clamp(24px, 6vw, 96px); }
+        .trc-tet-in { max-width: 1180px; margin: 0 auto; display: grid;
+                      grid-template-columns: minmax(0, 1fr) auto;
+                      gap: clamp(32px, 6vw, 80px); align-items: center; }
+        .trc-tet-eyebrow { font-family: 'Google Sans Code', monospace; font-size: 10.5px;
+                           letter-spacing: .22em; text-transform: uppercase; opacity: .6; }
+        .trc-tet-title { font-family: 'Rampant Sans', serif; font-weight: 400;
+                         font-size: clamp(38px, 6vw, 76px); line-height: .98; margin: 16px 0 0; }
+        .trc-tet-lede { font-family: 'Google Sans Code', monospace; font-size: 13.5px;
+                        line-height: 1.95; opacity: .75; max-width: 46ch; margin: 22px 0 22px; }
+        .trc-tet .trc-cta { color: #D4B85A; }
+        .trc-tet-crest { width: 100%; max-width: 240px; height: auto; display: block; }
         .trc-section {
           padding: 100px 40px;
           max-width: 1100px;
@@ -501,6 +514,8 @@ export default function HomePage() {
         @media (max-width: 768px) {
           .trc-flow { padding: 4em 1em 5em; gap: 0.4em; }
           .trc-blurb { padding: 40px 20px 0; }
+          .trc-tet-in { grid-template-columns: 1fr; gap: 34px; }
+          .trc-tet-crest { max-width: 190px; }
           .trc-section { padding: 40px 16px; }
           .trc-section-title { font-size: 24px; }
           .trc-section-subtitle { font-size: 10px; }
@@ -647,6 +662,29 @@ export default function HomePage() {
             barrel. An automatic cutout haloes, and a haloed cutout is worse
             than no cutout. A frame has neither problem and looks deliberate. */}
         <StudioInvite />
+
+        {/* ══════ 4.6 TẾT 2027 — a dated invitation ══════════════════════════
+            The Tết programme had no way in from here: it was built for a QR
+            code on a leaflet. An invitation rather than a section, like the
+            Studio, because it is a door to something separate and it expires.
+            The link reaches the DOOR, not the prices — /tet is password-gated
+            and the password travels on the leaflet. */}
+        <section className="trc-tet">
+          <div className="trc-tet-in">
+            <div>
+              <div className="trc-tet-eyebrow">Duncan Taylor × The Rampant Club</div>
+              <h2 className="trc-tet-title">Tết Đinh Mùi<br />2027</h2>
+              <p className="trc-tet-lede">
+                Whisky for the companies you thank at Tết — three blends in a sleeve
+                carrying your name, or a single cask with every bottle numbered.
+              </p>
+              <Link href="/tet" className="trc-cta">The Tết programme <span className="trc-go">→</span></Link>
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/tet/dt-crest.png" width={900} height={913}
+                 alt="Duncan Taylor Scotch Whisky" loading="lazy" className="trc-tet-crest" />
+          </div>
+        </section>
 
         {/* ══════ 5. RECIPROCAL ACCESS ══════ */}
         <ReciprocalClocks />

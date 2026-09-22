@@ -488,6 +488,14 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
               <div className="nav-link-en">Staff & Vacancies</div>
               <div className="nav-link-vn">Tuyển dụng</div>
             </Link>
+            {/* Tết 2027 is a dated campaign, so it sits last rather than among
+                the permanent surfaces. It is password-gated: this link reaches
+                the door, not the prices, which is the point — the password
+                travels on the leaflet and the QR. */}
+            <Link href="/tet" className="nav-link" onClick={() => setOpen(false)}>
+              <div className="nav-link-en">Tết Đinh Mùi 2027</div>
+              <div className="nav-link-vn">Quà Tết doanh nghiệp</div>
+            </Link>
           </>
         ) : (
           <>

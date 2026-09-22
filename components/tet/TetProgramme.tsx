@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLang } from '@/lib/lang'
 import LangToggle from '@/components/LangToggle'
+import NavOverlay from '@/components/NavOverlay'
 import { PublicPage, Masthead, SectionHead, Details, Cta, MONO, GOLD } from '@/components/public/kit'
 import { timeRemaining } from '@/lib/tet/queries'
+import { caskColour } from '@/lib/tet/colour'
 import { vnd, type BlendBoardRow, type CaskBoardRow, type Countdown, type TetCategory, type VolumeTier } from '@/lib/tet/types'
 import TetEnquiry, { type EnquiryTarget } from '@/components/tet/TetEnquiry'
 import TetTiers from '@/components/tet/TetTiers'
@@ -122,6 +124,15 @@ export default function TetProgramme({
           the masthead — on a page this long that is the same as not having one.
           And it was tone="light", which is the control for a CREAM page: on
           this ground it all but disappeared. */}
+      {/* THE WAY OUT, WHICH THIS PAGE DID NOT HAVE. Every other public surface
+          carries NavOverlay; /tet was built as a standalone campaign page and
+          got neither the menu nor the crest that returns you home — so a
+          visitor who followed a QR code into it was stuck with the back
+          gesture. `dark` because the ground is #052E20.
+          No collision with the switch below: the trigger is pinned top-LEFT
+          and the crest sits centre-right. */}
+      <NavOverlay variant="public" dark />
+
       <div style={{ position: 'fixed', top: 18, right: 18, zIndex: 8000 }}>
         <LangToggle />
       </div>
@@ -134,7 +145,7 @@ export default function TetProgramme({
         art={
           <div style={{ display: 'flex', justifyContent: 'center', padding: '4% 6%' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/tet/dt-crest.png" width={560} height={568}
+            <img src="/images/tet/dt-crest.png" width={900} height={913}
                  alt="Duncan Taylor Scotch Whisky"
                  style={{ width: '100%', maxWidth: 300, height: 'auto', display: 'block' }} />
           </div>
@@ -500,10 +511,29 @@ function CaskRow({ c, strength, vn, t, provisional, onChoose, open, onToggle }: 
               <div>
                 <dt>{t('Colour', 'Màu')}</dt>
                 <dd>
-                  {c.colour_hex
-                    ? <span className="ck-swatch" style={{ background: c.colour_hex }} />
-                    : <span style={{ opacity: .45 }}>—</span>}
+                  {(() => {
+                    // EBC, the scale Scotch is quoted in, with the SRM it
+                    // converts from. Estimated FROM THE SWATCH — see
+                    // lib/tet/colour — so it wears a ≈ and says so below.
+                    const col = caskColour(c.colour_hex)
+                    if (!c.colour_hex) return <span style={{ opacity: .45 }}>—</span>
+                    return (
+                      <span className="ck-colour">
+                        <span className="ck-swatch" style={{ background: c.colour_hex }} />
+                        {col && (
+                          <span className="ck-ebc">
+                            ≈ {col.ebc} EBC
+                            <span className="ck-srm"> · {col.srm} SRM</span>
+                          </span>
+                        )}
+                      </span>
+                    )
+                  })()}
                 </dd>
+              </div>
+              <div className="ck-ebcnote">
+                {t('Colour is estimated from the swatch, not measured. Huntly’s figures replace it when the cask is confirmed.',
+                   'Màu được ước tính từ mẫu hiển thị, chưa đo bằng máy. Số liệu từ Huntly sẽ thay thế khi thùng được xác nhận.')}
               </div>
             </dl>
           </div>
@@ -556,8 +586,14 @@ const CASK_CSS = `
                  border-top: 1px solid rgba(229,212,194,.1); }
 .ck-spec dt { letter-spacing: .12em; text-transform: uppercase; opacity: .45; margin: 0; }
 .ck-spec dd { margin: 0; color: rgba(229,212,194,.85); }
+.ck-colour { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .ck-swatch { display: inline-block; width: 42px; height: 14px; border-radius: 2px;
              border: 1px solid rgba(229,212,194,.25); vertical-align: middle; }
+.ck-ebc { font-family: ${MONO}; font-size: 12px; color: ${GOLD}; letter-spacing: .04em; }
+.ck-srm { opacity: .45; color: rgba(229,212,194,.85); }
+.ck-ebcnote { display: block; grid-template-columns: none; border: none;
+              font-family: ${MONO}; font-size: 10.5px; line-height: 1.7;
+              opacity: .4; padding-top: 10px; max-width: 42ch; }
 
 @media (prefers-reduced-motion: reduce) {
   .ck-wrap, .ck-chev, .ck-name .pk-h3 { transition: none; }

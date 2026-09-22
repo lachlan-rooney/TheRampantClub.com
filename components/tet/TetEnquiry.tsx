@@ -38,12 +38,6 @@ export interface EnquiryDesign {
   logo_file?: File
 }
 
-const fileToDataUrl = (f: File) => new Promise<string>((res, rej) => {
-  const r = new FileReader()
-  r.onload = () => res(String(r.result))
-  r.onerror = () => rej(new Error('read failed'))
-  r.readAsDataURL(f)
-})
 
 export default function TetEnquiry({
   target, provisional, design, onClose,
@@ -86,13 +80,28 @@ export default function TetEnquiry({
       let logo_path: string | null = null
       if (design?.logo_file) {
         try {
-          const data_url = await fileToDataUrl(design.logo_file)
+          // TWO STEPS, AND THE BYTES SKIP OUR SERVER. We ask for a one-shot
+          // signed URL, then PUT the file straight to storage. It used to be
+          // base64 in a JSON body, which is 4/3 the size — a 5MB logo is
+          // ~6.7MB on the wire and Vercel refuses a request body over 4.5MB
+          // before the route runs. That failure would have appeared in
+          // production only; `next dev` has no such limit.
           const up = await fetch('/api/tet/artwork', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data_url }),
+            body: JSON.stringify({ content_type: design.logo_file.type, size: design.logo_file.size }),
           })
           const uj = await up.json().catch(() => ({}))
-          if (up.ok) logo_path = uj.path
+          if (up.ok && uj.signed_url) {
+            const put = await fetch(uj.signed_url, {
+              method: 'PUT',
+              headers: { 'Content-Type': design.logo_file.type },
+              body: design.logo_file,
+            })
+            // Only claim the path if storage actually took it. The bucket
+            // enforces the 5MB ceiling itself, so a file that lies about its
+            // size is refused here rather than trusted upstream.
+            if (put.ok) logo_path = uj.path
+          }
         } catch { /* the enquiry is worth more than the file */ }
       }
 
