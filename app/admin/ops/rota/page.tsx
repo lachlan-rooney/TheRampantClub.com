@@ -632,7 +632,15 @@ export default function RotaPage() {
         <div style={emptyText}>{t('Loading…', 'Đang tải…')}</div>
       ) : (
         <div style={{ overflowX: 'auto', marginTop: 16 }}>
-          <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 820 }}>
+          {/* FIXED, EQUAL DAY COLUMNS. With automatic layout a single name
+              carrying unusual hours ("Hiếu · 17:00–00:30") stretched its whole
+              day to twice the others' width, and a real week — office staff
+              on 08:00 and 09:00 starts — made Monday to Friday wider than the
+              weekend. Found by looking at the bug-test screenshot, which no
+              assertion would have caught. The label column is fixed; the seven
+              days share the rest, and long chips wrap instead. */}
+          <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 820, tableLayout: 'fixed' }}>
+            <colgroup><col style={{ width: 96 }} />{days.map(d => <col key={d} />)}</colgroup>
             <thead>
               <tr>
                 <th style={{ ...th, textAlign: 'left', width: 90 }}>{t('Shift', 'Ca')}</th>
