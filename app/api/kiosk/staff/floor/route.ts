@@ -82,12 +82,13 @@ export async function GET() {
 // 14:00, bar set up by 15:00, then report to Miss Châu for the day's
 // requirements. S1 is the 14:00 shift, so it carries that line.
 //
-// THE CHANGEOVER LINE IS DELIBERATE. These times go on the tablet before the
-// new rota is published, and the rota staff are working today still has the
-// old times on it. A tablet that states the new times with no qualification
-// would contradict the rota in a member of staff's hand — so it says, in both
-// languages, which one to follow until the new rota is out. Take the footnote
-// back out once the new rota rows are live.
+// The new rota went live from 14:13 on Tuesday 22 September — the owner's
+// "start fresh today" — so the changeover line that told staff to keep to
+// their old times until it was published has come off.
+//
+// It no longer says "five shifts a week" either. DUTY (side jobs) is off for
+// now, and a DUTY day is left unrostered, so most weeks are four shifts. The
+// footnote states only what holds every week.
 //
 // Hours are called weekly hours, never anything the employment agreements
 // state: the agreements state no hours at all.
@@ -112,8 +113,8 @@ const SHIFT_RULES = {
       vn: 'Chỉ dành cho nhân viên văn phòng — chị Ni và chị Châu.' },
   ],
   footnote: {
-    en: 'Five 8-hour shifts and two rest days a week. The 30-minute break is inside the shift and paid. These are the new rota times — until the new rota is published, work the times on your current rota.',
-    vn: 'Mỗi tuần năm ca 8 tiếng và hai ngày nghỉ. 30 phút nghỉ giải lao nằm trong ca và được tính lương. Đây là giờ theo lịch mới — cho đến khi lịch mới được công bố, vui lòng làm theo giờ trên lịch hiện tại.',
+    en: 'Every shift is 8 hours, with at least two rest days a week. The 30-minute break is inside the shift and paid. Your shifts are on the rota.',
+    vn: 'Mỗi ca 8 tiếng, mỗi tuần ít nhất hai ngày nghỉ. 30 phút nghỉ giải lao nằm trong ca và được tính lương. Ca của bạn có trên lịch làm việc.',
   },
 }
 

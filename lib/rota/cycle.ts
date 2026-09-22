@@ -16,16 +16,16 @@ import { addDays, weekdayOf, type PlannedShift } from '@/lib/rota/policy'
 // row, twelve hours between shifts. On a SUNDAY-to-Saturday week. Measured
 // Monday to Sunday it gives people one rest day at every rotation boundary.
 //
-// ⚠ NOT YET USABLE, and nothing on the site calls it, on purpose:
-//   1. It needs SIX people. With line F empty, Tuesday to Friday fall to three
-//      on the floor and Thursday has nobody in at 14:00 to set up. Until the
-//      new server starts, the five-person pattern is the rota.
-//   2. "DUTY" has no times. It is paid and counted in the forty hours but is
-//      not floor cover, and two of the five DUTY shifts fall to servers —
-//      what a server does on one has not been decided.
-//   3. In cycle week 2 Mr Sĩ is the only supervisor on both weekend nights.
-//      Whether he may run and close the floor alone is the owner's call.
-// When those three are settled this becomes the rota's autofill.
+// IN USE from Sunday 27 September 2026 (cycle week 1), with the new server —
+// "New" — on line F. It needs all SIX people: with line F empty, Tuesday to
+// Friday fall to three on the floor and Thursday has nobody in at 14:00.
+//
+// Settled by the owner, 22 September: Mr Sĩ is the GM and may run and close
+// the floor alone (cycle week 2 has him the only supervisor both weekend
+// nights); DUTY is "little side jobs" — and is REMOVED FOR NOW. A DUTY day is
+// left unrostered, so a person on a line with one works four shifts that week,
+// not five. DUTY_ROSTERED switches it back on; the lines keep it so nothing
+// has to be redrawn when it returns.
 // ═══════════════════════════════════════════════════════════════════════════
 
 export type Line = 'A' | 'B' | 'C' | 'D' | 'E' | 'F'
@@ -38,6 +38,8 @@ export const ROTA_LINES: Record<Line, (string | null)[]> = {
   E: ['S2', null, 'S2', 'Duty', 'S2', null, 'S2'],
   F: [null, 'Duty', 'S4', 'S2', 'S1', 'S2', null],
 }
+/** DUTY is off for now (owner, 2026-09-22): its days are left unrostered. */
+export const DUTY_ROSTERED = false
 /** Supervisor lines and server lines rotate separately. */
 export const SUPERVISOR_LINES: Line[] = ['A', 'B', 'C']
 export const SERVER_LINES: Line[] = ['D', 'E', 'F']
@@ -59,7 +61,7 @@ export function cycleWeek(assignment: Record<string, Line>, anchorSunday: string
   const out: PlannedShift[] = []
   for (const [member, start] of Object.entries(assignment)) {
     ROTA_LINES[lineFor(start, anchorSunday, weekStart)].forEach((shiftName, d) => {
-      if (shiftName) out.push({ member, shiftDate: addDays(weekStart, d), shiftName })
+      if (shiftName && (shiftName !== 'Duty' || DUTY_ROSTERED)) out.push({ member, shiftDate: addDays(weekStart, d), shiftName })
     })
   }
   return out
