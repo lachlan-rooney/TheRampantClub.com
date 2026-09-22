@@ -13,7 +13,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { readFileSync } from 'node:fs'
 import { checkWeek, addDays, type RotaStaff, type ShiftType, type PlannedShift } from '@/lib/rota/policy'
-import { patternWeek, WEEKLY_PATTERN } from '@/lib/rota/pattern'
+import { rotaWeek, ANCHOR_LINES, lineFor } from '@/lib/rota/pattern'
 
 const env: Record<string, string> = {}
 for (const l of readFileSync('.env.local', 'utf8').split('\n')) { const m = l.match(/^([A-Z_0-9]+)=(.*)$/); if (m) env[m[1]] = m[2].trim().replace(/^["']|["']$/g, '') }
@@ -34,9 +34,17 @@ const expect = (label: string, b: ReturnType<typeof blocking>, shouldPass: boole
 
 const WK = '2026-10-05'
 // 1. The pattern passes, on several Mondays.
-for (const wk of ['2026-09-28', '2026-10-05', '2026-10-26']) expect(`weekly pattern, week of ${wk} (must pass)`, blocking(wk, patternWeek(ids, wk)), true)
+for (const wk of ['2026-09-28', '2026-10-05', '2026-10-12', '2026-10-19']) expect(`rota, week of ${wk} (must pass)`, blocking(wk, rotaWeek(ids, wk)), true)
+// 1b. It changes every week, and never runs anyone more than five days in a row across the moves.
+const weeks = Array.from({ length: 9 }, (_, i) => addDays('2026-09-28', 7 * i))
+const moved = weeks.slice(1).every((w, i) => Object.keys(ANCHOR_LINES).every(n => lineFor(n, w) !== lineFor(n, weeks[i])))
+const all = weeks.flatMap(w => rotaWeek(ids, w)); let maxRun = 0
+for (const m of Object.values(ids)) { const ds = all.filter(s => s.member === m).map(s => s.shiftDate).sort(); let run = 0, prev = ''
+  for (const d of ds) { run = prev && addDays(prev, 1) === d ? run + 1 : 1; maxRun = Math.max(maxRun, run); prev = d } }
+if (!moved || maxRun > 5) failures++
+console.log(`${moved ? '✓' : '✗'} everyone changes line every week · ${maxRun <= 5 ? '✓' : '✗'} longest run over nine weeks: ${maxRun} days`)
 // 2. It really does put all six on Friday and Saturday.
-const p = patternWeek(ids, WK); const fri = p.filter(s => s.shiftDate === addDays(WK, 4)).length, sat = p.filter(s => s.shiftDate === addDays(WK, 5)).length
+const p = rotaWeek(ids, WK); const fri = p.filter(s => s.shiftDate === addDays(WK, 4)).length, sat = p.filter(s => s.shiftDate === addDays(WK, 5)).length
 const six = fri === 6 && sat === 6; if (!six) failures++
 console.log(`${six ? '✓' : '✗'} Friday ${fri} and Saturday ${sat} on the floor (must be 6 and 6)`)
 // 3. CONTROL: the OLD model — six 9-hour Closes 15:00–00:00 — must fail.
@@ -47,9 +55,16 @@ expect('old model, six 9-hour closes to 00:00 (must FAIL)', blocking(WK, oldWeek
 expect('pattern with New taken out (must FAIL)', blocking(WK, p.filter(s => s.member !== ids['New'])), false)
 // 5. CONTROL: one extra shift must be caught as overtime.
 expect('pattern plus a sixth shift for Hiếu (must FAIL)', blocking(WK, [...p, { member: ids['Hiếu'], shiftDate: addDays(WK, 1), shiftName: 'S2' }]), false)
-// 6. Every name in the pattern is a real person with weekly hours.
-const missing = Object.keys(WEEKLY_PATTERN).filter(n => !staff.some(s => s.name === n)); if (missing.length) failures++
-console.log(`${missing.length ? '✗' : '✓'} every pattern name is on the team${missing.length ? ' — missing ' + missing : ''}`)
+// 6. Every name in the rota is a real person with weekly hours.
+const missing = Object.keys(ANCHOR_LINES).filter(n => !staff.some(s => s.name === n)); if (missing.length) failures++
+console.log(`${missing.length ? '✗' : '✓'} every rota name is on the team${missing.length ? ' — missing ' + missing : ''}`)
+
+// 7. CONTROL for 1b: the order B → C is the one that makes six days in a row. Prove the run check sees it.
+{ const bad = [...LINES_B_TO_C()]; let r = 0, mx = 0, prev = ''; for (const d of bad) { r = prev && addDays(prev, 1) === d ? r + 1 : 1; mx = Math.max(mx, r); prev = d }
+  const ok = mx > 5; if (!ok) failures++; console.log(`${ok ? '✓' : '✗'} control: line B then line C gives ${mx} days in a row (must be over 5)`) }
+function LINES_B_TO_C(): string[] {
+  const B = ['S3', null, null, 'S3', 'S2', 'S1', 'S2'], C = ['S2', 'S3', null, null, 'S4', 'S3', 'S3']
+  return [...B.map((s, d) => s ? addDays('2026-10-05', d) : null), ...C.map((s, d) => s ? addDays('2026-10-12', d) : null)].filter(Boolean) as string[] }
 
 console.log(failures ? `\n${failures} check(s) came out wrong` : '\nevery check came out the way it must')
 process.exit(failures ? 1 : 0)
