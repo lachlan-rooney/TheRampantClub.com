@@ -31,13 +31,7 @@ export interface TeamMember {
   // The seven-day rota policy (db/rota_policy.sql). Optional because the
   // columns arrive with that file and the page must not break before it runs.
   weekly_hours?: number | null
-  morning_weekday?: number | null
   fixed_days_off?: number[] | null
-  always_shift?: string | null
-  works_evenings?: boolean | null
-  /** Another team member this person should share a day off with once a
-   *  fortnight (db/rota_partners.sql). Set on both sides. */
-  rota_partner?: string | null
   is_shift_supervisor?: boolean | null
   /** false = active, but not rostered (db/rota_office_standing.sql). */
   on_rota?: boolean | null

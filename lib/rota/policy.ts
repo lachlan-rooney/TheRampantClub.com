@@ -37,8 +37,11 @@
 //   · planWeek(), the old generator. It solved the one-long-night model and
 //     nothing on the site called it. The replacement is the three-week cycle
 //     in lib/rota/cycle.ts, which is a lookup rather than a search.
-// The columns those read (morning_weekday, always_shift, rota_partner) are
-// still in team_members; nothing reads them any more.
+// The Open and Close shift types, their coverage targets, the switched-off
+// demand rules and the columns those rules read were removed the same day
+// (supabase/migrations/20260922100000_rota_retire_old_rules.sql, which also
+// holds the way back). Past Open and Close rota rows are kept: shift_name is a
+// snapshot, and those rows are the record of what was rostered.
 //
 // Monthly rules — at least four rest days a month, at most 40 overtime hours
 // a month — need a month of rota, not a week, and are not checked here.

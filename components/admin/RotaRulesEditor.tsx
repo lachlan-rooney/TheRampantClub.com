@@ -17,8 +17,9 @@ import type { TeamMember } from '@/lib/ops/types'
 // of them (floor staff have no office day, supervisors rotate the close, and
 // the shared fortnightly day off is not part of the new rules), so a control
 // for them would let somebody set a rule that silently does nothing. Their
-// columns — morning_weekday, always_shift, rota_partner — stay in the table,
-// unread; this file no longer writes them.
+// columns were dropped the same day, with the rule that no one could have
+// both Saturday and Sunday as fixed days off (the old "never both weekend
+// days"): supabase/migrations/20260922100000_rota_retire_old_rules.sql.
 //
 // "Hours / week" is the rota's weekly hours: 40 under the new rules. It is
 // never labelled as anything the employment agreements say — they state no
@@ -33,9 +34,7 @@ import type { TeamMember } from '@/lib/ops/types'
 //     set on 2026-09-22 when the owner confirmed Nhi and Bình as supervisors;
 //     a toggle here would still let anyone who opens this panel promote
 //     somebody. The column drives the supervisor-every-night rule.
-//   • works_evenings — nothing in the app reads it, so a control for it would
-//     change nothing and imply a guard that does not exist.
-// Neither column is ever written by this file, so saving a row cannot touch them.
+// That column is never written by this file, so saving a row cannot touch it.
 // ═══════════════════════════════════════════════════════════════════════════
 
 const FAMILY = "'Google Sans Code', monospace"
@@ -130,8 +129,6 @@ function PersonRow({ m, typeNames, hoursThisWeek, t, showToast, onSaved }: {
     else if (Math.round(h * 10) / 10 !== h) errors.push(t('Hours take one decimal place (e.g. 47.5).', 'Số giờ chỉ một chữ số thập phân (vd. 47.5).'))
     else hoursValue = h
   }
-  // team_members_fixed_days_off_valid refuses Saturday + Sunday together.
-  if (d.fixedOff.includes(0) && d.fixedOff.includes(6)) errors.push(t('Saturday and Sunday cannot both be fixed days off.', 'Không thể cố định nghỉ cả Thứ Bảy và Chủ Nhật.'))
   // team_members_standing_complete: all four, or none.
   const standingAny = d.standingShift !== '' || d.standingStart !== '' || d.standingEnd !== '' || d.standingDays.length > 0
   const standingAll = d.standingShift !== '' && d.standingStart !== '' && d.standingEnd !== '' && d.standingDays.length > 0

@@ -28,10 +28,6 @@ const types: ShiftType[] = [...typeRows.map((t: any) => ({ name: t.name, hours: 
   weekdays: t.weekdays, startTime: t.start_time, endTime: t.end_time, breakMinutes: t.break_minutes })),
   { name: 'Duty', hours: 8, sortOrder: 99 }]
 
-// Hiếu's Sunday off is still on file from the old rules. The cycle puts him on
-// Sunday by design, so it is set aside here and reported, not silently obeyed.
-const hieuFixed = staff.find(s => s.name === 'Hiếu')?.fixedDaysOff ?? []
-const noFixed = (ss: RotaStaff[]) => ss.map(s => ({ ...s, fixedDaysOff: [] }))
 
 const blocking = (weekStart: string, ss: RotaStaff[], shifts: PlannedShift[]) =>
   checkWeek({ weekStart, staff: ss, shiftTypes: types, shifts }).filter(v => v.severity === 'blocking')
@@ -59,26 +55,20 @@ const T5: Record<string, (string | null)[]> = {   // Sun … Sat
 const pattern = (start: string) => Object.entries(T5).flatMap(([n, w]) =>
   w.map((s, d) => s ? { member: id(n), shiftDate: addDays(start, d), shiftName: s } : null).filter(Boolean) as PlannedShift[])
 for (const wk of ['2026-10-04', '2026-10-11']) expect(`five-person pattern, week of ${wk} (must pass)`, blocking(wk, staff, pattern(wk)), true)
-expect('five-person pattern with Hiếu\'s old fixed Sunday off honoured (must pass)', blocking('2026-10-04', staff, pattern('2026-10-04')), true)
 
 // 3. The six-person cycle over nine weeks — must pass every week.
 const assign: Record<string, Line> = { [id('Mr Sĩ')]: 'A', [id('Nhi')]: 'B', [id('Bình')]: 'C', [id('Hiếu')]: 'D', [id('Tiên')]: 'E', [NEW]: 'F' }
 const anchor = '2026-10-04'
 let cycleBad = 0
 for (let w = 0; w < 9; w++) { const wk = addDays(anchor, 7 * w)
-  const b = blocking(wk, noFixed(withNew), [...cycleWeek(assign, anchor, wk), ...cycleWeek(assign, anchor, addDays(wk, -7))]) // include the week before for 12h checks
+  const b = blocking(wk, withNew, [...cycleWeek(assign, anchor, wk), ...cycleWeek(assign, anchor, addDays(wk, -7))]) // include the week before for 12h checks
   if (b.length) { cycleBad++; console.log('   ', wk, b.map(v => v.detail).join(' | ')) } }
 failures += cycleBad ? 1 : 0
 console.log(`${cycleBad ? '✗' : '✓'} six-person cycle, nine weeks (must pass): ${cycleBad} failing week(s)`)
-if (hieuFixed.length) {
-  const b = blocking(anchor, withNew, cycleWeek(assign, anchor, anchor).concat(cycleWeek(assign, anchor, addDays(anchor, 7)).filter(() => false)))
-  const wk2 = blocking(addDays(anchor, 21), withNew, cycleWeek(assign, anchor, addDays(anchor, 21)))
-  console.log(`  note: Hiếu still has a fixed day off on file (${hieuFixed}); with it honoured the cycle fails ${[b, wk2].filter(x => x.some(v => v.rule === 'fixed day off')).length} of 2 sampled weeks — clear it if the cycle is adopted.`)
-}
 
 // 4. CONTROL — the cycle with nobody on line F must FAIL (the hire is why it works).
 const noF = Object.fromEntries(Object.entries(assign).filter(([k]) => k !== NEW))
-expect('cycle with line F empty — five people (must FAIL)', blocking(anchor, noFixed(staff), cycleWeek(noF, anchor, anchor)), false)
+expect('cycle with line F empty — five people (must FAIL)', blocking(anchor, staff, cycleWeek(noF, anchor, anchor)), false)
 
 // 5. CONTROL — a sixth shift must be caught as overtime.
 const six = [...pattern('2026-10-04'), { member: id('Hiếu'), shiftDate: '2026-10-04', shiftName: 'S2' }]

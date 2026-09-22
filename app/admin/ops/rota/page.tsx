@@ -225,8 +225,9 @@ export default function RotaPage() {
   // thresholds of 12 and 24 — the only one that ever fired was "event → +1
   // host", which asked for a second closer the rota cannot supply. How many
   // work each night is decided by the floor plan, PLAN_COVER in lib/rota/policy.ts.
-  // THE WAY BACK: the three rows are still in rota_scaling_rules, switched
-  // off (active = false); revert this commit and set them active again.
+  // 2026-09-22: the three switched-off rows and their table went with the old
+  // rota rules. Their values are in the way-back section of
+  // supabase/migrations/20260922100000_rota_retire_old_rules.sql.
   const baseTarget = (shiftName: string, fn: string) =>
     targets.find(t => t.shift_name === shiftName && t.function === fn)?.count ?? 0
   // Does this shift run on this date? A type with no weekdays runs every day;
