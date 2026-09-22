@@ -2,7 +2,7 @@ import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 import type { Metadata } from 'next'
 import { TET_COOKIE, tetPassValid } from '@/lib/tet/gate'
-import { getCategories, getCaskBoard, getBlendBoard, getTiers, getCountdown } from '@/lib/tet/queries'
+import { getCategories, getCaskBoard, getBlendBoard, getTiers, getCountdown, getCaskCompass } from '@/lib/tet/queries'
 import TetGate from '@/components/tet/TetGate'
 import TetProgramme from '@/components/tet/TetProgramme'
 
@@ -45,13 +45,18 @@ export default async function TetPage() {
 
   // Each is guarded separately: a programme with no casks yet should still show
   // its countdown, and a missing countdown should not take the page down.
-  const [categories, casks, blends, tiers, countdown] = await Promise.all([
+  const [categories, casks, blends, tiers, countdown, compass] = await Promise.all([
     getCategories(db).catch(() => []),
     getCaskBoard(db).catch(() => []),
     getBlendBoard(db).catch(() => []),
     getTiers(db).catch(() => []),
     getCountdown(db).catch(() => null),
+    // The Compass profile of any cask linked to a tagged whisky — confirmed
+    // tags only (supabase/migrations/20260922200000_tet2027_cask_compass.sql).
+    // Before that migration runs the function does not exist, and a cask
+    // simply has no radar.
+    getCaskCompass(db).catch(() => []),
   ])
 
-  return <TetProgramme categories={categories} casks={casks} blends={blends} tiers={tiers} countdown={countdown} />
+  return <TetProgramme categories={categories} casks={casks} blends={blends} tiers={tiers} countdown={countdown} compass={compass} />
 }

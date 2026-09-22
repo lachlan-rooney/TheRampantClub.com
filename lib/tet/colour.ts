@@ -39,6 +39,11 @@ const SRM_SWATCH: Record<number, string> = {
   36:'#440607', 37:'#3F0708', 38:'#3B0607', 39:'#3A070B', 40:'#36080A',
 }
 
+/** The ladder in order, SRM 1 → 40, for anything that draws the scale itself
+ *  (the Tết colour ladder). Same table, not a copy. */
+export const SRM_LADDER: { srm: number; hex: string }[] =
+  Object.keys(SRM_SWATCH).map(Number).sort((a, b) => a - b).map(srm => ({ srm, hex: SRM_SWATCH[srm] }))
+
 function rgb(hex: string): [number, number, number] | null {
   const h = hex.replace('#', '').trim()
   const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h

@@ -68,6 +68,37 @@ const thumb = await p.evaluate(() => { const el = [...document.querySelectorAll(
 t(thumb >= 2, 'its preview shows the logo on the face', `${thumb} logo images`)
 const sheet = await p.locator('text=Your sleeve comes with this enquiry').boundingBox(); await p.screenshot({ path: '/tmp/s-enquiry.png', clip: { x: Math.max(0, sheet.x - 130), y: sheet.y - 40, width: 620, height: 150 } })
 await p.keyboard.press('Escape'); await p.goto('http://localhost:3001/tet', { waitUntil: 'networkidle' })
+// TWO SLEEVES, AND THE FOLDED BOX
+await p.reload({ waitUntil: 'networkidle' })
+await p.locator('.ss-sleeves').scrollIntoViewIfNeeded(); await p.waitForTimeout(600)
+t(await p.locator('.ss-pick').count() === 2, 'two sleeves to choose from')
+await p.locator('.ss-pick').nth(1).click(); await p.waitForTimeout(700)
+t((await p.locator('.ss-art').getAttribute('src')).includes('sleeve2'), 'choosing Sleeve 2 shows the dragon artwork')
+t(await p.locator('.ss-toggle', { hasText: 'Folded' }).isDisabled(), 'Sleeve 2 cannot be folded until its folds are confirmed')
+await p.setInputFiles('.ss-controls input[type=file]', '/tmp/test-logo.png'); await p.waitForTimeout(800)
+const art2 = await p.locator('.ss-art').boundingBox(); const k2 = art2.width / SLEEVE.w
+const l2 = await p.locator('.ss-logo').boundingBox()
+const F2 = { x: 5105, y: 760, w: 1052, h: 930 }
+const c2 = { dx: Math.round((l2.x - art2.x + l2.width / 2) / k2 - (F2.x + F2.w / 2)), dy: Math.round((l2.y - art2.y + l2.height / 2) / k2 - (F2.y + F2.h / 2)) }
+t(Math.abs(c2.dx) <= 8 && Math.abs(c2.dy) <= 8, 'on Sleeve 2 the logo lands centred in its gold-ruled blank', JSON.stringify(c2))
+const [dl2] = await Promise.all([p.waitForEvent('download', { timeout: 20000 }), p.click('text=Download as PNG')])
+t(/sleeve-2\.png$/.test(dl2.suggestedFilename()), 'Sleeve 2 downloads as its own file', dl2.suggestedFilename())
+await p.locator('.ss-pick').nth(0).click(); await p.waitForTimeout(500)
+await p.locator('.ss-toggle', { hasText: 'Folded' }).click(); await p.waitForTimeout(2200)
+const faces = await p.$$eval('.sb-face', els => els.length)
+const logoIn3d = await p.locator('.sb-face .sb-logo').count()
+t(faces === 4 && logoIn3d === 1, 'Folded shows the four faces of the box, the logo on the blank one', `${faces} faces, ${logoIn3d} logo`)
+const before = await p.locator('.sb-box').evaluate(e => e.style.transform)
+await p.locator('.sb-turns button').nth(0).click(); await p.waitForTimeout(1500)
+const after = await p.locator('.sb-box').evaluate(e => e.style.transform)
+const sb = await p.locator('.sb-stage').boundingBox()
+await p.mouse.move(sb.x + sb.width / 2, sb.y + sb.height / 2); await p.mouse.down(); await p.mouse.move(sb.x + sb.width / 2 + 200, sb.y + sb.height / 2, { steps: 8 }); await p.mouse.up()
+const dragged = await p.locator('.sb-box').evaluate(e => e.style.transform)
+t(before !== after && after !== dragged, 'the buttons and a drag both turn it', `${before} → ${after} → ${dragged}`)
+const canShare = await p.evaluate(() => { try { return !!navigator.canShare?.({ files: [new File(['x'], 'a.png', { type: 'image/png' })] }) } catch { return false } })
+t((await p.locator('text=Share · Zalo').count() === 1) === canShare, 'Share appears exactly where the browser can share a file', `canShare ${canShare}`)
+await p.locator('.ss-toggle', { hasText: 'Flat' }).click()
+
 // THE OFFER
 const offer = p.locator('.ck-offer'); await offer.scrollIntoViewIfNeeded(); await p.waitForTimeout(2800)
 const of = await offer.evaluate(el => ({ text: el.textContent, dash: getComputedStyle(el.querySelector('.ck-end circle')).strokeDashoffset }))
@@ -113,6 +144,43 @@ await p.mouse.move(cbx.x + cbx.width * .85, cbx.y + cbx.height * .2); await p.wa
 const tr = await card.evaluate(e => ({ t: getComputedStyle(e).transform, foil: +getComputedStyle(e.querySelector('.lb-foil')).opacity }))
 t(tr.t !== 'none' && tr.foil > 0.9, 'a label tilts toward the pointer and the foil catches the light', JSON.stringify(tr))
 await p.mouse.move(10, 10)
+
+// THE TIER STAIRCASE
+const st = p.locator('.tt-stair'); await st.scrollIntoViewIfNeeded(); await p.waitForTimeout(500)
+const sbx = await st.boundingBox()
+await p.mouse.click(sbx.x + sbx.width * 0.7, sbx.y + sbx.height / 2); await p.waitForTimeout(500)
+const bottlesNow = +(await p.locator('.tt-range').inputValue())
+t(bottlesNow >= 500, 'pointing high on the staircase moves the bottle count up the ladder', `${bottlesNow} bottles`)
+t(/12%/.test(await p.locator('.tt-stair text[fill="#D4B85A"]').first().textContent()), 'and lights the step it lands on')
+
+// THE BOTTLE BARS
+const bar0 = async () => p.locator('.ck-bar').first().evaluate(e => [...e.children].map(c => Math.round(c.getBoundingClientRect().width)))
+await p.locator('button', { hasText: /^cask strength$/ }).first().click(); await p.waitForTimeout(900)
+const atCask = await bar0()
+await p.locator('button', { hasText: /^40%$/ }).first().click(); await p.waitForTimeout(900)
+const at40 = await bar0()
+t(atCask[1] === 0 && at40[1] > 0 && at40[0] === atCask[0], 'bars grow green when the strength comes down, on the same cream base', `cask ${atCask} → 40% ${at40}`)
+
+// THE MAP, AND THE REGION IT SHARES
+const mp = p.locator('.cm'); await mp.scrollIntoViewIfNeeded(); await p.waitForTimeout(1800)
+const pins = await p.$$eval('.cm-pin', els => els.map(e => e.getAttribute('aria-label')))
+t(pins.length >= 3 && pins.every(l => /\d+ casks?/.test(l)), 'the map lights each region with its cask count', pins.join(' | '))
+await p.locator('.cm-pin', { has: p.locator('text=Islay') }).first().click(); await p.waitForTimeout(600)
+const islayChart = await p.$$eval('.cc-dot:not(.is-dim)', els => els.length)
+const islayLadder = await p.$$eval('.cl-mark:not(.is-dim)', els => els.length)
+t(islayChart === 3 && islayLadder === 3 && await p.locator('.cc-filter button.is-on', { hasText: 'Islay' }).count() === 1,
+  'choosing Islay on the map filters the chart and the colour ladder too', `chart ${islayChart}, ladder ${islayLadder}`)
+t(/Hebridean/.test(await p.locator('.cm-card').textContent()), 'and tells you about Islay')
+await p.locator('.cm-clear').click(); await p.waitForTimeout(300)
+
+// THE COLOUR LADDER
+const marks = await p.$$eval('.cl-mark', els => els.length)
+t(marks === 14, 'every cask with a colour sits on the SRM ladder', `${marks} marks`)
+const firstLeft = await p.$$eval('.cl-mark', els => els.map(e => parseFloat(e.style.left)))
+t(firstLeft.every((v, i) => i === 0 || v >= firstLeft[i - 1]), 'in order, pale to dark')
+
+// THE COMPASS — no radar until a cask is linked to a confirmed-tagged whisky
+t(await p.locator('.ck-compass').count() === 0, 'no Flavour Compass is shown for an unlinked placeholder cask')
 
 // THE CASK CHART
 const cc = p.locator('.cc'); await cc.scrollIntoViewIfNeeded(); await p.waitForTimeout(2200)

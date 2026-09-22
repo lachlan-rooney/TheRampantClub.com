@@ -15,6 +15,11 @@ import TetTimeline from '@/components/tet/TetTimeline'
 import TetLabels from '@/components/tet/TetLabels'
 import TetFlight from '@/components/tet/TetFlight'
 import TetCaskChart from '@/components/tet/TetCaskChart'
+import TetCaskMap from '@/components/tet/TetCaskMap'
+import TetColourLadder from '@/components/tet/TetColourLadder'
+import RadarChart from '@/components/whisky/RadarChart'
+import { RADAR_GOLD, type Cat, type ShapeValues } from '@/components/whisky/flavour-data'
+import type { CaskCompassRow } from '@/lib/tet/queries'
 import TetPlate, { TET_PLATE_CSS } from '@/components/tet/TetPlate'
 import { Reveal, ScrollRail, TET_SCROLL_CSS } from '@/components/tet/TetScroll'
 
@@ -92,13 +97,15 @@ const STRENGTHS: {
 ]
 
 export default function TetProgramme({
-  categories, casks, blends, tiers, countdown,
+  categories, casks, blends, tiers, countdown, compass = [],
 }: {
   categories: TetCategory[]
   casks: CaskBoardRow[]
   blends: BlendBoardRow[]
   tiers: VolumeTier[]
   countdown: Countdown | null
+  /** Confirmed Flavour Compass values for casks linked to a tagged whisky. */
+  compass?: CaskCompassRow[]
 }) {
   const { t, lang } = useLang()
   const vn = lang === 'vn'
@@ -108,6 +115,26 @@ export default function TetProgramme({
   // text it was, and nothing is being compared side by side anyway.
   const [openCask, setOpenCask] = useState<string | null>(null)
   const [design, setDesign] = useState<SleeveDesign | null>(null)
+  // The Compass, folded into what RadarChart takes: the families in their
+  // order, and one set of values per linked cask.
+  const compassCats: Cat[] = useMemo(() => {
+    const m = new Map<string, Cat>()
+    for (const r of compass) m.set(r.category_slug, { slug: r.category_slug, name: r.category_name, sort_order: r.sort_order })
+    return [...m.values()].sort((a, b) => a.sort_order - b.sort_order)
+  }, [compass])
+  const compassByCask = useMemo(() => {
+    const m: Record<string, ShapeValues> = {}
+    for (const r of compass) (m[r.cask_ref] ??= {})[r.category_slug] = { intensity: r.intensity, confidence: r.confidence }
+    return m
+  }, [compass])
+
+  // One region choice, shared by the map, the chart and the colour ladder.
+  const [region, setRegion] = useState<string | null>(null)
+  const pickCask = (ref: string) => {
+    setOpenCask(ref)
+    requestAnimationFrame(() => document.getElementById(`cask-${ref}`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+  }
 
   // ── ONLY OFFER A STRENGTH THE BOARD CAN ANSWER FOR ──────────────────────
   // The 45% and 40% columns arrive with a migration. Until it has run they are
@@ -119,6 +146,10 @@ export default function TetProgramme({
   // reduced is quoted at its own strength, and the row says so on its own.
   const offered = STRENGTHS.filter(s =>
     s.key === 'cask' || casks.length === 0 || casks.some(c => c[s.bottles] != null))
+
+  const maxBottles = Math.max(0, ...casks.flatMap(c => offered.map(s => {
+    const v = c[s.bottles]; return typeof v === 'number' ? v : 0
+  })))
 
   const blendCat = categories.find(c => c.kind === 'blend')
   const caskCat = categories.find(c => c.kind === 'cask')
@@ -323,12 +354,16 @@ export default function TetProgramme({
           </div>
         </Reveal>
 
+        {/* Where, then what: the map picks a region, and the chart and the
+            colour ladder below follow it. */}
         <Reveal step={3}>
-          <TetCaskChart casks={casks} t={t} onPick={ref => {
-            setOpenCask(ref)
-            requestAnimationFrame(() => document.getElementById(`cask-${ref}`)
-              ?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
-          }} />
+          <TetCaskMap casks={casks} t={t} vn={vn} region={region} onRegion={setRegion} />
+        </Reveal>
+        <Reveal step={3}>
+          <TetCaskChart casks={casks} t={t} onPick={pickCask} region={region} onRegion={setRegion} />
+        </Reveal>
+        <Reveal step={3}>
+          <TetColourLadder casks={casks} t={t} onPick={pickCask} region={region} />
         </Reveal>
 
         {/* THE TOGGLE IS THE ARGUMENT. Duty and tax are charged on value, not
@@ -349,7 +384,8 @@ export default function TetProgramme({
         <div style={{ marginTop: 24 }}>
           {casks.map((c, i) => (
             <Reveal key={c.cask_ref} variant="slide" step={Math.min(i, 8)}>
-            <CaskRow c={c} strength={strength} vn={vn} t={t} provisional={provisional}
+            <CaskRow c={c} strength={strength} vn={vn} t={t} provisional={provisional} maxBottles={maxBottles}
+                     compass={compassByCask[c.cask_ref] && compassCats.length >= 3 ? { cats: compassCats, values: compassByCask[c.cask_ref] } : null}
                      open={openCask === c.cask_ref}
                      onToggle={() => setOpenCask(o => o === c.cask_ref ? null : c.cask_ref)}
                      onChoose={() => setTarget({
@@ -486,8 +522,13 @@ function NextGate({ cd, t }: { cd: Countdown; t: (en: string, vn: string) => str
 // no height anybody can know in advance, and max-height guesses either clip a
 // long note or crawl through empty space on a short one.
 // ═══════════════════════════════════════════════════════════════════════════
-function CaskRow({ c, strength, vn, t, provisional, onChoose, open, onToggle }: {
+function CaskRow({ c, strength, vn, t, provisional, onChoose, open, onToggle, maxBottles, compass }: {
   c: CaskBoardRow; strength: Strength; vn: boolean
+  /** The most bottles any cask reaches at any offered strength — the bars'
+   *  common scale, so they GROW when the strength comes down. */
+  maxBottles: number
+  /** Its Flavour Compass, when the cask is linked to a confirmed-tagged whisky. */
+  compass: { cats: Cat[]; values: ShapeValues } | null
   t: (en: string, v: string) => string
   provisional: boolean
   onChoose: () => void
@@ -546,6 +587,17 @@ function CaskRow({ c, strength, vn, t, provisional, onChoose, open, onToggle }: 
         </span>
       </button>
 
+      {/* THE BARS (2026-09-22). Cream is what the cask gives at cask strength;
+          green is what the chosen strength adds. Same figures as the words
+          above, drawn to one scale across the list, so pressing 45% makes
+          every bar grow at once — the argument of the toggle, visible. */}
+      {!noSuchStrength && bottles != null && maxBottles > 0 && (
+        <div className="ck-bar" aria-hidden>
+          <span className="ck-bar-base" style={{ width: `${(Math.min(bottles - gain, bottles) / maxBottles) * 100}%` }} />
+          <span className="ck-bar-gain" style={{ width: `${(gain / maxBottles) * 100}%` }} />
+        </div>
+      )}
+
       <div className="ck-wrap">
         <div className="ck-inner">
           <div className="ck-body">
@@ -602,6 +654,15 @@ function CaskRow({ c, strength, vn, t, provisional, onChoose, open, onToggle }: 
             </dl>
           </div>
 
+          {compass && (
+            <div className="ck-compass">
+              <div className="pk-eyebrow">{t('Flavour Compass', 'La bàn hương vị')}</div>
+              {/* Drawn only while the row is open: sixteen spokes behind a
+                  collapsed row are work for nothing. */}
+              {open && <RadarChart cats={compass.cats} shapes={[{ values: compass.values, color: RADAR_GOLD, label: '' }]} size={280} />}
+            </div>
+          )}
+
           {!gone && (
             <button onClick={onChoose} className="pk-cta" style={{ marginTop: 18 }}>
               {provisional ? t('Interest', 'Quan tâm') : t('Reserve', 'Giữ chỗ')} <span className="pk-go">→</span>
@@ -614,6 +675,12 @@ function CaskRow({ c, strength, vn, t, provisional, onChoose, open, onToggle }: 
 }
 
 const CASK_CSS = `
+.ck-compass { margin-top: 22px; max-width: 520px; }
+.ck-bar { display: flex; height: 3px; margin: -6px 0 12px; background: rgba(229,212,194,.06); border-radius: 2px; overflow: hidden; }
+.ck-bar span { display: block; height: 100%; transition: width .7s cubic-bezier(.16,.84,.44,1); }
+.ck-bar-base { background: rgba(229,212,194,.45); }
+.ck-bar-gain { background: ${SAGE}; }
+@media (prefers-reduced-motion: reduce) { .ck-bar span { transition: none; } }
 .ck-offer { display: grid; grid-template-columns: 64px 1fr; gap: 24px; align-items: center;
             margin-top: 44px; padding: 26px 0; border-top: 1px solid rgba(212,184,90,.45);
             border-bottom: 1px solid rgba(212,184,90,.45); }

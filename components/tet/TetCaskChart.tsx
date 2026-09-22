@@ -24,12 +24,16 @@ import type { CaskBoardRow } from '@/lib/tet/types'
 const W = 1000, H = 380
 const PAD = { l: 56, r: 24, t: 40, b: 50 }
 
-export default function TetCaskChart({ casks, t, onPick }: {
+export default function TetCaskChart({ casks, t, onPick, region, onRegion }: {
   casks: CaskBoardRow[]
   t: (en: string, vn: string) => string
   onPick: (ref: string) => void
+  /** Shared with the map and the colour ladder: one choice filters all three. */
+  region: string | null
+  onRegion: (r: string | null) => void
 }) {
-  const [region, setRegion] = useState<string | null>(null)
+  const setRegion = (v: string | null | ((p: string | null) => string | null)) =>
+    onRegion(typeof v === 'function' ? v(region) : v)
   const [hover, setHover] = useState<string | null>(null)
 
   const regions = useMemo(() => {

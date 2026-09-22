@@ -321,3 +321,24 @@ export async function setCaskStatus(
     .eq('cask_ref', caskRef)
   if (error) throw error
 }
+
+/* ================================================================== */
+/*  COMPASS — the Flavour Compass profile of a linked cask             */
+/* ================================================================== */
+
+export interface CaskCompassRow {
+  cask_ref: string
+  category_slug: string
+  category_name: string
+  sort_order: number
+  intensity: number
+  confidence: number
+}
+
+/** Confirmed Compass values for casks that point at a tagged whisky. Throws
+ *  if the function is missing (before its migration), so callers catch. */
+export async function getCaskCompass(db: SupabaseClient): Promise<CaskCompassRow[]> {
+  const { data, error } = await db.rpc('tet_cask_compass')
+  if (error) throw error
+  return (data ?? []).map((r: CaskCompassRow) => ({ ...r, intensity: Number(r.intensity), confidence: Number(r.confidence) }))
+}

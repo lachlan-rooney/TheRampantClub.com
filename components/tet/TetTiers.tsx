@@ -17,6 +17,12 @@ import { vnd, type VolumeTier } from '@/lib/tet/types'
 // rows printed on the leaflet, looked up, not calculated. No price is worked
 // out in this file: when the figures are real the page asks the database for a
 // finished number, exactly as everywhere else.
+//
+// THE STAIRCASE (2026-09-22). The same four rows, drawn: bottles along, the
+// discount up, one step per tier. The part of the stair you have reached is
+// gold and a marker stands on your number, so "twenty more bottles" becomes a
+// step you can see is right there. Pointing at the stair moves the number;
+// it is the slider, in the shape of the ladder.
 // ═══════════════════════════════════════════════════════════════════════════
 
 const GOLD = '#D4B85A'
@@ -60,6 +66,23 @@ export default function TetTiers({ tiers, provisional }: { tiers: VolumeTier[]; 
     } finally { setBusy(false) }
   }
 
+  // The staircase. Bottles to x on the slider's own range, so the marker and
+  // the thumb underneath stand at the same place.
+  const CW = 1000, CH = 150, top = 26, base = 118
+  const maxPct = Math.max(0.01, ...tiers.map(x => x.discount_pct))
+  const xOf = (b: number) => ((Math.min(MAX, Math.max(min, b)) - min) / (MAX - min)) * CW
+  const yOf = (pct: number) => base - (pct / maxPct) * (base - top)
+  const steps = tiers.map((x, i) => ({
+    x0: xOf(x.min_bottles), x1: i + 1 < tiers.length ? xOf(tiers[i + 1].min_bottles) : CW, y: yOf(x.discount_pct), tier: x,
+  }))
+  const stair = steps.map((st, i) => `${i ? 'L' : 'M'}${st.x0} ${i ? steps[i - 1].y : st.y}L${st.x0} ${st.y}L${st.x1} ${st.y}`).join('')
+  const reached = xOf(bottles)
+  const fromPointer = (e: React.PointerEvent<SVGSVGElement>) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    const f = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width))
+    setBottles(Math.round((min + f * (MAX - min)) / 10) * 10); setPrice(null)
+  }
+
   return (
     <div>
       <style dangerouslySetInnerHTML={{ __html: `
@@ -77,6 +100,11 @@ export default function TetTiers({ tiers, provisional }: { tiers: VolumeTier[]; 
                    border-bottom: 1px solid transparent; }
         .tt-chip.is-on { opacity: 1; color: ${GOLD}; border-bottom-color: ${GOLD}; }
         .tt-num { font-variant-numeric: tabular-nums; }
+        .tt-stair { display: block; width: 100%; height: auto; margin-top: 22px; cursor: pointer; touch-action: pan-y; overflow: visible; }
+        .tt-stair text { font-family: 'Google Sans Code', monospace; }
+        .tt-reach { transition: width .35s cubic-bezier(.16,.84,.44,1); }
+        .tt-mark { transition: transform .35s cubic-bezier(.16,.84,.44,1); }
+        @media (prefers-reduced-motion: reduce) { .tt-reach, .tt-mark { transition: none; } }
       ` }} />
 
       <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'baseline' }}>
@@ -86,6 +114,35 @@ export default function TetTiers({ tiers, provisional }: { tiers: VolumeTier[]; 
                   className={`tt-chip ${bottles === s ? 'is-on' : ''}`}>{s}</button>
         ))}
       </div>
+
+      <svg className="tt-stair" viewBox={`0 0 ${CW} ${CH}`} aria-hidden
+           onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); fromPointer(e) }}
+           onPointerMove={e => { if (e.buttons) fromPointer(e) }}>
+        <defs>
+          <clipPath id="tt-clip"><rect className="tt-reach" x="0" y="0" width={reached} height={CH} /></clipPath>
+        </defs>
+        {/* the whole ladder, faint */}
+        <path d={`${stair}L${CW} ${base}L0 ${base}Z`} fill="rgba(229,212,194,.05)" />
+        <path d={stair} fill="none" stroke="rgba(229,212,194,.28)" strokeWidth="1.5" />
+        {/* the part you have climbed */}
+        <g clipPath="url(#tt-clip)">
+          <path d={`${stair}L${CW} ${base}L0 ${base}Z`} fill="rgba(212,184,90,.16)" />
+          <path d={stair} fill="none" stroke={GOLD} strokeWidth="2" />
+        </g>
+        {steps.map(st => (
+          <g key={st.tier.min_bottles}>
+            <text x={st.x0 + 8} y={st.y - 8} fontSize="15"
+                  fill={current?.min_bottles === st.tier.min_bottles ? GOLD : 'rgba(229,212,194,.55)'}>
+              {st.tier.discount_pct ? `−${Math.round(st.tier.discount_pct * 100)}%` : t('list', 'giá gốc')}
+            </text>
+            <text x={st.x0} y={base + 22} fontSize="13" fill="rgba(229,212,194,.4)">{st.tier.min_bottles}</text>
+          </g>
+        ))}
+        <g className="tt-mark" style={{ transform: `translateX(${reached}px)` }}>
+          <line x1="0" x2="0" y1={top - 16} y2={base} stroke={CREAM} strokeWidth="1" />
+          <circle cx="0" cy={yOf(current?.discount_pct ?? 0)} r="6" fill={GOLD} />
+        </g>
+      </svg>
 
       <input className="tt-range" type="range" min={min} max={MAX} step={10}
              value={bottles} onChange={e => { setBottles(Number(e.target.value)); setPrice(null) }}
