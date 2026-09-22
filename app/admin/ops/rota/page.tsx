@@ -7,13 +7,16 @@ import { ConfirmModal, PromptModal, useToast } from '@/components/admin/dialogs'
 import { vnDateString } from '@/lib/datetime'
 import { createShift, updateShift, deleteShift, moveShift } from '@/lib/ops/api'
 import type { RotaShift, RotaShiftType, TeamMember, CoverageTarget, StaffTimeOff, TimeOffKind } from '@/lib/ops/types'
-import { checkWeek, WEEKDAYS, type RotaStaff } from '@/lib/rota/policy'
+import { checkWeek, WEEKDAYS, paidHours, sundayOf, type RotaStaff } from '@/lib/rota/policy'
 import { useLang } from '@/lib/admin-lang'
 import RotaRulesEditor from '@/components/admin/RotaRulesEditor'
 import ShiftTypeEditor from '@/components/admin/ShiftTypeEditor'
 
 const FAMILY = "'Google Sans Code', monospace"
-const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+// SUNDAY FIRST from 2026-09-22. The rota week runs Sunday to Saturday: the
+// three-week cycle is built on it, and on a Monday–Sunday week it would show
+// people one rest day at every rotation boundary that is not really there.
+const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 // Staff functions (confirmed set). A person can cover several.
 // 'clean' added 2026-09-14 with the cleaning shifts (db/rota_cleaning.sql) —
@@ -24,12 +27,6 @@ const FN_COLOR: Record<string, string> = { bar: '#D4B85A', floor: '#7AB07A', hos
 const FN_LABEL: Record<string, string> = { bar: 'Bar', floor: 'Floor', host: 'Host', gm: 'GM', clean: 'Clean' }
 
 // Date-only maths in UTC to avoid local-tz off-by-one; the anchor is the VN day.
-function mondayOf(iso: string): string {
-  const d = new Date(iso + 'T00:00:00Z')
-  const dow = (d.getUTCDay() + 6) % 7   // 0=Mon … 6=Sun
-  d.setUTCDate(d.getUTCDate() - dow)
-  return d.toISOString().slice(0, 10)
-}
 function addDays(iso: string, n: number): string {
   const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n)
   return d.toISOString().slice(0, 10)
@@ -67,12 +64,11 @@ export default function RotaPage() {
   const supabase = createBrowserSupabaseClient()
   const { showToast, toastNode } = useToast()
 
-  const [weekStart, setWeekStart] = useState<string>(() => mondayOf(vnDateString()))
+  const [weekStart, setWeekStart] = useState<string>(() => sundayOf(vnDateString()))
   const [types, setTypes] = useState<RotaShiftType[]>([])
   const [shifts, setShifts] = useState<RotaShift[]>([])
   // Last week, member + date only — enough to work out who was off, which is
   // all the two cross-week rules need.
-  const [prevShifts, setPrevShifts] = useState<{ member: string; shift_date: string }[]>([])
   const [team, setTeam] = useState<TeamMember[]>([])
   const [bookings, setBookings] = useState<DemandBooking[]>([])
   const [entries, setEntries] = useState<DemandEntry[]>([])
@@ -119,44 +115,36 @@ export default function RotaPage() {
   // or typed — because a rota that is only correct when a script writes it is
   // not a rota anyone can edit.
   const policyStaff: RotaStaff[] = team
-    .filter(m => m.weekly_hours != null || m.morning_weekday != null)
+    .filter(m => m.weekly_hours != null)
     .map(m => ({
       id: m.id,
       name: m.display_name,
       isSupervisor: !!m.is_shift_supervisor,
       weeklyHours: m.weekly_hours ?? null,
-      morningWeekday: m.morning_weekday ?? null,
       fixedDaysOff: m.fixed_days_off ?? [],
-      alwaysShift: m.always_shift ?? null,
-      pairedWith: m.rota_partner ?? null,
     }))
-  // Who was off last week, per person — only for people who appear on last
-  // week's rota at all. Somebody absent from it was not "off seven days"; they
-  // were on leave, or not yet employed, and neither is a pattern to compare to.
-  const previousDaysOff: Record<string, number[]> = {}
-  for (const p of policyStaff) {
-    const worked = prevShifts.filter(s2 => s2.member === p.id)
-    if (!worked.length) continue
-    const days2 = new Set(worked.map(s2 => new Date(s2.shift_date + 'T00:00:00Z').getUTCDay()))
-    previousDaysOff[p.id] = [0, 1, 2, 3, 4, 5, 6].filter(d => !days2.has(d))
-  }
-  const policyTypes = types.map(t => ({ name: t.name, hours: Number(t.hours ?? 0), sortOrder: t.sort_order, weekdays: t.weekdays ?? null }))
-  const policyShifts = shifts.map(s2 => ({ member: s2.member, shiftDate: s2.shift_date, shiftName: s2.shift_name }))
+  // Times travel with both the types and the rows: the close-by-00:30 rule, the
+  // twelve hours between shifts and the floor plan are all questions about
+  // WHEN, and a row a manager has moved by hand keeps its own times.
+  const policyTypes = types.map(t => ({ name: t.name, hours: Number(t.hours ?? 0), sortOrder: t.sort_order, weekdays: t.weekdays ?? null,
+    startTime: t.start_time ?? null, endTime: t.end_time ?? null, breakMinutes: t.break_minutes ?? 0 }))
+  const policyShifts = shifts.map(s2 => ({ member: s2.member, shiftDate: s2.shift_date, shiftName: s2.shift_name,
+    startTime: s2.start_time, endTime: s2.end_time }))
   const violations = policyStaff.length && policyTypes.some(t => t.hours > 0)
-    ? checkWeek({ weekStart, staff: policyStaff, shiftTypes: policyTypes, shifts: policyShifts, previousDaysOff })
+    ? checkWeek({ weekStart, staff: policyStaff, shiftTypes: policyTypes, shifts: policyShifts })
     : []
   const blocking = violations.filter(v => v.severity === 'blocking')
   const warnings = violations.filter(v => v.severity === 'warning')
   const hoursFor = (id: string) => policyShifts
     .filter(x => x.member === id)
-    .reduce((tot, x) => tot + (policyTypes.find(t => t.name === x.shiftName)?.hours ?? 0), 0)
+    .reduce((tot, x) => tot + paidHours(x, policyTypes), 0)
   // For the Shift times editor: who, on the week on screen, a new paid length
-  // for one shift type would push over their contracted hours. A note before
+  // for one shift type would push over their weekly hours. A note before
   // saving, not a block — the policy panel above says it properly once saved.
   const overHoursIf = (typeName: string, newHours: number) => policyStaff
     .filter(p => p.weeklyHours != null)
     .map(p => ({ p, h: policyShifts.filter(x => x.member === p.id).reduce((tot, x) =>
-      tot + (x.shiftName === typeName ? newHours : (policyTypes.find(ty => ty.name === x.shiftName)?.hours ?? 0)), 0) }))
+      tot + (x.shiftName === typeName ? newHours : paidHours(x, policyTypes)), 0) }))
     .filter(({ p, h }) => h > p.weeklyHours! && h > hoursFor(p.id))
     .map(({ p, h }) => `${p.name} ${h.toFixed(2)}h / ${p.weeklyHours}`)
   const dayOffFor = (id: string) => {
@@ -193,15 +181,9 @@ export default function RotaPage() {
   ]
 
   const load = useCallback(async () => {
-    const [{ data: ty }, { data: sh }, { data: pv }, { data: tm }, { data: bk }, { data: en }, { data: ct }, { data: ua }, { data: up }] = await Promise.all([
+    const [{ data: ty }, { data: sh }, { data: tm }, { data: bk }, { data: en }, { data: ct }, { data: ua }, { data: up }] = await Promise.all([
       supabase.from('rota_shift_types').select('*').order('sort_order'),
       supabase.from('rota_shifts').select('*').gte('shift_date', weekStart).lte('shift_date', weekEnd),
-      // LAST week too — two rules can only be judged across a pair of weeks:
-      // "days off did not move", and the fortnightly day off Hiếu and Bình are
-      // owed. Kept in its own state rather than widening the query above, which
-      // feeds the grid and the policy check and must stay to this week alone.
-      supabase.from('rota_shifts').select('member, shift_date')
-        .gte('shift_date', addDays(weekStart, -7)).lt('shift_date', weekStart),
       supabase.from('team_members').select('*').eq('active', true).order('display_name'),
       // Demand signal: member bookings + house events for the week (admin RLS).
       supabase.from('bookings').select('booking_date, space, party_size, start_time, session_label')
@@ -216,7 +198,6 @@ export default function RotaPage() {
     ])
     if (ty) setTypes(ty as RotaShiftType[])
     if (sh) setShifts(sh as RotaShift[])
-    setPrevShifts((pv || []) as { member: string; shift_date: string }[])
     if (tm) setTeam(tm as TeamMember[])
     setBookings((bk || []) as DemandBooking[])
     setEntries((en || []) as DemandEntry[])
@@ -243,7 +224,7 @@ export default function RotaPage() {
   // and in fifteen bookings since June no day passed 10 covers against
   // thresholds of 12 and 24 — the only one that ever fired was "event → +1
   // host", which asked for a second closer the rota cannot supply. How many
-  // work each night is decided by EVENING_DEMAND in lib/rota/policy.ts.
+  // work each night is decided by the floor plan, PLAN_COVER in lib/rota/policy.ts.
   // THE WAY BACK: the three rows are still in rota_scaling_rules, switched
   // off (active = false); revert this commit and set them active again.
   const baseTarget = (shiftName: string, fn: string) =>
@@ -517,7 +498,7 @@ export default function RotaPage() {
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button onClick={() => setWeekStart(w => addDays(w, -7))} style={tinyBtn}>{t('‹ Prev', '‹ Trước')}</button>
-          <button onClick={() => setWeekStart(mondayOf(vnDateString()))} style={tinyBtn}>{t('This week', 'Tuần này')}</button>
+          <button onClick={() => setWeekStart(sundayOf(vnDateString()))} style={tinyBtn}>{t('This week', 'Tuần này')}</button>
           <button onClick={() => setWeekStart(w => addDays(w, 7))} style={tinyBtn}>{t('Next ›', 'Sau ›')}</button>
           <button onClick={runAutofill} disabled={busy} style={{ ...tinyBtn, color: '#D4B85A', borderColor: 'rgba(212,184,90,0.45)' }}>{t('✦ Autofill week', '✦ Tự động xếp tuần')}</button>
         </div>

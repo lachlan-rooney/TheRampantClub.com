@@ -2,27 +2,37 @@
 
 import { useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
-import { DAY_SHIFT } from '@/lib/rota/policy'
 import type { TeamMember } from '@/lib/ops/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ROTA RULES PER PERSON — the columns lib/rota/policy.ts reads, editable here.
 // ───────────────────────────────────────────────────────────────────────────
 // 2026-09-15: every change to these in the week before this existed was an SQL
-// file — hours, office days, fixed days off, who always closes, the couple's
-// day off together, the standing office shifts. A rule staff cannot change from
-// the portal is a rule that gets worked round on paper instead, and the rota
-// check then judges a week against arrangements nobody holds any more.
+// file. A rule staff cannot change from the portal is a rule that gets worked
+// round on paper instead, and the rota check then judges a week against
+// arrangements nobody holds any more.
+//
+// 2026-09-22 — THREE CONTROLS REMOVED with the new rota rules: "Office day",
+// "Always works" and "Day off together with". The checker no longer reads any
+// of them (floor staff have no office day, supervisors rotate the close, and
+// the shared fortnightly day off is not part of the new rules), so a control
+// for them would let somebody set a rule that silently does nothing. Their
+// columns — morning_weekday, always_shift, rota_partner — stay in the table,
+// unread; this file no longer writes them.
+//
+// "Hours / week" is the rota's weekly hours: 40 under the new rules. It is
+// never labelled as anything the employment agreements say — they state no
+// hours at all ("Theo yêu cầu của công việc").
 //
 // Each person is a draft with one Save, not a write per keystroke: the standing
 // shift is four columns that are only valid together, and saving them one at a
 // time would be refused by the database on the first.
 //
 // ⚠ NOT HERE, ON PURPOSE (2026-09-15):
-//   • is_shift_supervisor — the owner has not announced a promotion, and a
-//     supervisor control would announce it to anyone who opens this panel.
-//     The column still drives the every-night-supervised rule. Add a toggle
-//     once the owner says the change is public, and not before.
+//   • is_shift_supervisor — set by hand, not from here. Bình's promotion was
+//     set on 2026-09-22 when the owner confirmed Nhi and Bình as supervisors;
+//     a toggle here would still let anyone who opens this panel promote
+//     somebody. The column drives the supervisor-every-night rule.
 //   • works_evenings — nothing in the app reads it, so a control for it would
 //     change nothing and imply a guard that does not exist.
 // Neither column is ever written by this file, so saving a row cannot touch them.
@@ -30,8 +40,8 @@ import type { TeamMember } from '@/lib/ops/types'
 
 const FAMILY = "'Google Sans Code', monospace"
 
-// Shown Monday → Sunday, stored 0 = Sunday … 6 = Saturday (policy.ts WEEKDAYS).
-const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]
+// Shown Sunday → Saturday, the rota week (policy.ts WEEKDAYS: 0 = Sunday).
+const WEEK_ORDER = [0, 1, 2, 3, 4, 5, 6]
 const DAY_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const DAY_VI = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
 
@@ -40,10 +50,7 @@ type Toast = (message: string, tone?: 'info' | 'success' | 'error' | 'warn') => 
 
 interface Draft {
   weeklyHours: string
-  officeDay: string          // '' = none, else '0'…'6'
   fixedOff: number[]
-  alwaysShift: string        // '' = none
-  partner: string            // '' = none
   standingShift: string
   standingStart: string      // HH:MM
   standingEnd: string
@@ -57,10 +64,7 @@ const sameDays = (a: number[], b: number[]) => sortDays(a).join(',') === sortDay
 function fromMember(m: TeamMember): Draft {
   return {
     weeklyHours: m.weekly_hours != null ? String(Number(m.weekly_hours)) : '',
-    officeDay: m.morning_weekday != null ? String(m.morning_weekday) : '',
     fixedOff: sortDays(m.fixed_days_off ?? []),
-    alwaysShift: m.always_shift ?? '',
-    partner: m.rota_partner ?? '',
     standingShift: m.standing_shift ?? '',
     standingStart: hhmm(m.standing_start),
     standingEnd: hhmm(m.standing_end),
@@ -90,7 +94,7 @@ export default function RotaRulesEditor({ rotaTeam, team, typeNames, hoursThisWe
         // remounts from what the database now holds, while other rows' unsaved
         // drafts (whose saved values did not change) are left alone.
         <PersonRow key={`${m.id}:${JSON.stringify(fromMember(m))}`}
-          m={m} rotaTeam={rotaTeam} team={team} typeNames={typeNames}
+          m={m} typeNames={typeNames}
           hoursThisWeek={hoursThisWeek(m.id)} t={t} showToast={showToast} onSaved={onSaved} />
       ))}
       {rotaTeam.length === 0 && <div style={{ ...metaText, opacity: 0.6 }}>{t('Nobody is on the rota.', 'Không ai trong lịch.')}</div>}
@@ -98,8 +102,8 @@ export default function RotaRulesEditor({ rotaTeam, team, typeNames, hoursThisWe
   )
 }
 
-function PersonRow({ m, rotaTeam, team, typeNames, hoursThisWeek, t, showToast, onSaved }: {
-  m: TeamMember; rotaTeam: TeamMember[]; team: TeamMember[]; typeNames: string[]
+function PersonRow({ m, typeNames, hoursThisWeek, t, showToast, onSaved }: {
+  m: TeamMember; typeNames: string[]
   hoursThisWeek: number; t: T; showToast: Toast; onSaved: () => void
 }) {
   const supabase = createBrowserSupabaseClient()
@@ -108,20 +112,14 @@ function PersonRow({ m, rotaTeam, team, typeNames, hoursThisWeek, t, showToast, 
   const [busy, setBusy] = useState(false)
   const set = (patch: Partial<Draft>) => setD(cur => ({ ...cur, ...patch }))
   const dayName = (n: number) => t(DAY_EN[n], DAY_VI[n])
-  const nameOf = (id: string) => team.find(x => x.id === id)?.display_name ?? '—'
 
-  // A link only one side holds is worse than none: checkWeek reads it from one
-  // person and silently skips the other. Shown, and re-saving writes both sides.
-  const partnerRow = m.rota_partner ? team.find(x => x.id === m.rota_partner) : null
-  const oneSided = !!m.rota_partner && partnerRow?.rota_partner !== m.id
 
   const standingSaved = saved.standingShift !== '' || saved.standingStart !== '' || saved.standingEnd !== '' || saved.standingDays.length > 0
   const standingChanged = d.standingShift !== saved.standingShift || d.standingStart !== saved.standingStart
     || d.standingEnd !== saved.standingEnd || !sameDays(d.standingDays, saved.standingDays)
-  const rowChanged = d.weeklyHours !== saved.weeklyHours || d.officeDay !== saved.officeDay
-    || !sameDays(d.fixedOff, saved.fixedOff) || d.alwaysShift !== saved.alwaysShift || standingChanged
-  const partnerChanged = d.partner !== saved.partner || (oneSided && d.partner !== '')
-  const dirty = rowChanged || partnerChanged
+  const rowChanged = d.weeklyHours !== saved.weeklyHours
+    || !sameDays(d.fixedOff, saved.fixedOff) || standingChanged
+  const dirty = rowChanged
 
   // ── Validation — the same rules as the database checks, said in words ──
   const errors: string[] = []
@@ -139,48 +137,12 @@ function PersonRow({ m, rotaTeam, team, typeNames, hoursThisWeek, t, showToast, 
   const standingAll = d.standingShift !== '' && d.standingStart !== '' && d.standingEnd !== '' && d.standingDays.length > 0
   if (standingAny && !standingAll) errors.push(t('A standing shift needs a shift, a start, an end and at least one day — or use Remove.', 'Ca cố định cần tên ca, giờ bắt đầu, giờ kết thúc và ít nhất một ngày — hoặc bấm Xóa.'))
   if (standingAll && d.standingStart === d.standingEnd) errors.push(t('Standing shift starts and ends at the same time.', 'Ca cố định bắt đầu và kết thúc cùng giờ.'))
-  if (d.partner === m.id) errors.push(t('Nobody can be their own partner.', 'Không ai là bạn đồng hành của chính mình.'))
 
   // Notes — true, worth knowing, and not a reason to refuse the save.
   const notes: string[] = []
-  if (d.officeDay !== '' && d.fixedOff.includes(Number(d.officeDay)))
-    notes.push(t('The office day is also a fixed day off — the planner skips it.', 'Ngày văn phòng trùng ngày nghỉ cố định — bộ xếp lịch sẽ bỏ qua.'))
   if (hoursValue != null && hoursThisWeek > hoursValue)
     notes.push(`${t('Rostered this week', 'Đã xếp tuần này')} ${hoursThisWeek.toFixed(2)}h — ${t('over these hours.', 'vượt số giờ này.')}`)
-  if (d.partner && d.partner !== saved.partner) {
-    const p = team.find(x => x.id === d.partner)
-    if (p?.rota_partner && p.rota_partner !== m.id)
-      notes.push(`${t('Saving ends', 'Lưu sẽ bỏ liên kết của')} ${p.display_name} ${t('and', 'và')} ${nameOf(p.rota_partner)}.`)
-  }
-  if (saved.partner && d.partner !== saved.partner)
-    notes.push(`${t('Saving clears the link on', 'Lưu sẽ xóa liên kết ở')} ${nameOf(saved.partner)} ${t('too.', 'nữa.')}`)
 
-  // ── The pair, on both sides ──
-  // db/rota_partners.sql stores the link on BOTH people. PostgREST cannot run
-  // the three statements in one transaction, so they are ordered so that every
-  // point of failure leaves a consistent state:
-  //   1. clear every link touching either person (one statement — A, B, and
-  //      whoever either of them was paired with) → nobody is paired: consistent
-  //   2. A → B   (if it fails: still nobody paired)
-  //   3. B → A   (if it fails: undo step 2, so no one-sided link is left)
-  // Any failure toasts the database's words and reloads to show what is true.
-  const writePartner = async (): Promise<boolean> => {
-    const b = d.partner || null
-    const ids = [m.id, ...(b ? [b] : [])].join(',')
-    const clear = await supabase.from('team_members').update({ rota_partner: null })
-      .or(`id.in.(${ids}),rota_partner.in.(${ids})`)
-    if (clear.error) { showToast(`${t('Partner not saved', 'Chưa lưu bạn đồng hành')}: ${clear.error.message}`, 'error'); return false }
-    if (!b) return true
-    const ab = await supabase.from('team_members').update({ rota_partner: b }).eq('id', m.id)
-    if (ab.error) { showToast(`${t('Partner not saved', 'Chưa lưu bạn đồng hành')}: ${ab.error.message}`, 'error'); return false }
-    const ba = await supabase.from('team_members').update({ rota_partner: m.id }).eq('id', b)
-    if (ba.error) {
-      await supabase.from('team_members').update({ rota_partner: null }).eq('id', m.id)
-      showToast(`${t('Partner not saved — the link was undone', 'Chưa lưu bạn đồng hành — đã hoàn tác')}: ${ba.error.message}`, 'error')
-      return false
-    }
-    return true
-  }
 
   const save = async () => {
     if (errors.length) { showToast(errors[0], 'error'); return }
@@ -192,28 +154,19 @@ function PersonRow({ m, rotaTeam, team, typeNames, hoursThisWeek, t, showToast, 
         // travels as all four columns — the check reads them as one thing.
         const patch: Record<string, unknown> = {}
         if (d.weeklyHours !== saved.weeklyHours) patch.weekly_hours = hoursValue
-        if (d.officeDay !== saved.officeDay) patch.morning_weekday = d.officeDay === '' ? null : Number(d.officeDay)
         // Empty stores NULL ("rotates"), the way the SQL files have always written it.
         if (!sameDays(d.fixedOff, saved.fixedOff)) patch.fixed_days_off = d.fixedOff.length ? sortDays(d.fixedOff) : null
-        if (d.alwaysShift !== saved.alwaysShift) patch.always_shift = d.alwaysShift || null
         if (standingChanged) Object.assign(patch, standingAll
           ? { standing_shift: d.standingShift, standing_start: d.standingStart, standing_end: d.standingEnd, standing_weekdays: sortDays(d.standingDays) }
           : { standing_shift: null, standing_start: null, standing_end: null, standing_weekdays: null })
         const { error } = await supabase.from('team_members').update(patch).eq('id', m.id)
         if (error) { showToast(`${m.display_name} ${t('not saved', 'chưa lưu')}: ${error.message}`, 'error'); onSaved(); return }
       }
-      if (partnerChanged && !(await writePartner())) { onSaved(); return }
       showToast(`${m.display_name} ${t('saved.', 'đã lưu.')}`, 'success')
       onSaved()
     } finally { setBusy(false) }
   }
 
-  // always_shift governs the EVENINGS (policy.ts rule 4b ignores the office
-  // shift), so the office shift is not offered: choosing it would flag every
-  // evening this person works. A saved value no longer among the types is kept
-  // visible rather than silently shown as "none".
-  const alwaysOptions = typeNames.filter(n => n !== DAY_SHIFT)
-  const partnerOptions = rotaTeam.filter(x => x.id !== m.id)
   const standingOptions = typeNames
 
   return (
@@ -238,29 +191,6 @@ function PersonRow({ m, rotaTeam, team, typeNames, hoursThisWeek, t, showToast, 
           <input type="number" inputMode="decimal" min={0} max={60} step={0.5} value={d.weeklyHours}
             placeholder="—" onChange={e => set({ weeklyHours: e.target.value })}
             style={{ ...covInput, width: 64 }} />
-        </label>
-        <label>
-          <div style={fieldLabel}>{t('Office day', 'Ngày văn phòng')}</div>
-          <select value={d.officeDay} onChange={e => set({ officeDay: e.target.value })} style={ruleSelect}>
-            <option value="" style={opt}>{t('— none —', '— không —')}</option>
-            {WEEK_ORDER.map(n => <option key={n} value={String(n)} style={opt}>{dayName(n)}</option>)}
-          </select>
-        </label>
-        <label>
-          <div style={fieldLabel}>{t('Always works', 'Luôn làm ca')}</div>
-          <select value={d.alwaysShift} onChange={e => set({ alwaysShift: e.target.value })} style={ruleSelect}>
-            <option value="" style={opt}>{t('— any —', '— bất kỳ —')}</option>
-            {alwaysOptions.map(n => <option key={n} value={n} style={opt}>{n}</option>)}
-            {d.alwaysShift && !alwaysOptions.includes(d.alwaysShift) && <option value={d.alwaysShift} style={opt}>{d.alwaysShift} ({t('not a current shift', 'không còn là ca')})</option>}
-          </select>
-        </label>
-        <label title={t('Two people who share a day off once a fortnight. Set on both of them.', 'Hai người được nghỉ chung một ngày mỗi hai tuần. Lưu cho cả hai.')}>
-          <div style={fieldLabel}>{t('Day off together with', 'Nghỉ chung với')}</div>
-          <select value={d.partner} onChange={e => set({ partner: e.target.value })} style={ruleSelect}>
-            <option value="" style={opt}>{t('— nobody —', '— không ai —')}</option>
-            {partnerOptions.map(x => <option key={x.id} value={x.id} style={opt}>{x.display_name}</option>)}
-            {d.partner && !partnerOptions.some(x => x.id === d.partner) && d.partner !== m.id && <option value={d.partner} style={opt}>{nameOf(d.partner)}</option>}
-          </select>
         </label>
       </div>
 
@@ -292,11 +222,6 @@ function PersonRow({ m, rotaTeam, team, typeNames, hoursThisWeek, t, showToast, 
         </div>
       </div>
 
-      {oneSided && (
-        <div style={{ ...metaText, color: '#E8A6A6', marginTop: 8 }}>
-          ⚠ {t('One-sided link:', 'Liên kết một phía:')} {nameOf(m.rota_partner!)} {t('does not point back. Save this person to set both sides.', 'không liên kết lại. Lưu người này để đặt cả hai phía.')}
-        </div>
-      )}
       {errors.map((e, i) => <div key={`e${i}`} style={{ ...metaText, color: '#E8A6A6', marginTop: 6 }}>✗ {e}</div>)}
       {notes.map((n, i) => <div key={`n${i}`} style={{ ...metaText, opacity: 0.75, marginTop: 6 }}>· {n}</div>)}
     </div>

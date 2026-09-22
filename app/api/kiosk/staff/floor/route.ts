@@ -73,32 +73,48 @@ export async function GET() {
   })
 }
 
-// ── THE SHIFT TIMES, from 2026-09-21 ───────────────────────────────────────
-// The owner set these and they apply seven days a week: "Open is now at 2pm…
-// From 2-3 they must set up the bar as quick as possible, then report to Miss
-// Chau for dayshift requirements that day. The other shifts will begin at 3pm."
-// Saturday and Sunday take the 2pm start too, because the club opens at 3pm
-// every day of the week.
+// ── THE SHIFT TIMES, from 2026-09-22 ───────────────────────────────────────
+// The new rota rules, after the staff's letter about working days and rest
+// days: four 8-hour shifts, five shifts and two rest days a week, and a close
+// that runs to 00:30 instead of ending the minute the club shuts.
 //
-// It lives here rather than in a notice on a wall because the tablet is the
-// thing a floor member of staff actually looks at, and a rule nobody can find
-// is a rule nobody follows.
+// The 21 September instruction still applies to whoever is in first: in at
+// 14:00, bar set up by 15:00, then report to Miss Châu for the day's
+// requirements. S1 is the 14:00 shift, so it carries that line.
+//
+// THE CHANGEOVER LINE IS DELIBERATE. These times go on the tablet before the
+// new rota is published, and the rota staff are working today still has the
+// old times on it. A tablet that states the new times with no qualification
+// would contradict the rota in a member of staff's hand — so it says, in both
+// languages, which one to follow until the new rota is out. Take the footnote
+// back out once the new rota rows are live.
+//
+// Hours are called weekly hours, never anything the employment agreements
+// state: the agreements state no hours at all.
 
 const SHIFT_RULES = {
   title: { en: 'Shift times', vn: 'Giờ làm việc' },
   rows: [
-    { shift: 'Open', time: '14:00 – 22:00',
-      en: 'In at 2pm. Set the bar up as quickly as you can, then report to Miss Châu at 3pm for the day’s requirements. One person a day, seven days a week.',
-      vn: 'Có mặt lúc 14:00. Chuẩn bị quầy bar nhanh nhất có thể, sau đó báo cáo chị Châu lúc 15:00 để nhận yêu cầu trong ngày. Mỗi ngày một người, cả bảy ngày.' },
-    { shift: 'Close', time: '15:00 – 00:00',
-      en: 'In at 3pm, when the doors open. Through to midnight.',
-      vn: 'Có mặt lúc 15:00, khi câu lạc bộ mở cửa. Làm đến nửa đêm.' },
+    { shift: 'S1', time: '14:00 – 22:00',
+      en: 'Set-up, early trade and peak. In at 2pm, bar set up by 3pm, then report to Miss Châu for the day’s requirements.',
+      vn: 'Chuẩn bị, đầu ca và giờ cao điểm. Có mặt lúc 14:00, chuẩn bị quầy bar xong trước 15:00, sau đó báo cáo chị Châu để nhận yêu cầu trong ngày.' },
+    { shift: 'S2', time: '15:30 – 23:30',
+      en: 'Early trade through to late.',
+      vn: 'Từ đầu ca đến khuya.' },
+    { shift: 'S3', time: '16:30 – 00:30',
+      en: 'Peak, late trade and close-down. The supervisor on duty closes — close-down is inside the shift, not after it.',
+      vn: 'Giờ cao điểm, khuya và đóng cửa. Người trực ca đóng cửa — việc đóng cửa nằm trong ca, không làm ngoài giờ.' },
+    { shift: 'S4', time: '16:00 – 00:00',
+      en: 'Peak cover, Tuesday to Friday only.',
+      vn: 'Tăng cường giờ cao điểm, chỉ từ Thứ Ba đến Thứ Sáu.' },
     { shift: 'Office', time: '—',
-      en: 'Office staff only — Miss Ni and Miss Châu. Nobody on the floor is rostered to the office any more.',
-      vn: 'Chỉ dành cho nhân viên văn phòng — chị Ni và chị Châu. Nhân viên phục vụ không còn ca văn phòng.' },
+      en: 'Office staff only — Miss Ni and Miss Châu.',
+      vn: 'Chỉ dành cho nhân viên văn phòng — chị Ni và chị Châu.' },
   ],
-  footnote: { en: 'The club opens at 3pm and closes at midnight, seven days a week.',
-              vn: 'Câu lạc bộ mở cửa lúc 15:00 và đóng cửa lúc nửa đêm, cả bảy ngày.' },
+  footnote: {
+    en: 'Five 8-hour shifts and two rest days a week. The 30-minute break is inside the shift and paid. These are the new rota times — until the new rota is published, work the times on your current rota.',
+    vn: 'Mỗi tuần năm ca 8 tiếng và hai ngày nghỉ. 30 phút nghỉ giải lao nằm trong ca và được tính lương. Đây là giờ theo lịch mới — cho đến khi lịch mới được công bố, vui lòng làm theo giờ trên lịch hiện tại.',
+  },
 }
 
 // ── The process, as the owner wrote it ─────────────────────────────────────

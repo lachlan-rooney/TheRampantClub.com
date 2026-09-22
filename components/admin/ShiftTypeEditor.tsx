@@ -11,9 +11,11 @@ import type { RotaShiftType } from '@/lib/ops/types'
 // (db/rota_open_two.sql), and so did every break, every weekday and every
 // hours figure before it. This is that file, as a form.
 //
-// PAID HOURS ARE WORKED OUT, NOT TYPED. checkWeek counts contracted hours from
-// the TYPE's hours column, so a start time changed without the hours following
-// it is a week the check gets quietly wrong. Hours default to end − start
+// PAID HOURS ARE WORKED OUT, NOT TYPED. checkWeek counts a shift's paid hours
+// from its times less the type's UNPAID break, and falls back to this hours
+// column only when a shift has no times — so the two must agree, or a week is
+// checked quietly wrong. S1–S4 carry no break here: their 30-minute break
+// falls inside the paid eight hours (Art 109), so it is not deducted. Hours default to end − start
 // (across midnight: 16:00–00:30 is 8.5h) less the break, and can be overridden
 // only by unticking "auto" on purpose.
 //
@@ -56,7 +58,7 @@ export default function ShiftTypeEditor({ types, today, overHoursIf, t, showToas
   types: RotaShiftType[]
   /** VN date — shifts from this day on are "future". */
   today: string
-  /** Who on the week on screen would go over their contracted hours if this type paid newHours. */
+  /** Who on the week on screen would go over their weekly hours if this type paid newHours. */
   overHoursIf: (typeName: string, newHours: number) => string[]
   t: T
   showToast: Toast

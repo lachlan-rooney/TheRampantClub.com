@@ -1,86 +1,109 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// THE SEVEN-DAY ROTA — planning a week, and checking one.
+// THE ROTA RULES — checking a week against them.
 // ───────────────────────────────────────────────────────────────────────────
-// Two pure functions over plain data, so both can be tested without a database
-// and the page can use either half on its own:
+// Rebuilt 2026-09-22, after the staff's collective letter about working days
+// and rest days. The rota these replaced ran one long night shift counted
+// across the whole night: it put five people on six 8.5–9 hour shifts a week
+// (47.5–59 hours), gave one rest day, and ended the closing shift at 00:00 —
+// the minute the club shut — so close-down happened in unrecorded time.
 //
-//   planWeek()      proposes a week that obeys the rules
-//   checkWeek()     reads ANY week — planned, hand-edited, or the one already
-//                   in rota_shifts — and says which rules it breaks
+// THE RULES, as the Company decided them. Not proposals; do not soften them:
+//   · Five 8-hour shifts, 40 hours, two rest days — every person, every week.
+//   · No shift over 8 paid hours. The 30-minute break (Art 109) falls INSIDE
+//     the eight and is paid, which is why S1–S4 carry no break_minutes.
+//   · The week runs SUNDAY to SATURDAY. The three-week cycle is built on that
+//     week; measured Monday to Sunday it drops people to one rest day at every
+//     rotation boundary. The rota page shows Sunday-first weeks to match.
+//   · Exactly one supervisor closes, every night, and the close runs to 00:30.
+//   · The floor meets the planned coverage: four at peak Tuesday to Friday
+//     (S4 exists for that), three the other nights. See PLAN_COVER.
+//   · Twelve hours between one shift and the next.
+//   · Cover for an absence is a SWAP, not an extra shift. Anything over 40
+//     hours is overtime at 150% and is flagged as a block, not a note.
 //
-// checkWeek is the one that matters. A generator that nobody trusts gets
-// overridden by hand within a fortnight; a checker keeps working on the rota a
-// manager actually built, and says "Tiên is four hours short" on a Tuesday
-// rather than at payroll.
+// One word is not used anywhere in this file, or anywhere these rules are
+// shown: the working-hours clause of the employment agreements reads only
+// "Thời giờ làm việc: Theo yêu cầu của công việc". Forty hours is the
+// Company's rota rule, and is only ever described as that.
 //
-// THE RULES, in the order they bind:
-//   1. Fixed days off are absolute. Hiếu Sun–Mon, Bình Mon–Tue (or whatever is
-//      in team_members.fixed_days_off) — never assigned, never negotiated.
-//   2. Nobody is off both Saturday and Sunday. The pair that becomes permanent.
-//   3. One fixed OPEN day each, on a named weekday — Mr Sĩ Monday, Tiên
-//      Tuesday, Hiếu Wednesday, Nhi Thursday, Bình Friday. These never move;
-//      the rest of the week rotates around them. (The column is still
-//      morning_weekday — the shift was called Morning until 2026-09-14, then
-//      Office, and is the Open from 2026-09-21. Renaming a live column every
-//      time the shift is renamed is not a trade worth making.)
-//   4. Every night has a supervisor on it.
-//   5. Everybody reaches their contracted hours.
-//   6. Days off vary from the previous week, for anyone not on a fixed pattern.
-//   7. Hiếu and Bình — a couple — get a day off together once a fortnight.
-//   8. Somebody is cleaning, 09:00 to 23:00, every day.
+// WHAT WAS REMOVED, and why each one would now be wrong:
+//   · the fixed weekly "Office"/"Open" day per person — the Office is for
+//     office staff; floor staff work S-shifts on a rotating pattern
+//   · "always works Close" — supervisors rotate the close among themselves
+//   · "never both weekend days off" — the cycle gives three of its six lines
+//     the whole weekend off by design
+//   · "days off must move week to week" — the cycle moves them itself
+//   · the fortnightly shared day off for a couple — not part of the new rules
+//   · planWeek(), the old generator. It solved the one-long-night model and
+//     nothing on the site called it. The replacement is the three-week cycle
+//     in lib/rota/cycle.ts, which is a lookup rather than a search.
+// The columns those read (morning_weekday, always_shift, rota_partner) are
+// still in team_members; nothing reads them any more.
 //
-// Rules 7 and 8 are WARNINGS. Both are the first things to give in a week where
-// someone is ill, and a rule that turns the whole rota red for them is a rule
-// people switch off. They say "this has not happened yet", which is something a
-// manager can act on while there is still a week to act in.
-//
-// A WORKED EXAMPLE OF RULE 6 NOT BEING FREE. With this roster, Saturday needs
-// three on the floor and two of them are Hiếu and Bình — neither a supervisor.
-// So Saturday's third must be Mr Sĩ or Nhi, and Tiên can NEVER work a
-// Saturday. Her day off is therefore Saturday every week, and the rota is not
-// at fault: two supervisors is. The check still says so each week rather than
-// going quiet, because "this cannot vary and here is why" is worth reading.
-//
-// Rule 5 is the one that fails quietly, which is why it is computed from the
-// shift TYPES' hours rather than from start/end times: the club closes after
-// midnight and "end minus start" goes negative on every closing shift.
+// Monthly rules — at least four rest days a month, at most 40 overtime hours
+// a month — need a month of rota, not a week, and are not checked here.
+// ═══════════════════════════════════════════════════════════════════════════
 
 export const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const
+
+export const WEEKLY_HOURS = 40
+export const REST_DAYS = 2
+export const MAX_SHIFT_HOURS = 8
+/** The close runs to 00:30 — 24.5 on a clock that runs past midnight. */
+export const CLOSE_BY = 24.5
+export const MIN_HOURS_BETWEEN_SHIFTS = 12
+/** Tuesday to Friday: the nights S4 runs and the floor plan wants four. */
+export const PEAK_NIGHTS = [2, 3, 4, 5]
+
+/** The planned floor, band by band. `peak` is Tuesday–Friday. */
+export const PLAN_COVER: { from: number; to: number; peak: number; other: number }[] = [
+  { from: 14,   to: 15.5, peak: 1, other: 1 },
+  { from: 15.5, to: 16,   peak: 2, other: 2 },
+  { from: 16,   to: 16.5, peak: 3, other: 2 },
+  { from: 16.5, to: 22,   peak: 4, other: 3 },
+  { from: 22,   to: 23.5, peak: 3, other: 2 },
+  { from: 23.5, to: 24,   peak: 2, other: 1 },
+  { from: 24,   to: 24.5, peak: 1, other: 1 },
+]
+
+/** Cleaning is rostered separately and is never floor cover. Held as a set
+ *  rather than a name prefix, because "Clean" is a word somebody will one day
+ *  put at the front of a floor shift. */
+export const CLEANING_SHIFTS = new Set(['Clean Early', 'Clean Late'])
+/** Rostered and paid, but not on the floor: the office, cleaning, and the
+ *  cycle's DUTY shift (see lib/rota/cycle.ts — its hours are not yet set). */
+export const OFF_FLOOR = new Set(['Office', 'Duty', ...CLEANING_SHIFTS])
 
 export interface RotaStaff {
   id: string
   name: string
   isSupervisor: boolean
+  /** The rota's weekly hours for this person — 40 under the new rules. */
   weeklyHours: number | null
-  morningWeekday: number | null
+  /** Days this person is never rostered, by arrangement. 0 = Sunday. */
   fixedDaysOff: number[]
-  /** The evening shift this person always works, if that is the arrangement.
-   *  Mr Sĩ closes — he is the boss, he is there at the end of the night, and
-   *  he is on no mids. Their fixed morning is separate and unaffected. */
-  alwaysShift?: string | null
-  /** Another member of staff this person should get a day off WITH, once a
-   *  fortnight. Hiếu and Bình are a couple; on the standing pattern he is off
-   *  Sunday and she is off Monday, so they never have a day off together, and
-   *  a rota that quietly does that to two people is a rota they will come to
-   *  resent. Once every two weeks, not every week — the club is open seven
-   *  days on five people, and taking two off the same night twice a month is
-   *  what the roster can actually absorb. Set on BOTH of them. */
-  pairedWith?: string | null
 }
 
 export interface ShiftType {
   name: string
+  /** Paid hours when a shift carries no times of its own. */
   hours: number
   sortOrder: number
-  /** Weekdays the shift runs (0=Sun…6=Sat); null/absent = every day. */
+  /** Weekdays the shift runs (0 = Sun … 6 = Sat); null/absent = every day. */
   weekdays?: number[] | null
+  startTime?: string | null
+  endTime?: string | null
+  /** UNPAID break inside the span. S1–S4 have none: their break is paid. */
+  breakMinutes?: number | null
 }
 
-/** One assignment: a person, a date, a shift type. */
 export interface PlannedShift {
   member: string
   shiftDate: string      // yyyy-mm-dd
   shiftName: string
+  /** A row's own times win over its type's — the rota lets a manager move one. */
+  startTime?: string | null
+  endTime?: string | null
 }
 
 export interface Violation {
@@ -92,456 +115,145 @@ export interface Violation {
 }
 
 const iso = (d: Date) => d.toISOString().slice(0, 10)
-const addDays = (start: string, n: number) => {
+export const addDays = (start: string, n: number) => {
   const d = new Date(start + 'T00:00:00Z')
   d.setUTCDate(d.getUTCDate() + n)
   return iso(d)
 }
-const weekdayOf = (date: string) => new Date(date + 'T00:00:00Z').getUTCDay()
+export const weekdayOf = (date: string) => new Date(date + 'T00:00:00Z').getUTCDay()
+/** The Sunday a date's rota week starts on. */
+export const sundayOf = (date: string) => addDays(date, -weekdayOf(date))
 
-/** How many people the club wants on each night.
- *
- *  These are not a wish — they are what the WEEK ADDS UP TO. Five people, one
- *  day off each (two where it is fixed by arrangement) and one morning each
- *  leaves exactly 23 evening shifts to place, and the nights can only take who
- *  is free: Monday has just Tiên and Nhi available once Mr Sĩ is on his
- *  morning and Hiếu and Bình are off, so Monday is 2 whatever anyone wants.
- *
- *  Change these and the planner will tell you within a second whether the week
- *  still closes. */
-export const EVENING_DEMAND: Record<number, number> = {
-  0: 3,  // Sunday     — Hiếu is off; Mr Sĩ takes his day off here
-  1: 3,  // Monday     — Bình is off, Mr Sĩ is on his morning
-  2: 4,  // Tuesday
-  3: 4,  // Wednesday
-  4: 4,  // Thursday
-  5: 4,  // Friday
-  6: 3,  // Saturday   — Mr Sĩ closes; Tiên and Nhi are off
+const clock = (t: string) => { const [h, m] = t.split(':').map(Number); return h + (m || 0) / 60 }
+const fmt = (h: number) => `${String(Math.floor(h) % 24).padStart(2, '0')}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`
+
+/** Start and end on a clock that runs past midnight (00:30 → 24.5), or null
+ *  when neither the row nor its type says when the shift is. */
+export function shiftSpan(s: PlannedShift, types: ShiftType[]): { start: number; end: number } | null {
+  const type = types.find(t => t.name === s.shiftName)
+  const a = s.startTime || type?.startTime, b = s.endTime || type?.endTime
+  if (!a || !b) return null
+  const start = clock(a)
+  let end = clock(b)
+  if (end <= start) end += 24
+  return { start, end }
 }
 
-/** The fixed weekday shift each floor person works — the OPEN, from
- *  2026-09-21.
- *
- *  THE OFFICE SHIFT IS NOW FOR OFFICE STAFF ONLY. The owner's rule: "the
- *  office shift is only team members working in the office like Miss Ni, Miss
- *  Chau". Until now the five people who work the floor each had one Office day
- *  a week — Mr Sĩ Monday, Tiên Tuesday, Hiếu Wednesday, Nhi Thursday, Bình
- *  Friday — which put bar staff on a desk shift and gave the real office staff
- *  a shift type they shared with people who were not in the office.
- *
- *  That fixed weekday does not disappear; it becomes the OPEN. The person in
- *  at 14:00 sets the bar up by 15:00 and then reports to Miss Chau for the
- *  day's requirements, which is the work the office day was really for.
- *
- *  Named ONCE here rather than typed as a literal in five places, because the
- *  last rename had to be chased through the file by hand. */
-export const DAY_SHIFT = 'Open'
-
-/** The evening shift types, in the order they are handed out.
- *
- *  TWO, not three. Mid was retired on 2026-09-14 with the move to a three-till-
- *  midnight night: it started at four and ended at half past twelve, which is
- *  the Close, so it was a second name for the same shift. Three or four people
- *  work each night on these two patterns. */
-const EVENING_ORDER = ['Open', 'Close']
-
-/** The cleaning shifts, which tile 09:00 to 23:00 between them and are NOT
- *  floor cover (db/rota_cleaning.sql).
- *
- *  They sit outside every rule above: a cleaner on a Tuesday night does not
- *  make Tuesday supervised, does not count towards the number wanted on the
- *  floor, and is not on anybody's 48-hour contract here. Held as a set rather
- *  than tested by a name prefix, because "Clean" is a word somebody will one
- *  day put at the front of a floor shift. */
-export const CLEANING_SHIFTS = new Set(['Clean Early', 'Clean Late'])
-
-// ── PLAN ───────────────────────────────────────────────────────────────────
-//
-// A SEARCH, NOT A FILL. The first version handed each night to whoever was
-// furthest from their hours, and it failed in a way worth recording: it left
-// three people 8.75h short every week while Mr Sĩ ran 8.75h over, because a
-// greedy pass cannot see that Thursday and Friday are FORCED — on those nights
-// exactly four people are available and four are needed, so every other
-// decision has to be made around them.
-//
-// The space is tiny (5 people × 7 nights), so this does the honest thing and
-// searches it: each person needs an exact number of evenings to reach their
-// contracted hours, each night needs its demand met with a supervisor present,
-// and backtracking finds an arrangement or proves there isn't one. "There
-// isn't one" is a useful answer — it is the difference between a rota that
-// quietly shorts somebody and a sentence telling you Saturday cannot be
-// covered.
-
-/** How many evenings this person works.
- *
- *  From the STRUCTURE, not from their contracted hours: one day off a week
- *  (or the fixed pattern where they have one), one morning, and every other
- *  night on the floor. Hours are then a RESULT, which checkWeek reports against
- *  the contract — rather than a target the plan bends itself around.
- *
- *  That is the owner's rule, stated plainly: "one day off, then one morning
- *  shift will suffice." */
-export const DEFAULT_DAYS_OFF = 1
-
-function eveningsNeeded(p: RotaStaff, _shiftTypes: ShiftType[], hasMorning: boolean): number {
-  const off = p.fixedDaysOff.length || DEFAULT_DAYS_OFF
-  return Math.max(0, 7 - off - (hasMorning ? 1 : 0))
-}
-
-export function planWeek(opts: {
-  weekStart: string            // a Sunday, yyyy-mm-dd
-  staff: RotaStaff[]
-  shiftTypes: ShiftType[]
-  /** Which week of the rotation this is; it nudges the search so that two
-   *  consecutive weeks do not come back identical. */
-  cycleIndex?: number
-  /** Last week's days off per member, so this week can differ from it. */
-  previousDaysOff?: Record<string, number[]>
-  /** Evenings wanted per weekday. Defaults to EVENING_DEMAND. */
-  demand?: Record<number, number>
-}): { shifts: PlannedShift[]; violations: Violation[] } {
-  const { weekStart, staff, shiftTypes } = opts
-  const cycle = opts.cycleIndex ?? 0
-  const demand = opts.demand ?? EVENING_DEMAND
-  const shifts: PlannedShift[] = []
-
-  // 1 — the mornings. Fixed points: one person per weekday, never moved, and
-  //     never placed on a day that person is off.
-  const morningOn: Record<string, number | null> = {}
-  for (const p of staff) {
-    morningOn[p.id] = null
-    if (p.morningWeekday == null) continue
-    if (p.fixedDaysOff.includes(p.morningWeekday)) continue
-    morningOn[p.id] = p.morningWeekday
-    shifts.push({ member: p.id, shiftDate: addDays(weekStart, p.morningWeekday), shiftName: DAY_SHIFT })
-  }
-
-  // 2 — how many evenings each person must work to reach their hours.
-  const need: Record<string, number> = {}
-  for (const p of staff) need[p.id] = eveningsNeeded(p, shiftTypes, morningOn[p.id] != null)
-
-  // 3 — who could work each night at all.
-  const canWork = (p: RotaStaff, d: number) =>
-    !p.fixedDaysOff.includes(d) && morningOn[p.id] !== d
-
-  // Days are taken hardest-first — the nights with the least slack decide the
-  // week, and choosing them first is what stops the search thrashing.
-  const order = [0, 1, 2, 3, 4, 5, 6].sort((a, b) => {
-    const slack = (d: number) => staff.filter(p => canWork(p, d)).length - (demand[d] ?? 0)
-    return slack(a) - slack(b)
-  })
-
-  const chosen: Record<number, string[]> = {}
-  const remaining = { ...need }
-  let requireSupervisor = true
-
-  const search = (i: number): boolean => {
-    if (i === order.length) {
-      if (!Object.values(remaining).every(n => n === 0)) return false
-      // Rule 2 belongs IN the search, not after it. Checking it afterwards
-      // produced weeks where everyone hit their hours and two people were off
-      // both weekend days — correct on one rule, broken on another, and no
-      // amount of reporting fixes a plan that was built wrong.
-      // Rule 2 belongs in the search. With one day off each it is nearly free —
-      // but Hiếu and Bình have two, so it still has to be checked.
-      for (const p of staff) {
-        const worksSun = (chosen[0] ?? []).includes(p.id) || morningOn[p.id] === 0
-        const worksSat = (chosen[6] ?? []).includes(p.id) || morningOn[p.id] === 6
-        if (!worksSun && !worksSat) return false
-      }
-      return true
-    }
-    const d = order[i]
-    // THE FIXED OPEN IS EXTRA COVER, AND THAT IS NOW A DECISION, NOT AN
-    // ACCIDENT. While the fixed weekday was the Office it ended at 16:00, so
-    // that person was no use for the evening and the night needed its full
-    // complement behind them. The Open runs to 22:00, so Tuesday to Friday
-    // now has FIVE on the floor where it had four.
-    //
-    // Subtracting the fixed Open from the night's demand was tried and
-    // reverted in the same sitting: it leaves 20 evening slots for 25 shifts
-    // people are owed, so no week solves at all and the planner returns the
-    // five fixed Opens and nothing else. Making it work needs a second day off
-    // for everyone (5 shifts, 44h) — which is a staffing decision and not one
-    // to smuggle in through an arithmetic tweak.
-    //
-    // See scripts/rota-plan-check.mts: it prints the hours this produces
-    // against each contract, which is how the 53h week below was found.
-    const want = demand[d] ?? 0
-    const pool = staff.filter(p => canWork(p, d))
-    // Rotate the pool by the cycle so consecutive weeks differ, then prefer
-    // whoever still owes the most evenings.
-    const rotated = pool.map((_, k) => pool[(k + cycle + d) % pool.length])
-    const sorted = [...rotated].sort((a, b) => remaining[b.id] - remaining[a.id])
-
-    let combos: RotaStaff[][] = []
-    const build = (startAt: number, acc: RotaStaff[]) => {
-      if (acc.length === want) { combos.push([...acc]); return }
-      for (let k = startAt; k < sorted.length; k++) {
-        const p = sorted[k]
-        if (remaining[p.id] <= 0) continue
-        acc.push(p); build(k + 1, acc); acc.pop()
-        if (combos.length > 400) return      // enough to choose from
-      }
-    }
-    build(0, [])
-
-    // Rule 6, made to happen rather than reported afterwards: prefer combos
-    // that put someone BACK to work on the night they had off last week. A
-    // cycle counter alone did not do it — the search kept finding the same
-    // valid week and "varied days off" quietly became "Tiên always has
-    // Saturday".
-    // Two halves, and the second is the one that was missing. Preferring
-    // people who were OFF this night last week is not enough on its own: on a
-    // night where two of three must work, the same two kept being chosen and
-    // the third kept the same day off for eight weeks running. So combos are
-    // ALSO penalised for including someone who already worked this night last
-    // week, and ties rotate with the cycle — otherwise a deterministic search
-    // returns the identical valid week every time, which is how "varied days
-    // off" becomes "Tiên always has Saturday".
-    const wasOff = (p: RotaStaff) => opts.previousDaysOff?.[p.id]?.includes(d) ?? false
-    const prevKnown = !!opts.previousDaysOff
-    const score = (combo: RotaStaff[]) =>
-      combo.filter(wasOff).length - (prevKnown ? combo.filter(p => !wasOff(p) && !p.fixedDaysOff.length).length * 0.5 : 0)
-    const decorated = combos.map((c, idx) => ({ c, idx, s: score(c) }))
-    decorated.sort((a, b) =>
-      b.s - a.s || ((a.idx + cycle) % decorated.length) - ((b.idx + cycle) % decorated.length))
-    combos = decorated.map(d2 => d2.c)
-
-    for (const combo of combos) {
-      if (requireSupervisor && !combo.some(p => p.isSupervisor)) continue   // rule 4, in the search
-      for (const p of combo) remaining[p.id]--
-      chosen[d] = combo.map(p => p.id)
-      if (search(i + 1)) return true
-      for (const p of combo) remaining[p.id]++
-      delete chosen[d]
-    }
-    return false
-  }
-
-  // Two passes. The first insists on a supervisor every night; if the week
-  // cannot be built that way, the second drops that one rule so a manager gets
-  // a usable draft plus a sentence naming the night that cannot be covered —
-  // rather than an empty grid and no explanation.
-  let solved = search(0)
-  let supervisorRelaxed = false
-  if (!solved) {
-    for (const k of Object.keys(chosen)) delete chosen[Number(k)]
-    for (const p of staff) remaining[p.id] = need[p.id]
-    requireSupervisor = false
-    supervisorRelaxed = true
-    solved = search(0)
-  }
-
-  // ONE OPEN A NIGHT, AND EVERYBODY ELSE COMES IN AT THREE.
-  //
-  // This used to alternate Open/Close/Open/Close down the night, which on a
-  // four-person Thursday put two people on at 14:00. The rule now is one: the
-  // Open sets the bar up between 14:00 and 15:00 and reports to Miss Chau, and
-  // a second person standing there while they do it is an hour nobody needed.
-  //
-  // Where somebody's FIXED Open falls on this day, that is the night's Open
-  // and every other person Closes. Saturday and Sunday have no fixed Open —
-  // nobody's weekday lands there — so the first person chosen takes it, which
-  // is what gives the weekend the 14:00 start the owner asked for.
-  for (let d = 0; d < 7; d++) {
-    const ids = chosen[d] ?? []
-    const alreadyOpen = staff.some(p => morningOn[p.id] === d)
-    ids.forEach((id, k) => {
-      const shiftName = (!alreadyOpen && k === 0) ? EVENING_ORDER[0] : EVENING_ORDER[1]
-      shifts.push({ member: id, shiftDate: addDays(weekStart, d), shiftName })
-    })
-  }
-
-  const violations = checkWeek({ ...opts, shifts })
-
-  if (supervisorRelaxed || !solved) {
-    // Say WHICH night and WHY, with the arithmetic — "it didn't work" sends a
-    // manager back to a spreadsheet; "Saturday has only Bình and Hiếu free,
-    // and neither is a supervisor" tells them what to change.
-    for (let d = 0; d < 7; d++) {
-      const pool = staff.filter(p => canWork(p, d))
-      const sups = pool.filter(p => p.isSupervisor)
-      const want = demand[d] ?? 0
-      if (pool.length < want) {
-        violations.unshift({ severity: 'blocking', rule: 'not enough people', when: WEEKDAYS[d],
-          detail: `${WEEKDAYS[d]} wants ${want} on the floor and only ${pool.length} can work it (${pool.map(p => p.name).join(', ') || 'nobody'}).` })
-      } else if (sups.length === 0) {
-        violations.unshift({ severity: 'blocking', rule: 'no supervisor can work this night', when: WEEKDAYS[d],
-          detail: `${WEEKDAYS[d]} can only be worked by ${pool.map(p => p.name).join(', ')} — no supervisor among them.` })
-      }
-    }
-  }
-  if (!solved) {
-    violations.unshift({
-      severity: 'blocking',
-      rule: 'no arrangement satisfies the rules',
-      detail: 'No week reaches everyone\'s contracted hours on this demand, even with the supervisor rule '
-            + 'set aside. Something has to give: the number wanted on one night, a fixed day off, or the hours.',
-    })
-  } else if (supervisorRelaxed) {
-    violations.unshift({
-      severity: 'blocking',
-      rule: 'built without a supervisor every night',
-      detail: 'Everyone reaches their hours, but only by leaving at least one night without a supervisor. '
-            + 'Moving one evening from the busiest night to that one usually fixes it.',
-    })
-  }
-  return { shifts, violations }
+/** Paid hours: the span less any UNPAID break, else the type's stated hours. */
+export function paidHours(s: PlannedShift, types: ShiftType[]): number {
+  const span = shiftSpan(s, types)
+  const type = types.find(t => t.name === s.shiftName)
+  if (!span) return type?.hours ?? 0
+  return span.end - span.start - (type?.breakMinutes ?? 0) / 60
 }
 
 // ── CHECK ──────────────────────────────────────────────────────────────────
 
 export function checkWeek(opts: {
+  /** The Sunday the week starts on. */
   weekStart: string
   staff: RotaStaff[]
   shiftTypes: ShiftType[]
   shifts: PlannedShift[]
-  previousDaysOff?: Record<string, number[]>
 }): Violation[] {
-  const { weekStart, staff, shiftTypes, shifts } = opts
+  const { weekStart, staff, shiftTypes: types, shifts } = opts
   const out: Violation[] = []
-  const hoursOf = (name: string) => shiftTypes.find(t => t.name === name)?.hours ?? 0
   const dates = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+  const inWeek = shifts.filter(s => dates.includes(s.shiftDate))
+  const isFloor = (s: PlannedShift) => !OFF_FLOOR.has(s.shiftName)
+  const supervisor = (id: string) => !!staff.find(p => p.id === id)?.isSupervisor
+  const dayName = (date: string) => `${WEEKDAYS[weekdayOf(date)]} ${date.slice(8)}/${date.slice(5, 7)}`
+
+  if (weekdayOf(weekStart) !== 0) {
+    out.push({ severity: 'warning', rule: 'week does not start on Sunday',
+      detail: `The rota week runs Sunday to Saturday; this one starts on a ${WEEKDAYS[weekdayOf(weekStart)]}, so the rest-day count is measured over the wrong seven days.` })
+  }
 
   for (const p of staff) {
-    const mine = shifts.filter(s => s.member === p.id)
-    const workedDays = new Set(mine.map(s => weekdayOf(s.shiftDate)))
-    const off = [0, 1, 2, 3, 4, 5, 6].filter(d => !workedDays.has(d))
+    const mine = inWeek.filter(s => s.member === p.id)
+      .sort((a, b) => a.shiftDate.localeCompare(b.shiftDate) || (shiftSpan(a, types)?.start ?? 0) - (shiftSpan(b, types)?.start ?? 0))
+    const worked = new Set(mine.map(s => weekdayOf(s.shiftDate)))
 
-    // 1 — fixed days off are absolute
     for (const d of p.fixedDaysOff) {
-      if (workedDays.has(d)) {
-        out.push({ severity: 'blocking', rule: 'fixed day off', who: p.name, when: WEEKDAYS[d],
-          detail: `${p.name} is off ${WEEKDAYS[d]} every week by arrangement, and is rostered.` })
-      }
+      if (worked.has(d)) out.push({ severity: 'blocking', rule: 'fixed day off', who: p.name, when: WEEKDAYS[d],
+        detail: `${p.name} is off ${WEEKDAYS[d]} every week by arrangement, and is rostered.` })
     }
 
-    // 2 — never both weekend days
-    if (off.includes(0) && off.includes(6)) {
-      out.push({ severity: 'blocking', rule: 'both weekend days off', who: p.name,
-        detail: `${p.name} is off Saturday AND Sunday. That pair is the one the rota never hands out.` })
+    for (const s of mine) {
+      const h = paidHours(s, types)
+      if (h > MAX_SHIFT_HOURS + 1e-9) out.push({ severity: 'blocking', rule: 'shift over 8 hours', who: p.name, when: s.shiftDate,
+        detail: `${p.name}'s ${s.shiftName} on ${dayName(s.shiftDate)} is ${h.toFixed(2)} paid hours — ${(h - MAX_SHIFT_HOURS).toFixed(2)}h over the limit.` })
+      const runs = types.find(t => t.name === s.shiftName)?.weekdays
+      if (!CLEANING_SHIFTS.has(s.shiftName) && runs?.length && !runs.includes(weekdayOf(s.shiftDate)))
+        out.push({ severity: 'blocking', rule: 'shift on a day it does not run', who: p.name, when: s.shiftDate,
+          detail: `${s.shiftName} only runs ${runs.map(d => WEEKDAYS[d].slice(0, 3)).join(', ')} — ${p.name} is on it ${dayName(s.shiftDate)}.` })
     }
 
-    // 3 — the fixed morning
-    if (p.morningWeekday != null && !p.fixedDaysOff.includes(p.morningWeekday)) {
-      const has = mine.some(s => s.shiftName === DAY_SHIFT && weekdayOf(s.shiftDate) === p.morningWeekday)
-      if (!has) {
-        out.push({ severity: 'warning', rule: 'fixed morning', who: p.name, when: WEEKDAYS[p.morningWeekday],
-          detail: `${p.name}'s ${WEEKDAYS[p.morningWeekday]} morning is missing — those do not move.` })
-      }
+    const hours = mine.reduce((t, s) => t + paidHours(s, types), 0)
+    const target = p.weeklyHours ?? WEEKLY_HOURS
+    if (hours > target + 1e-9) {
+      out.push({ severity: 'blocking', rule: 'over the weekly hours', who: p.name,
+        detail: `${p.name} is rostered ${hours.toFixed(2)}h against ${target}h — the ${(hours - target).toFixed(2)}h over is overtime at 150%. Cover should be a swap, not an extra shift.` })
+    } else if (hours + 1 < target) {
+      out.push({ severity: 'warning', rule: 'under the weekly hours', who: p.name,
+        detail: `${p.name} is rostered ${hours.toFixed(2)}h against ${target}h — ${(target - hours).toFixed(2)}h unscheduled. Leave, a closure day, or a shift missing?` })
     }
 
-    // 4b — the shift they always work, where that is the arrangement
-    if (p.alwaysShift) {
-      const wrong = mine.filter(s => s.shiftName !== DAY_SHIFT && s.shiftName !== p.alwaysShift)
-      for (const w of wrong) {
-        out.push({ severity: 'blocking', rule: 'wrong shift for this person', who: p.name, when: w.shiftDate,
-          detail: `${p.name} is on ${w.shiftName} on ${w.shiftDate} — they always work ${p.alwaysShift}.` })
-      }
-    }
+    const rest = 7 - worked.size
+    if (rest < REST_DAYS) out.push({ severity: 'blocking', rule: 'fewer than two rest days', who: p.name,
+      detail: `${p.name} has ${rest} rest day${rest === 1 ? '' : 's'} this week — every person gets ${REST_DAYS}.` })
 
-    // 5 — contracted hours
-    const hours = mine.reduce((t, s) => t + hoursOf(s.shiftName), 0)
-    if (p.weeklyHours == null) {
-      out.push({ severity: 'warning', rule: 'hours not recorded', who: p.name,
-        detail: `${p.name} has no contracted hours on file, so this week cannot be checked against them.` })
-    } else if (hours + 1.001 < p.weeklyHours) {
-      // An hour's slack below the ceiling is not "short": six days at 8.5h and
-      // a five-hour morning is 47.5h by design, and flagging that every week
-      // would train everyone to ignore the check.
-      out.push({ severity: 'blocking', rule: 'short of contracted hours', who: p.name,
-        detail: `${p.name} is rostered ${hours.toFixed(2)}h against ${p.weeklyHours}h — ${(p.weeklyHours - hours).toFixed(2)}h short.` })
-    } else if (hours > p.weeklyHours) {
-      // 48 is a CEILING, not a target to drift past. Over it is a fault, not a
-      // note — the rota is where that gets caught, because the alternative is
-      // catching it in a payroll run or not at all.
-      out.push({ severity: 'blocking', rule: 'over the weekly maximum', who: p.name,
-        detail: `${p.name} is rostered ${hours.toFixed(2)}h against a ${p.weeklyHours}h maximum — ${(hours - p.weeklyHours).toFixed(2)}h over.` })
-    }
-
-    // 6 — days off should move week to week, for anyone not on a fixed pattern
-    const prev = opts.previousDaysOff?.[p.id]
-    if (prev && !p.fixedDaysOff.length && prev.length && off.length
-        && prev.length === off.length && prev.every(d => off.includes(d))) {
-      out.push({ severity: 'warning', rule: 'days off did not move', who: p.name,
-        detail: `${p.name} has the same days off as last week (${off.map(d => WEEKDAYS[d]).join(', ')}).` })
+    for (let i = 1; i < mine.length; i++) {
+      const a = shiftSpan(mine[i - 1], types), b = shiftSpan(mine[i], types)
+      if (!a || !b) continue
+      const days = (Date.parse(mine[i].shiftDate) - Date.parse(mine[i - 1].shiftDate)) / 864e5
+      const gap = days * 24 + b.start - a.end
+      if (gap < MIN_HOURS_BETWEEN_SHIFTS) out.push({ severity: 'blocking', rule: 'under 12 hours between shifts', who: p.name, when: mine[i].shiftDate,
+        detail: `${p.name} finishes at ${fmt(a.end)} and starts again ${gap.toFixed(1)} hours later — the minimum is ${MIN_HOURS_BETWEEN_SHIFTS}.` })
     }
   }
 
-  // 7 — couples get a day off together once a fortnight
-  //
-  // A WARNING, NOT A BLOCK, and deliberately: with five people covering seven
-  // nights this is the first thing that has to give in a week where someone is
-  // ill, and a rule that turns the whole rota red for it would get switched
-  // off. It says "this fortnight has not happened yet", which is the thing a
-  // manager can act on while there is still a week to act in.
-  const seen = new Set<string>()
-  for (const p of staff) {
-    if (!p.pairedWith || seen.has(p.id)) continue
-    const other = staff.find(q => q.id === p.pairedWith)
-    if (!other) continue
-    seen.add(p.id); seen.add(other.id)
-
-    const offOf = (x: RotaStaff) => {
-      const worked = new Set(shifts.filter(s => s.member === x.id).map(s => weekdayOf(s.shiftDate)))
-      return [0, 1, 2, 3, 4, 5, 6].filter(d => !worked.has(d))
-    }
-    const shared = offOf(p).filter(d => offOf(other).includes(d))
-    if (shared.length) continue
-
-    // Not this week — which is fine if it happened last week. Only when the
-    // fortnight has gone by with no shared day is there anything to say.
-    const prevA = opts.previousDaysOff?.[p.id]
-    const prevB = opts.previousDaysOff?.[other.id]
-    const sharedLastWeek = prevA && prevB && prevA.some(d => prevB.includes(d))
-    if (sharedLastWeek) continue
-    if (!prevA || !prevB) continue   // no previous week on file: nothing proven either way
-
-    out.push({ severity: 'warning', rule: 'no day off together this fortnight',
-      who: `${p.name} & ${other.name}`,
-      detail: `${p.name} and ${other.name} have had no day off together for two weeks — they should share one every other week.` })
-  }
-
-  // 8 — somebody is cleaning, from nine in the morning to eleven at night
-  //
-  // Only asked once the club has started rostering cleaning at all: before
-  // that, every week would come back with fourteen complaints about a shift
-  // nobody has been put on yet, and a check that is wrong on day one never
-  // gets read on day ninety. Once there IS cleaning on the week, a day missing
-  // one of the two halves is the real failure — Monday to Saturday done and
-  // Sunday forgotten is exactly the shape it takes.
-  const anyCleaning = shifts.some(s => CLEANING_SHIFTS.has(s.shiftName))
-  if (anyCleaning) {
-    for (const date of dates) {
-      for (const name of CLEANING_SHIFTS) {
-        // A shift that does not run that weekday is not missing (Clean Early
-        // is not wanted Tuesday or Wednesday — only the evening cleaner is).
-        const runsOn = shiftTypes.find(t => t.name === name)?.weekdays
-        if (runsOn?.length && !runsOn.includes(weekdayOf(date))) continue
-        if (shifts.some(s => s.shiftDate === date && s.shiftName === name)) continue
-        out.push({ severity: 'warning', rule: 'cleaning not covered', when: date,
-          detail: `Nobody is on ${name} on ${date} — cleaning runs from 09:00 to 23:00, every day.` })
-      }
-    }
-  }
-
-  // 4 — a supervisor on every night the club is open
   for (const date of dates) {
-    // Cleaning is excluded: a cleaner in the building does not make the night
-    // supervised, and counting them would turn "nobody is running the floor"
-    // into a green tick.
-    const onTonight = shifts.filter(s => s.shiftDate === date
-      && s.shiftName !== DAY_SHIFT && !CLEANING_SHIFTS.has(s.shiftName))
-    if (onTonight.length === 0) {
-      out.push({ severity: 'blocking', rule: 'night with nobody on', when: date,
-        detail: `Nobody is rostered for the evening of ${date}.` })
+    const floor = inWeek.filter(s => s.shiftDate === date && isFloor(s))
+    if (!floor.length) {
+      out.push({ severity: 'blocking', rule: 'night with nobody on', when: date, detail: `Nobody is on the floor ${dayName(date)}.` })
       continue
     }
-    const hasSupervisor = onTonight.some(s => staff.find(p => p.id === s.member)?.isSupervisor)
-    if (!hasSupervisor) {
-      out.push({ severity: 'blocking', rule: 'night without a supervisor', when: date,
-        detail: `${WEEKDAYS[weekdayOf(date)]} ${date} has no shift supervisor on the floor.` })
+    if (!floor.some(s => supervisor(s.member))) out.push({ severity: 'blocking', rule: 'night without a supervisor', when: date,
+      detail: `${dayName(date)} has no supervisor on the floor.` })
+
+    const timed = floor.map(s => ({ s, span: shiftSpan(s, types) })).filter(x => x.span) as { s: PlannedShift; span: { start: number; end: number } }[]
+    if (timed.length < floor.length) out.push({ severity: 'warning', rule: 'shift with no times', when: date,
+      detail: `${floor.length - timed.length} shift(s) on ${dayName(date)} have no times, so the close and the floor plan cannot be checked.` })
+    if (!timed.length) continue
+
+    const last = Math.max(...timed.map(x => x.span.end))
+    if (last < CLOSE_BY - 1e-9) out.push({ severity: 'blocking', rule: 'close-down not rostered', when: date,
+      detail: `The last person leaves at ${fmt(last)} on ${dayName(date)} — the close runs to 00:30.` })
+    const closers = timed.filter(x => x.span.end >= Math.min(last, CLOSE_BY) - 1e-9)
+    const supClosers = closers.filter(x => supervisor(x.s.member))
+    if (!supClosers.length) out.push({ severity: 'blocking', rule: 'no supervisor closing', when: date,
+      detail: `Nobody closing on ${dayName(date)} is a supervisor.` })
+    else if (supClosers.length > 1) out.push({ severity: 'warning', rule: 'two supervisors closing', when: date,
+      detail: `${supClosers.length} supervisors close on ${dayName(date)} — the rule is exactly one.` })
+
+    const peak = PEAK_NIGHTS.includes(weekdayOf(date))
+    const short = PLAN_COVER.map(b => ({ b, want: peak ? b.peak : b.other,
+      got: timed.filter(x => x.span.start <= b.from + 1e-9 && x.span.end >= b.to - 1e-9).length })).filter(x => x.got < x.want)
+    if (short.length) out.push({ severity: 'blocking', rule: 'floor below plan', when: date,
+      detail: `${dayName(date)}: ` + short.map(x => `${fmt(x.b.from)}–${fmt(x.b.to)} has ${x.got} of ${x.want}`).join('; ') + '.' })
+  }
+
+  // Cleaning, from nine in the morning to eleven at night. Asked only once the
+  // week has any cleaning on it — before that, every week would come back with
+  // fourteen complaints about a shift nobody had been put on yet.
+  if (inWeek.some(s => CLEANING_SHIFTS.has(s.shiftName))) {
+    for (const date of dates) for (const name of CLEANING_SHIFTS) {
+      const runsOn = types.find(t => t.name === name)?.weekdays
+      if (runsOn?.length && !runsOn.includes(weekdayOf(date))) continue
+      if (inWeek.some(s => s.shiftDate === date && s.shiftName === name)) continue
+      out.push({ severity: 'warning', rule: 'cleaning not covered', when: date,
+        detail: `Nobody is on ${name} on ${dayName(date)}.` })
     }
   }
 
