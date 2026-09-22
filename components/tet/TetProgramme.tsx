@@ -12,6 +12,9 @@ import TetEnquiry, { type EnquiryTarget } from '@/components/tet/TetEnquiry'
 import TetTiers from '@/components/tet/TetTiers'
 import SleeveStudio, { type SleeveDesign } from '@/components/tet/SleeveStudio'
 import TetTimeline from '@/components/tet/TetTimeline'
+import TetLabels from '@/components/tet/TetLabels'
+import TetFlight from '@/components/tet/TetFlight'
+import TetCaskChart from '@/components/tet/TetCaskChart'
 import TetPlate, { TET_PLATE_CSS } from '@/components/tet/TetPlate'
 import { Reveal, ScrollRail, TET_SCROLL_CSS } from '@/components/tet/TetScroll'
 
@@ -43,6 +46,13 @@ import { Reveal, ScrollRail, TET_SCROLL_CSS } from '@/components/tet/TetScroll'
 // are white boxes with a bottle in them, and no amount of framing fixes that.
 // The Black Bull was also in the Octave section, which is single casks: it is
 // a blend, so it was arguing against the words next to it.
+//
+// The blends came back as their LABELS (2026-09-22, the owner: "use the images
+// of the 5 star, 12 and 18"): Duncan Taylor's print artwork cut inside the
+// dieline, so there is no white ground to fight — see TetLabels. The tasting
+// flight moved down to the casks, where its five bottles now each carry a fact
+// about a wood in that list (TetFlight), and the casks gained a chart of the
+// whole selection (TetCaskChart).
 //
 // The masthead carries the Duncan Taylor crest instead. It is the right mark
 // for a page that is a Duncan Taylor programme, it is gold on green rather
@@ -192,7 +202,16 @@ export default function TetProgramme({
           </Reveal>
         )}
 
-        <Reveal step={2} style={{ marginTop: 40 }}>
+        {/* The three labels, before the words about them. */}
+        <Reveal step={2}>
+          <TetLabels blends={[...new Map(blends.map(b => [b.sku, b])).values()].map(b => ({
+            sku: b.sku,
+            name: b.expression || (vn ? b.name_vn : b.name_en),
+            detail: `${b.abv_pct}% · ${b.bottle_size_ml}ml`,
+          }))} />
+        </Reveal>
+
+        <Reveal step={3} style={{ marginTop: 40 }}>
           <Details rows={blends.map(b => ({
             label: b.expression || b.sku,
             value: (
@@ -218,16 +237,6 @@ export default function TetProgramme({
         )}
 
         <Cta onClick={openBlend}>{t('Register interest', 'Đăng ký quan tâm')}</Cta>
-
-        <div style={{ marginTop: 72 }}>
-          <TetPlate
-            src="/images/tet/flight.webp" sm="/images/tet/flight-sm.webp"
-            width={1106} height={738} smWidth={820}
-            alt={t('Five samples poured into Glencairn glasses',
-                   'Năm mẫu rượu rót trong ly Glencairn')}
-            caption={t('Tasted before it is chosen', 'Nếm thử trước khi chọn')}
-          />
-        </div>
       </section>
 
       {/* ── THE SLEEVE STUDIO ─────────────────────────────────────────
@@ -314,11 +323,19 @@ export default function TetProgramme({
           </div>
         </Reveal>
 
+        <Reveal step={3}>
+          <TetCaskChart casks={casks} t={t} onPick={ref => {
+            setOpenCask(ref)
+            requestAnimationFrame(() => document.getElementById(`cask-${ref}`)
+              ?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+          }} />
+        </Reveal>
+
         {/* THE TOGGLE IS THE ARGUMENT. Duty and tax are charged on value, not
             on alcohol, so bottling a strong young cask at 50% multiplies the
             bottles without multiplying the tax — and on a weak old cask it
             does almost nothing. The page shows both, honestly. */}
-        <Reveal step={3} style={{ display: 'flex', gap: 22, alignItems: 'baseline', marginTop: 40, flexWrap: 'wrap' }}>
+        <Reveal step={4} style={{ display: 'flex', gap: 22, alignItems: 'baseline', marginTop: 48, flexWrap: 'wrap' }}>
           <span className="pk-eyebrow">{t('Bottled at', 'Đóng chai ở')}</span>
           {offered.map(s => (
             <button key={s.key} onClick={() => setStrength(s.key)} style={pick(strength === s.key)}>
@@ -342,6 +359,12 @@ export default function TetProgramme({
                      })} />
             </Reveal>
           ))}
+        </div>
+
+        {/* The flight, after the list: five samples, each a fact about a wood
+            the list above is made of. */}
+        <div style={{ marginTop: 88 }}>
+          <TetFlight casks={casks} t={t} />
         </div>
       </section>
 
@@ -490,7 +513,7 @@ function CaskRow({ c, strength, vn, t, provisional, onChoose, open, onToggle }: 
   const note = vn ? (c.tasting_note_vn || c.tasting_note_en) : c.tasting_note_en
 
   return (
-    <div className={`ck ${open ? 'is-open' : ''}`} style={{ opacity: gone ? .42 : 1 }}>
+    <div id={`cask-${c.cask_ref}`} className={`ck ${open ? 'is-open' : ''}`} style={{ opacity: gone ? .42 : 1, scrollMarginTop: 90 }}>
       <button className="ck-head" onClick={onToggle} aria-expanded={open}>
         <span className="ck-name">
           <span className="pk-h3">{c.distillery}</span>

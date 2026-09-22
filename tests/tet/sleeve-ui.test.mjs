@@ -104,6 +104,53 @@ t(await p.locator('.tl-stop.is-active').count() === 0 && await p.locator('.tl-cu
 await p.locator('.tl-stop').first().focus(); await p.keyboard.press('Enter'); await p.keyboard.press('ArrowRight'); await p.waitForTimeout(300)
 t(await p.locator('.tl-stop').nth(1).evaluate(e => e.classList.contains('is-active') && document.activeElement === e), 'Enter opens a gate and the arrow keys walk the rail')
 
+// THE BLEND LABELS
+const lbr = p.locator('.lb-row'); await lbr.scrollIntoViewIfNeeded(); await p.waitForTimeout(1800)
+const labs = await p.$$eval('.lb', els => els.map(e => ({ name: e.querySelector('.lb-name').textContent, nat: e.querySelector('img').naturalWidth, op: +getComputedStyle(e).opacity, src: e.querySelector('img').currentSrc.split('/').pop() })))
+t(labs.length === 3 && labs.every(l => l.nat > 0 && l.op > 0.95), 'the 5 Star, 12 and 18 labels are shown', JSON.stringify(labs))
+const card = p.locator('.lb-card').nth(1), cbx = await card.boundingBox()
+await p.mouse.move(cbx.x + cbx.width * .85, cbx.y + cbx.height * .2); await p.waitForTimeout(400)
+const tr = await card.evaluate(e => ({ t: getComputedStyle(e).transform, foil: +getComputedStyle(e.querySelector('.lb-foil')).opacity }))
+t(tr.t !== 'none' && tr.foil > 0.9, 'a label tilts toward the pointer and the foil catches the light', JSON.stringify(tr))
+await p.mouse.move(10, 10)
+
+// THE CASK CHART
+const cc = p.locator('.cc'); await cc.scrollIntoViewIfNeeded(); await p.waitForTimeout(2200)
+const dots = await p.$$eval('.cc-dot', els => els.length), rows = await p.$$eval('.ck', els => els.length)
+t(dots === rows && dots > 0, 'the chart has one dot per cask in the list', `${dots} dots, ${rows} rows`)
+const rings = await p.$$eval('.cc-dot circle[r="8"]', els => els.filter(e => e.getAttribute('fill') === 'none').length)
+const soldRows = await p.$$eval('.ck', els => els.filter(e => +e.style.opacity < 1).length)
+t(rings === soldRows, 'sold casks are empty rings, the rest filled', `${rings} rings, ${soldRows} sold rows`)
+const d3 = await p.locator('.cc-dot').nth(3).boundingBox(); await p.mouse.move(d3.x + d3.width / 2, d3.y + d3.height / 2); await p.waitForTimeout(300)
+const tip = await p.locator('.cc-tip').textContent().catch(() => '')
+t(/OCT-\d{4}-\d+/.test(tip), 'pointing at a dot names the cask', tip.slice(0, 80))
+const ref = tip.match(/OCT-\d{4}-\d+/)?.[0]
+await p.locator('.cc-dot').nth(3).click(); await p.waitForTimeout(1200)
+t(await p.locator(`#cask-${ref}.is-open`).count() === 1 && await p.locator(`#cask-${ref}`).isVisible(), 'choosing a dot opens that cask in the list', ref)
+await cc.scrollIntoViewIfNeeded(); const regBtn = p.locator('.cc-filter button').nth(1); const regName = (await regBtn.textContent()).replace(/\d+/g, '').trim()
+await regBtn.click(); await p.waitForTimeout(500)
+const lit = await p.$$eval('.cc-dot:not(.is-dim)', els => els.length), want = +(await regBtn.locator('span').textContent())
+t(lit === want && lit < dots, `the region filter leaves only ${regName} lit`, `${lit} lit, button says ${want}`)
+await regBtn.click()
+
+// THE FLIGHT — five sample bottles, five woods
+const fl = p.locator('.tp-layer'); await fl.scrollIntoViewIfNeeded(); await p.waitForTimeout(2200)
+t(await p.locator('.fl-spot').count() === 5, 'five samples carry a fact each')
+const woods = []
+for (let i = 0; i < 5; i++) {
+  const sb = await p.locator('.fl-spot').nth(i).boundingBox(); await p.mouse.move(sb.x + 22, sb.y + 22); await p.waitForTimeout(350)
+  woods.push(await p.locator('.fl-spot').nth(i).evaluate(e => ({ on: e.classList.contains('is-on'), op: +getComputedStyle(e.querySelector('.fl-tip')).opacity, title: e.querySelector('.fl-title').textContent, count: e.querySelector('.fl-count')?.textContent || '' })))
+}
+t(woods.every(w => w.on && w.op > 0.95), 'each opens its card on hover', JSON.stringify(woods.map(w => w.title)))
+// the counts must be the list's own: recount from the rows' visible wood lines
+t(woods.every(w => /of \d+ casks|Every cask/.test(w.count)), 'each card counts that wood in the selection', woods.map(w => w.count).join(' | '))
+// a phone: the card goes under the photograph
+await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(500); await fl.scrollIntoViewIfNeeded()
+await p.locator('.fl-spot').nth(4).tap().catch(async () => { await p.locator('.fl-spot').nth(4).click() }); await p.waitForTimeout(400)
+const under = await p.locator('.fl-under').evaluate(e => ({ shown: getComputedStyle(e).display !== 'none', text: e.textContent }))
+t(under.shown && /Pedro Xim/.test(under.text), 'on a phone the fact opens under the photograph', under.text.slice(0, 60))
+await p.setViewportSize({ width: 1440, height: 950 }); await p.waitForTimeout(400)
+
 // the foot of the page
 const over = p.locator('.tp-over'); await over.scrollIntoViewIfNeeded(); await p.waitForTimeout(1600)
 const ov = await over.evaluate(el => ({ text: el.textContent.trim(), crest: Math.round(el.querySelector('img').getBoundingClientRect().width), font: getComputedStyle(el.querySelector('span')).fontFamily }))

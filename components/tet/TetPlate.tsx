@@ -33,7 +33,7 @@ import { Reveal } from '@/components/tet/TetScroll'
 
 export default function TetPlate({
   src, sm, width, height, smWidth = 900, alt = '', caption, eager = false,
-  maxWidth = 1120, align = 'start', step = 0, overlay,
+  maxWidth = 1120, align = 'start', step = 0, overlay, layer, after,
 }: {
   src: string
   /** The phone-sized file. Same picture, fewer pixels. */
@@ -53,6 +53,12 @@ export default function TetPlate({
   step?: number
   /** Laid over the photograph, bottom-left, on a soft shade so it reads. */
   overlay?: ReactNode
+  /** Laid over the photograph with no shade and taking the pointer — for
+   *  things placed ON the picture (the flight's bottles). Position children in
+   *  percentages; the frame is the photograph's own shape. */
+  layer?: ReactNode
+  /** Between the photograph and its caption. */
+  after?: ReactNode
 }) {
   return (
     <figure className="tp" style={{ maxWidth, marginInline: align === 'center' ? 'auto' : undefined }}>
@@ -69,7 +75,9 @@ export default function TetPlate({
           decoding="async"
         />
         {overlay && <div className="tp-over">{overlay}</div>}
+        {layer && <div className="tp-layer">{layer}</div>}
       </Reveal>
+      {after}
       {caption && (
         <Reveal step={step + 1}>
           <figcaption className="tp-cap">{caption}</figcaption>
@@ -91,6 +99,8 @@ export const TET_PLATE_CSS = `
 .tp-over { position: absolute; inset: 0; display: flex; align-items: flex-end;
            padding: clamp(18px, 3.2vw, 44px); pointer-events: none;
            background: linear-gradient(to top, rgba(4,20,14,.72), rgba(4,20,14,0) 58%); }
+
+.tp-layer { position: absolute; inset: 0; }
 
 .tp-cap { margin-top: 14px; padding-top: 12px;
           border-top: 1px solid rgba(229,212,194,.16);
