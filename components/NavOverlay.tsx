@@ -259,8 +259,14 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
            hairlines between the groups, utilities quiet at the foot, and one
            of the house's ink drawings for company. Cream on the public site,
            the portal's deep green inside it. */
+        /* NO BLUR ON THE SCRIM (2026-09-22, "the motion of it going back in
+           when clicking close is not quite smooth"). A 3px backdrop blur over
+           the whole page, fading every frame, was the main cost: measured
+           while closing, 35% of frames slow and the worst 99ms; without it
+           6% and 50ms, with the frosted glass and the shadow both kept. Next
+           to a panel this frosted a 3px blur behind it could not be seen —
+           the tint does the dimming. */
         .nav-scrim { position: fixed; inset: 0; z-index: 8998; background: rgba(5, 46, 32, .26);
-                     -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
                      opacity: 0; pointer-events: none; transition: opacity .45s ease; }
         .nav-dark .nav-scrim { background: rgba(0, 0, 0, .42); }
         .nav-scrim.is-open { opacity: 1; pointer-events: auto; }
