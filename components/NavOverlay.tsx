@@ -5,6 +5,7 @@ import { surfaceName } from '@/lib/members/surfaces'
 import { useState, useCallback, useEffect, useRef, Fragment } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
+import { GlassFilters, GLASS_CSS, useGlassSnapshot, useRefractsBackdrop } from '@/components/nav/Glass'
 import { useLang } from '@/lib/lang'
 import { InkFloat } from '@/components/public/kit'
 import { CreamInk, CreamInkDefs } from '@/components/public/CreamInk'
@@ -127,6 +128,14 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
   useEffect(() => { if (open) setCollapsed(allCollapsed()) }, [open])
   const toggleGroup = (label: string) => setCollapsed(c => ({ ...c, [label]: !c[label] }))
   const navRef = useRef<HTMLDivElement>(null)
+  // The glass (components/nav/Glass): a refracted copy of the page behind the
+  // open menu in every browser, and a live refraction behind the button in
+  // Chromium only, where backdrop-filter can take an SVG filter.
+  const glassLens = useGlassSnapshot(open)
+  const refracts = useRefractsBackdrop()
+  useEffect(() => {
+    document.documentElement.classList.toggle('glass-refract', refracts)
+  }, [refracts])
   const triggerRef = useRef<HTMLButtonElement>(null)
   const logoRef = useRef<HTMLImageElement>(null)
   const handleSignOut = useCallback(async () => {
@@ -419,13 +428,14 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
         @media (max-width: 1024px) {
           .nav-dark .nav-logo { display: none !important; }
         }
-      ` }} />
+      ` + GLASS_CSS }} />
+      <GlassFilters />
 
       {/* nav-inv follows the SAME runtime detection as the logo. The diamond used
           to take its colour from the `dark` prop alone, so on a page that never
           passes it — /spaces, which is #052E20 — the diamond stayed #052E20 and
           was invisible against the page. Two mechanisms answering one question. */}
-      <div className={`${dark ? 'nav-dark' : ''} ${logoInverted ? 'nav-inv' : ''}`}>
+      <div data-nav-root className={`${dark ? 'nav-dark' : ''} ${logoInverted ? 'nav-inv' : ''}`}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <a href="/" style={{ position: 'fixed', top: '50%', right: 24, transform: 'translateY(-50%)',
                            zIndex: 9000, cursor: 'pointer', lineHeight: 0,
@@ -448,7 +458,11 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
       </button>
 
       <div className={`nav-scrim ${open ? 'is-open' : ''}`} onClick={() => setOpen(false)} aria-hidden="true" />
-      <div ref={navRef} className={`nav-menu ${open ? 'is-open' : ''}`}>
+      <div className={`nav-glass ${open ? 'is-open' : ''}`} aria-hidden="true">
+        <div ref={glassLens} className="nav-glass-lens" />
+        <div className="nav-glass-tint" />
+      </div>
+      <div ref={navRef} className={`nav-menu has-glass ${open ? 'is-open' : ''}`}>
         {variant === 'public' ? (
           <>
             <Link href="/" className="nav-link" onClick={() => setOpen(false)}>
