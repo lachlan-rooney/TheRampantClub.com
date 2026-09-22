@@ -1,13 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { ConfirmModal, PromptModal, useToast } from '@/components/admin/dialogs'
 import { vnDateString } from '@/lib/datetime'
 import { createShift, updateShift, deleteShift, moveShift } from '@/lib/ops/api'
 import type { RotaShift, RotaShiftType, TeamMember, CoverageTarget, StaffTimeOff, TimeOffKind } from '@/lib/ops/types'
-import { checkWeek, WEEKDAYS, paidHours, sundayOf, type RotaStaff } from '@/lib/rota/policy'
+import { checkWeek, WEEKDAYS, paidHours, sundayOf, CLEANING_SHIFTS, type RotaStaff } from '@/lib/rota/policy'
 import { useLang } from '@/lib/admin-lang'
 import RotaRulesEditor from '@/components/admin/RotaRulesEditor'
 import ShiftTypeEditor from '@/components/admin/ShiftTypeEditor'
@@ -179,6 +179,19 @@ export default function RotaPage() {
     ...typeNames,
     ...[...new Set(shifts.map(s => s.shift_name))].filter(n => !typeNames.includes(n)),
   ]
+  // THREE GROUPS, WITH A GAP BETWEEN THEM (owner, 2026-09-22). The floor comes
+  // first because it is the rota; the office and cleaning are rostered here
+  // too but are not floor cover, and running them straight on from S4 made
+  // them read as more of the night. Office sat ABOVE the floor because its
+  // sort order is -1 — grouping here, not re-sorting the types, so a new shift
+  // type still lands in the right group by what it is. Retired names (old
+  // Open and Close rows) stay with the floor, which is what they were.
+  const rowGroup = (n: string) => CLEANING_SHIFTS.has(n) ? 'clean' : n === 'Office' ? 'office' : 'floor'
+  const rowGroups = ([
+    { key: 'floor', label: ['Floor', 'Sàn'] },
+    { key: 'office', label: ['Office', 'Văn phòng'] },
+    { key: 'clean', label: ['Cleaning', 'Vệ sinh'] },
+  ] as const).map(g => ({ ...g, names: rowNames.filter(n => rowGroup(n) === g.key) })).filter(g => g.names.length)
 
   const load = useCallback(async () => {
     const [{ data: ty }, { data: sh }, { data: tm }, { data: bk }, { data: en }, { data: ct }, { data: ua }, { data: up }] = await Promise.all([
@@ -619,7 +632,14 @@ export default function RotaPage() {
               </tr>
               {rowNames.length === 0 ? (
                 <tr><td colSpan={8} style={{ ...td, ...metaText, opacity: 0.6, fontStyle: 'italic' }}>{t('No shift names yet — add one below.', 'Chưa có tên ca — thêm một cái bên dưới.')}</td></tr>
-              ) : rowNames.map(name => {
+              ) : rowGroups.map((grp, gi) => (
+                <Fragment key={grp.key}>
+                {gi > 0 && (
+                  <tr aria-hidden="true">
+                    <td colSpan={8} style={groupGap}>{t(grp.label[0], grp.label[1])}</td>
+                  </tr>
+                )}
+                {grp.names.map(name => {
                 const isType = typeNames.includes(name)
                 return (
                 <tr key={name}>
@@ -698,6 +718,8 @@ export default function RotaPage() {
                 </tr>
                 )
               })}
+                </Fragment>
+              ))}
             </tbody>
           </table>
         </div>
@@ -975,6 +997,10 @@ const lede: React.CSSProperties = { fontFamily: FAMILY, fontSize: 12, color: '#B
 const metaText: React.CSSProperties = { fontFamily: FAMILY, fontSize: 11, color: '#B2AA98' }
 const fieldLabel: React.CSSProperties = { fontFamily: FAMILY, fontSize: 9, color: '#B2AA98', letterSpacing: '0.10em', textTransform: 'uppercase', marginBottom: 4 }
 const th: React.CSSProperties = { fontFamily: FAMILY, fontSize: 11, color: '#E5D4C2', fontWeight: 500, padding: '8px 10px', borderBottom: '1px solid rgba(229,212,194,0.12)', textAlign: 'left' }
+// The gap between the floor, the office and cleaning: space first, then a
+// quiet label, so the eye finds three blocks rather than one long list.
+const groupGap: React.CSSProperties = { padding: '28px 10px 8px', fontFamily: "'Google Sans Code', monospace", fontSize: 9.5,
+  letterSpacing: '0.18em', textTransform: 'uppercase', color: '#7E7864', borderBottom: '1px solid rgba(229,212,194,0.12)' }
 const td: React.CSSProperties = { padding: '8px 10px', borderBottom: '1px solid rgba(229,212,194,0.06)', borderLeft: '1px solid rgba(229,212,194,0.04)' }
 const chip: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, textAlign: 'left', background: 'rgba(94,102,80,0.35)', color: '#E5D4C2', border: '1px solid rgba(229,212,194,0.12)', borderRadius: 4, padding: '4px 8px', fontFamily: FAMILY, fontSize: 11, cursor: 'grab' }
 const chipDragging: React.CSSProperties = { opacity: 0.4 }

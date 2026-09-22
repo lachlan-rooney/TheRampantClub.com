@@ -22,10 +22,15 @@ import { addDays, weekdayOf, type PlannedShift } from '@/lib/rota/policy'
 //
 // Settled by the owner, 22 September: Mr Sĩ is the GM and may run and close
 // the floor alone (cycle week 2 has him the only supervisor both weekend
-// nights); DUTY is "little side jobs" — and is REMOVED FOR NOW. A DUTY day is
-// left unrostered, so a person on a line with one works four shifts that week,
-// not five. DUTY_ROSTERED switches it back on; the lines keep it so nothing
-// has to be redrawn when it returns.
+// nights); DUTY is "little side jobs", and is off for now.
+//
+// A DUTY DAY IS ROSTERED ON THE FLOOR, AS AN S2. Leaving it unrostered was
+// tried first and put five of six people on 32 hours — three rest days, four
+// shifts — which the owner rejected the same afternoon. As an S2 (15:30–23:30)
+// everyone is back to five shifts and 40 hours; those nights simply run above
+// the floor plan (Monday 5, Wednesday 6, Thursday 5 in cycle week 1). The S2
+// leaves 14 hours or more on both sides on every line, so the 12-hour rule
+// holds. DUTY_AS switches it: 'Duty' for side jobs, null to leave it empty.
 // ═══════════════════════════════════════════════════════════════════════════
 
 export type Line = 'A' | 'B' | 'C' | 'D' | 'E' | 'F'
@@ -38,8 +43,9 @@ export const ROTA_LINES: Record<Line, (string | null)[]> = {
   E: ['S2', null, 'S2', 'Duty', 'S2', null, 'S2'],
   F: [null, 'Duty', 'S4', 'S2', 'S1', 'S2', null],
 }
-/** DUTY is off for now (owner, 2026-09-22): its days are left unrostered. */
-export const DUTY_ROSTERED = false
+/** What a DUTY day is rostered as: 'S2' on the floor (owner, 2026-09-22),
+ *  'Duty' for side jobs off the floor, or null to leave the day empty. */
+export const DUTY_AS: string | null = 'S2'
 /** Supervisor lines and server lines rotate separately. */
 export const SUPERVISOR_LINES: Line[] = ['A', 'B', 'C']
 export const SERVER_LINES: Line[] = ['D', 'E', 'F']
@@ -61,7 +67,8 @@ export function cycleWeek(assignment: Record<string, Line>, anchorSunday: string
   const out: PlannedShift[] = []
   for (const [member, start] of Object.entries(assignment)) {
     ROTA_LINES[lineFor(start, anchorSunday, weekStart)].forEach((shiftName, d) => {
-      if (shiftName && (shiftName !== 'Duty' || DUTY_ROSTERED)) out.push({ member, shiftDate: addDays(weekStart, d), shiftName })
+      const as = shiftName === 'Duty' ? DUTY_AS : shiftName
+      if (as) out.push({ member, shiftDate: addDays(weekStart, d), shiftName: as })
     })
   }
   return out
