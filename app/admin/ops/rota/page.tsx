@@ -169,6 +169,16 @@ export default function RotaPage() {
     const ty = types.find(x => x.name === name)
     return ty?.start_time ? `${hhmm(ty.start_time)}–${hhmm(ty.end_time)}` : ''
   }
+  // HOURS UNDER A NAME ONLY WHEN THEY ARE UNUSUAL. The row already says S3 is
+  // 16:30–00:30; repeating it on every name was noise, and it hid the one case
+  // worth seeing — a shift whose hours differ from its type's. Those still
+  // show, as do shifts on a retired name, which has no row times to fall on.
+  const unusualTimes = (s: RotaShift) => {
+    const ty = types.find(x => x.name === s.shift_name)
+    if (!ty) return shiftTimes(s)
+    const same = (s.start_time ?? ty.start_time) === ty.start_time && (s.end_time ?? ty.end_time) === ty.end_time
+    return same ? '' : shiftTimes(s)
+  }
   const shiftTimes = (s: RotaShift) => {
     const ty = types.find(x => x.name === s.shift_name)
     const start = s.start_time || ty?.start_time
@@ -452,10 +462,39 @@ export default function RotaPage() {
     if (!wkDays.has(toDate) && wkDays.size >= 5) showToast(`${memberName(memberId)} ${t('would be on a 6th day this week.', 'sẽ làm ngày thứ 6 trong tuần này.')}`, 'error')
   }
 
+  // A MOVE TAKES THE NEW SHIFT'S HOURS (owner, 2026-09-22: "if you move
+  // people's names from shift to shift, their hours should change too").
+  // ops_move_shift changes the date and the name and nothing else, so a person
+  // dragged from S1 to S3 kept 14:00–22:00 — wrong on screen, and wrong for the
+  // rule check, which reads a shift's own times first and would then report a
+  // night with an S3 as having nobody to close. Proven on the live database
+  // before this was written.
+  //
+  // Only when the SHIFT changes. Moving someone to another day on the same
+  // shift keeps their own times, because a time that differs from the type's
+  // is somebody's deliberate adjustment. Written straight to the row after the
+  // move: the move's own event already records what happened.
+  const timesFor = (fromName: string, toName: string, row: RotaShift) => {
+    const ty = types.find(x => x.name === toName)
+    return fromName !== toName && ty?.start_time && ty?.end_time
+      ? { start_time: ty.start_time, end_time: ty.end_time }
+      : { start_time: row.start_time, end_time: row.end_time }
+  }
+  const retime = async (id: string, times: { start_time: string | null; end_time: string | null }) => {
+    const { error } = await supabase.from('rota_shifts').update(times).eq('id', id)
+    if (error) throw new Error(error.message)
+  }
+
   // Move (optimistic local update → RPC → reconcile via load() in wrap).
   const doMove = (id: string, toDate: string, toName: string) => {
-    setShifts(ss => ss.map(s => s.id === id ? { ...s, shift_date: toDate, shift_name: toName } : s))
-    wrap(() => moveShift({ id, shift_date: toDate, shift_name: toName }))
+    const row = shifts.find(s => s.id === id)
+    if (!row) return
+    const times = timesFor(row.shift_name, toName, row)
+    setShifts(ss => ss.map(s => s.id === id ? { ...s, shift_date: toDate, shift_name: toName, ...times } : s))
+    wrap(async () => {
+      await moveShift({ id, shift_date: toDate, shift_name: toName })
+      if (times.start_time !== row.start_time || times.end_time !== row.end_time) await retime(id, times)
+    })
   }
   // Drop into a cell (move/join). A cell can hold several people, so this never
   // "swaps the cell" — dropping onto a specific CHIP swaps those two (onDropChip).
@@ -477,12 +516,18 @@ export default function RotaPage() {
     if (isOff(target.member, dragged.shift_date)) showToast(`${memberName(target.member)} ${t('is marked off', 'được đánh dấu nghỉ')} ${dayLabel(dragged.shift_date)} — ${t('assigned anyway.', 'vẫn được xếp.')}`, 'error')
     warn6thDay(dragged.member, target.shift_date)
     warn6thDay(target.member, dragged.shift_date)
+    // A swap is two moves, and each person takes the hours of the shift they
+    // land on — the swap of Hiếu and New on 30 September kept each other's.
+    const tDragged = timesFor(dragged.shift_name, target.shift_name, dragged)
+    const tTarget = timesFor(target.shift_name, dragged.shift_name, target)
     setShifts(ss => ss.map(s =>
-      s.id === dragged.id ? { ...s, shift_date: target.shift_date, shift_name: target.shift_name }
-      : s.id === target.id ? { ...s, shift_date: dragged.shift_date, shift_name: dragged.shift_name } : s))
+      s.id === dragged.id ? { ...s, shift_date: target.shift_date, shift_name: target.shift_name, ...tDragged }
+      : s.id === target.id ? { ...s, shift_date: dragged.shift_date, shift_name: dragged.shift_name, ...tTarget } : s))
     wrap(async () => {
       await moveShift({ id: dragged.id, shift_date: target.shift_date, shift_name: target.shift_name })
       await moveShift({ id: target.id, shift_date: dragged.shift_date, shift_name: dragged.shift_name })
+      if (tDragged.start_time !== dragged.start_time || tDragged.end_time !== dragged.end_time) await retime(dragged.id, tDragged)
+      if (tTarget.start_time !== target.start_time || tTarget.end_time !== target.end_time) await retime(target.id, tTarget)
     })
   }
 
@@ -681,7 +726,7 @@ export default function RotaPage() {
                             style={{ ...chip, ...(dragId === s.id ? chipDragging : null) }}
                             title={[shiftTimes(s), fns.length ? fns.map(f => FN_LABEL[f] || f).join('/') : null].filter(Boolean).join(' · ')}
                           >
-                            <span>{memberName(s.member)}{shiftTimes(s) ? <span style={{ opacity: 0.6 }}> · {shiftTimes(s)}</span> : null}</span>
+                            <span>{memberName(s.member)}{unusualTimes(s) ? <span style={{ opacity: 0.75, color: '#D4B85A' }}> · {unusualTimes(s)}</span> : null}</span>
                             {fns.length > 0 && (
                               <span style={{ display: 'inline-flex', gap: 3, marginLeft: 6, flexShrink: 0 }}>
                                 {fns.map(f => <span key={f} title={FN_LABEL[f] || f} style={{ ...fnDot, background: FN_COLOR[f] || '#B2AA98' }} />)}
