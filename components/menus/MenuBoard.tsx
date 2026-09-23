@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useLang, pick } from '@/lib/lang'
+import { NOTE_MAX } from '@/lib/menus/orders'
 import {
   ALLERGEN_LABEL, DIETARY_LABEL, price, mediaUrl, arrivingDate, isArriving,
   type Allergen, type Dietary, type MenuPlate, type MenuSet, type MenuVenueGroup,
@@ -63,7 +64,7 @@ export default function MenuBoard({
   /** The +/- steppers and the confirm tray. Kiosk only: a member's phone is a
    *  menu, not a way to send the kitchen something from outside the building. */
   ordering?: boolean
-  onConfirm?: (lines: { item_id: string; qty: number }[]) => void | Promise<void>
+  onConfirm?: (lines: { item_id: string; qty: number }[], note: string) => void | Promise<void>
   confirmBusy?: boolean
   /** True while the room already has an order waiting for staff. The steppers
    *  stay usable — a member who forgot the olives can add them and confirm
@@ -80,6 +81,11 @@ export default function MenuBoard({
   // Quantities by item id. Held here rather than in the page because the rows
   // are rendered here; the page only ever sees the finished list.
   const [qty, setQty] = useState<Record<string, number>>({})
+  // ONE NOTE FOR THE ORDER (owner, 2026-09-23), written before confirming. It
+  // is closed until asked for: a textarea sitting open on a menu invites
+  // nothing useful, and a tablet keyboard covers half the screen.
+  const [noteOpen, setNoteOpen] = useState(false)
+  const [note, setNote] = useState('')
 
   const l = lang as 'en' | 'vn'
   // What a member can eat tonight, and what is still to come — kept apart
@@ -255,13 +261,32 @@ export default function MenuBoard({
               <div className="mb-tray-right">
                 <span className="mb-tray-total">{price(total) ?? ''}</span>
                 <button className="mb-tray-go" disabled={!count || confirmBusy}
-                        onClick={() => onConfirm?.(chosen.map(c => ({ item_id: c.p.id, qty: c.n })))}>
+                        onClick={() => onConfirm?.(chosen.map(c => ({ item_id: c.p.id, qty: c.n })), note.trim())}>
                   {confirmBusy ? t('Sending…', 'Đang gửi…')
                     : orderOpen ? t('Update the order', 'Cập nhật yêu cầu')
                     : t('Confirm this order', 'Xác nhận yêu cầu')}
                 </button>
               </div>
             </div>
+            {/* The note. Optional, short, and read by whoever brings it. */}
+            {count > 0 && (
+              noteOpen ? (
+                <div className="mb-tray-notebox">
+                  <label htmlFor="mb-note">{t('Anything we should know?', 'Quý vị cần lưu ý điều gì?')}</label>
+                  <textarea id="mb-note" value={note} maxLength={NOTE_MAX} rows={2}
+                            placeholder={t('No ice · one of us is coeliac · together, please',
+                                           'Không đá · một người không ăn gluten · xin phục vụ cùng lúc')}
+                            onChange={e => setNote(e.target.value)} />
+                  <span className="mb-tray-left">{NOTE_MAX - note.length}</span>
+                </div>
+              ) : (
+                <button className="mb-tray-addnote" onClick={() => setNoteOpen(true)}>
+                  {note.trim()
+                    ? t('Edit the note', 'Sửa ghi chú')
+                    : t('+ Add a note for the team', '+ Thêm ghi chú cho nhân viên')}
+                </button>
+              )
+            )}
             <div className="mb-tray-note">
               {t('Nothing is charged here. Confirm, then press the button on your table to call a server — they place the order for you.',
                  'Không có khoản thanh toán nào tại đây. Xác nhận, sau đó nhấn nút trên bàn để gọi nhân viên — nhân viên sẽ đặt món giúp quý vị.')}
@@ -656,6 +681,17 @@ const CSS = `
               text-transform: uppercase; padding: 12px 20px; cursor: pointer;
               -webkit-tap-highlight-color: transparent; }
 .mb-tray-go:disabled { opacity: .45; cursor: default; }
+.mb-tray-addnote { background: none; border: none; padding: 8px 0 0; cursor: pointer; font-family: var(--mono);
+                   font-size: 12px; color: var(--gold); border-bottom: 1px solid transparent; }
+.mb-tray-addnote:hover { border-bottom-color: var(--gold); }
+.mb-tray-notebox { position: relative; margin-top: 10px; }
+.mb-tray-notebox label { display: block; font-family: var(--mono); font-size: 10px; letter-spacing: .16em;
+                         text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
+.mb-tray-notebox textarea { width: 100%; resize: none; padding: 11px 44px 11px 12px; border-radius: 3px;
+                            background: rgba(0,0,0,.25); border: 1px solid rgba(229,212,194,.25);
+                            color: #F2E6D8; font-family: var(--mono); font-size: 15px; line-height: 1.5; }
+.mb-tray-notebox textarea:focus { outline: none; border-color: var(--gold); }
+.mb-tray-left { position: absolute; right: 10px; bottom: 10px; font-family: var(--mono); font-size: 10px; opacity: .4; }
 .mb-tray-note { font-family: var(--mono); font-size: 10px; line-height: 1.7;
                 opacity: .5; margin-top: 10px; }
 .mb.is-kiosk .mb-tray-lines { font-size: 14px; }

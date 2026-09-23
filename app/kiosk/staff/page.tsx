@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLang } from '@/lib/lang'
 import ArrivalsRow from '@/components/admin/ArrivalsRow'
+import OpenOrders from '@/components/menus/OpenOrders'
 
 // The gated kiosk shell (device session already verified by middleware). Layer 2:
 // the staff picker (attribution). Tap your name → PIN → you're the acting staff.
@@ -127,6 +128,15 @@ export default function KioskStaff() {
         <div style={procHead}>{t('Who is in', 'Khách trong câu lạc bộ')}</div>
         <div style={{ marginTop: 14 }}>
           <ArrivalsRow endpoint="/api/kiosk/staff/arrivals" />
+        </div>
+
+        {/* WHAT THE ROOMS HAVE ASKED FOR. Before this, an order written on a
+            room tablet could only be read on that tablet — the server walked
+            in blind and read it off the table. The table button is still the
+            call; this is what you see before you answer it. */}
+        <div style={{ ...procHead, marginTop: 34 }}>{t('Room orders', 'Yêu cầu gọi món')}</div>
+        <div style={{ marginTop: 14 }}>
+          <OpenOrders source="kiosk" heading={false} />
         </div>
 
         {/* The way into the stocktake. It lives here rather than in the bottom

@@ -1,7 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import { useLang } from '@/lib/lang'
 import { price } from '@/lib/menus/types'
+import { NOTE_MAX } from '@/lib/menus/orders'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE ORDER PANEL — what the room has asked for, and how it gets ordered.
@@ -25,28 +27,48 @@ import { price } from '@/lib/menus/types'
 // is survivable precisely because nothing is charged — clearing loses a
 // request, not money.
 //
+// TAKING ONE THING OFF (2026-09-23). Until now the only way to change a
+// confirmed order from this panel was Clear, which threw the whole thing away
+// and is a staff control besides. Each line has its own ✕ now. A line whose
+// dish has since been deleted from the menu (item_id null) cannot be re-sent,
+// so where one of those is present the ✕ goes away rather than silently
+// dropping it from the order.
+//
+// THE NOTE is the room's own sentence, shown here so it can be checked and
+// changed after confirming, not only before.
+//
 // It lives in its own file so it can be rendered and looked at without a
 // paired tablet. The kiosk page is device-gated, which is correct and also
 // meant this panel could only ever be reviewed in production.
 // ═══════════════════════════════════════════════════════════════════════════
 
 export interface OrderLine {
-  id: string; venue_name: string; name_en: string; name_vn: string | null
+  id: string; item_id?: string | null; venue_name: string; name_en: string; name_vn: string | null
   unit_price_vnd: number; qty: number; line_total_vnd: number
 }
 export interface Order {
   id: string; room: string; status: 'pending' | 'ordered'
-  total_vnd: number; created_at: string; ordered_at: string | null
+  total_vnd: number; note?: string | null; created_at: string; ordered_at: string | null
   lines: OrderLine[]
 }
 
-export default function OrderPanel({ order, busy, onPlaced, onClear }: {
+export default function OrderPanel({ order, busy, onPlaced, onClear, onRemove, onNote }: {
   order: Order
   busy?: boolean
   onPlaced: () => void
   onClear: () => void
+  /** Drop one line and re-send the rest. */
+  onRemove?: (line: OrderLine) => void
+  /** Save the room's note. */
+  onNote?: (note: string) => void
 }) {
   const { t, lang } = useLang()
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(order.note ?? '')
+  // Only while it is still the room's to change, and only when every line can
+  // be sent again.
+  const canEdit = order.status === 'pending' && !busy
+  const canRemove = !!onRemove && canEdit && order.lines.every(l => !!l.item_id) && order.lines.length > 0
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: ORDER_PANEL_CSS }} />
@@ -91,7 +113,7 @@ export default function OrderPanel({ order, busy, onPlaced, onClear }: {
           </div>
         )}
 
-        <ul className="km-lines">
+        <ul className={`km-lines ${canRemove ? 'has-x' : ''}`}>
           {order.lines.map(li => (
             <li key={li.id}>
               <span className="km-qty">{li.qty}</span>
@@ -100,9 +122,48 @@ export default function OrderPanel({ order, busy, onPlaced, onClear }: {
                 <span className="km-from">{li.venue_name}</span>
               </span>
               <span className="km-line-total">{price(li.line_total_vnd)}</span>
+              {canRemove && (
+                <button className="km-x" onClick={() => onRemove!(li)} disabled={busy}
+                        aria-label={`${t('Take off', 'Bỏ')} ${lang === 'vn' ? (li.name_vn || li.name_en) : li.name_en}`}>
+                  ✕
+                </button>
+              )}
             </li>
           ))}
         </ul>
+
+        {/* THE ROOM'S NOTE — theirs to change while the order is still theirs. */}
+        {(order.note || (canEdit && onNote)) && (
+          <div className="km-note">
+            <span className="km-note-label">{t('Your note', 'Ghi chú của quý vị')}</span>
+            {editing ? (
+              <>
+                <textarea value={draft} maxLength={NOTE_MAX} rows={2} autoFocus
+                          onChange={e => setDraft(e.target.value)}
+                          placeholder={t('No ice · one of us is coeliac', 'Không đá · một người không ăn gluten')} />
+                <span className="km-note-acts">
+                  <button className="km-act is-go" disabled={busy}
+                          onClick={() => { onNote?.(draft.trim()); setEditing(false) }}>
+                    {t('Save', 'Lưu')}
+                  </button>
+                  <button className="km-act" disabled={busy}
+                          onClick={() => { setDraft(order.note ?? ''); setEditing(false) }}>
+                    {t('Cancel', 'Huỷ')}
+                  </button>
+                </span>
+              </>
+            ) : (
+              <>
+                <p>{order.note || <em>{t('None', 'Không có')}</em>}</p>
+                {canEdit && onNote && (
+                  <button className="km-note-edit" onClick={() => { setDraft(order.note ?? ''); setEditing(true) }}>
+                    {order.note ? t('Change it', 'Sửa') : t('Add one', 'Thêm ghi chú')}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         <div className="km-total">
           <span>{t('Total', 'Tổng cộng')}</span>
@@ -158,6 +219,25 @@ export const ORDER_PANEL_CSS = `
    quantity column, the name column and the money column now actually line up
    with each other down the list. */
 .km-lines { list-style: none; margin: 0; padding: 6px 24px 0; }
+.km-lines.has-x li { grid-template-columns: 40px 1fr auto 46px; }
+.km-x { background: none; border: none; color: rgba(229,212,194,.5); font-size: 16px; cursor: pointer;
+        width: 46px; height: 46px; border-radius: 50%; -webkit-tap-highlight-color: transparent; }
+.km-x:hover, .km-x:focus-visible { color: #C27070; background: rgba(194,112,112,.12); }
+.km-x:disabled { opacity: .3; cursor: default; }
+
+.km-note { padding: 4px 24px 0; }
+.km-note-label { display: block; font-family: ${MONO}; font-size: 10px; letter-spacing: .18em;
+                 text-transform: uppercase; color: #D4B85A; margin: 14px 0 6px; }
+.km-note p { margin: 0; font-family: ${MONO}; font-size: 15px; line-height: 1.6; color: #F2E6D8; }
+.km-note p em { opacity: .45; font-style: normal; }
+.km-note textarea { width: 100%; resize: none; padding: 11px 12px; border-radius: 3px; background: rgba(0,0,0,.25);
+                    border: 1px solid rgba(229,212,194,.25); color: #F2E6D8; font-family: ${MONO};
+                    font-size: 15px; line-height: 1.5; }
+.km-note textarea:focus { outline: none; border-color: #D4B85A; }
+.km-note-acts { display: flex; gap: 10px; margin-top: 10px; }
+.km-note-edit { background: none; border: none; padding: 8px 0 0; cursor: pointer; font-family: ${MONO};
+                font-size: 12px; color: #D4B85A; border-bottom: 1px solid transparent; }
+.km-note-edit:hover { border-bottom-color: #D4B85A; }
 .km-lines li { display: grid; grid-template-columns: 40px 1fr auto;
                gap: 16px; align-items: baseline; padding: 13px 0;
                border-bottom: 1px solid rgba(229,212,194,.1); }

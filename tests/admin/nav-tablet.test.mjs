@@ -101,10 +101,17 @@ for (const [w, h, label] of [[1024, 768, 'tablet landscape'], [800, 1280, 'table
   t(await p.evaluate(() => document.querySelector('.adm-nav').classList.contains('is-open')),
     `${label}: and scrolling it does not close it`)
 
+  // The link NEAREST THE MIDDLE, not the bottom-most one: "Back to Members"
+  // is pinned at the foot of the drawer and sits over whatever is under it, so
+  // aiming at the last visible row tests the footer, not the menu.
   const target = await p.evaluate(() => {
+    const mid = innerHeight / 2
     const links = [...document.querySelectorAll('.adm-nav a')]
-      .filter(a => { const r = a.getBoundingClientRect(); return r.left >= 0 && r.top > 70 && r.bottom < innerHeight - 10 })
-    const a = links[links.length - 2]; if (!a) return null
+      .filter(a => { const r = a.getBoundingClientRect(); return r.left >= 0 && r.top > 70 && r.bottom < innerHeight - 90 })
+      .filter(a => a.getAttribute('href') !== '/members')
+      .sort((x, y) => Math.abs((x.getBoundingClientRect().top + x.getBoundingClientRect().bottom) / 2 - mid)
+                    - Math.abs((y.getBoundingClientRect().top + y.getBoundingClientRect().bottom) / 2 - mid))
+    const a = links[0]; if (!a) return null
     const r = a.getBoundingClientRect()
     return { href: a.getAttribute('href'), x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2), text: a.textContent.trim(), h: Math.round(r.height) }
   })

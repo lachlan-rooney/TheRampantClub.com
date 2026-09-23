@@ -37,6 +37,7 @@ const GROUPS: Group[] = [
       // is the standing weekly list. Same team, same part of the day.
       { href: '/admin/shifts', label: ADMIN_SURFACE['/admin/shifts'].en, vn: ADMIN_SURFACE['/admin/shifts'].vn, icon: 'clipboard' },
       { href: '/admin/cards', label: 'Member Cards', vn: 'Thẻ hội viên', icon: 'card' },
+      { href: '/admin/orders', label: 'Room Orders', vn: 'Yêu cầu gọi món', icon: 'menu' },
       { href: '/admin/calendar', label: 'Calendar', vn: 'Lịch', icon: 'calendar' },
       { href: '/admin/attendance', label: 'Guest Attendance', vn: 'Khách ghé thăm', icon: 'users' },
       { href: '/admin/harmony', label: 'Harmony Log', vn: 'Nhật ký ca trực', icon: 'heart' },

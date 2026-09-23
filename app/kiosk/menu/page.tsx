@@ -99,15 +99,29 @@ export default function KioskMenuPage() {
           ordering
           orderOpen={!!order}
           confirmBusy={busy}
-          onConfirm={lines => send('POST', { lines })}
+          onConfirm={(lines, note) => send('POST', { lines, note })}
         />
       )}
 
       {/* The panel lives in components/menus/OrderPanel — see the note at the
           top of that file for why the call-a-server instruction leads it. */}
       {order && (
-        <OrderPanel order={order} busy={busy}
-                    onPlaced={() => send('PATCH')} onClear={() => send('DELETE')} />
+        <OrderPanel
+          order={order} busy={busy}
+          onPlaced={() => send('PATCH')} onClear={() => send('DELETE')}
+          /* Taking one thing off should not mean starting again: the order is
+             re-sent without that line, and if it was the last line the order is
+             cleared instead — an order of nothing is not an order. */
+          onRemove={line => {
+            const rest = order.lines.filter(l => l.id !== line.id)
+            if (!rest.length) return send('DELETE')
+            return send('POST', {
+              lines: rest.map(l => ({ item_id: l.item_id, qty: l.qty })),
+              note: order.note ?? '',
+            })
+          }}
+          onNote={note => send('PUT', { note })}
+        />
       )}
 
       {/* The room's printed menu, kept but demoted. It opens in a new tab, which

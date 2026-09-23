@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import SignaturePad, { type SignaturePadHandle } from '@/components/SignaturePad'
 import ArrivalsRow from '@/components/admin/ArrivalsRow'
+import OpenOrders from '@/components/menus/OpenOrders'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE DOOR.  Guest sign-in on the entrance iPad.  (Decided 2026-09-14.)
@@ -336,6 +337,13 @@ export default function KioskDoor() {
       <div style={kicker}>Staff · Nhân viên</div>
       <h2 style={{ ...heading, marginBottom: 14 }}>Who’s in tonight</h2>
       <ArrivalsRow endpoint="/api/kiosk/door/arrivals" compact />
+
+      {/* The rooms' orders, rolled up: the door is not where they are answered,
+          but whoever stands here is often the one who can see the floor. Tap a
+          room to read its dishes. */}
+      <div style={{ marginTop: 26 }}>
+        <OpenOrders source="kiosk" compact />
+      </div>
       <button style={{ ...ghost, marginTop: 18 }} onClick={reset}>← Back · Quay lại</button>
     </div>
   )

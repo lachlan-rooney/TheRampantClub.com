@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { svc, DEVICE_COOKIE } from '@/lib/kiosk/server'
+import { NOTE_MAX, openOrder } from '@/lib/menus/orders'
 
 // WHAT THE ROOM WOULD LIKE, WRITTEN DOWN.
 //
@@ -37,23 +38,10 @@ async function room(): Promise<string | null> {
 const deny = () => NextResponse.json({ error: 'No device.' }, { status: 403 })
 const bad = (m: string) => NextResponse.json({ error: m }, { status: 400 })
 
-/** The room's open order — pending or placed, but not yet cleared. */
-async function openOrder(r: string) {
-  const sb = svc()
-  const { data: order } = await sb.from('menu_orders')
-    .select('id, room, status, total_vnd, created_at, ordered_at')
-    .eq('room', r).is('cleared_at', null).maybeSingle()
-  if (!order) return null
-  const { data: lines } = await sb.from('menu_order_lines')
-    .select('id, venue_name, name_en, name_vn, unit_price_vnd, qty, line_total_vnd')
-    .eq('order_id', order.id).order('display_order')
-  return { ...order, lines: lines ?? [] }
-}
-
 export async function GET() {
   const r = await room()
   if (!r) return deny()
-  return NextResponse.json({ room: r, order: await openOrder(r) })
+  return NextResponse.json({ room: r, order: await openOrder(svc(), r) })
 }
 
 // ── Confirm an order ───────────────────────────────────────────────────────
@@ -62,7 +50,12 @@ export async function POST(req: NextRequest) {
   const r = await room()
   if (!r) return deny()
 
-  const body = await req.json().catch(() => null) as { lines?: { item_id?: string; qty?: number }[] } | null
+  const body = await req.json().catch(() => null) as
+    { lines?: { item_id?: string; qty?: number }[]; note?: string } | null
+  // The note is the room's own words; it is stored, never interpreted. Trimmed
+  // and cut to the column's limit rather than refused — losing an order
+  // because somebody typed a paragraph would be absurd.
+  const note = typeof body?.note === 'string' ? body.note.trim().slice(0, NOTE_MAX) : ''
   const wanted = (body?.lines ?? [])
     .filter(l => typeof l.item_id === 'string' && Number.isInteger(l.qty) && (l.qty as number) > 0)
     .map(l => ({ item_id: l.item_id as string, qty: Math.min(50, l.qty as number) }))
@@ -106,17 +99,17 @@ export async function POST(req: NextRequest) {
   // replacing the lines on the order that is already open, not starting a
   // second one — two half-built orders on one table is how a kitchen is sent
   // the wrong thing.
-  const existing = await openOrder(r)
+  const existing = await openOrder(svc(), r)
   let orderId: string
   if (existing) {
     orderId = existing.id
     await sb.from('menu_orders')
-      .update({ total_vnd: total, status: 'pending', ordered_at: null, ordered_by: null })
+      .update({ total_vnd: total, status: 'pending', ordered_at: null, ordered_by: null, note: note || null })
       .eq('id', orderId)
     await sb.from('menu_order_lines').delete().eq('order_id', orderId)
   } else {
     const { data: created, error: insErr } = await sb.from('menu_orders')
-      .insert({ room: r, total_vnd: total }).select('id').single()
+      .insert({ room: r, total_vnd: total, note: note || null }).select('id').single()
     if (insErr || !created) return NextResponse.json({ error: 'Could not open an order.' }, { status: 500 })
     orderId = created.id
   }
@@ -125,7 +118,24 @@ export async function POST(req: NextRequest) {
     .insert(lines.map(l => ({ ...l, order_id: orderId })))
   if (lineErr) return NextResponse.json({ error: lineErr.message }, { status: 500 })
 
-  return NextResponse.json({ ok: true, order: await openOrder(r), refused })
+  return NextResponse.json({ ok: true, order: await openOrder(svc(), r), refused })
+}
+
+// ── The room: change the note, and nothing else ────────────────────────────
+// Separate from POST because changing a sentence should not re-price and
+// re-write every line of the order. It leaves the order pending: a note is the
+// room's to change until a server has placed it.
+
+export async function PUT(req: NextRequest) {
+  const r = await room()
+  if (!r) return deny()
+  const open = await openOrder(svc(), r)
+  if (!open) return bad('Nothing is open.')
+  if (open.status !== 'pending') return bad('That order has already been placed.')
+  const body = await req.json().catch(() => null) as { note?: string } | null
+  const note = typeof body?.note === 'string' ? body.note.trim().slice(0, NOTE_MAX) : ''
+  await svc().from('menu_orders').update({ note: note || null }).eq('id', open.id)
+  return NextResponse.json({ ok: true, order: await openOrder(svc(), r) })
 }
 
 // ── Staff: placed with the kitchen ─────────────────────────────────────────
@@ -133,12 +143,12 @@ export async function POST(req: NextRequest) {
 export async function PATCH() {
   const r = await room()
   if (!r) return deny()
-  const open = await openOrder(r)
+  const open = await openOrder(svc(), r)
   if (!open) return bad('Nothing is open.')
   await svc().from('menu_orders')
     .update({ status: 'ordered', ordered_at: new Date().toISOString() })
     .eq('id', open.id)
-  return NextResponse.json({ ok: true, order: await openOrder(r) })
+  return NextResponse.json({ ok: true, order: await openOrder(svc(), r) })
 }
 
 // ── Staff: clear it ────────────────────────────────────────────────────────
@@ -149,7 +159,7 @@ export async function PATCH() {
 export async function DELETE() {
   const r = await room()
   if (!r) return deny()
-  const open = await openOrder(r)
+  const open = await openOrder(svc(), r)
   if (!open) return NextResponse.json({ ok: true, order: null })
   await svc().from('menu_orders')
     .update({ cleared_at: new Date().toISOString() })
