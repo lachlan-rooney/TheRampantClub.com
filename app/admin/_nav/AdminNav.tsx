@@ -222,12 +222,18 @@ export default function AdminNav() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: `
+        .adm-nav    { z-index: 100; }
         .adm-burger { display: none; }
         .adm-scrim  { display: none; }
         @media (max-width: 1024px) {
           /* iPad and phone: the sidebar slides in, the content gets the full width. */
-          .adm-nav { transform: translateX(-100%); transition: transform .22s ease; z-index: 9100; }
+          .adm-nav { transform: translateX(-100%); transition: transform .22s ease; z-index: 9100;
+                     /* The drawer scrolls under a finger, and its own scrolling
+                        stops at its ends instead of dragging the page behind. */
+                     -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
           .adm-nav.is-open { transform: translateX(0); box-shadow: 0 0 40px rgba(0,0,0,.45); }
+          /* Touch targets: 34px rows are a mouse size. A finger gets 44. */
+          .adm-nav a, .adm-nav button { min-height: 44px; }
           .adm-main { margin-left: 0 !important; padding: 64px 20px 40px !important; }
           .adm-burger {
             display: flex; align-items: center; justify-content: center;
@@ -298,7 +304,12 @@ const navWrap: React.CSSProperties = {
   position: 'fixed', top: 0, left: 0, bottom: 0, width: 240,
   background: '#052E20', padding: '32px 0 16px',
   display: 'flex', flexDirection: 'column',
-  zIndex: 100,
+  /* NO zIndex HERE. It used to be an inline 100, and an inline value beats a
+     stylesheet rule without !important — so the media query below that raises
+     the open drawer to 9100 did nothing, and the scrim (9050) covered the
+     menu. On a tablet that reads as a menu that will not scroll and will not
+     take a tap: every touch landed on the scrim, which closes it. The stack
+     order lives in the stylesheet now, where the media query can reach it. */
   borderRight: '1px solid rgba(229,212,194,0.06)',
 }
 const logoMark: React.CSSProperties = {
