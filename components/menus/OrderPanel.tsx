@@ -37,6 +37,20 @@ import { NOTE_MAX } from '@/lib/menus/orders'
 // THE NOTE is the room's own sentence, shown here so it can be checked and
 // changed after confirming, not only before.
 //
+// THE TOTAL IS BROKEN DOWN (owner, 2026-09-23: "show the breakdown of the
+// total and make it clear they need to tell the server"). Every line now shows
+// its own arithmetic — 2 × 180K — instead of only the line's total, and the
+// foot counts the dishes and the items before the money. The breakdown is the
+// ARITHMETIC AND NOTHING ELSE: there is no VAT line and no service line
+// because the menus carry no such thing (nothing in lib/menus or the schema
+// knows about either), and inventing rows on a screen a member reads as a bill
+// would be inventing charges.
+//
+// AND IT IS NOT A BILL. A list of dishes with a total under it looks exactly
+// like one, so the total says so in as many words and repeats the one action
+// that actually orders the food: tell the server. Said at the top before the
+// list is read, and again at the bottom where the eye lands on the money.
+//
 // It lives in its own file so it can be rendered and looked at without a
 // paired tablet. The kiosk page is device-gated, which is correct and also
 // meant this panel could only ever be reviewed in production.
@@ -69,6 +83,8 @@ export default function OrderPanel({ order, busy, onPlaced, onClear, onRemove, o
   // be sent again.
   const canEdit = order.status === 'pending' && !busy
   const canRemove = !!onRemove && canEdit && order.lines.every(l => !!l.item_id) && order.lines.length > 0
+  // Dishes are the rows; items are the plates and glasses that will arrive.
+  const items = order.lines.reduce((n, l) => n + l.qty, 0)
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: ORDER_PANEL_CSS }} />
@@ -121,7 +137,13 @@ export default function OrderPanel({ order, busy, onPlaced, onClear, onRemove, o
                 {lang === 'vn' ? (li.name_vn || li.name_en) : li.name_en}
                 <span className="km-from">{li.venue_name}</span>
               </span>
-              <span className="km-line-total">{price(li.line_total_vnd)}</span>
+              <span className="km-line-money">
+                <span className="km-line-total">{price(li.line_total_vnd)}</span>
+                {/* The sum, shown rather than assumed — a member checking a
+                    total should not have to do the multiplication in their
+                    head at eleven at night. */}
+                <span className="km-line-each">{li.qty} × {price(li.unit_price_vnd)}</span>
+              </span>
               {canRemove && (
                 <button className="km-x" onClick={() => onRemove!(li)} disabled={busy}
                         aria-label={`${t('Take off', 'Bỏ')} ${lang === 'vn' ? (li.name_vn || li.name_en) : li.name_en}`}>
@@ -165,9 +187,28 @@ export default function OrderPanel({ order, busy, onPlaced, onClear, onRemove, o
           </div>
         )}
 
-        <div className="km-total">
-          <span>{t('Total', 'Tổng cộng')}</span>
-          <span className="km-total-n">{price(order.total_vnd)}</span>
+        <div className="km-sum">
+          <div className="km-sum-row">
+            <span>{t(`${order.lines.length} ${order.lines.length === 1 ? 'dish' : 'dishes'}`,
+                     `${order.lines.length} món`)}
+              <span className="km-sum-dot"> · </span>
+              {t(`${items} ${items === 1 ? 'item' : 'items'}`, `${items} phần`)}
+            </span>
+            {/* No amount here. With no tax and no service line there is no
+                subtotal to show, and printing the total twice a centimetre
+                apart just makes a reader check whether they differ. */}
+          </div>
+          <div className="km-sum-row is-total">
+            <span>{t('Total', 'Tổng cộng')}</span>
+            <span className="km-total-n">{price(order.total_vnd)}</span>
+          </div>
+          <p className="km-notbill">
+            {order.status === 'pending'
+              ? t('This is not a bill, and nothing has been sent to the kitchen. Tell your server — press the button on your table — and they will place it.',
+                  'Đây không phải hoá đơn, và yêu cầu chưa được gửi đến nhà bếp. Vui lòng báo nhân viên — nhấn nút trên bàn — để nhân viên đặt món.')
+              : t('This is not a bill. Nothing is paid at the table.',
+                  'Đây không phải hoá đơn. Không thanh toán tại bàn.')}
+          </p>
         </div>
 
         {/* Below the rule: not the member's half of the panel. */}
@@ -248,12 +289,23 @@ export const ORDER_PANEL_CSS = `
 .km-line-total { font-family: ${MONO}; font-size: 15px; opacity: .72;
                  white-space: nowrap; font-variant-numeric: tabular-nums; }
 
-.km-total { display: flex; justify-content: space-between; align-items: baseline;
-            padding: 16px 24px 20px; font-family: ${MONO};
-            font-size: 12px; letter-spacing: .16em; text-transform: uppercase;
-            color: rgba(229,212,194,.6); }
+.km-line-money { text-align: right; white-space: nowrap; }
+.km-line-each { display: block; font-family: ${MONO}; font-size: 11px; opacity: .45;
+                margin-top: 4px; font-variant-numeric: tabular-nums; }
+
+.km-sum { padding: 16px 24px 20px; }
+.km-sum-row { display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+              font-family: ${MONO}; font-size: 12px; letter-spacing: .16em; text-transform: uppercase;
+              color: rgba(229,212,194,.55); padding: 6px 0; }
+.km-sum-row.is-total { border-top: 1px solid rgba(229,212,194,.14); margin-top: 6px; padding-top: 14px;
+                       color: rgba(229,212,194,.6); }
+.km-sum-dot { opacity: .4; }
 .km-total-n { font-size: 22px; letter-spacing: 0; text-transform: none;
               color: #F2E6D8; font-variant-numeric: tabular-nums; }
+/* A total looks like a bill. This says what it is, under the money. */
+.km-notbill { margin: 14px 0 0; padding: 12px 14px; border-radius: 3px;
+              border-left: 2px solid #D4B85A; background: rgba(212,184,90,.1);
+              font-family: ${MONO}; font-size: 13.5px; line-height: 1.7; color: #F2E6D8; }
 
 /* THE STAFF STRIP. Fenced off below a rule and on a darker ground, because
    these two buttons belong to somebody other than the person holding the

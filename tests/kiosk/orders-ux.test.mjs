@@ -117,6 +117,41 @@ try {
   t(lines === 2, 'both dishes are on it', `${lines} lines`)
   t((await p.locator('.km-note').textContent()).includes(NOTE), 'the note is on the order')
 
+  // ── THE BREAKDOWN (owner: "show the breakdown of the total") ────────────
+  const money = await p.evaluate(() => {
+    const clean = t => (t || '').replace(/\u00a0/g, ' ').trim()
+    const lines = [...document.querySelectorAll('.km-lines li')].map(li => ({
+      qty: clean(li.querySelector('.km-qty')?.textContent),
+      each: clean(li.querySelector('.km-line-each')?.textContent),
+      total: clean(li.querySelector('.km-line-total')?.textContent),
+    }))
+    const num = t => {
+      const s = clean(t)
+      const m = s.match(/([\d.,]+)K/)
+      if (m) return Math.round(parseFloat(m[1].replace(/[.,]/g, '')) * 1000)
+      return Number(s.replace(/[^\d]/g, '')) || 0
+    }
+    return {
+      lines,
+      lineTotals: lines.map(l => num(l.total)),
+      eachValues: lines.map(l => num(l.each)),
+      qtys: lines.map(l => Number(l.qty)),
+      sumRow: clean(document.querySelector('.km-sum-row')?.textContent),
+      total: num(document.querySelector('.km-total-n')?.textContent),
+      notBill: clean(document.querySelector('.km-notbill')?.textContent),
+    }
+  })
+  t(money.lines.every(l => /^\d+ × /.test(l.each)),
+    'every line shows its own arithmetic, not just a total', JSON.stringify(money.lines.map(l => l.each)))
+  t(money.lineTotals.every((v, i) => v === money.eachValues[i] * money.qtys[i]),
+    'and the arithmetic on each line is right', JSON.stringify(money))
+  t(money.total === money.lineTotals.reduce((a, b) => a + b, 0),
+    'the total is the sum of the lines', `${money.total} vs ${money.lineTotals.reduce((a, b) => a + b, 0)}`)
+  t(/2 dishes/.test(money.sumRow) && /3 items/.test(money.sumRow),
+    'the foot counts the dishes and the items', money.sumRow)
+  t(/not a bill/i.test(money.notBill) && /tell your server/i.test(money.notBill),
+    'and says plainly that it is not a bill and the server must be told', money.notBill)
+
   // The row from the database — the note must be stored, not only displayed.
   const stored = await (await rest(`menu_orders?room=eq.${encodeURIComponent(ROOM)}&cleared_at=is.null&select=id,status,note,total_vnd`)).json()
   t(stored[0]?.note === NOTE && stored[0]?.status === 'pending', 'and stored with it', JSON.stringify(stored[0]))
@@ -163,6 +198,9 @@ try {
   await p.reload({ waitUntil: 'networkidle' }); await p.waitForTimeout(1800)
   t(/with the kitchen/i.test(await p.locator('.km-order').textContent()),
     'and the room tablet then says it is with the kitchen')
+  t(/not a bill/i.test(await p.locator('.km-notbill').textContent())
+    && !/tell your server/i.test(await p.locator('.km-notbill').textContent()),
+    'once placed it stops telling them to tell the server', (await p.locator('.km-notbill').textContent()).slice(0, 80))
   t(await p.locator('.km-x').count() === 0, 'a placed order can no longer be edited from the room')
 
   const who = await (await rest(`menu_orders?room=eq.${encodeURIComponent(ROOM)}&cleared_at=is.null&select=status,ordered_by,ordered_at`)).json()

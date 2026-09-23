@@ -150,7 +150,10 @@ export default function OpenOrders({ source, poll = 15_000, heading = true, comp
                           {lang === 'vn' ? (li.name_vn || li.name_en) : li.name_en}
                           <span className="oo-from">{li.venue_name}</span>
                         </span>
-                        <span className="oo-line-total">{price(li.line_total_vnd)}</span>
+                        <span className="oo-line-money">
+                          <span className="oo-line-total">{price(li.line_total_vnd)}</span>
+                          {li.qty > 1 && <span className="oo-line-each">{li.qty} × {price(li.unit_price_vnd)}</span>}
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -214,7 +217,10 @@ const CSS = `
 .oo-qty { font-family: ${MONO}; font-size: 16px; color: ${GOLD}; }
 .oo-what { font-family: ${MONO}; font-size: 15px; line-height: 1.4; min-width: 0; }
 .oo-from { display: block; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; opacity: .45; margin-top: 3px; }
-.oo-line-total { font-family: ${MONO}; font-size: 13px; opacity: .7; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.oo-line-money { text-align: right; white-space: nowrap; }
+.oo-line-total { font-family: ${MONO}; font-size: 13px; opacity: .7; font-variant-numeric: tabular-nums; }
+.oo-line-each { display: block; font-family: ${MONO}; font-size: 10px; opacity: .4; margin-top: 3px;
+                font-variant-numeric: tabular-nums; }
 
 .oo-note { margin: 12px 18px 0; padding: 11px 13px; border-left: 2px solid ${GOLD}; background: rgba(212,184,90,.08);
            font-family: ${MONO}; font-size: 14px; line-height: 1.6; color: #F2E6D8; }
