@@ -107,9 +107,15 @@ export interface MenuSet extends MenuVenueFields {
   name_vn: string | null
   standfirst_en: string | null
   standfirst_vn: string | null
+  /** The price when a menu has no ladder — kept, so nothing that exists today
+   *  changes. Where `prices` has rungs, they win. */
   price_per_head_vnd: number | null
   min_covers: number | null
+  max_covers?: number | null
   notice_hours: number | null
+  /** Per head, by the size of the party: external catering is priced by the
+   *  job, not by one number (owner, 2026-09-23). */
+  prices?: { covers: number; price_per_head_vnd: number }[]
   display_order: number
   is_placeholder: boolean
   courses: MenuCourse[]

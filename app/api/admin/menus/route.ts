@@ -43,6 +43,7 @@ const FIELDS: Record<string, string[]> = {
   ],
   set: [
     'venue_id', 'slug', 'name_en', 'name_vn', 'standfirst_en', 'standfirst_vn',
+    'max_covers',
     'price_per_head_vnd', 'cost_per_head_vnd', 'min_covers', 'notice_hours',
     'display_order', 'is_active', 'is_placeholder',
   ],
@@ -80,7 +81,7 @@ export async function GET() {
   if (!(await isAdmin())) return bad('Staff only.', 403)
   const sb = svc()
 
-  const [venues, items, sets, courses, audit, hours] = await Promise.all([
+  const [venues, items, sets, courses, audit, hours, setPrices] = await Promise.all([
     sb.from('menu_venues').select('*').order('display_order'),
     sb.from('menu_items').select('*').order('display_order'),
     sb.from('menu_set_menus').select('*').order('display_order'),
@@ -88,6 +89,7 @@ export async function GET() {
     sb.rpc('menu_placeholder_audit'),
     // Not fatal either: a deploy can land before the hours migration is run.
     sb.from('menu_venue_hours').select('id, venue_id, weekday, opens_at, last_order_at').order('weekday'),
+    sb.from('menu_set_prices').select('id, set_menu_id, covers, price_per_head_vnd').order('covers'),
   ])
 
   const firstErr = [venues, items, sets, courses].find(r => r.error)?.error
@@ -102,6 +104,7 @@ export async function GET() {
       last_order_at: String(h.last_order_at).slice(0, 5),
     })),
     items: items.data ?? [],
+    setPrices: setPrices.data ?? [],
     sets: sets.data ?? [],
     courses: courses.data ?? [],
     // Not fatal if it fails — the function is new and the surface should still

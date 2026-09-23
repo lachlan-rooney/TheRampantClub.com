@@ -56,9 +56,10 @@ interface SetMenu {
   name_en: string; name_vn: string | null
   standfirst_en: string | null; standfirst_vn: string | null
   price_per_head_vnd: number | null; cost_per_head_vnd: number | null
-  min_covers: number | null; notice_hours: number | null
+  min_covers: number | null; max_covers: number | null; notice_hours: number | null
   display_order: number; is_active: boolean; is_placeholder: boolean
 }
+interface SetPrice { id: string; set_menu_id: string; covers: number; price_per_head_vnd: number }
 interface Course {
   id: string; set_menu_id: string
   course_en: string | null; course_vn: string | null
@@ -75,6 +76,7 @@ export default function AdminMenusPage() {
   const { showToast, toastNode } = useToast()
   const [venues, setVenues] = useState<Venue[]>([])
   const [hours, setHours] = useState<Hour[]>([])
+  const [setPrices, setSetPrices] = useState<SetPrice[]>([])
   const [items, setItems] = useState<Item[]>([])
   const [sets, setSets] = useState<SetMenu[]>([])
   const [courses, setCourses] = useState<Course[]>([])
@@ -90,7 +92,7 @@ export default function AdminMenusPage() {
       const r = await fetch('/api/admin/menus', { cache: 'no-store' })
       const j = await r.json()
       if (!r.ok) throw new Error(j.error || 'Could not load the menus.')
-      setVenues(j.venues); setItems(j.items); setSets(j.sets); setHours(j.hours ?? [])
+      setVenues(j.venues); setItems(j.items); setSets(j.sets); setHours(j.hours ?? []); setSetPrices(j.setPrices ?? [])
       setCourses(j.courses); setAudit(j.audit || [])
       setErr('')
       setSel(s => s ?? (j.venues[0]?.id ?? null))
@@ -239,7 +241,10 @@ export default function AdminMenusPage() {
                          onAddCourse={() => create('course', { set_menu_id: s.id, dish_en: 'New course' })}
                          onSaveCourse={(id, p) => save('course', id, p)}
                          onDeleteCourse={(id, label) => setKill({ kind: 'course', id, label })}
-                         onMoveCourse={(id, d) => move('course', courses.filter(c => c.set_menu_id === s.id), id, d)} />
+                         onMoveCourse={(id, d) => move('course', courses.filter(c => c.set_menu_id === s.id), id, d)}
+                         prices={setPrices}
+                         onPrices={(id, rows) => setSetPrices(all => [...all.filter(x => x.set_menu_id !== id), ...rows])}
+                         onToast={showToast} />
               ))}
             </>
           )}
@@ -643,11 +648,89 @@ function ItemForm({ it, first, last, onMove, onSave, onDelete, onToast }: {
   )
 }
 
+// ── PER HEAD, BY THE SIZE OF THE PARTY ────────────────────────────────────
+// External catering is not one price (owner, 2026-09-23): five guests and
+// twelve guests are different jobs. Each row is a party size and what each
+// guest pays at that size, before service and VAT. The database refuses a size
+// outside this menu's own minimum and maximum, so the error you get names the
+// range rather than silently storing a price nobody can buy.
+function LadderForm({ setMenuId, min, max, rows, onSaved, onToast }: {
+  setMenuId: string
+  min: number | null; max: number | null
+  rows: SetPrice[]
+  onSaved: (rows: SetPrice[]) => void
+  onToast: (m: string, t?: 'info' | 'success' | 'error' | 'warn') => void
+}) {
+  const [draft, setDraft] = useState<{ covers: string; price: string }[]>(
+    () => rows.length
+      ? rows.map(r => ({ covers: String(r.covers), price: String(r.price_per_head_vnd) }))
+      : [{ covers: '', price: '' }],
+  )
+  const [busy, setBusy] = useState(false)
+  const put = (i: number, k: 'covers' | 'price', v: string) =>
+    setDraft(d => d.map((r, n) => (n === i ? { ...r, [k]: v } : r)))
+
+  // Every size the menu serves, so a ladder can be filled in one press rather
+  // than typed eight times.
+  const fill = () => {
+    if (!min || !max) { onToast('Set the minimum and maximum covers first.', 'warn'); return }
+    const have = new Map(draft.filter(r => r.covers).map(r => [Number(r.covers), r.price]))
+    const rowsOut = []
+    for (let n = min; n <= max; n++) rowsOut.push({ covers: String(n), price: have.get(n) ?? '' })
+    setDraft(rowsOut)
+  }
+
+  const save = async () => {
+    setBusy(true)
+    try {
+      const rungs = draft
+        .filter(r => r.covers !== '' && r.price !== '')
+        .map(r => ({ covers: Number(r.covers), price_per_head_vnd: Number(r.price) }))
+      const r = await fetch('/api/admin/menus/set-prices', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ set_menu_id: setMenuId, rungs }),
+      })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok) { onToast(j.error || 'That did not save.', 'error'); return }
+      onSaved(j.prices ?? [])
+      onToast(rungs.length ? 'Prices saved.' : 'Prices cleared — the single price per head is used instead.', 'success')
+    } finally { setBusy(false) }
+  }
+
+  return (
+    <div className="am-ladder">
+      <div className="am-sec" style={{ fontSize: 12 }}>Price per head, by party size</div>
+      <p className="am-dim" style={{ marginTop: 4 }}>
+        Shown on The Dining Room tab as a ladder. Leave it empty to use the single price per head above.
+        Prices are before {Math.round(10)}% service and {Math.round(10)}% VAT, like everything else on the menus.
+      </p>
+      {draft.map((r, i) => (
+        <div key={i} className="am-lrow">
+          <input type="number" min={1} placeholder="guests" value={r.covers}
+                 onChange={e => put(i, 'covers', e.target.value)} aria-label="guests" />
+          <span className="am-lat">at</span>
+          <input type="number" min={0} step={1000} placeholder="₫ per head" value={r.price}
+                 onChange={e => put(i, 'price', e.target.value)} aria-label="price per head" />
+          <button className="am-hclear" onClick={() => setDraft(d => d.filter((_, n) => n !== i))}>remove</button>
+        </div>
+      ))}
+      <div style={{ display: 'flex', gap: 14, marginTop: 12, flexWrap: 'wrap' }}>
+        <button className="am-save" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save prices'}</button>
+        <button className="am-ghost" onClick={() => setDraft(d => [...d, { covers: '', price: '' }])}>Add a size</button>
+        <button className="am-ghost" onClick={fill}>A row for every size ({min ?? '?'}–{max ?? '?'})</button>
+      </div>
+    </div>
+  )
+}
+
 function SetForm({
   s, courses, first, last, onMove, onSave, onDelete,
-  onAddCourse, onSaveCourse, onDeleteCourse, onMoveCourse,
+  onAddCourse, onSaveCourse, onDeleteCourse, onMoveCourse, prices, onPrices, onToast,
 }: {
   s: SetMenu; courses: Course[]; first: boolean; last: boolean
+  prices: SetPrice[]
+  onPrices: (setMenuId: string, rows: SetPrice[]) => void
+  onToast: (m: string, t?: 'info' | 'success' | 'error' | 'warn') => void
   onMove: (d: -1 | 1) => void
   onSave: (p: Record<string, unknown>) => void; onDelete: () => void
   onAddCourse: () => void
@@ -688,8 +771,13 @@ function SetForm({
           </div>
           <div className="am-row2">
             <Field label="Minimum covers" value={d.min_covers} onChange={x => set('min_covers')(num(x))} />
+            <Field label="Maximum covers" value={d.max_covers} onChange={x => set('max_covers')(num(x))}
+                   hint="external catering: 5 to 12" />
+          </div>
+          <div className="am-row2">
             <Field label="Notice (hours)" value={d.notice_hours} onChange={x => set('notice_hours')(num(x))}
                    hint="48 = two days" />
+            <div />
           </div>
 
           <div className="am-checks">
@@ -702,11 +790,15 @@ function SetForm({
               name_en: d.name_en, name_vn: d.name_vn,
               standfirst_en: d.standfirst_en, standfirst_vn: d.standfirst_vn,
               price_per_head_vnd: d.price_per_head_vnd, cost_per_head_vnd: d.cost_per_head_vnd,
-              min_covers: d.min_covers, notice_hours: d.notice_hours,
+              min_covers: d.min_covers, max_covers: d.max_covers, notice_hours: d.notice_hours,
               is_active: d.is_active, is_placeholder: d.is_placeholder,
             })}>Save set menu</button>
             <button className="am-del" onClick={onDelete}>Remove</button>
           </div>
+
+          <LadderForm setMenuId={s.id} min={d.min_covers} max={d.max_covers}
+                      rows={prices.filter(p => p.set_menu_id === s.id)}
+                      onSaved={rows => onPrices(s.id, rows)} onToast={onToast} />
 
           <div className="am-secbar" style={{ marginTop: 18 }}>
             <div className="am-sec" style={{ fontSize: 12 }}>Courses</div>
@@ -840,6 +932,13 @@ const CSS = `
 
 .am-actions { display: flex; gap: 12px; align-items: center; margin-top: 14px; }
 .am-save { background: ${CREAM}
+.am-ladder { margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(229,212,194,.12); }
+.am-lrow { display: grid; grid-template-columns: 110px 28px 170px 1fr; gap: 10px; align-items: center; margin-top: 8px; }
+.am-lrow input { background: rgba(0,0,0,.25); border: 1px solid rgba(229,212,194,.2); color: #E5D4C2;
+                 border-radius: 3px; padding: 8px 10px; font-family: 'Google Sans Code', monospace;
+                 font-size: 13px; min-height: 40px; }
+.am-lrow input:focus { outline: none; border-color: #D4B85A; }
+.am-lat { text-align: center; font-family: 'Google Sans Code', monospace; font-size: 11px; opacity: .45; }
 .am-hours { display: grid; gap: 8px; margin-top: 12px; }
 .am-hrow { display: grid; grid-template-columns: 48px auto 18px auto 1fr; gap: 10px; align-items: center; }
 .am-hday { font-family: 'Google Sans Code', monospace; font-size: 12px; letter-spacing: .12em;

@@ -652,6 +652,11 @@ function SetMenu({ s }: { s: MenuSet }) {
   const l = lang as 'en' | 'vn'
   const money = price(s.price_per_head_vnd)
   const stand = pick(l, s.standfirst_en, s.standfirst_vn)
+  // THE LADDER. External catering is priced per head BY THE SIZE OF THE PARTY
+  // (owner, 2026-09-23), so five guests and twelve guests are different jobs.
+  // A menu with no rungs falls back to its single price and reads exactly as
+  // it did before.
+  const rungs = [...(s.prices ?? [])].sort((a, b) => a.covers - b.covers)
 
   return (
     <article className="mb-set">
@@ -677,9 +682,33 @@ function SetMenu({ s }: { s: MenuSet }) {
         ))}
       </ol>
 
-      {(s.min_covers || s.notice_hours) && (
+      {rungs.length > 0 && (
+        <div className="mb-ladder">
+          <div className="mb-ladder-head">
+            {t('Per person, by the size of the party', 'Giá mỗi người, theo số khách')}
+          </div>
+          <ul>
+            {rungs.map(r => (
+              <li key={r.covers}>
+                <span>{r.covers} {t(r.covers === 1 ? 'guest' : 'guests', 'khách')}</span>
+                <b>{price(r.price_per_head_vnd)}</b>
+              </li>
+            ))}
+          </ul>
+          <div className="mb-ladder-foot">
+            {t(`Before ${Math.round(SERVICE_PCT * 100)}% service and ${Math.round(VAT_PCT * 100)}% VAT.`,
+               `Chưa gồm ${Math.round(SERVICE_PCT * 100)}% phí phục vụ và ${Math.round(VAT_PCT * 100)}% thuế GTGT.`)}
+          </div>
+        </div>
+      )}
+
+      {(s.min_covers || s.max_covers || s.notice_hours) && (
         <div className="mb-meta">
-          {s.min_covers ? <span>{t('Minimum', 'Tối thiểu')} {s.min_covers} {t('covers', 'khách')}</span> : null}
+          {s.min_covers && s.max_covers
+            ? <span>{t(`${s.min_covers} to ${s.max_covers} guests`, `${s.min_covers} đến ${s.max_covers} khách`)}</span>
+            : s.min_covers ? <span>{t('Minimum', 'Tối thiểu')} {s.min_covers} {t('covers', 'khách')}</span>
+            : s.max_covers ? <span>{t('Up to', 'Tối đa')} {s.max_covers} {t('guests', 'khách')}</span>
+            : null}
           {s.notice_hours ? (
             <span>
               {s.notice_hours >= 24
@@ -918,6 +947,17 @@ const CSS = `
   .mb-drawer { padding-left: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .mb-tile { transition: none; } .mb-open { animation: none; } }
+
+.mb-ladder { margin: 14px 0 0; padding: 14px 16px; border-left: 2px solid var(--gold);
+             background: rgba(212,184,90,.06); border-radius: 0 3px 3px 0; }
+.mb-ladder-head { font-family: var(--mono); font-size: 10.5px; letter-spacing: .16em;
+                  text-transform: uppercase; color: var(--gold); }
+.mb-ladder ul { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.mb-ladder li { display: flex; justify-content: space-between; gap: 18px; align-items: baseline;
+                font-family: var(--mono); font-size: 13.5px; color: rgba(229,212,194,.75); }
+.mb-ladder li b { font-weight: 400; color: #F2E6D8; font-variant-numeric: tabular-nums; }
+.mb-ladder-foot { font-family: var(--mono); font-size: 10.5px; opacity: .5; margin-top: 10px; }
+.mb.is-kiosk .mb-ladder li { font-size: 16px; }
 
 .mb-vstatus { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; margin-top: 8px;
               font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
