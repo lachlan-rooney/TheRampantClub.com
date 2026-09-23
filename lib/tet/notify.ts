@@ -19,7 +19,18 @@ import { EMAIL, emailShell } from '@/lib/email/shell'
 // margin, no cost, no cask economics. It is read on a phone, possibly forwarded
 // to a colleague, and the Tết cost model has never been allowed near a client.
 
-const TO = (process.env.TET_ENQUIRY_TO || 'membership@therampantclub.com')
+// ── WHO IS TOLD ───────────────────────────────────────────────────────────
+// The club AND Duncan Taylor Vietnam. The owner gave the DT address on
+// 2026-09-23 ("tet email is truongminhquy@duncantaylorvn.com"); membership@
+// stays on it so the club keeps a copy of its own enquiries rather than
+// hearing about them second-hand.
+//
+// It is a DEFAULT IN THE CODE, not only an environment variable, because
+// TET_ENQUIRY_TO is not set in production and an unset variable would have
+// meant Duncan Taylor never being told at all. Setting TET_ENQUIRY_TO (a
+// comma-separated list) still overrides this completely.
+const DEFAULT_TO = 'membership@therampantclub.com,truongminhquy@duncantaylorvn.com'
+const TO = (process.env.TET_ENQUIRY_TO || DEFAULT_TO)
   .split(',').map(s => s.trim()).filter(Boolean)
 
 export interface EnquiryNote {

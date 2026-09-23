@@ -33,6 +33,12 @@ import { useEffect, useRef } from 'react'
 //   page is blurred far more after it is bent, so it reads as frosted glass
 //   rather than a rippled window. The ripple is kept, just under the haze.
 //
+//   DESKTOP ONLY (owner, 2026-09-23: "remove the glass effect on the menu, on
+//   mobile and tablet. Keep on the desktop layout"). At 1024px and under the
+//   menu is a plain tinted panel again — and the page is not copied at all, so
+//   a phone does not clone the whole DOM, run an SVG filter over it on the CPU
+//   and throw it away. The breakpoint matches the admin drawer's.
+//
 // Written here rather than installed: liquid-glass-js does the copy trick
 // but is at 0.1.0 with one release, and keeps element ids in its copy — which
 // would put duplicate ids on every page that has a menu. This strips them.
@@ -71,6 +77,9 @@ export function useGlassSnapshot(open: boolean) {
       return () => clearTimeout(t)
     }
     if (window.matchMedia('(prefers-reduced-transparency: reduce)').matches) return
+    // Phones and tablets get no glass, so they do not pay for the snapshot.
+    // Matches the CSS breakpoint below; if one moves, move both.
+    if (window.matchMedia('(max-width: 1024px)').matches) return
 
     // Every child of <body>, not just the first: in the App Router body holds
     // the page AND Next's route announcer AND injected scripts, in an order
@@ -151,8 +160,10 @@ export const GLASS_CSS = `
 .nav-menu.has-glass, .nav-dark .nav-menu.has-glass { background: transparent; }
 
 
-/* Somebody who has asked for less transparency gets the solid menu back. */
-@media (prefers-reduced-transparency: reduce) {
+/* Somebody who has asked for less transparency gets the solid menu back — and
+   so does every phone and tablet (owner, 2026-09-23). Same declarations, so
+   the solid menu is defined once and cannot drift apart. */
+@media (prefers-reduced-transparency: reduce), (max-width: 1024px) {
   .nav-glass { display: none; }
   .nav-menu.has-glass { background: #EADCCB; }
   .nav-dark .nav-menu.has-glass { background: #04251A; }
