@@ -158,6 +158,18 @@ export default function OpenOrders({ source, poll = 15_000, heading = true, comp
                     ))}
                   </ul>
 
+                  {/* What it adds up to, the way the room was shown it. */}
+                  <div className="oo-sum">
+                    <span>{t('Food', 'Món ăn')}<b>{price(o.subtotal_vnd ?? o.total_vnd)}</b></span>
+                    {!!o.service_vnd && (
+                      <span>{t('Service', 'Phí phục vụ')} {Math.round((o.service_pct || 0) * 100)}%<b>{price(o.service_vnd)}</b></span>
+                    )}
+                    {!!o.vat_vnd && (
+                      <span>{t('VAT', 'GTGT')} {Math.round((o.vat_pct || 0) * 100)}%<b>{price(o.vat_vnd)}</b></span>
+                    )}
+                    <span className="is-total">{t('Total', 'Tổng')}<b>{price(o.total_vnd)}</b></span>
+                  </div>
+
                   {/* The room's own words, never edited and never hidden: it is
                       the part most likely to matter ("one of us is coeliac"). */}
                   {o.note && (
@@ -222,6 +234,12 @@ const CSS = `
 .oo-line-each { display: block; font-family: ${MONO}; font-size: 10px; opacity: .4; margin-top: 3px;
                 font-variant-numeric: tabular-nums; }
 
+.oo-sum { display: flex; flex-wrap: wrap; gap: 6px 22px; padding: 12px 18px 0; font-family: ${MONO};
+          font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: rgba(229,212,194,.45); }
+.oo-sum b { font-weight: 400; margin-left: 8px; letter-spacing: 0; text-transform: none;
+            color: rgba(229,212,194,.8); font-variant-numeric: tabular-nums; }
+.oo-sum .is-total { color: ${GOLD}; }
+.oo-sum .is-total b { color: #F2E6D8; }
 .oo-note { margin: 12px 18px 0; padding: 11px 13px; border-left: 2px solid ${GOLD}; background: rgba(212,184,90,.08);
            font-family: ${MONO}; font-size: 14px; line-height: 1.6; color: #F2E6D8; }
 .oo-note span { display: block; font-size: 10px; letter-spacing: .18em; text-transform: uppercase;

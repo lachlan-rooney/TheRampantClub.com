@@ -34,6 +34,8 @@ export default function KioskMenuPage() {
   const router = useRouter()
   const [venues, setVenues] = useState<MenuVenueGroup[] | null>(null)
   const [printed, setPrinted] = useState<string | null>(null)
+  // The club's clock, sent with the menu. Opening hours are judged against it.
+  const [serverNow, setServerNow] = useState<string | undefined>()
   const [err, setErr] = useState('')
   const [order, setOrder] = useState<Order | null>(null)
   const [busy, setBusy] = useState(false)
@@ -46,7 +48,7 @@ export default function KioskMenuPage() {
         if (!r.ok) throw new Error(j.error || 'failed')
         return j
       })
-      .then(j => { setVenues(j.venues || []); setPrinted(j.printed || null) })
+      .then(j => { setVenues(j.venues || []); setPrinted(j.printed || null); setServerNow(j.now) })
       .catch(e => setErr(String(e?.message || e)))
     // Whatever this room already has open — a tablet that reloads mid-service
     // must not forget an order somebody is waiting on.
@@ -96,6 +98,7 @@ export default function KioskMenuPage() {
       {venues !== null && (
         <MenuBoard
           venues={venues} variant="kiosk" masthead
+          now={serverNow}
           ordering
           orderOpen={!!order}
           confirmBusy={busy}

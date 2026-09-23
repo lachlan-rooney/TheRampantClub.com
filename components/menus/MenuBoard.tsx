@@ -1,8 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useLang, pick } from '@/lib/lang'
-import { NOTE_MAX } from '@/lib/menus/orders'
+import { NOTE_MAX, charges, SERVICE_PCT, VAT_PCT } from '@/lib/menus/orders'
+import { venueState, waitLabel, type VenueState } from '@/lib/menus/hours'
 import {
   ALLERGEN_LABEL, DIETARY_LABEL, price, mediaUrl, arrivingDate, isArriving,
   type Allergen, type Dietary, type MenuPlate, type MenuSet, type MenuVenueGroup,
@@ -57,7 +58,7 @@ type Service = 'plates' | 'cocktails' | 'dining'
 
 export default function MenuBoard({
   venues, variant = 'member', masthead = false,
-  ordering = false, onConfirm, confirmBusy = false, orderOpen = false,
+  ordering = false, onConfirm, confirmBusy = false, orderOpen = false, now: serverNow,
 }: {
   venues: MenuVenueGroup[]
   variant?: 'member' | 'kiosk'
@@ -70,6 +71,10 @@ export default function MenuBoard({
    *  stay usable — a member who forgot the olives can add them and confirm
    *  again, which replaces the open order rather than opening a second. */
   orderOpen?: boolean
+  /** The CLUB's time, from the server that sent the menu. Opening hours are
+   *  judged against it, never against the tablet's own clock. Absent (the
+   *  members' portal) = hours are shown but nothing is shut. */
+  now?: string
   /** The crest and wordmark above the list, as on the printed card. Off in the
    *  members' portal, where MemberPage has already given the page a masthead
    *  and a second one would just say the club's name twice. */
@@ -78,9 +83,33 @@ export default function MenuBoard({
   const { t, lang } = useLang()
   const [service, setService] = useState<Service>('plates')
   const [open, setOpen] = useState<string | null>(null)
+  /** Which restaurant's menu is expanded. One at a time. */
+  const [openVenue, setOpenVenue] = useState<string | null>(null)
   // Quantities by item id. Held here rather than in the page because the rows
   // are rendered here; the page only ever sees the finished list.
   const [qty, setQty] = useState<Record<string, number>>({})
+
+  // ── THE CLOCK ───────────────────────────────────────────────────────────
+  // Measured against the server's, so a tablet whose own clock is an hour out
+  // still shuts the kitchen at the right minute. Ticks every half minute: a
+  // kitchen that closed at 21:30 must go dark on its own, on a tablet nobody
+  // has touched since 21:00.
+  const skew = useMemo(() => (serverNow ? new Date(serverNow).getTime() - Date.now() : 0), [serverNow])
+  const [clock, setClock] = useState(() => Date.now() + (serverNow ? new Date(serverNow).getTime() - Date.now() : 0))
+  useEffect(() => {
+    const tick = () => setClock(Date.now() + skew)
+    tick()
+    const id = setInterval(tick, 30_000)
+    return () => clearInterval(id)
+  }, [skew])
+
+  /** Where each restaurant stands right now, by slug. */
+  const states = useMemo(() => {
+    const m = new Map<string, VenueState>()
+    for (const v of venues) m.set(v.slug, venueState(v.hours, clock))
+    return m
+  }, [venues, clock])
+  const isShut = (slug: string) => ordering && states.get(slug)?.open === false
   // ONE NOTE FOR THE ORDER (owner, 2026-09-23), written before confirming. It
   // is closed until asked for: a textarea sitting open on a menu invites
   // nothing useful, and a tablet keyboard covers half the screen.
@@ -101,23 +130,57 @@ export default function MenuBoard({
     serving
       .map(v => ({ ...v, plates: v.plates.filter(p => p.service === kind) }))
       .filter(v => v.plates.length)
-  const withPlates = useMemo(() => byService('plate'), [serving])
+  // THE PLATES TAB KEEPS THE EMPTY KITCHENS (owner, 2026-09-23: "logo with
+  // menu coming soon"). Until now a restaurant with no dishes was filtered out
+  // of every tab and — once its arriving date passed — dropped out of the
+  // "coming" block too, so four partners who had signed were invisible on the
+  // tablets. A signed partner with no menu yet is news; a silent gap is not.
+  // The bar and dining tabs still filter: a restaurant with no cocktails has
+  // no business on the bar tab announcing itself.
+  const withPlates = useMemo(() => {
+    const cooking = byService('plate')
+    const cookingSlugs = new Set(cooking.map(v => v.slug))
+    const empty = serving
+      .filter(v => !cookingSlugs.has(v.slug) && !v.plates.length && !v.sets.length)
+      .map(v => ({ ...v, plates: [] as MenuPlate[] }))
+    return [...cooking, ...empty].sort((a, b) => venues.findIndex(v => v.slug === a.slug) - venues.findIndex(v => v.slug === b.slug))
+  }, [serving, venues])  // eslint-disable-line react-hooks/exhaustive-deps
   const withCocktails = useMemo(() => byService('cocktail'), [serving])
   const withSets = useMemo(() => serving.filter(v => v.sets.length), [serving])
   const shown = service === 'plates' ? withPlates
               : service === 'cocktails' ? withCocktails
               : withSets
 
+  // One restaurant on a tab (the bar is only ever the club itself) should not
+  // hide its list behind a tap — there is nothing to choose between.
+  useEffect(() => {
+    const only = shown.length === 1 && (shown[0].plates.length || shown[0].sets.length) ? shown[0].slug : null
+    setOpenVenue(prev => (only ? only : shown.some(v => v.slug === prev) ? prev : null))
+  }, [service, shown])
+
   // What has been chosen, across every tab — a member picks a plate, then a
   // drink, and the tray has to hold both. Looked up from the venues rather
   // than stored alongside the count, so a price edited mid-service is reflected
   // before anybody confirms rather than after.
-  const chosen = useMemo(() => {
-    const all = venues.flatMap(v => v.plates)
-    return all
+  // WHAT CAN ACTUALLY BE SENT. A member may choose a dish at 21:25 and reach
+  // the tray at 21:31, by which time that kitchen has stopped taking orders.
+  // Those lines leave the tray and the tray SAYS SO — quietly dropping food
+  // somebody has chosen is how an order arrives short.
+  const picked = useMemo(() => {
+    const byVenue = new Map<string, string>()
+    for (const v of venues) for (const p of v.plates) byVenue.set(p.id, v.slug)
+    return venues.flatMap(v => v.plates)
       .filter(p => (qty[p.id] ?? 0) > 0 && p.price_vnd != null)
-      .map(p => ({ p, n: qty[p.id] }))
+      .map(p => ({ p, n: qty[p.id], venue: byVenue.get(p.id) ?? '' }))
   }, [venues, qty])
+  const chosen = useMemo(
+    () => picked.filter(c => !(ordering && states.get(c.venue)?.open === false)),
+    [picked, ordering, states],
+  )
+  const shutOut = useMemo(
+    () => picked.filter(c => ordering && states.get(c.venue)?.open === false),
+    [picked, ordering, states],
+  )
   const total = chosen.reduce((s2, c) => s2 + (c.p.price_vnd ?? 0) * c.n, 0)
   const count = chosen.reduce((s2, c) => s2 + c.n, 0)
 
@@ -200,26 +263,75 @@ export default function MenuBoard({
           </p>
         )}
 
-        {/* Wrapped so a landscape tablet can set them side by side. */}
-        <div className="mb-venues">
-          {shown.map(v => (
-            <section key={v.slug} className="mb-venue">
-              {/* The club's own name is suppressed where it would be the only
-                  heading on the tab: the masthead has already said it on the
-                  tablet, and on a phone it sits inside the club's own portal.
-                  The tagline still shows, which is where "Complimentary this
-                  evening" lives. A PARTNER's name is never suppressed — a
-                  member has to know whose kitchen a dish came out of. */}
-              <VenueHead v={v} lang={lang}
-                         hideName={v.kind === 'house' && shown.length === 1} />
-              {service !== 'dining'
-                ? <PlateList plates={v.plates} lang={lang} open={open}
-                             onToggle={id => setOpen(o => (o === id ? null : id))}
-                             qty={ordering ? qty : undefined}
-                             onQty={ordering ? (id, n) => setQty(q => ({ ...q, [id]: n })) : undefined} />
-                : v.sets.map(s => <SetMenu key={s.id} s={s} />)}
-            </section>
-          ))}
+        {/* ── WHO IS COOKING, THEN WHAT THEY HAVE ───────────────────────
+            Owner, 2026-09-23: "lay out the menus screen as just the logos,
+            then you can expand the logos by tapping them". With a dozen
+            restaurants the old layout was one long wall of food; a grid of
+            logos is a menu of KITCHENS, which is the choice a member actually
+            makes first. The food is one tap away, and the tap expands IN
+            PLACE — nobody loses their place, and switching kitchens is one
+            tap, not back-then-in.
+            One open at a time: two open menus on a tablet is the wall again. */}
+        <div className="mb-grid">
+          {shown.map(v => {
+            const st = states.get(v.slug)
+            const empty = !v.plates.length && !v.sets.length
+            const isOpen = openVenue === v.slug && !empty
+            const wait = waitLabel(v.wait_minutes)
+            return (
+              <Fragment key={v.slug}>
+                <button
+                  type="button"
+                  className={`mb-tile ${isOpen ? 'is-open' : ''} ${empty ? 'is-soon' : ''} ${isShut(v.slug) ? 'is-shut' : ''}`}
+                  aria-expanded={isOpen} disabled={empty}
+                  onClick={() => setOpenVenue(o => (o === v.slug ? null : v.slug))}
+                >
+                  <TileFace v={v} lang={lang} />
+                  <span className="mb-tile-meta">
+                    {empty
+                      ? <span className="mb-tile-soon">{t('Menu coming soon', 'Thực đơn sắp có')}</span>
+                      : <>
+                          {/* What is behind the logo, so a tile is an offer
+                              rather than a mystery. */}
+                          <span className="mb-tile-count">
+                            {service === 'dining'
+                              ? t(`${v.sets.length} ${v.sets.length === 1 ? 'set menu' : 'set menus'}`, `${v.sets.length} thực đơn set`)
+                              : t(`${v.plates.length} ${v.plates.length === 1 ? 'dish' : 'dishes'}`, `${v.plates.length} món`)}
+                          </span>
+                          {wait && <span className="mb-tile-wait">{wait}</span>}
+                          {st && !st.unknown && (
+                            <span className={`mb-tile-when ${st.open ? '' : 'is-shut'}`}>
+                              {st.open
+                                ? (st.lastOrders ? t(`until ${st.lastOrders}`, `đến ${st.lastOrders}`) : '')
+                                : (st.opensAt
+                                    ? (st.opensToday
+                                        ? t(`closed · opens ${st.opensAt}`, `đã đóng · mở ${st.opensAt}`)
+                                        : t(`closed · opens ${st.opensAt} tomorrow`, `đã đóng · mở ${st.opensAt} mai`))
+                                    : t('closed', 'đã đóng'))}
+                            </span>
+                          )}
+                        </>}
+                  </span>
+                  {!empty && <span className="mb-tile-chev" aria-hidden>{isOpen ? '▾' : '▸'}</span>}
+                </button>
+
+                {isOpen && (
+                  <section className="mb-drawer">
+                    <VenueHead v={v} lang={lang} t={t} state={st} hideName />
+                    {service !== 'dining'
+                      ? <PlateList plates={v.plates} lang={lang} open={open}
+                                   onToggle={id => setOpen(o => (o === id ? null : id))}
+                                   qty={ordering ? qty : undefined}
+                                   /* A shut kitchen keeps its menu — a member may
+                                      well be reading it to plan tomorrow — but it
+                                      cannot be ordered from. */
+                                   onQty={ordering && !isShut(v.slug) ? (id, n) => setQty(q => ({ ...q, [id]: n })) : undefined} />
+                      : v.sets.map(s => <SetMenu key={s.id} s={s} />)}
+                  </section>
+                )}
+              </Fragment>
+            )
+          })}
         </div>
 
         {/* The line-up, under the food that can be ordered now. Plates tab
@@ -243,7 +355,7 @@ export default function MenuBoard({
         {/* THE TRAY. Sticky above the kiosk bar so it is reachable from
             anywhere in a long menu — a member who chose a plate at the top and
             a drink at the bottom should not have to scroll back to confirm. */}
-        {ordering && (count > 0 || orderOpen) && (
+        {ordering && (count > 0 || orderOpen || shutOut.length > 0) && (
           <div className="mb-tray" role="status">
             <div className="mb-tray-in">
               <div className="mb-tray-lines">
@@ -257,9 +369,26 @@ export default function MenuBoard({
                     {t('Your order is written down below.', 'Yêu cầu của quý vị được ghi bên dưới.')}
                   </span>
                 )}
+                {shutOut.length > 0 && (
+                  <span className="mb-tray-shut">
+                    {t(`${shutOut.map(c => pick(l, c.p.name_en, c.p.name_vn)).join(', ')} — that kitchen has stopped taking orders, so it is not on this order.`,
+                       `${shutOut.map(c => pick(l, c.p.name_en, c.p.name_vn)).join(', ')} — nhà bếp đã ngừng nhận món, nên không nằm trong yêu cầu này.`)}
+                  </span>
+                )}
               </div>
               <div className="mb-tray-right">
-                <span className="mb-tray-total">{price(total) ?? ''}</span>
+                {/* The gross figure, because a member deciding whether to add
+                    another plate is deciding against what they will pay, not
+                    against the food alone. The same helper the server uses. */}
+                <span className="mb-tray-total">
+                  {price(charges(total).total) ?? ''}
+                  {total > 0 && (
+                    <span className="mb-tray-inc">
+                      {t(`incl. ${Math.round(SERVICE_PCT * 100)}% service + ${Math.round(VAT_PCT * 100)}% VAT`,
+                         `gồm ${Math.round(SERVICE_PCT * 100)}% phí phục vụ + ${Math.round(VAT_PCT * 100)}% VAT`)}
+                    </span>
+                  )}
+                </span>
                 <button className="mb-tray-go" disabled={!count || confirmBusy}
                         onClick={() => onConfirm?.(chosen.map(c => ({ item_id: c.p.id, qty: c.n })), note.trim())}>
                   {confirmBusy ? t('Sending…', 'Đang gửi…')
@@ -295,8 +424,8 @@ export default function MenuBoard({
         )}
 
         <p className="mb-legal">
-          {t('Dishes are prepared by our partner kitchens and plated here. Please tell any of the team about allergies or dietary needs before ordering — we will check with the kitchen.',
-             'Các món được chế biến bởi nhà bếp đối tác và bày biện tại đây. Vui lòng báo nhân viên về dị ứng hoặc chế độ ăn trước khi gọi món — chúng tôi sẽ kiểm tra với nhà bếp.')}
+          {t(`Prices are before ${Math.round(SERVICE_PCT * 100)}% service charge and ${Math.round(VAT_PCT * 100)}% VAT. Dishes are prepared by our partner kitchens and plated here. Please tell any of the team about allergies or dietary needs before ordering — we will check with the kitchen.`,
+             `Giá chưa bao gồm ${Math.round(SERVICE_PCT * 100)}% phí phục vụ và ${Math.round(VAT_PCT * 100)}% thuế GTGT. Các món được chế biến bởi nhà bếp đối tác và bày biện tại đây. Vui lòng báo nhân viên về dị ứng hoặc chế độ ăn trước khi gọi món — chúng tôi sẽ kiểm tra với nhà bếp.`)}
         </p>
       </div>
 
@@ -309,23 +438,68 @@ export default function MenuBoard({
 // club is plating from several kitchens. The logo does the work where there is
 // one, and a partner who has not sent artwork still gets a proper heading.
 
-function VenueHead({ v, lang, hideName = false }: {
-  v: MenuVenueGroup; lang: string; hideName?: boolean
+/** The logo, or the name where a restaurant has no logo yet. Sized by CSS so
+ *  a tall logo and a wide one occupy the same tile. */
+function TileFace({ v, lang }: { v: MenuVenueGroup; lang: string }) {
+  const logo = mediaUrl(v.logo_path)
+  const tagline = pick(lang as 'en' | 'vn', v.tagline_en, v.tagline_vn)
+  return (
+    <span className="mb-tile-face">
+      {logo
+        /* eslint-disable-next-line @next/next/no-img-element */
+        ? <><img src={logo} alt="" className="mb-tile-logo" /><span className="mb-sr">{v.name}</span></>
+        : <span className="mb-tile-name">{v.name}</span>}
+      {tagline && <span className="mb-tile-tag">{tagline}</span>}
+    </span>
+  )
+}
+
+function VenueHead({ v, lang, t, state, hideName = false }: {
+  v: MenuVenueGroup; lang: string
+  t: (en: string, vn: string) => string
+  state?: VenueState
+  hideName?: boolean
 }) {
   const logo = mediaUrl(v.logo_path)
   const tagline = pick(lang as 'en' | 'vn', v.tagline_en, v.tagline_vn)
+
+  // WHERE THIS KITCHEN STANDS, in one line: the wait it quotes, and whether it
+  // is taking orders. A venue with no hours set says nothing about hours at
+  // all — the club has never given them, and inventing "open" would be a
+  // promise. See lib/menus/hours.ts.
+  const wait = waitLabel(v.wait_minutes)
+  const status = !state || state.unknown ? null
+    : state.open
+      ? { shut: false, text: state.lastOrders ? t(`Last orders ${state.lastOrders}`, `Nhận món đến ${state.lastOrders}`) : null }
+      : {
+          shut: true,
+          text: state.opensAt
+            ? (state.opensToday
+                ? t(`Closed · opens ${state.opensAt}`, `Đã đóng · mở lúc ${state.opensAt}`)
+                : t(`Closed · opens ${state.opensAt} tomorrow`, `Đã đóng · mở lúc ${state.opensAt} ngày mai`))
+            : t('Closed', 'Đã đóng'),
+        }
+
+  const strip = (wait || status?.text) ? (
+    <div className={`mb-vstatus ${status?.shut ? 'is-shut' : ''}`}>
+      {wait && <span className="mb-vwait">{wait}</span>}
+      {status?.text && <span className="mb-vwhen">{status.text}</span>}
+    </div>
+  ) : null
+
   if (hideName) {
-    return tagline
-      ? <header className="mb-vhead"><div className="mb-vtag is-lead">{tagline}</div></header>
+    return tagline || strip
+      ? <header className="mb-vhead">{tagline && <div className="mb-vtag is-lead">{tagline}</div>}{strip}</header>
       : null
   }
   return (
-    <header className="mb-vhead">
+    <header className={`mb-vhead ${status?.shut ? 'is-shut' : ''}`}>
       {logo
         /* eslint-disable-next-line @next/next/no-img-element */
         ? <><img src={logo} alt={v.name} className="mb-logo" /><span className="mb-sr">{v.name}</span></>
         : <h2 className="mb-vname">{v.name}</h2>}
       {tagline && <div className="mb-vtag">{tagline}</div>}
+      {strip}
     </header>
   )
 }
@@ -674,8 +848,63 @@ const CSS = `
                  font-family: var(--mono); font-size: 12px; line-height: 1.7; }
 .mb-tray-line b { color: var(--gold); font-weight: 400; }
 .mb-tray-line.is-quiet { opacity: .6; }
+.mb-grid { display: grid; gap: clamp(12px, 1.6vw, 20px); margin-top: 26px;
+           grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.mb-tile { display: flex; flex-direction: column; align-items: center; justify-content: center;
+           gap: 10px; min-height: 118px; padding: 18px 14px 14px; cursor: pointer;
+           background: rgba(229,212,194,.03); border: 1px solid var(--hair); border-radius: 4px;
+           color: inherit; font: inherit; text-align: center; position: relative;
+           transition: border-color .2s ease, background .2s ease, transform .2s ease;
+           -webkit-tap-highlight-color: transparent; }
+.mb-tile:hover:not(:disabled) { border-color: var(--gold); transform: translateY(-2px); }
+.mb-tile.is-open { border-color: var(--gold); background: rgba(212,184,90,.07); }
+.mb-tile:disabled { cursor: default; opacity: .72; }
+.mb-tile-face { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.mb-tile-logo { max-width: min(160px, 86%); max-height: 54px; object-fit: contain; }
+.mb-tile.is-shut .mb-tile-logo, .mb-tile.is-soon .mb-tile-logo { opacity: .4; }
+.mb-tile-name { font-family: 'Rampant Sans', Georgia, serif; font-size: clamp(16px, 2vw, 21px); line-height: 1.15; }
+.mb-tile-tag { font-family: var(--mono); font-size: 10.5px; line-height: 1.5; opacity: .5; max-width: 22ch; }
+.mb-tile-meta { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px;
+                font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; }
+.mb-tile-count { color: rgba(229,212,194,.6); }
+.mb-tile-wait { color: var(--gold); }
+.mb-tile-when { color: rgba(229,212,194,.45); }
+.mb-tile-when.is-shut { color: #C49555; }
+.mb-tile-soon { color: rgba(229,212,194,.5); }
+.mb-tile-chev { position: absolute; right: 10px; top: 10px; font-size: 11px; opacity: .4; }
+/* The expanded menu spans the whole grid, so it opens UNDER the row that was
+   tapped rather than squeezing into one column.
+   NOT .mb-open: that class is the dish-name button inside every row, and
+   reusing it made "how many menus are open" count every dish on the page. */
+.mb-drawer { grid-column: 1 / -1; border-left: 2px solid var(--gold); padding: 4px 0 18px 18px;
+             animation: mb-open-in .35s cubic-bezier(.16,.84,.44,1); }
+@keyframes mb-open-in { from { opacity: 0; transform: translateY(-6px); } }
+.mb.is-kiosk .mb-grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+.mb.is-kiosk .mb-tile { min-height: 140px; }
+.mb.is-kiosk .mb-tile-logo { max-height: 66px; }
+.mb.is-kiosk .mb-tile-meta { font-size: 12px; }
+@media (max-width: 560px) {
+  .mb-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .mb-tile { min-height: 124px; padding: 14px 10px 10px; }
+  .mb-tile-logo { max-height: 46px; }
+  .mb-drawer { padding-left: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { .mb-tile { transition: none; } .mb-open { animation: none; } }
+
+.mb-vstatus { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; margin-top: 8px;
+              font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+.mb-vwait { color: var(--gold); }
+.mb-vwhen { color: rgba(229,212,194,.5); }
+.mb-vstatus.is-shut .mb-vwhen { color: #C49555; }
+.mb.is-kiosk .mb-vstatus { font-size: 12.5px; }
+/* A shut kitchen keeps its menu readable — somebody may be planning tomorrow —
+   but it is plainly not tonight's. */
+.mb-vhead.is-shut .mb-logo, .mb-vhead.is-shut .mb-vname { opacity: .45; }
+.mb-tray-shut { flex-basis: 100%; font-family: var(--mono); font-size: 11.5px; line-height: 1.6;
+                color: #C49555; }
 .mb-tray-right { display: flex; align-items: center; gap: 18px; flex: 0 0 auto; }
-.mb-tray-total { font-family: var(--mono); font-size: 16px; white-space: nowrap; }
+.mb-tray-total { font-family: var(--mono); font-size: 16px; white-space: nowrap; text-align: right; }
+.mb-tray-inc { display: block; font-size: 10px; opacity: .55; margin-top: 3px; letter-spacing: .02em; }
 .mb-tray-go { background: var(--gold); color: #052E20; border: none; border-radius: 2px;
               font-family: var(--mono); font-size: 11.5px; letter-spacing: .12em;
               text-transform: uppercase; padding: 12px 20px; cursor: pointer;

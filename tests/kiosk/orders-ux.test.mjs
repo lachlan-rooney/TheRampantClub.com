@@ -90,14 +90,25 @@ try {
   await p.goto(`${ORIGIN}/kiosk/menu`, { waitUntil: 'networkidle', timeout: 120000 })
   await p.waitForTimeout(1500)
 
-  const plus = p.locator('.mb-step-btn', { hasText: '+' })
-  t(await plus.count() > 1, 'the menu offers dishes to order', `${await plus.count()} steppers`)
-  const btnH = await p.locator('.mb-step-btn').first().evaluate(e => Math.round(e.getBoundingClientRect().height)).catch(() => 0)
+  // THE MENU IS A GRID OF LOGOS NOW (owner, 2026-09-23), so the dishes are one
+  // tap in. Open the first restaurant that has food on it.
+  const tiles = p.locator('.mb-tile:not([disabled])')
+  t(await tiles.count() > 0, 'restaurants are shown as logos', `${await p.locator('.mb-tile').count()} tiles, ${await tiles.count()} with menus`)
+  await tiles.first().tap(); await p.waitForTimeout(900)
+  t(await p.locator('.mb-drawer').count() === 1, 'and tapping one opens its menu in place')
+
+  const plus = p.locator('.mb-drawer .mb-step-btn', { hasText: '+' })
+  t(await plus.count() >= 1, 'the menu offers dishes to order', `${await plus.count()} steppers`)
+  const btnH = await p.locator('.mb-drawer .mb-step-btn').first().evaluate(e => Math.round(e.getBoundingClientRect().height)).catch(() => 0)
   t(btnH >= 44, 'the +/− buttons are a fingertip tall on the tablet', `${btnH}px`)
 
   await plus.nth(0).tap(); await p.waitForTimeout(250)
-  await plus.nth(0).tap(); await p.waitForTimeout(250)   // two of the first
-  await plus.nth(1).tap(); await p.waitForTimeout(400)   // one of the second
+  await plus.nth(0).tap(); await p.waitForTimeout(300)   // two of the first
+  // The second dish comes from ANOTHER restaurant, which is the point of the
+  // grid: one order, two kitchens.
+  const second = p.locator('.mb-tile:not([disabled])').nth(1)
+  await second.tap(); await p.waitForTimeout(900)
+  await p.locator('.mb-drawer .mb-step-btn', { hasText: '+' }).first().tap(); await p.waitForTimeout(400)
 
   // The note — the owner's choice: one for the whole order.
   await p.locator('.mb-tray-addnote').tap(); await p.waitForTimeout(300)
@@ -137,6 +148,10 @@ try {
       eachValues: lines.map(l => num(l.each)),
       qtys: lines.map(l => Number(l.qty)),
       sumRow: clean(document.querySelector('.km-sum-row')?.textContent),
+      rows: [...document.querySelectorAll('.km-sum-row')].map(r => clean(r.textContent)),
+      subtotal: num(document.querySelectorAll('.km-sum-row .km-sum-n')[0]?.textContent),
+      service: num(document.querySelectorAll('.km-sum-row .km-sum-n')[1]?.textContent),
+      vat: num(document.querySelectorAll('.km-sum-row .km-sum-n')[2]?.textContent),
       total: num(document.querySelector('.km-total-n')?.textContent),
       notBill: clean(document.querySelector('.km-notbill')?.textContent),
     }
@@ -145,8 +160,16 @@ try {
     'every line shows its own arithmetic, not just a total', JSON.stringify(money.lines.map(l => l.each)))
   t(money.lineTotals.every((v, i) => v === money.eachValues[i] * money.qtys[i]),
     'and the arithmetic on each line is right', JSON.stringify(money))
-  t(money.total === money.lineTotals.reduce((a, b) => a + b, 0),
-    'the total is the sum of the lines', `${money.total} vs ${money.lineTotals.reduce((a, b) => a + b, 0)}`)
+  // The club adds 10% service, then 10% VAT on food PLUS service (owner,
+  // 2026-09-23). So the total is 1.21 × the food, and every row must be shown.
+  const food = money.lineTotals.reduce((a, b) => a + b, 0)
+  t(money.subtotal === food, 'the food line is the sum of the dishes', `${money.subtotal} vs ${food}`)
+  t(money.service === Math.round(food * 0.1), 'service is 10% of the food', `${money.service}`)
+  t(money.vat === Math.round((food + money.service) * 0.1), 'VAT is 10% of food plus service', `${money.vat}`)
+  t(money.total === money.subtotal + money.service + money.vat && money.total === Math.round(food * 1.21),
+    'and the total is all three added up', `${money.total} vs ${Math.round(food * 1.21)}`)
+  t(money.rows.some(r => /service charge/i.test(r) && /10%/.test(r)) && money.rows.some(r => /vat/i.test(r) && /10%/.test(r)),
+    'the rates are printed beside the charges', money.rows.join(' | '))
   t(/2 dishes/.test(money.sumRow) && /3 items/.test(money.sumRow),
     'the foot counts the dishes and the items', money.sumRow)
   t(/not a bill/i.test(money.notBill) && /tell your server/i.test(money.notBill),

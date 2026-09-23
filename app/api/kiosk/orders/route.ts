@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { svc, DEVICE_COOKIE } from '@/lib/kiosk/server'
-import { NOTE_MAX, openOrder } from '@/lib/menus/orders'
+import { NOTE_MAX, openOrder, charges } from '@/lib/menus/orders'
+import { venueState, type ServiceWindow } from '@/lib/menus/hours'
 
 // WHAT THE ROOM WOULD LIKE, WRITTEN DOWN.
 //
@@ -67,9 +68,34 @@ export async function POST(req: NextRequest) {
   // or has no price, cannot be ordered — which also stops a stale tablet
   // ordering something that was taken off an hour ago.
   const { data: items, error } = await sb.from('menu_items')
-    .select('id, name_en, name_vn, price_vnd, is_active, menu_venues(name)')
+    .select('id, name_en, name_vn, price_vnd, is_active, venue_id, menu_venues(name)')
     .in('id', wanted.map(w => w.item_id))
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // ── A CLOSED KITCHEN CANNOT BE ORDERED FROM ─────────────────────────────
+  // The tablet greys these out, but the tablet is not the authority: a page
+  // left open since eight o'clock, a device with a wrong clock, or anything
+  // posting straight at this route would otherwise send food to a kitchen that
+  // stopped taking orders an hour ago. Judged HERE, on the server's time,
+  // using the same function the tablet uses.
+  const venueIds = [...new Set((items ?? []).map(i => i.venue_id).filter(Boolean))] as string[]
+  const shut = new Set<string>()
+  if (venueIds.length) {
+    const { data: hours } = await sb.from('menu_venue_hours')
+      .select('venue_id, weekday, opens_at, last_order_at')
+      .in('venue_id', venueIds)
+    const byVenue = new Map<string, ServiceWindow[]>()
+    for (const h of (hours ?? []) as (ServiceWindow & { venue_id: string; opens_at: string; last_order_at: string })[]) {
+      const w = byVenue.get(h.venue_id) ?? []
+      // Postgres hands back 'HH:MM:SS'; the rule wants 'HH:MM'.
+      w.push({ weekday: h.weekday, opens_at: String(h.opens_at).slice(0, 5), last_order_at: String(h.last_order_at).slice(0, 5) })
+      byVenue.set(h.venue_id, w)
+    }
+    const now = new Date()
+    for (const id of venueIds) {
+      if (!venueState(byVenue.get(id) ?? [], now).open) shut.add(id)
+    }
+  }
 
   const byId = new Map((items ?? []).map(i => [i.id, i]))
   const lines: {
@@ -81,6 +107,7 @@ export async function POST(req: NextRequest) {
   wanted.forEach((w, n) => {
     const it = byId.get(w.item_id)
     if (!it || !it.is_active || it.price_vnd == null) { refused.push(w.item_id); return }
+    if (it.venue_id && shut.has(it.venue_id as string)) { refused.push(w.item_id); return }
     lines.push({
       item_id: it.id,
       venue_name: (it.menu_venues as unknown as { name: string } | null)?.name ?? '—',
@@ -91,9 +118,11 @@ export async function POST(req: NextRequest) {
       display_order: n * 10,
     })
   })
-  if (!lines.length) return bad('Nothing on that order is still available.')
+  if (!lines.length) return bad('Nothing on that order is still available — those kitchens have stopped taking orders.')
 
-  const total = lines.reduce((s, l) => s + l.line_total_vnd, 0)
+  // Priced, then charged. Both from the menu and the club's own rates; a
+  // tablet sends item ids and quantities and nothing else.
+  const sum = charges(lines.reduce((s, l) => s + l.line_total_vnd, 0))
 
   // One open order per room, enforced by a partial unique index. Editing means
   // replacing the lines on the order that is already open, not starting a
@@ -104,12 +133,19 @@ export async function POST(req: NextRequest) {
   if (existing) {
     orderId = existing.id
     await sb.from('menu_orders')
-      .update({ total_vnd: total, status: 'pending', ordered_at: null, ordered_by: null, note: note || null })
+      .update({
+        subtotal_vnd: sum.subtotal, service_pct: sum.servicePct, service_vnd: sum.service,
+        vat_pct: sum.vatPct, vat_vnd: sum.vat, total_vnd: sum.total,
+        status: 'pending', ordered_at: null, ordered_by: null, note: note || null,
+      })
       .eq('id', orderId)
     await sb.from('menu_order_lines').delete().eq('order_id', orderId)
   } else {
     const { data: created, error: insErr } = await sb.from('menu_orders')
-      .insert({ room: r, total_vnd: total, note: note || null }).select('id').single()
+      .insert({
+        room: r, subtotal_vnd: sum.subtotal, service_pct: sum.servicePct, service_vnd: sum.service,
+        vat_pct: sum.vatPct, vat_vnd: sum.vat, total_vnd: sum.total, note: note || null,
+      }).select('id').single()
     if (insErr || !created) return NextResponse.json({ error: 'Could not open an order.' }, { status: 500 })
     orderId = created.id
   }

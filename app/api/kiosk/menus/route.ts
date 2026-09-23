@@ -35,6 +35,12 @@ export async function GET() {
     return NextResponse.json({
       ...menus,
       room: row.room,
+      // THE CLOCK THE TABLET MUST USE. Opening hours are judged against the
+      // club's time, not against whatever a tablet on a bar believes; the
+      // board measures its own drift against this the way the Tết countdown
+      // does. Sent on every read, so a tablet left on overnight corrects
+      // itself.
+      now: new Date().toISOString(),
       // The room's own printed menu, if it has one. It used to be the whole of
       // the Menu tab; now it sits underneath the live menu as a link.
       printed: menuForSpace(row.room),

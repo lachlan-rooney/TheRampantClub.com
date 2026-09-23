@@ -34,8 +34,10 @@ interface Venue {
   contact_name: string | null; contact_phone: string | null
   contact_email: string | null; contact_note: string | null
   arriving_on: string | null
+  wait_minutes: number | null
   display_order: number; is_active: boolean; is_placeholder: boolean
 }
+interface Hour { id: string; venue_id: string; weekday: number; opens_at: string; last_order_at: string }
 interface Item {
   id: string; venue_id: string; slug: string
   service: 'plate' | 'cocktail'
@@ -72,6 +74,7 @@ type Kind = 'venue' | 'item' | 'set' | 'course'
 export default function AdminMenusPage() {
   const { showToast, toastNode } = useToast()
   const [venues, setVenues] = useState<Venue[]>([])
+  const [hours, setHours] = useState<Hour[]>([])
   const [items, setItems] = useState<Item[]>([])
   const [sets, setSets] = useState<SetMenu[]>([])
   const [courses, setCourses] = useState<Course[]>([])
@@ -87,7 +90,7 @@ export default function AdminMenusPage() {
       const r = await fetch('/api/admin/menus', { cache: 'no-store' })
       const j = await r.json()
       if (!r.ok) throw new Error(j.error || 'Could not load the menus.')
-      setVenues(j.venues); setItems(j.items); setSets(j.sets)
+      setVenues(j.venues); setItems(j.items); setSets(j.sets); setHours(j.hours ?? [])
       setCourses(j.courses); setAudit(j.audit || [])
       setErr('')
       setSel(s => s ?? (j.venues[0]?.id ?? null))
@@ -202,6 +205,11 @@ export default function AdminMenusPage() {
               <VenueForm key={venue.id} v={venue}
                          onSave={p => save('venue', venue.id, p)}
                          onDelete={() => setKill({ kind: 'venue', id: venue.id, label: venue.name })}
+                         onToast={showToast} />
+
+              <HoursForm key={`h-${venue.id}`} venueId={venue.id}
+                         rows={hours.filter(h => h.venue_id === venue.id)}
+                         onSaved={h => setHours(all => [...all.filter(x => x.venue_id !== venue.id), ...h])}
                          onToast={showToast} />
 
               <SectionBar title="Plates"
@@ -386,6 +394,89 @@ function Tagger({ allergens, dietary, onChange }: {
 
 // ── The three forms ────────────────────────────────────────────────────────
 
+// ── WHEN THIS KITCHEN TAKES ORDERS ────────────────────────────────────────
+// A week at a time, Monday first because that is how a rota is read here. Each
+// day is a pair: when it opens and when it stops taking orders. Leave a day
+// blank and it is shut that day; a last order EARLIER than the opening means
+// the window runs past midnight (17:00 → 00:30), which the tablets understand.
+//
+// No hours at all = the restaurant is orderable whenever the club is open,
+// which is how every restaurant behaved before this existed. Nothing goes dark
+// because a form has not been filled in.
+
+const DAYS: [number, string][] = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [0, 'Sun']]
+
+function HoursForm({ venueId, rows, onSaved, onToast }: {
+  venueId: string
+  rows: { weekday: number; opens_at: string; last_order_at: string }[]
+  onSaved: (h: Hour[]) => void
+  onToast: (m: string, t?: 'info' | 'success' | 'error' | 'warn') => void
+}) {
+  const initial = () => {
+    const m: Record<number, { opens_at: string; last_order_at: string }> = {}
+    for (const r of rows) m[r.weekday] = { opens_at: r.opens_at, last_order_at: r.last_order_at }
+    return m
+  }
+  const [week, setWeek] = useState<Record<number, { opens_at: string; last_order_at: string }>>(initial)
+  const [busy, setBusy] = useState(false)
+  const put = (day: number, k: 'opens_at' | 'last_order_at', v: string) =>
+    setWeek(w => {
+      const cur = w[day] ?? { opens_at: '', last_order_at: '' }
+      return { ...w, [day]: { ...cur, [k]: v } }
+    })
+
+  const copyDown = () => {
+    const first = DAYS.map(([d]) => week[d]).find(x => x?.opens_at && x?.last_order_at)
+    if (!first) { onToast('Fill one day in first.', 'warn'); return }
+    setWeek(Object.fromEntries(DAYS.map(([d]) => [d, { ...first }])))
+  }
+
+  const save = async () => {
+    setBusy(true)
+    try {
+      const windows = DAYS
+        .map(([d]) => ({ weekday: d, ...(week[d] ?? { opens_at: '', last_order_at: '' }) }))
+        .filter(w => w.opens_at && w.last_order_at)
+      const r = await fetch('/api/admin/menus/hours', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ venue_id: venueId, windows }),
+      })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok) { onToast(j.error || 'That did not save.', 'error'); return }
+      onSaved(j.hours ?? [])
+      onToast(windows.length ? 'Hours saved.' : 'Hours cleared — this kitchen is orderable at any time.', 'success')
+    } finally { setBusy(false) }
+  }
+
+  return (
+    <section className="am-card">
+      <h3 className="am-h3">Ordering hours</h3>
+      <p className="am-dim" style={{ marginTop: -4 }}>
+        The tablets show this restaurant as closed once last orders pass, and will not let a member add its
+        dishes. Leave a day blank for closed. Last orders before the opening time means it runs past midnight.
+        No hours at all = orderable whenever the club is open.
+      </p>
+      <div className="am-hours">
+        {DAYS.map(([d, label]) => (
+          <div key={d} className="am-hrow">
+            <span className="am-hday">{label}</span>
+            <input type="time" value={week[d]?.opens_at ?? ''} onChange={e => put(d, 'opens_at', e.target.value)} aria-label={`${label} opens`} />
+            <span className="am-hto">→</span>
+            <input type="time" value={week[d]?.last_order_at ?? ''} onChange={e => put(d, 'last_order_at', e.target.value)} aria-label={`${label} last orders`} />
+            {(week[d]?.opens_at || week[d]?.last_order_at) && (
+              <button className="am-hclear" onClick={() => setWeek(w => ({ ...w, [d]: { opens_at: '', last_order_at: '' } }))}>clear</button>
+            )}
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 14, marginTop: 14, flexWrap: 'wrap' }}>
+        <button className="am-save" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save hours'}</button>
+        <button className="am-ghost" onClick={copyDown}>Copy the first filled day to every day</button>
+      </div>
+    </section>
+  )
+}
+
 function VenueForm({ v, onSave, onDelete, onToast }: {
   v: Venue; onSave: (p: Record<string, unknown>) => void; onDelete: () => void
   onToast: (m: string, t?: 'info' | 'success' | 'error' | 'warn') => void
@@ -414,7 +505,11 @@ function VenueForm({ v, onSave, onDelete, onToast }: {
         <Field label="Arriving on" value={d.arriving_on} type="date"
                onChange={set('arriving_on')}
                hint="blank = serving now; a date hides its dishes" />
-        <div />
+        {/* Shown beside the restaurant on the tablets as "≈ 25 min". Blank
+            says nothing at all, which is better than a guess. */}
+        <Field label="Estimated wait (minutes)" value={d.wait_minutes} type="number"
+               onChange={x => set('wait_minutes')(x === '' || x === null ? null : Number(x))}
+               hint="blank = show no wait" />
       </div>
       <details className="am-details">
         <summary>Contact — staff only, never shown to members</summary>
@@ -744,7 +839,20 @@ const CSS = `
 .am-chip.is-diet.is-on { border-color: #B0C18E; color: #B0C18E; }
 
 .am-actions { display: flex; gap: 12px; align-items: center; margin-top: 14px; }
-.am-save { background: ${CREAM}; color: #052E20; border: none; border-radius: 2px;
+.am-save { background: ${CREAM}
+.am-hours { display: grid; gap: 8px; margin-top: 12px; }
+.am-hrow { display: grid; grid-template-columns: 48px auto 18px auto 1fr; gap: 10px; align-items: center; }
+.am-hday { font-family: 'Google Sans Code', monospace; font-size: 12px; letter-spacing: .12em;
+           text-transform: uppercase; color: rgba(229,212,194,.55); }
+.am-hrow input[type=time] { background: rgba(0,0,0,.25); border: 1px solid rgba(229,212,194,.2);
+                            color: #E5D4C2; border-radius: 3px; padding: 8px 10px;
+                            font-family: 'Google Sans Code', monospace; font-size: 13px; min-height: 40px; }
+.am-hrow input[type=time]:focus { outline: none; border-color: #D4B85A; }
+.am-hto { text-align: center; color: rgba(229,212,194,.35); }
+.am-hclear { background: none; border: none; cursor: pointer; justify-self: start;
+             font-family: 'Google Sans Code', monospace; font-size: 11px; color: rgba(229,212,194,.45); }
+.am-hclear:hover { color: #C27070; }
+; color: #052E20; border: none; border-radius: 2px;
            font-family: ${MONO}; font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
            padding: 9px 16px; cursor: pointer; }
 .am-add { background: none; border: 1px solid ${HAIR}; border-radius: 2px; color: ${CREAM};

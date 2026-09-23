@@ -31,6 +31,7 @@ const FIELDS: Record<string, string[]> = {
     'slug', 'name', 'kind', 'tagline_en', 'tagline_vn', 'logo_path', 'accent_hex',
     'contact_name', 'contact_phone', 'contact_email', 'contact_note',
     'arriving_on', 'display_order', 'is_active', 'is_placeholder',
+    'wait_minutes',
   ],
   item: [
     'venue_id', 'slug', 'service', 'section_en', 'section_vn',
@@ -79,12 +80,14 @@ export async function GET() {
   if (!(await isAdmin())) return bad('Staff only.', 403)
   const sb = svc()
 
-  const [venues, items, sets, courses, audit] = await Promise.all([
+  const [venues, items, sets, courses, audit, hours] = await Promise.all([
     sb.from('menu_venues').select('*').order('display_order'),
     sb.from('menu_items').select('*').order('display_order'),
     sb.from('menu_set_menus').select('*').order('display_order'),
     sb.from('menu_set_courses').select('*').order('display_order'),
     sb.rpc('menu_placeholder_audit'),
+    // Not fatal either: a deploy can land before the hours migration is run.
+    sb.from('menu_venue_hours').select('id, venue_id, weekday, opens_at, last_order_at').order('weekday'),
   ])
 
   const firstErr = [venues, items, sets, courses].find(r => r.error)?.error
@@ -92,6 +95,12 @@ export async function GET() {
 
   return NextResponse.json({
     venues: venues.data ?? [],
+    hours: (hours.data ?? []).map(h => ({
+      ...h,
+      // Postgres returns 'HH:MM:SS'; every surface wants 'HH:MM'.
+      opens_at: String(h.opens_at).slice(0, 5),
+      last_order_at: String(h.last_order_at).slice(0, 5),
+    })),
     items: items.data ?? [],
     sets: sets.data ?? [],
     courses: courses.data ?? [],

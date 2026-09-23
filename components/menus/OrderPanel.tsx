@@ -38,13 +38,15 @@ import { NOTE_MAX } from '@/lib/menus/orders'
 // changed after confirming, not only before.
 //
 // THE TOTAL IS BROKEN DOWN (owner, 2026-09-23: "show the breakdown of the
-// total and make it clear they need to tell the server"). Every line now shows
-// its own arithmetic — 2 × 180K — instead of only the line's total, and the
-// foot counts the dishes and the items before the money. The breakdown is the
-// ARITHMETIC AND NOTHING ELSE: there is no VAT line and no service line
-// because the menus carry no such thing (nothing in lib/menus or the schema
-// knows about either), and inventing rows on a screen a member reads as a bill
-// would be inventing charges.
+// total and make it clear they need to tell the server"). Every line shows its
+// own arithmetic — 2 × 180K — instead of only the line's total, and the foot
+// shows the food, then the service charge, then VAT, then the total.
+//
+// THE RATES COME FROM THE ORDER, not from today's constants: each order stores
+// what it was quoted (service_pct, vat_pct), so an order read back next week
+// shows the rates it was actually shown at. The percentages are printed beside
+// each row, because "service charge 235,400₫" with no rate beside it is the
+// line people dispute.
 //
 // AND IT IS NOT A BILL. A list of dishes with a total under it looks exactly
 // like one, so the total says so in as many words and repeats the one action
@@ -62,8 +64,18 @@ export interface OrderLine {
 }
 export interface Order {
   id: string; room: string; status: 'pending' | 'ordered'
+  subtotal_vnd?: number
+  service_pct?: number; service_vnd?: number
+  vat_pct?: number; vat_vnd?: number
   total_vnd: number; note?: string | null; created_at: string; ordered_at: string | null
   lines: OrderLine[]
+}
+
+/** 0.1 → "10%". Whole percents stay whole; an odd rate keeps one decimal
+ *  rather than being rounded into a figure the club does not charge. */
+export const pct = (v: number | null | undefined) => {
+  const n = (Number(v) || 0) * 100
+  return `${Number.isInteger(n) ? n : n.toFixed(1)}%`
 }
 
 export default function OrderPanel({ order, busy, onPlaced, onClear, onRemove, onNote }: {
@@ -194,10 +206,20 @@ export default function OrderPanel({ order, busy, onPlaced, onClear, onRemove, o
               <span className="km-sum-dot"> · </span>
               {t(`${items} ${items === 1 ? 'item' : 'items'}`, `${items} phần`)}
             </span>
-            {/* No amount here. With no tax and no service line there is no
-                subtotal to show, and printing the total twice a centimetre
-                apart just makes a reader check whether they differ. */}
+            <span className="km-sum-n">{price(order.subtotal_vnd ?? order.total_vnd)}</span>
           </div>
+          {!!order.service_vnd && (
+            <div className="km-sum-row">
+              <span>{t('Service charge', 'Phí phục vụ')} <span className="km-pct">{pct(order.service_pct)}</span></span>
+              <span className="km-sum-n">{price(order.service_vnd)}</span>
+            </div>
+          )}
+          {!!order.vat_vnd && (
+            <div className="km-sum-row">
+              <span>{t('VAT', 'Thuế GTGT')} <span className="km-pct">{pct(order.vat_pct)}</span></span>
+              <span className="km-sum-n">{price(order.vat_vnd)}</span>
+            </div>
+          )}
           <div className="km-sum-row is-total">
             <span>{t('Total', 'Tổng cộng')}</span>
             <span className="km-total-n">{price(order.total_vnd)}</span>
@@ -300,6 +322,9 @@ export const ORDER_PANEL_CSS = `
 .km-sum-row.is-total { border-top: 1px solid rgba(229,212,194,.14); margin-top: 6px; padding-top: 14px;
                        color: rgba(229,212,194,.6); }
 .km-sum-dot { opacity: .4; }
+.km-pct { opacity: .55; letter-spacing: .04em; }
+.km-sum-n { font-size: 14px; letter-spacing: 0; text-transform: none; opacity: .75;
+            font-variant-numeric: tabular-nums; }
 .km-total-n { font-size: 22px; letter-spacing: 0; text-transform: none;
               color: #F2E6D8; font-variant-numeric: tabular-nums; }
 /* A total looks like a bill. This says what it is, under the money. */

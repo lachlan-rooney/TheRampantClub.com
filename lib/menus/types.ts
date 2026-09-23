@@ -1,3 +1,5 @@
+import type { ServiceWindow } from '@/lib/menus/hours'
+
 // The shapes the menu surfaces read. These mirror the two public views in
 // 20260918210000_menus.sql exactly — and, just as deliberately, they have no
 // `cost_vnd` / `cost_per_head_vnd` field at all. If a cost ever needs to reach
@@ -126,6 +128,11 @@ export interface MenuVenue {
   arriving_on: string | null
   display_order: number
   is_placeholder: boolean
+  /** The kitchen's own estimate, in minutes. Null = the club has not said. */
+  wait_minutes?: number | null
+  /** When it takes orders, one row per window per weekday. Empty = no
+   *  restriction (see lib/menus/hours.ts). */
+  hours?: ServiceWindow[]
 }
 
 /** One restaurant with everything it offers, ready to render. */
@@ -138,6 +145,8 @@ export interface MenuVenueGroup {
   logo_path: string | null
   accent_hex: string | null
   arriving_on: string | null
+  wait_minutes?: number | null
+  hours?: ServiceWindow[]
   plates: MenuPlate[]
   sets: MenuSet[]
 }
@@ -170,6 +179,10 @@ export function groupByVenue(
       tagline_en: v.tagline_en, tagline_vn: v.tagline_vn,
       logo_path: v.logo_path, accent_hex: v.accent_hex,
       arriving_on: v.arriving_on,
+      wait_minutes: v.wait_minutes ?? null,
+      // The view returns jsonb; an older view that predates the hours
+      // migration returns nothing at all, which reads as "no restriction".
+      hours: Array.isArray(v.hours) ? v.hours : [],
       plates: [], sets: [],
     })
   }
