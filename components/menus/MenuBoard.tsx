@@ -272,6 +272,22 @@ export default function MenuBoard({
             PLACE — nobody loses their place, and switching kitchens is one
             tap, not back-then-in.
             One open at a time: two open menus on a tablet is the wall again. */}
+        {/* ONE RESTAURANT IS NOT A CHOICE (owner, 2026-09-23: "no idea why you
+            added one on the bar bit too"). The bar tab is the club itself and
+            nothing else; putting its logo up as a tile to tap asks a question
+            with one answer. Straight to the list. */}
+        {shown.length === 1 ? (
+          <section className="mb-solo">
+            <VenueHead v={shown[0]} lang={lang} t={t} state={states.get(shown[0].slug)}
+                       hideName={shown[0].kind === 'house'} />
+            {service !== 'dining'
+              ? <PlateList plates={shown[0].plates} lang={lang} open={open}
+                           onToggle={id => setOpen(o => (o === id ? null : id))}
+                           qty={ordering ? qty : undefined}
+                           onQty={ordering && !isShut(shown[0].slug) ? (id, n) => setQty(q => ({ ...q, [id]: n })) : undefined} />
+              : shown[0].sets.map(st2 => <SetMenu key={st2.id} s={st2} />)}
+          </section>
+        ) : (
         <div className="mb-grid">
           {shown.map(v => {
             const st = states.get(v.slug)
@@ -333,6 +349,7 @@ export default function MenuBoard({
             )
           })}
         </div>
+        )}
 
         {/* The line-up, under the food that can be ordered now. Plates tab
             only: nobody has said which service these arrive with, and
@@ -848,21 +865,31 @@ const CSS = `
                  font-family: var(--mono); font-size: 12px; line-height: 1.7; }
 .mb-tray-line b { color: var(--gold); font-weight: 400; }
 .mb-tray-line.is-quiet { opacity: .6; }
-.mb-grid { display: grid; gap: clamp(12px, 1.6vw, 20px); margin-top: 26px;
-           grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.mb-grid { display: grid; gap: clamp(16px, 2.4vw, 36px); margin-top: 26px;
+           grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+ /* NO BOXES (owner, 2026-09-23: "they don't need boxed btw, the logos"), which
+    is also the house rule everywhere else on the public pages: hairlines, not
+    frames. The logo sits on the ground with room around it; what marks the
+    open one is a gold rule under it, not a border round it. */
 .mb-tile { display: flex; flex-direction: column; align-items: center; justify-content: center;
-           gap: 10px; min-height: 118px; padding: 18px 14px 14px; cursor: pointer;
-           background: rgba(229,212,194,.03); border: 1px solid var(--hair); border-radius: 4px;
+           gap: 12px; min-height: 160px; padding: 22px 14px 18px; cursor: pointer;
+           background: none; border: none; border-bottom: 1px solid transparent; border-radius: 0;
            color: inherit; font: inherit; text-align: center; position: relative;
-           transition: border-color .2s ease, background .2s ease, transform .2s ease;
+           transition: border-color .2s ease, opacity .2s ease, transform .2s ease;
            -webkit-tap-highlight-color: transparent; }
-.mb-tile:hover:not(:disabled) { border-color: var(--gold); transform: translateY(-2px); }
-.mb-tile.is-open { border-color: var(--gold); background: rgba(212,184,90,.07); }
+.mb-tile:hover:not(:disabled) { transform: translateY(-2px); }
+.mb-tile:hover:not(:disabled) .mb-tile-logo { opacity: 1; }
+.mb-tile.is-open { border-bottom-color: var(--gold); }
+.mb-tile:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
 .mb-tile:disabled { cursor: default; opacity: .72; }
 .mb-tile-face { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.mb-tile-logo { max-width: min(160px, 86%); max-height: 54px; object-fit: contain; }
-.mb-tile.is-shut .mb-tile-logo, .mb-tile.is-soon .mb-tile-logo { opacity: .4; }
-.mb-tile-name { font-family: 'Rampant Sans', Georgia, serif; font-size: clamp(16px, 2vw, 21px); line-height: 1.15; }
+ /* BIG AND FULL STRENGTH (owner: "it makes them look dull and small"). Taking
+    the frame away had shrunk them twice over — the box was padding them out,
+    and they were dimmed to .88 besides. The logo IS the tile now, so it gets
+    the room and its own colour. */
+.mb-tile-logo { max-width: min(230px, 96%); max-height: 96px; object-fit: contain; }
+.mb-tile.is-shut .mb-tile-logo, .mb-tile.is-soon .mb-tile-logo { opacity: .45; }
+.mb-tile-name { font-family: 'Rampant Sans', Georgia, serif; font-size: clamp(19px, 2.4vw, 26px); line-height: 1.15; }
 .mb-tile-tag { font-family: var(--mono); font-size: 10.5px; line-height: 1.5; opacity: .5; max-width: 22ch; }
 .mb-tile-meta { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px;
                 font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; }
@@ -871,7 +898,8 @@ const CSS = `
 .mb-tile-when { color: rgba(229,212,194,.45); }
 .mb-tile-when.is-shut { color: #C49555; }
 .mb-tile-soon { color: rgba(229,212,194,.5); }
-.mb-tile-chev { position: absolute; right: 10px; top: 10px; font-size: 11px; opacity: .4; }
+.mb-tile-chev { position: absolute; right: 4px; top: 6px; font-size: 11px; opacity: .3; }
+.mb-tile.is-open .mb-tile-chev { opacity: .8; color: var(--gold); }
 /* The expanded menu spans the whole grid, so it opens UNDER the row that was
    tapped rather than squeezing into one column.
    NOT .mb-open: that class is the dish-name button inside every row, and
@@ -879,14 +907,14 @@ const CSS = `
 .mb-drawer { grid-column: 1 / -1; border-left: 2px solid var(--gold); padding: 4px 0 18px 18px;
              animation: mb-open-in .35s cubic-bezier(.16,.84,.44,1); }
 @keyframes mb-open-in { from { opacity: 0; transform: translateY(-6px); } }
-.mb.is-kiosk .mb-grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
-.mb.is-kiosk .mb-tile { min-height: 140px; }
-.mb.is-kiosk .mb-tile-logo { max-height: 66px; }
+.mb.is-kiosk .mb-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.mb.is-kiosk .mb-tile { min-height: 168px; }
+.mb.is-kiosk .mb-tile-logo { max-height: 104px; }
 .mb.is-kiosk .mb-tile-meta { font-size: 12px; }
 @media (max-width: 560px) {
-  .mb-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
-  .mb-tile { min-height: 124px; padding: 14px 10px 10px; }
-  .mb-tile-logo { max-height: 46px; }
+  .mb-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .mb-tile { min-height: 128px; padding: 14px 8px 12px; }
+  .mb-tile-logo { max-height: 66px; }
   .mb-drawer { padding-left: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .mb-tile { transition: none; } .mb-open { animation: none; } }
