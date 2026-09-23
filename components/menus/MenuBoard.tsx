@@ -128,6 +128,7 @@ export default function MenuBoard({
   // kitchen could one day do both without anything here changing.
   const byService = (kind: 'plate' | 'cocktail') =>
     serving
+      .filter(v => !v.dining_only)
       .map(v => ({ ...v, plates: v.plates.filter(p => p.service === kind) }))
       .filter(v => v.plates.length)
   // THE PLATES TAB KEEPS THE EMPTY KITCHENS (owner, 2026-09-23: "logo with
@@ -141,12 +142,19 @@ export default function MenuBoard({
     const cooking = byService('plate')
     const cookingSlugs = new Set(cooking.map(v => v.slug))
     const empty = serving
-      .filter(v => !cookingSlugs.has(v.slug) && !v.plates.length && !v.sets.length)
+      // A caterer is not a kitchen on the floor (owner: "Lune is only for The
+      // Dining Room"), so it never appears here — not even as "coming soon".
+      .filter(v => !v.dining_only && !cookingSlugs.has(v.slug) && !v.plates.length && !v.sets.length)
       .map(v => ({ ...v, plates: [] as MenuPlate[] }))
     return [...cooking, ...empty].sort((a, b) => venues.findIndex(v => v.slug === a.slug) - venues.findIndex(v => v.slug === b.slug))
   }, [serving, venues])  // eslint-disable-line react-hooks/exhaustive-deps
   const withCocktails = useMemo(() => byService('cocktail'), [serving])
-  const withSets = useMemo(() => serving.filter(v => v.sets.length), [serving])
+  // The Dining Room holds the caterers even before their menus are loaded —
+  // they have nowhere else to appear, and a signed partner should be visible.
+  const withSets = useMemo(
+    () => serving.filter(v => v.sets.length || v.dining_only),
+    [serving],
+  )
   const shown = service === 'plates' ? withPlates
               : service === 'cocktails' ? withCocktails
               : withSets

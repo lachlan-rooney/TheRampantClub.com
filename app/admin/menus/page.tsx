@@ -35,6 +35,7 @@ interface Venue {
   contact_email: string | null; contact_note: string | null
   arriving_on: string | null
   wait_minutes: number | null
+  dining_only: boolean
   display_order: number; is_active: boolean; is_placeholder: boolean
 }
 interface Hour { id: string; venue_id: string; weekday: number; opens_at: string; last_order_at: string }
@@ -515,6 +516,12 @@ function VenueForm({ v, onSave, onDelete, onToast }: {
         <Field label="Estimated wait (minutes)" value={d.wait_minutes} type="number"
                onChange={x => set('wait_minutes')(x === '' || x === null ? null : Number(x))}
                hint="blank = show no wait" />
+      </div>
+      <div className="am-checks">
+        {/* An external caterer does the sat-down job only. Ticked, it stays off
+            the Plates and Bar tabs entirely. */}
+        <Check label="The Dining Room only (external caterer)" on={d.dining_only}
+               onChange={set('dining_only')} />
       </div>
       <details className="am-details">
         <summary>Contact — staff only, never shown to members</summary>

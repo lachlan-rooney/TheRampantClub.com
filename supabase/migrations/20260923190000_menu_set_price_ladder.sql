@@ -23,6 +23,17 @@
 --  add 10% service and 10% VAT (lib/menus/orders.ts) and say so.
 -- ═══════════════════════════════════════════════════════════════════════════
 
+-- ── A CATERER IS NOT A KITCHEN ON THE FLOOR ───────────────────────────────
+-- Owner, same day: "Lune is only for The Dining Room". Some partners cook
+-- plates sent up to the rooms; a caterer only does the sat-down job. Without
+-- this, a caterer appears on the Plates tab as a kitchen with nothing on it —
+-- wrong, and an invitation to tap.
+alter table public.menu_venues
+  add column if not exists dining_only boolean not null default false;
+
+comment on column public.menu_venues.dining_only is
+  'External caterer: shown on The Dining Room tab only, never under Plates or the Bar.';
+
 alter table public.menu_set_menus
   add column if not exists max_covers integer check (max_covers is null or max_covers > 0);
 
@@ -82,6 +93,35 @@ create trigger menu_set_prices_range
 alter table public.menu_set_prices enable row level security;
 revoke all on public.menu_set_prices from anon, authenticated;
 
+-- ── The venues view, carrying the new flag ────────────────────────────────
+-- Recreated here (it was last written by 20260923160000) so the flag and the
+-- ladder arrive in one run rather than leaving the surfaces half-informed.
+drop view if exists public.menu_venues_public;
+create view public.menu_venues_public as
+  select
+    v.slug, v.name, v.kind,
+    v.tagline_en, v.tagline_vn,
+    v.logo_path, v.accent_hex,
+    v.arriving_on,
+    v.display_order,
+    v.is_placeholder,
+    v.wait_minutes,
+    v.dining_only,
+    coalesce((
+      select jsonb_agg(jsonb_build_object(
+               'weekday', h.weekday,
+               'opens_at', to_char(h.opens_at, 'HH24:MI'),
+               'last_order_at', to_char(h.last_order_at, 'HH24:MI'))
+             order by h.weekday, h.opens_at)
+        from public.menu_venue_hours h
+       where h.venue_id = v.id
+    ), '[]'::jsonb) as hours
+  from public.menu_venues v
+  where v.is_active;
+
+revoke all on public.menu_venues_public from anon;
+grant select on public.menu_venues_public to authenticated;
+
 -- ── The dining view, with the ladder and the ceiling ───────────────────────
 drop view if exists public.menu_dining_public;
 create view public.menu_dining_public as
@@ -140,3 +180,5 @@ grant select on public.menu_dining_public to authenticated;
 -- drop table if exists public.menu_set_prices;
 -- alter table public.menu_set_menus drop constraint if exists menu_set_menus_covers_order;
 -- alter table public.menu_set_menus drop column if exists max_covers;
+-- alter table public.menu_venues drop column if exists dining_only;  -- and
+--   recreate menu_venues_public from 20260923160000

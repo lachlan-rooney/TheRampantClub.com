@@ -136,6 +136,8 @@ export interface MenuVenue {
   is_placeholder: boolean
   /** The kitchen's own estimate, in minutes. Null = the club has not said. */
   wait_minutes?: number | null
+  /** An external caterer: The Dining Room tab only. */
+  dining_only?: boolean
   /** When it takes orders, one row per window per weekday. Empty = no
    *  restriction (see lib/menus/hours.ts). */
   hours?: ServiceWindow[]
@@ -152,6 +154,7 @@ export interface MenuVenueGroup {
   accent_hex: string | null
   arriving_on: string | null
   wait_minutes?: number | null
+  dining_only?: boolean
   hours?: ServiceWindow[]
   plates: MenuPlate[]
   sets: MenuSet[]
@@ -186,6 +189,7 @@ export function groupByVenue(
       logo_path: v.logo_path, accent_hex: v.accent_hex,
       arriving_on: v.arriving_on,
       wait_minutes: v.wait_minutes ?? null,
+      dining_only: !!v.dining_only,
       // The view returns jsonb; an older view that predates the hours
       // migration returns nothing at all, which reads as "no restriction".
       hours: Array.isArray(v.hours) ? v.hours : [],

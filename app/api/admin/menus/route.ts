@@ -31,7 +31,7 @@ const FIELDS: Record<string, string[]> = {
     'slug', 'name', 'kind', 'tagline_en', 'tagline_vn', 'logo_path', 'accent_hex',
     'contact_name', 'contact_phone', 'contact_email', 'contact_note',
     'arriving_on', 'display_order', 'is_active', 'is_placeholder',
-    'wait_minutes',
+    'wait_minutes', 'dining_only',
   ],
   item: [
     'venue_id', 'slug', 'service', 'section_en', 'section_vn',
