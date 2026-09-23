@@ -671,8 +671,14 @@ function SetMenu({ s }: { s: MenuSet }) {
       <div className="mb-row is-static">
         <span className="mb-name is-set">{pick(l, s.name_en, s.name_vn)}</span>
         <span className="mb-price">
-          {money ? <>{money}<span className="mb-perhead">{t('per person', 'mỗi người')}</span></>
-                 : <em className="mb-tbc">{t('on request', 'liên hệ')}</em>}
+          {/* With a ladder below, the header would otherwise say "on request"
+              over eight printed prices. It says where the ladder starts. */}
+          {rungs.length
+            ? <>{price(Math.min(...rungs.map(r => r.price_per_head_vnd)))}
+                <span className="mb-perhead">{t('per person, from', 'mỗi người, từ')}</span></>
+            : money
+              ? <>{money}<span className="mb-perhead">{t('per person', 'mỗi người')}</span></>
+              : <em className="mb-tbc">{t('on request', 'liên hệ')}</em>}
         </span>
       </div>
       {stand && <p className="mb-desc mb-set-stand">{stand}</p>}
