@@ -67,6 +67,9 @@ export interface CaskBoardRow {
   tasting_note_en: string | null
   tasting_note_vn: string | null
   colour_hex: string | null
+  /** Measured on the beer scale by Huntly. Null = no measurement. */
+  colour_srm?: number | null
+  colour_source?: string | null
   image_path: string | null
   display_order: number
   is_placeholder: boolean

@@ -72,8 +72,8 @@ const FACTS: Fact[] = [
     x: 65.1, y: 39.3,
     title: ['The octave', 'Thùng octave'],
     body: [
-      'An octave holds about 50 litres — an eighth of a sherry butt, hence the name. More wood touches every litre, so it works faster than a big cask.',
-      'Một thùng octave chứa khoảng 50 lít — một phần tám thùng butt sherry, nên có tên như vậy. Mỗi lít tiếp xúc với nhiều gỗ hơn, nên rượu chín nhanh hơn thùng lớn.',
+      'An octave is a small cask — 40 to 50 litres, an eighth of a sherry butt, hence the name. More wood touches every litre, so it works faster than a big one.',
+      'Octave là thùng nhỏ — 40 đến 50 lít, bằng một phần tám thùng butt sherry, nên có tên như vậy. Mỗi lít tiếp xúc với nhiều gỗ hơn, nên rượu chín nhanh hơn thùng lớn.',
     ],
     match: c => /octave/i.test(`${c.cask_type} ${c.wood ?? ''}`),
   },

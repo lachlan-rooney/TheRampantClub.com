@@ -6,7 +6,7 @@ import LangToggle from '@/components/LangToggle'
 import NavOverlay from '@/components/NavOverlay'
 import { PublicPage, Masthead, SectionHead, Details, Cta, MONO, GOLD } from '@/components/public/kit'
 import { timeRemaining } from '@/lib/tet/queries'
-import { caskColour } from '@/lib/tet/colour'
+import { caskColourOf } from '@/lib/tet/colour'
 import { vnd, type BlendBoardRow, type CaskBoardRow, type Countdown, type TetCategory, type VolumeTier } from '@/lib/tet/types'
 import TetEnquiry, { type EnquiryTarget } from '@/components/tet/TetEnquiry'
 import TetTiers from '@/components/tet/TetTiers'
@@ -559,7 +559,7 @@ function CaskRow({ c, strength, vn, t, provisional, onChoose, open, onToggle, ma
         <span className="ck-name">
           <span className="pk-h3">{c.distillery}</span>
           <span className="pk-meta ck-sub">
-            {c.cask_ref} · {c.region} · {c.age_years}{t('yo', ' năm')} · {c.cask_abv_pct}%
+            {c.cask_ref} · {c.region} · {Math.floor(c.age_years)}{t('yo', ' năm')} · {c.cask_abv_pct}%
           </span>
         </span>
 
@@ -629,27 +629,29 @@ function CaskRow({ c, strength, vn, t, provisional, onChoose, open, onToggle, ma
                 <dd>
                   {(() => {
                     // EBC, the scale Scotch is quoted in, with the SRM it
-                    // converts from. Estimated FROM THE SWATCH — see
-                    // lib/tet/colour — so it wears a ≈ and says so below.
-                    const col = caskColour(c.colour_hex)
-                    if (!c.colour_hex) return <span style={{ opacity: .45 }}>—</span>
+                    // converts from. MEASURED where Huntly gave a figure, and
+                    // then printed plainly; estimated from the swatch
+                    // otherwise, and then it wears a ≈. See lib/tet/colour.
+                    const col = caskColourOf(c)
+                    if (!col) return <span style={{ opacity: .45 }}>—</span>
                     return (
                       <span className="ck-colour">
-                        <span className="ck-swatch" style={{ background: c.colour_hex }} />
-                        {col && (
-                          <span className="ck-ebc">
-                            ≈ {col.ebc} EBC
-                            <span className="ck-srm"> · {col.srm} SRM</span>
-                          </span>
-                        )}
+                        <span className="ck-swatch" style={{ background: c.colour_hex || col.swatch }} />
+                        <span className="ck-ebc">
+                          {col.measured ? '' : '≈ '}{col.ebc} EBC
+                          <span className="ck-srm"> · {col.srm} SRM</span>
+                        </span>
                       </span>
                     )
                   })()}
                 </dd>
               </div>
               <div className="ck-ebcnote">
-                {t('Colour is estimated from the swatch, not measured. Huntly’s figures replace it when the cask is confirmed.',
-                   'Màu được ước tính từ mẫu hiển thị, chưa đo bằng máy. Số liệu từ Huntly sẽ thay thế khi thùng được xác nhận.')}
+                {caskColourOf(c)?.measured
+                  ? t(`Measured by Huntly${c.colour_source ? ` · ${c.colour_source}` : ''}.`,
+                      `Do bởi Huntly${c.colour_source ? ` · ${c.colour_source}` : ''}.`)
+                  : t('Colour is estimated from the swatch, not measured. Huntly’s figures replace it when the cask is confirmed.',
+                      'Màu được ước tính từ mẫu hiển thị, chưa đo bằng máy. Số liệu từ Huntly sẽ thay thế khi thùng được xác nhận.')}
               </div>
             </dl>
           </div>

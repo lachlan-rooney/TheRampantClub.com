@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { MONO, GOLD } from '@/components/public/kit'
-import { caskColour, SRM_LADDER, EBC_IS_ESTIMATED } from '@/lib/tet/colour'
+import { caskColourOf, SRM_LADDER } from '@/lib/tet/colour'
 import type { CaskBoardRow } from '@/lib/tet/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -27,8 +27,8 @@ export default function TetColourLadder({ casks, t, onPick, region }: {
 }) {
   const [hover, setHover] = useState<string | null>(null)
   const placed = casks
-    .map(c => ({ c, col: caskColour(c.colour_hex) }))
-    .filter((p): p is { c: CaskBoardRow; col: NonNullable<ReturnType<typeof caskColour>> } => !!p.col)
+    .map(c => ({ c, col: caskColourOf(c) }))
+    .filter((p): p is { c: CaskBoardRow; col: NonNullable<ReturnType<typeof caskColourOf>> } => !!p.col)
     .sort((a, b) => a.col.srm - b.col.srm)
   if (!placed.length) return null
 
@@ -47,9 +47,14 @@ export default function TetColourLadder({ casks, t, onPick, region }: {
       <div className="cl-head">
         <span className="pk-eyebrow">{t('Colour, pale to dark', 'Màu, từ nhạt đến đậm')}</span>
         <span className="cl-note">
-          {EBC_IS_ESTIMATED
-            ? t('SRM scale · estimated from each cask’s swatch', 'Thang SRM · ước tính từ mẫu màu của từng thùng')
-            : t('SRM scale · measured at Huntly', 'Thang SRM · đo tại Huntly')}
+          {/* Says which it is, counted rather than assumed: the selection can
+              hold measured casks and estimated ones at the same time. */}
+          {placed.every(p => p.col.measured)
+            ? t('SRM scale · measured at Huntly', 'Thang SRM · đo tại Huntly')
+            : placed.some(p => p.col.measured)
+              ? t(`SRM scale · ${placed.filter(p => p.col.measured).length} of ${placed.length} measured at Huntly, the rest estimated`,
+                  `Thang SRM · ${placed.filter(p => p.col.measured).length}/${placed.length} thùng đo tại Huntly, còn lại ước tính`)
+              : t('SRM scale · estimated from each cask’s swatch', 'Thang SRM · ước tính từ mẫu màu của từng thùng')}
         </span>
       </div>
       <div className="cl-track">
@@ -58,7 +63,7 @@ export default function TetColourLadder({ casks, t, onPick, region }: {
           return (
             <button key={c.cask_ref} type="button"
                     className={`cl-mark${dim ? ' is-dim' : ''}${hover === c.cask_ref ? ' is-hot' : ''}${c.status !== 'available' ? ' is-gone' : ''}`}
-                    style={{ left: `${at(col.srm)}%`, bottom: 30 + stack * 20, ['--i' as string]: i, ['--c' as string]: c.colour_hex ?? GOLD }}
+                    style={{ left: `${at(col.srm)}%`, bottom: 30 + stack * 20, ['--i' as string]: i, ['--c' as string]: c.colour_hex || col.swatch }}
                     aria-label={`${c.cask_ref} · ≈ ${col.ebc} EBC · ${col.srm} SRM`}
                     onPointerEnter={() => setHover(c.cask_ref)} onPointerLeave={() => setHover(null)}
                     onFocus={() => setHover(c.cask_ref)} onBlur={() => setHover(null)}
@@ -77,7 +82,7 @@ export default function TetColourLadder({ casks, t, onPick, region }: {
           <div className="cl-tip" style={{ left: `${at(hov.col.srm)}%`, bottom: 58 + hov.stack * 20,
                                            ['--tx' as string]: at(hov.col.srm) > 75 ? '-90%' : at(hov.col.srm) < 25 ? '-10%' : '-50%' }}>
             <b>{hov.c.cask_ref}</b> · {hov.c.distillery}<br />
-            ≈ {hov.col.ebc} EBC · {hov.col.srm} SRM · {hov.c.wood ?? hov.c.cask_type}
+            {hov.col.measured ? '' : '≈ '}{hov.col.ebc} EBC · {hov.col.srm} SRM · {hov.c.wood ?? hov.c.cask_type}
           </div>
         )}
       </div>

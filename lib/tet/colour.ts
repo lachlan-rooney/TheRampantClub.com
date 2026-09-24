@@ -23,8 +23,32 @@
 // Nearest-swatch at least cannot claim more precision than the ladder has.
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** True while the number comes from the swatch rather than from a lab. */
+/** True while a cask's number comes from the swatch rather than from a lab.
+ *  Per-cask now: a cask with colour_srm has been MEASURED (Duncan Taylor's
+ *  assessment reads it off a spectrometer — the owner, 2026-09-24: "it is the
+ *  beer scale, spectrometer"), and those show their number plainly. The rest
+ *  still wear a "≈". */
 export const EBC_IS_ESTIMATED = true
+
+/** The ladder's own hex for a rung, for drawing a measured cask. */
+export function srmSwatch(srm: number): string {
+  const n = Math.min(40, Math.max(1, Math.round(srm)))
+  return SRM_SWATCH[n]
+}
+
+/** A cask's colour, preferring what was measured over what we inferred.
+ *  `measured` is true when the figure came off a spectrometer, which is what
+ *  lets a surface drop the "≈" honestly. */
+export function caskColourOf(
+  c: { colour_srm?: number | null; colour_hex?: string | null },
+): (CaskColour & { measured: boolean }) | null {
+  if (c.colour_srm != null && Number.isFinite(Number(c.colour_srm))) {
+    const srm = Math.min(40, Math.max(1, Math.round(Number(c.colour_srm))))
+    return { srm, ebc: Math.round(srm * 1.97), swatch: SRM_SWATCH[srm], measured: true }
+  }
+  const est = caskColour(c.colour_hex)
+  return est ? { ...est, measured: false } : null
+}
 
 /** The published SRM ladder, 1–40, as the reference charts print it. The index
  *  is the SRM value, so SRM_SWATCH[17] is SRM 17. */

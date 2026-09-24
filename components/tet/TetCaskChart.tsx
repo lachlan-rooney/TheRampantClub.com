@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { MONO, GOLD } from '@/components/public/kit'
+import { caskColourOf } from '@/lib/tet/colour'
 import type { CaskBoardRow } from '@/lib/tet/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -92,14 +93,15 @@ export default function TetCaskChart({ casks, t, onPick, region, onRegion }: {
           {byAge.map((c, i) => {
             const gone = c.status !== 'available'
             const dim = region !== null && c.region !== region
-            const fill = c.colour_hex || GOLD
+            // A measured cask draws itself in the colour that number means.
+            const fill = c.colour_hex || caskColourOf(c)?.swatch || GOLD
             return (
               <g key={c.cask_ref}
                  className={`cc-dot${dim ? ' is-dim' : ''}${hover === c.cask_ref ? ' is-hot' : ''}`}
                  style={{ ['--i' as string]: i }}
                  transform={`translate(${x(c.age_years)} ${y(c.cask_abv_pct)})`}
                  tabIndex={dim ? -1 : 0} role="button"
-                 aria-label={`${c.cask_ref} · ${c.distillery} · ${c.age_years} · ${c.cask_abv_pct}%${gone ? ' · ' + t('sold', 'đã bán') : ''}`}
+                 aria-label={`${c.cask_ref} · ${c.distillery} · ${Math.floor(c.age_years)} · ${c.cask_abv_pct}%${gone ? ' · ' + t('sold', 'đã bán') : ''}`}
                  onPointerEnter={() => setHover(c.cask_ref)} onPointerLeave={() => setHover(null)}
                  onFocus={() => setHover(c.cask_ref)} onBlur={() => setHover(null)}
                  onClick={() => onPick(c.cask_ref)}
@@ -121,7 +123,7 @@ export default function TetCaskChart({ casks, t, onPick, region, onRegion }: {
           }}>
             <div className="cc-tip-ref">{hov.cask_ref}{hov.status !== 'available' && <span> · {t('sold', 'đã bán')}</span>}</div>
             <div className="cc-tip-name">{hov.distillery}</div>
-            <div className="cc-tip-meta">{hov.region} · {hov.age_years}{t('yo', ' năm')} · {hov.cask_abv_pct}%</div>
+            <div className="cc-tip-meta">{hov.region} · {Math.floor(hov.age_years)}{t('yo', ' năm')} · {hov.cask_abv_pct}%</div>
             {hov.wood && <div className="cc-tip-meta">{hov.wood}</div>}
           </div>
         )}
