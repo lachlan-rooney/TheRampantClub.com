@@ -22,8 +22,15 @@ import type { CaskBoardRow } from '@/lib/tet/types'
 // move and the facts still hold. A wood the selection no longer has loses its
 // count line rather than claiming one.
 //
+// The facts follow the SELECTION. They began as Oloroso, refill, first-fill
+// bourbon, the octave and PX — and when the real casks arrived in September
+// 2026 not one of them was a refill or a bourbon cask, so two tips counted
+// nothing. They are Palo Cortado and Madeira now, which the list does have.
+// If the woods change again, change these: a tip that matches no cask is a
+// fact about somebody else's whisky.
+//
 // The bottles are matched to the facts by what they look like: the darkest
-// sample is the PX, the pale ones the refill and the octave. The rings sit on
+// sample is the PX, the palest the Madeira. The rings sit on
 // the caps, not the numbered labels, so the numbers stay visible.
 //
 // Hover, focus or tap. On a phone the photograph is too small to hold a card
@@ -52,21 +59,21 @@ const FACTS: Fact[] = [
   },
   {
     x: 31.2, y: 40.1,
-    title: ['Refill', 'Thùng tái sử dụng'],
+    title: ['Palo Cortado', 'Palo Cortado'],
     body: [
-      'A refill cask has already matured one whisky. It gives less of the wood and lets more of the distillery come through.',
-      'Thùng tái sử dụng đã từng ủ một mẻ whisky. Gỗ tác động ít hơn, để đặc tính của nhà chưng cất thể hiện rõ hơn.',
+      'The rarest sherry: it starts under flor like a fino, loses that veil, and finishes in the open air. Nutty like an amontillado, bodied like an oloroso.',
+      'Loại sherry hiếm nhất: khởi đầu dưới lớp men flor như fino, rồi mất lớp men ấy và hoàn thiện trong không khí. Vị hạt như amontillado, thân rượu dày như oloroso.',
     ],
-    match: c => /refill/i.test(c.wood ?? ''),
+    match: c => /palo cortado/i.test(c.wood ?? ''),
   },
   {
     x: 48, y: 38.9,
-    title: ['First-fill bourbon', 'Thùng bourbon lần đầu'],
+    title: ['Madeira', 'Madeira'],
     body: [
-      'Bourbon must be aged in new charred oak, so each barrel holds bourbon only once — then it crosses the Atlantic. Its first Scotch picks up the vanilla and coconut of American oak.',
-      'Bourbon bắt buộc phải ủ trong thùng sồi mới được đốt cháy, nên mỗi thùng chỉ chứa bourbon một lần — rồi vượt Đại Tây Dương. Mẻ Scotch đầu tiên nhận hương vani và dừa của gỗ sồi Mỹ.',
+      'Madeira is wine that has been heated and deliberately left to the air — the one wine improved by both. The cask hands on baked stone fruit, brown sugar and a tang that cuts the sweetness.',
+      'Madeira là loại rượu vang được gia nhiệt và cố ý để tiếp xúc không khí — loại rượu duy nhất tốt lên nhờ cả hai. Thùng để lại hương trái cây nướng, đường nâu và vị chua nhẹ cân bằng độ ngọt.',
     ],
-    match: c => /bourbon/i.test(c.wood ?? ''),
+    match: c => /madeira/i.test(c.wood ?? ''),
   },
   {
     x: 65.1, y: 39.3,

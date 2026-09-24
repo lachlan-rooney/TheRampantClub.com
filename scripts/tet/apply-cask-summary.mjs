@@ -53,7 +53,11 @@ const colourNumber = (w) => {
   return i > 0 ? i : num(w)
 }
 const title = (s) => (s ?? '').toLowerCase().replace(/\b[a-zà-ỹ]/g, c => c.toUpperCase())
-  .replace(/\bPx\b/i, 'PX')
+
+// Duncan Taylor's sheet writes "PX" and "Pedro Ximinez"; the sherry is Pedro
+// Ximénez. A member reads this line, so it is spelled the way the sherry is.
+const SEASONING = { 'Px': 'Pedro Ximénez', 'Pedro Ximinez': 'Pedro Ximénez', 'Palo Cortado': 'Palo Cortado' }
+const seasoningName = (s) => SEASONING[title(s)] ?? title(s)
 
 const caskNo = (after('Cask No / Passport No') || '').split('/')[0].trim() || after('Cask No')
 const passport = (after('Cask No / Passport No') || '').split('/')[1]?.trim() || after('Passport No')
@@ -75,7 +79,7 @@ if (!caskNo) { console.error('No cask number in that text.'); process.exit(1) }
 // wood: the seasoning, the physical cask where the tag names one, and the
 // time it spent in octave — each only if the summary gave it.
 const size = /\((\d+L)\)/i.exec(tags || '')?.[1]
-const woodBits = [title(seasoning)]
+const woodBits = [seasoningName(seasoning)]
 if (size && /BLOOD TUB/i.test(tags)) woodBits.push(`blood tub ${size}`)
 else if (size) woodBits.push(size)
 if (months) woodBits.push(`${months} months`)
@@ -87,12 +91,22 @@ if (caskNo && passport) patch.cask_number = `${caskNo} / ${passport}`
 if (seasoning) patch.wood = woodBits.filter(Boolean).join(' · ')
 if (ays) patch.vintage_year = Number(String(ays).slice(-4))
 if (age) patch.age_years = Math.round(age * 10) / 10
-if (caskType) patch.cask_type = title(caskType)
+// THE SELECTION IS OCTAVES. Some summaries say OCTAVE and some say BLOOD TUB,
+// which is a smaller cask run through the same octave programme — the owner,
+// 2026-09-24: "what if it's blood tub, it's a small octave". Writing the
+// summary's word straight into cask_type would file one cask as a blood tub
+// under a heading that says Octave. The physical cask goes in the wood line
+// (where its 40L already is), and the type stays what the selection is.
+patch.cask_type = 'Octave'
+if (caskType && !/octave/i.test(caskType) && !woodBits.some(b => /blood tub/i.test(b ?? ''))) {
+  woodBits.splice(1, 0, title(caskType))
+  patch.wood = woodBits.filter(Boolean).join(' · ')
+}
 const srm = colourNumber(current)
 if (srm) {
   patch.colour_srm = srm
   patch.colour_source = `Duncan Taylor assessment${assessed ? ' ' + assessed.split(' ')[0] : ''}`
-    + ` · current colour ${String(current).toUpperCase()}${entry ? ` (entry ${String(entry).toUpperCase()})` : ''}`
+    + ` · current colour ${String(current).toUpperCase()}${entry && !/^NA$/i.test(entry) ? ` (entry ${String(entry).toUpperCase()})` : ''}`
 }
 if (post && !/^NA$/i.test(post)) patch.tasting_note_en = post.endsWith('.') ? post : post + '.'
 
