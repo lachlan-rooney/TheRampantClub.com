@@ -154,6 +154,8 @@ export default function TetProgramme({
   const blendCat = categories.find(c => c.kind === 'blend')
   const caskCat = categories.find(c => c.kind === 'cask')
   const provisional = !!countdown?.is_placeholder || casks.some(c => c.is_placeholder)
+  /** Every cask carries Duncan Taylor's own quote. */
+  const quotedPrices = casks.length > 0 && casks.every(c => typeof c.list_price_inc_vat_vnd === 'number')
 
   const openBlend = () => setTarget({ kind: 'blend', title: blendCat ? (vn ? blendCat.name_vn : blendCat.name_en) : 'Duncan Taylor' })
 
@@ -439,10 +441,17 @@ export default function TetProgramme({
       </section>
 
       <footer className="pk-wrap" style={{ paddingTop: 80, paddingBottom: 110 }}>
+        {/* THE NOTICE HAS TO MATCH THE PAGE. It used to say "no price is shown
+            until it is" — true while the club was calculating prices from a
+            placeholder model, and a plain contradiction the moment every row
+            began printing Duncan Taylor's own list price. */}
         {provisional && (
           <p className="pk-meta" style={{ color: AMBER, maxWidth: 620, lineHeight: 1.9 }}>
-            {t('The cask list and prices are being confirmed with Huntly. Nothing here is final, and no price is shown until it is.',
-               'Danh sách thùng và bảng giá đang được xác nhận với Huntly. Mọi thông tin chưa phải cuối cùng; giá chưa hiển thị.')}
+            {quotedPrices
+              ? t('Prices are Duncan Taylor Vietnam’s list price, per bottle, including VAT. The cask list itself is still being confirmed with Huntly — a cask can come off it.',
+                  'Giá là giá niêm yết của Duncan Taylor Việt Nam, mỗi chai, đã gồm VAT. Danh sách thùng vẫn đang được xác nhận với Huntly — một thùng có thể bị rút khỏi danh sách.')
+              : t('The cask list and prices are being confirmed with Huntly. Nothing here is final, and no price is shown until it is.',
+                  'Danh sách thùng và bảng giá đang được xác nhận với Huntly. Mọi thông tin chưa phải cuối cùng; giá chưa hiển thị.')}
           </p>
         )}
         <p className="pk-meta" style={{ marginTop: 14, maxWidth: 620, lineHeight: 1.9 }}>
