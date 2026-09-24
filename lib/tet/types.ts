@@ -70,6 +70,12 @@ export interface CaskBoardRow {
   /** Measured on the beer scale by Huntly. Null = no measurement. */
   colour_srm?: number | null
   colour_source?: string | null
+  /** Duncan Taylor Vietnam's own quote per bottle. Where these are set the
+   *  page prints THEM rather than a price built from a margin — the owner's
+   *  decision, 2026-09-24. The club's cost is never in this type. */
+  list_price_vnd?: number | null
+  list_price_inc_vat_vnd?: number | null
+  price_source?: string | null
   image_path: string | null
   display_order: number
   is_placeholder: boolean

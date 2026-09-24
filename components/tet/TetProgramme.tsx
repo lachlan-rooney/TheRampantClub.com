@@ -375,6 +375,13 @@ export default function TetProgramme({
             on alcohol, so bottling a strong young cask at 50% multiplies the
             bottles without multiplying the tax — and on a weak old cask it
             does almost nothing. The page shows both, honestly. */}
+        {/* THE TOGGLE GOES QUIET WHEN THE PRICES ARE QUOTED. It exists to show
+            what a lower bottling strength does to the bottle count and the
+            price — an argument the club can only make when the club is doing
+            the arithmetic. Where Duncan Taylor have quoted a list price at
+            their own bottling, pressing 45% would change nothing, and a
+            control that does nothing is worse than no control. */}
+        {!casks.every(c => typeof c.list_price_inc_vat_vnd === 'number') && (
         <Reveal step={4} style={{ display: 'flex', gap: 22, alignItems: 'baseline', marginTop: 48, flexWrap: 'wrap' }}>
           <span className="pk-eyebrow">{t('Bottled at', 'Đóng chai ở')}</span>
           {offered.map(s => (
@@ -383,6 +390,7 @@ export default function TetProgramme({
             </button>
           ))}
         </Reveal>
+        )}
 
         {/* The list arrives in order, capped at eight steps — fourteen rows
             each waiting on the one above is a queue, not a reveal. */}
@@ -546,8 +554,19 @@ function CaskRow({ c, strength, vn, t, provisional, onChoose, open, onToggle, ma
     const v = k ? c[k] : 0
     return typeof v === 'number' ? v : null
   }
-  const bottles = num(spec.bottles)
-  const gain = num(spec.gain) ?? 0
+  // ── DUNCAN TAYLOR'S OWN QUOTE WINS ──────────────────────────────────────
+  // Where a cask carries the list price from DT Vietnam's sheet, the page
+  // prints THAT — the owner's decision, 2026-09-24 — rather than a number
+  // built from our cost and a margin. Two consequences, both deliberate:
+  //   · it is shown even while the cask is provisional, because a quoted
+  //     price is a fact about the cask; the ENGINE's price is not, and stays
+  //     hidden until the model is signed off;
+  //   · the strength toggle cannot move it. DT quote at the bottling in their
+  //     sheet; a different strength is a different quote, and we do not have
+  //     it, so the row shows their bottling and says so.
+  const quoted = typeof c.list_price_inc_vat_vnd === 'number' ? c.list_price_inc_vat_vnd : null
+  const bottles = quoted ? num('bottles_cask_strength') : num(spec.bottles)
+  const gain = quoted ? 0 : (num(spec.gain) ?? 0)
 
   // A cask at or below the chosen strength has no bottling AT that strength:
   // the board returns its own figures rather than inventing one, and the row
@@ -577,7 +596,14 @@ function CaskRow({ c, strength, vn, t, provisional, onChoose, open, onToggle, ma
               {gain > 0 && <span style={{ color: SAGE }}> · +{gain}</span>}
             </>
           )}
-          {!provisional && (
+          {quoted ? (
+            <span style={{ display: 'block', marginTop: 4, color: CREAM }}>
+              {vnd(quoted)}
+              <span style={{ display: 'block', fontSize: 10.5, opacity: .5, letterSpacing: '.04em' }}>
+                {t('a bottle · Duncan Taylor list', 'mỗi chai · giá niêm yết Duncan Taylor')}
+              </span>
+            </span>
+          ) : !provisional && (
             <span style={{ display: 'block', marginTop: 4, color: CREAM }}>{vnd(num(spec.unit))}</span>
           )}
         </span>
@@ -596,7 +622,7 @@ function CaskRow({ c, strength, vn, t, provisional, onChoose, open, onToggle, ma
           green is what the chosen strength adds. Same figures as the words
           above, drawn to one scale across the list, so pressing 45% makes
           every bar grow at once — the argument of the toggle, visible. */}
-      {!noSuchStrength && bottles != null && maxBottles > 0 && (
+      {!quoted && !noSuchStrength && bottles != null && maxBottles > 0 && (
         <div className="ck-bar" aria-hidden>
           <span className="ck-bar-base" style={{ width: `${(Math.min(bottles - gain, bottles) / maxBottles) * 100}%` }} />
           <span className="ck-bar-gain" style={{ width: `${(gain / maxBottles) * 100}%` }} />
