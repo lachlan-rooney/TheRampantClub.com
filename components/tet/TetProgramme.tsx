@@ -157,6 +157,12 @@ export default function TetProgramme({
   /** Every cask carries Duncan Taylor's own quote. */
   const quotedPrices = casks.length > 0 && casks.every(c => typeof c.list_price_inc_vat_vnd === 'number')
 
+  const openCaskDiscount = () => setTarget({
+    kind: 'cask',
+    title: t('A member price for a cask', 'Giá thùng dành cho hội viên'),
+    target_abv: null,
+  })
+
   const openBlend = () => setTarget({ kind: 'blend', title: blendCat ? (vn ? blendCat.name_vn : blendCat.name_en) : 'Duncan Taylor' })
 
   return (
@@ -359,6 +365,26 @@ export default function TetProgramme({
               </p>
             </div>
           </div>
+        </Reveal>
+
+        {/* THE MEMBERS' PRICE (owner, 2026-09-24: "Get in touch for a member
+            cask price discount ... somewhere clear and big"). The prices on
+            this page are Duncan Taylor's list; what a member pays is a
+            conversation, and this is the invitation to have it. It is a
+            BUTTON, not a line of type: the enquiry it opens is the whole
+            point, and a member should not have to hunt for the way in. */}
+        <Reveal step={2}>
+          <button className="ck-member" onClick={openCaskDiscount}>
+            <span className="ck-member-eyebrow">{t('Members', 'Hội viên')}</span>
+            <span className="ck-member-line">
+              {t('Get in touch for a member cask price', 'Liên hệ để nhận giá thùng dành cho hội viên')}
+            </span>
+            <span className="ck-member-sub">
+              {t('The prices below are Duncan Taylor’s list. Members do not pay them.',
+                 'Giá bên dưới là giá niêm yết của Duncan Taylor. Hội viên không trả mức giá đó.')}
+              <span className="ck-member-go"> {t('Ask about a cask', 'Hỏi về một thùng')} →</span>
+            </span>
+          </button>
         </Reveal>
 
         {/* Where, then what: the map picks a region, and the chart and the
@@ -748,6 +774,21 @@ const CASK_CSS = `
 .ck-bar-base { background: rgba(229,212,194,.45); }
 .ck-bar-gain { background: ${SAGE}; }
 @media (prefers-reduced-motion: reduce) { .ck-bar span { transition: none; } }
+.ck-member { display: block; width: 100%; text-align: left; cursor: pointer;
+             background: rgba(212,184,90,.1); border: 1px solid rgba(212,184,90,.55);
+             border-radius: 3px; padding: clamp(20px, 3vw, 32px) clamp(20px, 3vw, 34px);
+             margin-top: 44px; color: inherit; font: inherit;
+             transition: background .25s ease, border-color .25s ease, transform .25s ease; }
+.ck-member:hover { background: rgba(212,184,90,.16); border-color: ${GOLD}; transform: translateY(-2px); }
+.ck-member-eyebrow { display: block; font-family: ${MONO}; font-size: 11px; letter-spacing: .2em;
+                     text-transform: uppercase; color: ${GOLD}; }
+.ck-member-line { display: block; font-family: 'Rampant Sans', Georgia, serif;
+                  font-size: clamp(26px, 4.4vw, 46px); line-height: 1.08; color: #F2E6D8; margin-top: 10px; }
+.ck-member-sub { display: block; font-family: ${MONO}; font-size: 13px; line-height: 1.8;
+                 color: rgba(229,212,194,.65); margin-top: 12px; max-width: 62ch; }
+.ck-member-go { color: ${GOLD}; white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .ck-member { transition: none; } }
+
 .ck-offer { display: grid; grid-template-columns: 64px 1fr; gap: 24px; align-items: center;
             margin-top: 44px; padding: 26px 0; border-top: 1px solid rgba(212,184,90,.45);
             border-bottom: 1px solid rgba(212,184,90,.45); }
