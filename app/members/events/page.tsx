@@ -10,6 +10,7 @@ import { useLang, pick, type Lang } from '@/lib/lang'
 import { surfaceName } from '@/lib/members/surfaces'
 import MemberPage from '@/components/MemberPage'
 import { CreamInk } from '@/components/public/CreamInk'
+import HauntFlash from '@/components/members/HauntFlash'
 
 // "What's On" — ONE surface for everything happening at the club. Sports
 // fixtures (from `fixtures`, with RSVP) and house happenings (from
@@ -203,6 +204,17 @@ export default function WhatsOnPage() {
     return () => { cancelled = true }
   }, [supabase])
 
+  // ── ONE FIXTURE GETS A DIFFERENT ANSWER ─────────────────────────────────
+  // Owner, 2026-09-24: signing up for the Halloween party should flash the
+  // page black and red and melt away. Matched on the NAME first and the DATE
+  // second, so next year's party is haunted whatever it ends up called, and
+  // so a fixture actually called "Halloween Haunting!" works even if it is
+  // moved to the 30th. f.date is a timestamptz; read it in Vietnam, or a
+  // party at 7pm on the 31st is the 1st of November in UTC and not spooky.
+  const isHaunted = (f: Fixture) =>
+    /hallowe|ma quỷ|h[aà]lloween/i.test(f.title) || vnDateString(new Date(f.date)).slice(5) === '-10-31'
+  const [haunt, setHaunt] = useState(0)
+
   const isSignedUp = (id: string) => signups.some(s => s.fixture_id === id && s.user_id === userId)
   const deadlinePassed = (f: Fixture) => f.signup_deadline ? new Date(f.signup_deadline).getTime() < nowTs : false
   const REFUSAL: Record<string, string> = {
@@ -225,6 +237,12 @@ export default function WhatsOnPage() {
       : supabase.from('fixture_signups').delete().eq('fixture_id', fixtureId).eq('user_id', userId)
     const { data: reason, error } = await op
     if (error) { setErrorMsg(error.message || t('Could not update signup.', 'Không thể cập nhật đăng ký.')); setBusyId(null); return }
+    // Only on the way IN, and only when the database said yes: a refusal or a
+    // withdrawal is not something to celebrate with a light show.
+    if (signingUp && !reason) {
+      const f = fixtures.find(x => x.id === fixtureId)
+      if (f && isHaunted(f)) setHaunt(n => n + 1)
+    }
     if (signingUp && reason) {
       setErrorMsg(REFUSAL[reason as string] || t('Could not sign you up.', 'Không thể đăng ký cho bạn.'))
       // Still refresh: 'full' means somebody else took the seat, and the count on
@@ -498,6 +516,9 @@ export default function WhatsOnPage() {
             )}
           </>
         )}
+      {/* Keyed on the count, so a second sign-up starts the haunting over
+          rather than being swallowed by the one still running. */}
+      {haunt > 0 && <HauntFlash key={haunt} onDone={() => setHaunt(0)} />}
     </MemberPage>
   )
 }
