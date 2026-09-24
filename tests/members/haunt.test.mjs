@@ -124,6 +124,30 @@ try {
   t(later.length === 0 || later.some((v, i) => v > (fallen[i] ?? 0)), 'and keep going', JSON.stringify(later.slice(0, 6)))
   t(new Set(fallen).size > 1, 'each on its own beat, so it drips rather than wipes', `${new Set(fallen).size} distinct offsets`)
 
+  // ── IT IS BLOOD, NOT A CURTAIN ──────────────────────────────────────────
+  // Owner, 2026-09-24: "can the blood dripping be more blood/teardroppy?"
+  // Two things carry that: the run still CLINGING to each column, and the
+  // drops that have LET GO and are running on down the page by themselves.
+  const strand = await p.$eval('.hw-sheet span', e => {
+    const s = getComputedStyle(e, '::before')
+    return { h: parseFloat(s.height), mask: s.maskImage || s.webkitMaskImage, radius: s.borderTopLeftRadius }
+  }).catch(() => null)
+  t(!!strand && strand.h > 10, 'a run still clings to the edge of each column', JSON.stringify(strand?.h))
+  t(/gradient/.test(strand?.mask || ''), 'and fades out at its head, like a smear', (strand?.mask || '').slice(0, 40))
+
+  const drips = await p.$$eval('.hw-drips i', els => els.map(e => {
+    const s = getComputedStyle(e)
+    return { y: Math.round(new DOMMatrixReadOnly(s.transform).f), mask: (s.maskImage || s.webkitMaskImage || '').slice(0, 20), filter: s.backdropFilter.slice(0, 20), h: parseFloat(s.height) }
+  })).catch(() => [])
+  t(drips.length > 8, 'loose drops as well as the sheet', String(drips.length))
+  t(drips.every(d => /gradient/.test(d.mask)), 'each one trailing its own smear')
+  t(drips.every(d => /grayscale|sepia/.test(d.filter)), 'and filtering the page behind it, so it is the same blood')
+  t(drips.some(d => d.h > 30), 'they are runs, not beads', `tallest ${Math.max(...drips.map(d => d.h))}px`)
+  await p.waitForTimeout(500)
+  const later2 = await p.$$eval('.hw-drips i', els => els.map(e => Math.round(new DOMMatrixReadOnly(getComputedStyle(e).transform).f))).catch(() => [])
+  t(later2.some((v, i) => v > (drips[i]?.y ?? 0)), 'still running after the sheet has gone past',
+    `${drips[0]?.y} → ${later2[0]}`)
+
   // ── AND THEN IT IS GONE ─────────────────────────────────────────────────
   await p.waitForSelector('.hw', { state: 'detached', timeout: 6000 })
   t(await p.locator('.hw').count() === 0, 'it takes itself off the page when it is done')
