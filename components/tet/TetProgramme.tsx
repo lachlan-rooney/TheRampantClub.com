@@ -153,7 +153,23 @@ export default function TetProgramme({
 
   const blendCat = categories.find(c => c.kind === 'blend')
   const caskCat = categories.find(c => c.kind === 'cask')
-  const provisional = !!countdown?.is_placeholder || casks.some(c => c.is_placeholder)
+  // ── ONE FLAG WAS DOING THREE JOBS ───────────────────────────────────────
+  // It used to be `countdown.is_placeholder || any cask placeholder`, which
+  // meant the cask prices, the blend prices and the DELIVERY DATES all stood
+  // or fell together. They are three different facts and they became true at
+  // three different times:
+  //   · casks — Duncan Taylor's own sheet, final (owner, 2026-09-24);
+  //   · blends — still quoted from placeholder pricing inputs (FX, duty, VAT,
+  //     freight, bottling all read placeholder in tet_placeholder_audit), so
+  //     the tier calculator must keep its mouth shut;
+  //   · dates — tet_programme.is_placeholder: the cut-offs are counted back
+  //     from a bottling slot Huntly have not committed and an assumed transit.
+  // Joined together, confirming the prices would have switched on a blend
+  // price built from a placeholder FX rate. Kept apart, each surface waits for
+  // its own fact.
+  const datesProvisional = !!countdown?.is_placeholder
+  const caskProvisional = casks.some(c => c.is_placeholder)
+  const blendProvisional = blends.some(b => b.is_placeholder)
   /** Every cask carries Duncan Taylor's own quote. */
   const quotedPrices = casks.length > 0 && casks.every(c => typeof c.list_price_inc_vat_vnd === 'number')
 
@@ -267,7 +283,7 @@ export default function TetProgramme({
 
         {tiers.length > 0 && (
           <div style={{ marginTop: 52 }}>
-            <TetTiers tiers={tiers} provisional={provisional} />
+            <TetTiers tiers={tiers} provisional={blendProvisional} />
             <p className="pk-meta" style={{ marginTop: 22, maxWidth: 560, lineHeight: 1.9 }}>
               {t('The tier is set by the total across all three, so a mixed order still climbs. Every sleeve carries your logo.',
                  'Mức chiết khấu tính trên tổng số chai của cả ba dòng, nên đơn hàng pha trộn vẫn được nâng mức. Mỗi hộp đều in logo của quý vị.')}
@@ -403,13 +419,12 @@ export default function TetProgramme({
             on alcohol, so bottling a strong young cask at 50% multiplies the
             bottles without multiplying the tax — and on a weak old cask it
             does almost nothing. The page shows both, honestly. */}
-        {/* THE TOGGLE GOES QUIET WHEN THE PRICES ARE QUOTED. It exists to show
-            what a lower bottling strength does to the bottle count and the
-            price — an argument the club can only make when the club is doing
-            the arithmetic. Where Duncan Taylor have quoted a list price at
-            their own bottling, pressing 45% would change nothing, and a
-            control that does nothing is worse than no control. */}
-        {!casks.every(c => typeof c.list_price_inc_vat_vnd === 'number') && (
+        {/* IT WAS HIDDEN ONCE THE PRICES WERE QUOTED, on the reasoning that a
+            control which changes nothing is worse than no control. The
+            reasoning was right and the premise was wrong: the cask is one
+            price, so a lower bottling strength still fills more bottles and
+            still drops the price of each — which is the whole argument. The
+            owner asked for it back within the hour. */}
         <Reveal step={4} style={{ display: 'flex', gap: 22, alignItems: 'baseline', marginTop: 48, flexWrap: 'wrap' }}>
           <span className="pk-eyebrow">{t('Bottled at', 'Đóng chai ở')}</span>
           {offered.map(s => (
@@ -418,14 +433,13 @@ export default function TetProgramme({
             </button>
           ))}
         </Reveal>
-        )}
 
         {/* The list arrives in order, capped at eight steps — fourteen rows
             each waiting on the one above is a queue, not a reveal. */}
         <div style={{ marginTop: 24 }}>
           {casks.map((c, i) => (
             <Reveal key={c.cask_ref} variant="slide" step={Math.min(i, 8)}>
-            <CaskRow c={c} strength={strength} vn={vn} t={t} provisional={provisional} maxBottles={maxBottles}
+            <CaskRow c={c} strength={strength} vn={vn} t={t} provisional={caskProvisional} maxBottles={maxBottles}
                      compass={compassByCask[c.cask_ref] && compassCats.length >= 3 ? { cats: compassCats, values: compassByCask[c.cask_ref] } : null}
                      open={openCask === c.cask_ref}
                      onToggle={() => setOpenCask(o => o === c.cask_ref ? null : c.cask_ref)}
@@ -471,13 +485,42 @@ export default function TetProgramme({
             until it is" — true while the club was calculating prices from a
             placeholder model, and a plain contradiction the moment every row
             began printing Duncan Taylor's own list price. */}
-        {provisional && (
+        {quotedPrices && (
+          <p className="pk-meta" style={{ maxWidth: 620, lineHeight: 1.9 }}>
+            {t('Cask prices are Duncan Taylor Vietnam’s list price, per bottle, including VAT.',
+               'Giá thùng là giá niêm yết của Duncan Taylor Việt Nam, mỗi chai, đã gồm VAT.')}
+          </p>
+        )}
+        {/* WHAT THE DIVISION ASSUMES. Duncan Taylor's ex-works figure is a
+            BOTTLED case price at their own outturn, so the cask price carries
+            the bottling of those bottles and no more. Filling at a lower
+            strength draws more bottles out of the same whisky, and the glass,
+            closures and labour for the extra ones are not in the number above.
+            The page says so rather than letting a falling per-bottle figure
+            imply a quote nobody has given. */}
+        {quotedPrices && strength !== 'cask' && (
+          <p className="pk-meta" style={{ color: AMBER, maxWidth: 620, lineHeight: 1.9 }}>
+            {t(`The cask price is fixed; at ${strength}% it simply fills more bottles, so each one costs less. Bottling the extra bottles is not quoted in it.`,
+               `Giá cả thùng là cố định; ở ${strength}% thùng cho ra nhiều chai hơn nên mỗi chai rẻ hơn. Chi phí đóng chai cho số chai tăng thêm chưa nằm trong giá này.`)}
+          </p>
+        )}
+        {caskProvisional && (
           <p className="pk-meta" style={{ color: AMBER, maxWidth: 620, lineHeight: 1.9 }}>
             {quotedPrices
-              ? t('Prices are Duncan Taylor Vietnam’s list price, per bottle, including VAT. The cask list itself is still being confirmed with Huntly — a cask can come off it.',
-                  'Giá là giá niêm yết của Duncan Taylor Việt Nam, mỗi chai, đã gồm VAT. Danh sách thùng vẫn đang được xác nhận với Huntly — một thùng có thể bị rút khỏi danh sách.')
+              ? t('The cask list itself is still being confirmed with Huntly — a cask can come off it.',
+                  'Danh sách thùng vẫn đang được xác nhận với Huntly — một thùng có thể bị rút khỏi danh sách.')
               : t('The cask list and prices are being confirmed with Huntly. Nothing here is final, and no price is shown until it is.',
                   'Danh sách thùng và bảng giá đang được xác nhận với Huntly. Mọi thông tin chưa phải cuối cùng; giá chưa hiển thị.')}
+          </p>
+        )}
+        {/* THE DATES ARE NOT THE PRICES. The cut-offs on this page are counted
+            back from lead times nobody has committed to yet, so a reservation
+            can be taken at a settled price against a date that may move. The
+            page says which of the two is still moving. */}
+        {datesProvisional && (
+          <p className="pk-meta" style={{ color: AMBER, maxWidth: 620, lineHeight: 1.9 }}>
+            {t('The dates are worked back from lead times Huntly and the freight forwarder have not yet confirmed. A cut-off on this page can move.',
+               'Các mốc thời gian được tính ngược từ thời gian sản xuất và vận chuyển mà Huntly và đơn vị vận tải chưa xác nhận. Một mốc trên trang này có thể thay đổi.')}
           </p>
         )}
         <p className="pk-meta" style={{ marginTop: 14, maxWidth: 620, lineHeight: 1.9 }}>
@@ -489,7 +532,7 @@ export default function TetProgramme({
       {target && (
         <TetEnquiry
           target={target}
-          provisional={provisional}
+          provisional={target.kind === 'cask' ? caskProvisional : blendProvisional}
           // The design only travels with a blend enquiry: a sleeve is a blend
           // thing, and attaching it to a cask would promise something the cask
           // offer does not include.
@@ -596,17 +639,25 @@ function CaskRow({ c, strength, vn, t, provisional, onChoose, open, onToggle, ma
   //   · it is shown even while the cask is provisional, because a quoted
   //     price is a fact about the cask; the ENGINE's price is not, and stays
   //     hidden until the model is signed off;
-  //   · the strength toggle cannot move it. DT quote at the bottling in their
-  //     sheet; a different strength is a different quote, and we do not have
-  //     it, so the row shows their bottling and says so.
+  //   · THE CASK IS ONE PRICE, and the strength still moves the bottles. The
+  //     row used to freeze at DT's own outturn the moment a list price
+  //     existed, so the strength toggle did nothing and the extra bottles
+  //     stopped appearing — the owner caught it. What is being bought is the
+  //     cask: DT's list price across DT's outturn, a figure that does not
+  //     change. Filling at a lower strength draws more bottles from the same
+  //     whisky, so the BOTTLE price is that fixed cask spread across the
+  //     bottling chosen, and the row says which strength it is quoting at.
   const quoted = typeof c.list_price_inc_vat_vnd === 'number' ? c.list_price_inc_vat_vnd : null
-  const bottles = quoted ? num('bottles_cask_strength') : num(spec.bottles)
+  // DT's own outturn — the bottling their sheet prices.
+  const dtBottles = num('bottles_cask_strength')
+  const bottles = num(spec.bottles) ?? dtBottles
   // THE WHOLE CASK, which is what is actually being bought (owner,
   // 2026-09-24: "we need the full cask price in there as well as the bottle
-  // price"). Duncan Taylor quote per bottle; the cask is that price across
-  // their own outturn, so the two figures can never drift apart.
-  const caskTotal = quoted && bottles ? quoted * bottles : null
-  const gain = quoted ? 0 : (num(spec.gain) ?? 0)
+  // price"). Fixed: DT's per-bottle list across their own outturn.
+  const caskTotal = quoted && dtBottles ? quoted * dtBottles : null
+  // The same cask, divided by however many bottles this strength fills.
+  const unitAt = caskTotal && bottles ? Math.round(caskTotal / bottles) : null
+  const gain = num(spec.gain) ?? 0
 
   // A cask at or below the chosen strength has no bottling AT that strength:
   // the board returns its own figures rather than inventing one, and the row
@@ -647,9 +698,11 @@ function CaskRow({ c, strength, vn, t, provisional, onChoose, open, onToggle, ma
                 {t('the cask', 'cả thùng')}
               </span>
               <span style={{ display: 'block', marginTop: 6, fontSize: 13, opacity: .8 }}>
-                {vnd(quoted)}
+                {vnd(unitAt ?? quoted)}
                 <span style={{ display: 'block', fontSize: 10.5, opacity: .62, letterSpacing: '.04em' }}>
-                  {t('a bottle · Duncan Taylor list', 'mỗi chai · giá niêm yết Duncan Taylor')}
+                  {strength === 'cask' || noSuchStrength
+                    ? t('a bottle · Duncan Taylor list', 'mỗi chai · giá niêm yết Duncan Taylor')
+                    : t(`a bottle at ${asked}%`, `mỗi chai ở ${asked}%`)}
                 </span>
               </span>
             </span>
@@ -672,7 +725,10 @@ function CaskRow({ c, strength, vn, t, provisional, onChoose, open, onToggle, ma
           green is what the chosen strength adds. Same figures as the words
           above, drawn to one scale across the list, so pressing 45% makes
           every bar grow at once — the argument of the toggle, visible. */}
-      {!quoted && !noSuchStrength && bottles != null && maxBottles > 0 && (
+      {/* They were hidden alongside the toggle when the list prices landed,
+          on the same wrong premise. The bars ARE the toggle's argument; with
+          the cask price fixed they are truer than before. */}
+      {!noSuchStrength && bottles != null && maxBottles > 0 && (
         <div className="ck-bar" aria-hidden>
           <span className="ck-bar-base" style={{ width: `${(Math.min(bottles - gain, bottles) / maxBottles) * 100}%` }} />
           <span className="ck-bar-gain" style={{ width: `${(gain / maxBottles) * 100}%` }} />

@@ -161,26 +161,48 @@ await p.locator('button', { hasText: /^40%$/ }).first().click(); await p.waitFor
 const at40 = await bar0()
 t(atCask[1] === 0 && at40[1] > 0 && at40[0] === atCask[0], 'bars grow green when the strength comes down, on the same cream base', `cask ${atCask} → 40% ${at40}`)
 
-// THE MAP, AND THE REGION IT SHARES
+// THE MAP — ONE PIN PER DISTILLERY (2026-09-24), not one per region.
+// The counts are READ OFF THE PAGE rather than written in: this suite once
+// said "14 casks" in three places and every one of them had to be found by
+// hand when the list changed.
 const mp = p.locator('.cm'); await mp.scrollIntoViewIfNeeded(); await p.waitForTimeout(1800)
 const pins = await p.$$eval('.cm-pin', els => els.map(e => e.getAttribute('aria-label')))
-t(pins.length >= 3 && pins.every(l => /\d+ casks?/.test(l)), 'the map lights each region with its cask count', pins.join(' | '))
-await p.locator('.cm-pin', { has: p.locator('text=Islay') }).first().click(); await p.waitForTimeout(600)
+const rowCount = await p.$$eval('.ck', els => els.length)
+t(pins.length > 4 && pins.every(l => /, .+: \d+ (cask|thùng)/.test(l)),
+  'the map carries a pin per distillery, each with its own cask count', pins.slice(0, 3).join(' | '))
+t(pins.length <= rowCount, 'never more pins than there are casks', `${pins.length} pins, ${rowCount} casks`)
+const pinCasks = pins.reduce((n, l) => n + Number(l.match(/: (\d+)/)[1]), 0)
+t(pinCasks === rowCount, 'and every cask in the list is on one of them', `${pinCasks} of ${rowCount}`)
+// Every pin must be reachable: they used to swallow one another in Speyside.
+const hidden = await p.$$eval('.cm-pin', els => els.filter(g => {
+  const r = g.querySelector('.cm-hit').getBoundingClientRect()
+  return document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.closest('.cm-pin') !== g
+}).map(g => g.getAttribute('aria-label')))
+t(hidden.length === 0, 'no pin is hidden underneath its neighbour', hidden.join(' | '))
+// Choosing the Islay pin filters the chart and the ladder with it.
+const islayPin = p.locator('.cm-pin[aria-label*="Islay"]').first()
+const islayCasks = Number((await islayPin.getAttribute('aria-label')).match(/: (\d+)/)[1])
+await islayPin.click(); await p.waitForTimeout(700)
 const islayChart = await p.$$eval('.cc-dot:not(.is-dim)', els => els.length)
 const islayLadder = await p.$$eval('.cl-mark:not(.is-dim)', els => els.length)
-t(islayChart === 3 && islayLadder === 3 && await p.locator('.cc-filter button.is-on', { hasText: 'Islay' }).count() === 1,
-  'choosing Islay on the map filters the chart and the colour ladder too', `chart ${islayChart}, ladder ${islayLadder}`)
+t(islayChart === islayCasks && islayLadder <= islayCasks && islayLadder > 0
+  && await p.locator('.cc-filter button.is-on', { hasText: 'Islay' }).count() === 1,
+  'choosing the Islay on the map filters the chart and the colour ladder too',
+  `chart ${islayChart}, ladder ${islayLadder}, pin says ${islayCasks}`)
+// The card follows the POINTER first: while a pin is under it the card is
+// that distillery, and it falls back to the region when the pointer leaves.
+await p.mouse.move(5, 5); await p.waitForTimeout(400)
 t(/Hebridean/.test(await p.locator('.cm-card').textContent()), 'and tells you about Islay')
 await p.locator('.cm-clear').click(); await p.waitForTimeout(300)
 
 // THE COLOUR LADDER
 const marks = await p.$$eval('.cl-mark', els => els.length)
-t(marks === 14, 'every cask with a colour sits on the SRM ladder', `${marks} marks`)
+t(marks > 0 && marks <= rowCount, 'every cask with a colour sits on the SRM ladder', `${marks} marks, ${rowCount} casks`)
 const firstLeft = await p.$$eval('.cl-mark', els => els.map(e => parseFloat(e.style.left)))
 t(firstLeft.every((v, i) => i === 0 || v >= firstLeft[i - 1]), 'in order, pale to dark')
 
 // THE COMPASS — no radar until a cask is linked to a confirmed-tagged whisky
-t(await p.locator('.ck-compass').count() === 0, 'no Flavour Compass is shown for an unlinked placeholder cask')
+t(await p.locator('.ck-compass').count() === 0, 'no Flavour Compass is shown for a cask with no confirmed tags')
 
 // THE CASK CHART
 const cc = p.locator('.cc'); await cc.scrollIntoViewIfNeeded(); await p.waitForTimeout(2200)
@@ -191,9 +213,13 @@ const soldRows = await p.$$eval('.ck', els => els.filter(e => +e.style.opacity <
 t(rings === soldRows, 'sold casks are empty rings, the rest filled', `${rings} rings, ${soldRows} sold rows`)
 const d3 = await p.locator('.cc-dot').nth(3).boundingBox(); await p.mouse.move(d3.x + d3.width / 2, d3.y + d3.height / 2); await p.waitForTimeout(300)
 const tip = await p.locator('.cc-tip').textContent().catch(() => '')
-t(/OCT-\d{4}-\d+/.test(tip), 'pointing at a dot names the cask', tip.slice(0, 80))
-const ref = tip.match(/OCT-\d{4}-\d+/)?.[0]
-await p.locator('.cc-dot').nth(3).click(); await p.waitForTimeout(1200)
+// Duncan Taylor's own cask numbers (Q5113 and the like) replaced the seeded
+// OCT-2024-n refs when the real casks landed on 2026-09-24.
+t(/Q\d{4}/.test(tip), 'pointing at a dot names the cask', tip.slice(0, 80))
+const ref = tip.match(/Q\d{4}/)?.[0]
+// force: the dots overlap where two casks share an age and a strength, and
+// the neighbour on top is not what this check is about.
+await p.locator('.cc-dot').nth(3).click({ force: true }); await p.waitForTimeout(1200)
 t(await p.locator(`#cask-${ref}.is-open`).count() === 1 && await p.locator(`#cask-${ref}`).isVisible(), 'choosing a dot opens that cask in the list', ref)
 await cc.scrollIntoViewIfNeeded(); const regBtn = p.locator('.cc-filter button').nth(1); const regName = (await regBtn.textContent()).replace(/\d+/g, '').trim()
 await regBtn.click(); await p.waitForTimeout(500)

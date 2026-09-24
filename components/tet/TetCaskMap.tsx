@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { MONO, GOLD } from '@/components/public/kit'
 import { SCOTLAND, SCOTLAND_PATH, project } from '@/lib/tet/scotland'
 import { ATLAS_REGIONS } from '@/lib/whisky-atlas-data'
-import { DISTILLERIES, UNDISCLOSED } from '@/lib/tet/distilleries'
+import { DISTILLERIES, TRADE_NAMES } from '@/lib/tet/distilleries'
 import type { CaskBoardRow } from '@/lib/tet/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -19,10 +19,12 @@ import type { CaskBoardRow } from '@/lib/tet/types'
 // lib/tet/distilleries — including the trap that Wikidata's "Glenrothes" is
 // the town in Fife and not the distillery in Moray.
 //
-// TWO CASKS CANNOT BE PINNED: Burnside is a Speyside blended malt under a
-// trade name and the Islay is undisclosed by definition. They sit at their
-// region, are drawn hollow, and say why. Guessing at a distillery to make the
-// map tidier would put a claim on the page that Duncan Taylor never made.
+// TWO ARE SOLD UNDER A TRADE NAME — Burnside and "Islay Single Malt". The
+// owner said where they are from (2026-09-24), so they are pinned at the real
+// place and the card names the TOWN, not the distillery: printing the brand on
+// a price list is Duncan Taylor's exposure to license, not ours to assume. A
+// distillery with no coordinate at all would still be drawn hollow at its
+// region rather than guessed onto a plausible spot.
 //
 // Choosing a pin still filters the chart and the colour ladder — one question,
 // "show me Islay", answered in three places.
@@ -72,7 +74,7 @@ export default function TetCaskMap({ casks, t, vn, region, onRegion }: {
     return [...byName.values()].map(g => {
       const at = DISTILLERIES[g.name]
       const fallback = ATLAS_REGIONS.find(r => r.key === g.region)
-      const undisclosed = UNDISCLOSED[g.name]
+      const tradeName = TRADE_NAMES[g.name]
       if (!at && !fallback) return null
       return {
         ...g,
@@ -80,7 +82,7 @@ export default function TetCaskMap({ casks, t, vn, region, onRegion }: {
         lng: at?.lng ?? fallback!.lng,
         pinned: !!at,
         approximate: !!at?.approximate,
-        why: undisclosed,
+        why: tradeName,
         bottles: g.casks.reduce((n, c) => n + (c.bottles_cask_strength ?? 0), 0),
         open: g.casks.filter(c => c.status === 'available').length,
       }
