@@ -575,6 +575,11 @@ function CaskRow({ c, strength, vn, t, provisional, onChoose, open, onToggle, ma
   //     it, so the row shows their bottling and says so.
   const quoted = typeof c.list_price_inc_vat_vnd === 'number' ? c.list_price_inc_vat_vnd : null
   const bottles = quoted ? num('bottles_cask_strength') : num(spec.bottles)
+  // THE WHOLE CASK, which is what is actually being bought (owner,
+  // 2026-09-24: "we need the full cask price in there as well as the bottle
+  // price"). Duncan Taylor quote per bottle; the cask is that price across
+  // their own outturn, so the two figures can never drift apart.
+  const caskTotal = quoted && bottles ? quoted * bottles : null
   const gain = quoted ? 0 : (num(spec.gain) ?? 0)
 
   // A cask at or below the chosen strength has no bottling AT that strength:
@@ -607,9 +612,19 @@ function CaskRow({ c, strength, vn, t, provisional, onChoose, open, onToggle, ma
           )}
           {quoted ? (
             <span style={{ display: 'block', marginTop: 4, color: CREAM }}>
-              {vnd(quoted)}
+              {/* The cask leads: it is the thing on offer. The bottle price is
+                  what makes it comparable with the one below it. */}
+              {caskTotal && (
+                <span style={{ display: 'block', fontSize: 17 }}>{vnd(caskTotal)}</span>
+              )}
               <span style={{ display: 'block', fontSize: 10.5, opacity: .5, letterSpacing: '.04em' }}>
-                {t('a bottle · Duncan Taylor list', 'mỗi chai · giá niêm yết Duncan Taylor')}
+                {t('the cask', 'cả thùng')}
+              </span>
+              <span style={{ display: 'block', marginTop: 6, fontSize: 13, opacity: .8 }}>
+                {vnd(quoted)}
+                <span style={{ display: 'block', fontSize: 10.5, opacity: .62, letterSpacing: '.04em' }}>
+                  {t('a bottle · Duncan Taylor list', 'mỗi chai · giá niêm yết Duncan Taylor')}
+                </span>
               </span>
             </span>
           ) : !provisional && (
@@ -686,13 +701,23 @@ function CaskRow({ c, strength, vn, t, provisional, onChoose, open, onToggle, ma
                   })()}
                 </dd>
               </div>
-              <div className="ck-ebcnote">
+              {caskTotal && bottles && (
+                <div><dt>{t('The cask', 'Cả thùng')}</dt><dd>
+                  {vnd(caskTotal)} <span style={{ opacity: .55 }}>
+                    · {bottles} {t('bottles at', 'chai ở')} {vnd(quoted)} {t('each', 'mỗi chai')}
+                  </span>
+                </dd></div>
+              )}
+              {/* No colour, no note about colour. A cask Huntly have not
+                  assessed yet showed "—" and then a sentence explaining how
+                  the number that is not there was arrived at. */}
+              {caskColourOf(c) && <div className="ck-ebcnote">
                 {caskColourOf(c)?.measured
                   ? t(`Measured by Huntly${c.colour_source ? ` · ${c.colour_source}` : ''}.`,
                       `Do bởi Huntly${c.colour_source ? ` · ${c.colour_source}` : ''}.`)
                   : t('Colour is estimated from the swatch, not measured. Huntly’s figures replace it when the cask is confirmed.',
                       'Màu được ước tính từ mẫu hiển thị, chưa đo bằng máy. Số liệu từ Huntly sẽ thay thế khi thùng được xác nhận.')}
-              </div>
+              </div>}
             </dl>
           </div>
 
@@ -776,9 +801,12 @@ const CASK_CSS = `
              border: 1px solid rgba(229,212,194,.25); vertical-align: middle; }
 .ck-ebc { font-family: ${MONO}; font-size: 12px; color: ${GOLD}; letter-spacing: .04em; }
 .ck-srm { opacity: .45; color: rgba(229,212,194,.85); }
+/* A note ABOUT the list, not a row in it: block, not the 96px/1fr grid its
+   siblings use, and free to run the width of the column. */
 .ck-ebcnote { display: block; grid-template-columns: none; border: none;
+              border-top: 1px solid rgba(229,212,194,.1);
               font-family: ${MONO}; font-size: 10.5px; line-height: 1.7;
-              opacity: .4; padding-top: 10px; max-width: 42ch; }
+              opacity: .42; margin-top: 10px; padding-top: 10px; max-width: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .ck-wrap, .ck-chev, .ck-name .pk-h3 { transition: none; }
