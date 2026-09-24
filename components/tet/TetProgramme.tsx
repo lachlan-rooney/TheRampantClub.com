@@ -320,7 +320,12 @@ export default function TetProgramme({
       <section className="pk-wrap pk-section">
         <Reveal>
           <SectionHead
-            eyebrow={t('Fourteen single casks', 'Mười bốn thùng đơn')}
+            /* COUNTED, NOT WRITTEN. It said "Fourteen single casks" while the
+               selection stood at one: casks come off the list when Huntly say
+               they will not be ready, and a hard-coded number becomes a lie
+               the moment that happens. */
+            eyebrow={t(`${casks.length} single ${casks.length === 1 ? 'cask' : 'casks'}`,
+                       `${casks.length} thùng đơn`)}
             title={caskCat ? (vn ? caskCat.name_vn : caskCat.name_en) : 'The Octave Selection'}
           />
         </Reveal>
