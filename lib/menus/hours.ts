@@ -22,6 +22,12 @@
 // opens somewhere that does change its clocks, this is the file that has to
 // learn about it.
 //
+// ── THE LAST HALF HOUR ────────────────────────────────────────────────────
+// Owner, 2026-09-25: "add a mini countdown to last orders if they're within 30
+// mins of it." venueState returns minutesLeft whenever a kitchen is open, and
+// the surfaces decide what to do with it; LAST_CALL_MIN is the club's idea of
+// "nearly", kept here so the tablet and anything after it agree.
+//
 // ── PAST MIDNIGHT ─────────────────────────────────────────────────────────
 // A window whose last order is EARLIER than its opening (17:00 → 00:30) runs
 // into the next day. At 00:10 on Saturday the kitchen that is still serving is
@@ -44,6 +50,9 @@ export interface VenueState {
   open: boolean
   /** Open: when it stops taking orders, 'HH:MM'. */
   lastOrders?: string
+  /** Open: whole minutes until last orders. Counts down to 1, never 0 —
+   *  at 0 the kitchen is closed and this is not the field that says so. */
+  minutesLeft?: number
   /** Closed: when it next opens, 'HH:MM', and whether that is today. */
   opensAt?: string
   opensToday?: boolean
@@ -52,6 +61,9 @@ export interface VenueState {
 }
 
 const VN_OFFSET_MIN = 7 * 60
+
+/** Within this many minutes of last orders, a kitchen is on last call. */
+export const LAST_CALL_MIN = 30
 
 /** Minutes since midnight in Sài Gòn, and the weekday there. */
 export function vnClock(now: Date | string | number): { minutes: number; weekday: number } {
@@ -83,15 +95,13 @@ export function venueState(windows: ServiceWindow[] | null | undefined, now: Dat
   for (const x of w) {
     const open = toMin(x.opens_at), last = toMin(x.last_order_at)
     const crosses = last <= open
-    if (x.weekday === weekday && !crosses && minutes >= open && minutes < last) {
-      return { open: true, lastOrders: x.last_order_at, unknown: false }
-    }
-    if (x.weekday === weekday && crosses && minutes >= open) {
-      return { open: true, lastOrders: x.last_order_at, unknown: false }
-    }
-    if (x.weekday === yesterday && crosses && minutes < last) {
-      return { open: true, lastOrders: x.last_order_at, unknown: false }
-    }
+    // How long is left, counted forward to last orders — the modulo carries a
+    // window that runs past midnight (23:50 now, 00:30 last orders = 40 min).
+    const left = ((last - minutes) % 1440 + 1440) % 1440
+    const serving = { open: true as const, lastOrders: x.last_order_at, minutesLeft: left, unknown: false }
+    if (x.weekday === weekday && !crosses && minutes >= open && minutes < last) return serving
+    if (x.weekday === weekday && crosses && minutes >= open) return serving
+    if (x.weekday === yesterday && crosses && minutes < last) return serving
   }
 
   // Closed: find the next opening, today or on a later day, and say when.

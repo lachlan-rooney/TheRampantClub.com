@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useLang, pick } from '@/lib/lang'
 import { NOTE_MAX, charges, SERVICE_PCT, VAT_PCT } from '@/lib/menus/orders'
-import { venueState, waitLabel, type VenueState } from '@/lib/menus/hours'
+import { venueState, waitLabel, LAST_CALL_MIN, type VenueState } from '@/lib/menus/hours'
 import {
   ALLERGEN_LABEL, DIETARY_LABEL, price, mediaUrl, arrivingDate, isArriving,
   type Allergen, type Dietary, type MenuPlate, type MenuSet, type MenuVenueGroup,
@@ -99,7 +99,9 @@ export default function MenuBoard({
   useEffect(() => {
     const tick = () => setClock(Date.now() + skew)
     tick()
-    const id = setInterval(tick, 30_000)
+    // Twenty seconds, not thirty: the last half hour is counted in minutes, and
+    // a thirty-second tick can leave "8 min" on screen when it is seven.
+    const id = setInterval(tick, 20_000)
     return () => clearInterval(id)
   }, [skew])
 
@@ -324,9 +326,11 @@ export default function MenuBoard({
                           </span>
                           {wait && <span className="mb-tile-wait">{wait}</span>}
                           {st && !st.unknown && (
-                            <span className={`mb-tile-when ${st.open ? '' : 'is-shut'}`}>
+                            <span className={`mb-tile-when ${st.open ? '' : 'is-shut'}${lastCall(st) ? ' is-lastcall' : ''}`}>
                               {st.open
-                                ? (st.lastOrders ? t(`until ${st.lastOrders}`, `đến ${st.lastOrders}`) : '')
+                                ? (lastCall(st)
+                                    ? t(`${st.minutesLeft} min to last orders`, `còn ${st.minutesLeft} phút để gọi món`)
+                                    : st.lastOrders ? t(`until ${st.lastOrders}`, `đến ${st.lastOrders}`) : '')
                                 : (st.opensAt
                                     ? (st.opensToday
                                         ? t(`closed · opens ${st.opensAt}`, `đã đóng · mở ${st.opensAt}`)
@@ -465,6 +469,14 @@ export default function MenuBoard({
 
 /** The logo, or the name where a restaurant has no logo yet. Sized by CSS so
  *  a tall logo and a wide one occupy the same tile. */
+/** Is this kitchen inside its last half hour? (owner, 2026-09-25: "add a mini
+ *  countdown to last orders if they're within 30 mins of it"). A kitchen with
+ *  no hours has no last orders to count down to, and says nothing. */
+function lastCall(st: VenueState | null | undefined): boolean {
+  return !!st && st.open && !st.unknown
+    && typeof st.minutesLeft === 'number' && st.minutesLeft > 0 && st.minutesLeft <= LAST_CALL_MIN
+}
+
 function TileFace({ v, lang }: { v: MenuVenueGroup; lang: string }) {
   const logo = mediaUrl(v.logo_path)
   const tagline = pick(lang as 'en' | 'vn', v.tagline_en, v.tagline_vn)
@@ -495,7 +507,16 @@ function VenueHead({ v, lang, t, state, hideName = false }: {
   const wait = waitLabel(v.wait_minutes)
   const status = !state || state.unknown ? null
     : state.open
-      ? { shut: false, text: state.lastOrders ? t(`Last orders ${state.lastOrders}`, `Nhận món đến ${state.lastOrders}`) : null }
+      ? {
+          shut: false,
+          // THE LAST HALF HOUR COUNTS DOWN (owner, 2026-09-25). A fixed time
+          // is the thing to plan by; minutes are the thing to act on, and at
+          // this end of the evening acting is the point.
+          lastCall: lastCall(state),
+          text: lastCall(state)
+            ? t(`Last orders in ${state.minutesLeft} min`, `Còn ${state.minutesLeft} phút để gọi món`)
+            : state.lastOrders ? t(`Last orders ${state.lastOrders}`, `Nhận món đến ${state.lastOrders}`) : null,
+        }
       : {
           shut: true,
           text: state.opensAt
@@ -506,7 +527,7 @@ function VenueHead({ v, lang, t, state, hideName = false }: {
         }
 
   const strip = (wait || status?.text) ? (
-    <div className={`mb-vstatus ${status?.shut ? 'is-shut' : ''}`}>
+    <div className={`mb-vstatus ${status?.shut ? 'is-shut' : ''}${'lastCall' in (status ?? {}) && (status as { lastCall?: boolean }).lastCall ? ' is-lastcall' : ''}`}>
       {wait && <span className="mb-vwait">{wait}</span>}
       {status?.text && <span className="mb-vwhen">{status.text}</span>}
     </div>
@@ -939,6 +960,19 @@ const CSS = `
 .mb-tile-count { color: rgba(229,212,194,.6); }
 .mb-tile-wait { color: var(--gold); }
 .mb-tile-when { color: rgba(229,212,194,.45); }
+/* LAST CALL. Amber and breathing, on the tile and in the panel — the one
+   status on this screen that changes while you are looking at it. */
+.mb-tile-when.is-lastcall, .mb-vstatus.is-lastcall .mb-vwhen {
+  color: #D4B85A; animation: mb-lastcall 2.4s ease-in-out infinite;
+}
+.mb-vstatus.is-lastcall .mb-vwhen::before {
+  content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: #D4B85A; margin-right: 7px; vertical-align: middle;
+}
+@keyframes mb-lastcall { 0%, 100% { opacity: 1 } 50% { opacity: .55 } }
+@media (prefers-reduced-motion: reduce) {
+  .mb-tile-when.is-lastcall, .mb-vstatus.is-lastcall .mb-vwhen { animation: none }
+}
 .mb-tile-when.is-shut { color: #C49555; }
 .mb-tile-soon { color: rgba(229,212,194,.5); }
 .mb-tile-chev { position: absolute; right: 4px; top: 6px; font-size: 11px; opacity: .3; }

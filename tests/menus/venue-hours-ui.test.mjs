@@ -112,6 +112,62 @@ try {
   t(await p.locator('.mb-drawer').count() === 1, 'its menu still opens — a member may be reading it')
   t(await p.locator('.mb-drawer .mb-step-btn').count() === 0, 'but nothing on it can be added to an order')
 
+  // ── THE LAST HALF HOUR COUNTS DOWN ──────────────────────────────────────
+  // Owner, 2026-09-25: "add a mini countdown to last orders if they're within
+  // 30 mins of it." A window that opened an hour ago and closes in twenty
+  // minutes, written in the club's own clock.
+  const vnNow = new Date(Date.now() + 7 * 3600 * 1000)
+  const vnMin = vnNow.getUTCHours() * 60 + vnNow.getUTCMinutes()
+  const hhmm = m => `${String(Math.floor((((m % 1440) + 1440) % 1440) / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+  await rest(`menu_venue_hours?venue_id=eq.${venue.id}`, { method: 'DELETE' })
+  await rest('menu_venue_hours', {
+    method: 'POST',
+    body: JSON.stringify([0, 1, 2, 3, 4, 5, 6].map(weekday => ({
+      venue_id: venue.id, weekday, opens_at: hhmm(vnMin - 60), last_order_at: hhmm(vnMin + 20),
+    }))),
+  })
+  await p.goto(`${ORIGIN}/kiosk/menu`, { waitUntil: 'networkidle' })
+  await p.waitForTimeout(2200)
+  const soon = await tile().evaluate(el => ({
+    text: el.textContent.replace(/\s+/g, ' '),
+    lastcall: !!el.querySelector('.mb-tile-when.is-lastcall'),
+  })).catch(() => null)
+  t(/(19|20) min to last orders/.test(soon?.text || ''), 'the tile counts the minutes down to last orders', soon?.text?.slice(0, 70))
+  t(!!soon?.lastcall, 'and marks itself as last call')
+  await tile().tap(); await p.waitForTimeout(800)
+  const panel = await p.locator('.mb-vstatus').first().evaluate(el => ({
+    text: el.textContent.replace(/\s+/g, ' '), lastcall: el.className.includes('is-lastcall'),
+  })).catch(() => null)
+  t(/Last orders in (19|20) min/.test(panel?.text || ''), 'the panel says it in words too', panel?.text?.slice(0, 60))
+  t(!!panel?.lastcall, 'and carries the last-call mark')
+
+  // Still open, still orderable — a countdown is a warning, not a closure.
+  t(await p.locator('.mb-drawer .mb-step-btn').count() > 0, 'a kitchen on last call can still be ordered from')
+
+  // An hour and a half out, it is just an hour on the clock again.
+  await rest(`menu_venue_hours?venue_id=eq.${venue.id}`, { method: 'DELETE' })
+  await rest('menu_venue_hours', {
+    method: 'POST',
+    body: JSON.stringify([0, 1, 2, 3, 4, 5, 6].map(weekday => ({
+      venue_id: venue.id, weekday, opens_at: hhmm(vnMin - 60), last_order_at: hhmm(vnMin + 90),
+    }))),
+  })
+  await p.goto(`${ORIGIN}/kiosk/menu`, { waitUntil: 'networkidle' })
+  await p.waitForTimeout(2200)
+  const far = await tile().evaluate(el => ({
+    text: el.textContent.replace(/\s+/g, ' '),
+    lastcall: !!el.querySelector('.mb-tile-when.is-lastcall'),
+  })).catch(() => null)
+  t(!far?.lastcall && /until \d\d:\d\d/.test(far?.text || ''),
+    'ninety minutes out it shows the time, not a countdown', far?.text?.slice(0, 70))
+
+  // Back to the closed window for the checks that follow.
+  await rest(`menu_venue_hours?venue_id=eq.${venue.id}`, { method: 'DELETE' })
+  await rest('menu_venue_hours', {
+    method: 'POST',
+    body: JSON.stringify([0, 1, 2, 3, 4, 5, 6].map(weekday => ({ venue_id: venue.id, weekday, opens_at: '02:00', last_order_at: '02:30' }))),
+  })
+
   // ── AND THE SERVER REFUSES, whatever the tablet does ────────────────────
   const r = await fetch(`${ORIGIN}/api/kiosk/orders`, {
     method: 'POST',
