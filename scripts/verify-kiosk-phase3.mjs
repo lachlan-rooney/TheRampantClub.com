@@ -29,8 +29,12 @@ const head = t => console.log(`\n── ${t} ` + '─'.repeat(Math.max(0, 58 - t
 const ok = (c, l, d = '') => { console.log(`${c ? '✓' : '✗'} ${l}${d ? ' — ' + d : ''}`); if (!c) fails++ }
 
 const made = { member: 'ZZ-P3-A', user: null, device: null, entries: [], fixture: null }
-const SECRET_DESC = 'ZZINTERNALNOTE-do-not-show'
+const SECRET_DESC = 'ZZINTERNALNOTE-do-not-show'   // a DIARY note: operational, never shown
 const SECRET_ATT  = 'ZZATTENDEE-Mr-Somebody'
+// A FIXTURE's description is the club's own event copy and IS shown, as of
+// 2026-09-25 — see check 2. It needs its own string, or the one assertion
+// cannot tell the two apart.
+const FIXTURE_COPY = 'ZZEVENTCOPY-shown-to-members'
 
 try {
   // ── fixtures ────────────────────────────────────────────────────────────
@@ -68,7 +72,7 @@ try {
   }
   const fx = await (await rest('fixtures', { method:'POST', headers:{...svcH, Prefer:'return=representation'},
     body: JSON.stringify({ sport:'golf', title:'ZZ Golf Day', date: `${day3}T08:00:00+07:00`, location:'Ho Tram',
-      description: SECRET_DESC, max_signups: 12 })})).json()
+      description: FIXTURE_COPY, max_signups: 12 })})).json()
   made.fixture = fx[0]?.id
 
   const jar = `trc_kiosk_device=${DEV}`
@@ -85,15 +89,26 @@ try {
   const weekJson = await (await fetch(`${APP}/api/kiosk/member/week`, { headers:{ Cookie: both } })).text()
   const both_ = meJson + weekJson
   for (const [label, needle] of [
-    ['the internal description', SECRET_DESC],
+    ["the diary's internal note", SECRET_DESC],
     ['attendee (who it is with)', SECRET_ATT],
-    ['fixtures.description', 'description'],
-    ['fixtures.max_signups', 'max_signups'],
     ['signup / RSVP machinery', 'signed_up_at'],
     ['a user_id from signups', 'user_id'],
     ['membership number', made.member],
     ['spend / renewal', 'membership_period'],
+    ['results (last month, with names in them)', 'results'],
   ]) ok(!both_.includes(needle), `absent: ${label}`)
+  // WIDENED ON PURPOSE, 2026-09-25. This check used to require fixtures.description
+  // and max_signups to be absent, from when the tablet showed four lines of small
+  // type. The owner asked for the portal's What's On on the tablet, and that line
+  // carries the event copy, the capacity and the count — none of which names
+  // anybody. The count comes from fixture_signup_counts(), the counts-only
+  // function; the rows behind it stay unreadable, which is what the absences
+  // above still prove.
+  for (const [label, needle] of [
+    ["the fixture's own event copy", FIXTURE_COPY],
+    ['the capacity, so a member can see how full it is', 'max_signups'],
+    ['a count of who is in, as a total', '"counts"'],
+  ]) ok(both_.includes(needle), `present: ${label}`)
   ok(!both_.includes('ZZ Staff Only'), 'a staff-only entry never reaches a member payload')
   ok(!both_.includes('ZZ Next Week'), 'nothing beyond the seven-day window')
   ok(both_.includes('ZZ Member Tasting') && both_.includes('ZZ Golf Day'),
@@ -132,6 +147,10 @@ try {
   ok(/from '@\/components\/members\/EmptyState'/.test(src), 'EmptyState imported from the portal')
   ok(/from '@\/components\/members\/Skeleton'/.test(src), 'Skeleton imported from the portal')
   ok(!/function (RadarChart|EmptyState|Skeleton)\b/.test(src), 'and none of them re-declared locally')
+  // Owner, 2026-09-25: "It better look like the whats on in the portal when i
+  // look at it." Not a lookalike — the SAME row, from one file.
+  ok(/from '@\/components\/events\/whats-on'/.test(src), "What's On row imported, not copied")
+  ok(!/\.wo-row\s*{/.test(src), 'and its CSS is not re-declared here')
   ok(!/position: 'fixed'/.test(src), 'no hand-rolled fixed overlay (the MemberModal trigger)')
 
   // ═══ CHECK 5 — PHASE 2 BOUNDARY STILL HOLDS ═════════════════════════════

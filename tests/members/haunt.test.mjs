@@ -153,8 +153,14 @@ try {
   t(await p.locator('.hw').count() === 0, 'it takes itself off the page when it is done')
 
   // ── EVERY OTHER FIXTURE IS ORDINARY ─────────────────────────────────────
-  const plain = (await p.$$eval('.wo-row .wo-title', els => els.map(e => e.textContent)))
-    .find(x => !/hallowe/i.test(x) && x !== 'Halloween Haunting!')
+  // A row that CAN be signed up for: the club marks events full as places go
+  // (Kavalan, 2026-09-25), and a full row has the word Full where the button
+  // was — so picking merely "the first one that isn't Halloween" clicked at
+  // nothing and hung. Take the first row still offering a button.
+  const plain = await p.$$eval('.wo-row', els => els
+    .filter(e => e.querySelector('.wo-btn') && !/hallowe/i.test(e.textContent))
+    .map(e => e.querySelector('.wo-title')?.textContent)[0] || null)
+  t(!!plain, 'there is another event still taking names, to check against', plain || 'every other event is full or closed')
   await signUp(plain)
   await p.waitForTimeout(1200)
   t(await p.locator('.hw').count() === 0, `signing up for "${plain?.slice(0, 28)}" does not haunt anything`)

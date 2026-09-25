@@ -15,7 +15,16 @@ import { vnDateString } from '@/lib/datetime'
 // whoever is standing behind them, so:
 //   · NOT calendar_entries.description — an internal operational note
 //   · NOT calendar_entries.attendee    — names who an entry is with
-//   · NOT fixtures.description / results / max_signups / signup_deadline
+//   · NOT fixtures.results             — last month's scores, with names in them
+//   · fixtures.description / max_signups / signup_deadline ARE read, as of
+//     2026-09-25. They were excluded when this list was four lines of small
+//     type; the owner has since asked for the portal's What's On here
+//     ("It better look like the whats on in the portal"), and that line is
+//     the club's event copy, the capacity and the closing date — the three
+//     things that tell a member whether to put their name down. None of them
+//     names anybody. The COUNT comes from fixture_signup_counts(), the
+//     counts-only function that exists precisely so a total can be shown
+//     without the list behind it.
 //   · fixture_signups is read for THIS MEMBER ONLY, and only to answer "are
 //     you already down for this?" — the question the button has to answer
 //     before it can be pressed (2026-09-25). Who ELSE is playing is still the
@@ -44,7 +53,7 @@ export async function GET() {
       .gte('entry_date', from).lte('entry_date', to)
       .order('entry_date').order('start_time', { ascending: true, nullsFirst: true }),
     mc.from('fixtures')
-      .select('id, type, title, date, location')
+      .select('id, type, title, date, location, description, max_signups, signup_deadline, is_full')
       .gte('date', `${from}T00:00:00+07:00`).lte('date', `${to}T23:59:59+07:00`)
       .order('date'),
   ])
@@ -81,11 +90,22 @@ export async function GET() {
   const mine = await mc.from('fixture_signups').select('fixture_id')
   const signedUp = new Set(((mine.data || []) as { fixture_id: string }[]).map(r => r.fixture_id))
 
+  // HOW MANY ARE IN — a total and never a roll. fixture_signup_counts() is
+  // SECURITY DEFINER and returns (fixture_id, signups); the rows it counts stay
+  // unreadable to this member. Run as the member all the same, since the grant
+  // is to authenticated and nothing here needs the service key.
+  const counted = await mc.rpc('fixture_signup_counts')
+  const counts: Record<string, number> = {}
+  for (const c of (counted.data || []) as { fixture_id: string; signups?: number }[]) {
+    counts[c.fixture_id] = Number(c.signups ?? 0)
+  }
+
   return NextResponse.json({
     week: {
       from, to,
       art,
       signed_up: [...signedUp],
+      counts,
       // A private hire is titled by whoever booked it, and that title is often a
       // person or a group. `kind` is shown instead so a name is not left standing
       // on a screen in a public room. See the note in the report: the corpus is

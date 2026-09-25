@@ -7,6 +7,7 @@ import { RADAR_GOLD, type Cat, type ShapeValues } from '@/components/whisky/flav
 import EmptyState from '@/components/members/EmptyState'
 import { SkeletonLines } from '@/components/members/Skeleton'
 import { typeLabel } from '@/lib/fixtures'
+import { DateBlock, dotOf, kindMeta, whatsOnCss, whatsOnNarrowCss } from '@/components/events/whats-on'
 
 // MEMBER MODE — the PIN screen, then the member's own view.
 //
@@ -30,13 +31,18 @@ interface Me {
 }
 interface Entry { id: string; title: string; title_vn: string | null; entry_date: string
                   start_time: string | null; end_time: string | null; space: string | null; kind: string }
-interface Fixture { id: string; type: string; title: string; date: string; location: string | null }
+interface Fixture { id: string; type: string; title: string; date: string; location: string | null
+                    description: string | null; max_signups: number | null
+                    signup_deadline: string | null; is_full: boolean | null }
 interface Week { from: string; to: string; entries: Entry[]; fixtures: Fixture[]
   // Attachment ids for the rows above, images only, private hires excluded.
   art?: Record<string, { id: string; kind: string }>
   /** The fixtures THIS member is already down for. Their own rows, nobody
    *  else's — a tablet is shoulder height. */
-  signed_up?: string[] }
+  signed_up?: string[]
+  /** How many are in, per fixture. A TOTAL, from the counts-only function —
+   *  the names behind it stay unreadable, here as everywhere else. */
+  counts?: Record<string, number> }
 
 const VN = 'Asia/Ho_Chi_Minh'
 const vnNow = () => new Date(new Date().toLocaleString('en-US', { timeZone: VN }))
@@ -51,18 +57,34 @@ function greeting(): string {
   return 'Good evening'
 }
 
-// TONIGHT / TOMORROW, then weekday + date. Seven INCLUSIVE days is exactly one of
-// each weekday, so a label can never repeat; the date is carried anyway.
-function dayLabel(iso: string): string {
-  const today = vnNow().toLocaleDateString('en-CA', { timeZone: VN })
-  const tomorrow = new Date(vnNow().getTime() + 864e5).toLocaleDateString('en-CA', { timeZone: VN })
-  if (iso === today) return 'Tonight'
-  if (iso === tomorrow) return 'Tomorrow'
-  return new Date(`${iso}T12:00:00+07:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', timeZone: VN })
+// ── THE LINE, AND THE THREE STRINGS THAT DRESS IT ────────────────────────
+// Everything is pinned to Sài Gòn: a tablet on the bar shows the club's day,
+// whatever the device's own clock believes.
+interface Line {
+  key: string; ms: number; dot: string; tag: string
+  title: string; title_vn?: string | null
+  meta: string; desc?: string | null; art?: string
+  fixtureId?: string
+  cap?: number | null; count?: number; full?: boolean; closed?: boolean; signed?: boolean
 }
-const hhmm = (t: string | null) => (t ? t.slice(0, 5) : '')
 
-const pretty = (slug: string) => slug.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+const dayStamp = (ms: number) =>
+  new Date(ms).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: VN })
+const hhmmOf = (ms: number) =>
+  new Date(ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: VN })
+const hhmm = (t: string | null) => (t ? t.slice(0, 5) : '')
+const entryTime = (e: Entry) =>
+  e.start_time ? (e.end_time ? `${hhmm(e.start_time)}–${hhmm(e.end_time)}` : hhmm(e.start_time)) : 'All day'
+
+// TODAY / TOMORROW in gold beside the type, the way the portal says it. Both
+// languages, because nobody picks one on a tablet they share.
+const rel = (ms: number) => {
+  const days = Math.round((ms - Date.now()) / 86400000)
+  if (days === 0) return 'today · hôm nay'
+  if (days === 1) return 'tomorrow · ngày mai'
+  if (days > 0 && days < 7) return `in ${days} days · ${days} ngày nữa`
+  return ''
+}
 
 export default function KioskMember() {
   const router = useRouter()
@@ -185,34 +207,48 @@ export default function KioskMember() {
   // Left column FIXED: who they are, and it never scrolls. Right column scrolls,
   // and scrolling resets the idle clock — a member who scrolls is still present.
   if (me) {
-    const days: Array<{ iso: string; items: Array<{ ms: number; time: string; title: string; title_vn?: string | null; where: string | null; tag: string; art?: string; fixtureId?: string }> }> = []
-    const push = (iso: string, item: { ms: number; time: string; title: string; title_vn?: string | null; where: string | null; tag: string; art?: string; fixtureId?: string }) => {
-      let d = days.find(x => x.iso === iso)
-      if (!d) { d = { iso, items: [] }; days.push(d) }
-      d.items.push(item)
-    }
+    // ── THE WEEK, AS ONE LINE EACH ────────────────────────────────────────
+    // The same shape the portal builds: fixtures and house entries merged into
+    // one chronological run, each with a date, a type, a title and — where the
+    // club is taking names — how many are in and the way to join them. Nothing
+    // is grouped under a day heading any more; the date IS the left of the line
+    // (owner, 2026-09-25: "It better look like the whats on in the portal").
+    const lines: Line[] = []
     for (const e of week?.entries || []) {
-      push(e.entry_date, {
-        ms: new Date(`${e.entry_date}T${e.start_time ? e.start_time.slice(0,5) : '12:00'}:00+07:00`).getTime(),
-        time: hhmm(e.start_time), title: e.title, title_vn: e.title_vn, where: e.space, tag: e.kind,
+      const ms = new Date(`${e.entry_date}T${e.start_time ? e.start_time.slice(0, 5) : '12:00'}:00+07:00`).getTime()
+      const meta = kindMeta(e.kind)
+      lines.push({
+        key: `e-${e.id}`, ms, dot: meta.dot, tag: `${meta.label} · ${meta.vn}`,
+        title: e.title, title_vn: e.title_vn,
+        meta: [dayStamp(ms), entryTime(e), e.space].filter(Boolean).join(' · '),
         art: week?.art?.[`calendar_entry:${e.id}`]?.id,
       })
     }
+    const signedUp = new Set(week?.signed_up || [])
     for (const f of week?.fixtures || []) {
-      const iso = new Date(f.date).toLocaleDateString('en-CA', { timeZone: VN })
-      push(iso, {
-        ms: new Date(f.date).getTime(),
-        time: new Date(f.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: VN }),
-        title: f.title, where: f.location, tag: typeLabel(f.type),
+      const ms = new Date(f.date).getTime()
+      const cap = f.max_signups
+      const signed = signedUp.has(f.id)
+      // Staff can mark an event full before every name is in — places taken on
+      // Zalo are gone even if the count has not caught up. Exactly the portal's
+      // rule, and the reason the number reads the cap when that switch is on.
+      const tally = week?.counts?.[f.id] || 0
+      const full = !!f.is_full || (cap != null && tally >= cap)
+      lines.push({
+        key: `f-${f.id}`, ms, dot: dotOf(f.type),
+        tag: `${typeLabel(f.type, 'en')} · ${typeLabel(f.type, 'vn')}`,
+        title: f.title,
+        meta: [dayStamp(ms), hhmmOf(ms), f.location].filter(Boolean).join(' · '),
+        desc: f.description,
         art: week?.art?.[`fixture:${f.id}`]?.id,
         // A fixture can be signed up for, right here — the board tells members
         // to sign in to do exactly this (owner, 2026-09-25).
         fixtureId: f.id,
+        cap, count: full && cap != null ? Math.max(tally, cap) : tally,
+        full, closed: !!f.signup_deadline && Date.now() > +new Date(f.signup_deadline), signed,
       })
     }
-    const signedUp = new Set(week?.signed_up || [])
-    days.sort((a, b) => a.iso.localeCompare(b.iso))
-    days.forEach(d => d.items.sort((a, b) => a.ms - b.ms))
+    lines.sort((a, b) => a.ms - b.ms)
 
     return (
       <div style={twoCol}>
@@ -244,12 +280,33 @@ export default function KioskMember() {
         </div>
 
         {/* ── SCROLLS: what's on ──────────────────────────────────────────── */}
-        <div style={weekCol}>
-          <div style={sectionLabel}>This week</div>
+        <div style={weekCol} className="wo-kiosk">
+          {/* The portal's own fixtures card, from components/events/whats-on.tsx —
+              the SAME rules, not a copy of them.
+              A CONTAINER QUERY, not a media query: the portal falls back to the
+              stacked row when the WINDOW is narrow, and here the window is a
+              landscape tablet while the column is half of it. Asking the column
+              its own width gets the date down the left on the tablets the club
+              actually owns, and the stacked row on anything squeezed. */}
+          <style suppressHydrationWarning dangerouslySetInnerHTML={{ __html: `
+        .wo-kiosk { container-type: inline-size; }
+${whatsOnCss()}
+        @container (max-width: 620px) {
+${whatsOnNarrowCss('          ')}
+        }
+        /* the tablet's own hand: thumbs, not a mouse, and no page to leave to */
+        .wo-kiosk .wo-row:first-of-type { padding-top: 18px; }
+        .wo-kiosk .wo-desc { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+                             overflow: hidden; font-size: 12.5px; line-height: 1.8; }
+        .wo-kiosk .wo-btn { min-height: 48px; padding: 0 0 8px; font-size: 13.5px; }
+        .wo-kiosk .wo-thumb { max-height: 200px; border-radius: 10px; }
+        .wo-kiosk .wo-msg { font-family: ${MONO}; font-size: 12.5px; line-height: 1.7; margin-top: 12px; }
+          ` }} />
+          <div style={sectionLabel}>This week <span style={{ opacity: .5 }}>· Tuần này</span></div>
 
           {!week ? (
             <div style={{ marginTop: 22 }}><SkeletonLines lines={6} gap={16} /></div>
-          ) : days.length === 0 ? (
+          ) : lines.length === 0 ? (
             <div style={{ marginTop: 30, maxWidth: 420 }}>
               <EmptyState
                 title="Nothing in the diary this week."
@@ -258,57 +315,63 @@ export default function KioskMember() {
               />
             </div>
           ) : (
-            <div style={{ marginTop: 18 }}>
-              {days.map(d => (
-                <div key={d.iso} style={{ marginBottom: 26 }}>
-                  <div style={dayHead}>{dayLabel(d.iso)}</div>
-                  {d.items.map((it, i) => (
-                    <div key={i} style={row}>
-                      <div style={rowTime}>{it.time}</div>
-                      {/* The event's picture. Nothing here is member data, and the
-                          fetch is excluded from the service worker twice over —
-                          /api/* and the supabase.co host both short-circuit before
-                          the static-asset rule that would otherwise cache a .jpg.
-                          Verified against real Cache Storage, not assumed. */}
-                      {it.art && (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img src={`/api/entries/attachment/${it.art}`} alt=""
-                             style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 6,
-                                      flexShrink: 0, marginRight: 12,
-                                      border: '1px solid rgba(229,212,194,.14)' }} />
-                      )}
-                      <div>
-                        <div style={{ fontFamily: SERIF, fontSize: 'clamp(17px,2.4vh,24px)', lineHeight: 1.25 }}>{it.title}</div>
-                        {it.title_vn && <div style={{ fontFamily: SERIF, fontSize: 15, color: 'rgba(229,212,194,.45)', marginTop: 2 }}>{it.title_vn}</div>}
-                        <div style={{ fontFamily: MONO, fontSize: 12, color: 'rgba(229,212,194,.5)', marginTop: 4 }}>
-                          {it.where || '—'}
-                        </div>
-                        {/* PUT MY NAME DOWN. The board promised this and the
-                            tablet could not do it: a member signed in with
-                            their PIN, found the event, and had no way to join
-                            it. Their own action, run as them. */}
-                        {it.fixtureId && (
-                          signedUp.has(it.fixtureId) ? (
-                            <div style={{ fontFamily: MONO, fontSize: 12, color: '#7AB07A', marginTop: 8 }}>
-                              ✓ You&rsquo;re in <span style={{ color: 'rgba(229,212,194,.4)' }}>· Đã đăng ký</span>
-                            </div>
-                          ) : (
-                            <button onClick={() => putNameDown(it.fixtureId!)}
-                                    disabled={joining === it.fixtureId}
-                                    style={joinBtn}>
-                              {joining === it.fixtureId ? '…' : <>Put my name down <span style={{ opacity: .6 }}>· Đăng ký</span></>}
-                            </button>
-                          )
-                        )}
-                        {joinMsg && joinMsg.id === it.fixtureId && (
-                          <div style={{ fontFamily: MONO, fontSize: 12, marginTop: 8, color: joinMsg.ok ? '#7AB07A' : '#C49555' }}>
-                            {joinMsg.text}
-                          </div>
-                        )}
-                      </div>
+            <div style={{ marginTop: 6 }}>
+              {lines.map(it => (
+                <article key={it.key} className={'wo-row' + (it.signed ? ' is-in' : '')}>
+                  <DateBlock ms={it.ms} lang="en" />
+                  <div className="wo-main">
+                    <div className="wo-tags">
+                      <span className="wo-type"><i style={{ background: it.dot }} />{it.tag}</span>
+                      {rel(it.ms) && <span className="wo-rel">{rel(it.ms)}</span>}
+                      {it.signed && <span className="wo-in">✓ You&rsquo;re in · Đã đăng ký</span>}
                     </div>
-                  ))}
-                </div>
+                    <h3 className="wo-title">{it.title}</h3>
+                    {it.title_vn && <h3 className="wo-title" style={{ fontSize: 22, opacity: .5, marginTop: 4 }}>{it.title_vn}</h3>}
+                    <div className="wo-meta">{it.meta}</div>
+                    {it.desc && <p className="wo-desc">{it.desc}</p>}
+
+                    {/* PUT MY NAME DOWN. The board promised this and the tablet
+                        could not do it: a member signed in with their PIN, found
+                        the event, and had no way to join it. Their own action,
+                        run as them — and the count beside it is a total, never
+                        a list of who else is coming. */}
+                    {it.fixtureId && (
+                      <div className="wo-action">
+                        <div className="wo-count">
+                          <span className="wo-count-n">{it.count}{it.cap != null ? `/${it.cap}` : ''}</span> in · tham gia
+                          {it.cap != null && it.cap > 0 && (
+                            <span className="wo-bar" aria-hidden="true">
+                              <span style={{ width: `${Math.min(100, Math.round(((it.count || 0) / it.cap) * 100))}%` }} />
+                            </span>
+                          )}
+                        </div>
+                        {it.signed ? null
+                          : it.closed ? <span className="wo-closed">Closed · Đã đóng</span>
+                          : it.full ? <span className="wo-closed">Full · Hết chỗ</span>
+                          : <button onClick={() => putNameDown(it.fixtureId!)}
+                                    disabled={joining === it.fixtureId} className="wo-btn">
+                              {joining === it.fixtureId ? '…' : <>Put my name down <span className="pk-go">→</span></>}
+                            </button>}
+                      </div>
+                    )}
+                    {joinMsg && joinMsg.id === it.fixtureId && (
+                      <div className="wo-msg" style={{ color: joinMsg.ok ? '#7AB07A' : '#C49555' }}>{joinMsg.text}</div>
+                    )}
+                  </div>
+                  {/* The event's picture, whole and uncropped — the portal shows an
+                      invitation to be READ, and so does the tablet. Nothing here is
+                      member data, and the fetch is excluded from the service worker
+                      twice over: /api/* and the supabase.co host both short-circuit
+                      before the static-asset rule that would otherwise cache a .jpg.
+                      Verified against real Cache Storage, not assumed. No link off
+                      it: there is nowhere for a kiosk to open a new tab to. */}
+                  {it.art && (
+                    <div className="wo-thumb-link">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img className="wo-thumb" src={`/api/entries/attachment/${it.art}`} alt="" />
+                    </div>
+                  )}
+                </article>
               ))}
             </div>
           )}
@@ -383,21 +446,6 @@ const weekCol: React.CSSProperties = {
 const sectionLabel: React.CSSProperties = {
   fontFamily: MONO, fontSize: 12, letterSpacing: '.16em', textTransform: 'uppercase', color: '#D4B85A',
 }
-const dayHead: React.CSSProperties = {
-  fontFamily: MONO, fontSize: 12, letterSpacing: '.16em', textTransform: 'uppercase',
-  color: 'rgba(229,212,194,.45)', borderBottom: '1px solid rgba(229,212,194,.1)',
-  paddingBottom: 6, marginBottom: 12,
-}
-const row: React.CSSProperties = { display: 'flex', gap: 18, marginBottom: 16, alignItems: 'baseline' }
-const rowTime: React.CSSProperties = {
-  fontFamily: MONO, fontSize: 15, color: '#D4B85A', flex: '0 0 52px', letterSpacing: '.04em',
-}
-const joinBtn: React.CSSProperties = {
-  marginTop: 10, padding: '9px 16px', minHeight: 44,
-  fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, letterSpacing: '.08em',
-  color: '#052E20', background: '#D4B85A', border: 'none', borderRadius: 6, cursor: 'pointer',
-}
-
 const doneBtn: React.CSSProperties = {
   marginTop: 'auto', alignSelf: 'flex-start',
   background: 'none', border: '1px solid rgba(229,212,194,.35)', borderRadius: 8, color: INK,
