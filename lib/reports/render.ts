@@ -454,7 +454,15 @@ export function renderReportBody(r: ReportRow, mode: Mode): string {
     `)
   }
 
-  if (n.closing_note?.trim()) html += `<div style="font-size:14px;line-height:1.75;color:${CREAM};font-style:italic;margin-top:8px;white-space:pre-wrap">${renderProse(n.closing_note)}</div>`
+  // IT HAD NO HEADING (owner, 2026-09-25: "Closing note on the preview doesnt
+  // have a title above it"). Every other block on the page announces itself
+  // and this one simply began — a paragraph in italics after the financials,
+  // which reads as a stray note rather than the owner's own last word. It gets
+  // the same rule, eyebrow and subtitle as the rest.
+  if (n.closing_note?.trim()) {
+    html += section('Closing Note', 'From the General Manager',
+      `<div style="font-size:14px;line-height:1.75;color:${CREAM};font-style:italic;white-space:pre-wrap">${renderProse(n.closing_note)}</div>`)
+  }
   return html
 }
 
