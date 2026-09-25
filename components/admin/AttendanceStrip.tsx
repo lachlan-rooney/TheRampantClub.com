@@ -108,8 +108,11 @@ export default function AttendanceStrip({ from, to, refreshKey }: { from: string
           current ? t(`${current.member_days} member · ${current.guests} guest`, `${current.member_days} hội viên · ${current.guests} khách`) : undefined, true)}
         {current?.today_attendance != null && tile(t('Today', 'Hôm nay'), String(current.today_attendance))}
         {tile(t('Members', 'Hội viên'), current ? String(current.members) : '—', t('different members', 'hội viên khác nhau'))}
-        {tile(t('Bookings', 'Đặt chỗ'), current ? String(current.bookings.total) : '—',
-          current ? t(`${current.bookings.arrived} arrived · ${current.bookings.people} people booked`, `${current.bookings.arrived} đã đến · ${current.bookings.people} người đặt`) : undefined)}
+        {tile(t('Bookings', 'Đặt chỗ'),
+          current ? String(current.bookings.total + (current.diary_entries || 0)) : '—',
+          current ? t(
+            `${current.bookings.arrived} arrived · ${current.bookings.people + (current.diary_covers || 0)} people booked`,
+            `${current.bookings.arrived} đã đến · ${current.bookings.people + (current.diary_covers || 0)} người đặt`) : undefined)}
         {tile(t('Time in club', 'Thời gian tại CLB'), current ? hoursLabel(current.minutes_in_club) : '—',
           current ? timeSub(current, t) : undefined)}
       </div>
@@ -130,6 +133,15 @@ export default function AttendanceStrip({ from, to, refreshKey }: { from: string
           <div style={{ marginBottom: 4 }}>
             {t(`No visit was closed with LEFT this week — ${current.visits_with_length} of ${current.visits_total} carry a length entered another way. The booking times staff correct are the club's real record of when people go; tapping LEFT is what turns one into a measurement.`,
                `Tuần này không có lượt ghé nào được đóng bằng LEFT — ${current.visits_with_length}/${current.visits_total} có thời lượng nhập theo cách khác. Giờ trên đặt chỗ do nhân viên sửa mới là ghi nhận thực tế; bấm LEFT là cách biến nó thành số đo.`)}
+          </div>
+        )}
+        {/* A DIARY ENTRY IS A BOOKING (owner, 2026-09-25). A private party staff
+            put in a room has no member row behind it, so it cannot be marked
+            arrived — it counts as booked, and says which part it is. */}
+        {current && (current.diary_covers || 0) > 0 && (
+          <div style={{ marginBottom: 4 }}>
+            {t(`${current.diary_covers} of those are on ${current.diary_entries} diary entr${current.diary_entries === 1 ? 'y' : 'ies'} — private parties with no member booking behind them. Nobody can mark a diary entry arrived yet, so they count as booked and never as attendance.`,
+               `${current.diary_covers} người trong số đó thuộc ${current.diary_entries} mục lịch — tiệc riêng không có đặt chỗ của hội viên. Chưa thể đánh dấu mục lịch là đã đến, nên chỉ tính là đã đặt, không tính vào số lượt.`)}
           </div>
         )}
         {current && current.bookings_unmeasured > 0 && (

@@ -12,13 +12,29 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 //     booking marked arrived. Brandon on Thursday and again on Friday is 2; a tap
 //     AND a visit on the same night is still 1.
 //   · GUESTS are people who are not members: door sign-ins (not refused, not
-//     still waiting on the duty manager), guests staff logged by hand, and the
-//     rest of an ARRIVED booking's party (party_size − the member). Where the
-//     door already signed in that booking's guests, the larger of the two is
-//     used, never both.
+//     still waiting on the duty manager), guests staff logged by hand, the
+//     NAMES staff put on the booking, and otherwise the rest of an ARRIVED
+//     booking's party (party_size − the member). Where more than one of those
+//     describes the same night, the LARGEST is used, never the sum.
+//
+//     THE NAMES COUNT (owner, 2026-09-25: "The guests are not pulling through
+//     from last weekend either"). booking_guests has held them all along and
+//     this file never read it: Mr Nam's booking on 18 Sept carries five named
+//     guests against a party size of four, so the week reported three. A name
+//     somebody typed is a better record of a person than a number nobody
+//     updated, and it is the one the club can check.
 //
 // Bookings that have not arrived count toward BOOKINGS, never toward attendance:
 // a table for ten is not ten people in the room until they are.
+//
+// AND A DIARY ENTRY IS A BOOKING (owner, 2026-09-25: "If it's in the
+// calendar.... It's a damn booking"). A private party staff put into a room
+// goes in as a calendar entry, which has no member on it and — until
+// db/calendar_entry_covers.sql — nowhere to say how many were coming. With
+// `covers` filled in, those people are counted as BOOKED, on the same footing
+// as a member's party: expected, not yet arrived. They are reported
+// separately (diary_covers) because nobody can mark an entry arrived yet, so
+// counting them as attendance would be a claim the club cannot check.
 //
 // TIME IN CLUB = recorded visit durations + guest durations, plus — for a visit
 // started today with no duration yet — the time since it started (capped at 12h,
@@ -70,6 +86,12 @@ export interface WeekAttendance {
   /** Arrived bookings whose times were corrected after the fact — a staff
    *  record of when the member actually left. */
   bookings_corrected: number
+  /** Guests the club knows by name, on bookings this week. */
+  guests_named: number
+  /** People expected through diary entries — private parties with no member
+   *  row behind them. Booked, not counted as arrived. */
+  diary_covers: number
+  diary_entries: number
   visits_total: number           // visits on file this week
   visits_with_length: number     // of those, how many carry a length at all
   departures_stamped: number     // of those, how many were stamped by tapping LEFT
@@ -119,6 +141,7 @@ interface BookingRow {
   start_time?: string | null; end_time?: string | null
 }
 interface GuestRow { visit_date: string; party_size: number | null; duration_min: number | null; referred_reason?: string | null; decision?: string | null; booking_id?: string | null }
+interface NamedGuestRow { booking_id: string; guest_name: string }
 
 export async function weekAttendance(sb: SupabaseClient, from: string, to: string, now: Date = new Date()): Promise<WeekAttendance> {
   const today = vnDateOf(now.toISOString())
@@ -133,6 +156,20 @@ export async function weekAttendance(sb: SupabaseClient, from: string, to: strin
   ])
   for (const r of [visitsRes, tapsRes, bookingsRes]) if (r.error) throw new Error(r.error.message)
 
+  // Diary entries with a headcount. The column arrives with
+  // db/calendar_entry_covers.sql; before it has run the select fails and the
+  // club simply has no diary figure, exactly as it does today.
+  let diaryCovers = 0, diaryEntries = 0
+  {
+    const { data, error } = await sb.from('calendar_entries')
+      .select('covers, kind').gte('entry_date', from).lte('entry_date', to)
+    if (!error) {
+      for (const e of (data || []) as { covers: number | null; kind: string | null }[]) {
+        if (typeof e.covers === 'number' && e.covers > 0) { diaryCovers += e.covers; diaryEntries++ }
+      }
+    }
+  }
+
   // Door columns arrive with db/guest_signin.sql; before that, count every row.
   let guestRows: GuestRow[]
   const door = await sb.from('guest_visits')
@@ -145,6 +182,16 @@ export async function weekAttendance(sb: SupabaseClient, from: string, to: strin
   } else {
     // A refusal is not a guest in the club, and neither is someone still waiting.
     guestRows = ((door.data || []) as GuestRow[]).filter(g => g.decision !== 'refused' && !(g.referred_reason && !g.decision))
+  }
+
+  // The names staff put on each booking, counted per booking.
+  const named = new Map<string, number>()
+  {
+    const ids = ((bookingsRes.data || []) as BookingRow[]).map(b => b.booking_id)
+    if (ids.length) {
+      const { data } = await sb.from('booking_guests').select('booking_id, guest_name').in('booking_id', ids)
+      for (const g of (data || []) as NamedGuestRow[]) named.set(g.booking_id, (named.get(g.booking_id) || 0) + 1)
+    }
   }
 
   const visits = (visitsRes.data || []) as VisitRow[]
@@ -174,7 +221,11 @@ export async function weekAttendance(sb: SupabaseClient, from: string, to: strin
     else addGuests(g.visit_date, n)
   }
   for (const b of arrived) {
-    addGuests(b.booking_date, Math.max(Math.max(0, (b.party_size || 1) - 1), linkedToArrived.get(b.booking_id) || 0))
+    addGuests(b.booking_date, Math.max(
+      Math.max(0, (b.party_size || 1) - 1),        // the party, less the member
+      linkedToArrived.get(b.booking_id) || 0,      // what the door signed in
+      named.get(b.booking_id) || 0,                // the names staff wrote down
+    ))
   }
 
   // ── time in club ─────────────────────────────────────────────────────────
@@ -254,6 +305,11 @@ export async function weekAttendance(sb: SupabaseClient, from: string, to: strin
     minutes_estimated: estimated,
     bookings_unmeasured: unmeasured,
     bookings_corrected: corrected,
+    diary_covers: diaryCovers,
+    diary_entries: diaryEntries,
+    guests_named: [...named.entries()]
+      .filter(([id]) => arrivedIds.has(id))
+      .reduce((s2, [, n]) => s2 + n, 0),
     open_visits: openVisits,
     by_day: byDay,
     generated_at: now.toISOString(),

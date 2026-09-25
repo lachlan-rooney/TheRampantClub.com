@@ -142,8 +142,15 @@ async function windowMetrics(sb: SupabaseClient, start: string, end: string): Pr
     sb.from('visits').select('member_no, visit_date, duration_min').is('archived_at', null).gte('visit_date', start).lte('visit_date', end), [])
   const presence = await safe<{ member_number: string; seen_at: string }[]>(
     sb.from('card_presence').select('member_number, seen_at').gte('seen_at', start).lte('seen_at', end + 'T23:59:59'), [])
+  // A CANCELLED BOOKING IS NOT A BOOKING (owner, 2026-09-25, comparing the
+  // report against the calendar: "These are not right"). The report counted
+  // every row in the window, so one cancellation on 23 Sept turned 6 bookings
+  // into 7 — "6 arrived of 7" read as a no-show — and its party of three added
+  // two imaginary guests, taking 11 to ~13. lib/attendance has always excluded
+  // them; this is the same table read two ways, and they now agree.
   const bookings = await safe<{ party_size: number; status: string; arrived_at: string | null }[]>(
-    sb.from('bookings').select('party_size, status, arrived_at').gte('booking_date', start).lte('booking_date', end), [])
+    sb.from('bookings').select('party_size, status, arrived_at')
+      .gte('booking_date', start).lte('booking_date', end).neq('status', 'cancelled'), [])
   const guests = await countedGuests(sb, start, end)
   const newMembers = await safe<{ member_no: string }[]>(
     sb.from('members').select('member_no').gte('join_date', start).lte('join_date', end), [])
@@ -186,7 +193,8 @@ async function windowMetrics(sb: SupabaseClient, start: string, end: string): Pr
     footfall_unique: new Set(presence.map(p => p.member_number)).size,
     footfall_by_day: footfallByDay,
     bookings: bookings.length,
-    arrived: bookings.filter(b => b.arrived_at).length,
+    arrived: bookings.filter(b => b.arrived_at || b.status === 'arrived').length,
+    // Party minus the member, on bookings that actually stood.
     guest_proxy: bookings.reduce((s, b) => s + Math.max(0, (b.party_size || 1) - 1), 0),
     new_members: newMembers.length,
     signed: signed.length,
