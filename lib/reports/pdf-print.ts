@@ -118,6 +118,22 @@ export async function printReportPdf(shareToken: string): Promise<Uint8Array> {
       }
     })
 
+    // A GLYPH THE PRINTER DOES NOT HAVE. The deltas are set with ▲ and ▼
+    // (U+25B2/U+25BC), which every mail client and every desktop browser can
+    // draw — and the stripped-down Chromium that runs on the server cannot,
+    // because it ships with almost no fonts. It printed "30  22" with a hole
+    // where the arrow should be, which reads as a typo rather than a rise.
+    // Swapped for + and − here only: the email and the page keep the arrows.
+    await page.evaluate(() => {
+      const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+      const hits: Text[] = []
+      while (walk.nextNode()) {
+        const n = walk.currentNode as Text
+        if (n.nodeValue && /[▲▼]/.test(n.nodeValue)) hits.push(n)
+      }
+      for (const n of hits) n.nodeValue = n.nodeValue!.replace(/▲/g, '+').replace(/▼/g, '\u2212')
+    })
+
     // Fonts, then the photograph. An <img> that has not decoded prints as a gap.
     await page.evaluate(async () => {
       await (document as unknown as { fonts: { ready: Promise<unknown> } }).fonts.ready
