@@ -123,10 +123,22 @@ export default function ShowcaseKiosk() {
 }
 
 const CSS = `
-.sk { min-height: 100dvh; background: #052E20; }
+/* THE GUTTER THE REAL TABLET HAS (owner, 2026-09-25: "The text is honestly
+   right up agains the left edge of the page on the desktop view sandboed
+   Kiosk"). MenuBoard draws no margin of its own — it is a card, and the page
+   it sits on gives it its edges. /kiosk/menu does that; this page never did,
+   so on a laptop the menu started at x=0 with the club's name in the gutter.
+   Same padding as the room tablet, and on a desk the card is CENTRED: a
+   900px board pinned to the left of a 1600px window reads as a broken
+   layout, where in the middle it reads as what it is — a tablet screen. */
+.sk { min-height: 100dvh; background: #052E20;
+      padding: 40px clamp(20px, 5vw, 64px) 72px; }
+.sk .mb-inner { margin-left: auto; margin-right: auto; }
+.sk .sk-band { margin: -40px clamp(-64px, -5vw, -20px) 34px; }
+@media (max-width: 640px) { .sk { padding: 28px 20px 56px; } .sk .sk-band { margin: -28px -20px 24px; } }
 .sk-band {
   display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
-  padding: 10px 18px; background: #D4B85A; color: #052E20;
+  padding: 10px clamp(20px, 5vw, 64px); background: #D4B85A; color: #052E20;
   font-family: 'Google Sans Code', monospace; font-size: 12px; line-height: 1.6;
   position: sticky; top: 0; z-index: 90;
 }
@@ -136,5 +148,5 @@ const CSS = `
   color: #E5D4C2; font-family: 'Google Sans Code', monospace; font-size: 13px;
   padding: 28px 20px; opacity: .8;
 }
-@media (max-width: 640px) { .sk-band { font-size: 11.5px; padding: 9px 14px; } }
+@media (max-width: 640px) { .sk-band { font-size: 11.5px; padding: 9px 20px; } }
 `
