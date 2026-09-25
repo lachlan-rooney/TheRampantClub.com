@@ -1,0 +1,230 @@
+[
+  {
+    "slug": "cover-combo-3-chai",
+    "file": "COVER COMBO 3 Chai.jpg",
+    "w": 2732,
+    "h": 1397,
+    "transparent_pct": 4,
+    "bbox": {
+      "x": 17,
+      "y": 17,
+      "w": 2698,
+      "h": 1397
+    },
+    "peak": {
+      "y": 17,
+      "from": 17,
+      "to": 2714
+    },
+    "shoulders": []
+  },
+  {
+    "slug": "cover-combo-3-v1",
+    "file": "COVER COMBO 3 v1.jpg",
+    "w": 2752,
+    "h": 1069,
+    "transparent_pct": 14,
+    "bbox": {
+      "x": 0,
+      "y": 1,
+      "w": 2752,
+      "h": 1069
+    },
+    "peak": {
+      "y": 1,
+      "from": 752,
+      "to": 1429
+    },
+    "shoulders": []
+  },
+  {
+    "slug": "cover-combo-3-v2",
+    "file": "COVER COMBO 3 v2.jpg",
+    "w": 2752,
+    "h": 1069,
+    "transparent_pct": 14,
+    "bbox": {
+      "x": 0,
+      "y": 1,
+      "w": 2752,
+      "h": 1069
+    },
+    "peak": {
+      "y": 1,
+      "from": 752,
+      "to": 1429
+    },
+    "shoulders": []
+  },
+  {
+    "slug": "cover-combo-3-v3",
+    "file": "COVER COMBO 3 v3.jpg",
+    "w": 2752,
+    "h": 1069,
+    "transparent_pct": 14,
+    "bbox": {
+      "x": 0,
+      "y": 1,
+      "w": 2752,
+      "h": 1069
+    },
+    "peak": {
+      "y": 1,
+      "from": 752,
+      "to": 1429
+    },
+    "shoulders": []
+  },
+  {
+    "slug": "cover-hop-ruou-01",
+    "file": "COVER HỘP RƯỢU-01.jpg",
+    "w": 2752,
+    "h": 1069,
+    "transparent_pct": 15,
+    "bbox": {
+      "x": 0,
+      "y": 3,
+      "w": 2752,
+      "h": 1069
+    },
+    "peak": {
+      "y": 3,
+      "from": 753,
+      "to": 1429
+    },
+    "shoulders": []
+  },
+  {
+    "slug": "cover-hop-ruou-02",
+    "file": "COVER HỘP RƯỢU-02.jpg",
+    "w": 2752,
+    "h": 1069,
+    "transparent_pct": 14,
+    "bbox": {
+      "x": 0,
+      "y": 1,
+      "w": 2752,
+      "h": 1069
+    },
+    "peak": {
+      "y": 1,
+      "from": 752,
+      "to": 1429
+    },
+    "shoulders": []
+  },
+  {
+    "slug": "cover-hop-ruou-03",
+    "file": "COVER HỘP RƯỢU-03.jpg",
+    "w": 2752,
+    "h": 1069,
+    "transparent_pct": 15,
+    "bbox": {
+      "x": 0,
+      "y": 3,
+      "w": 2752,
+      "h": 1069
+    },
+    "peak": {
+      "y": 3,
+      "from": 753,
+      "to": 1429
+    },
+    "shoulders": []
+  },
+  {
+    "slug": "cover-hop-ruou-04",
+    "file": "COVER HỘP RƯỢU-04.jpg",
+    "w": 2752,
+    "h": 1069,
+    "transparent_pct": 14,
+    "bbox": {
+      "x": 0,
+      "y": 1,
+      "w": 2752,
+      "h": 1069
+    },
+    "peak": {
+      "y": 1,
+      "from": 752,
+      "to": 1429
+    },
+    "shoulders": []
+  },
+  {
+    "slug": "cover-hop-ruou-05",
+    "file": "COVER HỘP RƯỢU-05.jpg",
+    "w": 2752,
+    "h": 1069,
+    "transparent_pct": 15,
+    "bbox": {
+      "x": 0,
+      "y": 3,
+      "w": 2752,
+      "h": 1069
+    },
+    "peak": {
+      "y": 3,
+      "from": 753,
+      "to": 1429
+    },
+    "shoulders": []
+  },
+  {
+    "slug": "cover-hop-ruou-06",
+    "file": "COVER HỘP RƯỢU-06.jpg",
+    "w": 2752,
+    "h": 1069,
+    "transparent_pct": 14,
+    "bbox": {
+      "x": 0,
+      "y": 1,
+      "w": 2752,
+      "h": 1069
+    },
+    "peak": {
+      "y": 1,
+      "from": 752,
+      "to": 1429
+    },
+    "shoulders": []
+  },
+  {
+    "slug": "cover-hop-ruou-07",
+    "file": "COVER HỘP RƯỢU-07.jpg",
+    "w": 2752,
+    "h": 1069,
+    "transparent_pct": 15,
+    "bbox": {
+      "x": 0,
+      "y": 3,
+      "w": 2752,
+      "h": 1069
+    },
+    "peak": {
+      "y": 3,
+      "from": 753,
+      "to": 1429
+    },
+    "shoulders": []
+  },
+  {
+    "slug": "cover-hop-ruou-08",
+    "file": "COVER HỘP RƯỢU-08.jpg",
+    "w": 2752,
+    "h": 1069,
+    "transparent_pct": 14,
+    "bbox": {
+      "x": 0,
+      "y": 1,
+      "w": 2752,
+      "h": 1069
+    },
+    "peak": {
+      "y": 1,
+      "from": 752,
+      "to": 1429
+    },
+    "shoulders": []
+  }
+]

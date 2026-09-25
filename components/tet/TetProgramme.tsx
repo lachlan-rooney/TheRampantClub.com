@@ -11,6 +11,8 @@ import { vnd, type BlendBoardRow, type CaskBoardRow, type Countdown, type TetCat
 import TetEnquiry, { type EnquiryTarget } from '@/components/tet/TetEnquiry'
 import TetTiers from '@/components/tet/TetTiers'
 import SleeveStudio, { type SleeveDesign } from '@/components/tet/SleeveStudio'
+import BoxGallery from '@/components/tet/BoxGallery'
+import { BOXES } from '@/lib/tet/boxes'
 import TetTimeline from '@/components/tet/TetTimeline'
 import TetLabels from '@/components/tet/TetLabels'
 import TetFlight from '@/components/tet/TetFlight'
@@ -316,6 +318,27 @@ export default function TetProgramme({
             setTarget({ kind: 'blend', title: blendCat ? (vn ? blendCat.name_vn : blendCat.name_en) : 'Duncan Taylor' })
           }} />
         </div>
+
+        {/* THE COVERS FROM THE DESIGN HOUSE (owner, 2026-09-25). A different
+            question from the studio above it: that one asks where a logo goes,
+            this one asks which cover the gift wears. They sit together because
+            a buyer deciding on one is deciding on both. */}
+        <Reveal step={2}>
+          <div style={{ marginTop: 64 }}>
+            <p className="pk-eyebrow">{t('Covers', 'Mẫu hộp')}</p>
+            <h3 className="pk-h2" style={{ marginTop: 10 }}>
+              {t(`${BOXES.length} covers from the design house`, `${BOXES.length} mẫu hộp từ nhà thiết kế`)}
+            </h3>
+            <p className="pk-lede" style={{ marginTop: 14 }}>
+              {t('Landmarks of Sài Gòn and Hà Nội, drawn in gold on Tết red. Choose one to see it flat as it prints, or folded into the box it becomes.',
+                 'Những địa danh của Sài Gòn và Hà Nội, vẽ vàng trên nền đỏ Tết. Chọn một mẫu để xem bản trải phẳng như khi in, hoặc đã gấp thành hộp.')}
+            </p>
+            <BoxGallery t={t} vn={vn} onAsk={b => setTarget({
+              kind: 'blend',
+              title: t(`The ${b.name[0]} box`, `Hộp ${b.name[1]}`),
+            })} />
+          </div>
+        </Reveal>
       </section>
 
       {/* Before the casks: the man who closes them, and the thing itself. Side
