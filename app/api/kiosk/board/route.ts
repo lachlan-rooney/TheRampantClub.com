@@ -43,6 +43,14 @@ let cached: { date: string; at: number; rows: WhatsOn[] } | null = null
 const WHATS_ON_TTL = 60_000
 
 export async function GET() {
+  // WHERE THE TIME WENT. Server-Timing, not a log: the numbers are useless in a
+  // log nobody opens, and this way a slow board can be measured with curl from
+  // the room it is slow in. Durations only — no identity, nothing about who is
+  // booked in — so it is safe on a response the tablet already receives.
+  const t0 = Date.now()
+  const marks: string[] = []
+  const mark = (name: string, from: number) => marks.push(`${name};dur=${Date.now() - from}`)
+
   const token = (await cookies()).get(DEVICE_COOKIE)?.value
   if (!token) return NextResponse.json({ board: null }, { status: 403 })
   const a = svc()
@@ -58,17 +66,22 @@ export async function GET() {
   // A board with no "what's on" is a board; a board that 500s is a dark screen.
   const whatsOnPromise = whatsOn(a, serviceDate).catch(() => [] as WhatsOn[])
 
+  const tBoard = Date.now()
   const { data } = await a.rpc('kiosk_board', { p_device_token: token })
+  mark('rpc', tBoard)
   const row = Array.isArray(data) ? data[0] : data
   if (!row?.room) return NextResponse.json({ board: row || null })
 
+  const tBook = Date.now()
   const { data: rows } = await a.from('bookings')
     .select('booking_id, member_no, start_time, party_size, status, arrived_at')
     .eq('space', row.room).eq('booking_date', serviceDate)
     .in('status', ['pending', 'confirmed', 'arrived'])
     .order('start_time', { ascending: true, nullsFirst: false })
 
+  mark('bookings', tBook)
   const list = rows || []
+  const tNames = Date.now()
   const names = new Map<string, { full_name: string | null; nickname: string | null }>()
   const nos = [...new Set(list.map(b => b.member_no).filter(Boolean))] as string[]
   if (nos.length) {
@@ -76,9 +89,13 @@ export async function GET() {
     for (const m of ms || []) names.set(m.member_no, { full_name: m.full_name, nickname: m.nickname })
   }
 
+  mark('names', tNames)
+  const tWhats = Date.now()
   const whatsOnRows = await whatsOnPromise
+  mark('whatson', tWhats)
+  mark('total', t0)
 
-  return NextResponse.json({
+  const res = NextResponse.json({
     board: {
       ...row,
       whats_on: whatsOnRows,
@@ -95,6 +112,8 @@ export async function GET() {
       }),
     },
   })
+  res.headers.set('Server-Timing', marks.join(', '))
+  return res
 }
 
 // ── WHAT'S ON AT THE CLUB ───────────────────────────────────────────────
