@@ -4,14 +4,24 @@ import { useState, useEffect, useCallback } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { PublicPage, Rise } from '@/components/public/kit'
 import { CreamInk, CreamInkDefs } from '@/components/public/CreamInk'
+import { useLang } from '@/lib/lang'
+import LangToggle from '@/components/LangToggle'
 
 // Forced first-login password change. A freshly-created member login lands here
 // (middleware routes must_change_password accounts here) and cannot reach member
 // pages until they set their own password. The server route clears the flag;
 // we then refresh the session so the new JWT no longer carries must_change
 // (otherwise the middleware would loop on the stale token).
+//
+// IT IS BILINGUAL NOW (owner, 2026-09-25). This is the first page a brand-new
+// member is made to use, before they can reach anything else, and it was in
+// English only — including the one line that tells you why the form would not
+// submit. A Vietnamese member typing a six-character password saw an English
+// sentence and no way to change the language. The rule is also stated UNDER
+// the box now, before it is broken, rather than only as an error afterwards.
 
 export default function SetPasswordPage() {
+  const { t } = useLang()
   const [hasSession, setHasSession] = useState<boolean | null>(null)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -26,8 +36,8 @@ export default function SetPasswordPage() {
   const submit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
-    if (password !== confirm) { setError("Passwords don't match."); return }
+    if (password.length < 8) { setError(t('Password must be at least 8 characters.', 'Mật khẩu phải có ít nhất 8 ký tự.')); return }
+    if (password !== confirm) { setError(t('The two passwords do not match.', 'Hai mật khẩu không khớp nhau.')); return }
     setLoading(true)
     try {
       const r = await fetch('/api/members/set-initial-password', {
@@ -35,7 +45,7 @@ export default function SetPasswordPage() {
         body: JSON.stringify({ password }),
       })
       const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'Could not set your password.')
+      if (!r.ok) throw new Error(j.error || t('Could not set your password.', 'Không đặt được mật khẩu.'))
       // Refresh so the new JWT drops must_change_password, then hard-nav so the
       // middleware re-reads the refreshed cookie.
       const supabase = createBrowserSupabaseClient()
@@ -44,7 +54,7 @@ export default function SetPasswordPage() {
     } catch (e) {
       setError((e as Error).message); setLoading(false)
     }
-  }, [password, confirm])
+  }, [password, confirm, t])
 
   return (
     <PublicPage ground="#052E20" ink="#E5D4C2">
@@ -75,6 +85,10 @@ export default function SetPasswordPage() {
         .sp-btn:hover:not(:disabled) .pk-go { transform: translateX(7px); }
         .sp-btn:disabled { cursor: not-allowed; }
         .sp-error { font-family: ${MONO}; font-size: 12px; line-height: 1.8; color: #E89B9B; margin: 0 0 18px; }
+        .sp-rule { font-family: ${MONO}; font-size: 11.5px; line-height: 1.7; color: rgba(229,212,194,.5);
+                   margin: 6px 0 14px; }
+        .sp-rule-short { color: #D4B85A; }
+        .sp-lang { display: flex; justify-content: flex-end; padding-top: 18px; }
 
         @media (max-width: 860px) {
           .sp { grid-template-columns: 1fr; align-content: start; gap: 28px; align-items: start; padding-top: 72px; padding-bottom: 96px; }
@@ -87,26 +101,44 @@ export default function SetPasswordPage() {
       <CreamInkDefs />
 
       <div className="pk-wrap sp">
+        <div className="sp-lang"><LangToggle /></div>
         <div className="sp-words">
           <Rise><div className="pk-eyebrow sp-eyebrow">The Rampant Club</div></Rise>
-          <Rise delay={.06}><h1 className="pk-h1">Set your password</h1></Rise>
+          <Rise delay={.06}><h1 className="pk-h1">{t('Set your password', 'Đặt mật khẩu')}</h1></Rise>
           <Rise delay={.2} className="sp-art"><CreamInk name="gent-toast" width="100%" rot={-4} dur={8} /></Rise>
         </div>
 
         <Rise delay={.14} className="sp-panel">
           {hasSession === false ? (
-            <p className="sp-hint">Your session has expired. <a href="/login">Sign in</a> with the temporary password you were given, then set a new one here.</p>
+            <p className="sp-hint">
+              {t('Your session has expired. ', 'Phiên đăng nhập đã hết hạn. ')}
+              <a href="/login">{t('Sign in', 'Đăng nhập')}</a>
+              {t(' with the temporary password you were given, then set a new one here.',
+                 ' bằng mật khẩu tạm thời đã được cấp, rồi đặt mật khẩu mới tại đây.')}
+            </p>
           ) : (
             <>
-              <p className="sp-hint">Welcome. Choose a password to finish setting up your account — you’ll use this from now on.</p>
+              <p className="sp-hint">
+                {t('Welcome. Choose a password to finish setting up your account — you’ll use this from now on.',
+                   'Chào mừng quý vị. Hãy chọn một mật khẩu để hoàn tất thiết lập tài khoản — quý vị sẽ dùng mật khẩu này từ nay về sau.')}
+              </p>
               {error && <div className="sp-error" role="alert">{error}</div>}
               <form onSubmit={submit}>
-                <label className="sp-label" htmlFor="sp-password">New password</label>
+                <label className="sp-label" htmlFor="sp-password">{t('New password', 'Mật khẩu mới')}</label>
                 <input id="sp-password" type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" className="sp-input" />
-                <label className="sp-label" htmlFor="sp-confirm">Confirm password</label>
+                {/* THE RULE, BEFORE IT IS BROKEN. It used to appear only as an
+                    error, in English, after the form refused to submit. */}
+                <p className="sp-rule">
+                  {t('Eight characters or more.', 'Từ 8 ký tự trở lên.')}
+                  {password.length > 0 && password.length < 8 &&
+                    <span className="sp-rule-short"> · {t(`${8 - password.length} more to go`, `còn thiếu ${8 - password.length} ký tự`)}</span>}
+                </p>
+                <label className="sp-label" htmlFor="sp-confirm">{t('Confirm password', 'Nhập lại mật khẩu')}</label>
                 <input id="sp-confirm" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password" className="sp-input" />
+                {confirm.length > 0 && password !== confirm &&
+                  <p className="sp-rule sp-rule-short">{t('The two do not match yet.', 'Hai mật khẩu chưa khớp nhau.')}</p>}
                 <button type="submit" disabled={loading} className="sp-btn" style={{ opacity: loading ? 0.6 : 1 }}>
-                  {loading ? 'Saving…' : <>Set password &amp; continue <span className="pk-go" aria-hidden="true">→</span></>}
+                  {loading ? t('Saving…', 'Đang lưu…') : <>{t('Set password & continue', 'Đặt mật khẩu & tiếp tục')} <span className="pk-go" aria-hidden="true">→</span></>}
                 </button>
               </form>
             </>

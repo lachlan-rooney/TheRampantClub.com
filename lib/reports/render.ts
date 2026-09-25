@@ -234,8 +234,16 @@ function moneySection(d: AutoData, note?: string): string {
   // typed in, two of them dated in August and already past August's reports.
   // They showed up in no report at all. This says so, in the week the work
   // happened, without moving a dong of revenue (owner asked, 2026-09-25).
+  // NAME THE MONTH IT BELONGS TO. "An earlier period" is not something anybody
+  // can act on; "August 2026" is — and when two payments taken in August are
+  // keyed in on 17 September, August's report has already gone out without
+  // them (owner, 2026-09-25: "revenue from August should have been in august
+  // report. I will get chau to record payments timely.").
+  const months = w.backdated?.by_month?.length
+    ? w.backdated.by_month.map(m => `${vnd(m.total)} to ${esc(m.label)}`).join(' · ')
+    : ''
   const back = w.backdated && w.backdated.count
-    ? `<div style="font-size:12.5px;color:${GOLD};margin-top:10px">${w.backdated.count} payment${w.backdated.count === 1 ? '' : 's'} recorded this week for earlier periods: ${vnd(w.backdated.total)}${w.backdated.earliest ? ` (oldest dated ${new Date(w.backdated.earliest + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })})` : ''}. Counted in that period's revenue, not this week's.</div>`
+    ? `<div style="font-size:12.5px;color:${GOLD};margin-top:10px">${w.backdated.count} payment${w.backdated.count === 1 ? '' : 's'} recorded this week, taken earlier: ${months || vnd(w.backdated.total)}. Counted in that month's revenue, not this week's — and where that month has already been reported, its report went out without them.</div>`
     : ''
   return section('Money', 'Membership fees & member card activity', `${stats}${target}${cost}${paid}${back}${prose(note)}
     <div style="font-size:11.5px;color:${MUTED};font-style:italic;margin-top:10px">Recorded revenue only — membership fees and card top-ups. The club keeps no till feed or expense ledger, so this is not profit.</div>`)

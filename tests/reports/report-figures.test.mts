@@ -56,8 +56,14 @@ t(sep.auto.money?.week.backdated?.count === 3 && sep.auto.money?.week.backdated?
 t(sep.auto.money?.week.membership_total === 0,
   'and the week\'s revenue is untouched — they belong to the period they were paid for',
   String(sep.auto.money?.week.membership_total))
-t(/payments recorded this week for earlier periods/.test(sep.text), 'the report says so in words')
-t(/oldest dated 14 Aug/.test(sep.text), 'and how far back the oldest is dated')
+t(/payments recorded this week, taken earlier/.test(sep.text), 'the report says so in words')
+// NAMED BY THE MONTH THEY BELONG TO (owner, 2026-09-25: "revenue from August
+// should have been in august report"). Two of the three were taken in August:
+// 100,000,000 + 158,000,000 = 258,000,000, and August's report had gone out.
+t(/258\.000\.000|258,000,000/.test(sep.text) && /August 2026/.test(sep.text),
+  'and names the month it belongs to, with that month’s total',
+  sep.text.match(/\d+ payments recorded[^.]*\./)?.[0] ?? 'absent')
+t(/report went out without them/.test(sep.text), 'and says that month was reported without them')
 
 const quiet = await week('2026-09-21', '2026-09-27')
 t(quiet.auto.money?.week.backdated?.count === 0 && !/recorded this week for earlier periods/.test(quiet.text),

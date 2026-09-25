@@ -71,8 +71,14 @@ export interface MoneyBlock {
     card_charges: number
     /** Fees ENTERED this week whose payment date falls before it. They belong
      *  to an earlier period and are not in membership_total — but they were
-     *  this week's work, and without this line they appear nowhere at all. */
-    backdated: { count: number; total: number; earliest: string | null }
+     *  this week's work, and without this line they appear nowhere at all.
+     *  Grouped by the month they BELONG to, because "an earlier period" is
+     *  not something anybody can act on and "August" is (owner, 2026-09-25:
+     *  "revenue from August should have been in august report"). */
+    backdated: {
+      count: number; total: number; earliest: string | null
+      by_month: { month: string; label: string; count: number; total: number }[]
+    }
   }
   mtd: {
     month_label: string
@@ -255,6 +261,18 @@ async function moneyBlock(sb: SupabaseClient, start: string, end: string): Promi
         earliest: backdatedRows.length
           ? backdatedRows.map(r => r.payment_date).sort()[0]
           : null,
+        by_month: Object.entries(
+          backdatedRows.reduce<Record<string, { count: number; total: number }>>((acc, r) => {
+            const m = String(r.payment_date).slice(0, 7)
+            acc[m] ??= { count: 0, total: 0 }
+            acc[m].count++; acc[m].total += Number(r.amount_vnd) || 0
+            return acc
+          }, {}),
+        ).sort(([a], [b2]) => a.localeCompare(b2)).map(([month, v]) => ({
+          month,
+          label: new Date(month + '-01T00:00:00Z').toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }),
+          count: v.count, total: v.total,
+        })),
       },
     },
     mtd: {

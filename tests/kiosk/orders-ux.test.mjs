@@ -160,14 +160,20 @@ try {
     'every line shows its own arithmetic, not just a total', JSON.stringify(money.lines.map(l => l.each)))
   t(money.lineTotals.every((v, i) => v === money.eachValues[i] * money.qtys[i]),
     'and the arithmetic on each line is right', JSON.stringify(money))
-  // The club adds 10% service, then 10% VAT on food PLUS service (owner,
-  // 2026-09-23). So the total is 1.21 × the food, and every row must be shown.
+  // The club adds 10% service, then VAT on food PLUS service (owner,
+  // 2026-09-23), so the total is food + service + VAT and every row is shown.
   const food = money.lineTotals.reduce((a, b) => a + b, 0)
   t(money.subtotal === food, 'the food line is the sum of the dishes', `${money.subtotal} vs ${food}`)
   t(money.service === Math.round(food * 0.1), 'service is 10% of the food', `${money.service}`)
-  t(money.vat === Math.round((food + money.service) * 0.1), 'VAT is 10% of food plus service', `${money.vat}`)
-  t(money.total === money.subtotal + money.service + money.vat && money.total === Math.round(food * 1.21),
-    'and the total is all three added up', `${money.total} vs ${Math.round(food * 1.21)}`)
+  // The rate is read from the page's own wording, not written here: it moved
+  // from 10% to 8% on 2026-09-25 and a test that hard-codes it is a test that
+  // fails for being right.
+  const vatRow = await p.locator('.km-sum').innerText().catch(() => '')
+  const vatPct = Number((vatRow.match(/VAT[^\d]*(\d+(?:\.\d+)?)\s*%/i) || [])[1] ?? 0) / 100
+  t(vatPct > 0, 'the panel states the VAT rate it charged', `${(vatPct * 100).toFixed(0)}%`)
+  t(money.vat === Math.round((food + money.service) * vatPct), `VAT is ${(vatPct * 100).toFixed(0)}% of food plus service`, `${money.vat}`)
+  t(money.total === money.subtotal + money.service + money.vat,
+    'and the total is all three added up', `${money.total} vs ${money.subtotal + money.service + money.vat}`)
   t(money.rows.some(r => /service charge/i.test(r) && /10%/.test(r)) && money.rows.some(r => /vat/i.test(r) && /10%/.test(r)),
     'the rates are printed beside the charges', money.rows.join(' | '))
   t(/2 dishes/.test(money.sumRow) && /3 items/.test(money.sumRow),

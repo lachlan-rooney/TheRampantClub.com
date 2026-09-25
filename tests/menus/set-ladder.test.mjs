@@ -95,7 +95,7 @@ try {
   t(/5 guests/.test(ladder?.rows?.[0] || '') && /12 guests/.test(ladder?.rows?.[7] || ''),
     'from 5 guests to 12', `${ladder?.rows?.[0]} … ${ladder?.rows?.[7]}`)
   t(/1\.500\.000|1,500,000|1500K/.test(ladder?.rows?.[0] || ''), 'with the price per head beside each', ladder?.rows?.[0])
-  t(/10% service/i.test(ladder?.foot || '') && /10% VAT/i.test(ladder?.foot || ''),
+  t(/\d+% service/i.test(ladder?.foot || '') && /\d+% VAT/i.test(ladder?.foot || ''),
     'and says the prices are before service and VAT', ladder?.foot)
   const meta = await p.locator('.mb-set .mb-meta').first().textContent().catch(() => '')
   t(/5 to 12 guests/i.test(meta), 'the menu states the party size it serves', meta?.replace(/\s+/g, ' ').slice(0, 60))

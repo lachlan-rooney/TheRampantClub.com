@@ -17,7 +17,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 // ── SERVICE AND VAT (owner, 2026-09-23: "we add vat plus 10% service charge")
 // Menu prices are NET. Service is 10% of the food; VAT is 10% of food PLUS
 // service — the Vietnamese "++", confirmed by the owner rather than assumed.
-// So a 1,000,000₫ order is 100,000 service, 110,000 VAT, 1,210,000 total.
+// So a 1,000,000₫ order is 100,000 service, 88,000 VAT, 1,188,000 total.
 //
 // ONE PLACE. The tablet's tray, the order panel, the floor's board and the
 // server that computes the stored figures all read these, so none of them can
@@ -27,7 +27,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 // rates it was quoted at (menu_orders.service_pct / vat_pct), so a rate change
 // cannot rewrite what somebody was already shown.
 export const SERVICE_PCT = 0.10
-export const VAT_PCT = 0.10
+/** Food and drink, 2026-09-25 (owner). Vietnam's reduced rate — the club's
+ *  spirits and the Tết programme are a different rate and a different file. */
+export const VAT_PCT = 0.08
 
 export interface Charges {
   subtotal: number; service: number; vat: number; total: number
