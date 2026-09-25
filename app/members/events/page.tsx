@@ -289,12 +289,21 @@ export default function WhatsOnPage() {
   const renderFixture = (f: Fixture) => {
     const signed = isSignedUp(f.id)
     const closed = deadlinePassed(f)
-    const count = counts[f.id] || 0
+    const signedUpCount = counts[f.id] || 0
     const cap = f.max_signups
     // Staff can mark an event full before every name is in — places taken on Zalo
     // are gone even if the count has not caught up (2026-09-15). A member who
     // already has a place still sees "You're in" and can withdraw.
-    const full = !!f.is_full || (cap != null && count >= cap)
+    const full = !!f.is_full || (cap != null && signedUpCount >= cap)
+    // AND THE COUNT SAYS SO TOO (owner, 2026-09-25: "If I click full mark full
+    // on the events admin page, It should show on the public page that the full
+    // number of attendees are attending"). Marking it full drove the pill and
+    // the button but not the number, so an event staff had closed read "0/50 in"
+    // with an empty bar beside the word Full — which reads as a mistake, and
+    // invites the question the switch exists to stop. Every place is taken, so
+    // the page says every place is taken. With no capacity set there is no
+    // number to show and the pill speaks alone.
+    const count = full && cap != null ? Math.max(signedUpCount, cap) : signedUpCount
     const rel = relativeDate(new Date(f.date).getTime(), t)
     const fill = cap != null && cap > 0 ? Math.min(100, Math.round((count / cap) * 100)) : 0
     return (
