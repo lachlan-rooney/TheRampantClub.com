@@ -459,8 +459,13 @@ export function renderReportBody(r: ReportRow, mode: Mode): string {
   // and this one simply began — a paragraph in italics after the financials,
   // which reads as a stray note rather than the owner's own last word. It gets
   // the same rule, eyebrow and subtitle as the rest.
+  //
+  // AND IT IS THE OWNER'S, NOT THE GM'S (owner, 2026-09-25: "Closing note is
+  // from me, not the GM"). The byline said General Manager when it went out,
+  // which put someone else's name to the one paragraph on the page written in
+  // the first person — in a report that goes to an investor.
   if (n.closing_note?.trim()) {
-    html += section('Closing Note', 'From the General Manager',
+    html += section('Closing Note', 'From the owner',
       `<div style="font-size:14px;line-height:1.75;color:${CREAM};font-style:italic;white-space:pre-wrap">${renderProse(n.closing_note)}</div>`)
   }
   return html
