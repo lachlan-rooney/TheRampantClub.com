@@ -123,7 +123,7 @@ export default function KioskBar() {
 
           <button onClick={() => router.push('/kiosk/menu')} className={`kbar-tab ${isActive('/kiosk/menu') ? 'is-active' : ''}`}>
             <span className="kbar-icon" aria-hidden>{ICONS.menu}</span>
-            <span className="kbar-label">Menu<span className="kbar-vn">Thực đơn</span></span>
+            <span className="kbar-label">Menus<span className="kbar-vn">Thực đơn</span></span>
           </button>
 
           <button onClick={() => router.push('/kiosk/staff')} className={`kbar-tab ${isActive('/kiosk/staff') ? 'is-active' : ''}`}>

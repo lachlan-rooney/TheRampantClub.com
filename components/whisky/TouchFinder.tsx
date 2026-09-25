@@ -32,8 +32,18 @@ export default function TouchFinder({ eyebrow, top }: { eyebrow: string; top?: R
   const [size, setSize] = useState(360)
   const [catsFailed, setCatsFailed] = useState(false)
 
+  // HOW BIG THE COMPASS GETS. It was capped at 440 for a phone held in one hand;
+  // on the bar-top tablet that left a small wheel in the corner of a 1280px screen
+  // with the names too small to read across a table (owner, 2026-09-25). On a wide
+  // screen it now takes what the column will give it, bounded by the height so the
+  // wheel, "Find my dram" AND the line under it stay on the screen together —
+  // the kiosk's bottom bar eats the last 96px, and a hint sitting behind it is
+  // the same as no hint.
   useEffect(() => {
-    const fit = () => setSize(Math.max(300, Math.min(440, window.innerWidth - 44)))
+    const fit = () => {
+      const wide = window.innerWidth >= 1024
+      setSize(Math.max(300, Math.min(wide ? 720 : 440, window.innerWidth - 44, window.innerHeight - 300)))
+    }
     fit(); window.addEventListener('resize', fit); return () => window.removeEventListener('resize', fit)
   }, [])
   // From the server, NOT the browser client: these finders have no login and the
@@ -115,6 +125,16 @@ export default function TouchFinder({ eyebrow, top }: { eyebrow: string; top?: R
         .cf-legend span.t { font-family: ${MONO}; font-size: 11px; opacity: .8; }
         .cf-sw { width: 14px; height: 2px; display: inline-block; }
         .cf-foot { font-family: ${MONO}; font-size: 12px; line-height: 1.8; opacity: .75; padding-top: 64px; padding-bottom: 72px; }
+
+        /* ON A LANDSCAPE TABLET THE COMPASS GETS THE ROOM. The two columns were
+           .9/1.1, which on a 1280px kiosk left the wheel 596px wide beside a
+           title set at 108px — the drawing being capped by its column, not by
+           its own size (owner, 2026-09-25: the wheel and labels are hard to
+           read). The words give some width back; nothing else changes. */
+        @media (min-width: 1100px) {
+          .cf-top { grid-template-columns: .72fr 1.28fr; gap: 36px; }
+          .cf-title { font-size: clamp(52px, 6.2vw, 92px); }
+        }
 
         @media (max-width: 1000px) {
           .cf-top { grid-template-columns: 1fr; gap: 20px; padding-top: 56px; }

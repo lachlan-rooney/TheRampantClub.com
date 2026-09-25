@@ -33,7 +33,17 @@ export default function FinderRadar({ cats, value, onChange, size = 340 }: {
   const { t, lang } = useLang()
   const N = cats.length
   const R = Math.round(size * 0.36)
-  const SIDE = 104, VERT = 44
+  // THE WORDS GROW WITH THE WHEEL (owner, 2026-09-25: "make the wheel on the
+  // flavour finder and the labels bigger. It's hard to read."). Everything here
+  // is in user units and the drawing is scaled to its container, so a FIXED
+  // label size means the type shrinks exactly as much as the wheel does — which
+  // is how a 1280px tablet ended up with 8.5px family names read across a table.
+  //
+  // Tied to R, then, and floored at what it always was: a phone lands back on
+  // 8.5 with the gutters it had, and only a big screen gets the bigger type.
+  // The gutters follow the type, or "Leather & Polished Oak" runs off the edge.
+  const LABEL = Math.min(14, Math.max(8.5, R * 0.062))
+  const SIDE = Math.round(8.5 * LABEL + 30), VERT = Math.round(3.4 * LABEL + 20)
   const W = 2 * R + 2 * SIDE
   const H = 2 * R + 2 * VERT
   const cx = W / 2, cy = H / 2
@@ -41,7 +51,7 @@ export default function FinderRadar({ cats, value, onChange, size = 340 }: {
   const pt = (i: number, v: number): [number, number] => [cx + (R * v / 4) * Math.cos(ang(i)), cy + (R * v / 4) * Math.sin(ang(i))]
   const poly = (pts: [number, number][]) => pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ') + ' Z'
   const rings = [1, 2, 3, 4].map(r => poly(cats.map((_, i) => pt(i, r))))
-  const LINE_H = 9.5
+  const LINE_H = Math.round(LABEL * 1.2 * 10) / 10
 
   const cycle = (slug: string) => {
     const cur = value[slug] || 0
@@ -66,8 +76,8 @@ export default function FinderRadar({ cats, value, onChange, size = 340 }: {
   return (
     <svg viewBox={`0 0 ${W} ${H}`} role="group" aria-label={t('Set your flavour profile', 'Chọn hồ sơ hương vị của bạn')}style={{ display: 'block', width: '100%', maxWidth: W, height: 'auto', margin: '0 auto', touchAction: 'manipulation' }}>
       {/* grid + axes */}
-      {rings.map((d, i) => <path key={i} d={d} fill="none" stroke="rgba(229,212,194,0.10)" style={{ stroke: 'var(--rc-grid, rgba(229,212,194,0.10))' }} strokeWidth={1} />)}
-      {cats.map((c, i) => { const [x, y] = pt(i, 4); return <line key={c.slug} x1={cx} y1={cy} x2={x} y2={y} stroke="rgba(229,212,194,0.08)" style={{ stroke: 'var(--rc-axis, rgba(229,212,194,0.08))' }} strokeWidth={1} /> })}
+      {rings.map((d, i) => <path key={i} d={d} fill="none" stroke="rgba(229,212,194,0.16)" style={{ stroke: 'var(--rc-grid, rgba(229,212,194,0.16))' }} strokeWidth={LABEL > 10 ? 1.25 : 1} />)}
+      {cats.map((c, i) => { const [x, y] = pt(i, 4); return <line key={c.slug} x1={cx} y1={cy} x2={x} y2={y} stroke="rgba(229,212,194,0.13)" style={{ stroke: 'var(--rc-axis, rgba(229,212,194,0.13))' }} strokeWidth={1} /> })}
 
       {/* tappable wedges (under the shape; the shape itself ignores pointers) */}
       {cats.map((c, i) => (
@@ -96,7 +106,7 @@ export default function FinderRadar({ cats, value, onChange, size = 340 }: {
         if (lvl > 0) lines[lines.length - 1] += ` · ${lvl}`
         const y0 = sin > 0.35 ? ly + 6 : sin < -0.35 ? ly - 6 - (lines.length - 1) * LINE_H : ly - (lines.length - 1) * LINE_H / 2
         return lines.map((ln, k) => (
-          <text key={c.slug + k} x={lx} y={y0 + k * LINE_H} textAnchor={anchor} dominantBaseline="middle" fontSize={8.5} fontFamily={FAMILY} style={{ fill, cursor: 'pointer' }} onClick={() => cycle(c.slug)}>{ln}</text>
+          <text key={c.slug + k} x={lx} y={y0 + k * LINE_H} textAnchor={anchor} dominantBaseline="middle" fontSize={LABEL} fontFamily={FAMILY} style={{ fill, cursor: 'pointer' }} onClick={() => cycle(c.slug)}>{ln}</text>
         ))
       })}
     </svg>
