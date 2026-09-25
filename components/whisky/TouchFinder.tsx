@@ -4,8 +4,9 @@ import { useEffect, useState, type ReactNode } from 'react'
 import FinderRadar from '@/components/whisky/FinderRadar'
 import RadarChart from '@/components/whisky/RadarChart'
 import { RADAR_GOLD, RADAR_SAGE, type ShapeValues, type Cat } from '@/components/whisky/flavour-data'
-import { STRENGTH_LABEL, type Match } from '@/lib/whisky/flavour-match'
+import { strengthLabel, type Match } from '@/lib/whisky/flavour-match'
 import { PublicPage, Rise } from '@/components/public/kit'
+import { useLang } from '@/lib/lang'
 import { CreamInk, CreamInkDefs } from '@/components/public/CreamInk'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -18,12 +19,20 @@ import { CreamInk, CreamInkDefs } from '@/components/public/CreamInk'
 // /kiosk/finder (opened from a floor tablet's board). Lifted out of the cup page
 // so the tablet gets the same finder rather than a copy that drifts. `top` is the
 // slot the kiosk uses for its way back to the board.
+//
+// IT TRANSLATES (owner, 2026-09-25: "It doesnt toggle by language either outside
+// of the actual compass. Sort it"). The wheel's own family names came from
+// catLabel(lang) and always switched; everything around them — the title, the
+// instruction, the buttons, the results, how close a match is — was written in
+// English straight into the JSX, so the EN/VN switch on the kiosk bar appeared
+// to do almost nothing. Both doors get it: the room tablet and /cup/finder.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const toShape = (m: Record<string, number>): ShapeValues =>
   Object.fromEntries(Object.entries(m).map(([k, v]) => [k, { intensity: v, confidence: 1 }]))
 
 export default function TouchFinder({ eyebrow, top }: { eyebrow: string; top?: ReactNode }) {
+  const { t, lang } = useLang()
   const [cats, setCats] = useState<Cat[]>([])
   const [value, setValue] = useState<Record<string, number>>({})
   const [matches, setMatches] = useState<Match[] | null>(null)
@@ -42,7 +51,7 @@ export default function TouchFinder({ eyebrow, top }: { eyebrow: string; top?: R
   useEffect(() => {
     const fit = () => {
       const wide = window.innerWidth >= 1024
-      setSize(Math.max(300, Math.min(wide ? 720 : 440, window.innerWidth - 44, window.innerHeight - 300)))
+      setSize(Math.max(300, Math.min(wide ? 900 : 460, window.innerWidth - 32, window.innerHeight - 250)))
     }
     fit(); window.addEventListener('resize', fit); return () => window.removeEventListener('resize', fit)
   }, [])
@@ -132,8 +141,9 @@ export default function TouchFinder({ eyebrow, top }: { eyebrow: string; top?: R
            its own size (owner, 2026-09-25: the wheel and labels are hard to
            read). The words give some width back; nothing else changes. */
         @media (min-width: 1100px) {
-          .cf-top { grid-template-columns: .72fr 1.28fr; gap: 36px; }
-          .cf-title { font-size: clamp(52px, 6.2vw, 92px); }
+          .cf-top { grid-template-columns: .58fr 1.42fr; gap: 28px; padding-top: 44px; }
+          .cf-title { font-size: clamp(46px, 5vw, 76px); }
+          .cf-lion { width: clamp(150px, 13vw, 200px); margin-top: 18px; }
         }
 
         @media (max-width: 1000px) {
@@ -156,11 +166,11 @@ export default function TouchFinder({ eyebrow, top }: { eyebrow: string; top?: R
       <header className="pk-wrap cf-top">
         <div className="cf-words">
           <Rise><div className="pk-eyebrow cf-eyebrow">{eyebrow}</div></Rise>
-          <Rise delay={.06}><h1 className="pk-h1 cf-title">The Flavour Finder</h1></Rise>
+          <Rise delay={.06}><h1 className="pk-h1 cf-title">{t('The Flavour Finder', 'Tìm Hương Vị')}</h1></Rise>
           <Rise delay={.12}>
             <p className="pk-lede">
-              Tap a flavour to add it, tap again to turn it up. Set only the notes you&rsquo;re after —
-              we&rsquo;ll pour you the closest match on the table tonight.
+              {t('Tap a flavour to add it, tap again to turn it up. Set only the notes you’re after — we’ll pour you the closest match on the table tonight.',
+                 'Chạm vào một hương vị để chọn, chạm tiếp để tăng mức độ. Chỉ chọn những nốt hương quý vị muốn — chúng tôi sẽ rót loại gần nhất đang có trên bàn tối nay.')}
             </p>
           </Rise>
           <Rise delay={.2} className="cf-lion"><CreamInk name="lion-suit" width="100%" rot={4} dur={8} /></Rise>
@@ -171,25 +181,32 @@ export default function TouchFinder({ eyebrow, top }: { eyebrow: string; top?: R
             {cats.length > 0
               ? <FinderRadar cats={cats} value={value} onChange={setValue} size={size} />
               : <div className="cf-hint" style={{ height: size, display: 'flex', alignItems: 'center', marginTop: 0 }}>
-                  {catsFailed ? 'The compass is resting — ask our team to pour you something.' : 'Loading the compass…'}
+                  {catsFailed
+                    ? t('The compass is resting — ask our team to pour you something.', 'La bàn đang nghỉ — vui lòng nhờ nhân viên rót giúp quý vị một ly.')
+                    : t('Loading the compass…', 'Đang tải la bàn…')}
                 </div>}
           </div>
 
           <div className="cf-actions">
             <button onClick={find} disabled={!anySet || finding} className="cf-btn cf-btn-go" style={{ opacity: anySet && !finding ? 1 : 0.4 }}>
-              {finding ? 'Finding…' : <>Find my dram <span className="pk-go" aria-hidden="true">→</span></>}
+              {finding ? t('Finding…', 'Đang tìm…') : <>{t('Find my dram', 'Tìm ly của tôi')} <span className="pk-go" aria-hidden="true">→</span></>}
             </button>
-            {anySet && <button onClick={reset} className="cf-btn cf-btn-ghost">Reset</button>}
+            {anySet && <button onClick={reset} className="cf-btn cf-btn-ghost">{t('Reset', 'Đặt lại')}</button>}
           </div>
-          {!anySet && <div className="cf-hint">Tap the compass to begin.</div>}
+          {!anySet && <div className="cf-hint">{t('Tap the compass to begin.', 'Chạm vào la bàn để bắt đầu.')}</div>}
         </Rise>
       </header>
 
       {matches && (
         <section id="cf-results" className="pk-wrap cf-results">
-          {!close && <p className="cf-banner">Nothing&rsquo;s an exact match for that — but here&rsquo;s the nearest we&rsquo;re pouring.</p>}
+          {!close && <p className="cf-banner">
+            {t('Nothing’s an exact match for that — but here’s the nearest we’re pouring.',
+               'Không có loại nào khớp hoàn toàn — nhưng đây là loại gần nhất chúng tôi đang rót.')}
+          </p>}
           <div className="cf-rhead">
-            <h2 className="pk-h2" style={{ marginTop: 0 }}>{close ? 'Your pours' : 'Nearest pours'}</h2>
+            <h2 className="pk-h2" style={{ marginTop: 0 }}>
+              {close ? t('Your pours', 'Ly dành cho quý vị') : t('Nearest pours', 'Gần nhất')}
+            </h2>
             <CreamInk name="glass" width="clamp(84px, 9vw, 124px)" rot={-6} dur={7} className="cf-glass" />
           </div>
           <div className="cf-grid">
@@ -197,24 +214,27 @@ export default function TouchFinder({ eyebrow, top }: { eyebrow: string; top?: R
               <article key={m.id} className="cf-pour">
                 <div className="cf-pour-head">
                   <h3 className="cf-pour-name">{m.name}</h3>
-                  <div className="cf-strength" style={{ color: tone(m.strength).color }}>{STRENGTH_LABEL[m.strength]} · {m.pct}%</div>
+                  <div className="cf-strength" style={{ color: tone(m.strength).color }}>{strengthLabel(m.strength, lang)} · {m.pct}%</div>
                 </div>
                 <RadarChart cats={cats} shapes={[
                   { values: meShape, color: RADAR_GOLD, label: 'You' },
                   { values: toShape(m.spokes), color: RADAR_SAGE, label: m.name },
                 ]} size={Math.min(320, size)} />
                 <div className="cf-legend">
-                  <span className="cf-sw" style={{ background: RADAR_GOLD }} /><span className="t">What you set</span>
-                  <span className="cf-sw" style={{ background: RADAR_SAGE, marginLeft: 14 }} /><span className="t">This whisky</span>
+                  <span className="cf-sw" style={{ background: RADAR_GOLD }} /><span className="t">{t('What you set', 'Quý vị đã chọn')}</span>
+                  <span className="cf-sw" style={{ background: RADAR_SAGE, marginLeft: 14 }} /><span className="t">{t('This whisky', 'Whisky này')}</span>
                 </div>
               </article>
             ))}
           </div>
-          <button onClick={reset} className="cf-btn cf-btn-ghost" style={{ marginTop: 18 }}>Start over</button>
+          <button onClick={reset} className="cf-btn cf-btn-ghost" style={{ marginTop: 18 }}>{t('Start over', 'Bắt đầu lại')}</button>
         </section>
       )}
 
-      <footer className="pk-wrap cf-foot">Show your match to any of our team, and we&rsquo;ll pour you a taste.</footer>
+      <footer className="pk-wrap cf-foot">
+        {t('Show your match to any of our team, and we’ll pour you a taste.',
+           'Hãy đưa kết quả cho nhân viên của chúng tôi, và quý vị sẽ được mời nếm thử.')}
+      </footer>
     </div>
     </PublicPage>
   )

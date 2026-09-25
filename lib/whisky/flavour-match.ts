@@ -20,6 +20,15 @@ export interface Match {
 export const STRENGTH_LABEL: Record<Strength, string> = {
   strong: 'Strong match', good: 'Good match', loose: 'Loose match', distant: 'Distant — nearest we have',
 }
+// The same four, in Vietnamese — the wording the members' finder already used,
+// moved here rather than rewritten. Every surface that shows how close a match
+// is reads them through strengthLabel(), so the two finders cannot end up
+// saying different things about the same number (2026-09-25).
+const STRENGTH_LABEL_VN: Record<Strength, string> = {
+  strong: 'Rất phù hợp', good: 'Phù hợp', loose: 'Tương đối', distant: 'Khá xa — gần nhất hiện có',
+}
+export const strengthLabel = (s: Strength, lang: 'en' | 'vn' = 'en') =>
+  (lang === 'vn' ? STRENGTH_LABEL_VN : STRENGTH_LABEL)[s]
 
 // Buckets calibrated to the RMS distribution (0-4 scale): a near-perfect match
 // (every set spoke within ~1 level) reads strong; an eclectic profile's best

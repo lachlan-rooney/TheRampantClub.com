@@ -10,9 +10,12 @@ import { useLang } from '@/lib/lang'
 
 const FAMILY = "'Google Sans Code', monospace"
 
-// Wrap a long family name into ~2 balanced lines.
+// Wrap a long family name into ~2 balanced lines. The threshold is LOW on
+// purpose: two short lines in bigger type read better than one long line in
+// small type, and every unit a name does not use sideways is a unit the wheel
+// itself gets back.
 function wrapName(name: string): string[] {
-  if (name.length <= 14) return [name]
+  if (name.length <= 11) return [name]
   const words = name.split(' ')
   if (words.length === 1) return [name]
   let best = [name], bestDiff = Infinity
@@ -42,8 +45,8 @@ export default function FinderRadar({ cats, value, onChange, size = 340 }: {
   // Tied to R, then, and floored at what it always was: a phone lands back on
   // 8.5 with the gutters it had, and only a big screen gets the bigger type.
   // The gutters follow the type, or "Leather & Polished Oak" runs off the edge.
-  const LABEL = Math.min(14, Math.max(8.5, R * 0.062))
-  const SIDE = Math.round(8.5 * LABEL + 30), VERT = Math.round(3.4 * LABEL + 20)
+  const LABEL = Math.min(19, Math.max(14, R * 0.075))
+  const SIDE = Math.round(6.2 * LABEL + 26), VERT = Math.round(2.9 * LABEL + 18)
   const W = 2 * R + 2 * SIDE
   const H = 2 * R + 2 * VERT
   const cx = W / 2, cy = H / 2
@@ -76,7 +79,7 @@ export default function FinderRadar({ cats, value, onChange, size = 340 }: {
   return (
     <svg viewBox={`0 0 ${W} ${H}`} role="group" aria-label={t('Set your flavour profile', 'Chọn hồ sơ hương vị của bạn')}style={{ display: 'block', width: '100%', maxWidth: W, height: 'auto', margin: '0 auto', touchAction: 'manipulation' }}>
       {/* grid + axes */}
-      {rings.map((d, i) => <path key={i} d={d} fill="none" stroke="rgba(229,212,194,0.16)" style={{ stroke: 'var(--rc-grid, rgba(229,212,194,0.16))' }} strokeWidth={LABEL > 10 ? 1.25 : 1} />)}
+      {rings.map((d, i) => <path key={i} d={d} fill="none" stroke="rgba(229,212,194,0.16)" style={{ stroke: 'var(--rc-grid, rgba(229,212,194,0.16))' }} strokeWidth={1.25} />)}
       {cats.map((c, i) => { const [x, y] = pt(i, 4); return <line key={c.slug} x1={cx} y1={cy} x2={x} y2={y} stroke="rgba(229,212,194,0.13)" style={{ stroke: 'var(--rc-axis, rgba(229,212,194,0.13))' }} strokeWidth={1} /> })}
 
       {/* tappable wedges (under the shape; the shape itself ignores pointers) */}

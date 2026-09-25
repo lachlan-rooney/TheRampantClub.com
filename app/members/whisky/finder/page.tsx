@@ -10,13 +10,8 @@ import { type Cat, type ShapeValues, fetchCategories, RADAR_GOLD, RADAR_SAGE } f
 import { WhiskyStyle, bare, strengthColor, RADAR } from '@/components/whisky/WhiskyStyle'
 import { Rise, GOLD, MONO } from '@/components/public/kit'
 import { CreamInk } from '@/components/public/CreamInk'
-import { STRENGTH_LABEL, type Match } from '@/lib/whisky/flavour-match'
+import { strengthLabel, type Match } from '@/lib/whisky/flavour-match'
 import { useLang } from '@/lib/lang'
-
-// Vietnamese for the shared STRENGTH_LABEL (lib/whisky/flavour-match), keyed the same.
-const STRENGTH_VN: Record<Match['strength'], string> = {
-  strong: 'Rất phù hợp', good: 'Phù hợp', loose: 'Tương đối', distant: 'Khá xa — gần nhất hiện có',
-}
 
 const toShape = (m: Record<string, number>): ShapeValues =>
   Object.fromEntries(Object.entries(m).map(([k, v]) => [k, { intensity: v, confidence: 1 }]))
@@ -54,7 +49,7 @@ const CSS = `
 `
 
 export default function FlavourFinderPage() {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const [cats, setCats] = useState<Cat[]>([])
   const [value, setValue] = useState<Record<string, number>>({})
   const [matches, setMatches] = useState<Match[] | null>(null)
@@ -138,7 +133,7 @@ export default function FlavourFinderPage() {
                     <article key={m.id} className="wl-pour">
                       <div className="wl-pour-head">
                         <h3 className="wl-pour-name">{m.name}</h3>
-                        <div className="wl-strength" style={{ color: strengthColor(m.strength) }}>{t(STRENGTH_LABEL[m.strength], STRENGTH_VN[m.strength])} · {m.pct}%</div>
+                        <div className="wl-strength" style={{ color: strengthColor(m.strength) }}>{strengthLabel(m.strength, lang)} · {m.pct}%</div>
                       </div>
                       {m.in_stock === false && <div className="wl-pour-note wf-oos">{t('Not currently in stock', 'Hiện đang hết hàng')}</div>}
                       <div className="wl-radar">
