@@ -50,12 +50,14 @@ const VN: Record<string, string> = {
   Lowland: 'Nhẹ, hương cỏ, thường chưng cất ba lần. Đầu nhẹ nhàng của Scotch, dịu và hương hoa.',
 }
 
-export default function TetCaskMap({ casks, t, vn, region, onRegion }: {
+export default function TetCaskMap({ casks, t, vn, region, onRegion, onPick }: {
   casks: CaskBoardRow[]
   t: (en: string, vn: string) => string
   vn: boolean
   region: string | null
   onRegion: (r: string | null) => void
+  /** Open a cask in the list below — what a row in the index is for. */
+  onPick?: (caskRef: string) => void
 }) {
   const [hover, setHover] = useState<string | null>(null)
   const counts = new Map<string, { all: number; open: number }>()
@@ -190,9 +192,17 @@ export default function TetCaskMap({ casks, t, vn, region, onRegion }: {
       <div className="cm-side">
         <div className="pk-eyebrow">{t('Where they come from', 'Nguồn gốc')}</div>
         {/* A distillery under the pointer speaks for itself; otherwise the
-            chosen region does. */}
+            chosen region does.
+            THE SLOT HOLDS ITS HEIGHT WHATEVER IS IN IT (owner, 2026-09-25:
+            "theres also a weird glitch when hovering between the distilleries
+            … on the side"). Crossing the gap between two rows cleared the
+            hover for an instant, the card vanished, the index jumped up 114px
+            to fill the space — and the pointer was suddenly on a different
+            row, which brought the card back and pushed everything down again.
+            One slot, one height, and the list underneath stays where it is. */}
+        <div className="cm-slot">
         {shownPlace ? (
-          <div className="cm-card" key={shownPlace.name}>
+          <div className="cm-card">
             <div className="cm-name">{shownPlace.name}</div>
             <p className="cm-blurb">
               {shownPlace.casks.length} {t(shownPlace.casks.length === 1 ? 'cask' : 'casks', 'thùng')}
@@ -207,7 +217,7 @@ export default function TetCaskMap({ casks, t, vn, region, onRegion }: {
             </div>
           </div>
         ) : shownRegion ? (
-          <div className="cm-card" key={shownRegion.key}>
+          <div className="cm-card">
             <div className="cm-name">{shownRegion.name}{shownRegion.native && <span> · {shownRegion.native}</span>}</div>
             <p className="cm-blurb">{vn ? (VN[shownRegion.key] ?? shownRegion.blurb) : shownRegion.blurb}</p>
             <div className="cm-dist">{t('Distilleries here include', 'Các nhà chưng cất trong vùng')}: {shownRegion.distilleries.slice(0, 4).join(', ')}</div>
@@ -218,8 +228,14 @@ export default function TetCaskMap({ casks, t, vn, region, onRegion }: {
                'Mọi nhà chưng cất trong bộ sưu tập, đúng vị trí. Chọn một để lọc biểu đồ và thang màu.')}
           </p>
         )}
+        </div>
         {/* THE INDEX. Every distillery, in one legible column — which is also
-            what makes it safe to take the labels off the map. */}
+            what makes it safe to take the labels off the map.
+            A ROW IS A WAY IN (owner, 2026-09-25: "You should be able to click
+            those then it takes you to the cask below"). Hovering lights its
+            pin; clicking opens that distillery's cask in the list underneath,
+            which is where the buyer was going anyway. Where a distillery has
+            more than one cask it opens the first and the rest are beside it. */}
         <ul className="cm-list">
           {[...places].sort((a, b) => a.name.localeCompare(b.name)).map(pl => (
             <li key={pl.name}>
@@ -227,10 +243,12 @@ export default function TetCaskMap({ casks, t, vn, region, onRegion }: {
                 className={`cm-row${hover === pl.name ? ' is-on' : ''}${region && region !== pl.region ? ' is-dim' : ''}`}
                 onPointerEnter={() => setHover(pl.name)} onPointerLeave={() => setHover(null)}
                 onFocus={() => setHover(pl.name)} onBlur={() => setHover(null)}
-                onClick={() => onRegion(region === pl.region ? null : pl.region)}>
+                onClick={() => (onPick ? onPick(pl.casks[0].cask_ref) : onRegion(region === pl.region ? null : pl.region))}
+                title={onPick ? t(`Open ${pl.casks[0].cask_ref} below`, `Mở ${pl.casks[0].cask_ref} bên dưới`) : undefined}>
                 <span className="cm-row-name">{pl.name}{!pl.pinned && <span className="cm-row-q"> ?</span>}</span>
                 <span className="cm-row-n">
                   {pl.casks.length} {t(pl.casks.length === 1 ? 'cask' : 'casks', 'thùng')} · {pl.bottles}
+                  {onPick && <span className="cm-row-go" aria-hidden> →</span>}
                 </span>
               </button>
             </li>
@@ -270,7 +288,17 @@ const CSS = `
 .cm-pin.is-vague .cm-glow { fill: none; stroke-dasharray: 3 3; }
 .cm-pin, .cm-pin text { transition: opacity .3s ease, fill .3s ease; }
 .cm-side { align-self: center; min-width: 0; }
+/* IT USED TO FLICKER BETWEEN ROWS (owner, 2026-09-25). The card was keyed on
+   whatever was under the pointer, so crossing the index remounted it and
+   replayed a .45s entrance every time — and because its height follows its
+   content, the list moved under the pointer while you were reading it, which
+   moved the pointer onto another row. No key, so it updates in place; and a
+   floor under its height, so the index below it does not walk about. */
 .cm-card { animation: cm-in .45s cubic-bezier(.16,.84,.44,1); }
+.cm-slot { min-height: 168px; }
+/* Stacked on a phone the index is below the map rather than under the card,
+   so there is nothing to hold still and the reserved height is just a gap. */
+@media (max-width: 900px) { .cm-slot { min-height: 0; } }
 @keyframes cm-in { from { opacity: 0; transform: translateY(8px); } }
 .cm-name { font-family: 'Rampant Sans', Georgia, serif; font-size: clamp(26px, 3.2vw, 38px); margin-top: 12px; color: ${GOLD}; }
 .cm-name span { color: rgba(229,212,194,.5); font-size: .6em; }
@@ -286,6 +314,8 @@ const CSS = `
 .cm-row-name { color: rgba(229,212,194,.85); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cm-row-q { color: ${GOLD}; opacity: .7; }
 .cm-row-n { color: rgba(229,212,194,.45); white-space: nowrap; }
+.cm-row-go { color: ${GOLD}; opacity: 0; transition: opacity .2s ease; }
+.cm-row:hover .cm-row-go, .cm-row.is-on .cm-row-go { opacity: 1; }
 .cm-row:hover, .cm-row.is-on { border-bottom-color: ${GOLD}; }
 .cm-row:hover .cm-row-name, .cm-row.is-on .cm-row-name { color: ${GOLD}; }
 .cm-row.is-dim { opacity: .35; }

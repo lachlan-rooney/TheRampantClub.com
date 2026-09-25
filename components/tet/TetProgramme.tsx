@@ -429,7 +429,7 @@ export default function TetProgramme({
         {/* Where, then what: the map picks a region, and the chart and the
             colour ladder below follow it. */}
         <Reveal step={3}>
-          <TetCaskMap casks={casks} t={t} vn={vn} region={region} onRegion={setRegion} />
+          <TetCaskMap casks={casks} t={t} vn={vn} region={region} onRegion={setRegion} onPick={pickCask} />
         </Reveal>
         <Reveal step={3}>
           <TetCaskChart casks={casks} t={t} onPick={pickCask} region={region} onRegion={setRegion} />

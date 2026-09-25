@@ -34,9 +34,18 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 // night: an arrival with no departure is not a length of stay, and it used to
 // stop the booking being counted as well.
 //
-// Those bookings are counted from the club's own record of the sitting — the
-// booked window — and reported SEPARATELY as minutes_estimated, because a
-// booked window is not a measurement. A window that reads as longer than
+// Those bookings are counted from THE TIMES ON THE BOOKING, and the owner
+// settled which times those are (2026-09-25): "The staff edit the booking
+// times which shows when people leave." db/bookings_booked_vs_actual.sql says
+// the same in the schema — start_time and end_time are the CORRECTED ACTUAL,
+// booked_start_time and booked_end_time are what was first asked for. So the
+// actual is read first and the booked window is only the fallback; this file
+// had the preference the wrong way round for a few hours on the 25th, which
+// would have reported the plan and called it the sitting.
+//
+// It is still reported SEPARATELY as minutes_estimated, because a time typed
+// in by a person who was there is a better record than a card tap and still
+// not two timestamps. A window that reads as longer than
 // MAX_SITTING_MIN is not counted at all and shows up in bookings_unmeasured:
 // "06:10 → 01:07" is a typing slip, not a nineteen-hour sitting, and averaging
 // it into the week would be worse than admitting we do not know.
@@ -58,6 +67,12 @@ export interface WeekAttendance {
   minutes_measured: number       // from visits and guest rows that carry a duration
   minutes_estimated: number      // from arrived bookings with no visit behind them
   bookings_unmeasured: number    // arrived, no visit, and no window worth trusting
+  /** Arrived bookings whose times were corrected after the fact — a staff
+   *  record of when the member actually left. */
+  bookings_corrected: number
+  visits_total: number           // visits on file this week
+  visits_with_length: number     // of those, how many carry a length at all
+  departures_stamped: number     // of those, how many were stamped by tapping LEFT
   open_visits: number      // visits from today still counting up
   by_day: DayAttendance[]
   generated_at: string
@@ -94,7 +109,7 @@ function eachDay(from: string, to: string): string[] {
   return out
 }
 
-interface VisitRow { member_no: string; visit_date: string; arrival_time: string | null; duration_min: number | null; phase: string | null }
+interface VisitRow { member_no: string; visit_date: string; arrival_time: string | null; departure_time?: string | null; duration_min: number | null; phase: string | null }
 interface TapRow { member_number: string; seen_at: string }
 interface BookingRow {
   booking_id: string; member_no: string; booking_date: string
@@ -109,7 +124,7 @@ export async function weekAttendance(sb: SupabaseClient, from: string, to: strin
   const today = vnDateOf(now.toISOString())
 
   const [visitsRes, tapsRes, bookingsRes] = await Promise.all([
-    sb.from('visits').select('member_no, visit_date, arrival_time, duration_min, phase')
+    sb.from('visits').select('member_no, visit_date, arrival_time, departure_time, duration_min, phase')
       .is('archived_at', null).gte('visit_date', from).lte('visit_date', to),
     sb.from('card_presence').select('member_number, seen_at')
       .gte('seen_at', `${from}T00:00:00+07:00`).lte('seen_at', `${to}T23:59:59.999+07:00`),
@@ -186,13 +201,20 @@ export async function weekAttendance(sb: SupabaseClient, from: string, to: strin
   // Their member has no visit on that date, so nothing above has counted them.
   let estimated = 0
   let unmeasured = 0
+  let corrected = 0
   for (const b of arrived) {
     // `counted` holds the nights that already carry time — a closed visit, or
     // one still running today. A linked visit that was never closed carries
     // none, so it does not exempt the booking.
     if (b.member_no && counted.has(`${b.member_no}|${b.booking_date}`)) continue
-    const span = bookedMinutes(b.booked_start_time ?? b.start_time, b.booked_end_time ?? b.end_time)
+    // The corrected actual first; what was booked only if nobody corrected it.
+    const span = bookedMinutes(b.start_time ?? b.booked_start_time, b.end_time ?? b.booked_end_time)
     if (span === null) { unmeasured++; continue }
+    // Corrected means somebody moved the times after the booking was made:
+    // the original is snapshotted on insert and never touched again, so a
+    // difference is a person editing what happened. Where the snapshot is
+    // null the row predates the column and cannot be told apart.
+    if (b.booked_end_time && b.end_time && b.end_time !== b.booked_end_time) corrected++
     estimated += span
   }
   minutes += estimated
@@ -219,9 +241,19 @@ export async function weekAttendance(sb: SupabaseClient, from: string, to: strin
       people: bookings.filter(b => b.status !== 'no_show').reduce((s, b) => s + (b.party_size || 1), 0),
     },
     minutes_in_club: minutes,
+    // ── HOW MUCH OF THIS IS A MEASUREMENT ──────────────────────────────────
+    // Owner, 2026-09-25, on the time figure: "an account, not a measurement."
+    // Checked and true — across September not one visit carries a DEPARTURE:
+    // every length on file was typed in afterwards. A length somebody
+    // remembered is worth having and is not the same fact as two stamps, so
+    // the surfaces are given both numbers and say which is which.
+    visits_total: visits.length,
+    visits_with_length: visits.filter(v => typeof v.duration_min === 'number').length,
+    departures_stamped: visits.filter(v => !!v.departure_time).length,
     minutes_measured: measured,
     minutes_estimated: estimated,
     bookings_unmeasured: unmeasured,
+    bookings_corrected: corrected,
     open_visits: openVisits,
     by_day: byDay,
     generated_at: now.toISOString(),

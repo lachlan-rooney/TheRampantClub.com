@@ -117,8 +117,19 @@ export default function AttendanceStrip({ from, to, refreshKey }: { from: string
       <div style={{ fontFamily: MONO, fontSize: 10, color: CREAM, opacity: 0.45, marginTop: 10, lineHeight: 1.6 }}>
         {current && current.minutes_estimated > 0 && (
           <div style={{ marginBottom: 4 }}>
-            {t(`Time in club includes ${hoursLabel(current.minutes_estimated)} taken from booked sittings where nobody was marked as having left — an estimate, not a measurement.`,
-               `Thời gian tại CLB bao gồm ${hoursLabel(current.minutes_estimated)} lấy từ khung giờ đã đặt, nơi không ai được đánh dấu ra về — là ước tính, không phải đo đạc.`)}
+            {t(`Time in club includes ${hoursLabel(current.minutes_estimated)} read off the booking's own times — the ones staff correct when a member leaves. A person who was there wrote them; they are not two timestamps.`,
+               `Thời gian tại CLB bao gồm ${hoursLabel(current.minutes_estimated)} lấy từ giờ trên đặt chỗ — giờ mà nhân viên sửa lại khi hội viên ra về. Do người có mặt ghi lại; không phải hai dấu thời gian.`)}
+          </div>
+        )}
+        {/* WHERE THE LENGTHS COME FROM. Not one departure has been stamped
+            since the club opened the feature: every length on file was typed
+            in afterwards. That is worth having and it is not a measurement,
+            and the difference belongs on the screen rather than in a note
+            somebody read once. */}
+        {current && current.visits_total > 0 && current.departures_stamped === 0 && (
+          <div style={{ marginBottom: 4 }}>
+            {t(`No visit was closed with LEFT this week — ${current.visits_with_length} of ${current.visits_total} carry a length entered another way. The booking times staff correct are the club's real record of when people go; tapping LEFT is what turns one into a measurement.`,
+               `Tuần này không có lượt ghé nào được đóng bằng LEFT — ${current.visits_with_length}/${current.visits_total} có thời lượng nhập theo cách khác. Giờ trên đặt chỗ do nhân viên sửa mới là ghi nhận thực tế; bấm LEFT là cách biến nó thành số đo.`)}
           </div>
         )}
         {current && current.bookings_unmeasured > 0 && (
