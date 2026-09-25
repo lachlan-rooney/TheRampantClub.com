@@ -68,21 +68,31 @@ const thumb = await p.evaluate(() => { const el = [...document.querySelectorAll(
 t(thumb >= 2, 'its preview shows the logo on the face', `${thumb} logo images`)
 const sheet = await p.locator('text=Your sleeve comes with this enquiry').boundingBox(); await p.screenshot({ path: '/tmp/s-enquiry.png', clip: { x: Math.max(0, sheet.x - 130), y: sheet.y - 40, width: 620, height: 150 } })
 await p.keyboard.press('Escape'); await p.goto('http://localhost:3001/tet', { waitUntil: 'networkidle' })
-// TWO SLEEVES, AND THE FOLDED BOX
+// EVERY DESIGN IN ONE STRIP, AND THE FOLDED BOX
+// It was two sleeves until 2026-09-25, when the owner merged the covers in:
+// "Should all be together, with the first one customisable." The count is
+// read off the data rather than written here, so adding a cover does not
+// break a test about sleeves.
 await p.reload({ waitUntil: 'networkidle' })
 await p.locator('.ss-sleeves').scrollIntoViewIfNeeded(); await p.waitForTimeout(600)
-t(await p.locator('.ss-pick').count() === 2, 'two sleeves to choose from')
+const designCount = await p.locator('.ss-pick').count()
+t(designCount >= 3, 'every design is in one strip', `${designCount} designs`)
+t(await p.locator('.ss-yours').count() === 1, 'and exactly one of them takes a logo')
 await p.locator('.ss-pick').nth(1).click(); await p.waitForTimeout(700)
 t((await p.locator('.ss-art').getAttribute('src')).includes('sleeve2'), 'choosing Sleeve 2 shows the dragon artwork')
 t(await p.locator('.ss-toggle', { hasText: 'Folded' }).isDisabled(), 'Sleeve 2 cannot be folded until its folds are confirmed')
+// ONE DESIGN TAKES A LOGO, AND IT IS THE FIRST. Until 2026-09-25 both sleeves
+// did; the owner merged the covers in and settled it — "with the first one
+// customisable. The rest just the standard." So Sleeve 2 offers no logo tools
+// now, and the checks that used to place a logo on it assert their absence
+// instead. The placing itself is proven on the first design, above and below.
+t(await p.locator('.ss-controls').count() === 0, 'Sleeve 2 offers no logo tools')
+t(await p.locator('.ss-slot').count() === 0, 'and no slot to drop one into')
+await p.locator('.ss-pick').first().click(); await p.waitForTimeout(700)
+t(await p.locator('.ss-controls input[type=file]').count() === 1, 'the first design has them back')
+// The reload above cleared the logo, and the folded check below is about the
+// logo on the blank face — so put one back on the design that takes one.
 await p.setInputFiles('.ss-controls input[type=file]', '/tmp/test-logo.png'); await p.waitForTimeout(800)
-const art2 = await p.locator('.ss-art').boundingBox(); const k2 = art2.width / SLEEVE.w
-const l2 = await p.locator('.ss-logo').boundingBox()
-const F2 = { x: 5105, y: 760, w: 1052, h: 930 }
-const c2 = { dx: Math.round((l2.x - art2.x + l2.width / 2) / k2 - (F2.x + F2.w / 2)), dy: Math.round((l2.y - art2.y + l2.height / 2) / k2 - (F2.y + F2.h / 2)) }
-t(Math.abs(c2.dx) <= 8 && Math.abs(c2.dy) <= 8, 'on Sleeve 2 the logo lands centred in its gold-ruled blank', JSON.stringify(c2))
-const [dl2] = await Promise.all([p.waitForEvent('download', { timeout: 20000 }), p.click('text=Download as PNG')])
-t(/sleeve-2\.png$/.test(dl2.suggestedFilename()), 'Sleeve 2 downloads as its own file', dl2.suggestedFilename())
 await p.locator('.ss-pick').nth(0).click(); await p.waitForTimeout(500)
 await p.locator('.ss-toggle', { hasText: 'Folded' }).click(); await p.waitForTimeout(2200)
 const faces = await p.$$eval('.sb-face', els => els.length)

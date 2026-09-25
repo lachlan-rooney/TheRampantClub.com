@@ -65,52 +65,60 @@ try {
   p.on('response', r => { if (r.status() >= 400 && /boxes\//.test(r.url())) errs.push(`${r.status()} ${r.url().slice(-38)}`) })
   await p.goto(`${ORIGIN}/tet`, { waitUntil: 'networkidle', timeout: 180000 })
   await p.waitForTimeout(2800)
-  await p.locator('.bg').first().scrollIntoViewIfNeeded()
+  await p.locator('.ss-sleeves').scrollIntoViewIfNeeded()
   await p.waitForTimeout(700)
 
-  const thumbs = await p.$$eval('.bg-thumb', els => els.map(e => e.textContent.trim()))
-  t(thumbs.length === 12, 'twelve covers on the page', String(thumbs.length))
-  t(/Chợ Bến Thành/.test(thumbs[0]), 'the first is named off its own artwork', thumbs[0])
-  t(thumbs.filter(x => /3 bottles/.test(x)).length === 4, 'the three-bottle designs are marked as such',
-    String(thumbs.filter(x => /3 bottles/.test(x)).length))
+  // ONE STRIP, EVERY DESIGN (owner, 2026-09-25: "Should all be together").
+  const thumbs = await p.$$eval('.ss-pick', els => els.map(e => e.textContent.trim()))
+  t(thumbs.length === 14, 'two sleeves and twelve covers, in one strip', String(thumbs.length))
+  t(/Your logo/.test(thumbs[0]), 'the first is the one that takes a logo', thumbs[0].slice(0, 40))
+  t(thumbs.some(x => /Chợ Bến Thành/.test(x)) && thumbs.some(x => /Opera House/.test(x)),
+    'the covers are named off their own artwork')
 
   // Every thumbnail must actually arrive — they are lazy, so walk the strip.
   await p.evaluate(async () => {
-    const s = document.querySelector('.bg-strip')
+    const s = document.querySelector('.ss-sleeves')
     for (let x = 0; x <= s.scrollWidth; x += 200) { s.scrollLeft = x; await new Promise(r => setTimeout(r, 60)) }
     s.scrollLeft = 0
   })
   await p.waitForTimeout(1200)
-  const broken = await p.$$eval('.bg-thumb img', els => els.filter(i => !i.complete || i.naturalWidth === 0).map(i => i.src.slice(-34)))
+  const broken = await p.$$eval('.ss-pick img', els => els.filter(i => !i.complete || i.naturalWidth === 0).map(i => i.src.slice(-34)))
   t(broken.length === 0, 'and every one of them loads', broken.join(' '))
 
   // ── FOLDED ──────────────────────────────────────────────────────────────
-  await p.locator('.bg-toggle', { hasText: /Folded/ }).click()
+  // THE SWITCH IS THE POINT — big enough to be found and pressed.
+  const sw = await p.locator('.ss-toggle').first().boundingBox()
+  t(sw.height > 44 && sw.width > 120, 'the Flat / Folded switch is a real control', `${Math.round(sw.width)}x${Math.round(sw.height)}`)
+  await p.locator('.ss-pick[data-design="cover-hop-ruou-01"]').click()
+  await p.waitForTimeout(600)
+  await p.locator('.ss-toggle').nth(1).click()
   await p.waitForTimeout(1800)
-  t(await p.locator('.bg .sb-face').count() === 4, 'folding gives four faces')
-  const shown = await p.$$eval('.bg .sb-face', els => els.map(e => Math.round(e.getBoundingClientRect().width)))
+  t(await p.locator('.sb-face').count() === 4, 'folding gives four faces')
+  const shown = await p.$$eval('.sb-face', els => els.map(e => Math.round(e.getBoundingClientRect().width)))
   t(shown.filter(w => w > 40).length >= 2, 'and it settles turned, so it reads as a solid', shown.join(','))
-  const turns = await p.$$eval('.bg .sb-turns button', els => els.map(e => e.textContent.trim()))
+  const turns = await p.$$eval('.sb-turns button', els => els.map(e => e.textContent.trim()))
   t(turns.length === 4, 'with a button for each face', turns.join(' / '))
 
   // ── EACH COVER FOLDS ITS OWN ARTWORK ────────────────────────────────────
   for (const slug of ['cover-hop-ruou-07', 'cover-hop-ruou-03']) {
-    await p.locator(`.bg-thumb[data-slug="${slug}"]`).click()
+    await p.locator(`.ss-pick[data-design="${slug}"]`).click()
     await p.waitForTimeout(500)
-    if (await p.locator('.bg-toggle', { hasText: /Folded/ }).getAttribute('aria-selected') !== 'true') {
-      await p.locator('.bg-toggle', { hasText: /Folded/ }).click()
+    if (await p.locator('.ss-toggle').nth(1).getAttribute('aria-selected') !== 'true') {
+      await p.locator('.ss-toggle').nth(1).click()
     }
     await p.waitForTimeout(1200)
-    const img = await p.locator('.bg .sb-face').first().evaluate(e => getComputedStyle(e).backgroundImage)
+    const img = await p.locator('.sb-face').first().evaluate(e => getComputedStyle(e).backgroundImage)
     t(img.includes(slug), `${slug} folds its own artwork`, img.slice(-56))
   }
 
   // ── AND THE ONE THAT IS NOT CLAIMED ─────────────────────────────────────
-  await p.locator('.bg-thumb[data-slug="cover-combo-3-chai"]').click()
+  await p.locator('.ss-pick[data-design="cover-combo-3-chai"]').click()
   await p.waitForTimeout(800)
-  t(await p.locator('.bg-toggle', { hasText: /Folded/ }).isDisabled(), 'the three-bottle wrap cannot be folded')
-  t(/dieline has not been confirmed/i.test(await p.locator('.bg-why').innerText().catch(() => '')),
-    'and the page says why rather than leaving a dead button')
+  t(await p.locator('.ss-toggle').nth(1).isDisabled(), 'the three-bottle wrap cannot be folded')
+  t(/dieline not confirmed/i.test((await p.locator('.ss-toggle').nth(1).innerText()) || ''),
+    'and the switch says why rather than being a dead button')
+  t(await p.locator('.ss-controls').count() === 0 && await p.locator('.ss-ask').count() === 1,
+    'a standard cover has no logo tools, and a way into the enquiry by name')
 
   t(errs.length === 0, 'no page errors and no missing art', errs.slice(0, 3).join(' | '))
 } finally {

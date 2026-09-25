@@ -11,7 +11,6 @@ import { vnd, type BlendBoardRow, type CaskBoardRow, type Countdown, type TetCat
 import TetEnquiry, { type EnquiryTarget } from '@/components/tet/TetEnquiry'
 import TetTiers from '@/components/tet/TetTiers'
 import SleeveStudio, { type SleeveDesign } from '@/components/tet/SleeveStudio'
-import BoxGallery from '@/components/tet/BoxGallery'
 import { BOXES } from '@/lib/tet/boxes'
 import TetTimeline from '@/components/tet/TetTimeline'
 import TetLabels from '@/components/tet/TetLabels'
@@ -308,37 +307,19 @@ export default function TetProgramme({
         </Reveal>
         <Reveal step={1}>
         <p className="pk-lede">
-          {t('Every bottle comes in Duncan Taylor’s Tết sleeve. Put your logo on its blank face and see it where it will print.',
-             'Mỗi chai đều có hộp Tết của Duncan Taylor. Đặt logo của quý vị lên mặt trống và xem vị trí sẽ in.')}
+          {t(`Every bottle comes in a Tết box. ${BOXES.length + 2} designs to choose from — landmarks of Sài Gòn and Hà Nội drawn in gold on Tết red — and the first one takes your logo. See any of them flat as it prints, or folded into the box it becomes.`,
+             `Mỗi chai đều có hộp Tết. ${BOXES.length + 2} mẫu để lựa chọn — những địa danh Sài Gòn và Hà Nội vẽ vàng trên nền đỏ Tết — và mẫu đầu tiên nhận logo của quý vị. Xem bất kỳ mẫu nào ở dạng trải phẳng như khi in, hoặc đã gấp thành hộp.`)}
         </p>
         </Reveal>
         <div style={{ marginTop: 44 }}>
-          <SleeveStudio onUse={d => {
-            setDesign(d)
-            setTarget({ kind: 'blend', title: blendCat ? (vn ? blendCat.name_vn : blendCat.name_en) : 'Duncan Taylor' })
-          }} />
+          <SleeveStudio
+            onUse={d => {
+              setDesign(d)
+              setTarget({ kind: 'blend', title: blendCat ? (vn ? blendCat.name_vn : blendCat.name_en) : 'Duncan Taylor' })
+            }}
+            onAsk={b => setTarget({ kind: 'blend', title: t(`The ${b.name[0]} box`, `Hộp ${b.name[1]}`) })} />
         </div>
 
-        {/* THE COVERS FROM THE DESIGN HOUSE (owner, 2026-09-25). A different
-            question from the studio above it: that one asks where a logo goes,
-            this one asks which cover the gift wears. They sit together because
-            a buyer deciding on one is deciding on both. */}
-        <Reveal step={2}>
-          <div style={{ marginTop: 64 }}>
-            <p className="pk-eyebrow">{t('Covers', 'Mẫu hộp')}</p>
-            <h3 className="pk-h2" style={{ marginTop: 10 }}>
-              {t(`${BOXES.length} covers from the design house`, `${BOXES.length} mẫu hộp từ nhà thiết kế`)}
-            </h3>
-            <p className="pk-lede" style={{ marginTop: 14 }}>
-              {t('Landmarks of Sài Gòn and Hà Nội, drawn in gold on Tết red. Choose one to see it flat as it prints, or folded into the box it becomes.',
-                 'Những địa danh của Sài Gòn và Hà Nội, vẽ vàng trên nền đỏ Tết. Chọn một mẫu để xem bản trải phẳng như khi in, hoặc đã gấp thành hộp.')}
-            </p>
-            <BoxGallery t={t} vn={vn} onAsk={b => setTarget({
-              kind: 'blend',
-              title: t(`The ${b.name[0]} box`, `Hộp ${b.name[1]}`),
-            })} />
-          </div>
-        </Reveal>
       </section>
 
       {/* Before the casks: the man who closes them, and the thing itself. Side

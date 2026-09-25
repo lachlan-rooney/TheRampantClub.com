@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type KeyboardEvent, type CSSProperties } from 'react'
 import { useLang } from '@/lib/lang'
 import SleeveBox from '@/components/tet/SleeveBox'
+import FoldedBox from '@/components/tet/FoldedBox'
+import { BOXES, boxArt, type TetBox } from '@/lib/tet/boxes'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE SLEEVE — Duncan Taylor's own artwork, with your logo on its blank face.
@@ -97,6 +99,52 @@ export const SLEEVES: Record<SleeveId, SleeveSpec> = {
 }
 const middle = (f: Box) => ({ cx: f.x + f.w / 2, cy: f.y + f.h / 2 })
 /** Sleeve 1's, kept for anything that imported them before there were two. */
+// ── ONE STUDIO, NOT TWO ────────────────────────────────────────────────────
+// Owner, 2026-09-25: "why the studio and the other bits are seperate makes no
+// sense. Should all be together, with the first one customisable. The rest
+// just the standard. Customisation can be practiced on one."
+//
+// So every design a buyer can choose is in one strip: the two Duncan Taylor
+// sleeves and the twelve covers from the design house. Exactly ONE of them
+// takes a logo — the first — and the logo tools appear only when it is
+// chosen, because a control that does nothing on thirteen of fourteen designs
+// is worse than no control.
+//
+// A design is foldable when its own outline says so. The sleeve's folds were
+// measured from its artwork; the covers' from theirs (lib/tet/boxes). Sleeve 2
+// and the three-bottle wrap have no confirmed dieline and stay flat.
+export interface Design {
+  id: string
+  kind: 'sleeve' | 'cover'
+  name: [string, string]
+  small: string
+  large: string
+  /** Only the first one. */
+  customisable: boolean
+  foldable: boolean
+  subject?: [string, string]
+  box?: TetBox
+}
+
+export const DESIGNS: Design[] = [
+  ...(Object.keys(SLEEVES) as SleeveId[]).map((id, i): Design => ({
+    id, kind: 'sleeve',
+    name: SLEEVES[id].name,
+    small: SLEEVES[id].small, large: SLEEVES[id].large,
+    customisable: i === 0,
+    foldable: SLEEVES[id].folds,
+  })),
+  ...BOXES.map((b): Design => ({
+    id: b.slug, kind: 'cover',
+    name: b.name,
+    small: boxArt(b.slug, 640), large: boxArt(b.slug, 3200),
+    customisable: false,
+    foldable: !!b.folds,
+    subject: b.subject,
+    box: b,
+  })),
+]
+
 export const FACE = SLEEVES['dt-tet-2027'].face
 export const CLEAR = SLEEVES['dt-tet-2027'].clear
 
@@ -117,22 +165,31 @@ export const onArt = (r: Box): CSSProperties => ({
   width: `${(r.w / SLEEVE.w) * 100}%`, height: `${(r.h / SLEEVE.h) * 100}%`,
 })
 
-export default function SleeveStudio({ onUse }: { onUse: (d: SleeveDesign) => void }) {
+export default function SleeveStudio({ onUse, onAsk }: {
+  onUse: (d: SleeveDesign) => void
+  /** A cover has no logo to place, so its way into the enquiry is by name. */
+  onAsk?: (box: TetBox) => void
+}) {
   const { t } = useLang()
   const [logo, setLogo] = useState<{ url: string; file: File; ar: number } | null>(null)
   const [scale, setScale] = useState(0.8)
-  const [sleeveId, setSleeveId] = useState<SleeveId>('dt-tet-2027')
+  const [designId, setDesignId] = useState<string>(DESIGNS[0].id)
+  const design = DESIGNS.find(d => d.id === designId) ?? DESIGNS[0]
+  // The logo tools only ever work on the one customisable design, so the
+  // geometry below is always the first sleeve's — a cover has no blank face.
+  const sleeveId: SleeveId = design.kind === 'sleeve' ? (design.id as SleeveId) : 'dt-tet-2027'
   const S = SLEEVES[sleeveId]
   const FRAME = S.frame, CLEAR = S.clear
   const MIDDLE = middle(FRAME)
   const [centre, setCentre] = useState(MIDDLE)
   const [saving, setSaving] = useState(false)
   const [view, setView] = useState<'flat' | 'folded'>('flat')
-  // A new sleeve puts the logo in the middle of ITS blank space, and drops
-  // back to flat if that sleeve cannot be folded.
-  const pickSleeve = (id: SleeveId) => {
-    setSleeveId(id); setCentre(middle(SLEEVES[id].frame))
-    if (!SLEEVES[id].folds) setView('flat')
+  // A new design puts the logo in the middle of ITS blank space where it has
+  // one, and drops back to flat where that design cannot be folded.
+  const pickDesign = (d: Design) => {
+    setDesignId(d.id)
+    if (d.kind === 'sleeve') setCentre(middle(SLEEVES[d.id as SleeveId].frame))
+    if (!d.foldable) setView('flat')
   }
   const [canShare, setCanShare] = useState(false)
   const [dragging, setDragging] = useState(false)
@@ -263,44 +320,65 @@ export default function SleeveStudio({ onUse }: { onUse: (d: SleeveDesign) => vo
     <div>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
-      <div className="ss-sleeves" role="radiogroup" aria-label={t('Choose a sleeve', 'Chọn mẫu hộp')}>
-        {(Object.keys(SLEEVES) as SleeveId[]).map(id => (
-          <button key={id} role="radio" aria-checked={sleeveId === id}
-                  className={`ss-pick ${sleeveId === id ? 'is-on' : ''}`} onClick={() => pickSleeve(id)}>
+      <div className="ss-sleeves" role="radiogroup" aria-label={t('Choose a design', 'Chọn mẫu hộp')}>
+        {DESIGNS.map(d => (
+          <button key={d.id} role="radio" aria-checked={designId === d.id} data-design={d.id}
+                  className={`ss-pick ${designId === d.id ? 'is-on' : ''}`} onClick={() => pickDesign(d)}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={SLEEVES[id].small} alt="" width={160} height={59} />
-            <span>{t(SLEEVES[id].name[0], SLEEVES[id].name[1])}</span>
+            <img src={d.small} alt="" width={160} height={59} loading="lazy" />
+            <span>{t(d.name[0], d.name[1])}</span>
+            {d.customisable && <i className="ss-yours">{t('Your logo', 'Logo của quý vị')}</i>}
           </button>
         ))}
       </div>
 
-      <div className="ss-views" role="tablist">
-        <button role="tab" aria-selected={view === 'flat'} className={`ss-toggle ${view === 'flat' ? 'is-on' : ''}`} onClick={() => setView('flat')}>
-          {t('Flat', 'Trải phẳng')}
+      {/* THE SWITCH IS THE POINT (owner, 2026-09-25: "make the flat v 3D sign
+          big and clear. I want people to see and test it"). It was two mono
+          words the size of a caption; it is now the largest control on the
+          section, and it says what each side is for. */}
+      <div className="ss-views" role="tablist" aria-label={t('How to look at it', 'Cách xem')}>
+        <button role="tab" aria-selected={view === 'flat'} className={`ss-toggle ${view === 'flat' ? 'is-on' : ''}`}
+                onClick={() => setView('flat')}>
+          <strong>{t('Flat', 'Trải phẳng')}</strong>
+          <span>{t('as it prints', 'như khi in')}</span>
         </button>
         <button role="tab" aria-selected={view === 'folded'} className={`ss-toggle ${view === 'folded' ? 'is-on' : ''}`}
-                onClick={() => setView('folded')} disabled={!S.folds}
-                title={S.folds ? undefined : t('Sleeve 2’s folds are not confirmed yet', 'Nếp gấp của hộp 2 chưa được xác nhận')}>
-          {t('Folded · 3D', 'Đã gấp · 3D')}
+                onClick={() => setView('folded')} disabled={!design.foldable}
+                title={design.foldable ? undefined : t('Its dieline has not been confirmed yet', 'Chưa xác nhận khuôn bế của mẫu này')}>
+          <strong>{t('Folded · 3D', 'Đã gấp · 3D')}</strong>
+          <span>{design.foldable ? t('turn it in your hand', 'xoay thử trong tay') : t('dieline not confirmed', 'chưa có khuôn bế')}</span>
         </button>
       </div>
 
-      {view === 'folded' && <SleeveBox logo={logo?.url ?? null} box={box} t={t} />}
+      {view === 'folded' && (design.kind === 'sleeve'
+        ? <SleeveBox logo={logo?.url ?? null} box={box} t={t} />
+        : <FoldedBox
+            url={design.large}
+            folds={design.box!.folds!}
+            settleAt={-32}
+            label={t(`${design.name[0]}, folded into its box — drag to turn it`, `${design.name[1]}, đã gấp thành hộp — kéo để xoay`)}
+            hint={t('or drag to turn it', 'hoặc kéo để xoay')}
+            turns={[
+              { label: t(design.name[0], design.name[1]), to: 0, gold: true },
+              { label: t('Duncan Taylor', 'Duncan Taylor'), to: -90 },
+              { label: t('The crest', 'Mặt huy hiệu'), to: 180 },
+              { label: t('The small print', 'Mặt thông tin'), to: 90 },
+            ]} />)}
 
       <div className="ss-view" hidden={view !== 'flat'}>
         <div ref={stageRef} className="ss-stage">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className="ss-art" draggable={false} width={SLEEVE.w} height={SLEEVE.h}
-               key={sleeveId} src={S.small}
-               srcSet={`${S.small} 1600w, ${S.large} 3200w`}
+               key={designId} src={design.small}
+               srcSet={`${design.small} ${design.kind === 'cover' ? 640 : 1600}w, ${design.large} 3200w`}
                sizes="(max-width: 900px) 100vw, 1180px"
-               alt={t(`${S.name[0]}: the Duncan Taylor Tết sleeve, flat, before folding`, `${S.name[1]}: hộp Tết Duncan Taylor, trải phẳng trước khi gấp`)} />
-          {!logo && (
+               alt={t(`${design.name[0]}: flat, before folding`, `${design.name[1]}: trải phẳng trước khi gấp`)} />
+          {design.customisable && !logo && (
             <button type="button" className="ss-slot" style={onArt(CLEAR)} onClick={() => fileRef.current?.click()}>
               {t('Your logo here', 'Logo của quý vị')}
             </button>
           )}
-          {logo && box && (
+          {design.customisable && logo && box && (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img src={logo.url} alt={t('Your logo', 'Logo của quý vị')} draggable={false} tabIndex={0}
                  className={`ss-logo ${dragging ? 'is-drag' : ''}`} style={onArt(box)}
@@ -311,12 +389,25 @@ export default function SleeveStudio({ onUse }: { onUse: (d: SleeveDesign) => vo
       </div>
       <p className="pk-meta" style={{ marginTop: 12, opacity: .55, lineHeight: 1.8 }}>
         {view === 'folded'
-          ? t('The same design, folded into the box. Place and size your logo in the flat view.',
-              'Cùng thiết kế, gấp thành hộp. Đặt và chỉnh cỡ logo ở chế độ trải phẳng.')
-          : t('Duncan Taylor’s printed sleeve, flat, before folding — your logo goes on the blank face. The printer works from your original file; this shows where it goes.',
-               'Hộp in của Duncan Taylor, trải phẳng trước khi gấp — logo của quý vị đặt ở mặt trống. Nhà in làm việc với tệp gốc của quý vị; bản này cho thấy vị trí đặt logo.')}
+          ? design.customisable
+            ? t('The same design, folded into the box. Place and size your logo in the flat view.',
+                'Cùng thiết kế, gấp thành hộp. Đặt và chỉnh cỡ logo ở chế độ trải phẳng.')
+            : t('The same artwork, folded into the box it becomes. Every face is a slice of the print file, not a photograph.',
+                'Cùng bản in, gấp thành chiếc hộp thật. Mỗi mặt là một phần của tệp in, không phải ảnh chụp.')
+          : design.customisable
+            ? t('Duncan Taylor’s printed sleeve, flat, before folding — your logo goes on the blank face. The printer works from your original file; this shows where it goes.',
+                'Hộp in của Duncan Taylor, trải phẳng trước khi gấp — logo của quý vị đặt ở mặt trống. Nhà in làm việc với tệp gốc của quý vị; bản này cho thấy vị trí đặt logo.')
+            : t(`${design.subject ? design.subject[0] + '. ' : ''}A standard cover, flat as it prints. The first design in the row is the one that takes your logo.`,
+                `${design.subject ? design.subject[1] + '. ' : ''}Mẫu tiêu chuẩn, trải phẳng như khi in. Mẫu đầu tiên trong hàng là mẫu nhận logo của quý vị.`)}
       </p>
 
+      {!design.customisable && onAsk && design.box && (
+        <button className="ss-ask" onClick={() => onAsk(design.box!)}>
+          {t(`Ask about ${design.name[0]}`, `Hỏi về mẫu ${design.name[1]}`)} <span className="pk-go">→</span>
+        </button>
+      )}
+
+      {design.customisable && <>
       <div className="ss-controls">
         <div>
           <div className="pk-eyebrow">{t('Your logo', 'Logo của quý vị')}</div>
@@ -369,6 +460,7 @@ export default function SleeveStudio({ onUse }: { onUse: (d: SleeveDesign) => vo
           </button>
         )}
       </div>
+      </>}
     </div>
   )
 }
@@ -432,5 +524,31 @@ const CSS = `
              border-bottom: 1px solid transparent; }
 .ss-toggle.is-on { color: #D4B85A; border-bottom-color: #D4B85A; }
 .ss-actions { display: flex; flex-wrap: wrap; gap: 14px 36px; align-items: center; margin-top: 36px; }
+
+/* ── THE SWITCH ───────────────────────────────────────────────────────────
+   It was two words in 11px mono and nobody pressed it. Now it is a pair of
+   panels the width of a thumb, with the question under each one. */
+.ss-views { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 520px;
+            margin: 26px 0 8px; }
+.ss-toggle { display: flex; flex-direction: column; gap: 4px; align-items: flex-start;
+             padding: 14px 18px; cursor: pointer; text-align: left;
+             background: rgba(229,212,194,.04); border: 1px solid rgba(229,212,194,.16);
+             border-radius: 8px; color: rgba(229,212,194,.7); transition: background .25s ease, border-color .25s ease, color .25s ease; }
+.ss-toggle strong { font-family: 'Rampant Sans', serif; font-size: 19px; font-weight: 400; letter-spacing: .01em; }
+.ss-toggle span { font-family: 'Google Sans Code', monospace; font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; opacity: .7; }
+.ss-toggle:hover:not(:disabled) { background: rgba(229,212,194,.07); color: #E5D4C2; }
+.ss-toggle.is-on { background: rgba(212,184,90,.12); border-color: #D4B85A; color: #D4B85A; }
+.ss-toggle:disabled { opacity: .35; cursor: not-allowed; }
+
+/* The one design that takes a logo says so on its own thumbnail. */
+.ss-pick { position: relative; }
+.ss-yours { position: absolute; top: 4px; left: 4px; font-style: normal; font-family: 'Google Sans Code', monospace;
+            font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: #052E20;
+            background: #D4B85A; padding: 2px 6px; border-radius: 3px; }
+.ss-ask { margin-top: 24px; background: none; border: none; padding: 4px 0; cursor: pointer;
+          font-family: 'Google Sans Code', monospace; font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+          color: #D4B85A; border-bottom: 1px solid rgba(212,184,90,.4); }
+.ss-ask:hover { border-bottom-color: #D4B85A; }
+@media (max-width: 640px) { .ss-views { grid-template-columns: 1fr; max-width: none; } }
 @media (prefers-reduced-motion: reduce) { .ss-logo { transition: none; } }
 `
