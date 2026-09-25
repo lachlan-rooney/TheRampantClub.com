@@ -245,8 +245,14 @@ function moneySection(d: AutoData, note?: string): string {
   const back = w.backdated && w.backdated.count
     ? `<div style="font-size:12.5px;color:${GOLD};margin-top:10px">${w.backdated.count} payment${w.backdated.count === 1 ? '' : 's'} recorded this week, taken earlier: ${months || vnd(w.backdated.total)}. Counted in that month's revenue, not this week's — and where that month has already been reported, its report went out without them.</div>`
     : ''
-  return section('Money', 'Membership fees & member card activity', `${stats}${target}${cost}${paid}${back}${prose(note)}
-    <div style="font-size:11.5px;color:${MUTED};font-style:italic;margin-top:10px">Recorded revenue only — membership fees and card top-ups. The club keeps no till feed or expense ledger, so this is not profit.</div>`)
+  // NO FOOTNOTE UNDER THE MONEY (owner, 2026-09-25: "Remove this from the
+  // report btw"). A line explaining that the club has no till feed and no
+  // expense ledger told the reader what is MISSING, under the heading that
+  // already says what is there: "Membership fees & member card activity".
+  // The honesty was already in the subtitle; the caveat only made the section
+  // argue with itself. lib/reports/write.ts still holds the model to the same
+  // rule — the prose never calls this profit, takings, turnover or sales.
+  return section('Money', 'Membership fees & member card activity', `${stats}${target}${cost}${paid}${back}${prose(note)}`)
 }
 
 // ── THE TEAM'S WEEK ─────────────────────────────────────────────────────────

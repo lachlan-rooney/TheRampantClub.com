@@ -39,6 +39,8 @@ export const dynamic = 'force-dynamic'
 // The signed image URLs live an hour, so a minute-old one has 59 left.
 type WhatsOn = { kind: 'fixture' | 'house'; title: string; image: string | null
                  title_vn: string | null; at: string; taken: number | null; seats: number | null }
+type BoardBookingRow = { booking_id: string; member_no: string; start_time: string | null
+                         party_size: number | null; status: string; arrived_at: string | null }
 let cached: { date: string; at: number; rows: WhatsOn[] } | null = null
 const WHATS_ON_TTL = 60_000
 
@@ -72,24 +74,21 @@ export async function GET() {
   const row = Array.isArray(data) ? data[0] : data
   if (!row?.room) return NextResponse.json({ board: row || null })
 
+  // ONE QUERY, NOT TWO. The names used to be a second round trip keyed on the
+  // member numbers the first one returned — which meant the board could not
+  // start drawing until two trips to Virginia had finished, in order. The
+  // foreign key is already there, so PostgREST fetches the name with the
+  // booking. Still exactly the two fields the board shows, and no others.
   const tBook = Date.now()
   const { data: rows } = await a.from('bookings')
-    .select('booking_id, member_no, start_time, party_size, status, arrived_at')
+    .select('booking_id, member_no, start_time, party_size, status, arrived_at, members(full_name, nickname)')
     .eq('space', row.room).eq('booking_date', serviceDate)
     .in('status', ['pending', 'confirmed', 'arrived'])
     .order('start_time', { ascending: true, nullsFirst: false })
 
   mark('bookings', tBook)
-  const list = rows || []
-  const tNames = Date.now()
-  const names = new Map<string, { full_name: string | null; nickname: string | null }>()
-  const nos = [...new Set(list.map(b => b.member_no).filter(Boolean))] as string[]
-  if (nos.length) {
-    const { data: ms } = await a.from('members').select('member_no, full_name, nickname').in('member_no', nos)
-    for (const m of ms || []) names.set(m.member_no, { full_name: m.full_name, nickname: m.nickname })
-  }
+  const list = (rows || []) as unknown as (BoardBookingRow & { members: { full_name: string | null; nickname: string | null } | null })[]
 
-  mark('names', tNames)
   const tWhats = Date.now()
   const whatsOnRows = await whatsOnPromise
   mark('whatson', tWhats)
@@ -100,7 +99,7 @@ export async function GET() {
       ...row,
       whats_on: whatsOnRows,
       bookings: list.map(b => {
-        const m = names.get(b.member_no)
+        const m = b.members
         return {
           id: b.booking_id,
           time: b.start_time ? String(b.start_time).slice(0, 5) : null,
