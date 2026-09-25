@@ -335,8 +335,8 @@ export async function gatherWeek(sb: SupabaseClient, start: string, end: string,
   const [thisW, priorW] = await Promise.all([windowMetrics(sb, start, end), windowMetrics(sb, priorStart, priorEnd)])
 
   // Events
-  const fixtures = await safe<{ id: string; sport: string; title: string; date: string; max_signups: number | null }[]>(
-    sb.from('fixtures').select('id, sport, title, date, max_signups').gte('date', start).lte('date', end + 'T23:59:59'), [])
+  const fixtures = await safe<{ id: string; sport: string; title: string; date: string; max_signups: number | null; is_full?: boolean | null }[]>(
+    sb.from('fixtures').select('id, sport, title, date, max_signups, is_full').gte('date', start).lte('date', end + 'T23:59:59'), [])
   // fixture_signup_counts() returns (fixture_id, signups). This read `count`, which
   // is never there, so every event reported 0 sign-ups (found 2026-09-15). It now
   // counts staff-added places too, because the function counts every row.
@@ -412,7 +412,21 @@ export async function gatherWeek(sb: SupabaseClient, start: string, end: string,
     ops,
     press: press.map(p => ({ title: p.title, outlet: p.outlet, link: p.link, date: p.published_at })),
     events: {
-      fixtures: fixtures.map(f => ({ title: f.title, sport: f.sport, date: f.date, signups: countMap.get(f.id) || 0, max: f.max_signups })),
+      // MARKED FULL MEANS FULL (owner, 2026-09-25, on the member page; the
+      // report had the same fault). Staff throw the switch when the places are
+      // gone but the names are not in the system — taken on Zalo or by phone.
+      // An Evening with Ken Grier and the Kavalan Club Pick both sold out and
+      // both read 0 of their capacity here, which is the opposite of what
+      // happened. Where the club says full, every place is counted taken.
+      fixtures: fixtures.map(f => {
+        const signed = countMap.get(f.id) || 0
+        const full = !!f.is_full && f.max_signups != null
+        return {
+          title: f.title, sport: f.sport, date: f.date,
+          signups: full ? Math.max(signed, f.max_signups as number) : signed,
+          max: f.max_signups,
+        }
+      }),
       calendar_by_kind: calByKind,
     },
     pipeline: {
