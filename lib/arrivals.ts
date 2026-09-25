@@ -47,6 +47,17 @@ const hhmm = (t: string | null) => (t ? String(t).slice(0, 5) : null)
 
 /** Tonight's list: every booking for the day, plus anyone who walked in. */
 export async function arrivalsFor(sb: SupabaseClient, date = vnDateString()): Promise<{ date: string; rows: ArrivalRow[] }> {
+  // ── THE DIARY IS ON THIS LIST TOO (owner, 2026-09-25) ───────────────────
+  // A private party staff booked into a room is a calendar entry: no member,
+  // no booking row, and until now no way to say they had walked in. The
+  // headcount arrived with db/calendar_entry_covers.sql and the stamp with
+  // db/calendar_entry_arrivals.sql; where neither has run the select fails
+  // and the floor sees exactly what it saw before.
+  const diaryRes = await sb.from('calendar_entries')
+    .select('id, title, start_time, space, covers, arrived_at, arrived_covers')
+    .eq('entry_date', date).not('covers', 'is', null)
+    .then(r => r, () => ({ data: null, error: true } as never))
+
   const [bookingsRes, visitsRes, guestsRes] = await Promise.all([
     sb.from('bookings').select('booking_id, member_no, start_time, party_size, space, status, arrived_at, linked_visit_id')
       .eq('booking_date', date).neq('status', 'cancelled'),
@@ -120,6 +131,28 @@ export async function arrivalsFor(sb: SupabaseClient, date = vnDateString()): Pr
     })
   }
 
+  // A party of eight in the Rampant Room sits in the same list as a member's
+  // table: same three states, same one tap.
+  for (const e of ((diaryRes as { data: unknown[] | null }).data || []) as {
+    id: string; title: string; start_time: string | null; space: string | null
+    covers: number | null; arrived_at: string | null; arrived_covers: number | null
+  }[]) {
+    rows.push({
+      key: `e:${e.id}`,
+      booking_id: null,
+      member_no: null,
+      name: e.title,
+      nickname: null,
+      time: e.start_time ? e.start_time.slice(0, 5) : null,
+      party: e.arrived_covers ?? e.covers ?? null,
+      space: e.space ?? null,
+      state: e.arrived_at ? 'in' : 'booked',
+      visit_id: null,
+      since: e.arrived_at,
+      guests: 0,
+    })
+  }
+
   // Not here yet first — that is the list staff are working from — then those
   // in the club, then those who have gone.
   const order = { booked: 0, in: 1, left: 2 }
@@ -131,9 +164,20 @@ export async function arrivalsFor(sb: SupabaseClient, date = vnDateString()): Pr
  *  flips it to arrived. Safe to press twice — the second press returns the same
  *  visit rather than opening a second one. */
 export async function markArrived(
-  sb: SupabaseClient, opts: { member_no?: string | null; booking_id?: string | null; actor: string },
+  sb: SupabaseClient,
+  opts: { member_no?: string | null; booking_id?: string | null; entry_id?: string | null; actor: string },
 ): Promise<{ ok: true; visit_id: string | null } | { ok: false; error: string }> {
   const date = vnDateString()
+
+  // A DIARY PARTY HAS NO MEMBER AND NO VISIT. There is nobody to open a visit
+  // for and nothing to link; the stamp on the entry IS the record. Pressing it
+  // twice keeps the first time, because the first one is when they arrived.
+  if (opts.entry_id) {
+    const { error } = await sb.from('calendar_entries')
+      .update({ arrived_at: new Date().toISOString() })
+      .eq('id', opts.entry_id).is('arrived_at', null)
+    return error ? { ok: false, error: error.message } : { ok: true, visit_id: null }
+  }
   const member_no = opts.member_no?.trim() || null
 
   if (!member_no) {

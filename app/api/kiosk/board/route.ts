@@ -64,11 +64,33 @@ export async function GET() {
   const counts = await a.rpc('fixture_signup_counts')
   const signups = new Map(((counts.data || []) as { fixture_id: string; signups?: number }[])
     .map(c => [c.fixture_id, Number(c.signups ?? 0)]))
+  // ── THE PICTURES (owner, 2026-09-25: "pull through images for events on
+  // the kiosk home page that looks garbage") ──────────────────────────────
+  // Every event on the books has art. The member-facing route that serves it
+  // requires a SIGNED-IN USER and a tablet has a device token instead, so
+  // rather than widen that guard — it is the one place that decides who may
+  // see a file, and a second answer would drift from it — this route mints
+  // its own short-lived signed URLs, for FIXTURE art only, having already
+  // checked the device. A staff-only calendar entry's file is never touched.
+  const fixtureIds = ((fx.data || []) as { id: string }[]).map(f => f.id)
+  const art = new Map<string, string>()
+  if (fixtureIds.length) {
+    const { data: atts } = await a.from('entry_attachments')
+      .select('entity_id, storage_path, verified_kind')
+      .eq('entity_type', 'fixture').in('entity_id', fixtureIds)
+    for (const at of (atts || []) as { entity_id: string; storage_path: string; verified_kind: string }[]) {
+      if (at.verified_kind === 'pdf' || art.has(at.entity_id)) continue
+      const { data: signed } = await a.storage.from('entry-attachments').createSignedUrl(at.storage_path, 60 * 60)
+      if (signed?.signedUrl) art.set(at.entity_id, signed.signedUrl)
+    }
+  }
+
   const whatsOn = [
     ...((fx.data || []) as { id: string; title: string; date: string; type: string; max_signups: number | null; is_full: boolean | null }[])
       .map(f => ({
         kind: 'fixture' as const,
         title: f.title.trim(),
+        image: art.get(f.id) ?? null,
         title_vn: null as string | null,
         at: f.date,
         // A fixture staff have marked full is full, however many names are in.
@@ -81,6 +103,7 @@ export async function GET() {
       .map(e => ({
         kind: 'house' as const,
         title: e.title,
+        image: null as string | null,
         title_vn: e.title_vn,
         at: e.start_time ? `${e.entry_date}T${e.start_time}` : e.entry_date,
         taken: null as number | null,

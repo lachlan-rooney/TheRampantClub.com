@@ -43,13 +43,14 @@ const MEMBER_GROUPS: { label: string; vn: string; links: { href: string; en: str
     { ...L('/members/introductions'), icon: 'introduce' },
     { ...L('/members/messages'), icon: 'chat' },
   ] },
-  { label: 'You', vn: 'Bạn', links: [
+  // ONE NAME FOR ONE THING (owner, 2026-09-25: "You and my membership should
+  // be the same damn thing"). The group was called You and the page inside it
+  // My Membership, which made two names for the member's own corner of the
+  // portal — and then a third, Your Kiosk PIN, for a setting that now lives
+  // on the page itself. The PIN page still exists, because a reset link has
+  // to land somewhere; it is no longer a separate destination.
+  { label: 'My Membership', vn: 'Tư Cách Thành Viên', links: [
     { ...L('/members/profile'), icon: 'card' },
-    // The PIN page existed from the start and appeared in no menu: the only
-    // route to it was a reset email (owner, 2026-09-25: "how does a member set
-    // their pin for the Kiosk? Seems complicated"). It is one tap from here
-    // now, and linked from My Membership as well.
-    { ...L('/members/pin'), icon: 'key' },
     { ...L('/members/calendar'), icon: 'calendar' },
     { ...L('/members/visits'), icon: 'clock' },
   ] },

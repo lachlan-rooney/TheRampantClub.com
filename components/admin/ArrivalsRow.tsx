@@ -117,10 +117,21 @@ export default function ArrivalsRow({ endpoint = '/api/admin/arrivals', compact 
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             {r.state === 'booked' && (
-              <button onClick={() => act(r.key, { action: 'arrived', member_no: r.member_no, booking_id: r.booking_id })}
+              <button onClick={() => act(r.key, {
+                        action: 'arrived', member_no: r.member_no, booking_id: r.booking_id,
+                        // A row keyed e:<id> is a diary party — a private booking
+                        // with no member behind it (2026-09-25).
+                        entry_id: r.key.startsWith('e:') ? r.key.slice(2) : undefined,
+                      })}
                       disabled={busy === r.key} style={primary}>
                 {busy === r.key ? '…' : 'Arrived'}
               </button>
+            )}
+            {/* A diary party has nobody to walk back out and no visit to
+                close, so it is marked in and left at that — the entry's own
+                end time is what the club has. */}
+            {r.state === 'in' && !r.visit_id && r.key.startsWith('e:') && (
+              <span style={{ ...ghost, opacity: .5, cursor: 'default' }}>In</span>
             )}
             {r.state === 'in' && r.visit_id && (
               <button onClick={() => act(r.key, { action: 'left', visit_id: r.visit_id })}

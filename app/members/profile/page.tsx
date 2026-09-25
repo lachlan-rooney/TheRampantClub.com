@@ -62,11 +62,15 @@ function membershipBadge(s: MembershipData['status'], t: (en: string, vn: string
 }
 
 export default function ProfilePage() {
-  const { t, lang } = useLang()
+  const { t, lang, setLang } = useLang()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [email, setEmail] = useState('')
   // Your account: the PIN the tablets ask for, and the password this page uses.
   const [pinSet, setPinSet] = useState<boolean | null>(null)
+  const [newPin, setNewPin] = useState('')
+  const [pinAgain, setPinAgain] = useState('')
+  const [pinBusy, setPinBusy] = useState(false)
+  const [pinMsg, setPinMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [newPw, setNewPw] = useState('')
   const [pwBusy, setPwBusy] = useState(false)
   const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -116,6 +120,25 @@ export default function ProfilePage() {
       .then(d => { if (d) setPinSet(!!d.has_pin) })
       .catch(() => {})
   }, [])
+
+  // THE PIN IS SET HERE, not on a page of its own (owner, 2026-09-25: "You
+  // and my membership should be the same damn thing"). /members/pin still
+  // exists because a reset link has to land somewhere, but a member who wants
+  // a PIN should not be sent to a second page to get one.
+  const savePin = useCallback(async () => {
+    setPinMsg(null)
+    if (!/^[0-9]{6}$/.test(newPin)) { setPinMsg({ ok: false, text: t('Six digits, please.', 'Vui lòng nhập sáu chữ số.') }); return }
+    if (newPin !== pinAgain) { setPinMsg({ ok: false, text: t('The two entries don’t match.', 'Hai lần nhập không khớp.') }); return }
+    setPinBusy(true)
+    const r = await fetch('/api/members/kiosk-pin', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: newPin }),
+    })
+    setPinBusy(false)
+    const j = await r.json().catch(() => ({}))
+    if (!r.ok) { setPinMsg({ ok: false, text: j.error || t('Could not set your PIN.', 'Chưa đặt được mã PIN.') }); return }
+    setNewPin(''); setPinAgain(''); setPinSet(true)
+    setPinMsg({ ok: true, text: t('Your PIN is set. Nobody at the club can read it.', 'Đã đặt mã PIN. Không ai trong câu lạc bộ đọc được mã này.') })
+  }, [newPin, pinAgain, t])
 
   // The password belongs to the session, so it is changed against Supabase
   // directly — the same call /reset-password makes, from a page the member is
@@ -346,16 +369,50 @@ export default function ProfilePage() {
 
             <div className="pf-field">
               <label className="pf-label">{t('Kiosk PIN', 'Mã PIN tại quầy')}</label>
+              <p className="pf-acct-state" style={{ margin: '0 0 10px' }}>
+                {pinSet === null ? '…' : pinSet
+                  ? t('Set — six digits, known only to you. Enter a new one to change it.',
+                      'Đã đặt — sáu chữ số, chỉ quý vị biết. Nhập mã mới để thay đổi.')
+                  : t('Not set yet. You need one to sign in on a tablet in the club.',
+                      'Chưa đặt. Quý vị cần mã này để đăng nhập trên máy tính bảng tại câu lạc bộ.')}
+              </p>
               <div className="pf-acct">
-                <span className="pf-acct-state">
-                  {pinSet === null ? '…' : pinSet
-                    ? t('Set — six digits, known only to you', 'Đã đặt — sáu chữ số, chỉ quý vị biết')
-                    : t('Not set yet — you need one to sign in on a tablet', 'Chưa đặt — cần mã này để đăng nhập trên máy tính bảng')}
-                </span>
-                <Link href="/members/pin" className="pf-acct-go">
-                  {pinSet ? t('Change it', 'Đổi mã') : t('Set your PIN', 'Đặt mã PIN')} <span className="pk-go">→</span>
-                </Link>
+                <input className="pf-input" type="password" inputMode="numeric" maxLength={6} autoComplete="off"
+                       placeholder={t('Six digits', 'Sáu chữ số')}
+                       value={newPin} onChange={e => { setNewPin(e.target.value.replace(/\D/g, '')); setPinMsg(null) }} />
+                <input className="pf-input" type="password" inputMode="numeric" maxLength={6} autoComplete="off"
+                       placeholder={t('Again', 'Nhập lại')}
+                       value={pinAgain} onChange={e => { setPinAgain(e.target.value.replace(/\D/g, '')); setPinMsg(null) }} />
+                <button className="pf-acct-go" disabled={pinBusy || newPin.length !== 6} onClick={savePin}>
+                  {pinBusy ? t('Saving…', 'Đang lưu…') : pinSet ? t('Change it', 'Đổi mã') : t('Set it', 'Đặt mã')} <span className="pk-go">→</span>
+                </button>
               </div>
+              {pinMsg && <div className={pinMsg.ok ? 'pf-saved' : 'pf-err'} style={{ marginTop: 8 }}>{pinMsg.text}</div>}
+            </div>
+
+            <div className="pf-field">
+              <label className="pf-label">{t('Language', 'Ngôn ngữ')}</label>
+              <div className="pf-acct">
+                {(['en', 'vn'] as const).map(l => (
+                  <button key={l} onClick={() => setLang(l)}
+                          className={`pf-lang${lang === l ? ' is-on' : ''}`}>
+                    {l === 'en' ? 'English' : 'Tiếng Việt'}
+                  </button>
+                ))}
+                <span className="pf-acct-state">{t('Applies across the portal.', 'Áp dụng cho toàn bộ cổng hội viên.')}</span>
+              </div>
+            </div>
+
+            {/* WHAT THE CLUB HOLDS, AND WHO MAY CHANGE IT. The roster is
+                staff-owned by policy — a member cannot edit their own phone or
+                email here, and a box that pretended otherwise would fail
+                silently on save. So it says where to go instead. */}
+            <div className="pf-field">
+              <label className="pf-label">{t('Your contact details', 'Thông tin liên hệ')}</label>
+              <p className="pf-acct-state" style={{ margin: 0 }}>
+                {t('Your phone and email are held on the club’s roster, which only the team can change — tell any of them, or write to the Concierge, and it is done the same day.',
+                   'Số điện thoại và email của quý vị được lưu trong hồ sơ do câu lạc bộ quản lý; chỉ nhân viên mới sửa được — hãy báo bất kỳ nhân viên nào hoặc nhắn cho Quản Gia, sẽ xong trong ngày.')}
+              </p>
             </div>
 
             <div className="pf-field">
@@ -414,6 +471,10 @@ const CSS = `
                 color: #D4B85A; border-bottom: 1px solid rgba(212,184,90,.4); text-decoration: none; }
   .pf-acct-go:hover { border-bottom-color: #D4B85A; }
   .pf-acct-go:disabled { opacity: .35; cursor: not-allowed; }
+  .pf-lang { background: none; cursor: pointer; font-family: ${MONO}; font-size: 12px; letter-spacing: .06em;
+             padding: 7px 14px; border-radius: 5px; color: rgba(229,212,194,.6);
+             border: 1px solid rgba(229,212,194,.2); }
+  .pf-lang.is-on { color: #052E20; background: #D4B85A; border-color: #D4B85A; }
   .pf-label { display: block; font-family: ${MONO}; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: #E5D4C2; opacity: .72; }
 
   .pf-status { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap;

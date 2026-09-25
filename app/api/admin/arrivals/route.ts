@@ -33,7 +33,9 @@ export async function POST(req: Request) {
   const sb = svc()
 
   if (action === 'arrived') {
-    const r = await markArrived(sb, { member_no: body.member_no, booking_id: body.booking_id, actor })
+    // entry_id is a diary party: no member, no booking, and the stamp on the
+    // entry is the whole record.
+    const r = await markArrived(sb, { member_no: body.member_no, booking_id: body.booking_id, entry_id: body.entry_id, actor })
     if (!r.ok) return NextResponse.json({ error: r.error }, { status: 400 })
     return NextResponse.json({ ok: true, visit_id: r.visit_id, ...(await arrivalsFor(sb)) })
   }

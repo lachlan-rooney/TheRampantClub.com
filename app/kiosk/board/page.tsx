@@ -29,6 +29,9 @@ interface WhatsOn {
   title: string; title_vn: string | null
   at: string
   taken: number | null; seats: number | null
+  /** A short-lived signed URL for the event's own art, minted by the board
+   *  route — the tablet has no member session to fetch it with. */
+  image: string | null
 }
 interface BoardBooking { id: string; time: string | null; name: string; nickname: string | null; party: number | null; arrived: boolean }
 const MAX_BOOKINGS = 6   // the board never scrolls; more than this collapses to "+N more"
@@ -317,10 +320,19 @@ export default function KioskBoard() {
                 </div>
                 {b.whats_on.map(w => (
                   <div key={`${w.kind}-${w.title}-${w.at}`}
-                       style={{ display: 'flex', alignItems: 'baseline', gap: 'clamp(12px,2vw,26px)',
+                       style={{ display: 'flex', alignItems: 'center', gap: 'clamp(12px,2vw,26px)',
                                 padding: 'clamp(7px,1.4vh,12px) 0', borderTop: '1px solid rgba(229,212,194,.1)' }}>
+                    {/* THE EVENT'S OWN PICTURE. A list of dates and words was
+                        a timetable; the club's events look like something. */}
+                    {w.image
+                      // eslint-disable-next-line @next/next/no-img-element
+                      ? <img src={w.image} alt="" loading="lazy"
+                             style={{ width: 'clamp(54px,7vw,86px)', height: 'clamp(40px,5vw,62px)',
+                                      objectFit: 'cover', borderRadius: 4, flex: '0 0 auto',
+                                      border: '1px solid rgba(229,212,194,.14)' }} />
+                      : <span style={{ width: 'clamp(54px,7vw,86px)', flex: '0 0 auto' }} />}
                     <span style={{ fontFamily: MONO, fontSize: 'clamp(11px,1.2vw,13px)', color: '#D4B85A',
-                                   letterSpacing: '.08em', whiteSpace: 'nowrap', minWidth: 96 }}>
+                                   letterSpacing: '.08em', whiteSpace: 'nowrap', minWidth: 84 }}>
                       {whenLabel(w.at)}
                     </span>
                     <span style={{ fontFamily: SERIF, fontSize: 'clamp(17px,2.1vw,26px)', lineHeight: 1.25, flex: 1 }}>
