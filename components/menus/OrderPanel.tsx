@@ -216,7 +216,16 @@ export default function OrderPanel({ order, busy, onPlaced, onClear, onRemove, o
           )}
           {!!order.vat_vnd && (
             <div className="km-sum-row">
-              <span>{t('VAT', 'Thuế GTGT')} <span className="km-pct">{pct(order.vat_pct)}</span></span>
+              <span>
+                {t('VAT', 'Thuế GTGT')} <span className="km-pct">{pct(order.vat_pct)}</span>
+                {/* A tray with a Negroni and a plate on it is charged at two
+                    rates — 10% on the drink, 8% on the rest — so the single
+                    figure above is the blend. This says so rather than
+                    printing a rate nobody could look up. */}
+                {order.vat_pct != null && Math.abs(order.vat_pct - 0.08) > 0.0005 && Math.abs(order.vat_pct - 0.10) > 0.0005 && (
+                  <span className="km-pct"> · {t('8% food, 10% alcohol', '8% đồ ăn, 10% đồ uống có cồn')}</span>
+                )}
+              </span>
               <span className="km-sum-n">{price(order.vat_vnd)}</span>
             </div>
           )}

@@ -143,13 +143,13 @@ function cardsSection(title: string, sub: string, blocks: ColBlock[] | undefined
   return section(title, sub, `<table role="presentation" style="width:100%;border-collapse:collapse"><tr>${blocks.map(card).join('')}</tr></table>`)
 }
 
-function momentumSection(items: MomentumItem[] | undefined): string {
+function momentumSection(items: MomentumItem[] | undefined, span: string): string {
   if (!items || !items.length) return ''
   const rows = items.map(m => `<div style="border-left:3px solid ${GOLD};background:rgba(212,184,90,0.05);padding:11px 14px;margin:0 0 9px;border-radius:0 6px 6px 0">
     <span style="font-family:${SERIF};font-size:14px;color:${GOLD};font-weight:600">${esc(m.source)}</span>
     <span style="font-size:13px;color:${CREAM};margin-left:8px">${m.url ? `<a href="${esc(m.url)}" style="color:${CREAM};text-decoration:underline">${esc(m.note)}</a>` : esc(m.note)}</span>
   </div>`).join('')
-  return section('Brand Momentum', 'Press & reach this week', rows)
+  return section('Brand Momentum', `Press & reach ${span}`, rows)
 }
 
 function actionsSection(items: ActionItem[] | undefined): string {
@@ -250,13 +250,13 @@ function moneySection(d: AutoData, note?: string): string {
 }
 
 // ── THE TEAM'S WEEK ─────────────────────────────────────────────────────────
-function opsSection(d: AutoData, note?: string): string {
+function opsSection(d: AutoData, span: string, note?: string): string {
   const o = d.ops
   if (!o) return ''
   const t = o.tasks
   const board = t.total
     ? progress('Shift tasks marked done', t.done, t.total, `${t.done} of ${t.total}`, t.done ? SAGE : RED)
-    : `<div style="font-size:13px;color:${MUTED}">No shift tasks were set for this week.</div>`
+    : `<div style="font-size:13px;color:${MUTED}">No shift tasks were set for ${span}.</div>`
   const blocked = t.blocked ? `<div style="font-size:12.5px;color:${RED};margin-top:6px">${t.blocked} blocked.</div>` : ''
   const actions = o.top_actions.length
     ? `<div style="font-size:12.5px;color:${MUTED};margin-top:10px">${o.staff_actions} staff actions recorded · ${o.top_actions.map(a => `${esc(a.what)} ×${a.count}`).join(' · ')}</div>` : ''
@@ -266,17 +266,34 @@ function opsSection(d: AutoData, note?: string): string {
   return section('The Team’s Week', 'Shift board, actions & complaints', `${board}${blocked}${actions}${comp}${away}${prose(note)}`)
 }
 
-function pressSection(d: AutoData): string {
+function pressSection(d: AutoData, span: string): string {
   const p = d.press || []
   if (!p.length) return ''
-  return section('In the Press', 'Published this week', p.map(i => `<div style="font-size:13.5px;color:${CREAM};padding:7px 0;border-top:1px solid rgba(229,212,194,0.08)">
+  return section('In the Press', `Published ${span}`, p.map(i => `<div style="font-size:13.5px;color:${CREAM};padding:7px 0;border-top:1px solid rgba(229,212,194,0.08)">
     ${i.link ? `<a href="${esc(i.link)}" style="color:${CREAM};text-decoration:underline">${esc(i.title)}</a>` : esc(i.title)}
     ${i.outlet ? `<span style="color:${MUTED}"> · ${esc(i.outlet)}</span>` : ''}</div>`).join(''))
+}
+
+// HOW LONG IS "THIS"? A report is usually a week and says so everywhere. The
+// owner sent a fortnight on 2026-09-25 — two weeks in one report — and every
+// label still read "this week", which is the one thing a reader checks a
+// figure against. The span decides the words; seven days reads exactly as it
+// always did.
+function spanWords(r: ReportRow): { it: string; prior: string; days: number } {
+  const start = new Date(r.period_start + 'T00:00:00Z').getTime()
+  const end = new Date(r.period_end + 'T00:00:00Z').getTime()
+  const days = Math.round((end - start) / 86400000) + 1
+  if (days <= 8) return { it: 'this week', prior: 'last week', days }
+  if (days <= 15) return { it: 'this fortnight', prior: 'the fortnight before', days }
+  return { it: 'this period', prior: 'the period before', days }
 }
 
 export function renderReportBody(r: ReportRow, mode: Mode): string {
   const d = r.auto_data
   const n = r.narrative || {}
+  // One span for the whole render: "this week" on seven days, "this fortnight"
+  // on fourteen. Every label below takes it rather than assuming.
+  const span = spanWords(r).it
   const u = d.usage
 
   let html = `<div style="margin:0 0 34px">
@@ -324,7 +341,7 @@ export function renderReportBody(r: ReportRow, mode: Mode): string {
     ? `<span style="color:${CREAM}">~${memberHours}h</span> in the club, from ${u.timed_visits} visit${u.timed_visits === 1 ? '' : 's'} with a recorded time`
     : memberHours > 0
       ? `<span style="color:${CREAM}">~${memberHours}h</span> in the club`
-      : 'no visit lengths were recorded this week')
+      : `no visit lengths were recorded ${span}`)
   const guestsLine = (() => {
     const note = n.guests_note ? ` · ${esc(n.guests_note)}` : ''
     if (u.guest_heads > 0) return row('Guests', `<span style="color:${CREAM}">${u.guest_heads}</span> signed in${guestHours > 0 ? `, <span style="color:${CREAM}">~${guestHours}h</span> in the club` : ', no time recorded'}${note}`)
@@ -332,7 +349,7 @@ export function renderReportBody(r: ReportRow, mode: Mode): string {
     return note ? row('Guests', note.slice(3)) : ''
   })()
   const attendanceLine = membersLine + guestsLine
-  html += section('Who’s Been In', 'Attendance & time in the club this week', `
+  html += section('Who’s Been In', `Attendance & time in the club ${span}`, `
     <table role="presentation" style="width:100%;border-collapse:collapse"><tr>
       ${/* 2026-09-15: people who came in (taps, visits, arrived bookings, guests)
             and bookings made — the same count as the calendar's live strip. A report
@@ -410,15 +427,15 @@ export function renderReportBody(r: ReportRow, mode: Mode): string {
   `)
 
   // The team's week sits with the people sections, not adrift after the press.
-  html += opsSection(d, n.operations)
-  html += pressSection(d)
+  html += opsSection(d, span, n.operations)
+  html += pressSection(d, span)
 
   html += narrative('Marketing Initiatives', n.marketing)
   html += narrative('Cost-Cutting', n.cost_cutting)
   html += cardsSection('Team & Operations', 'The changes in place now', nx.ops)
   html += cardsSection('Whisky Retail · Quy & Tai', 'Low-cost, high-visibility improvements', nx.retail)
   html += narrative('Successes', n.successes)
-  html += momentumSection(nx.momentum)
+  html += momentumSection(nx.momentum, span)
   html += actionsSection(nx.actions)
 
   // Financials

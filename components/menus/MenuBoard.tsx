@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useLang, pick } from '@/lib/lang'
-import { NOTE_MAX, charges, SERVICE_PCT, VAT_PCT } from '@/lib/menus/orders'
+import { NOTE_MAX, charges, SERVICE_PCT, VAT_PCT, VAT_ALCOHOL_PCT } from '@/lib/menus/orders'
 import { venueState, waitLabel, LAST_CALL_MIN, type VenueState } from '@/lib/menus/hours'
 import {
   ALLERGEN_LABEL, DIETARY_LABEL, price, mediaUrl, arrivingDate, isArriving,
@@ -192,6 +192,9 @@ export default function MenuBoard({
     [picked, ordering, states],
   )
   const total = chosen.reduce((s2, c) => s2 + (c.p.price_vnd ?? 0) * c.n, 0)
+  // The part of it that is beer, wine or spirits — taxed at 10% rather than
+  // the reduced 8%, so the tray adds up the way the server will.
+  const alcoholTotal = chosen.reduce((s2, c) => s2 + (c.p.contains_alcohol ? (c.p.price_vnd ?? 0) * c.n : 0), 0)
   const count = chosen.reduce((s2, c) => s2 + c.n, 0)
 
   // THE LINE-UP. One heading and the logos side by side, rather than four
@@ -410,11 +413,14 @@ export default function MenuBoard({
                     another plate is deciding against what they will pay, not
                     against the food alone. The same helper the server uses. */}
                 <span className="mb-tray-total">
-                  {price(charges(total).total) ?? ''}
+                  {price(charges(total, alcoholTotal).total) ?? ''}
                   {total > 0 && (
                     <span className="mb-tray-inc">
-                      {t(`incl. ${Math.round(SERVICE_PCT * 100)}% service + ${Math.round(VAT_PCT * 100)}% VAT`,
-                         `gồm ${Math.round(SERVICE_PCT * 100)}% phí phục vụ + ${Math.round(VAT_PCT * 100)}% VAT`)}
+                      {alcoholTotal > 0
+                        ? t(`incl. ${Math.round(SERVICE_PCT * 100)}% service + VAT (${Math.round(VAT_PCT * 100)}% food, ${Math.round(VAT_ALCOHOL_PCT * 100)}% alcohol)`,
+                            `gồm ${Math.round(SERVICE_PCT * 100)}% phí phục vụ + VAT (${Math.round(VAT_PCT * 100)}% đồ ăn, ${Math.round(VAT_ALCOHOL_PCT * 100)}% đồ uống có cồn)`)
+                        : t(`incl. ${Math.round(SERVICE_PCT * 100)}% service + ${Math.round(VAT_PCT * 100)}% VAT`,
+                            `gồm ${Math.round(SERVICE_PCT * 100)}% phí phục vụ + ${Math.round(VAT_PCT * 100)}% VAT`)}
                     </span>
                   )}
                 </span>

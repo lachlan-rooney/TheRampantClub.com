@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
   // or has no price, cannot be ordered — which also stops a stale tablet
   // ordering something that was taken off an hour ago.
   const { data: items, error } = await sb.from('menu_items')
-    .select('id, name_en, name_vn, price_vnd, is_active, venue_id, menu_venues(name)')
+    .select('id, name_en, name_vn, price_vnd, is_active, venue_id, contains_alcohol, menu_venues(name)')
     .in('id', wanted.map(w => w.item_id))
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
   const byId = new Map((items ?? []).map(i => [i.id, i]))
   const lines: {
     item_id: string; venue_name: string; name_en: string; name_vn: string | null
-    unit_price_vnd: number; qty: number; line_total_vnd: number; display_order: number
+    unit_price_vnd: number; qty: number; line_total_vnd: number; alcohol: boolean; display_order: number
   }[] = []
   const refused: string[] = []
 
@@ -115,6 +115,10 @@ export async function POST(req: NextRequest) {
       unit_price_vnd: it.price_vnd,
       qty: w.qty,
       line_total_vnd: it.price_vnd * w.qty,
+      // Beer, wine and spirits are taxed at the standard rate; everything else
+      // at the reduced one. Read from the MENU like the price is, never from
+      // what the tablet sent.
+      alcohol: (it as unknown as { contains_alcohol?: boolean }).contains_alcohol === true,
       display_order: n * 10,
     })
   })
@@ -122,7 +126,10 @@ export async function POST(req: NextRequest) {
 
   // Priced, then charged. Both from the menu and the club's own rates; a
   // tablet sends item ids and quantities and nothing else.
-  const sum = charges(lines.reduce((s, l) => s + l.line_total_vnd, 0))
+  const sum = charges(
+    lines.reduce((s, l) => s + l.line_total_vnd, 0),
+    lines.filter(l => l.alcohol).reduce((s, l) => s + l.line_total_vnd, 0),
+  )
 
   // One open order per room, enforced by a partial unique index. Editing means
   // replacing the lines on the order that is already open, not starting a
@@ -151,7 +158,9 @@ export async function POST(req: NextRequest) {
   }
 
   const { error: lineErr } = await sb.from('menu_order_lines')
-    .insert(lines.map(l => ({ ...l, order_id: orderId })))
+    // `alcohol` is used to work out the VAT above and is NOT a column on the
+    // line — the spread would have tried to insert it and failed the order.
+    .insert(lines.map(({ alcohol: _alcohol, ...l }) => ({ ...l, order_id: orderId })))
   if (lineErr) return NextResponse.json({ error: lineErr.message }, { status: 500 })
 
   return NextResponse.json({ ok: true, order: await openOrder(svc(), r), refused })

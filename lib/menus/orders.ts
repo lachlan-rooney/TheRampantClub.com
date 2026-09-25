@@ -27,22 +27,50 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 // rates it was quoted at (menu_orders.service_pct / vat_pct), so a rate change
 // cannot rewrite what somebody was already shown.
 export const SERVICE_PCT = 0.10
-/** Food and drink, 2026-09-25 (owner). Vietnam's reduced rate — the club's
- *  spirits and the Tết programme are a different rate and a different file. */
+/** Food and soft drinks: Vietnam's reduced rate, in force to 31 Dec 2026.
+ *  Catering is inside the reduction. */
 export const VAT_PCT = 0.08
+/** Beer, wine and spirits: Special Consumption Tax goods, which the reduction
+ *  explicitly excludes, so they stay at the standard rate. The flag that says
+ *  which lines these are is menu_items.contains_alcohol. */
+export const VAT_ALCOHOL_PCT = 0.10
 
 export interface Charges {
   subtotal: number; service: number; vat: number; total: number
   servicePct: number; vatPct: number
+  /** The two halves, when an order has both. Alcohol carries 10%, the rest 8%. */
+  alcoholSubtotal: number; vatFood: number; vatAlcohol: number
 }
 
 /** The whole sum, in whole đồng — VND has no minor unit, so every component is
  *  rounded once here rather than each surface rounding its own way and the
  *  parts failing to add up to the total. */
-export function charges(subtotal: number, servicePct = SERVICE_PCT, vatPct = VAT_PCT): Charges {
+// TWO RATES IN ONE ORDER. A tray with a Negroni and a plate of croquetas on it
+// carries both: 10% on the drink, 8% on the plate. Service is apportioned the
+// same way — it follows what it is service ON — and each part is rounded once,
+// so the rows on screen add up to the total that is charged.
+//
+// `alcoholSubtotal` is the part of the subtotal that is beer, wine or spirits.
+// Zero (the default) means the old behaviour exactly: everything at 8%.
+export function charges(subtotal: number, alcoholSubtotal = 0, servicePct = SERVICE_PCT): Charges {
+  const alcohol = Math.max(0, Math.min(alcoholSubtotal, subtotal))
+  const food = subtotal - alcohol
   const service = Math.round(subtotal * servicePct)
-  const vat = Math.round((subtotal + service) * vatPct)
-  return { subtotal, service, vat, total: subtotal + service + vat, servicePct, vatPct }
+  // Split the service in the same proportion, and give the remainder to food
+  // so the two halves add back to the service actually charged.
+  const serviceAlcohol = subtotal > 0 ? Math.round(service * (alcohol / subtotal)) : 0
+  const serviceFood = service - serviceAlcohol
+  const vatFood = Math.round((food + serviceFood) * VAT_PCT)
+  const vatAlcohol = Math.round((alcohol + serviceAlcohol) * VAT_ALCOHOL_PCT)
+  const vat = vatFood + vatAlcohol
+  // The effective rate this order was charged at — what gets stored, so an
+  // order read back next year shows the arithmetic it was actually given.
+  const vatPct = subtotal + service > 0 ? vat / (subtotal + service) : VAT_PCT
+  return {
+    subtotal, service, vat, total: subtotal + service + vat,
+    servicePct, vatPct,
+    alcoholSubtotal: alcohol, vatFood, vatAlcohol,
+  }
 }
 
 /** As long a note as the column takes. Enforced here, on the tablet, and by a

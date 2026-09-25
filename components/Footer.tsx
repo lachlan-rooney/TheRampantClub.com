@@ -146,16 +146,18 @@ export default function Footer() {
           {/* Opening Times */}
           <div className="trc-footer-hours">
             <div className="trc-footer-heading">Opening Times</div>
-            {/* Seven days and a midnight close, from 14 Sep 2026. It used to
-                read "Four 'til Last Pour · Mon–Sat · Sundays, by appointment",
-                which was true of a club that opened at four and ran until the
-                room emptied itself. Both halves of that changed on the same
-                day, and the footer is the first place a prospective member
-                looks for them. */}
-            <div className="trc-footer-address">Three &rsquo;til Midnight</div>
-            <div className="trc-footer-address">Seven days</div>
-            <div className="trc-footer-address">Last entry 10:30pm</div>
-            <div className="trc-footer-address">Last call 11pm</div>
+            {/* BACK TO FOUR, AND BACK TO SIX DAYS (owner, 2026-09-25: "Change
+                this back to Four till last pour for now, monday to Saturday.
+                We will be hiring for a new member of staff asap").
+                It read "Three 'til Midnight · Seven days · Last entry 10:30pm
+                · Last call 11pm" from 14 Sep — a rota the club could not staff.
+                The fixed last entry and last call go with it: a club that runs
+                until the room empties has neither, and publishing times the
+                floor does not keep is worse than publishing none. This is the
+                first place a prospective member looks, so it changes the day
+                the hours do, not the week after. */}
+            <div className="trc-footer-address">Four &rsquo;til Last Pour</div>
+            <div className="trc-footer-address">Monday to Saturday</div>
           </div>
 
           {/* Address logo */}

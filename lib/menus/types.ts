@@ -79,6 +79,9 @@ export interface MenuPlate extends MenuVenueFields {
   allergens_confirmed: boolean
   photo_path: string | null
   price_vnd: number | null
+  /** Beer, wine or spirits — Special Consumption Tax goods, so 10% VAT rather
+   *  than the reduced 8%. From menu_items.contains_alcohol. */
+  contains_alcohol?: boolean | null
   lead_time_minutes: number | null
   availability_en: string | null
   availability_vn: string | null
