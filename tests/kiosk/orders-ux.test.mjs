@@ -91,9 +91,24 @@ try {
   await p.waitForTimeout(1500)
 
   // THE MENU IS A GRID OF LOGOS NOW (owner, 2026-09-23), so the dishes are one
-  // tap in. Open the first restaurant that has food on it.
-  const tiles = p.locator('.mb-tile:not([disabled])')
-  t(await tiles.count() > 0, 'restaurants are shown as logos', `${await p.locator('.mb-tile').count()} tiles, ${await tiles.count()} with menus`)
+  // tap in.
+  //
+  // ⚠ OPEN THE ONES THAT ARE OPEN. Since real trading hours went in
+  // (2026-09-25) a kitchen outside its window offers no steppers at all — by
+  // design — so this used to stall at whatever hour it happened to run. It
+  // now picks the restaurants that are serving right now, and says so if the
+  // club has fewer than two open at this hour.
+  const tiles = p.locator('.mb-tile:not([disabled]):not(.is-shut)')
+  const openNow = await tiles.count()
+  t(await p.locator('.mb-tile').count() > 0, 'restaurants are shown as logos',
+    `${await p.locator('.mb-tile').count()} tiles, ${openNow} open right now`)
+  if (openNow < 2) {
+    t(false, `SKIPPED the ordering run — only ${openNow} kitchen(s) open at this hour`,
+      'run it during service, or widen a venue’s hours')
+    await cleanup(); await b.close()
+    console.log(`\n${pass} passed, ${fail} failed`)
+    process.exit(fail ? 1 : 0)
+  }
   await tiles.first().tap(); await p.waitForTimeout(900)
   t(await p.locator('.mb-drawer').count() === 1, 'and tapping one opens its menu in place')
 
@@ -106,7 +121,7 @@ try {
   await plus.nth(0).tap(); await p.waitForTimeout(300)   // two of the first
   // The second dish comes from ANOTHER restaurant, which is the point of the
   // grid: one order, two kitchens.
-  const second = p.locator('.mb-tile:not([disabled])').nth(1)
+  const second = p.locator('.mb-tile:not([disabled]):not(.is-shut)').nth(1)
   await second.tap(); await p.waitForTimeout(900)
   await p.locator('.mb-drawer .mb-step-btn', { hasText: '+' }).first().tap(); await p.waitForTimeout(400)
 
@@ -174,7 +189,10 @@ try {
   t(money.vat === Math.round((food + money.service) * vatPct), `VAT is ${(vatPct * 100).toFixed(0)}% of food plus service`, `${money.vat}`)
   t(money.total === money.subtotal + money.service + money.vat,
     'and the total is all three added up', `${money.total} vs ${money.subtotal + money.service + money.vat}`)
-  t(money.rows.some(r => /service charge/i.test(r) && /10%/.test(r)) && money.rows.some(r => /vat/i.test(r) && /10%/.test(r)),
+  // The VAT rate is whatever this order was charged — 8% on food, 10% on
+  // alcohol, or a blend of the two on a tray with both. Written down here it
+  // would fail on the day the law moved, which is what happened on 2026-09-25.
+  t(money.rows.some(r => /service charge/i.test(r) && /10%/.test(r)) && money.rows.some(r => /vat/i.test(r) && /\d+(\.\d+)?%/.test(r)),
     'the rates are printed beside the charges', money.rows.join(' | '))
   t(/2 dishes/.test(money.sumRow) && /3 items/.test(money.sumRow),
     'the foot counts the dishes and the items', money.sumRow)

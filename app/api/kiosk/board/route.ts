@@ -43,9 +43,55 @@ export async function GET() {
     for (const m of ms || []) names.set(m.member_no, { full_name: m.full_name, nickname: m.nickname })
   }
 
+  // ── WHAT'S ON AT THE CLUB ───────────────────────────────────────────────
+  // Owner, 2026-09-25: "Why is the home screen on the kiosk so shit? Can it
+  // pull through what's on or something at least?" A room with nothing booked
+  // in it said "The room is yours" and stopped, which is true and empty. The
+  // club always has something coming; the tablet just never knew about it.
+  //
+  // Fixtures the members can sign up to, and house entries staff have ticked
+  // "show on the room tablets" — the same flag the boards already honour, so
+  // nothing private appears by accident. Four at most: it is a glance, not a
+  // list, and it shares the screen with the way in.
+  const today = serviceDate
+  const [fx, ce] = await Promise.all([
+    a.from('fixtures').select('id, title, date, type, max_signups, is_full')
+      .gte('date', today).order('date').limit(6),
+    a.from('calendar_entries').select('title, title_vn, entry_date, start_time, space, kind')
+      .eq('show_on_board', true).eq('visibility', 'member')
+      .gte('entry_date', today).order('entry_date').limit(6),
+  ])
+  const counts = await a.rpc('fixture_signup_counts')
+  const signups = new Map(((counts.data || []) as { fixture_id: string; signups?: number }[])
+    .map(c => [c.fixture_id, Number(c.signups ?? 0)]))
+  const whatsOn = [
+    ...((fx.data || []) as { id: string; title: string; date: string; type: string; max_signups: number | null; is_full: boolean | null }[])
+      .map(f => ({
+        kind: 'fixture' as const,
+        title: f.title.trim(),
+        title_vn: null as string | null,
+        at: f.date,
+        // A fixture staff have marked full is full, however many names are in.
+        taken: f.is_full && f.max_signups != null
+          ? Math.max(signups.get(f.id) || 0, f.max_signups)
+          : (signups.get(f.id) || 0),
+        seats: f.max_signups,
+      })),
+    ...((ce.data || []) as { title: string; title_vn: string | null; entry_date: string; start_time: string | null; space: string | null }[])
+      .map(e => ({
+        kind: 'house' as const,
+        title: e.title,
+        title_vn: e.title_vn,
+        at: e.start_time ? `${e.entry_date}T${e.start_time}` : e.entry_date,
+        taken: null as number | null,
+        seats: null as number | null,
+      })),
+  ].sort((x, y) => x.at.localeCompare(y.at)).slice(0, 4)
+
   return NextResponse.json({
     board: {
       ...row,
+      whats_on: whatsOn,
       bookings: list.map(b => {
         const m = names.get(b.member_no)
         return {

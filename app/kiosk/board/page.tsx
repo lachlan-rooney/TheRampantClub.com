@@ -21,6 +21,14 @@ interface Board {
   starts_at: string | null; ends_at: string | null
   next_transition_at: string | null; now_at: string
   bookings?: BoardBooking[]
+  whats_on?: WhatsOn[]
+}
+/** What the club has coming, for a room with nothing of its own on. */
+interface WhatsOn {
+  kind: 'fixture' | 'house'
+  title: string; title_vn: string | null
+  at: string
+  taken: number | null; seats: number | null
 }
 interface BoardBooking { id: string; time: string | null; name: string; nickname: string | null; party: number | null; arrived: boolean }
 const MAX_BOOKINGS = 6   // the board never scrolls; more than this collapses to "+N more"
@@ -33,6 +41,17 @@ interface Tap { member_no: string; first_name: string | null }
 
 const ABANDON_MS = 15_000  // a tap-and-walk-away must not leave a name on the bar
 
+/** "Tonight", "Tomorrow", or the date — a member reads a day, not a timestamp. */
+const whenLabel = (at: string): string => {
+  const d = new Date(at.length <= 10 ? `${at}T12:00:00+07:00` : at)
+  const vn = (t: Date) => new Date(t.getTime() + 7 * 3600_000).toISOString().slice(0, 10)
+  const today = vn(new Date()), day = vn(d)
+  const tomorrow = vn(new Date(Date.now() + 86400_000))
+  if (day === today) return 'Tonight'
+  if (day === tomorrow) return 'Tomorrow'
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Asia/Ho_Chi_Minh' })
+}
+
 const hhmm = (iso: string | null) => iso
   ? new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh', hour12: false })
   : ''
@@ -44,7 +63,9 @@ export default function KioskBoard() {
   const [nfc, setNfc] = useState<Nfc>('idle')
   // What the tablet actually said, and what it actually read — both were thrown
   // away, which left "it doesn't work" with nothing behind it.
-  const [nfcWhy, setNfcWhy] = useState('')
+  // Kept as a sink: the reasons are still worked out (and are worth keeping in
+  // the code that pairs a device), but nothing on a member's screen shows them.
+  const [, setNfcWhy] = useState('')
   const [unknownCard, setUnknownCard] = useState<string | null>(null)
   // The room's logo, if one has been added. Try SVG, fall back to PNG, and if
   // neither exists show nothing at all — never a broken image on a bar top.
@@ -284,6 +305,41 @@ export default function KioskBoard() {
             <div style={{ fontFamily: MONO, fontSize: 14, color: 'rgba(229,212,194,.45)', marginTop: 22, maxWidth: 620, lineHeight: 1.7 }}>
               Nothing scheduled here tonight. Speak to the team for anything at all.
             </div>
+            {/* WHAT IS ON, SINCE THIS ROOM HAS NOTHING (owner, 2026-09-25).
+                An empty room said "the room is yours" and then nothing, on a
+                screen a member is standing in front of. The club always has
+                something coming; the tablet simply never knew. Four at most —
+                a glance on the way past, not a page to read. */}
+            {!!b?.whats_on?.length && (
+              <div style={{ marginTop: 'clamp(20px,4vh,44px)', maxWidth: 860 }}>
+                <div style={{ fontFamily: MONO, fontSize: 12, letterSpacing: '.16em', textTransform: 'uppercase', color: '#D4B85A', marginBottom: 14 }}>
+                  What&rsquo;s on <span style={{ color: 'rgba(229,212,194,.35)' }}>· Sắp diễn ra</span>
+                </div>
+                {b.whats_on.map(w => (
+                  <div key={`${w.kind}-${w.title}-${w.at}`}
+                       style={{ display: 'flex', alignItems: 'baseline', gap: 'clamp(12px,2vw,26px)',
+                                padding: 'clamp(7px,1.4vh,12px) 0', borderTop: '1px solid rgba(229,212,194,.1)' }}>
+                    <span style={{ fontFamily: MONO, fontSize: 'clamp(11px,1.2vw,13px)', color: '#D4B85A',
+                                   letterSpacing: '.08em', whiteSpace: 'nowrap', minWidth: 96 }}>
+                      {whenLabel(w.at)}
+                    </span>
+                    <span style={{ fontFamily: SERIF, fontSize: 'clamp(17px,2.1vw,26px)', lineHeight: 1.25, flex: 1 }}>
+                      {w.title}
+                      {w.title_vn && <span style={{ color: 'rgba(229,212,194,.45)' }}> · {w.title_vn}</span>}
+                    </span>
+                    {w.seats != null && (
+                      <span style={{ fontFamily: MONO, fontSize: 'clamp(11px,1.2vw,13px)', whiteSpace: 'nowrap',
+                                     color: (w.taken ?? 0) >= w.seats ? '#C49555' : 'rgba(229,212,194,.5)' }}>
+                        {(w.taken ?? 0) >= w.seats ? 'Full · Hết chỗ' : `${w.taken ?? 0}/${w.seats}`}
+                      </span>
+                    )}
+                  </div>
+                ))}
+                <div style={{ fontFamily: MONO, fontSize: 11.5, color: 'rgba(229,212,194,.35)', marginTop: 14, lineHeight: 1.7 }}>
+                  Sign in to put your name down · Đăng nhập để đăng ký
+                </div>
+              </div>
+            )}
           </>
         ) : (
           <>
@@ -356,17 +412,19 @@ export default function KioskBoard() {
           {nfc !== 'scanning' && nfc !== 'unsupported' && (
             <button onClick={() => startNfc()} style={tapBtn}>Enable card tap</button>
           )}
+          {/* NO HARDWARE DIAGNOSTICS ON A MEMBER'S SCREEN (owner, 2026-09-25:
+              "remove the Device has no NFC sign. It's stupid"). It was written
+              for the staff member setting a tablet up and it is read by every
+              member who walks past one. A tablet that cannot read a card just
+              does not offer the tap — the keypad is right there, and nobody
+              needs to be told why. The reasons still exist for whoever is
+              pairing a device; they belong on /kiosk/pair, not here. */}
           <div style={{ fontFamily: MONO, fontSize: 12, color: 'rgba(229,212,194,.45)', lineHeight: 1.7, marginLeft: 4 }}>
             {nfc === 'scanning'
               ? <>or hold your card to the tablet<br /><span style={{ color: 'rgba(229,212,194,.3)' }}>hoặc chạm thẻ vào máy</span></>
-              : nfcWhy
-                ? <span style={{ color: '#C49555' }}>{nfcWhy}</span>
-                : nfc === 'unsupported'
-                  // A laptop, an iPhone, or a tablet without the hardware. Telling
-                  // someone to press a button that cannot help them wastes their
-                  // evening — say so instead, and leave the keypad as the way in.
-                  ? <span style={{ color: '#C49555' }}>This tablet has no card reader built in — plug a USB card reader into it, or sign in with your surname and code.</span>
-                  : <>press Enable card tap, then hold your card to the tablet<br /><span style={{ color: 'rgba(229,212,194,.3)' }}>nhấn bật thẻ, rồi chạm thẻ vào máy</span></>}
+              : nfc === 'unsupported'
+                ? null
+                : <>press Enable card tap, then hold your card to the tablet<br /><span style={{ color: 'rgba(229,212,194,.3)' }}>nhấn bật thẻ, rồi chạm thẻ vào máy</span></>}
           </div>
           {unknownCard && (
             <div style={{ fontFamily: MONO, fontSize: 12, color: '#C49555', lineHeight: 1.7, marginLeft: 4 }}>
