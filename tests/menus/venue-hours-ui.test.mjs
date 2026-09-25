@@ -13,6 +13,12 @@
 // this ever ran during service, the smallest possible menu is affected. It
 // writes no orders to a real room: those go to Source & Origin Lab, which has
 // no tablet in it.
+//
+// ⚠ AND IT PUTS THE REAL HOURS BACK. It used to assume its restaurant had none
+// — true when it was written, false the moment real trading hours were loaded
+// (2026-09-25), and its cleanup deletes every row for that venue. It ate Cure
+// & Pickle's hours the first time it ran afterwards. Now it holds them, works
+// on an empty slot, and writes them back in `finally` whether it passed or not.
 // ═══════════════════════════════════════════════════════════════════════════
 import { chromium } from 'playwright'
 import { readFileSync } from 'node:fs'
@@ -34,9 +40,14 @@ const t = (ok, m, d = '') => { ok ? pass++ : fail++; console.log(`${ok ? '✓' :
 
 const token = 'test-' + randomBytes(16).toString('hex')
 let deviceId = null, venue = null, orderId = null
+/** The venue's own trading hours, held while the test borrows the slot. */
+let theirHours = []
 
 async function cleanup() {
-  if (venue) await rest(`menu_venue_hours?venue_id=eq.${venue.id}`, { method: 'DELETE' })
+  if (venue) {
+    await rest(`menu_venue_hours?venue_id=eq.${venue.id}`, { method: 'DELETE' })
+    if (theirHours.length) await rest('menu_venue_hours', { method: 'POST', body: JSON.stringify(theirHours) })
+  }
   if (orderId) {
     await rest(`menu_order_lines?order_id=eq.${orderId}`, { method: 'DELETE' })
     await rest(`menu_orders?id=eq.${orderId}`, { method: 'DELETE' })
@@ -56,8 +67,13 @@ try {
   const dish = items.find(i => i.venue_id === venue.id)
   t(!!venue && !!dish, `a live restaurant to test with: ${venue?.name} (${pick?.[1]} dishes)`)
 
-  const had = await (await rest(`menu_venue_hours?venue_id=eq.${venue.id}&select=id`)).json()
-  t(had.length === 0, 'it has no hours of its own to disturb', `${had.length} rows`)
+  // Hold whatever it really trades, then clear the slot so the "no hours"
+  // case below is genuinely the no-hours case. cleanup() hands them back.
+  const had = await (await rest(`menu_venue_hours?venue_id=eq.${venue.id}&select=venue_id,weekday,opens_at,last_order_at`)).json()
+  theirHours = Array.isArray(had) ? had : []
+  if (theirHours.length) await rest(`menu_venue_hours?venue_id=eq.${venue.id}`, { method: 'DELETE' })
+  const cleared = await (await rest(`menu_venue_hours?venue_id=eq.${venue.id}&select=venue_id`)).json()
+  t(cleared.length === 0, `its own hours are held (${theirHours.length} rows) and the slot is clear`, `${cleared.length} left`)
 
   deviceId = (await (await rest('kiosk_devices', {
     method: 'POST',
@@ -114,8 +130,14 @@ try {
   t(errs.length === 0, 'no page errors', errs.slice(0, 2).join(' | '))
 } finally {
   await cleanup()
-  const left = await (await rest(`menu_venue_hours?venue_id=eq.${venue?.id ?? '00000000-0000-0000-0000-000000000000'}&select=id`)).json().catch(() => [])
-  t(Array.isArray(left) && left.length === 0, 'the test hours are gone from that restaurant', JSON.stringify(left))
+  // THE SLOT IS AS IT WAS FOUND: the 02:00 window gone, and the restaurant's
+  // own trading hours back, row for row. "No rows at all" was the old test of
+  // this, and it only held while no real hours existed.
+  const left = await (await rest(`menu_venue_hours?venue_id=eq.${venue?.id ?? '00000000-0000-0000-0000-000000000000'}&select=weekday,opens_at,last_order_at`)).json().catch(() => [])
+  const borrowed = Array.isArray(left) && left.some(r => String(r.opens_at).startsWith('02:00'))
+  t(!borrowed, 'the test window is gone from that restaurant', JSON.stringify(left).slice(0, 120))
+  t(Array.isArray(left) && left.length === theirHours.length,
+    `and its own hours are back, all ${theirHours.length} of them`, `${left.length} rows`)
   await b.close()
 }
 
