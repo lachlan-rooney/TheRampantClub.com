@@ -228,7 +228,16 @@ function moneySection(d: AutoData, note?: string): string {
     ? `<div style="font-size:12px;color:${MUTED};margin-top:8px">Monthly cost base, as configured: ${vnd(t.cost_base_vnd)}.</div>` : ''
   const paid = w.payments.length
     ? `<div style="font-size:13px;color:${CREAM};margin-top:10px">${w.payments.map(p => `${esc(p.name)} <span style="color:${MUTED}">${esc(p.tier)} · ${vnd(p.amount)} · ${esc(p.method)}</span>`).join('<br>')}</div>` : ''
-  return section('Money', 'Membership fees & member card activity', `${stats}${target}${cost}${paid}${prose(note)}
+  // MONEY ENTERED THIS WEEK FOR AN EARLIER PERIOD. Revenue stays in the period
+  // it was paid for — that is what the tiles above count — but the week of
+  // 14–20 Sept reported "0 ₫ fees" while three payments worth 388,375,000₫ were
+  // typed in, two of them dated in August and already past August's reports.
+  // They showed up in no report at all. This says so, in the week the work
+  // happened, without moving a dong of revenue (owner asked, 2026-09-25).
+  const back = w.backdated && w.backdated.count
+    ? `<div style="font-size:12.5px;color:${GOLD};margin-top:10px">${w.backdated.count} payment${w.backdated.count === 1 ? '' : 's'} recorded this week for earlier periods: ${vnd(w.backdated.total)}${w.backdated.earliest ? ` (oldest dated ${new Date(w.backdated.earliest + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })})` : ''}. Counted in that period's revenue, not this week's.</div>`
+    : ''
+  return section('Money', 'Membership fees & member card activity', `${stats}${target}${cost}${paid}${back}${prose(note)}
     <div style="font-size:11.5px;color:${MUTED};font-style:italic;margin-top:10px">Recorded revenue only — membership fees and card top-ups. The club keeps no till feed or expense ledger, so this is not profit.</div>`)
 }
 
@@ -370,11 +379,21 @@ export function renderReportBody(r: ReportRow, mode: Mode): string {
     <table role="presentation" style="width:100%;border-collapse:collapse"><tr>
       ${stat(String(d.members.new_total), 'new members', delta(d.deltas.new_members))}
       ${stat(String(d.pipeline.signed), 'agreements signed', delta(d.deltas.signed))}
-      ${stat(String(d.pipeline.movements.stage_changed || 0), 'pipeline moves')}
+      ${/* IT SAID "0 pipeline moves" ON A WEEK THAT TOOK 8 NEW LEADS (owner,
+            2026-09-25). Both were true — the 8 were creations, the moves
+            counter counts stage changes only — and together they read as a
+            contradiction. The tile now says what it counts. */''}
+      ${stat(String(d.pipeline.movements.stage_changed || 0), 'moved a stage')}
       ${stat(`${d.pipeline.conversion_pct}%`, 'lead→member')}
     </tr></table>
+    ${/* TWO CHARTS, TWO HEADINGS. Rendered as bars they ran into each other,
+          so a tier ("Legacy 1") sat in the list of pipeline stages and read
+          like one. */''}
+    ${tierSegs.length ? `<div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:${MUTED};margin:14px 0 6px">Who joined, by tier</div>` : ''}
     ${tierSegs.length ? chartBlock(mode, donut(tierSegs, 'dark'), barsHtml(tierSegs.map(t => ({ label: t.label, value: t.value })))) : ''}
+    <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:${MUTED};margin:14px 0 6px">The pipeline</div>
     ${chartBlock(mode, funnel(d.pipeline.funnel, 'dark'), barsHtml(d.pipeline.funnel.map(f => ({ label: f.stage, value: f.count }))))}
+    ${(d.pipeline.off_funnel || []).length ? `<div style="font-size:12.5px;color:${MUTED};margin-top:6px">Also on file, off the funnel: ${d.pipeline.off_funnel!.map(o => `${o.count} ${esc(o.stage.toLowerCase())}`).join(' · ')}.</div>` : ''}
     ${(d.pipeline.interviews || []).length ? `<div style="font-size:13px;color:${CREAM};margin-top:8px">Interviews this week: ${d.pipeline.interviews.map(i => `${esc(i.name)}${i.interviewer ? ` (with ${esc(i.interviewer)})` : ''}`).join(' · ')}</div>` : ''}
     ${(d.pipeline.onboarded || []).length ? `<div style="font-size:13px;color:${CREAM};margin-top:8px">Joined this week: ${d.pipeline.onboarded!.map(o => `${esc(o.name)} <span style="color:${MUTED}">(${esc(o.tier)})</span>`).join(' · ')}</div>` : ''}
     ${d.pipeline.new_leads ? `<div style="font-size:13px;color:${MUTED};margin-top:6px">${d.pipeline.new_leads} new lead${d.pipeline.new_leads === 1 ? '' : 's'} entered the pipeline.</div>` : ''}

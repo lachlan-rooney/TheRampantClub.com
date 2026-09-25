@@ -69,6 +69,10 @@ export interface MoneyBlock {
     payments: { name: string; tier: string; amount: number; method: string }[]
     card_topups: number
     card_charges: number
+    /** Fees ENTERED this week whose payment date falls before it. They belong
+     *  to an earlier period and are not in membership_total — but they were
+     *  this week's work, and without this line they appear nowhere at all. */
+    backdated: { count: number; total: number; earliest: string | null }
   }
   mtd: {
     month_label: string
@@ -98,7 +102,7 @@ export interface AutoData {
   ops?: OpsBlock
   press?: { title: string; outlet: string | null; link: string | null; date: string }[]
   events: { fixtures: { title: string; sport: string; date: string; signups: number; max: number | null }[]; calendar_by_kind: Record<string, number> }
-  pipeline: { funnel: { stage: string; count: number }[]; conversion_pct: number; movements: Record<string, number>; interviews: { name: string; date: string; interviewer: string | null }[]; signed: number; new_leads?: number; onboarded?: { name: string; tier: string }[] }
+  pipeline: { funnel: { stage: string; count: number }[]; off_funnel?: { stage: string; count: number }[]; conversion_pct: number; movements: Record<string, number>; interviews: { name: string; date: string; interviewer: string | null }[]; signed: number; new_leads?: number; onboarded?: { name: string; tier: string }[] }
   members: { new_total: number; by_tier: Record<string, number>; complimentary: number; paid: number }
   member_of_week: { member_no: string; name: string; visits: number } | null
   deltas: Record<string, number | null>
@@ -137,8 +141,12 @@ async function windowMetrics(sb: SupabaseClient, start: string, end: string): Pr
   const guests = await countedGuests(sb, start, end)
   const newMembers = await safe<{ member_no: string }[]>(
     sb.from('members').select('member_no').gte('join_date', start).lte('join_date', end), [])
+  // WHEN IT WAS SIGNED, not when it was sent. This counted signing_invitations
+  // by created_at, so an invitation issued in April and signed this week
+  // counted in April's report and nowhere since. signed_agreements carries the
+  // only timestamp that answers the question the tile asks.
   const signed = await safe<{ id: string }[]>(
-    sb.from('signing_invitations').select('id').eq('status', 'signed').gte('created_at', start).lte('created_at', end + 'T23:59:59'), [])
+    sb.from('signed_agreements').select('id').gte('signed_at', start).lte('signed_at', end + 'T23:59:59'), [])
   const moves = await safe<{ id: string }[]>(
     sb.from('prospect_activity').select('id').gte('created_at', start).lte('created_at', end + 'T23:59:59'), [])
 
@@ -200,6 +208,20 @@ async function moneyBlock(sb: SupabaseClient, start: string, end: string): Promi
   const cards = async (from: string, to: string) => safe<{ amount_vnd: number; kind: string }[]>(
     sb.from('card_transactions').select('amount_vnd, kind').gte('created_at', from).lte('created_at', to + 'T23:59:59'), [])
 
+  // ── ENTERED THIS WEEK, EARNED BEFORE IT ────────────────────────────────
+  // A fee belongs to the period it was PAID FOR, which is why everything above
+  // filters on payment_date; that is the right way round for revenue. But the
+  // week of 14–20 Sept recorded three payments totalling 388,375,000₫ and
+  // reported "0 ₫ fees · week", while the ops block on the same page said
+  // "payment_recorded ×3". Two of them were dated in August and had already
+  // missed August's reports, so they appeared in no report ever. This counts
+  // them where the work happened, without moving the revenue.
+  const backdatedRows = await safe<{ amount_vnd: number; payment_date: string }[]>(
+    sb.from('membership_payments').select('amount_vnd, payment_date')
+      .eq('status', 'active').gt('amount_vnd', 0)
+      .gte('created_at', start).lte('created_at', end + 'T23:59:59')
+      .lt('payment_date', start), [])
+
   const [wkPays, wkCards, mPays, mCards, settings] = await Promise.all([
     pays(start, end), cards(start, end), pays(monthStart, end), cards(monthStart, end),
     safe<{ monthly_target_usd: number | null; monthly_cost_base_usd: number | null; usd_vnd_rate: number | null } | null>(
@@ -227,6 +249,13 @@ async function moneyBlock(sb: SupabaseClient, start: string, end: string): Promi
       payments: wkPays.map(p => ({ name: p.member_name_snap, tier: p.tier_snap, amount: Number(p.amount_vnd) || 0, method: p.payment_method })),
       card_topups: wkCard.topups,
       card_charges: wkCard.charges,
+      backdated: {
+        count: backdatedRows.length,
+        total: backdatedRows.reduce((s2, r) => s2 + (Number(r.amount_vnd) || 0), 0),
+        earliest: backdatedRows.length
+          ? backdatedRows.map(r => r.payment_date).sort()[0]
+          : null,
+      },
     },
     mtd: {
       month_label: new Date(end + 'T00:00:00Z').toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }),
@@ -295,6 +324,17 @@ export async function gatherWeek(sb: SupabaseClient, start: string, end: string,
   // Pipeline
   const allProspects = await safe<{ stage: string }[]>(sb.from('prospects').select('stage'), [])
   const funnel = STAGES.map(s => ({ stage: s, count: allProspects.filter(p => p.stage === s).length }))
+  // EVERY PROSPECT IS SOMEWHERE. The funnel is the route in, so it holds only
+  // the stages on that route — which left 8 of 213 people off the report
+  // entirely (On Hold 2, Withdrawn 1, Declined 5 on 2026-09-25). They are not
+  // funnel steps and padding the funnel with them would misread as progress,
+  // so they are counted beside it and printed as a line.
+  const offFunnel = Object.entries(
+    allProspects.reduce<Record<string, number>>((acc, p) => {
+      if (!STAGES.includes(p.stage)) acc[p.stage] = (acc[p.stage] || 0) + 1
+      return acc
+    }, {}),
+  ).map(([stage, count]) => ({ stage, count })).sort((a, b) => b.count - a.count)
   const onboarded = funnel.find(f => f.stage === 'Onboarded')?.count || 0
   const totalProspects = allProspects.length || 1
   const movesRows = await safe<{ event_type: string }[]>(
@@ -351,6 +391,7 @@ export async function gatherWeek(sb: SupabaseClient, start: string, end: string,
     },
     pipeline: {
       funnel,
+      off_funnel: offFunnel,
       conversion_pct: Math.round((onboarded / totalProspects) * 100),
       movements,
       interviews: interviews.map(i => ({ name: i.full_name, date: i.interview_date, interviewer: i.interviewer })),
