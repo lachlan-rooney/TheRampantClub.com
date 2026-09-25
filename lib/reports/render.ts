@@ -36,7 +36,7 @@ const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g,
 const LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g
 const renderProse = (s: unknown) => esc(s).replace(LINK_RE, (_m, label, url) => `<a href="${url}" style="color:#D4B85A;text-decoration:underline">${label}</a>`)
 const vnd = (n: number) => `${new Intl.NumberFormat('en-US').format(Math.round(n))} ₫`
-const site = () => process.env.NEXT_PUBLIC_SITE_URL || 'https://therampantclub.com'
+export const site = () => process.env.NEXT_PUBLIC_SITE_URL || 'https://therampantclub.com'
 
 function delta(n: number | null | undefined): string {
   if (n == null) return ''

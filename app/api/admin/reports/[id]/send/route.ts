@@ -9,6 +9,10 @@ import { sendReport } from '@/lib/reports/send'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
+// Long enough to start a browser, load the report page and print it. The send
+// itself is milliseconds; the PDF is the minute. Vercel's default would cut it
+// off mid-print and the email would go without an attachment.
+export const maxDuration = 120
 const svc = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

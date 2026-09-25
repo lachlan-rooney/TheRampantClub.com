@@ -11,12 +11,22 @@ const SHARP_NATIVE = [
   './node_modules/@img/sharp-libvips-darwin-arm64/**/*',
 ]
 
+// ── HEADLESS CHROME, FOR THE WEEKLY REPORT'S ATTACHMENT ONLY ──────────────
+// The PDF is the hosted report page, printed (lib/reports/pdf-print.ts). The
+// browser is ~67 MB of brotli-packed binary, so it is named for the two send
+// routes and NOWHERE ELSE — the same discipline the sharp list below is
+// written in blood about: a catch-all put 33.9 MB of libvips into 202
+// functions and filled the account's function storage.
+const CHROMIUM = ['./node_modules/@sparticuz/chromium/**/*']
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // sharp ships a native binary that Next's file tracing can miss in the
   // serverless bundle — mark it external so it's loaded from node_modules at
   // runtime (fixes SVG→PNG chart rasterisation for the weekly report email).
-  serverExternalPackages: ['sharp'],
+  // puppeteer-core and the packed chromium are loaded from node_modules at
+  // runtime for the same reason as sharp: file tracing cannot follow either.
+  serverExternalPackages: ['sharp', 'puppeteer-core', '@sparticuz/chromium'],
 
   // ── AND the shared object it dlopens at runtime. ──────────────────────────
   // serverExternalPackages keeps sharp out of the bundle so it loads from
@@ -56,7 +66,12 @@ const nextConfig = {
     '/api/social/tasting-notes': SHARP_NATIVE,
     // The weekly report rasterises its charts through sharp too.
     '/api/cron/report-draft': SHARP_NATIVE,
-    '/api/cron/report-send': SHARP_NATIVE,
+    '/api/cron/report-send': [...SHARP_NATIVE, ...CHROMIUM],
+    // The manual send does not touch sharp, but it prints the same PDF.
+    '/api/admin/reports/[id]/send': CHROMIUM,
+    // …and so does the download, which is how the print path is checked in
+    // production without emailing anyone.
+    '/api/admin/reports/[id]/pdf': CHROMIUM,
   },
 
   images: {

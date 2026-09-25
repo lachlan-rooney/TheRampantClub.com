@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { renderReportEmail, type ReportRow } from './render'
-import { generateReportPdf } from './pdf'
+import { printReportPdf } from './pdf-print'
 
 // Shared report-send logic — used by the manual send route and the Monday
 // auto-send cron. Generates chart PNGs, renders the email, attaches the PDF, and
@@ -34,12 +34,23 @@ export async function sendReport(sb: SupabaseClient, reportId: string, opts: { d
   if (!recipients.length) return { ok: false, error: 'No permitted recipients configured.', skipped }
   if (!process.env.RESEND_API_KEY) return { ok: false, error: 'Email not configured.' }
 
-  // PDF attachment.
+  // ── THE ATTACHMENT IS THE PAGE ──────────────────────────────────────────
+  // Printed from the report's own hosted URL — the one the owner previews —
+  // rather than drawn a second time (owner, 2026-09-25: "The attached PDF ...
+  // doesn't look like it does when i preview on the site"). See pdf-print.ts.
+  //
+  // NO FALLBACK TO A DRAWN DOCUMENT, deliberately: the old one was the thing
+  // being complained about, and a silent fallback would send it on exactly the
+  // days nobody was watching. If the browser cannot run, the email goes with
+  // the full report in its body and the link at the top, which is what it
+  // would have been anyway.
   let attachments: { filename: string; content: Buffer }[] = []
-  try {
-    const pdf = await generateReportPdf(report)
-    attachments = [{ filename: `Rampant_Weekly_Report_${r.period_end}.pdf`, content: Buffer.from(pdf) }]
-  } catch (e) { console.error('report pdf failed:', e) }
+  if (r.share_token) {
+    try {
+      const pdf = await printReportPdf(r.share_token)
+      attachments = [{ filename: `Rampant_Weekly_Report_${r.period_end}.pdf`, content: Buffer.from(pdf) }]
+    } catch (e) { console.error('report pdf print failed — sending without it:', e) }
+  }
 
   const resend = new Resend(process.env.RESEND_API_KEY)
   try {

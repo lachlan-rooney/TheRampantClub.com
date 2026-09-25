@@ -182,6 +182,15 @@ export default function ReportEditor() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
           {!locked && <button onClick={save} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.5 : 1 }}>{saving ? t('Saving…', 'Đang lưu…') : t('Save', 'Lưu')}</button>}
           <button onClick={previewEmail} style={btnGhost}>{t('Preview email ↗', 'Xem trước email ↗')}</button>
+          {/* THE ATTACHMENT ITSELF. It is the hosted page, printed, so this is
+              literally what lands in Shawn's inbox — worth being able to open
+              before sending rather than after. Only once approved: a draft's
+              page is admin-only and the printer carries no session. */}
+          {(r.status === 'approved' || r.status === 'sent') && (
+            <a href={`/api/admin/reports/${r.id}/pdf`} target="_blank" rel="noreferrer" style={btnGhost}>
+              {t('The PDF ↗', 'Bản PDF ↗')}
+            </a>
+          )}
           {r.status === 'draft' && <button onClick={() => act('submit', t('Submitted for approval', 'Đã gửi để phê duyệt'))} disabled={acting} style={btnGold}>{t('Submit for approval →', 'Gửi để phê duyệt →')}</button>}
           {r.status === 'pending_approval' && <>
             <button onClick={() => act('approve', t('Approved', 'Đã phê duyệt'))} disabled={acting} style={btnGold}>{t('Approve', 'Phê duyệt')}</button>
