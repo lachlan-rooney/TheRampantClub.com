@@ -23,6 +23,23 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 // TIME IN CLUB = recorded visit durations + guest durations, plus — for a visit
 // started today with no duration yet — the time since it started (capped at 12h,
 // so a visit nobody closed cannot run up a week of hours).
+//
+// AND THE ARRIVED BOOKINGS THAT NEVER BECAME A VISIT (owner, 2026-09-25: "this
+// is not picking up the arrived bookings … so it says zero minutes. That's not
+// true"). Marking a PAST booking "Came" on the calendar sets the booking to
+// arrived and stops: no visit is opened, so there is no arrival and no
+// departure, so the week reported nought minutes for a night people were in.
+//
+// The same hole swallows a visit somebody OPENED and never closed on a past
+// night: an arrival with no departure is not a length of stay, and it used to
+// stop the booking being counted as well.
+//
+// Those bookings are counted from the club's own record of the sitting — the
+// booked window — and reported SEPARATELY as minutes_estimated, because a
+// booked window is not a measurement. A window that reads as longer than
+// MAX_SITTING_MIN is not counted at all and shows up in bookings_unmeasured:
+// "06:10 → 01:07" is a typing slip, not a nineteen-hour sitting, and averaging
+// it into the week would be worse than admitting we do not know.
 // ═══════════════════════════════════════════════════════════════════════════
 
 export interface DayAttendance { date: string; attendance: number; members: number; guests: number }
@@ -37,7 +54,10 @@ export interface WeekAttendance {
   guests: number
   today_attendance: number | null   // null when today is outside the week shown
   bookings: { total: number; arrived: number; people: number }
-  minutes_in_club: number
+  minutes_in_club: number        // measured + estimated, which is what is shown
+  minutes_measured: number       // from visits and guest rows that carry a duration
+  minutes_estimated: number      // from arrived bookings with no visit behind them
+  bookings_unmeasured: number    // arrived, no visit, and no window worth trusting
   open_visits: number      // visits from today still counting up
   by_day: DayAttendance[]
   generated_at: string
@@ -45,6 +65,24 @@ export interface WeekAttendance {
 
 const VN_OFFSET_MS = 7 * 3600 * 1000
 const OPEN_VISIT_CAP_MIN = 12 * 60
+/** Longer than this and the booked window is a data-entry slip, not a sitting. */
+const MAX_SITTING_MIN = 8 * 60
+
+/** "19:45:00" → 1185. Null for anything that is not a clock time. */
+function minutesOfClock(t: string | null | undefined): number | null {
+  const m = typeof t === 'string' ? t.match(/^(\d{1,2}):(\d{2})/) : null
+  if (!m) return null
+  const mins = Number(m[1]) * 60 + Number(m[2])
+  return mins >= 0 && mins < 24 * 60 ? mins : null
+}
+
+/** The length of a booked sitting, allowing for one that runs past midnight. */
+export function bookedMinutes(start: string | null | undefined, end: string | null | undefined): number | null {
+  const a = minutesOfClock(start), b = minutesOfClock(end)
+  if (a === null || b === null) return null
+  const span = b > a ? b - a : b === a ? 0 : (24 * 60 - a) + b   // the club closes at 00:30
+  return span > 0 && span <= MAX_SITTING_MIN ? span : null
+}
 
 /** A timestamptz as a Vietnam calendar date. */
 export const vnDateOf = (iso: string): string => new Date(new Date(iso).getTime() + VN_OFFSET_MS).toISOString().slice(0, 10)
@@ -58,7 +96,13 @@ function eachDay(from: string, to: string): string[] {
 
 interface VisitRow { member_no: string; visit_date: string; arrival_time: string | null; duration_min: number | null; phase: string | null }
 interface TapRow { member_number: string; seen_at: string }
-interface BookingRow { booking_id: string; member_no: string; booking_date: string; party_size: number | null; status: string; arrived_at: string | null }
+interface BookingRow {
+  booking_id: string; member_no: string; booking_date: string
+  party_size: number | null; status: string; arrived_at: string | null
+  linked_visit_id?: string | null
+  booked_start_time?: string | null; booked_end_time?: string | null
+  start_time?: string | null; end_time?: string | null
+}
 interface GuestRow { visit_date: string; party_size: number | null; duration_min: number | null; referred_reason?: string | null; decision?: string | null; booking_id?: string | null }
 
 export async function weekAttendance(sb: SupabaseClient, from: string, to: string, now: Date = new Date()): Promise<WeekAttendance> {
@@ -69,7 +113,7 @@ export async function weekAttendance(sb: SupabaseClient, from: string, to: strin
       .is('archived_at', null).gte('visit_date', from).lte('visit_date', to),
     sb.from('card_presence').select('member_number, seen_at')
       .gte('seen_at', `${from}T00:00:00+07:00`).lte('seen_at', `${to}T23:59:59.999+07:00`),
-    sb.from('bookings').select('booking_id, member_no, booking_date, party_size, status, arrived_at')
+    sb.from('bookings').select('booking_id, member_no, booking_date, party_size, status, arrived_at, linked_visit_id, booked_start_time, booked_end_time, start_time, end_time')
       .gte('booking_date', from).lte('booking_date', to).neq('status', 'cancelled'),
   ])
   for (const r of [visitsRes, tapsRes, bookingsRes]) if (r.error) throw new Error(r.error.message)
@@ -121,14 +165,37 @@ export async function weekAttendance(sb: SupabaseClient, from: string, to: strin
   // ── time in club ─────────────────────────────────────────────────────────
   let minutes = 0
   let openVisits = 0
+  // Whose night already has time against it, so the booking fallback below does
+  // not count the same person twice.
+  const counted = new Set<string>()
   for (const v of visits) {
-    if (typeof v.duration_min === 'number') { minutes += v.duration_min; continue }
+    if (typeof v.duration_min === 'number') { minutes += v.duration_min; counted.add(`${v.member_no}|${v.visit_date}`); continue }
     if (v.arrival_time && v.visit_date === today && v.phase !== 'closed') {
       const elapsed = Math.floor((now.getTime() - new Date(v.arrival_time).getTime()) / 60000)
-      if (elapsed > 0) { minutes += Math.min(elapsed, OPEN_VISIT_CAP_MIN); openVisits++ }
+      if (elapsed > 0) { minutes += Math.min(elapsed, OPEN_VISIT_CAP_MIN); openVisits++; counted.add(`${v.member_no}|${v.visit_date}`) }
     }
+    // Anything else is a visit somebody opened on a past night and never
+    // closed: an arrival with no departure, which is no length of stay at all.
+    // It must NOT block the booking fallback — that was the case that left a
+    // whole week reading 0m with two bookings marked arrived on it.
   }
   for (const g of guestRows) if (typeof g.duration_min === 'number') minutes += g.duration_min
+  const measured = minutes
+
+  // ── the arrived bookings nobody opened a visit for ───────────────────────
+  // Their member has no visit on that date, so nothing above has counted them.
+  let estimated = 0
+  let unmeasured = 0
+  for (const b of arrived) {
+    // `counted` holds the nights that already carry time — a closed visit, or
+    // one still running today. A linked visit that was never closed carries
+    // none, so it does not exempt the booking.
+    if (b.member_no && counted.has(`${b.member_no}|${b.booking_date}`)) continue
+    const span = bookedMinutes(b.booked_start_time ?? b.start_time, b.booked_end_time ?? b.end_time)
+    if (span === null) { unmeasured++; continue }
+    estimated += span
+  }
+  minutes += estimated
 
   const byDay: DayAttendance[] = eachDay(from, to).map(date => {
     const m = memberDays.get(date)?.size || 0
@@ -152,6 +219,9 @@ export async function weekAttendance(sb: SupabaseClient, from: string, to: strin
       people: bookings.filter(b => b.status !== 'no_show').reduce((s, b) => s + (b.party_size || 1), 0),
     },
     minutes_in_club: minutes,
+    minutes_measured: measured,
+    minutes_estimated: estimated,
+    bookings_unmeasured: unmeasured,
     open_visits: openVisits,
     by_day: byDay,
     generated_at: now.toISOString(),

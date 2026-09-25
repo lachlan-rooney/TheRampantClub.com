@@ -122,8 +122,14 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true)
   const [marking, setMarking] = useState<string | null>(null)
   const [starting, setStarting] = useState<string | null>(null)
-  const [hovered, setHovered] = useState<string | null>(null)
-  const [hoveredEntry, setHoveredEntry] = useState<string | null>(null)
+  // THE HOVER POP-UPS ARE GONE (owner, 2026-09-25: "I think its to do with the
+  // hover pop up function. Maybe we get rid of that"). Each card grew a panel
+  // below itself on hover, absolutely positioned, which covered the card
+  // underneath it — so moving down a busy day put the panel between the
+  // pointer and the next booking, and the next booking could not be hovered,
+  // or clicked, until the pointer went around it. What the panel added that
+  // the card did not already show — the nickname, the tier, and the comment in
+  // full rather than clipped to two lines — is on the card now.
   const [confirmCancel, setConfirmCancel] = useState<Booking | null>(null)
   const [cancelBusy, setCancelBusy] = useState(false)
   const [entries, setEntries] = useState<CalendarEntry[]>([])
@@ -379,8 +385,6 @@ export default function CalendarPage() {
                         data-entry-id={e.id}
                         data-visibility={e.visibility}
                         style={{ ...houseCard, position: 'relative' }}
-                        onMouseEnter={() => setHoveredEntry(e.id)}
-                        onMouseLeave={() => setHoveredEntry(h => h === e.id ? null : h)}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
                           <span style={houseTime}>{fmtEntryTime(e, t)}</span>
@@ -395,19 +399,6 @@ export default function CalendarPage() {
                           {e.space && e.blocks_space && (e.tables && e.tables.length > 0 ? ` · ${e.tables.join(', ')}` : ` · ${t('closed', 'đóng cửa')}`)}
                         </div>
                         {e.description && <div style={bookingNotes}>{e.description}</div>}
-
-                        {hoveredEntry === e.id && (
-                          <div style={tooltip} onMouseEnter={() => setHoveredEntry(e.id)}>
-                            <div style={tipMember}>{e.title}</div>
-                            <div style={tipMeta}>{kindLabel(e.kind, t)} · {e.visibility === 'staff' ? t('Staff-only', 'Chỉ nhân viên') : t('Member-visible', 'Hội viên thấy được')}</div>
-                            <div style={tipRow}>
-                              {fmtEntryTime(e, t)}{e.space ? ` · ${e.space}` : ''}
-                              {e.space && e.blocks_space && (e.tables && e.tables.length > 0 ? ` · ${e.tables.join(', ')}` : ` · ${t('room closed', 'phòng đóng cửa')}`)}
-                            </div>
-                            <div style={tipNotesLabel}>{t('Details', 'Chi tiết')}</div>
-                            <div style={tipNotesBox}>{e.description && e.description.trim() ? e.description : t('No description on this entry.', 'Không có mô tả cho mục này.')}</div>
-                          </div>
-                        )}
 
                         <div style={cardActions}>
                           <Link href={`/admin/bookings/new?entry=${e.id}`} style={cardActionLink}>{t('Edit', 'Sửa')}</Link>
@@ -451,34 +442,22 @@ export default function CalendarPage() {
                       <div
                         key={b.booking_id}
                         style={{ ...bookingCard, borderLeftColor: statusColor(b.status), position: 'relative' }}
-                        onMouseEnter={() => setHovered(b.booking_id)}
-                        onMouseLeave={() => setHovered(h => h === b.booking_id ? null : h)}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
                           <span style={bookingTime}>{fmtTime(b)}</span>
                           <span style={statusPill(b.status)}>{b.status}</span>
                         </div>
-                        <Link href={`/admin/mis/${b.member_no}`} style={bookingMember}>{b.member_name}</Link>
+                        <Link href={`/admin/mis/${b.member_no}`} style={bookingMember}>
+                          {b.member_name}{b.member_nickname ? ` “${b.member_nickname}”` : ''}
+                        </Link>
                         <div style={bookingMeta}>
-                          {b.space} · {b.party_size}p
+                          {b.space} · {b.party_size}p{b.member_tier ? ` · ${b.member_tier}` : ''}
                         </div>
                         {b.tables && b.tables.length > 0 && (
                           <div style={bookingTables}>{b.tables.join(' · ')}</div>
                         )}
                         {b.notes && <div style={bookingNotes}>{b.notes}</div>}
 
-                        {hovered === b.booking_id && (
-                          <div style={tooltip} onMouseEnter={() => setHovered(b.booking_id)}>
-                            <div style={tipMember}>
-                              {b.member_name}{b.member_nickname ? ` “${b.member_nickname}”` : ''}
-                            </div>
-                            <div style={tipMeta}>{b.member_tier} · {b.member_no}</div>
-                            <div style={tipRow}>{fmtTime(b)} · {b.space} · {b.party_size}p · <span style={{ color: statusColor(b.status) }}>{b.status}</span></div>
-                            {b.tables && b.tables.length > 0 && <div style={tipRow}>{t('Tables', 'Bàn')}: {b.tables.join(', ')}</div>}
-                            <div style={tipNotesLabel}>{t('Comments', 'Ghi chú')}</div>
-                            <div style={tipNotesBox}>{b.notes && b.notes.trim() ? b.notes : t('No comments on this booking.', 'Không có ghi chú cho đặt chỗ này.')}</div>
-                          </div>
-                        )}
                         {b.status === 'arrived' && b.linked_visit_id && (
                           <Link href={`/admin/mis/visits/${b.linked_visit_id}`} style={visitLink}>
                             {t('→ open visit', '→ mở lượt ghé')}
@@ -753,39 +732,14 @@ const bookingTables: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 8.5,
   color: '#D4B85A', opacity: 0.85, letterSpacing: '0.03em', marginTop: 2, lineHeight: 1.35,
 }
+// THE COMMENT IN FULL. It was clipped to two lines because the hover pop-up
+// held the rest of it; with the pop-up gone, clipping would simply hide what
+// staff wrote. Line breaks are kept — a note with three lines in it was typed
+// with three lines in it.
 const bookingNotes: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 9,
-  color: '#B2AA98', opacity: 0.7, lineHeight: 1.4,
-  overflow: 'hidden', textOverflow: 'ellipsis',
-  display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-}
-// Hover tooltip — fuller booking detail with the comments shown clearly.
-const tooltip: React.CSSProperties = {
-  position: 'absolute', top: 'calc(100% + 4px)', left: 0,
-  width: 'max(100%, 240px)', zIndex: 60,
-  background: '#0A3526', border: '1px solid rgba(229,212,194,0.20)',
-  borderLeft: '3px solid #D4B85A', borderRadius: 6,
-  padding: '12px 14px', boxShadow: '0 12px 36px rgba(0,0,0,0.55)',
-  display: 'flex', flexDirection: 'column', gap: 4,
-}
-const tipMember: React.CSSProperties = {
-  fontFamily: "'Rampant Sans', serif", fontSize: 15, color: '#E5D4C2', letterSpacing: '0.02em',
-}
-const tipMeta: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 10, color: '#B2AA98', opacity: 0.75,
-}
-const tipRow: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#D4B85A', marginTop: 2,
-}
-const tipNotesLabel: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 9, color: '#B2AA98',
-  letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 8, marginBottom: 2,
-}
-const tipNotesBox: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#E5D4C2',
-  lineHeight: 1.6, whiteSpace: 'pre-wrap',
-  background: 'rgba(229,212,194,0.05)', border: '1px solid rgba(229,212,194,0.10)',
-  borderRadius: 4, padding: '8px 10px', maxHeight: 220, overflowY: 'auto',
+  color: '#B2AA98', opacity: 0.7, lineHeight: 1.45,
+  whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
 }
 const cameBtn: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 9, letterSpacing: '.04em',

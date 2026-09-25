@@ -24,6 +24,22 @@ function hoursLabel(min: number): string {
   return h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m`
 }
 
+/** Today in Vietnam, which is the only "today" this club has. */
+const vnToday = () => new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10)
+
+/** "2026-09-14" → "14 Sept". */
+const dayLabel = (iso: string) =>
+  new Date(iso + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+
+/** What sits under the Time in club figure: what is still running, and how
+ *  much of the number is an estimate rather than a measurement. */
+function timeSub(d: WeekAttendance, t: (en: string, vn: string) => string): string | undefined {
+  const bits: string[] = []
+  if (d.open_visits) bits.push(t(`${d.open_visits} visit${d.open_visits === 1 ? '' : 's'} still going`, `${d.open_visits} lượt đang diễn ra`))
+  if (d.minutes_estimated > 0) bits.push(t(`${hoursLabel(d.minutes_estimated)} estimated`, `${hoursLabel(d.minutes_estimated)} ước tính`))
+  return bits.length ? bits.join(' · ') : undefined
+}
+
 export default function AttendanceStrip({ from, to, refreshKey }: { from: string; to: string; refreshKey?: unknown }) {
   const { t } = useLang()
   const [data, setData] = useState<WeekAttendance | null>(null)
@@ -53,6 +69,8 @@ export default function AttendanceStrip({ from, to, refreshKey }: { from: string
 
   // A different week must not show the last week's numbers while it loads.
   const current = data && data.from === from && data.to === to ? data : null
+  const today = vnToday()
+  const isThisWeek = from <= today && today <= to
 
   const tile = (label: string, value: string, sub?: string, accent?: boolean) => (
     <div style={{ minWidth: 118, paddingRight: 22, marginRight: 22, borderRight: '1px solid rgba(229,212,194,0.12)' }}>
@@ -66,7 +84,17 @@ export default function AttendanceStrip({ from, to, refreshKey }: { from: string
     <div style={{ margin: '4px 0 18px', padding: '16px 0 14px', borderTop: '1px solid rgba(229,212,194,0.12)', borderBottom: '1px solid rgba(229,212,194,0.12)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, fontFamily: MONO, fontSize: 10.5, color: CREAM, opacity: 0.75 }}>
         <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: error ? '#C27070' : '#7AB07A', boxShadow: error ? 'none' : '0 0 0 3px rgba(122,176,122,0.18)' }} />
-        <span style={{ letterSpacing: '0.14em', textTransform: 'uppercase' }}>{t('Live attendance · this week', 'Số lượt trực tiếp · tuần này')}</span>
+        {/* IT SAID "THIS WEEK" WHATEVER WEEK IT WAS SHOWING (owner, 2026-09-25).
+            The strip follows the calendar's arrows, so paging back to a quiet
+            week put last week's figures under the words "this week" — and the
+            Tonight panel below, which is always today, then read like a
+            contradiction. It says which week it is now, and only calls a week
+            "this week" when today is in it. */}
+        <span style={{ letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+          {t('Live attendance', 'Số lượt trực tiếp')} · {isThisWeek
+            ? t('this week', 'tuần này')
+            : `${dayLabel(from)} – ${dayLabel(to)}`}
+        </span>
         {current && (
           <span style={{ opacity: 0.7 }}>
             · {t('updated', 'cập nhật')} {new Date(current.generated_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' })}
@@ -83,10 +111,22 @@ export default function AttendanceStrip({ from, to, refreshKey }: { from: string
         {tile(t('Bookings', 'Đặt chỗ'), current ? String(current.bookings.total) : '—',
           current ? t(`${current.bookings.arrived} arrived · ${current.bookings.people} people booked`, `${current.bookings.arrived} đã đến · ${current.bookings.people} người đặt`) : undefined)}
         {tile(t('Time in club', 'Thời gian tại CLB'), current ? hoursLabel(current.minutes_in_club) : '—',
-          current && current.open_visits ? t(`${current.open_visits} visit${current.open_visits === 1 ? '' : 's'} still going`, `${current.open_visits} lượt đang diễn ra`) : undefined)}
+          current ? timeSub(current, t) : undefined)}
       </div>
 
       <div style={{ fontFamily: MONO, fontSize: 10, color: CREAM, opacity: 0.45, marginTop: 10, lineHeight: 1.6 }}>
+        {current && current.minutes_estimated > 0 && (
+          <div style={{ marginBottom: 4 }}>
+            {t(`Time in club includes ${hoursLabel(current.minutes_estimated)} taken from booked sittings where nobody was marked as having left — an estimate, not a measurement.`,
+               `Thời gian tại CLB bao gồm ${hoursLabel(current.minutes_estimated)} lấy từ khung giờ đã đặt, nơi không ai được đánh dấu ra về — là ước tính, không phải đo đạc.`)}
+          </div>
+        )}
+        {current && current.bookings_unmeasured > 0 && (
+          <div style={{ marginBottom: 4 }}>
+            {t(`${current.bookings_unmeasured} arrived booking${current.bookings_unmeasured === 1 ? '' : 's'} contributed no time at all: no visit was opened, and the booking has no end time to measure from. Tap LEFT when they go and the time is recorded.`,
+               `${current.bookings_unmeasured} đặt chỗ đã đến không đóng góp thời gian nào: chưa mở lượt ghé và đặt chỗ không có giờ kết thúc để tính. Bấm LEFT khi khách về thì thời gian sẽ được ghi lại.`)}
+          </div>
+        )}
         {t('Counts people who actually came in: card taps, started visits, bookings marked arrived, and guests signed in. A booking only counts once it is marked arrived.',
            'Chỉ đếm người thực sự đã đến: quẹt thẻ, lượt ghé đã bắt đầu, đặt chỗ đã đánh dấu đến, và khách đã ký vào. Đặt chỗ chỉ được tính khi đã đánh dấu đến.')}
       </div>
