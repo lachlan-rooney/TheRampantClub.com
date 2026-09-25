@@ -460,12 +460,14 @@ export function renderReportBody(r: ReportRow, mode: Mode): string {
   // which reads as a stray note rather than the owner's own last word. It gets
   // the same rule, eyebrow and subtitle as the rest.
   //
-  // AND IT IS THE OWNER'S, NOT THE GM'S (owner, 2026-09-25: "Closing note is
-  // from me, not the GM"). The byline said General Manager when it went out,
-  // which put someone else's name to the one paragraph on the page written in
-  // the first person — in a report that goes to an investor.
+  // AND IT CARRIES NO BYLINE (owner, 2026-09-25: "Closing note is from me, not
+  // the GM", then "It shouldnt say from the owner at all. Just say closing
+  // note"). It went out saying From the General Manager, which put someone
+  // else's name to the one paragraph on the page written in the first person.
+  // The heading alone is the whole label: the report is the owner's, so saying
+  // so under the last section only raises the question.
   if (n.closing_note?.trim()) {
-    html += section('Closing Note', 'From the owner',
+    html += section('Closing Note', '',
       `<div style="font-size:14px;line-height:1.75;color:${CREAM};font-style:italic;white-space:pre-wrap">${renderProse(n.closing_note)}</div>`)
   }
   return html
