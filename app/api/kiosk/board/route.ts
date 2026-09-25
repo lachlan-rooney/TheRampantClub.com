@@ -19,16 +19,49 @@ import { doorClock } from '@/lib/guests'
 
 export const dynamic = 'force-dynamic'
 
+// ── WHY THIS IS CACHED FOR A MINUTE ───────────────────────────────────────
+// Owner, 2026-09-25: "the kiosk takes forever to load" — this route was taking
+// 3.5–5.2s in production, and the board shows nothing of the club until it
+// answers. Nearly all of that was waiting in single file: a dozen round trips
+// to Supabase one after another, six of them signing an image URL each.
+//
+// WHAT'S ON is identical on every tablet in the building — fixtures, the diary
+// entries staff ticked for the boards, and the sign-up counts. Four tablets
+// polling every minute asked for the same rows four times a minute each. It is
+// held for 60 seconds instead, which is the board's own refresh interval: the
+// screen cannot show anything fresher than that anyway.
+//
+// NOTHING MEMBER-SHAPED IS IN HERE. The room, its bookings and the names on
+// them are fetched per request, every request, because they belong to one
+// tablet and one service date. A cache that held those would be the same
+// mistake as caching the kiosk in the service worker.
+//
+// The signed image URLs live an hour, so a minute-old one has 59 left.
+type WhatsOn = { kind: 'fixture' | 'house'; title: string; image: string | null
+                 title_vn: string | null; at: string; taken: number | null; seats: number | null }
+let cached: { date: string; at: number; rows: WhatsOn[] } | null = null
+const WHATS_ON_TTL = 60_000
+
 export async function GET() {
   const token = (await cookies()).get(DEVICE_COOKIE)?.value
   if (!token) return NextResponse.json({ board: null }, { status: 403 })
   const a = svc()
+
+  // The same service date as the door: the small hours belong to the evening before.
+  const { serviceDate } = doorClock()
+
+  // WHAT'S ON STARTS NOW, not after the device has been resolved. It does not
+  // depend on which room this tablet stands in — it is the same club — so
+  // waiting for kiosk_board first only added its latency to everything below.
+  // Caught here, not awaited here: an unenrolled tablet returns before this
+  // settles, and a floating rejection would take the process's logs with it.
+  // A board with no "what's on" is a board; a board that 500s is a dark screen.
+  const whatsOnPromise = whatsOn(a, serviceDate).catch(() => [] as WhatsOn[])
+
   const { data } = await a.rpc('kiosk_board', { p_device_token: token })
   const row = Array.isArray(data) ? data[0] : data
   if (!row?.room) return NextResponse.json({ board: row || null })
 
-  // The same service date as the door: the small hours belong to the evening before.
-  const { serviceDate } = doorClock()
   const { data: rows } = await a.from('bookings')
     .select('booking_id, member_no, start_time, party_size, status, arrived_at')
     .eq('space', row.room).eq('booking_date', serviceDate)
@@ -43,27 +76,53 @@ export async function GET() {
     for (const m of ms || []) names.set(m.member_no, { full_name: m.full_name, nickname: m.nickname })
   }
 
-  // ── WHAT'S ON AT THE CLUB ───────────────────────────────────────────────
-  // Owner, 2026-09-25: "Why is the home screen on the kiosk so shit? Can it
-  // pull through what's on or something at least?" A room with nothing booked
-  // in it said "The room is yours" and stopped, which is true and empty. The
-  // club always has something coming; the tablet just never knew about it.
-  //
-  // Fixtures the members can sign up to, and house entries staff have ticked
-  // "show on the room tablets" — the same flag the boards already honour, so
-  // nothing private appears by accident. Four at most: it is a glance, not a
-  // list, and it shares the screen with the way in.
-  const today = serviceDate
-  const [fx, ce] = await Promise.all([
+  const whatsOnRows = await whatsOnPromise
+
+  return NextResponse.json({
+    board: {
+      ...row,
+      whats_on: whatsOnRows,
+      bookings: list.map(b => {
+        const m = names.get(b.member_no)
+        return {
+          id: b.booking_id,
+          time: b.start_time ? String(b.start_time).slice(0, 5) : null,
+          name: m?.full_name || m?.nickname || 'Member',
+          nickname: m?.full_name && m?.nickname ? m.nickname : null,
+          party: b.party_size ?? null,
+          arrived: b.status === 'arrived' || !!b.arrived_at,
+        }
+      }),
+    },
+  })
+}
+
+// ── WHAT'S ON AT THE CLUB ───────────────────────────────────────────────
+// Owner, 2026-09-25: "Why is the home screen on the kiosk so shit? Can it
+// pull through what's on or something at least?" A room with nothing booked
+// in it said "The room is yours" and stopped, which is true and empty. The
+// club always has something coming; the tablet just never knew about it.
+//
+// Fixtures the members can sign up to, and house entries staff have ticked
+// "show on the room tablets" — the same flag the boards already honour, so
+// nothing private appears by accident. Four at most: it is a glance, not a
+// list, and it shares the screen with the way in.
+async function whatsOn(a: ReturnType<typeof svc>, today: string): Promise<WhatsOn[]> {
+  if (cached && cached.date === today && Date.now() - cached.at < WHATS_ON_TTL) return cached.rows
+
+  // All three at once. They know nothing about each other, and run one after
+  // another they were three quarters of a second of pure waiting.
+  const [fx, ce, counted] = await Promise.all([
     a.from('fixtures').select('id, title, date, type, max_signups, is_full')
       .gte('date', today).order('date').limit(6),
     a.from('calendar_entries').select('title, title_vn, entry_date, start_time, space, kind')
       .eq('show_on_board', true).eq('visibility', 'member')
       .gte('entry_date', today).order('entry_date').limit(6),
+    a.rpc('fixture_signup_counts'),
   ])
-  const counts = await a.rpc('fixture_signup_counts')
-  const signups = new Map(((counts.data || []) as { fixture_id: string; signups?: number }[])
+  const signups = new Map(((counted.data || []) as { fixture_id: string; signups?: number }[])
     .map(c => [c.fixture_id, Number(c.signups ?? 0)]))
+
   // ── THE PICTURES (owner, 2026-09-25: "pull through images for events on
   // the kiosk home page that looks garbage") ──────────────────────────────
   // Every event on the books has art. The member-facing route that serves it
@@ -72,20 +131,29 @@ export async function GET() {
   // see a file, and a second answer would drift from it — this route mints
   // its own short-lived signed URLs, for FIXTURE art only, having already
   // checked the device. A staff-only calendar entry's file is never touched.
+  //
+  // SIGNED TOGETHER, not one after another: six images signed in single file
+  // was 1.2 seconds of the board's wait, and they have nothing to say to each
+  // other. Promise.all makes it one round trip's worth.
   const fixtureIds = ((fx.data || []) as { id: string }[]).map(f => f.id)
   const art = new Map<string, string>()
   if (fixtureIds.length) {
     const { data: atts } = await a.from('entry_attachments')
       .select('entity_id, storage_path, verified_kind')
       .eq('entity_type', 'fixture').in('entity_id', fixtureIds)
+    const first = new Map<string, string>()
     for (const at of (atts || []) as { entity_id: string; storage_path: string; verified_kind: string }[]) {
-      if (at.verified_kind === 'pdf' || art.has(at.entity_id)) continue
-      const { data: signed } = await a.storage.from('entry-attachments').createSignedUrl(at.storage_path, 60 * 60)
-      if (signed?.signedUrl) art.set(at.entity_id, signed.signedUrl)
+      if (at.verified_kind === 'pdf' || first.has(at.entity_id)) continue
+      first.set(at.entity_id, at.storage_path)
     }
+    const signed = await Promise.all([...first].map(async ([id, path]) => {
+      const { data } = await a.storage.from('entry-attachments').createSignedUrl(path, 60 * 60)
+      return [id, data?.signedUrl ?? null] as const
+    }))
+    for (const [id, url] of signed) if (url) art.set(id, url)
   }
 
-  const whatsOn = [
+  const rows: WhatsOn[] = [
     ...((fx.data || []) as { id: string; title: string; date: string; type: string; max_signups: number | null; is_full: boolean | null }[])
       .map(f => ({
         kind: 'fixture' as const,
@@ -111,21 +179,6 @@ export async function GET() {
       })),
   ].sort((x, y) => x.at.localeCompare(y.at)).slice(0, 4)
 
-  return NextResponse.json({
-    board: {
-      ...row,
-      whats_on: whatsOn,
-      bookings: list.map(b => {
-        const m = names.get(b.member_no)
-        return {
-          id: b.booking_id,
-          time: b.start_time ? String(b.start_time).slice(0, 5) : null,
-          name: m?.full_name || m?.nickname || 'Member',
-          nickname: m?.full_name && m?.nickname ? m.nickname : null,
-          party: b.party_size ?? null,
-          arrived: b.status === 'arrived' || !!b.arrived_at,
-        }
-      }),
-    },
-  })
+  cached = { date: today, at: Date.now(), rows }
+  return rows
 }
