@@ -140,8 +140,8 @@ export default function AttendanceStrip({ from, to, refreshKey }: { from: string
             arrived — it counts as booked, and says which part it is. */}
         {current && (current.diary_covers || 0) > 0 && (
           <div style={{ marginBottom: 4 }}>
-            {t(`${current.diary_covers} of those are on ${current.diary_entries} diary entr${current.diary_entries === 1 ? 'y' : 'ies'} — private parties with no member booking behind them. Nobody can mark a diary entry arrived yet, so they count as booked and never as attendance.`,
-               `${current.diary_covers} người trong số đó thuộc ${current.diary_entries} mục lịch — tiệc riêng không có đặt chỗ của hội viên. Chưa thể đánh dấu mục lịch là đã đến, nên chỉ tính là đã đặt, không tính vào số lượt.`)}
+            {t(`${current.diary_covers} of the people counted are on ${current.diary_entries} diary entr${current.diary_entries === 1 ? 'y' : 'ies'} — private parties staff booked into a room by hand. Nobody can mark a diary entry arrived, so these are counted as coming on the club's own word rather than from a card tap.`,
+               `${current.diary_covers} người trong số đã tính thuộc ${current.diary_entries} mục lịch — tiệc riêng do nhân viên đặt phòng trực tiếp. Không thể đánh dấu mục lịch là đã đến, nên được tính theo ghi nhận của câu lạc bộ chứ không phải từ quẹt thẻ.`)}
           </div>
         )}
         {current && current.bookings_unmeasured > 0 && (

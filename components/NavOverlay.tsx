@@ -45,6 +45,11 @@ const MEMBER_GROUPS: { label: string; vn: string; links: { href: string; en: str
   ] },
   { label: 'You', vn: 'Bạn', links: [
     { ...L('/members/profile'), icon: 'card' },
+    // The PIN page existed from the start and appeared in no menu: the only
+    // route to it was a reset email (owner, 2026-09-25: "how does a member set
+    // their pin for the Kiosk? Seems complicated"). It is one tap from here
+    // now, and linked from My Membership as well.
+    { ...L('/members/pin'), icon: 'key' },
     { ...L('/members/calendar'), icon: 'calendar' },
     { ...L('/members/visits'), icon: 'clock' },
   ] },
@@ -76,6 +81,8 @@ const NAV_ICONS: Record<string, string> = {
   introduce: '<circle cx="6.2" cy="6" r="2.1"/><path d="M2.8 13a3.4 3.4 0 016.8 0"/><path d="M11.5 5.5v4M9.5 7.5h4"/>',
   chat:      '<path d="M3 4h10a1 1 0 011 1v5a1 1 0 01-1 1H6l-3 2.5V5a1 1 0 011-1z"/>',
   card:      '<rect x="2" y="4" width="12" height="8" rx="1.5"/><path d="M2 6.8h12M4.3 9.6h3"/>',
+  // A key, for the PIN that opens a tablet.
+  key:       '<circle cx="5.4" cy="8" r="2.6"/><path d="M8 8h6M12 8v2.4M10.2 8v1.8"/>',
   clock:     '<circle cx="8" cy="8" r="5.6"/><path d="M8 5v3.2l2.1 1.3"/>',
   book:      '<path d="M8 4C6.5 3 4 3 2.5 3.7v8.6C4 11.6 6.5 11.6 8 12.6c1.5-1 4-1 5.5-.3V3.7C12 3 9.5 3 8 4z"/><path d="M8 4v8.6"/>',
   document:  '<path d="M4 2.5h5l3 3v8H4z"/><path d="M9 2.5v3h3"/><path d="M6 8.2h4M6 10.6h4"/>',

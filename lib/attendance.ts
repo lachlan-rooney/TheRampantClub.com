@@ -67,7 +67,15 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 // it into the week would be worse than admitting we do not know.
 // ═══════════════════════════════════════════════════════════════════════════
 
-export interface DayAttendance { date: string; attendance: number; members: number; guests: number }
+export interface DayAttendance {
+  date: string; attendance: number; members: number; guests: number
+  /** People BOOKED for that day — party sizes on bookings that stand, plus any
+   *  diary covers. A day still ahead shows nought attendance and this, which
+   *  is the difference between "nobody came" and "nobody has come yet"
+   *  (owner, 2026-09-25: "I still cant see the booking for the weekend
+   *  ahead...."). */
+  booked: number
+}
 
 export interface WeekAttendance {
   from: string
@@ -160,12 +168,16 @@ export async function weekAttendance(sb: SupabaseClient, from: string, to: strin
   // db/calendar_entry_covers.sql; before it has run the select fails and the
   // club simply has no diary figure, exactly as it does today.
   let diaryCovers = 0, diaryEntries = 0
+  const diaryByDate = new Map<string, number>()
   {
     const { data, error } = await sb.from('calendar_entries')
-      .select('covers, kind').gte('entry_date', from).lte('entry_date', to)
+      .select('covers, kind, entry_date').gte('entry_date', from).lte('entry_date', to)
     if (!error) {
-      for (const e of (data || []) as { covers: number | null; kind: string | null }[]) {
-        if (typeof e.covers === 'number' && e.covers > 0) { diaryCovers += e.covers; diaryEntries++ }
+      for (const e of (data || []) as { covers: number | null; kind: string | null; entry_date: string }[]) {
+        if (typeof e.covers === 'number' && e.covers > 0) {
+          diaryCovers += e.covers; diaryEntries++
+          diaryByDate.set(e.entry_date, (diaryByDate.get(e.entry_date) || 0) + e.covers)
+        }
       }
     }
   }
@@ -228,6 +240,15 @@ export async function weekAttendance(sb: SupabaseClient, from: string, to: strin
     ))
   }
 
+  // ── A DIARY PARTY COUNTS (owner, 2026-09-25: "8 people not on the saturday
+  // chart. Let's assume they will all be there beciuase they will") ────────
+  // These are people staff booked into a room by hand, with no member row and
+  // no way to mark them arrived — so on the club's own judgement they are
+  // counted as coming. It is the owner's call and it is recorded as one: the
+  // strip and the report both say how many of the figure came this way, so
+  // nobody mistakes an expectation for a card tap.
+  for (const [date, n] of diaryByDate) addGuests(date, n)
+
   // ── time in club ─────────────────────────────────────────────────────────
   let minutes = 0
   let openVisits = 0
@@ -270,10 +291,18 @@ export async function weekAttendance(sb: SupabaseClient, from: string, to: strin
   }
   minutes += estimated
 
+  // What is BOOKED on each day, whether or not it has happened.
+  const bookedByDate = new Map<string, number>()
+  for (const b of bookings) {
+    if (b.status === 'no_show') continue
+    bookedByDate.set(b.booking_date, (bookedByDate.get(b.booking_date) || 0) + (b.party_size || 1))
+  }
+  for (const [date, n] of diaryByDate) bookedByDate.set(date, (bookedByDate.get(date) || 0) + n)
+
   const byDay: DayAttendance[] = eachDay(from, to).map(date => {
     const m = memberDays.get(date)?.size || 0
     const gs = guestsByDate.get(date) || 0
-    return { date, attendance: m + gs, members: m, guests: gs }
+    return { date, attendance: m + gs, members: m, guests: gs, booked: bookedByDate.get(date) || 0 }
   })
   const allMembers = new Set<string>()
   for (const s of memberDays.values()) for (const m of s) allMembers.add(m)

@@ -39,6 +39,7 @@ export const SURFACE: Record<string, SurfaceName> = {
   '/members/introductions':  { en: 'Introductions',  vn: 'Lời Giới Thiệu' },
   '/members/messages':       { en: 'Messages',       vn: 'Tin Nhắn' },
   '/members/profile':        { en: 'My Membership',  vn: 'Tư Cách Thành Viên' },
+  '/members/pin':            { en: 'Your Kiosk PIN', vn: 'Mã PIN Tại Quầy' },
   '/members/calendar':       { en: 'My Calendar',    vn: 'Lịch Của Bạn' },
   '/members/visits':         { en: 'Your Visits',    vn: 'Những Lần Ghé Thăm' },
   '/members/rules':          { en: 'House Rules',    vn: 'Nội Quy' },

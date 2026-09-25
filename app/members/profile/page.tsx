@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import type { Profile } from '@/lib/types'
 import MemberPage from '@/components/MemberPage'
@@ -64,6 +65,11 @@ export default function ProfilePage() {
   const { t, lang } = useLang()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [email, setEmail] = useState('')
+  // Your account: the PIN the tablets ask for, and the password this page uses.
+  const [pinSet, setPinSet] = useState<boolean | null>(null)
+  const [newPw, setNewPw] = useState('')
+  const [pwBusy, setPwBusy] = useState(false)
+  const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [displayName, setDisplayName] = useState('')
   const [preferredDram, setPreferredDram] = useState('')
   const [prefs, setPrefs] = useState<Preferences>({})
@@ -103,7 +109,27 @@ export default function ProfilePage() {
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.lockers) setLockerNos((d.lockers as { locker_no: string }[]).map(l => l.locker_no)) })
       .catch(() => {})
+    // Whether a kiosk PIN exists — never the PIN itself, which nobody at the
+    // club can read, this page included.
+    fetch('/api/members/kiosk-pin', { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setPinSet(!!d.has_pin) })
+      .catch(() => {})
   }, [])
+
+  // The password belongs to the session, so it is changed against Supabase
+  // directly — the same call /reset-password makes, from a page the member is
+  // already signed in to.
+  const changePassword = useCallback(async () => {
+    setPwMsg(null)
+    if (newPw.length < 8) { setPwMsg({ ok: false, text: t('Eight characters or more.', 'Từ 8 ký tự trở lên.') }); return }
+    setPwBusy(true)
+    const { error } = await createBrowserSupabaseClient().auth.updateUser({ password: newPw })
+    setPwBusy(false)
+    if (error) { setPwMsg({ ok: false, text: error.message }); return }
+    setNewPw('')
+    setPwMsg({ ok: true, text: t('Your password is changed.', 'Đã đổi mật khẩu của quý vị.') })
+  }, [newPw, t])
 
   const handleSave = async () => {
     if (!profile || saving) return
@@ -305,6 +331,46 @@ export default function ProfilePage() {
               />
             </div>
 
+            {/* ── YOUR ACCOUNT ──────────────────────────────────────────
+                Owner, 2026-09-25: "how does a member set their pin for the
+                Kiosk? Seems complicated" and "this is barely any
+                self-flexibility for them".
+                Both were the same fault. The PIN page has existed all along at
+                /members/pin and NOTHING LINKED TO IT — the only way in was a
+                reset email, so a member who simply wanted a PIN had no route
+                at all. And this page, the one called My Membership, could
+                change a dram preference but not a password.
+                The three things an account actually needs now live together,
+                where somebody would look for them. */}
+            <h2 className="pf-h2 pf-prefs">{t('Your account', 'Tài khoản của bạn')}</h2>
+
+            <div className="pf-field">
+              <label className="pf-label">{t('Kiosk PIN', 'Mã PIN tại quầy')}</label>
+              <div className="pf-acct">
+                <span className="pf-acct-state">
+                  {pinSet === null ? '…' : pinSet
+                    ? t('Set — six digits, known only to you', 'Đã đặt — sáu chữ số, chỉ quý vị biết')
+                    : t('Not set yet — you need one to sign in on a tablet', 'Chưa đặt — cần mã này để đăng nhập trên máy tính bảng')}
+                </span>
+                <Link href="/members/pin" className="pf-acct-go">
+                  {pinSet ? t('Change it', 'Đổi mã') : t('Set your PIN', 'Đặt mã PIN')} <span className="pk-go">→</span>
+                </Link>
+              </div>
+            </div>
+
+            <div className="pf-field">
+              <label className="pf-label" htmlFor="pf-pw">{t('Password', 'Mật khẩu')}</label>
+              <div className="pf-acct">
+                <input id="pf-pw" className="pf-input" type="password" autoComplete="new-password"
+                       placeholder={t('A new password — eight characters or more', 'Mật khẩu mới — từ 8 ký tự')}
+                       value={newPw} onChange={e => { setNewPw(e.target.value); setPwMsg(null) }} />
+                <button className="pf-acct-go" disabled={pwBusy || newPw.length < 8} onClick={changePassword}>
+                  {pwBusy ? t('Saving…', 'Đang lưu…') : t('Change it', 'Đổi')} <span className="pk-go">→</span>
+                </button>
+              </div>
+              {pwMsg && <div className={pwMsg.ok ? 'pf-saved' : 'pf-err'} style={{ marginTop: 8 }}>{pwMsg.text}</div>}
+            </div>
+
             {/* Save */}
             <div className="pf-save">
               <button onClick={handleSave} disabled={saving} className="pk-cta pf-cta">
@@ -340,6 +406,14 @@ const CSS = `
 
   .pf-section { margin-top: 64px; }
   .pf-h2 { font-family: ${SERIF}; font-weight: 400; font-size: clamp(30px, 3.4vw, 44px); line-height: 1; color: #E5D4C2; margin: 0 0 24px; }
+  .pf-acct { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .pf-acct-state { font-family: ${MONO}; font-size: 12.5px; color: rgba(229,212,194,.6); line-height: 1.7; }
+  .pf-acct .pf-input { flex: 1 1 240px; }
+  .pf-acct-go { background: none; border: none; padding: 2px 0; cursor: pointer; white-space: nowrap;
+                font-family: ${MONO}; font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+                color: #D4B85A; border-bottom: 1px solid rgba(212,184,90,.4); text-decoration: none; }
+  .pf-acct-go:hover { border-bottom-color: #D4B85A; }
+  .pf-acct-go:disabled { opacity: .35; cursor: not-allowed; }
   .pf-label { display: block; font-family: ${MONO}; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: #E5D4C2; opacity: .72; }
 
   .pf-status { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap;
