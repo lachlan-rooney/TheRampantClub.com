@@ -23,7 +23,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const cookie = await createServerSupabaseClient()
   const { data: { user } } = await cookie.auth.getUser()
 
-  const res = await sendReport(sb, id, { dry, actor: user?.id })
+  // requirePdf: a manual send has somebody standing at it, so it refuses
+  // rather than quietly posting an email with no attachment.
+  const res = await sendReport(sb, id, { dry, actor: user?.id, requirePdf: true })
   if (dry) return new NextResponse(res.html || res.error || '', { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
   if (!res.ok) return NextResponse.json({ error: res.error }, { status: 400 })
   return NextResponse.json(res)

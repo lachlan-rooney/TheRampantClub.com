@@ -4,17 +4,37 @@ import { renderReportEmail, type ReportRow } from './render'
 import { printReportPdf } from './pdf-print'
 
 // Shared report-send logic — used by the manual send route and the Monday
-// auto-send cron. Generates chart PNGs, renders the email, attaches the PDF, and
-// sends to the configured recipients.
+// auto-send cron. Renders the email, prints the PDF from the report's own
+// hosted page, and sends to the configured recipients.
 //
-// ⚠ BETA GUARD: Shawn must receive NOTHING until the owner declares the system
-// live. His address is hard-blocked here regardless of report_settings. When
-// going live: remove BLOCKED_BETA and set report_settings.final_recipients.
-const BLOCKED_BETA = ['shawnbsmith@gmail.com']
+// ── THE BETA GUARD IS GONE, 2026-09-25 ────────────────────────────────────
+// Owner: "Ok, i'm taking the training wheels off. Send that report to Shawn
+// please." Until this commit there were TWO locks and both had to be opened:
+// a hard-coded block on shawnbsmith@gmail.com here, which filtered him out of
+// any recipient list whatever the settings said, and report_settings.
+// final_recipients, which held only the owner's own address.
+//
+// The code lock is removed. THE LIST IS NOW THE WHOLE TRUTH: whoever is in
+// report_settings.final_recipients receives the weekly report, including on
+// Monday morning when the cron sends it with nobody watching. To stop someone
+// receiving it, take them out of that list — there is no longer a second
+// answer hidden in the source.
 
-export interface SendResult { ok: boolean; recipients?: string[]; html?: string; error?: string; skipped?: string[] }
+export interface SendResult { ok: boolean; recipients?: string[]; html?: string; error?: string
+  /** Whether the printed PDF went with it. A send that quietly lost its
+   *  attachment used to look identical to one that carried it. */
+  attached?: boolean }
 
-export async function sendReport(sb: SupabaseClient, reportId: string, opts: { dry?: boolean; actor?: string | null } = {}): Promise<SendResult> {
+export async function sendReport(
+  sb: SupabaseClient,
+  reportId: string,
+  /** requirePdf: refuse to send rather than send without the attachment. The
+   *  MANUAL send sets it — somebody is standing there and can try again, and
+   *  the owner asked for the email and the PDF together (2026-09-25). The
+   *  Monday cron does NOT: at 17:00 with nobody watching, a report in the body
+   *  of an email beats no report at all. */
+  opts: { dry?: boolean; actor?: string | null; requirePdf?: boolean } = {},
+): Promise<SendResult> {
   const { data: r } = await sb.from('weekly_reports').select('*').eq('id', reportId).maybeSingle()
   if (!r) return { ok: false, error: 'Not found' }
   if (!opts.dry && r.status !== 'approved') return { ok: false, error: `Can only send an approved report (this is ${r.status}).` }
@@ -25,13 +45,11 @@ export async function sendReport(sb: SupabaseClient, reportId: string, opts: { d
   const html = renderReportEmail(report)
   if (opts.dry) return { ok: true, html }
 
-  // Recipients — settings minus the beta block.
+  // Recipients — the configured list, as configured.
   const { data: settings } = await sb.from('report_settings').select('final_recipients, cc_recipients').eq('id', 1).maybeSingle()
-  const raw = [...(settings?.final_recipients || [])]
-  const cc = (settings?.cc_recipients || []).filter((e: string) => !BLOCKED_BETA.includes(e.toLowerCase()))
-  const recipients = raw.filter(e => !BLOCKED_BETA.includes(e.toLowerCase()))
-  const skipped = raw.filter(e => BLOCKED_BETA.includes(e.toLowerCase()))
-  if (!recipients.length) return { ok: false, error: 'No permitted recipients configured.', skipped }
+  const recipients = [...(settings?.final_recipients || [])]
+  const cc = [...(settings?.cc_recipients || [])]
+  if (!recipients.length) return { ok: false, error: 'No recipients configured.' }
   if (!process.env.RESEND_API_KEY) return { ok: false, error: 'Email not configured.' }
 
   // ── THE ATTACHMENT IS THE PAGE ──────────────────────────────────────────
@@ -49,7 +67,12 @@ export async function sendReport(sb: SupabaseClient, reportId: string, opts: { d
     try {
       const pdf = await printReportPdf(r.share_token)
       attachments = [{ filename: `Rampant_Weekly_Report_${r.period_end}.pdf`, content: Buffer.from(pdf) }]
-    } catch (e) { console.error('report pdf print failed — sending without it:', e) }
+    } catch (e) {
+      console.error('report pdf print failed:', e)
+      if (opts.requirePdf) {
+        return { ok: false, error: `The PDF could not be printed, so nothing was sent: ${e instanceof Error ? e.message : 'print failed'}` }
+      }
+    }
   }
 
   const resend = new Resend(process.env.RESEND_API_KEY)
@@ -66,6 +89,6 @@ export async function sendReport(sb: SupabaseClient, reportId: string, opts: { d
   }
 
   await sb.from('weekly_reports').update({ status: 'sent', sent_at: new Date().toISOString(), sent_to: recipients, updated_at: new Date().toISOString() }).eq('id', r.id)
-  await sb.from('report_activity').insert({ report_id: r.id, actor: opts.actor || null, event_type: 'sent', from_status: 'approved', to_status: 'sent', note: skipped.length ? `beta-blocked: ${skipped.join(', ')}` : null })
-  return { ok: true, recipients, skipped }
+  await sb.from('report_activity').insert({ report_id: r.id, actor: opts.actor || null, event_type: 'sent', from_status: 'approved', to_status: 'sent', note: `to: ${recipients.join(', ')}${attachments.length ? ' · with the printed PDF' : ' · NO attachment (the print failed)'}` })
+  return { ok: true, recipients, attached: attachments.length > 0 }
 }
