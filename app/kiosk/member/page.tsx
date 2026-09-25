@@ -33,7 +33,10 @@ interface Entry { id: string; title: string; title_vn: string | null; entry_date
 interface Fixture { id: string; type: string; title: string; date: string; location: string | null }
 interface Week { from: string; to: string; entries: Entry[]; fixtures: Fixture[]
   // Attachment ids for the rows above, images only, private hires excluded.
-  art?: Record<string, { id: string; kind: string }> }
+  art?: Record<string, { id: string; kind: string }>
+  /** The fixtures THIS member is already down for. Their own rows, nobody
+   *  else's — a tablet is shoulder height. */
+  signed_up?: string[] }
 
 const VN = 'Asia/Ho_Chi_Minh'
 const vnNow = () => new Date(new Date().toLocaleString('en-US', { timeZone: VN }))
@@ -70,6 +73,8 @@ export default function KioskMember() {
   const [busy, setBusy] = useState(false)
   const [me, setMe] = useState<Me | null>(null)
   const [week, setWeek] = useState<Week | null>(null)
+  const [joining, setJoining] = useState<string | null>(null)
+  const [joinMsg, setJoinMsg] = useState<{ id: string; ok: boolean; text: string } | null>(null)
   const abandon = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastTouch = useRef(Date.now())
 
@@ -99,6 +104,34 @@ export default function KioskMember() {
 
   // ── ABANDON: the PIN screen clears itself. Every keypress resets it, so a real
   //    member thumbing six digits is never cut off; a walk-away clears in 15s.
+  // PUT MY NAME DOWN. Runs as the member on the server; the database decides
+  // the cap and the deadline and says why if it refuses, so the tablet repeats
+  // its answer rather than inventing one.
+  const REFUSAL: Record<string, string> = {
+    full: 'That one filled up. · Sự kiện đã kín chỗ.',
+    closed: 'Sign-ups have closed. · Đã đóng đăng ký.',
+    already: 'You are already down for that. · Quý vị đã đăng ký rồi.',
+    unknown: 'That event is no longer listed. · Sự kiện không còn trong danh sách.',
+    auth: 'Please sign in again. · Vui lòng đăng nhập lại.',
+  }
+  const putNameDown = useCallback(async (fixtureId: string) => {
+    setJoining(fixtureId); setJoinMsg(null)
+    try {
+      const r = await fetch('/api/kiosk/member/signup', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fixture_id: fixtureId }),
+      })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok) { setJoinMsg({ id: fixtureId, ok: false, text: j.error || 'That did not send.' }); return }
+      if (j.ok === false) { setJoinMsg({ id: fixtureId, ok: false, text: REFUSAL[j.reason] || 'Could not sign you up.' }); return }
+      // Re-read the week so the row flips to "You're in" from the server's
+      // answer rather than from a hopeful guess here.
+      const wk = await fetch('/api/kiosk/member/week', { cache: 'no-store' }).then(x => x.ok ? x.json() : null).catch(() => null)
+      if (wk?.week) setWeek(wk.week)
+      setJoinMsg({ id: fixtureId, ok: true, text: 'You are down for it. · Đã đăng ký.' })
+    } finally { setJoining(null) }
+  }, [])
+
   const bumpAbandon = useCallback(() => {
     if (me) return
     if (abandon.current) clearTimeout(abandon.current)
@@ -152,8 +185,8 @@ export default function KioskMember() {
   // Left column FIXED: who they are, and it never scrolls. Right column scrolls,
   // and scrolling resets the idle clock — a member who scrolls is still present.
   if (me) {
-    const days: Array<{ iso: string; items: Array<{ ms: number; time: string; title: string; title_vn?: string | null; where: string | null; tag: string; art?: string }> }> = []
-    const push = (iso: string, item: { ms: number; time: string; title: string; title_vn?: string | null; where: string | null; tag: string; art?: string }) => {
+    const days: Array<{ iso: string; items: Array<{ ms: number; time: string; title: string; title_vn?: string | null; where: string | null; tag: string; art?: string; fixtureId?: string }> }> = []
+    const push = (iso: string, item: { ms: number; time: string; title: string; title_vn?: string | null; where: string | null; tag: string; art?: string; fixtureId?: string }) => {
       let d = days.find(x => x.iso === iso)
       if (!d) { d = { iso, items: [] }; days.push(d) }
       d.items.push(item)
@@ -172,8 +205,12 @@ export default function KioskMember() {
         time: new Date(f.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: VN }),
         title: f.title, where: f.location, tag: typeLabel(f.type),
         art: week?.art?.[`fixture:${f.id}`]?.id,
+        // A fixture can be signed up for, right here — the board tells members
+        // to sign in to do exactly this (owner, 2026-09-25).
+        fixtureId: f.id,
       })
     }
+    const signedUp = new Set(week?.signed_up || [])
     days.sort((a, b) => a.iso.localeCompare(b.iso))
     days.forEach(d => d.items.sort((a, b) => a.ms - b.ms))
 
@@ -246,6 +283,28 @@ export default function KioskMember() {
                         <div style={{ fontFamily: MONO, fontSize: 12, color: 'rgba(229,212,194,.5)', marginTop: 4 }}>
                           {it.where || '—'}
                         </div>
+                        {/* PUT MY NAME DOWN. The board promised this and the
+                            tablet could not do it: a member signed in with
+                            their PIN, found the event, and had no way to join
+                            it. Their own action, run as them. */}
+                        {it.fixtureId && (
+                          signedUp.has(it.fixtureId) ? (
+                            <div style={{ fontFamily: MONO, fontSize: 12, color: '#7AB07A', marginTop: 8 }}>
+                              ✓ You&rsquo;re in <span style={{ color: 'rgba(229,212,194,.4)' }}>· Đã đăng ký</span>
+                            </div>
+                          ) : (
+                            <button onClick={() => putNameDown(it.fixtureId!)}
+                                    disabled={joining === it.fixtureId}
+                                    style={joinBtn}>
+                              {joining === it.fixtureId ? '…' : <>Put my name down <span style={{ opacity: .6 }}>· Đăng ký</span></>}
+                            </button>
+                          )
+                        )}
+                        {joinMsg && joinMsg.id === it.fixtureId && (
+                          <div style={{ fontFamily: MONO, fontSize: 12, marginTop: 8, color: joinMsg.ok ? '#7AB07A' : '#C49555' }}>
+                            {joinMsg.text}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -333,6 +392,12 @@ const row: React.CSSProperties = { display: 'flex', gap: 18, marginBottom: 16, a
 const rowTime: React.CSSProperties = {
   fontFamily: MONO, fontSize: 15, color: '#D4B85A', flex: '0 0 52px', letterSpacing: '.04em',
 }
+const joinBtn: React.CSSProperties = {
+  marginTop: 10, padding: '9px 16px', minHeight: 44,
+  fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 12, letterSpacing: '.08em',
+  color: '#052E20', background: '#D4B85A', border: 'none', borderRadius: 6, cursor: 'pointer',
+}
+
 const doneBtn: React.CSSProperties = {
   marginTop: 'auto', alignSelf: 'flex-start',
   background: 'none', border: '1px solid rgba(229,212,194,.35)', borderRadius: 8, color: INK,

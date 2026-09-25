@@ -16,8 +16,11 @@ import { vnDateString } from '@/lib/datetime'
 //   · NOT calendar_entries.description — an internal operational note
 //   · NOT calendar_entries.attendee    — names who an entry is with
 //   · NOT fixtures.description / results / max_signups / signup_deadline
-//   · fixture_signups is NEVER queried. Who is playing is the same
-//     shoulder-height problem as `attendee`, so the table is simply not touched.
+//   · fixture_signups is read for THIS MEMBER ONLY, and only to answer "are
+//     you already down for this?" — the question the button has to answer
+//     before it can be pressed (2026-09-25). Who ELSE is playing is still the
+//     shoulder-height problem it always was and is still never read: the query
+//     is filtered to the signed-in member's own rows, through their own RLS.
 
 export const dynamic = 'force-dynamic'
 
@@ -73,10 +76,16 @@ export async function GET() {
     }
   }
 
+  // Your own rows, so the button can say "You're in" instead of offering
+  // something already done. Filtered to this member by the query AND by RLS.
+  const mine = await mc.from('fixture_signups').select('fixture_id')
+  const signedUp = new Set(((mine.data || []) as { fixture_id: string }[]).map(r => r.fixture_id))
+
   return NextResponse.json({
     week: {
       from, to,
       art,
+      signed_up: [...signedUp],
       // A private hire is titled by whoever booked it, and that title is often a
       // person or a group. `kind` is shown instead so a name is not left standing
       // on a screen in a public room. See the note in the report: the corpus is
