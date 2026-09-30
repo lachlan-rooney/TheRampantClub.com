@@ -108,7 +108,6 @@ export default function TetGate() {
           <img className="tg-mark tg-mark-dt" src="/images/tet/dt-crest.png" alt="Duncan Taylor Scotch Whisky" />
         </div>
 
-        <div className="tg-eyebrow">{t('Corporate gifting', 'Quà tặng doanh nghiệp')}</div>
         <h1 className="tg-title">Tết Đinh Mùi<span>2027</span></h1>
         <p className="tg-lede">
           {t('Twenty single casks from Duncan Taylor, bottled and dressed for the year of the goat — your company’s name on the label.',
@@ -166,10 +165,23 @@ const CSS = `
 .tg-art img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 42%; display: block;
               /* The scrim over it is green, and green on amber goes to mud.
                  A little saturation back keeps the whisky the colour it is. */
-              filter: saturate(1.12) contrast(1.04); }
+              filter: saturate(1.12) contrast(1.04);
+              /* THE PICTURE FADES OUT RATHER THAN BEING PAINTED OVER (owner,
+                 2026-09-30: "fade out the octave image better"). Green washed
+                 over the photograph left a visible seam where the wash ended
+                 and dulled everything it crossed. A MASK dissolves the image
+                 itself into the page, so there is no edge to see: transparent
+                 at the left, opaque by the time it reaches the whisky, and
+                 softened along the top and bottom so it is not a rectangle. */
+              -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.08) 12%, rgba(0,0,0,.42) 30%, rgba(0,0,0,.86) 50%, #000 66%),
+                                  linear-gradient(180deg, transparent 0%, #000 14%, #000 86%, transparent 100%);
+              -webkit-mask-composite: source-in;
+              mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.08) 12%, rgba(0,0,0,.42) 30%, rgba(0,0,0,.86) 50%, #000 66%),
+                          linear-gradient(180deg, transparent 0%, #000 14%, #000 86%, transparent 100%);
+              mask-composite: intersect; }
 /* Green over the left edge of the picture, so the two surfaces are one. */
 .tg-fade { position: absolute; inset: 0;
-           background: linear-gradient(90deg, ${GREEN} 0%, ${GREEN} 6%, rgba(5,46,32,.80) 19%, rgba(5,46,32,.34) 38%, rgba(5,46,32,.06) 62%, rgba(5,46,32,0) 78%); }
+           background: linear-gradient(90deg, rgba(5,46,32,.55) 0%, rgba(5,46,32,.30) 22%, rgba(5,46,32,.10) 46%, rgba(5,46,32,0) 70%); }
 /* The fire moves. Barely — a room with a fire in it is never quite still, and
    a still photograph of one reads as a poster. */
 .tg-glow { position: absolute; inset: 0; pointer-events: none;
@@ -195,9 +207,10 @@ const CSS = `
 .tg-rule { width: 1px; align-self: stretch; margin: 6px 0;
            background: linear-gradient(180deg, rgba(229,212,194,0), rgba(229,212,194,.45), rgba(229,212,194,0)); }
 
-.tg-eyebrow { font-family: ${MONO}; font-size: 11px; letter-spacing: .22em; text-transform: uppercase;
-              color: ${GOLD}; margin-top: clamp(22px, 4vh, 40px); }
-.tg-title { font-family: ${SERIF}; font-weight: 500; line-height: .94; margin: 12px 0 0;
+/* THE GAP THE EYEBROW USED TO HOLD (owner, 2026-09-30: "keep the gap between
+   the logos and the header though"). Deleting the line above the title closed
+   the space it occupied as well, and the crests ended up sitting on the T. */
+.tg-title { font-family: ${SERIF}; font-weight: 500; line-height: .94; margin: clamp(46px, 7.5vh, 82px) 0 0;
             font-size: clamp(44px, 8.4vw, 92px); letter-spacing: -.01em; }
 /* The year drops to its own line and takes the gold: a date is a fact, and the
    festival is the name. */
@@ -237,12 +250,15 @@ const CSS = `
 @media (max-width: 860px) {
   .tg { display: block; align-items: stretch; padding: 0 0 clamp(34px, 7vh, 60px); }
   .tg-art { position: relative; inset: auto; width: 100%; height: 40vh; min-height: 260px; }
-  .tg-art img { object-position: 56% 38%; }
-  .tg-fade { background: linear-gradient(180deg, rgba(5,46,32,.34) 0%, rgba(5,46,32,.10) 30%, rgba(5,46,32,.72) 74%, ${GREEN} 100%); }
+  .tg-art img { object-position: 56% 38%;
+                -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 42%, rgba(0,0,0,.55) 72%, transparent 100%);
+                -webkit-mask-composite: source-over;
+                mask-image: linear-gradient(180deg, #000 0%, #000 42%, rgba(0,0,0,.55) 72%, transparent 100%);
+                mask-composite: add; }
+  .tg-fade { background: linear-gradient(180deg, rgba(5,46,32,.30) 0%, rgba(5,46,32,.10) 34%, rgba(5,46,32,.35) 78%, rgba(5,46,32,.55) 100%); }
   .tg-glow { background: radial-gradient(62% 44% at 44% 58%, rgba(212,150,60,.34), rgba(212,150,60,0) 72%); }
   .tg-col { width: 100%; padding: 0 clamp(22px, 6vw, 34px); margin-top: -7vh; }
   .tg-marks { gap: 18px; }
-  .tg-eyebrow { margin-top: 24px; }
   .tg-lede { font-size: 13px; }
 }
 
