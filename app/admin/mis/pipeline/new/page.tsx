@@ -62,7 +62,6 @@ export default function NewProspectPage() {
       <Link href="/admin/mis/pipeline" style={backLink}>← {t('Pipeline', 'Kênh tuyển')}</Link>
 
       <div style={{ marginBottom: 28 }}>
-        <div style={eyebrow}>{t('Pipeline', 'Kênh tuyển')}</div>
         <h1 style={pageTitle}>{t('New prospect', 'Ứng viên mới')}</h1>
         <p style={lede}>
           {t('The minimum needed to start a pipeline card. Everything else — interview, scoring, decision — gets filled in on the detail page as you move them through stages.', 'Thông tin tối thiểu để tạo một thẻ trong kênh tuyển. Mọi thứ còn lại — phỏng vấn, chấm điểm, quyết định — sẽ được điền ở trang chi tiết khi bạn đưa họ qua các giai đoạn.')}
@@ -150,11 +149,6 @@ const backLink: React.CSSProperties = {
   display: 'inline-block', marginBottom: 18, textDecoration: 'none',
   fontFamily: "'Google Sans Code', monospace", fontSize: 11,
   color: '#B2AA98', letterSpacing: '0.04em', opacity: 0.7,
-}
-const eyebrow: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
-  color: '#D4B85A', letterSpacing: '0.16em', textTransform: 'uppercase',
-  marginBottom: 4,
 }
 const pageTitle: React.CSSProperties = {
   fontFamily: "'Rampant Sans', serif", fontSize: 28, fontWeight: 500,

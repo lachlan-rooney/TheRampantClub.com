@@ -131,7 +131,6 @@ export default function DecayFitPage() {
   return (
     <>
       <div style={{ marginBottom: 24 }}>
-        <div style={eyebrow}>{t('Intelligence · MIS Pass 3', 'Trí tuệ · MIS Lượt 3')}</div>
         <h1 style={pageTitle}>{t('Decay Fit', 'Khớp Suy Giảm')}</h1>
         <p style={lede}>
           {t('Bayesian λ-fit for the preference-decay model. Each month the cron pulls survival spells from', 'Khớp λ Bayes cho mô hình suy giảm sở thích. Mỗi tháng, cron kéo các khoảng sống sót từ')} <code>v_decay_contradictions</code>, <code>v_decay_confirmations</code> {t('and', 'và')} <code>v_decay_live_exposure</code>{t(', runs a Gamma-conjugate posterior per category, and writes one proposal row per canonical category. A proposal becomes live scoring only after explicit accept here. Medical preferences (λ=0) are excluded row-by-row at the view layer and never reach the fit.', ', chạy hậu nghiệm liên hợp Gamma cho mỗi hạng mục, và ghi một dòng đề xuất cho mỗi hạng mục chuẩn. Một đề xuất chỉ được đưa vào chấm điểm trực tiếp sau khi được chấp nhận rõ ràng tại đây. Sở thích y tế (λ=0) bị loại trừ theo từng dòng ở lớp hiển thị và không bao giờ đến bước khớp.')}

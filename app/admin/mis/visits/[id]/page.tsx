@@ -168,7 +168,6 @@ export default function VisitDetail({ params }: { params: Promise<{ id: string }
       {/* Hero */}
       <div style={hero}>
         <div>
-          <div style={eyebrow}>{t('Visit', 'Lượt ghé')} · {visit.visit_date}</div>
           <h1 style={pageTitle}>{member.full_name}</h1>
           <div style={subtle}>
             {member.member_no} · {member.tier}
@@ -649,11 +648,6 @@ const backLink: React.CSSProperties = {
 const hero: React.CSSProperties = {
   display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
   gap: 24, marginBottom: 24, flexWrap: 'wrap',
-}
-const eyebrow: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
-  color: '#D4B85A', letterSpacing: '0.16em', textTransform: 'uppercase',
-  marginBottom: 4,
 }
 const pageTitle: React.CSSProperties = {
   fontFamily: "'Rampant Sans', serif", fontSize: 30, fontWeight: 500,

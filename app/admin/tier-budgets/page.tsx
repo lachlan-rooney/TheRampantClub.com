@@ -62,7 +62,6 @@ export default function TierBudgetsPage() {
   return (
     <>
       <div style={{ marginBottom: 24 }}>
-        <div style={eyebrow}>{t('House · Settings', 'Nội bộ · Cài đặt')}</div>
         <h1 style={pageTitle}>{t('Tier Budgets', 'Ngân sách theo hạng')}</h1>
         <p style={lede}>
           {t('Annual dues and gifting percentage per membership tier. Each member’s annual gifting budget is computed live as', 'Phí thường niên và tỷ lệ phần trăm quà tặng theo từng hạng hội viên. Ngân sách quà tặng thường niên của mỗi hội viên được tính trực tiếp bằng')} <Code>annual_dues × gifting_pct</Code>. {t('The budget year runs from the member’s previous anniversary to the next.', 'Năm ngân sách tính từ ngày kỷ niệm gần nhất của hội viên đến ngày kỷ niệm kế tiếp.')}
@@ -156,11 +155,6 @@ function Code({ children }: { children: React.ReactNode }) {
   return <code style={codeStyle}>{children}</code>
 }
 
-const eyebrow: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
-  color: '#D4B85A', letterSpacing: '0.16em', textTransform: 'uppercase',
-  marginBottom: 4,
-}
 const pageTitle: React.CSSProperties = {
   fontFamily: "'Rampant Sans', serif", fontSize: 30, fontWeight: 500,
   color: '#E5D4C2', letterSpacing: '0.04em', margin: '4px 0 8px',

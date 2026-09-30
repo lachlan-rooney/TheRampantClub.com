@@ -150,7 +150,6 @@ export default function CandidatesPage() {
   return (
     <>
       <div style={{ marginBottom: 24 }}>
-        <div style={eyebrow}>{t('Intelligence · Members', 'Thông tin · Hội viên')}</div>
         <h1 style={pageTitle}>{t('Preference Candidates', 'Ứng viên sở thích')}</h1>
         <p style={lede}>
           {t('New preferences proposed by the on-visit observation log and AI shift-narrative extractions. Accepting one fires write contract B — the preference lands in ', 'Các sở thích mới được đề xuất từ nhật ký quan sát tại chỗ và trích xuất tường thuật ca làm của AI. Chấp nhận một mục sẽ kích hoạt hợp đồng ghi B — sở thích được ghi vào ')}<code>preferences</code>{t(' with ', ' với ')}<code>validation_count=1</code>{t(' and the candidate row marks the moment it was promoted.', ' và dòng ứng viên đánh dấu thời điểm nó được thăng cấp.')}

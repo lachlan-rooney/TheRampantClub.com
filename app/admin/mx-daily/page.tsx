@@ -166,7 +166,6 @@ export default function MXDailyPage() {
   return (
     <>
       <div style={{ marginBottom: 28 }}>
-        <div style={eyebrow}>{t('Floor · Member Experience', 'Sàn phục vụ · Trải nghiệm hội viên')}</div>
         <h1 style={pageTitle}>MX Daily</h1>
         <p style={lede}>
           {t('The morning check-in. Birthdays, anniversaries, members slipping out of the rhythm, and any friction we need to clear. Action one thing from each panel before service.', 'Buổi kiểm tra đầu ngày. Sinh nhật, kỷ niệm, những hội viên đang thưa dần, và bất kỳ vướng mắc nào cần xử lý. Hãy hành động một việc từ mỗi bảng trước giờ phục vụ.')}

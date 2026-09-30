@@ -78,7 +78,6 @@ export default function ChecklistTemplatesPage() {
     <>
       <div style={headerRow}>
         <div>
-          <div style={eyebrow}>{t('Floor · Templates', 'Sàn · Mẫu')}</div>
           <h1 style={pageTitle}>{t('Checklist Templates', 'Mẫu danh sách kiểm tra')}</h1>
           <p style={lede}>
             {t('Add, reorder, reword, or remove items in the opening and closing checklists. Changes affect ', 'Thêm, sắp xếp lại, chỉnh câu chữ hoặc xóa các mục trong danh sách kiểm tra mở cửa và đóng cửa. Các thay đổi chỉ ảnh hưởng đến ')}<strong>{t('future sheets only', 'các phiếu trong tương lai')}</strong>{t('. Every sheet that has already been sealed kept a snapshot of the items at the moment it was started; those records are never re-read against this template, so a wording or item change here cannot rewrite history.', '. Mỗi phiếu đã được niêm phong đều giữ một bản chụp các mục tại thời điểm bắt đầu; những bản ghi đó không bao giờ được đọc lại theo mẫu này, nên việc thay đổi câu chữ hay mục ở đây không thể viết lại lịch sử.')}

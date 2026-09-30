@@ -45,7 +45,6 @@ export default function HarmonyListPage() {
     <>
       <div style={headerRow}>
         <div>
-          <div style={eyebrow}>{t('Floor', 'Sàn')}</div>
           <h1 style={pageTitle}>{t('Harmony Log', 'Nhật ký ca trực')}</h1>
           <p style={lede}>
             {t('End-of-shift narrative — type what happened tonight in plain English. Claude reads it back and proposes structured updates (visits, preferences, bottle pours, walk-ins, complaints, card charges). Tick the ones you want, accept, done. Everything fans out to the right place.', 'Tường thuật cuối ca — ghi lại những gì đã diễn ra tối nay bằng lời văn thường. Claude đọc lại và đề xuất các cập nhật có cấu trúc (lượt ghé, sở thích, rượu đã rót, khách vãng lai, phàn nàn, ghi nợ thẻ). Chọn những mục bạn muốn, chấp nhận, xong. Mọi thứ được phân bổ đến đúng nơi.')}
@@ -139,11 +138,6 @@ function statusPill(s: string): React.CSSProperties {
 const headerRow: React.CSSProperties = {
   display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
   gap: 20, marginBottom: 24,
-}
-const eyebrow: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
-  color: '#D4B85A', letterSpacing: '0.16em', textTransform: 'uppercase',
-  marginBottom: 4,
 }
 const pageTitle: React.CSSProperties = {
   fontFamily: "'Rampant Sans', serif", fontSize: 32, fontWeight: 500,

@@ -55,7 +55,6 @@ export default function NewHarmonyLogPage() {
       <Link href="/admin/harmony" style={backLink}>← {t('Harmony Log', 'Nhật ký ca trực')}</Link>
 
       <div style={{ marginBottom: 24 }}>
-        <div style={eyebrow}>{t('Floor · Harmony Log', 'Sảnh · Nhật ký ca trực')}</div>
         <h1 style={pageTitle}>{t("Tonight's shift", 'Ca trực tối nay')}</h1>
         <p style={lede}>
           {t('Type what happened tonight in plain English — who came in, what they drank, what they said, anything that mattered. Hit', 'Ghi lại những gì đã diễn ra tối nay bằng lời văn tự nhiên — ai đã đến, họ uống gì, họ nói gì, bất cứ điều gì đáng lưu ý. Nhấn')} <strong>{t('Process', 'Xử lý')}</strong> {t('and Claude reads it back and proposes structured updates. You tick what to keep.', 'và Claude sẽ đọc lại rồi đề xuất các cập nhật có cấu trúc. Bạn chọn những gì muốn giữ lại.')}
@@ -135,11 +134,6 @@ const backLink: React.CSSProperties = {
   display: 'inline-block', marginBottom: 18, textDecoration: 'none',
   fontFamily: "'Google Sans Code', monospace", fontSize: 11,
   color: '#B2AA98', letterSpacing: '0.04em', opacity: 0.7,
-}
-const eyebrow: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
-  color: '#D4B85A', letterSpacing: '0.16em', textTransform: 'uppercase',
-  marginBottom: 4,
 }
 const pageTitle: React.CSSProperties = {
   fontFamily: "'Rampant Sans', serif", fontSize: 30, fontWeight: 500,

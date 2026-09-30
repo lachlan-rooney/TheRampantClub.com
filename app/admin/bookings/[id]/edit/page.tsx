@@ -105,7 +105,6 @@ export default function EditBookingPage() {
     <>
       <Link href="/admin/calendar" style={backLink}>{t('← Calendar', '← Lịch')}</Link>
       <div style={{ marginBottom: 24 }}>
-        <div style={eyebrow}>{t('Floor · Calendar', 'Sàn · Lịch')}</div>
         <h1 style={pageTitle}>{t('Edit booking', 'Sửa lượt đặt')}</h1>
       </div>
 

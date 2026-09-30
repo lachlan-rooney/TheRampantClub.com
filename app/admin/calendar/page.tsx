@@ -292,7 +292,6 @@ export default function CalendarPage() {
     <>
       <div style={headerRow}>
         <div>
-          <div style={eyebrow}>{t('Floor', 'Sàn')}</div>
           <h1 style={pageTitle}>{t('Calendar', 'Lịch')}</h1>
           <p style={lede}>
             {t("Who's coming in, which room, when. Tap-to-start auto-links the booking when a member scans their card; from here you can start the visit manually if needed.", 'Ai đang đến, phòng nào, khi nào. Chạm-để-bắt-đầu tự động liên kết đặt chỗ khi hội viên quét thẻ; từ đây bạn có thể bắt đầu lượt ghé thủ công nếu cần.')}
@@ -529,7 +528,6 @@ export default function CalendarPage() {
         <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)' }} onClick={() => !toBusy && setShowTO(false)} />
           <div style={{ position: 'relative', width: 'min(440px, 94vw)', background: '#0A3526', border: '1px solid rgba(229,212,194,0.15)', borderRadius: 12, padding: '22px 24px', boxShadow: '0 30px 80px rgba(0,0,0,0.55)' }}>
-            <div style={eyebrow}>{t('Staff', 'Nhân viên')}</div>
             <h2 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 20, color: '#E5D4C2', margin: '4px 0 16px' }}>{t('Add time off / holiday', 'Thêm nghỉ phép / ngày lễ')}</h2>
 
             <label style={toLabel}>{t('Type', 'Loại')}</label>

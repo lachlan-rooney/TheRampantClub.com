@@ -755,7 +755,6 @@ export default function ObservatoryPage() {
         }
       ` }} />
       <div style={{ marginBottom: 28 }}>
-        <div style={eyebrow}>{t('Intelligence · Live', 'Trí tuệ · Trực tiếp')}</div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16, flexWrap: 'wrap' }}>
           <h1 style={pageTitle}>{t('The Observatory', 'Đài Quan Sát')}</h1>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>

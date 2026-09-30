@@ -189,7 +189,6 @@ export default function PipelinePage() {
     <>
       <div style={headerRow}>
         <div>
-          <div style={eyebrow}>{t('Member Intelligence', 'Thông tin thành viên')}</div>
           <h1 style={pageTitle}>{t('Pipeline', 'Quy trình tuyển chọn')}</h1>
         </div>
         <Link href="/admin/mis/pipeline/new" style={addBtn}>{t('+ New prospect', '+ Ứng viên mới')}</Link>

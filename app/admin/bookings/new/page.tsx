@@ -227,7 +227,6 @@ export default function NewBookingPage() {
       <Link href="/admin/calendar" style={backLink}>← {t('Calendar', 'Lịch')}</Link>
 
       <div style={{ marginBottom: 20 }}>
-        <div style={eyebrow}>{t('Floor · Calendar', 'Sàn · Lịch')}</div>
         <h1 style={pageTitle}>{editId ? t('Edit house entry', 'Sửa mục nội bộ') : mode === 'house' ? t('New house entry', 'Mục nội bộ mới') : t('New booking', 'Đặt chỗ mới')}</h1>
       </div>
 
@@ -498,11 +497,6 @@ const backLink: React.CSSProperties = {
   display: 'inline-block', marginBottom: 18, textDecoration: 'none',
   fontFamily: "'Google Sans Code', monospace", fontSize: 11,
   color: '#B2AA98', letterSpacing: '0.04em', opacity: 0.7,
-}
-const eyebrow: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
-  color: '#D4B85A', letterSpacing: '0.16em', textTransform: 'uppercase',
-  marginBottom: 4,
 }
 const pageTitle: React.CSSProperties = {
   fontFamily: "'Rampant Sans', serif", fontSize: 30, fontWeight: 500,

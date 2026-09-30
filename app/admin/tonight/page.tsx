@@ -222,7 +222,6 @@ export default function AdminTonight() {
     <>
       <div style={headerRow}>
         <div>
-          <div style={eyebrow}>{t('Floor', 'Sảnh')}</div>
           <h1 style={pageTitle}>{t('Tonight at The Rampant Club', 'Tối nay tại The Rampant Club')}</h1>
           <p style={lede}>
             {t('Pre-shift briefs for every booked member + walk-ins already on the floor. One-click into the Guardian Angel cycle. Curate the dram, vinyl and member quote for the homepage below.', 'Bản tóm tắt trước ca cho mọi hội viên đã đặt chỗ + khách vãng lai đã có mặt tại sảnh. Một chạm để vào chu trình Guardian Angel. Chọn ly whisky, đĩa than và câu trích dẫn hội viên cho trang chủ bên dưới.')}
@@ -580,11 +579,6 @@ function timePill(arrived: boolean): React.CSSProperties {
 const headerRow: React.CSSProperties = {
   display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
   gap: 20, marginBottom: 20,
-}
-const eyebrow: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
-  color: '#D4B85A', letterSpacing: '0.16em', textTransform: 'uppercase',
-  marginBottom: 4,
 }
 const pageTitle: React.CSSProperties = {
   fontFamily: "'Rampant Sans', serif", fontSize: 30, fontWeight: 500,

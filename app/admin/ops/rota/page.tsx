@@ -552,7 +552,6 @@ export default function RotaPage() {
       <Link href="/admin/ops" style={backLink}>{t('← Boards', '← Bảng')}</Link>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '8px 0 4px', flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <div style={eyebrow}>{t('Operations Hub', 'Trung tâm Vận hành')}</div>
           <h1 style={pageTitle}>{t('Rota', 'Lịch làm việc')}</h1>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -571,7 +570,6 @@ export default function RotaPage() {
                       border: `1px solid ${blocking.length ? 'rgba(194,112,112,0.45)' : 'rgba(229,212,194,0.14)'}`,
                       background: blocking.length ? 'rgba(194,112,112,0.07)' : 'rgba(229,212,194,0.03)' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
-            <span style={eyebrow}>{t('This week against the rules', 'Tuần này so với quy định')}</span>
             <span style={{ ...metaText, color: blocking.length ? '#E8A6A6' : '#9FBF8F' }}>
               {blocking.length
                 ? `${blocking.length} ${t('to fix', 'cần sửa')}`
@@ -973,7 +971,6 @@ export default function RotaPage() {
         <>
           <div style={modalBackdrop} onClick={() => { if (!busy) setCell(null) }} />
           <div style={modalBox} role="dialog">
-            <div style={eyebrow}>{cell.editing ? t('Edit shift', 'Sửa ca') : t('Assign shift', 'Xếp ca')}</div>
             <div style={{ ...metaText, marginBottom: 12 }}>{cell.shift_name} · {dayLabel(cell.date)}</div>
             <div style={fieldLabel}>{t('Team member', 'Nhân sự')}</div>
             <select style={input} value={draft.member} onChange={e => setDraft(d => ({ ...d, member: e.target.value }))}>

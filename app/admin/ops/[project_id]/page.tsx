@@ -588,7 +588,6 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
         <>
           <div style={drawerBackdrop} onClick={() => { if (!busy) setEditing(null) }} />
           <div style={drawer} role="dialog">
-            <div style={eyebrow}>{t('Card', 'Thẻ')}</div>
             <input style={input} value={draft.title} disabled={!canEdit}
               onChange={e => setDraft(d => ({ ...d, title: e.target.value }))} placeholder={t('Title', 'Tiêu đề')} />
             <textarea style={{ ...input, minHeight: 90, resize: 'vertical', marginTop: 10 }} value={draft.description} disabled={!canEdit}

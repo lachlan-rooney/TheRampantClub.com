@@ -231,7 +231,6 @@ export default function LockersPage() {
   return (
     <>
       <div style={{ marginBottom: 28 }}>
-        <div style={eyebrow}>{t('Whisky Library', 'Thư viện rượu whisky')}</div>
         <h1 style={pageTitle}>{t('Member lockers', 'Tủ khóa hội viên')}</h1>
         <p style={lede}>
           {t('The physical wall — every tile is a locker. Click one to assign a member, edit contents, or move it on the grid. Green tiles are held by a member; spare tiles wait for one and may hold house bottles meanwhile; gold tiles are reserved; red-tinted are retired.', 'Bức tường thực tế — mỗi ô là một tủ khóa. Bấm vào một ô để phân bổ hội viên, chỉnh sửa nội dung, hoặc di chuyển ô trên lưới. Ô xanh là của hội viên; ô còn trống đang chờ hội viên và có thể tạm chứa rượu của câu lạc bộ; ô màu vàng là đã đặt trước; ô ánh đỏ là đã ngừng sử dụng.')}
@@ -709,7 +708,6 @@ function LockerDrawer({ locker_no, members, whiskies, onClose, onChange, onError
       <div style={drawerPanel}>
         <div style={drawerHeader}>
           <div>
-            <div style={eyebrow}>{t('Locker', 'Tủ khóa')}</div>
             <h2 style={drawerTitle}>{locker_no}</h2>
             {locker?.member_name && (
               <div style={{ ...nicknameText, marginTop: 4 }}>

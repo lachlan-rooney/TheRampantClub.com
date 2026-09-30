@@ -86,7 +86,6 @@ export default function OpsReports() {
 
   return (
     <>
-      <div style={eyebrow}>{t('Operations Hub', 'Trung tâm Vận hành')}</div>
       <h1 style={pageTitle}>{t('Reports', 'Báo cáo')}</h1>
       <p style={lede}>
         {t('Rota hours and board progress over a date range. Hours are counted only for shifts with both a start and end time — untimed shifts are listed separately and never given an assumed length.', 'Số giờ trực ca và tiến độ bảng công việc trong một khoảng ngày. Giờ chỉ được tính cho các ca có cả giờ bắt đầu và giờ kết thúc — các ca không ghi giờ được liệt kê riêng và không bao giờ được gán một độ dài giả định.')}
@@ -209,7 +208,6 @@ export default function OpsReports() {
   )
 }
 
-const eyebrow: React.CSSProperties = { fontFamily: FAMILY, fontSize: 10, letterSpacing: '0.18em', color: '#7E7864', textTransform: 'uppercase' }
 const pageTitle: React.CSSProperties = { fontFamily: "'Rampant Sans', serif", fontSize: 28, color: '#E5D4C2', margin: '4px 0 0' }
 const lede: React.CSSProperties = { fontFamily: FAMILY, fontSize: 12, color: '#B2AA98', maxWidth: 640, lineHeight: 1.6, marginTop: 8 }
 const sectionTitle: React.CSSProperties = { fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2', margin: '32px 0 12px' }

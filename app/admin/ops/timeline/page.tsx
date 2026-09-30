@@ -103,7 +103,6 @@ export default function MasterTimelinePage() {
     <>
       <Link href="/admin/ops" style={backLink}>← {t('Boards', 'Bảng')}</Link>
       <div style={{ margin: '8px 0 6px' }}>
-        <div style={eyebrow}>{t('Operations Hub', 'Trung tâm Vận hành')}</div>
         <h1 style={pageTitle}>{t('Everything, on one timeline', 'Tất cả trên một dòng thời gian')}</h1>
       </div>
       <p style={lede}>
@@ -196,7 +195,7 @@ export default function MasterTimelinePage() {
             return (
               <div key={name} style={columnStyle}>
                 <div style={columnHeader}>
-                  <span style={{ color: name === 'Done' ? '#7AB07A' : '#E5D4C2' }}>{name}</span>
+                  <span style={{ color: '#E5D4C2' }}>{name}</span>
                   <span style={{ opacity: 0.6 }}>{inCol.length}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -243,11 +242,13 @@ function Stat({ n, label, tone }: { n: number; label: string; tone: string }) {
 }
 
 const backLink: React.CSSProperties = { fontFamily: FAMILY, fontSize: 11, color: '#B2AA98', textDecoration: 'none' }
-const eyebrow: React.CSSProperties = { fontFamily: FAMILY, fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#D4B85A' }
 const pageTitle: React.CSSProperties = { fontFamily: "'Rampant Sans', serif", fontSize: 28, fontWeight: 500, color: '#E5D4C2', letterSpacing: '0.04em', margin: '6px 0 0' }
 const lede: React.CSSProperties = { fontFamily: FAMILY, fontSize: 12, lineHeight: 1.7, color: '#B2AA98', margin: '8px 0 0', maxWidth: 680 }
 const emptyText: React.CSSProperties = { fontFamily: FAMILY, fontSize: 12, color: '#B2AA98', opacity: 0.7, padding: '28px 0' }
-const COLUMN_ORDER = ['Backlog', 'In progress', 'Blocked', 'Done']
+// NO DONE COLUMN HERE. This page loads open work only, so a Done column could
+// never be anything but empty — and a column permanently reading zero looks
+// like a fault rather than a fact. Finished work lives on its own board.
+const COLUMN_ORDER = ['Backlog', 'In progress', 'Blocked']
 const vnShort = (d: string) => new Date(`${d}T12:00:00+07:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Asia/Ho_Chi_Minh' })
 const columnStyle: React.CSSProperties = {
   flex: '0 0 270px', width: 270, background: 'rgba(229,212,194,0.03)',

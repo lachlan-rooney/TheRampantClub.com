@@ -209,7 +209,6 @@ export default function HarmonyLogDetail({ params }: { params: Promise<{ id: str
       {/* Hero */}
       <div style={hero}>
         <div>
-          <div style={eyebrow}>{t('Floor · Harmony Log', 'Sảnh · Nhật ký Harmony')}</div>
           <h1 style={pageTitle}>
             {datePretty}
             <span style={{ marginLeft: 14, fontSize: 18, color: '#D4B85A', textTransform: 'capitalize', letterSpacing: '0.06em' }}>· {log.shift_label}</span>
@@ -428,11 +427,6 @@ const backLink: React.CSSProperties = {
   color: '#B2AA98', letterSpacing: '0.04em', opacity: 0.7,
 }
 const hero: React.CSSProperties = { marginBottom: 22 }
-const eyebrow: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
-  color: '#D4B85A', letterSpacing: '0.16em', textTransform: 'uppercase',
-  marginBottom: 4,
-}
 const pageTitle: React.CSSProperties = {
   fontFamily: "'Rampant Sans', serif", fontSize: 28, fontWeight: 500,
   color: '#E5D4C2', letterSpacing: '0.04em', margin: '4px 0 12px',

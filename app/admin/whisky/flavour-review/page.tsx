@@ -124,7 +124,6 @@ export default function FlavourReviewPage() {
     <>
       <Link href="/admin/whisky" style={backLink}>{t('← Whisky library', '← Thư viện whisky')}</Link>
       <div style={{ margin: '8px 0 4px' }}>
-        <div style={eyebrow}>{t('Whisky · Flavour foundation', 'Whisky · Nền tảng hương vị')}</div>
         <h1 style={pageTitle}>{t('Flavour review', 'Duyệt hương vị')}</h1>
       </div>
       <p style={lede}>
@@ -194,7 +193,6 @@ export default function FlavourReviewPage() {
   )
 }
 
-const eyebrow: React.CSSProperties = { fontFamily: FAMILY, fontSize: 10, color: '#D4B85A', letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 4 }
 const backLink: React.CSSProperties = { fontFamily: FAMILY, fontSize: 11, color: '#B2AA98', textDecoration: 'none', opacity: 0.7 }
 const pageTitle: React.CSSProperties = { fontFamily: "'Rampant Sans', serif", fontSize: 28, fontWeight: 500, color: '#E5D4C2', letterSpacing: '0.04em', margin: 0 }
 const lede: React.CSSProperties = { fontFamily: FAMILY, fontSize: 12, color: '#B2AA98', opacity: 0.85, lineHeight: 1.7, maxWidth: 720, margin: '8px 0 0' }

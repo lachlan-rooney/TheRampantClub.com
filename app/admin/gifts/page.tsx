@@ -181,7 +181,6 @@ export default function GiftsPage() {
     <>
       <div style={headerRow}>
         <div>
-          <div style={eyebrow}>{t('Intelligence · Member Experience', 'Phân tích · Trải nghiệm hội viên')}</div>
           <h1 style={pageTitle}>{t('Gifting', 'Quà tặng')}</h1>
           <p style={lede}>
             <span ref={infoRef} style={{ position: 'relative', display: 'inline-flex', alignItems: 'baseline', gap: 5, whiteSpace: 'nowrap' }}>
@@ -661,11 +660,6 @@ function StatTile({ label, value, color, sub }: { label: string; value: string; 
 const headerRow: React.CSSProperties = {
   display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
   gap: 20, marginBottom: 20,
-}
-const eyebrow: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
-  color: '#D4B85A', letterSpacing: '0.16em', textTransform: 'uppercase',
-  marginBottom: 4,
 }
 const pageTitle: React.CSSProperties = {
   fontFamily: "'Rampant Sans', serif", fontSize: 32, fontWeight: 500,

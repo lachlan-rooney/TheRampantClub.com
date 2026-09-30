@@ -1025,7 +1025,6 @@ export default function TrainingPage() {
   return (
     <>
       <div style={{ marginBottom: 28 }}>
-        <div style={eyebrow}>House</div>
         <h1 style={pageTitle}>{t('Training', 'Đào tạo')}</h1>
         <p style={lede}>
           {t('The team handbook for the admin portal. Browse top-to-bottom on your first day, then come back for specific tasks. Sections collapse — open what you need.', 'Cẩm nang của đội ngũ dành cho cổng quản trị. Đọc từ trên xuống dưới trong ngày đầu, rồi quay lại khi cần làm việc cụ thể. Các mục có thể thu gọn — mở phần bạn cần.')}

@@ -320,7 +320,6 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
 
       <div style={headerRow}>
         <div>
-          <div style={eyebrow}>{t('Interview intake', 'Tiếp nhận phỏng vấn')} · {member_no}</div>
           <h1 style={pageTitle}>{memberName || t('Loading…', 'Đang tải…')}</h1>
         </div>
         <div style={{ display: 'flex', gap: 14, alignItems: 'baseline', fontFamily: "'Google Sans Code', monospace", fontSize: 11, color: '#B2AA98' }}>
@@ -602,11 +601,6 @@ const backLink: React.CSSProperties = {
 const headerRow: React.CSSProperties = {
   display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
   marginBottom: 14, gap: 24, flexWrap: 'wrap',
-}
-const eyebrow: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
-  color: '#D4B85A', letterSpacing: '0.16em', textTransform: 'uppercase',
-  marginBottom: 4,
 }
 const pageTitle: React.CSSProperties = {
   fontFamily: "'Rampant Sans', serif", fontSize: 28, fontWeight: 500,

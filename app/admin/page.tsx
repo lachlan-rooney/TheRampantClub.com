@@ -95,7 +95,6 @@ export default function AdminDashboard() {
       {/* Hero header */}
       <div style={heroRow}>
         <div>
-          <div style={eyebrow}>{t('Data centre', 'Trung tâm dữ liệu')}</div>
           <h1 style={pageTitle}>{t('Dashboard', 'Bảng điều khiển')}</h1>
           {/* Marking someone in is the most frequent thing anyone does here, and
               it was buried three screens deep. It leads the dashboard now. */}

@@ -194,8 +194,34 @@ function NavIcon({ name }: { name: string }) {
 // RLS does the scoping: whatever this signed-in person is allowed to read is
 // what they count. Sixty seconds is fast enough for a queue measured in
 // minutes and slow enough to be invisible.
-function useWaiting() {
+// ── A GLIMMER, NOT A COUNT ───────────────────────────────────────────────
+// Owner, 2026-10-01: "the little noti on the admin tab category shouldnttt be
+// a number just a little gild glimmer. dissappearing when the tab is clicked".
+//
+// A number on a sidebar item invites arithmetic — it is read, compared, and
+// then argued with. What it is actually for is "there is something through
+// here you have not looked at", which a single gold dot says without asking
+// anybody to do sums; the page itself has the real figure.
+//
+// SEEN, NOT CLEARED. Opening the tab records the count as seen on this device,
+// so the glimmer goes out — and comes back on its own the moment the count
+// rises above what you saw. Nothing is marked read anywhere shared: another
+// person on another screen still has their own glimmer. And if the queue
+// drains below what was seen, the watermark drops with it, so the next arrival
+// glimmers again rather than hiding under an old high-water mark.
+const SEEN_KEY = 'trc-nav-seen'
+type Seen = Record<string, number>
+const readSeen = (): Seen => {
+  try { return JSON.parse(localStorage.getItem(SEEN_KEY) || '{}') as Seen } catch { return {} }
+}
+const writeSeen = (s: Seen) => { try { localStorage.setItem(SEEN_KEY, JSON.stringify(s)) } catch { /* private window */ } }
+
+function useWaiting(pathname: string) {
   const [counts, setCounts] = useState<Record<string, number>>({})
+  const [seen, setSeen] = useState<Seen>({})
+
+  useEffect(() => { setSeen(readSeen()) }, [])
+
   useEffect(() => {
     let live = true
     const read = async () => {
@@ -203,14 +229,39 @@ function useWaiting() {
         const r = await fetch('/api/admin/nav-counts', { cache: 'no-store' })
         if (!r.ok) return
         const j = await r.json()
-        if (live) setCounts(j.counts || {})
-      } catch { /* a sidebar badge is never worth an error on screen */ }
+        if (!live) return
+        const next = (j.counts || {}) as Record<string, number>
+        setCounts(next)
+        // The watermark follows a draining queue downwards.
+        setSeen(prev => {
+          const out = { ...prev }
+          let changed = false
+          for (const [href, n] of Object.entries(next)) {
+            if (out[href] != null && out[href] > n) { out[href] = n; changed = true }
+          }
+          if (changed) writeSeen(out)
+          return changed ? out : prev
+        })
+      } catch { /* a sidebar dot is never worth an error on screen */ }
     }
     read()
     const id = setInterval(read, 60_000)
     return () => { live = false; clearInterval(id) }
   }, [])
-  return counts
+
+  // Being ON the page counts as having looked at it.
+  useEffect(() => {
+    const here = Object.keys(counts).find(href => pathname === href || pathname.startsWith(href + '/'))
+    if (!here) return
+    setSeen(prev => {
+      if (prev[here] === counts[here]) return prev
+      const out = { ...prev, [here]: counts[here] }
+      writeSeen(out)
+      return out
+    })
+  }, [pathname, counts])
+
+  return (href: string) => (counts[href] ?? 0) > (seen[href] ?? 0)
 }
 
 export default function AdminNav() {
@@ -220,7 +271,7 @@ export default function AdminNav() {
   const { lang } = useLang()
   const nm = (x: { label: string; vn: string }) => (lang === 'vn' ? x.vn : x.label)
   const pathname = usePathname() || ''
-  const waiting = useWaiting()
+  const glimmers = useWaiting(pathname)
   // Off-canvas below 1024px. The sidebar was fixed at 240px with no media query
   // anywhere, so on an iPad it permanently ate a quarter of the screen and on a
   // phone it sat on top of the content.
@@ -261,6 +312,11 @@ export default function AdminNav() {
     <>
       <style dangerouslySetInnerHTML={{ __html: `
         .adm-nav    { z-index: 100; }
+        /* The glimmer: a slow gold breath, not a blink. Anyone who has asked
+           their system for less motion gets a steady dot. */
+        @keyframes trc-glimmer { 0%, 100% { opacity: .45; transform: scale(.85); } 50% { opacity: 1; transform: scale(1); } }
+        .trc-glimmer { animation: trc-glimmer 2.4s ease-in-out infinite; }
+        @media (prefers-reduced-motion: reduce) { .trc-glimmer { animation: none; opacity: 1; } }
         .adm-burger { display: none; }
         .adm-scrim  { display: none; }
         @media (max-width: 1024px) {
@@ -322,9 +378,7 @@ export default function AdminNav() {
                     >
                       <NavIcon name={it.icon} />
                       <span style={{ flex: 1 }}>{nm(it)}</span>
-                      {waiting[it.href] > 0 && (
-                        <span style={it.href === '/admin/ops' ? navBadgeLate : navBadge}>{waiting[it.href]}</span>
-                      )}
+                      {glimmers(it.href) && <span className="trc-glimmer" style={glimmer} aria-label="something new" />}
                     </Link>
                   ))}
                 </div>
@@ -371,13 +425,11 @@ const groupHeader: React.CSSProperties = {
 }
 // Gold for a queue, rust for something already late — the same two meanings
 // the boards use, so a colour does not change its mind between screens.
-const navBadge: React.CSSProperties = {
-  flex: 'none', minWidth: 17, height: 17, padding: '0 5px', borderRadius: 9,
-  background: 'rgba(212,184,90,0.18)', border: '1px solid rgba(212,184,90,0.45)', color: '#D4B85A',
-  fontFamily: "'Google Sans Code', monospace", fontSize: 9.5, lineHeight: '15px', textAlign: 'center',
-}
-const navBadgeLate: React.CSSProperties = {
-  ...navBadge, background: 'rgba(194,112,112,0.16)', borderColor: 'rgba(194,112,112,0.5)', color: '#C27070',
+// Gold, small, and breathing rather than blinking — it should catch the eye
+// on the way past, not compete with the page.
+const glimmer: React.CSSProperties = {
+  flex: 'none', width: 6, height: 6, borderRadius: '50%', background: '#D4B85A',
+  boxShadow: '0 0 6px rgba(212,184,90,0.8)',
 }
 const itemLink: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 9, padding: '7px 24px', textDecoration: 'none',

@@ -360,7 +360,6 @@ export default function ChecklistsPage() {
       `}} />
       <div style={headerRow}>
         <div>
-          <div style={eyebrow}>{t('Floor', 'Sàn')}</div>
           <h1 style={pageTitle}>{t('Shift Checklists', 'Danh sách kiểm tra ca')}</h1>
           <p style={lede}>
             {t('Opening and closing sheets. Pick your name, then tick or fill as you go — your name and timestamp are captured on every item. Lock & sign at the end seals the sheet permanently under whoever signs it. Editing the template only affects future sheets.', 'Phiếu mở cửa và đóng cửa. Chọn tên của bạn, sau đó đánh dấu hoặc điền trong khi làm — tên và thời gian của bạn được ghi lại trên mỗi mục. Khoá & ký ở cuối sẽ niêm phong phiếu vĩnh viễn dưới tên người ký. Chỉnh sửa mẫu chỉ ảnh hưởng đến các phiếu sau này.')}
@@ -505,7 +504,6 @@ export default function ChecklistsPage() {
             <div style={detailModal} role="dialog" data-print-modal>
               <div style={detailHeader}>
                 <div>
-                  <div style={eyebrow}>{t('Sealed audit record', 'Hồ sơ kiểm toán đã niêm phong')}</div>
                   <h2 style={detailDateHeading}>
                     {new Date(detailDate + 'T12:00:00+07:00').toLocaleDateString('en-GB', {
                       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
@@ -546,7 +544,6 @@ export default function ChecklistsPage() {
         <div>
           <div style={detailBackdrop} onClick={() => setConfirmSheet(null)} />
           <div style={confirmModal} role="dialog" aria-modal="true">
-            <div style={eyebrow}>{t('Lock & sign', 'Khoá & ký')}</div>
             <h2 style={confirmHeading}>
               {confirmSheet.kind === 'opening'
                 ? t('Seal the opening sheet?', 'Niêm phong phiếu mở cửa?')
@@ -878,11 +875,6 @@ function fmtTimestamp(iso: string | null): string {
 const headerRow: React.CSSProperties = {
   display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
   gap: 20, marginBottom: 20,
-}
-const eyebrow: React.CSSProperties = {
-  fontFamily: "'Google Sans Code', monospace", fontSize: 10,
-  color: '#D4B85A', letterSpacing: '0.16em', textTransform: 'uppercase',
-  marginBottom: 4,
 }
 const pageTitle: React.CSSProperties = {
   fontFamily: "'Rampant Sans', serif", fontSize: 32, fontWeight: 500,
