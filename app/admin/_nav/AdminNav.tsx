@@ -177,6 +177,39 @@ function NavIcon({ name }: { name: string }) {
   )
 }
 
+// ── WHAT IS WAITING, ON THE TAB ITSELF ────────────────────────────────────
+// Owner, 2026-10-01: "if there's a little notification on one of the admin
+// tabs like room order, that would be handy too. Showing you where."
+//
+// Only counts that mean SOMEBODY IS WAITING. A badge on a tab that merely
+// holds rows is a number nobody reads twice, and once one badge is decorative
+// the rest stop being believed. Three, all of them a queue:
+//   · Room Orders   — an order placed in a room and not yet given out
+//   · Boards        — jobs past their due date, across every board
+//   · Weekly Report — a report sitting in front of the owner for approval
+//
+// RLS does the scoping: whatever this signed-in person is allowed to read is
+// what they count. Sixty seconds is fast enough for a queue measured in
+// minutes and slow enough to be invisible.
+function useWaiting() {
+  const [counts, setCounts] = useState<Record<string, number>>({})
+  useEffect(() => {
+    let live = true
+    const read = async () => {
+      try {
+        const r = await fetch('/api/admin/nav-counts', { cache: 'no-store' })
+        if (!r.ok) return
+        const j = await r.json()
+        if (live) setCounts(j.counts || {})
+      } catch { /* a sidebar badge is never worth an error on screen */ }
+    }
+    read()
+    const id = setInterval(read, 60_000)
+    return () => { live = false; clearInterval(id) }
+  }, [])
+  return counts
+}
+
 export default function AdminNav() {
   // The sidebar follows the EN/VN switch like the rest of admin (it used to be
   // English-only by design; the owner wants it to switch). MX Daily and Kiosk
@@ -184,6 +217,7 @@ export default function AdminNav() {
   const { lang } = useLang()
   const nm = (x: { label: string; vn: string }) => (lang === 'vn' ? x.vn : x.label)
   const pathname = usePathname() || ''
+  const waiting = useWaiting()
   // Off-canvas below 1024px. The sidebar was fixed at 240px with no media query
   // anywhere, so on an iPad it permanently ate a quarter of the screen and on a
   // phone it sat on top of the content.
@@ -283,7 +317,11 @@ export default function AdminNav() {
                         paddingLeft: 20,
                       }}
                     >
-                      <NavIcon name={it.icon} />{nm(it)}
+                      <NavIcon name={it.icon} />
+                      <span style={{ flex: 1 }}>{nm(it)}</span>
+                      {waiting[it.href] > 0 && (
+                        <span style={it.href === '/admin/ops' ? navBadgeLate : navBadge}>{waiting[it.href]}</span>
+                      )}
                     </Link>
                   ))}
                 </div>
@@ -327,6 +365,16 @@ const groupHeader: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 13,
   letterSpacing: '0.12em', textTransform: 'uppercase',
   marginTop: 8,
+}
+// Gold for a queue, rust for something already late — the same two meanings
+// the boards use, so a colour does not change its mind between screens.
+const navBadge: React.CSSProperties = {
+  flex: 'none', minWidth: 17, height: 17, padding: '0 5px', borderRadius: 9,
+  background: 'rgba(212,184,90,0.18)', border: '1px solid rgba(212,184,90,0.45)', color: '#D4B85A',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9.5, lineHeight: '15px', textAlign: 'center',
+}
+const navBadgeLate: React.CSSProperties = {
+  ...navBadge, background: 'rgba(194,112,112,0.16)', borderColor: 'rgba(194,112,112,0.5)', color: '#C27070',
 }
 const itemLink: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 9, padding: '7px 24px', textDecoration: 'none',

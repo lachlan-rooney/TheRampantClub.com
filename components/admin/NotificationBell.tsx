@@ -80,8 +80,34 @@ export default function NotificationBell() {
 
   return (
     <div ref={ref} style={{ position: 'relative', zIndex: 200 }}>
-      <button onClick={() => setOpen(o => !o)} style={bellBtn} title="Notifications" aria-label="Notifications">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7AB07A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {/* IT KEEPS FLASHING UNTIL THEY ARE READ (owner, 2026-10-01). A badge
+          that simply sits there is furniture; the room is busy and the screen
+          is across it. Slow — a two-second breath, not a strobe — and it stops
+          dead the moment the last one is read. Anyone who has asked their
+          system for less motion gets a static ring instead. */}
+      <style>{`
+        @keyframes trc-bell-pulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(212,184,90,0.00); border-color: rgba(212,184,90,0.55); }
+          50%      { box-shadow: 0 0 0 6px rgba(212,184,90,0.10); border-color: rgba(212,184,90,0.95); }
+        }
+        @keyframes trc-bell-swing {
+          0%, 92%, 100% { transform: rotate(0deg); }
+          94% { transform: rotate(9deg); } 96% { transform: rotate(-7deg); } 98% { transform: rotate(4deg); }
+        }
+        .trc-bell-on { animation: trc-bell-pulse 2s ease-in-out infinite; }
+        .trc-bell-on svg { animation: trc-bell-swing 4s ease-in-out infinite; transform-origin: 50% 15%; }
+        @media (prefers-reduced-motion: reduce) {
+          .trc-bell-on, .trc-bell-on svg { animation: none; border-color: rgba(212,184,90,0.9); }
+        }
+      `}</style>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={unread > 0 ? 'trc-bell-on' : undefined}
+        style={{ ...bellBtn, ...(unread > 0 ? bellBtnUnread : null) }}
+        title={unread > 0 ? `${unread} unread` : 'Notifications'}
+        aria-label={unread > 0 ? `Notifications — ${unread} unread` : 'Notifications'}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={unread > 0 ? '#D4B85A' : '#7AB07A'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
           <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
         </svg>
@@ -90,26 +116,46 @@ export default function NotificationBell() {
 
       {open && (
         <div style={panel}>
+          {/* Set like the rest of the admin as it is now: an eyebrow, a count
+              as a chip, hairlines rather than boxes, and the unread ones
+              carrying a coloured edge instead of a brighter grey. */}
           <div style={panelHeader}>
-            <span style={{ color: '#E5D4C2' }}>Notifications</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <button onClick={toggleMute} style={muteBtn} title={muted ? 'Sound off — click to enable' : 'Sound on — click to mute'} aria-label={muted ? 'Unmute notifications' : 'Mute notifications'}>{muted ? '🔇' : '🔔'}</button>
-              {unread > 0 && <button onClick={markAll} style={markAllBtn}>Mark all read</button>}
+            <span>
+              <span style={panelEyebrow}>The Rampant Club</span>
+              <span style={panelTitle}>Notifications</span>
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {unread > 0 && <span style={unreadChip}>{unread} new</span>}
+              <button onClick={toggleMute} style={iconBtn}
+                      title={muted ? 'Sound off — click to enable' : 'Sound on — click to mute'}
+                      aria-label={muted ? 'Unmute notifications' : 'Mute notifications'}>
+                {muted ? (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7E7864" strokeWidth="2" strokeLinecap="round"><path d="M6 8a6 6 0 0 1 9.3-5" /><path d="M18 8c0 7 3 9 3 9H7" /><path d="M3 3l18 18" /></svg>
+                ) : (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#B2AA98" strokeWidth="2" strokeLinecap="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
+                )}
+              </button>
             </span>
           </div>
-          <div style={{ maxHeight: 380, overflowY: 'auto' }}>
+          <div style={{ maxHeight: 400, overflowY: 'auto' }}>
             {items.length === 0 ? (
-              <div style={emptyRow}>Nothing yet.</div>
+              <div style={emptyRow}>Nothing waiting.</div>
             ) : items.map(n => (
-              <button key={n.id} onClick={() => openItem(n)} style={{ ...itemRow, opacity: n.read ? 0.55 : 1 }}>
-                <span style={{ ...dot, background: n.read ? 'transparent' : '#D4B85A' }} />
+              <button key={n.id} onClick={() => openItem(n)}
+                      style={{ ...itemRow, borderLeft: `2px solid ${n.read ? 'transparent' : TYPE_TONE(n.type)}`, opacity: n.read ? 0.5 : 1 }}>
                 <span style={{ flex: 1 }}>
                   <span style={itemText}>{describeNotification(n)}</span>
                   <span style={itemWhen}>{timeAgo(n.created_at)}</span>
                 </span>
+                <span style={{ ...typeTag, color: TYPE_TONE(n.type), borderColor: TYPE_TONE(n.type) + '55' }}>
+                  {TYPE_LABEL(n.type)}
+                </span>
               </button>
             ))}
           </div>
+          {unread > 0 && (
+            <button onClick={markAll} style={panelFoot}>Mark all read</button>
+          )}
         </div>
       )}
     </div>
@@ -134,14 +180,34 @@ function playChime() {
   } catch { /* audio blocked / unsupported — silently skip */ }
 }
 
-const muteBtn: React.CSSProperties = { background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: 0, opacity: 0.85 }
+// The same vocabulary the boards use: gold is waiting, rust is late, sage is
+// finished, violet is somebody talking to you.
+const TYPE_TONE = (t: string) =>
+  t === 'task_due_soon' ? '#D4B85A'
+  : t === 'task_completed' ? '#7AB07A'
+  : t === 'concierge_message' ? '#9E8FC4'
+  : t.startsWith('shift') ? '#7FB3A0'
+  : '#B2AA98'
+const TYPE_LABEL = (t: string) =>
+  t === 'task_due_soon' ? 'due'
+  : t === 'task_assigned' ? 'assigned'
+  : t === 'task_completed' ? 'done'
+  : t === 'concierge_message' ? 'concierge'
+  : t === 'report_awaiting_approval' ? 'report'
+  : t.replace(/_/g, ' ')
+
 const bellBtn: React.CSSProperties = { position: 'relative', background: 'rgba(229,212,194,0.08)', border: '1px solid rgba(229,212,194,0.15)', borderRadius: 8, width: 38, height: 38, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
 const badge: React.CSSProperties = { position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8, background: '#C27070', color: '#fff', fontFamily: FAMILY, fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }
-const panel: React.CSSProperties = { position: 'absolute', top: 46, right: 0, width: 'min(360px, 92vw)', background: '#0A3526', border: '1px solid rgba(229,212,194,0.18)', borderRadius: 10, boxShadow: '0 18px 50px rgba(0,0,0,0.55)', overflow: 'hidden' }
-const panelHeader: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderBottom: '1px solid rgba(229,212,194,0.10)', fontFamily: FAMILY, fontSize: 12, letterSpacing: '0.04em' }
-const markAllBtn: React.CSSProperties = { background: 'transparent', border: 'none', color: '#B2AA98', fontFamily: FAMILY, fontSize: 10, cursor: 'pointer', textDecoration: 'underline' }
-const itemRow: React.CSSProperties = { display: 'flex', alignItems: 'flex-start', gap: 8, width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid rgba(229,212,194,0.06)', padding: '10px 14px', cursor: 'pointer' }
-const dot: React.CSSProperties = { flex: '0 0 6px', width: 6, height: 6, borderRadius: '50%', marginTop: 5 }
+const bellBtnUnread: React.CSSProperties = { background: 'rgba(212,184,90,0.10)', borderColor: 'rgba(212,184,90,0.55)' }
+const panel: React.CSSProperties = { position: 'absolute', top: 46, right: 0, width: 'min(380px, 92vw)', background: '#083122', border: '1px solid rgba(229,212,194,0.14)', borderRadius: 12, boxShadow: '0 22px 60px rgba(0,0,0,0.6)', overflow: 'hidden' }
+const panelHeader: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 15px 11px', borderBottom: '1px solid rgba(229,212,194,0.10)' }
+const panelEyebrow: React.CSSProperties = { display: 'block', fontFamily: FAMILY, fontSize: 8.5, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#D4B85A' }
+const panelTitle: React.CSSProperties = { display: 'block', fontFamily: "'Rampant Sans', serif", fontSize: 17, color: '#E5D4C2', marginTop: 3 }
+const unreadChip: React.CSSProperties = { borderRadius: 999, padding: '3px 9px', background: 'rgba(212,184,90,0.16)', border: '1px solid rgba(212,184,90,0.45)', color: '#D4B85A', fontFamily: FAMILY, fontSize: 9.5 }
+const iconBtn: React.CSSProperties = { background: 'transparent', border: 'none', cursor: 'pointer', padding: 3, display: 'flex', alignItems: 'center' }
+const typeTag: React.CSSProperties = { flex: 'none', alignSelf: 'center', borderRadius: 999, border: '1px solid', padding: '2px 8px', fontFamily: FAMILY, fontSize: 8.5, letterSpacing: '0.08em', textTransform: 'uppercase' }
+const panelFoot: React.CSSProperties = { display: 'block', width: '100%', background: 'rgba(229,212,194,0.04)', border: 'none', borderTop: '1px solid rgba(229,212,194,0.10)', color: '#B2AA98', fontFamily: FAMILY, fontSize: 10.5, padding: '10px 0', cursor: 'pointer', letterSpacing: '0.06em' }
+const itemRow: React.CSSProperties = { display: 'flex', alignItems: 'flex-start', gap: 10, width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid rgba(229,212,194,0.06)', padding: '11px 14px', cursor: 'pointer' }
 const itemText: React.CSSProperties = { display: 'block', fontFamily: FAMILY, fontSize: 12, color: '#E5D4C2', lineHeight: 1.45 }
 const itemWhen: React.CSSProperties = { display: 'block', fontFamily: FAMILY, fontSize: 9, color: '#7E7864', marginTop: 2 }
 const emptyRow: React.CSSProperties = { padding: '24px 14px', textAlign: 'center', fontFamily: FAMILY, fontSize: 11, color: '#B2AA98', opacity: 0.6, fontStyle: 'italic' }
