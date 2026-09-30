@@ -81,6 +81,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
   // survives a reload silently is how somebody decides the board has lost
   // their cards — so it is loud while it is on, and gone when you come back.
   const [who, setWho] = useState<string | 'all' | 'none'>('all')
+  const [tag, setTag] = useState<string | null>(null)
   const [find, setFind] = useState('')
   const [onlyOpen, setOnlyOpen] = useState(false)   // overdue + due in the next 7 days
   const [linkedFixtures, setLinkedFixtures] = useState<{ id: string; title: string }[]>([])  // member fixtures pointing at this board
@@ -154,11 +155,25 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
   // due_date ASC (NULLS LAST) so the soonest/overdue rises to the top; the Done
   // column by completed_at DESC so the most-recently-finished is on top. Stable
   // created_at tiebreak so order never flickers. (sort_order is now vestigial.)
+  // ── THE WORKSTREAM TAG IS ALREADY THERE ─────────────────────────────
+  // Every card written for these boards opens its description with
+  // "[Legal]", "[Build]", "[Service]". That is a label system nobody could
+  // see, buried in the body text where it neither shows on the card nor
+  // filters anything. Read it off the front of the description rather than
+  // asking anyone to re-tag fifty cards by hand.
+  const labelOf = (t: Task) => t.description?.match(/^\s*\[([^\]\n]{1,24})\]/)?.[1]?.trim() || null
+  const labels = (() => {
+    const m = new Map<string, number>()
+    for (const t of tasks) { const l = labelOf(t); if (l) m.set(l, (m.get(l) || 0) + 1) }
+    return [...m.entries()].sort((a, b) => b[1] - a[1])
+  })()
+
   // ONE PLACE, so the cards, the column counts and the Gantt can never
   // disagree about what is being shown.
   const soon = (() => { const d = new Date(); d.setDate(d.getDate() + 7); return d.toISOString().slice(0, 10) })()
   const passes = (t: Task) => {
     if (who === 'none' ? !!t.assignee : who !== 'all' && t.assignee !== who) return false
+    if (tag && labelOf(t) !== tag) return false
     if (onlyOpen && !(t.due_date && t.due_date <= soon && !t.completed_at)) return false
     if (find.trim()) {
       const hay = `${t.title} ${t.description || ''} ${teamName(t.assignee) || ''}`.toLowerCase()
@@ -167,7 +182,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
     return true
   }
   const filtered = tasks.filter(passes)
-  const filtering = who !== 'all' || onlyOpen || !!find.trim()
+  const filtering = who !== 'all' || onlyOpen || !!find.trim() || !!tag
 
   const tasksIn = (colId: string) => {
     const isDone = columns.find(c => c.id === colId)?.is_done_column === true
@@ -196,8 +211,23 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
   }
 
   // ── card create / edit ──
-  const handleCreateCard = (colId: string) => (title: string) =>
-    wrap(() => createTask({ project_id, column_id: colId, title }), () => setNewCardCol(null))
+  // ── ADDING CARDS, PLURAL ────────────────────────────────────────────
+  // Adding a card was a modal with one field: open, type, save, close — then
+  // open the card again to say who it is for and when it is due. For a board
+  // that gets built fifty cards at a time that is three interactions per card
+  // and a lost train of thought. The composer sits at the foot of the column,
+  // takes the title, the person and the date together, and STAYS OPEN with
+  // the assignee remembered, because cards arrive in runs that belong to the
+  // same person.
+  const [quick, setQuick] = useState({ title: '', assignee: '', due: '' })
+  const quickAdd = async (colId: string) => {
+    const title = quick.title.trim()
+    if (!title || busy) return
+    await wrap(
+      () => createTask({ project_id, column_id: colId, title, assignee: quick.assignee || null, due_date: quick.due || null }),
+      () => setQuick(q => ({ ...q, title: '' })),   // person and date stay for the next one
+    )
+  }
 
   const openEditor = (t: Task) => {
     setEditing(t)
@@ -383,11 +413,22 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
           style={findInput}
         />
         {filtering && (
-          <button onClick={() => { setWho('all'); setFind(''); setOnlyOpen(false) }} style={{ ...tinyBtn, color: '#D4B85A' }}>
+          <button onClick={() => { setWho('all'); setFind(''); setOnlyOpen(false); setTag(null) }} style={{ ...tinyBtn, color: '#D4B85A' }}>
             {t('Clear', 'Xóa lọc')} · {filtered.length}/{tasks.length}
           </button>
         )}
       </div>
+      {labels.length > 0 && (
+        <div style={{ ...filterBar, marginTop: -6, paddingBottom: 12 }}>
+          {labels.map(([l, n]) => (
+            <button key={l} onClick={() => setTag(v => (v === l ? null : l))}
+                    style={{ ...chip(tag === l), borderColor: tag === l ? labelColour(l) : 'rgba(229,212,194,0.15)', color: tag === l ? labelColour(l) : '#B2AA98' }}>
+              <span style={{ width: 7, height: 7, borderRadius: 2, background: labelColour(l), display: 'inline-block' }} />
+              {l} <b style={chipN}>{n}</b>
+            </button>
+          ))}
+        </div>
+      )}
       {filtering && filtered.length === 0 && (
         <div style={{ ...metaText, color: '#D4B85A', margin: '2px 0 10px' }}>
           {t('No cards match that. The board is not empty — the filter is on.', 'Không có thẻ nào khớp. Bảng không trống — bộ lọc đang bật.')}
@@ -453,6 +494,11 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
                     {t.title}
                   </div>
                   <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+                    {labelOf(t) && (
+                      <span style={{ ...pill, color: labelColour(labelOf(t)!), borderColor: labelColour(labelOf(t)!) + '66' }}>
+                        {labelOf(t)}
+                      </span>
+                    )}
                     {t.assignee && <span style={pill}>{teamName(t.assignee)}</span>}
                     {t.due_date && (() => {
                       const overdue = t.due_date < vnDateString() && !t.completed_at && t.status !== 'lapsed'
@@ -478,9 +524,40 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
                 </div>
               ))}
             </div>
-            {canEdit && (
-              <button onClick={() => setNewCardCol(col.id)} style={{ ...tinyBtn, marginTop: 8, width: '100%' }}>+ Card</button>
-            )}
+            {canEdit && (newCardCol === col.id ? (
+                <div style={composer}>
+                  <textarea
+                    autoFocus rows={2} value={quick.title}
+                    onChange={e => setQuick(q => ({ ...q, title: e.target.value }))}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); quickAdd(col.id) }
+                      if (e.key === 'Escape') { setNewCardCol(null); setQuick(q => ({ ...q, title: '' })) }
+                    }}
+                    placeholder={t('What needs doing? Enter to add, Esc to close', 'Cần làm gì? Enter để thêm, Esc để đóng')}
+                    style={{ ...input, resize: 'none', fontSize: 12, lineHeight: 1.4 }}
+                  />
+                  <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                    <select value={quick.assignee} onChange={e => setQuick(q => ({ ...q, assignee: e.target.value }))}
+                            style={{ ...input, fontSize: 10.5, padding: '5px 6px', flex: 1 }}>
+                      <option value="" style={{ background: '#052E20' }}>{t('— who —', '— ai —')}</option>
+                      {team.map(m => <option key={m.id} value={m.id} style={{ background: '#052E20' }}>{m.display_name}</option>)}
+                    </select>
+                    <input type="date" value={quick.due} onChange={e => setQuick(q => ({ ...q, due: e.target.value }))}
+                           style={{ ...input, fontSize: 10.5, padding: '5px 6px', flex: 1 }} />
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                    <button onClick={() => quickAdd(col.id)} disabled={!quick.title.trim() || busy}
+                            style={{ ...tinyBtn, flex: 1, color: '#D4B85A', opacity: quick.title.trim() && !busy ? 1 : 0.45 }}>
+                      {t('Add', 'Thêm')}
+                    </button>
+                    <button onClick={() => { setNewCardCol(null); setQuick(q => ({ ...q, title: '' })) }} style={tinyBtn}>
+                      {t('Done', 'Xong')}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setNewCardCol(col.id)} style={{ ...tinyBtn, marginTop: 8, width: '100%' }}>+ Card</button>
+              ))}
           </div>
         ))}
       </div>
@@ -579,16 +656,6 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
         </>
       )}
 
-      <PromptModal
-        open={!!newCardCol}
-        eyebrow={t('＋ NEW CARD', '＋ THẺ MỚI')}
-        title={t('Add a card', 'Thêm thẻ')}
-        label={t('Card title', 'Tiêu đề thẻ')}
-        confirmLabel={t('Add card', 'Thêm thẻ')}
-        busy={busy}
-        onCancel={() => setNewCardCol(null)}
-        onConfirm={newCardCol ? handleCreateCard(newCardCol) : () => {}}
-      />
       <PromptModal
         open={newColOpen}
         eyebrow={t('＋ NEW COLUMN', '＋ CỘT MỚI')}
@@ -825,6 +892,19 @@ const pill: React.CSSProperties = { fontFamily: FAMILY, fontSize: 9, color: '#B2
 const recurringConfirm: React.CSSProperties = { display: 'flex', alignItems: 'flex-start', gap: 8, margin: '0 0 12px', padding: '10px 12px', background: 'rgba(158,143,196,0.10)', border: '1px solid rgba(158,143,196,0.35)', borderRadius: 6, fontFamily: FAMILY, fontSize: 11, color: '#E5D4C2' }
 const input: React.CSSProperties = { background: 'rgba(229,212,194,0.06)', color: '#E5D4C2', border: '1px solid rgba(229,212,194,0.18)', borderRadius: 6, padding: '8px 10px', fontFamily: FAMILY, fontSize: 12, width: '100%', boxSizing: 'border-box', outline: 'none' }
 const btnPrimary: React.CSSProperties = { background: '#5E6650', color: '#E5D4C2', border: 'none', borderRadius: 6, padding: '8px 18px', cursor: 'pointer', fontFamily: FAMILY, fontSize: 11, letterSpacing: '0.06em' }
+// Stable per label, so [Legal] is the same colour on every board and nobody
+// has to pick one. Hashed rather than configured: a new workstream invented
+// tomorrow gets a colour without anybody administering it.
+const LABEL_COLOURS = ['#D4B85A', '#7FB3A0', '#9E8FC4', '#C79A6B', '#A9BB84', '#C27070', '#7FA6C4', '#C4907F']
+const labelColour = (l: string) => {
+  let h = 0
+  for (let i = 0; i < l.length; i++) h = (h * 31 + l.charCodeAt(i)) >>> 0
+  return LABEL_COLOURS[h % LABEL_COLOURS.length]
+}
+const composer: React.CSSProperties = {
+  marginTop: 8, padding: 8, borderRadius: 8,
+  border: '1px solid rgba(212,184,90,0.35)', background: 'rgba(212,184,90,0.05)',
+}
 const filterBar: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: '0 0 14px',
   paddingBottom: 12, borderBottom: '1px solid rgba(229,212,194,0.10)',
