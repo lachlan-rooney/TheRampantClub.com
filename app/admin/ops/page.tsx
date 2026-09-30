@@ -543,11 +543,6 @@ const masterGo: React.CSSProperties = {
   display: 'inline-block', marginLeft: 14, fontFamily: "'Google Sans Code', monospace",
   fontSize: '.55em', verticalAlign: '0.12em', color: '#D4B85A',
 }
-const btnGhostLink: React.CSSProperties = {
-  background: 'transparent', color: '#D4B85A', border: '1px solid rgba(212,184,90,0.45)',
-  borderRadius: 8, padding: '9px 16px', textDecoration: 'none',
-  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
-}
 const pageTitle: React.CSSProperties = { fontFamily: "'Rampant Sans', serif", fontSize: 28, fontWeight: 500, color: '#E5D4C2', letterSpacing: '0.04em', margin: 0 }
 const lede: React.CSSProperties = { fontFamily: FAMILY, fontSize: 12, color: '#B2AA98', opacity: 0.85, lineHeight: 1.7, maxWidth: 720, margin: '8px 0 0' }
 const metaText: React.CSSProperties = { fontFamily: FAMILY, fontSize: 11, color: '#B2AA98' }
