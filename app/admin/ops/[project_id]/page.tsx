@@ -59,6 +59,14 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
   const [showRecurring, setShowRecurring] = useState(false)
   const [dragId, setDragId] = useState<string | null>(null)
   const [view, setView] = useState<'board' | 'gantt'>('board')
+  // ── WHO AM I LOOKING AT (owner, 2026-09-30: "People need to be able to
+  //    filter tasks by their name") ────────────────────────────────────────
+  // Held in memory for this visit only, never remembered. A filter that
+  // survives a reload silently is how somebody decides the board has lost
+  // their cards — so it is loud while it is on, and gone when you come back.
+  const [who, setWho] = useState<string | 'all' | 'none'>('all')
+  const [find, setFind] = useState('')
+  const [onlyOpen, setOnlyOpen] = useState(false)   // overdue + due in the next 7 days
   const [linkedFixtures, setLinkedFixtures] = useState<{ id: string; title: string }[]>([])  // member fixtures pointing at this board
 
   // Gantt drag-to-adjust: optimistic local update, then one reschedule write
@@ -130,9 +138,24 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
   // due_date ASC (NULLS LAST) so the soonest/overdue rises to the top; the Done
   // column by completed_at DESC so the most-recently-finished is on top. Stable
   // created_at tiebreak so order never flickers. (sort_order is now vestigial.)
+  // ONE PLACE, so the cards, the column counts and the Gantt can never
+  // disagree about what is being shown.
+  const soon = (() => { const d = new Date(); d.setDate(d.getDate() + 7); return d.toISOString().slice(0, 10) })()
+  const passes = (t: Task) => {
+    if (who === 'none' ? !!t.assignee : who !== 'all' && t.assignee !== who) return false
+    if (onlyOpen && !(t.due_date && t.due_date <= soon && !t.completed_at)) return false
+    if (find.trim()) {
+      const hay = `${t.title} ${t.description || ''} ${teamName(t.assignee) || ''}`.toLowerCase()
+      if (!find.toLowerCase().trim().split(/\s+/).every(tok => hay.includes(tok))) return false
+    }
+    return true
+  }
+  const filtered = tasks.filter(passes)
+  const filtering = who !== 'all' || onlyOpen || !!find.trim()
+
   const tasksIn = (colId: string) => {
     const isDone = columns.find(c => c.id === colId)?.is_done_column === true
-    const list = tasks.filter(t => t.column_id === colId)
+    const list = filtered.filter(t => t.column_id === colId)
     if (isDone) {
       return list.sort((a, b) =>
         (b.completed_at || '').localeCompare(a.completed_at || '') ||
@@ -189,7 +212,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
     const id = editing.id
     const isDone = columns.find(c => c.id === colId)?.is_done_column === true
     setEditing(e => e ? { ...e, column_id: colId, status: isDone ? 'done' : 'open', completed_at: isDone ? (e.completed_at || new Date().toISOString()) : null } : e)
-    wrap(() => moveTask(id, colId, tasksIn(colId).length), undefined, reloadTasks)
+    wrap(() => moveTask(id, colId, tasks.filter(t => t.column_id === colId).length), undefined, reloadTasks)
   }
 
   // ── drag and drop ──
@@ -209,7 +232,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
     const dragged = tasks.find(t => t.id === dragId)
     setDragId(null)
     if (!dragged || dragged.column_id === colId) return  // same-column handled by card drop
-    const pos = tasksIn(colId).length
+    const pos = tasks.filter(t => t.column_id === colId).length
     optimisticMove(dragged.id, colId)
     wrap(() => moveTask(dragged.id, colId, pos), undefined, reloadTasks)
   }
@@ -222,7 +245,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
     // A same-column drop is a no-op; only cross-column moves matter, and the card
     // lands in its sorted position by its due_date / completed_at.
     if (dragged.column_id === target.column_id) return
-    const pos = tasksIn(target.column_id).length
+    const pos = tasks.filter(t => t.column_id === target.column_id).length
     optimisticMove(dragged.id, target.column_id)
     wrap(() => moveTask(dragged.id, target.column_id, pos), undefined, reloadTasks)
   }
@@ -279,9 +302,53 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
         />
       )}
 
+      {/* ── WHO, AND WHAT ─────────────────────────────────────────────────
+          Chips rather than a dropdown: the question is "how many has Bình
+          got", and a chip can carry its own count while a select cannot. Only
+          people who actually hold a card on THIS board are listed, so the row
+          is four names and not the whole roster. */}
+      <div style={filterBar}>
+        <button onClick={() => setWho('all')} style={chip(who === 'all')}>
+          {t('Everyone', 'Tất cả')} <b style={chipN}>{tasks.length}</b>
+        </button>
+        {team
+          .map(m => ({ m, n: tasks.filter(x => x.assignee === m.id).length }))
+          .filter(x => x.n > 0)
+          .sort((a, b) => b.n - a.n)
+          .map(({ m, n }) => (
+            <button key={m.id} onClick={() => setWho(w => (w === m.id ? 'all' : m.id))} style={chip(who === m.id)}>
+              {m.display_name} <b style={chipN}>{n}</b>
+            </button>
+          ))}
+        {tasks.some(x => !x.assignee) && (
+          <button onClick={() => setWho(w => (w === 'none' ? 'all' : 'none'))} style={chip(who === 'none')}>
+            {t('Unassigned', 'Chưa giao')} <b style={chipN}>{tasks.filter(x => !x.assignee).length}</b>
+          </button>
+        )}
+        <span style={{ flex: 1 }} />
+        <button onClick={() => setOnlyOpen(v => !v)} style={chip(onlyOpen)} title={t('Overdue, and due within seven days', 'Quá hạn và đến hạn trong bảy ngày')}>
+          {t('Due soon', 'Sắp đến hạn')}
+        </button>
+        <input
+          value={find} onChange={e => setFind(e.target.value)}
+          placeholder={t('Find a card…', 'Tìm thẻ…')}
+          style={findInput}
+        />
+        {filtering && (
+          <button onClick={() => { setWho('all'); setFind(''); setOnlyOpen(false) }} style={{ ...tinyBtn, color: '#D4B85A' }}>
+            {t('Clear', 'Xóa lọc')} · {filtered.length}/{tasks.length}
+          </button>
+        )}
+      </div>
+      {filtering && filtered.length === 0 && (
+        <div style={{ ...metaText, color: '#D4B85A', margin: '2px 0 10px' }}>
+          {t('No cards match that. The board is not empty — the filter is on.', 'Không có thẻ nào khớp. Bảng không trống — bộ lọc đang bật.')}
+        </div>
+      )}
+
       {/* Gantt view — bars (start→due) + milestones (due-only), drag-to-adjust */}
       {view === 'gantt' && (
-        <GanttView tasks={tasks} project={project} canEdit={canEdit} onOpenCard={openEditor} onReschedule={onReschedule} />
+        <GanttView tasks={filtered} project={project} canEdit={canEdit} onOpenCard={openEditor} onReschedule={onReschedule} />
       )}
 
       {/* Board */}
@@ -296,7 +363,9 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
           >
             <div style={columnHeader}>
               <span style={{ color: col.is_done_column ? '#7AB07A' : '#E5D4C2' }}>{col.name}</span>
-              <span style={{ ...metaText, opacity: 0.6 }}>{tasksIn(col.id).length}</span>
+              <span style={{ ...metaText, opacity: 0.6 }}>
+                {tasksIn(col.id).length}{filtering ? ` / ${tasks.filter(t => t.column_id === col.id).length}` : ''}
+              </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 24 }}>
               {tasksIn(col.id).map(t => (
@@ -686,6 +755,23 @@ const pill: React.CSSProperties = { fontFamily: FAMILY, fontSize: 9, color: '#B2
 const recurringConfirm: React.CSSProperties = { display: 'flex', alignItems: 'flex-start', gap: 8, margin: '0 0 12px', padding: '10px 12px', background: 'rgba(158,143,196,0.10)', border: '1px solid rgba(158,143,196,0.35)', borderRadius: 6, fontFamily: FAMILY, fontSize: 11, color: '#E5D4C2' }
 const input: React.CSSProperties = { background: 'rgba(229,212,194,0.06)', color: '#E5D4C2', border: '1px solid rgba(229,212,194,0.18)', borderRadius: 6, padding: '8px 10px', fontFamily: FAMILY, fontSize: 12, width: '100%', boxSizing: 'border-box', outline: 'none' }
 const btnPrimary: React.CSSProperties = { background: '#5E6650', color: '#E5D4C2', border: 'none', borderRadius: 6, padding: '8px 18px', cursor: 'pointer', fontFamily: FAMILY, fontSize: 11, letterSpacing: '0.06em' }
+const filterBar: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: '0 0 14px',
+  paddingBottom: 12, borderBottom: '1px solid rgba(229,212,194,0.10)',
+}
+const chip = (on: boolean): React.CSSProperties => ({
+  display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+  background: on ? 'rgba(212,184,90,0.18)' : 'transparent',
+  border: `1px solid ${on ? 'rgba(212,184,90,0.55)' : 'rgba(229,212,194,0.15)'}`,
+  color: on ? '#D4B85A' : '#B2AA98', borderRadius: 999, padding: '5px 12px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+})
+const chipN: React.CSSProperties = { fontWeight: 400, opacity: 0.7, fontSize: 10 }
+const findInput: React.CSSProperties = {
+  background: 'rgba(229,212,194,0.06)', border: '1px solid rgba(229,212,194,0.15)', borderRadius: 6,
+  color: '#E5D4C2', fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  padding: '6px 10px', width: 170, outline: 'none',
+}
 const tinyBtn: React.CSSProperties = { background: 'rgba(229,212,194,0.06)', color: '#B2AA98', border: '1px solid rgba(229,212,194,0.18)', borderRadius: 4, padding: '5px 10px', fontFamily: FAMILY, fontSize: 10, letterSpacing: '0.04em', cursor: 'pointer', textDecoration: 'none' }
 const toggleBtn: React.CSSProperties = { background: 'transparent', border: 'none', padding: '5px 12px', fontFamily: FAMILY, fontSize: 10, letterSpacing: '0.04em', cursor: 'pointer' }
 const emptyText: React.CSSProperties = { padding: '24px 0', fontFamily: FAMILY, fontSize: 12, color: '#B2AA98', opacity: 0.6, fontStyle: 'italic' }

@@ -34,6 +34,12 @@ const BOARD_COLOURS: { hex: string; name: [string, string] }[] = [
 ]
 const DEFAULT_BOARD_COLOUR = BOARD_COLOURS[0].hex
 
+interface OpenTask {
+  id: string; title: string; due_date: string | null
+  priority: 'low' | 'normal' | 'high' | 'urgent'
+  project_id: string; status: string; completed_at: string | null
+}
+
 function ColourStrip({ value, onPick, label }: { value: string; onPick: (hex: string) => void; label: string }) {
   return (
     <div style={{ marginTop: 14 }}>
@@ -85,6 +91,14 @@ export default function OpsHubHome() {
   const [rosterOpen, setRosterOpen] = useState(false)
   // per-board done/total/pct — one aggregate RPC (Phase 7), keyed by project_id (active boards only)
   const [progress, setProgress] = useState<Record<string, { done: number; total: number; pct: number }>>({})
+  // ── ONE PERSON, EVERY BOARD (owner, 2026-09-30: "maybe filter tasks across
+  //    all kanban boards by their name") ─────────────────────────────────────
+  // Four boards in, the useful question stopped being "what is on this board"
+  // and became "what is on Bình". Answering it per board means opening four
+  // tabs and adding up.
+  const [whoAll, setWhoAll] = useState<string | null>(null)
+  const [mine, setMine] = useState<OpenTask[]>([])
+  const [mineLoading, setMineLoading] = useState(false)
 
   const load = async () => {
     const [{ data: pj }, { data: tm }, { data: prog }] = await Promise.all([
@@ -101,6 +115,26 @@ export default function OpsHubHome() {
     setLoading(false)
   }
   useEffect(() => { load() }, [])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Only what is still OPEN: status 'done' and 'lapsed' are both finished
+  // business, and a list of somebody's work that is mostly ticked-off cards is
+  // not a list anybody reads. Read straight through RLS, like every other read
+  // on this surface.
+  useEffect(() => {
+    if (!whoAll) { setMine([]); return }
+    let cancelled = false
+    setMineLoading(true)
+    const supabase = createBrowserSupabaseClient()
+    supabase.from('tasks')
+      .select('id, title, due_date, priority, project_id, status, completed_at')
+      .eq('assignee', whoAll).eq('status', 'open')
+      .then(({ data }) => {
+        if (cancelled) return
+        setMine((data || []) as OpenTask[])
+        setMineLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [whoAll])
 
   // Active boards keep the load order (created_at desc); archived go in their
   // own section, alphabetical by name. Soft-deleted never load (deleted_at filter).
@@ -219,6 +253,71 @@ export default function OpsHubHome() {
       <p style={lede}>
         {t('Each board is a project — golf tournaments, the founding-membership drive, the exhibition. Cards move across columns; every move, assignment and completion is recorded.', 'Mỗi bảng là một dự án — giải golf, chiến dịch tuyển hội viên sáng lập, buổi triển lãm. Thẻ di chuyển qua các cột; mọi lần di chuyển, phân công và hoàn thành đều được ghi lại.')}
       </p>
+
+      {/* ── WHO'S ON WHAT ────────────────────────────────────────────────
+          A name, and everything still open on them across every board. The
+          chips carry counts so the row answers "who is carrying this month"
+          before anyone clicks. */}
+      <div style={peopleBar}>
+        <span style={{ ...metaText, opacity: 0.7 }}>{t('Who’s on what', 'Ai đang làm gì')}</span>
+        {team.filter(m => m.active !== false).map(m => (
+          <button key={m.id} onClick={() => setWhoAll(w => (w === m.id ? null : m.id))} style={personChip(whoAll === m.id)}>
+            {m.display_name}
+          </button>
+        ))}
+      </div>
+
+      {whoAll && (
+        <div style={minePanel}>
+          {mineLoading ? (
+            <div style={metaText}>{t('Looking…', 'Đang tìm…')}</div>
+          ) : mine.length === 0 ? (
+            <div style={metaText}>
+              {t('Nothing open on', 'Không có việc đang mở của')} {team.find(m => m.id === whoAll)?.display_name}.
+            </div>
+          ) : (
+            <>
+              <div style={{ ...metaText, marginBottom: 10 }}>
+                <b style={{ color: '#E5D4C2' }}>{mine.length}</b> {t('open across', 'việc đang mở trên')}{' '}
+                {new Set(mine.map(x => x.project_id)).size} {t('boards', 'bảng')}
+                {(() => {
+                  const late = mine.filter(x => x.due_date && x.due_date < todayVN).length
+                  return late ? <span style={{ color: '#C27070' }}> · {late} {t('overdue', 'quá hạn')}</span> : null
+                })()}
+              </div>
+              {Object.entries(
+                mine.reduce<Record<string, OpenTask[]>>((m, x) => { (m[x.project_id] ||= []).push(x); return m }, {}),
+              )
+                .sort((a, b) => (projects.find(p => p.id === a[0])?.name || '').localeCompare(projects.find(p => p.id === b[0])?.name || ''))
+                .map(([pid, list]) => {
+                  const board = projects.find(p => p.id === pid)
+                  return (
+                    <div key={pid} style={{ marginBottom: 14 }}>
+                      <Link href={`/admin/ops/${pid}`} style={mineBoardName}>
+                        <span style={{ display: 'inline-block', width: 3, height: 12, background: board?.colour || DEFAULT_BOARD_COLOUR, marginRight: 8, verticalAlign: 'middle' }} />
+                        {board?.name || t('Another board', 'Bảng khác')} →
+                      </Link>
+                      {list
+                        .sort((a, b) => (a.due_date || '9999').localeCompare(b.due_date || '9999'))
+                        .map(x => {
+                          const late = !!x.due_date && x.due_date < todayVN
+                          return (
+                            <Link key={x.id} href={`/admin/ops/${pid}`} style={mineRow}>
+                              <span style={{ display: 'inline-block', width: 3, alignSelf: 'stretch', background: PRIORITY_DOT[x.priority] }} />
+                              <span style={{ flex: 1, color: '#E5D4C2' }}>{x.title}</span>
+                              <span style={{ ...metaText, color: late ? '#C27070' : '#B2AA98', whiteSpace: 'nowrap' }}>
+                                {x.due_date ? vnShort(x.due_date) : t('no date', 'chưa có hạn')}
+                              </span>
+                            </Link>
+                          )
+                        })}
+                    </div>
+                  )
+                })}
+            </>
+          )}
+        </div>
+      )}
 
       <label style={{ ...metaText, display: 'flex', alignItems: 'center', gap: 8, margin: '8px 0 20px', cursor: 'pointer' }}>
         <input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)} />
@@ -381,6 +480,33 @@ export default function OpsHubHome() {
 }
 
 const eyebrow: React.CSSProperties = { fontFamily: FAMILY, fontSize: 10, color: '#D4B85A', letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 4 }
+const todayVN = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
+const vnShort = (d: string) => new Date(`${d}T12:00:00+07:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Asia/Ho_Chi_Minh' })
+// The board's own priority colours, so a card reads the same in both places.
+const PRIORITY_DOT: Record<string, string> = { urgent: '#C27070', high: '#D4B85A', normal: '#5E6650', low: '#7E7864' }
+const peopleBar: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', margin: '14px 0 0',
+}
+const personChip = (on: boolean): React.CSSProperties => ({
+  cursor: 'pointer', borderRadius: 999, padding: '5px 12px',
+  background: on ? 'rgba(212,184,90,0.18)' : 'transparent',
+  border: `1px solid ${on ? 'rgba(212,184,90,0.55)' : 'rgba(229,212,194,0.15)'}`,
+  color: on ? '#D4B85A' : '#B2AA98', fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+})
+const minePanel: React.CSSProperties = {
+  margin: '14px 0 4px', padding: '14px 16px', borderRadius: 10,
+  border: '1px solid rgba(229,212,194,0.12)', background: 'rgba(229,212,194,0.03)',
+}
+const mineBoardName: React.CSSProperties = {
+  display: 'block', fontFamily: "'Google Sans Code', monospace", fontSize: 10.5,
+  letterSpacing: '0.12em', textTransform: 'uppercase', color: '#B2AA98',
+  textDecoration: 'none', marginBottom: 6,
+}
+const mineRow: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 11.5, lineHeight: 1.5,
+  padding: '6px 0', borderTop: '1px solid rgba(229,212,194,0.07)',
+}
 const pageTitle: React.CSSProperties = { fontFamily: "'Rampant Sans', serif", fontSize: 28, fontWeight: 500, color: '#E5D4C2', letterSpacing: '0.04em', margin: 0 }
 const lede: React.CSSProperties = { fontFamily: FAMILY, fontSize: 12, color: '#B2AA98', opacity: 0.85, lineHeight: 1.7, maxWidth: 720, margin: '8px 0 0' }
 const metaText: React.CSSProperties = { fontFamily: FAMILY, fontSize: 11, color: '#B2AA98' }
