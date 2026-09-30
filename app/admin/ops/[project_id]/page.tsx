@@ -229,6 +229,26 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
     )
   }
 
+  // ── ARRIVING AT ONE CARD ─────────────────────────────────────────────
+  // The master timeline links to a TASK, not just to the board it lives on
+  // (owner, 2026-10-01: "if you click a dot on the gantt it should take you
+  // directly to that task"). Landing on a board of fifty cards and being left
+  // to find the one you clicked is not arriving anywhere. Runs once, after the
+  // tasks are in, and clears the parameter so a refresh does not reopen it.
+  const [deepLinked, setDeepLinked] = useState(false)
+  useEffect(() => {
+    if (deepLinked || loading || !tasks.length) return
+    const want = new URLSearchParams(window.location.search).get('task')
+    if (!want) { setDeepLinked(true); return }
+    const t = tasks.find(x => x.id === want)
+    setDeepLinked(true)
+    if (!t) return
+    openEditor(t)
+    const url = new URL(window.location.href)
+    url.searchParams.delete('task')
+    window.history.replaceState({}, '', url.pathname + url.search)
+  }, [deepLinked, loading, tasks])  // eslint-disable-line react-hooks/exhaustive-deps
+
   const openEditor = (t: Task) => {
     setEditing(t)
     setDraft({ title: t.title, description: t.description || '', priority: t.priority, due_date: t.due_date || '', start_date: t.start_date || '' })

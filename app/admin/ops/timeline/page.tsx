@@ -44,6 +44,10 @@ export default function MasterTimelinePage() {
   const [who, setWho] = useState<string | null>(null)
   const [board, setBoard] = useState<string | null>(null)
   const [horizon, setHorizon] = useState<number | null>(60)   // days ahead; null = everything
+  // BOARD or GANTT, like a board has. The timeline answered "when", and the
+  // owner wanted the other half too (2026-10-01): the same cards in the same
+  // four columns, drawn from every board at once.
+  const [view, setView] = useState<'board' | 'gantt'>('board')
 
   useEffect(() => {
     const supabase = createBrowserSupabaseClient()
@@ -58,11 +62,15 @@ export default function MasterTimelinePage() {
       setProjects((pr || []) as Project[])
       setTasks((tk || []) as Task[])
       setTeam((tm || []) as TeamMember[])
+      const { data: cols } = await supabase.from('board_columns').select('id, name')
+      setColName(new Map(((cols || []) as { id: string; name: string }[]).map(c => [c.id, c.name])))
       setLoading(false)
     })()
   }, [])
 
   const boardById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects])
+  // Which column each task sits in, by name — every board uses the same four.
+  const [colName, setColName] = useState<Map<string, string>>(new Map())
   const today = vnDateString()
   const horizonEnd = useMemo(() => {
     if (horizon == null) return null
@@ -110,6 +118,18 @@ export default function MasterTimelinePage() {
         <Stat n={shown.length} label={t('open', 'đang mở')} tone="#E5D4C2" />
       </div>
 
+      <div style={{ ...bar, justifyContent: 'flex-end', marginTop: -34 }}>
+        <div style={{ display: 'flex', border: '1px solid rgba(229,212,194,0.15)', borderRadius: 6, overflow: 'hidden' }}>
+          {(['board', 'gantt'] as const).map(v => (
+            <button key={v} onClick={() => setView(v)} style={{
+              ...chip(false), borderRadius: 0, border: 'none', padding: '6px 14px',
+              background: view === v ? 'rgba(212,184,90,0.18)' : 'transparent',
+              color: view === v ? '#D4B85A' : '#B2AA98',
+            }}>{v === 'board' ? t('Board', 'Bảng') : 'Gantt'}</button>
+          ))}
+        </div>
+      </div>
+
       <div style={bar}>
         <button onClick={() => setBoard(null)} style={chip(board === null)}>
           {t('All boards', 'Tất cả bảng')} <b style={chipN}>{countFor(() => true)}</b>
@@ -141,21 +161,74 @@ export default function MasterTimelinePage() {
 
       {loading ? (
         <div style={emptyText}>{t('Loading…', 'Đang tải…')}</div>
-      ) : dated.length === 0 ? (
-        <div style={emptyText}>{t('Nothing dated in that window.', 'Không có mốc nào trong khoảng đó.')}</div>
+      ) : view === 'gantt' ? (
+        dated.length === 0 ? (
+          <div style={emptyText}>{t('Nothing dated in that window.', 'Không có mốc nào trong khoảng đó.')}</div>
+        ) : (
+          <GanttView
+            tasks={dated}
+            project={null}
+            canEdit={false}
+            /* Straight to the card, not merely to the board it sits on: landing
+               on fifty cards and being left to find the one you clicked is not
+               arriving anywhere. */
+            onOpenCard={(task) => { window.location.href = `/admin/ops/${task.project_id}?task=${task.id}` }}
+            onReschedule={() => {}}
+            boardOf={(task) => {
+              const p = boardById.get(task.project_id)
+              return p ? { name: p.name, colour: p.colour || '#5E6650' } : null
+            }}
+          />
+        )
+      ) : shown.length === 0 ? (
+        <div style={emptyText}>{t('Nothing open in that window.', 'Không có việc nào đang mở trong khoảng đó.')}</div>
       ) : (
-        <GanttView
-          tasks={dated}
-          project={null}
-          canEdit={false}
-          onOpenCard={(task) => { window.location.href = `/admin/ops/${task.project_id}` }}
-          onReschedule={() => {}}
-          boardOf={(task) => {
-            const p = boardById.get(task.project_id)
-            return p ? { name: p.name, colour: p.colour || '#5E6650' } : null
-          }}
-        />
+        /* THE SAME FOUR COLUMNS, from every board at once. Every board in the
+           club uses Backlog → In progress → Blocked → Done, so the columns can
+           be merged by NAME and a card keeps the colour of the board it came
+           from. Read-only, like the Gantt: a card is moved on its own board,
+           where the rest of its column is visible. */
+        <div style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 16, alignItems: 'flex-start' }}>
+          {COLUMN_ORDER.map(name => {
+            const inCol = shown
+              .filter(x => (colName.get(x.column_id) || 'Backlog') === name)
+              .sort((a, b) => (a.due_date || '9999').localeCompare(b.due_date || '9999'))
+            return (
+              <div key={name} style={columnStyle}>
+                <div style={columnHeader}>
+                  <span style={{ color: name === 'Done' ? '#7AB07A' : '#E5D4C2' }}>{name}</span>
+                  <span style={{ opacity: 0.6 }}>{inCol.length}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {inCol.map(x => {
+                    const b = boardById.get(x.project_id)
+                    const late = !!x.due_date && x.due_date < today
+                    return (
+                      <Link key={x.id} href={`/admin/ops/${x.project_id}?task=${x.id}`} style={{
+                        ...cardStyle, borderLeft: `3px solid ${b?.colour || '#5E6650'}`,
+                      }}>
+                        <span style={{ display: 'block', color: '#E5D4C2', fontSize: 12, lineHeight: 1.4 }}>{x.title}</span>
+                        <span style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                          <span style={{ ...pill, color: b?.colour || '#B2AA98', borderColor: (b?.colour || '#B2AA98') + '55' }}>
+                            {(b?.name || '').split('·')[0].trim()}
+                          </span>
+                          {x.assignee && <span style={pill}>{team.find(m => m.id === x.assignee)?.display_name || '—'}</span>}
+                          {x.due_date && (
+                            <span style={{ ...pill, color: late ? '#C27070' : '#B2AA98', borderColor: late ? 'rgba(194,112,112,0.5)' : 'rgba(229,212,194,0.18)' }}>
+                              {vnShort(x.due_date)}
+                            </span>
+                          )}
+                        </span>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+        </div>
       )}
+
     </>
   )
 }
@@ -174,6 +247,26 @@ const eyebrow: React.CSSProperties = { fontFamily: FAMILY, fontSize: 10, letterS
 const pageTitle: React.CSSProperties = { fontFamily: "'Rampant Sans', serif", fontSize: 28, fontWeight: 500, color: '#E5D4C2', letterSpacing: '0.04em', margin: '6px 0 0' }
 const lede: React.CSSProperties = { fontFamily: FAMILY, fontSize: 12, lineHeight: 1.7, color: '#B2AA98', margin: '8px 0 0', maxWidth: 680 }
 const emptyText: React.CSSProperties = { fontFamily: FAMILY, fontSize: 12, color: '#B2AA98', opacity: 0.7, padding: '28px 0' }
+const COLUMN_ORDER = ['Backlog', 'In progress', 'Blocked', 'Done']
+const vnShort = (d: string) => new Date(`${d}T12:00:00+07:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Asia/Ho_Chi_Minh' })
+const columnStyle: React.CSSProperties = {
+  flex: '0 0 270px', width: 270, background: 'rgba(229,212,194,0.03)',
+  border: '1px solid rgba(229,212,194,0.10)', borderRadius: 10, padding: 10,
+}
+const columnHeader: React.CSSProperties = {
+  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+  fontFamily: FAMILY, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase',
+  color: '#B2AA98', padding: '2px 2px 10px',
+}
+const cardStyle: React.CSSProperties = {
+  display: 'block', textDecoration: 'none', background: 'rgba(5,46,32,0.55)',
+  border: '1px solid rgba(229,212,194,0.10)', borderRadius: 8, padding: '9px 10px',
+  fontFamily: FAMILY,
+}
+const pill: React.CSSProperties = {
+  borderRadius: 999, border: '1px solid rgba(229,212,194,0.18)', color: '#B2AA98',
+  padding: '2px 8px', fontFamily: FAMILY, fontSize: 9.5,
+}
 const bar: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', margin: '0 0 10px' }
 const chip = (on: boolean): React.CSSProperties => ({
   display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', borderRadius: 999, padding: '5px 12px',

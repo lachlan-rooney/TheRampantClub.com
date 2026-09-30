@@ -248,16 +248,28 @@ export default function OpsHubHome() {
           <div style={eyebrow}>{t('Operations Hub', 'Trung tâm Vận hành')}</div>
           <h1 style={pageTitle}>{t('Boards', 'Bảng')}</h1>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {/* One glance across every board — the thing seven separate Gantts
-              could not answer (owner, 2026-10-01). */}
-          <Link href="/admin/ops/timeline" style={{ ...btnGhostLink }}>{t('Timeline ↗', 'Dòng thời gian ↗')}</Link>
-          <button onClick={() => setNewBoardOpen(true)} style={btnPrimary}>{t('+ New board', '+ Bảng mới')}</button>
-        </div>
+        <button onClick={() => setNewBoardOpen(true)} style={btnPrimary}>{t('+ New board', '+ Bảng mới')}</button>
       </div>
       <p style={lede}>
         {t('Each board is a project — golf tournaments, the founding-membership drive, the exhibition. Cards move across columns; every move, assignment and completion is recorded.', 'Mỗi bảng là một dự án — giải golf, chiến dịch tuyển hội viên sáng lập, buổi triển lãm. Thẻ di chuyển qua các cột; mọi lần di chuyển, phân công và hoàn thành đều được ghi lại.')}
       </p>
+
+      {/* ── THE WAY INTO THE MASTER VIEW ─────────────────────────────────
+          It was a small ghost link in the top corner, which is not where
+          anyone looks (owner, 2026-10-01: "make the button to see the master
+          kanban board clearer and easier to find/click"). A full-width door
+          instead, saying what is behind it and how much of it there is. */}
+      <Link href="/admin/ops/timeline" style={masterDoor}>
+        <span style={{ flex: 1 }}>
+          <span style={masterEyebrow}>{t('All boards at once', 'Tất cả bảng cùng lúc')}</span>
+          <span style={masterTitle}>{t('Everything, on one board', 'Tất cả trên một bảng')}</span>
+          <span style={masterSub}>
+            {t('Every open job across every board — as a board, or as one Gantt chart.',
+               'Mọi việc đang mở trên tất cả các bảng — dạng bảng, hoặc một biểu đồ Gantt.')}
+          </span>
+        </span>
+        <span style={masterGo} aria-hidden="true">→</span>
+      </Link>
 
       {/* ── WHO'S ON WHAT ────────────────────────────────────────────────
           A name, and everything still open on them across every board. The
@@ -511,6 +523,25 @@ const mineRow: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none',
   fontFamily: "'Google Sans Code', monospace", fontSize: 11.5, lineHeight: 1.5,
   padding: '6px 0', borderTop: '1px solid rgba(229,212,194,0.07)',
+}
+const masterDoor: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 16, textDecoration: 'none',
+  margin: '18px 0 4px', padding: '16px 20px', borderRadius: 12,
+  border: '1px solid rgba(212,184,90,0.45)', background: 'rgba(212,184,90,0.07)',
+}
+const masterEyebrow: React.CSSProperties = {
+  display: 'block', fontFamily: "'Google Sans Code', monospace", fontSize: 9.5,
+  letterSpacing: '0.2em', textTransform: 'uppercase', color: '#D4B85A',
+}
+const masterTitle: React.CSSProperties = {
+  display: 'block', fontFamily: "'Rampant Sans', serif", fontSize: 21, color: '#E5D4C2', marginTop: 5,
+}
+const masterSub: React.CSSProperties = {
+  display: 'block', fontFamily: "'Google Sans Code', monospace", fontSize: 11,
+  color: '#B2AA98', marginTop: 5, lineHeight: 1.6,
+}
+const masterGo: React.CSSProperties = {
+  flex: 'none', fontFamily: "'Google Sans Code', monospace", fontSize: 20, color: '#D4B85A',
 }
 const btnGhostLink: React.CSSProperties = {
   background: 'transparent', color: '#D4B85A', border: '1px solid rgba(212,184,90,0.45)',

@@ -108,6 +108,9 @@ const GROUPS: Group[] = [
       { href: '/admin/ops/reports', label: 'Ops Reports', vn: 'Báo cáo vận hành', icon: 'bars' },
       { href: '/admin/ops/rota', label: 'Rota', vn: 'Lịch trực', icon: 'rota' },
       { href: '/admin/ops', label: 'Boards', vn: 'Bảng', icon: 'boards' },
+      // The master view earns its own line: it was a small link in the corner
+      // of the Boards page, which is not where anyone looks for it.
+      { href: '/admin/ops/timeline', label: 'All Boards', vn: 'Tất cả bảng', icon: 'bars' },
       { href: '/admin/ops/activity', label: 'Activity', vn: 'Hoạt động', icon: 'pulse' },
     ],
   },
