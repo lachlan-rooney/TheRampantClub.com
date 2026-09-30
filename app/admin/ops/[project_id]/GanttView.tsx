@@ -37,12 +37,18 @@ type DragState = {
   baseStart: number | null; baseDue: number | null; moved: boolean; unit: number
 }
 
-export default function GanttView({ tasks, project, canEdit, onOpenCard, onReschedule }: {
+export default function GanttView({ tasks, project, canEdit, onOpenCard, onReschedule, boardOf }: {
   tasks: Task[]
   project: Project | null
   canEdit: boolean
   onOpenCard: (t: Task) => void
   onReschedule: (taskId: string, start: string | null, due: string | null) => void
+  /** Only the MASTER timeline passes this: which board a task belongs to, so a
+   *  row can say so. On a single board every row has the same answer and the
+   *  dot would be noise, so it is absent there. The BAR keeps its status
+   *  colour either way — one vocabulary across both views, and "overdue" is
+   *  worth more on a bar than "belongs to Halloween". */
+  boardOf?: (t: Task) => { name: string; colour: string } | null
 }) {
   const [zoom, setZoom] = useState<Zoom>('day')
   const dayWidth = DAY_W[zoom]
@@ -232,6 +238,9 @@ export default function GanttView({ tasks, project, canEdit, onOpenCard, onResch
                 style={{ ...stickyLabel, height: ROW_H, display: 'flex', alignItems: 'center', cursor: 'pointer' }}
                 title={p.task.title}
               >
+                {(() => { const b = boardOf?.(p.task); return b ? (
+                  <span title={b.name} style={{ flex: 'none', width: 8, height: 8, borderRadius: 2, background: b.colour, marginRight: 8 }} />
+                ) : null })()}
                 <span style={{ fontFamily: FAMILY, fontSize: 11, color: '#E5D4C2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.task.title}</span>
               </div>
               <div style={{ position: 'relative', width: trackW, height: ROW_H }}>

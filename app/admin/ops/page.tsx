@@ -248,7 +248,12 @@ export default function OpsHubHome() {
           <div style={eyebrow}>{t('Operations Hub', 'Trung tâm Vận hành')}</div>
           <h1 style={pageTitle}>{t('Boards', 'Bảng')}</h1>
         </div>
-        <button onClick={() => setNewBoardOpen(true)} style={btnPrimary}>{t('+ New board', '+ Bảng mới')}</button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {/* One glance across every board — the thing seven separate Gantts
+              could not answer (owner, 2026-10-01). */}
+          <Link href="/admin/ops/timeline" style={{ ...btnGhostLink }}>{t('Timeline ↗', 'Dòng thời gian ↗')}</Link>
+          <button onClick={() => setNewBoardOpen(true)} style={btnPrimary}>{t('+ New board', '+ Bảng mới')}</button>
+        </div>
       </div>
       <p style={lede}>
         {t('Each board is a project — golf tournaments, the founding-membership drive, the exhibition. Cards move across columns; every move, assignment and completion is recorded.', 'Mỗi bảng là một dự án — giải golf, chiến dịch tuyển hội viên sáng lập, buổi triển lãm. Thẻ di chuyển qua các cột; mọi lần di chuyển, phân công và hoàn thành đều được ghi lại.')}
@@ -506,6 +511,11 @@ const mineRow: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none',
   fontFamily: "'Google Sans Code', monospace", fontSize: 11.5, lineHeight: 1.5,
   padding: '6px 0', borderTop: '1px solid rgba(229,212,194,0.07)',
+}
+const btnGhostLink: React.CSSProperties = {
+  background: 'transparent', color: '#D4B85A', border: '1px solid rgba(212,184,90,0.45)',
+  borderRadius: 8, padding: '9px 16px', textDecoration: 'none',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 12,
 }
 const pageTitle: React.CSSProperties = { fontFamily: "'Rampant Sans', serif", fontSize: 28, fontWeight: 500, color: '#E5D4C2', letterSpacing: '0.04em', margin: 0 }
 const lede: React.CSSProperties = { fontFamily: FAMILY, fontSize: 12, color: '#B2AA98', opacity: 0.85, lineHeight: 1.7, maxWidth: 720, margin: '8px 0 0' }
