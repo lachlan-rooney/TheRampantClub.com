@@ -34,8 +34,27 @@ export const createProject = (p: {
 export const archiveProject = (projectId: string) =>
   opsWrite('ops_archive_project', { p_project_id: projectId })
 
-export const updateProject = (projectId: string, name: string, description: string | null) =>
-  opsWrite('ops_update_project', { p_project_id: projectId, p_name: name, p_description: description })
+// colour: a #rrggbb hex or null to go back to the default edge. The database
+// checks the shape too — the value ends up in a style attribute on the board
+// list, so it is not a place to take the client's word for it.
+//
+// IT SURVIVES THE SQL NOT BEING RUN YET. db/ops_board_colour.sql is what gives
+// ops_update_project its fourth argument; until somebody runs it, PostgREST
+// cannot find a function of that shape and answers PGRST202. Rather than break
+// renaming a board — which worked perfectly well yesterday — the call falls
+// back to the three-argument version and says plainly that the colour did not
+// save. (A deploy reaching production before its migration has taken this
+// surface down before; see the note in lib/menus/read.ts.)
+export async function updateProject(projectId: string, name: string, description: string | null, colour: string | null = null) {
+  try {
+    return await opsWrite('ops_update_project', { p_project_id: projectId, p_name: name, p_description: description, p_colour: colour })
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    if (!/PGRST202|could not find|schema cache/i.test(msg)) throw e
+    await opsWrite('ops_update_project', { p_project_id: projectId, p_name: name, p_description: description })
+    throw new Error('Saved the name and description. The colour needs db/ops_board_colour.sql run first.')
+  }
+}
 
 // Soft delete (archived boards only) — sets deleted_at; the row + its tasks +
 // activity history are retained and recoverable. Never a hard/cascade delete.

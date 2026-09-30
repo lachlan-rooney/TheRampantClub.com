@@ -13,6 +13,52 @@ import type { Project, TeamMember } from '@/lib/ops/types'
 
 const FAMILY = "'Google Sans Code', monospace"
 
+// ── A BOARD'S COLOUR ──────────────────────────────────────────────────────
+// Owner, 2026-09-30: "can we add that to the admin abilities?" The column and
+// the 3px edge on each card have existed since Phase 1; only the way to choose
+// one was missing, so every board was the default until three were set through
+// the RPC by hand.
+//
+// A FIXED SET, not a colour wheel. Eight swatches from the club's own palette
+// keeps a wall of boards looking like one system — an arbitrary picker is how
+// a board ends up magenta.
+const BOARD_COLOURS: { hex: string; name: [string, string] }[] = [
+  { hex: '#5E6650', name: ['Default', 'Mặc định'] },
+  { hex: '#D4B85A', name: ['Gold', 'Vàng'] },
+  { hex: '#7FB3A0', name: ['Sage', 'Xanh xám'] },
+  { hex: '#C45A28', name: ['Amber', 'Cam'] },
+  { hex: '#9E8FC4', name: ['Violet', 'Tím'] },
+  { hex: '#C27070', name: ['Rust', 'Đỏ gạch'] },
+  { hex: '#A9BB84', name: ['Fairway', 'Xanh cỏ'] },
+  { hex: '#C79A6B', name: ['Oloroso', 'Nâu vàng'] },
+]
+const DEFAULT_BOARD_COLOUR = BOARD_COLOURS[0].hex
+
+function ColourStrip({ value, onPick, label }: { value: string; onPick: (hex: string) => void; label: string }) {
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div style={fieldLabel}>{label}</div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+        {BOARD_COLOURS.map(c => {
+          const on = value.toLowerCase() === c.hex.toLowerCase()
+          return (
+            <button
+              key={c.hex} type="button" onClick={() => onPick(c.hex)} title={c.name[0]} aria-label={c.name[0]}
+              aria-pressed={on}
+              style={{
+                width: 30, height: 30, borderRadius: 7, cursor: 'pointer', background: c.hex,
+                border: on ? '2px solid #E5D4C2' : '1px solid rgba(229,212,194,0.25)',
+                boxShadow: on ? '0 0 0 3px rgba(229,212,194,0.14)' : 'none',
+                transition: 'box-shadow .15s ease',
+              }}
+            />
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function OpsHubHome() {
   const { t } = useLang()
   const router = useRouter()
@@ -31,6 +77,8 @@ export default function OpsHubHome() {
   const [editing, setEditing] = useState<Project | null>(null)
   const [editName, setEditName] = useState('')
   const [editDesc, setEditDesc] = useState('')
+  const [editColour, setEditColour] = useState<string>(DEFAULT_BOARD_COLOUR)
+  const [newColour, setNewColour] = useState<string>(DEFAULT_BOARD_COLOUR)
   const [deleting, setDeleting] = useState<Project | null>(null)
   const [deleteTyped, setDeleteTyped] = useState('')
   const [newMemberOpen, setNewMemberOpen] = useState(false)
@@ -63,12 +111,13 @@ export default function OpsHubHome() {
 
   const openEdit = (p: Project) => {
     setEditing(p); setEditName(p.name); setEditDesc(p.description || '')
+    setEditColour(p.colour || DEFAULT_BOARD_COLOUR)
   }
   const saveEdit = async () => {
     if (!editing || !editName.trim()) return
     setBusy(true)
     try {
-      await updateProject(editing.id, editName.trim(), editDesc.trim() || null)
+      await updateProject(editing.id, editName.trim(), editDesc.trim() || null, editColour)
       setEditing(null); showToast(t('Board updated.', 'Đã cập nhật bảng.')); load()
     } catch (e) {
       showToast((e as Error).message, 'error')
@@ -90,8 +139,9 @@ export default function OpsHubHome() {
   const handleCreate = async (name: string) => {
     setBusy(true)
     try {
-      const id = await createProject({ name })
+      const id = await createProject({ name, colour: newColour })
       setNewBoardOpen(false)
+      setNewColour(DEFAULT_BOARD_COLOUR)
       showToast(t('Board created.', 'Đã tạo bảng.'))
       router.push(`/admin/ops/${id}`)
     } catch (e) {
@@ -233,7 +283,8 @@ export default function OpsHubHome() {
         placeholder={t('e.g. Founding-membership drive', 'vd. Chiến dịch tuyển hội viên sáng lập')}
         confirmLabel={t('Create board', 'Tạo bảng')}
         busy={busy}
-        onCancel={() => setNewBoardOpen(false)}
+        extra={<ColourStrip value={newColour} onPick={setNewColour} label={t('Colour', 'Màu')} />}
+        onCancel={() => { setNewBoardOpen(false); setNewColour(DEFAULT_BOARD_COLOUR) }}
         onConfirm={handleCreate}
       />
       <PromptModal
@@ -275,6 +326,8 @@ export default function OpsHubHome() {
               onChange={e => setEditDesc(e.target.value)}
               placeholder={t('What this board is for…', 'Bảng này dùng để làm gì…')}
             />
+            {/* The same edge that shows down the left of the card in the list. */}
+            <ColourStrip value={editColour} onPick={setEditColour} label={t('Colour', 'Màu')} />
             <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
               <button onClick={saveEdit} disabled={busy || !editName.trim()} style={{ ...btnPrimary, opacity: busy || !editName.trim() ? 0.5 : 1 }}>
                 {busy ? t('Saving…', 'Đang lưu…') : t('Save', 'Lưu')}

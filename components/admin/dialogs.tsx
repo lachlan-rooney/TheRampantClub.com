@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useState, type ReactNode } from 'react'
 
 // Shared branded dialogs for the admin surface — one source of truth for the
 // confirm modal, the prompt (text-entry) modal, and the toast. Replaces the
@@ -90,6 +90,9 @@ export function PromptModal(props: {
   multiline?: boolean
   busy?: boolean
   validate?: (value: string) => string | null
+  /** An optional row under the field — a colour swatch strip, a hint, a toggle.
+   *  Everything the dialog already does stays the same when it is absent. */
+  extra?: ReactNode
   onConfirm: (value: string) => void
   onCancel: () => void
 }) {
@@ -100,7 +103,7 @@ export function PromptModal(props: {
 function PromptModalInner({
   eyebrow = '✎ INPUT', title, label, placeholder, defaultValue = '',
   confirmLabel = 'Save', multiline = false, busy = false,
-  validate, onConfirm, onCancel,
+  validate, extra, onConfirm, onCancel,
 }: {
   eyebrow?: string
   title: string
@@ -111,6 +114,7 @@ function PromptModalInner({
   multiline?: boolean
   busy?: boolean
   validate?: (value: string) => string | null
+  extra?: ReactNode
   onConfirm: (value: string) => void
   onCancel: () => void
 }) {
@@ -155,6 +159,7 @@ function PromptModalInner({
           />
         )}
         {error && <div style={inputError}>{error}</div>}
+        {extra}
         <div style={{ ...actionsStyle, marginTop: 14 }}>
           <button onClick={onCancel} disabled={busy} style={cancelBtn}>Cancel</button>
           <button
