@@ -343,7 +343,6 @@ export default function MenuBoard({
                           )}
                         </>}
                   </span>
-                  {!empty && <span className="mb-tile-chev" aria-hidden>{isOpen ? '▾' : '▸'}</span>}
                 </button>
 
                 {isOpen && (
@@ -981,8 +980,11 @@ const CSS = `
 }
 .mb-tile-when.is-shut { color: #C49555; }
 .mb-tile-soon { color: rgba(229,212,194,.5); }
-.mb-tile-chev { position: absolute; right: 4px; top: 6px; font-size: 11px; opacity: .3; }
-.mb-tile.is-open .mb-tile-chev { opacity: .8; color: var(--gold); }
+/* NO LITTLE ARROW ON THE TILE (owner, 2026-09-25: "There's a TINY TINY
+   extend arrow on the plates tab beside each logo. No need for it"). At 11px
+   and 30% opacity it was too small to read as an affordance and too small to
+   tap; the whole tile is the button, and an open one already announces itself
+   by being open. */
 /* The expanded menu spans the whole grid, so it opens UNDER the row that was
    tapped rather than squeezing into one column.
    NOT .mb-open: that class is the dish-name button inside every row, and
