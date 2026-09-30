@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useEffect, useState, useCallback } from 'react'
+import { use, useEffect, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { vnDateString } from '@/lib/datetime'
@@ -57,7 +57,23 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
   const [showMembers, setShowMembers] = useState(false)
   const [showActivity, setShowActivity] = useState(false)
   const [showRecurring, setShowRecurring] = useState(false)
+  // ── DRAGGING A CARD, ON ANY DEVICE ───────────────────────────────────
+  // This board used the HTML5 drag-and-drop API, which does not exist on
+  // touch — so on the tablets the club actually runs, a card could not be
+  // moved at all, while the Gantt beside it dragged perfectly because it was
+  // built on pointer events. Same screen, two behaviours, depending on which
+  // tab you were looking at.
+  //
+  // Pointer events cover mouse, pen and touch in one path. A MOUSE starts
+  // dragging as soon as it moves past a few pixels; a FINGER has to hold for
+  // a moment first, or every attempt to scroll a column would pick a card up.
   const [dragId, setDragId] = useState<string | null>(null)
+  const [dragPt, setDragPt] = useState<{ x: number; y: number } | null>(null)
+  const [overCol, setOverCol] = useState<string | null>(null)
+  const dragFrom = useRef<{ x: number; y: number; id: string; touch: boolean } | null>(null)
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const TOUCH_HOLD_MS = 260
+  const MOVE_THRESHOLD = 6
   const [view, setView] = useState<'board' | 'gantt'>('board')
   // ── WHO AM I LOOKING AT (owner, 2026-09-30: "People need to be able to
   //    filter tasks by their name") ────────────────────────────────────────
@@ -227,27 +243,59 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
       completed_at: isDone ? (t.completed_at || new Date().toISOString()) : null,
     } : t))
   }
-  const onDropColumn = (colId: string) => {
-    if (!dragId || !canEdit) return
-    const dragged = tasks.find(t => t.id === dragId)
-    setDragId(null)
-    if (!dragged || dragged.column_id === colId) return  // same-column handled by card drop
+  const columnUnder = (x: number, y: number): string | null => {
+    // Ask the document what is under the finger. The card being dragged is a
+    // fixed ghost with pointer-events off, so it cannot answer for itself.
+    const el = document.elementFromPoint(x, y)
+    return (el?.closest('[data-col-id]') as HTMLElement | null)?.dataset.colId ?? null
+  }
+
+  const dropOn = (colId: string | null) => {
+    const id = dragId
+    setDragId(null); setDragPt(null); setOverCol(null); dragFrom.current = null
+    if (!id || !colId || !canEdit) return
+    const dragged = tasks.find(t => t.id === id)
+    if (!dragged || dragged.column_id === colId) return   // same column is a no-op: order is automatic
     const pos = tasks.filter(t => t.column_id === colId).length
     optimisticMove(dragged.id, colId)
     wrap(() => moveTask(dragged.id, colId, pos), undefined, reloadTasks)
   }
-  const onDropCard = (target: Task) => {
-    if (!dragId || !canEdit || dragId === target.id) { setDragId(null); return }
-    const dragged = tasks.find(t => t.id === dragId)
-    setDragId(null)
-    if (!dragged) return
-    // Within-column manual reorder is dropped — order is automatic (the sort rule).
-    // A same-column drop is a no-op; only cross-column moves matter, and the card
-    // lands in its sorted position by its due_date / completed_at.
-    if (dragged.column_id === target.column_id) return
-    const pos = tasks.filter(t => t.column_id === target.column_id).length
-    optimisticMove(dragged.id, target.column_id)
-    wrap(() => moveTask(dragged.id, target.column_id, pos), undefined, reloadTasks)
+
+  const onCardPointerDown = (e: React.PointerEvent, t: Task) => {
+    if (!canEdit || e.button !== 0) return
+    const touch = e.pointerType === 'touch'
+    dragFrom.current = { x: e.clientX, y: e.clientY, id: t.id, touch }
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    if (touch) {
+      // Hold to pick up. Until it fires the column still scrolls normally.
+      holdTimer.current = setTimeout(() => {
+        const f = dragFrom.current
+        if (!f) return
+        setDragId(f.id); setDragPt({ x: f.x, y: f.y })
+      }, TOUCH_HOLD_MS)
+    }
+  }
+  const onCardPointerMove = (e: React.PointerEvent) => {
+    const f = dragFrom.current
+    if (!f) return
+    const moved = Math.hypot(e.clientX - f.x, e.clientY - f.y)
+    if (!dragId) {
+      if (f.touch) {
+        // Moved before the hold fired → they are scrolling, not dragging.
+        if (moved > MOVE_THRESHOLD) { if (holdTimer.current) clearTimeout(holdTimer.current); dragFrom.current = null }
+        return
+      }
+      if (moved > MOVE_THRESHOLD) setDragId(f.id)
+      else return
+    }
+    e.preventDefault()
+    setDragPt({ x: e.clientX, y: e.clientY })
+    setOverCol(columnUnder(e.clientX, e.clientY))
+  }
+  const onCardPointerUp = (e: React.PointerEvent, t: Task) => {
+    if (holdTimer.current) clearTimeout(holdTimer.current)
+    if (!dragId) { dragFrom.current = null; openEditor(t); return }   // a tap is still a tap
+    dropOn(columnUnder(e.clientX, e.clientY))
   }
 
   if (loading) return <div style={emptyText}>{t('Loading board…', 'Đang tải bảng…')}</div>
@@ -346,6 +394,23 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
         </div>
       )}
 
+      {/* THE CARD IN THE HAND. A fixed copy under the pointer, with pointer
+          events off so elementFromPoint can still see the column beneath it. */}
+      {dragId && dragPt && (() => {
+        const t = tasks.find(x => x.id === dragId)
+        if (!t) return null
+        return (
+          <div style={{
+            position: 'fixed', left: dragPt.x - 90, top: dragPt.y - 18, width: 180, zIndex: 80,
+            pointerEvents: 'none', transform: 'rotate(-1.5deg)', opacity: 0.95,
+            ...cardStyle, borderLeft: `3px solid ${PRIORITY_COLOUR[t.priority]}`,
+            boxShadow: '0 12px 28px rgba(0,0,0,0.45)',
+          }}>
+            <div style={{ color: '#E5D4C2', fontFamily: FAMILY, fontSize: 12, lineHeight: 1.4 }}>{t.title}</div>
+          </div>
+        )
+      })()}
+
       {/* Gantt view — bars (start→due) + milestones (due-only), drag-to-adjust */}
       {view === 'gantt' && (
         <GanttView tasks={filtered} project={project} canEdit={canEdit} onOpenCard={openEditor} onReschedule={onReschedule} />
@@ -357,9 +422,13 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
         {columns.map(col => (
           <div
             key={col.id}
-            style={columnStyle}
-            onDragOver={e => { if (dragId && canEdit) e.preventDefault() }}
-            onDrop={() => onDropColumn(col.id)}
+            data-col-id={col.id}
+            style={{
+              ...columnStyle,
+              // Where the card would land, lit as the finger passes over it.
+              outline: overCol === col.id && dragId ? '1px solid rgba(212,184,90,0.55)' : 'none',
+              background: overCol === col.id && dragId ? 'rgba(212,184,90,0.06)' : undefined,
+            }}
           >
             <div style={columnHeader}>
               <span style={{ color: col.is_done_column ? '#7AB07A' : '#E5D4C2' }}>{col.name}</span>
@@ -371,12 +440,13 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
               {tasksIn(col.id).map(t => (
                 <div
                   key={t.id}
-                  draggable={canEdit}
-                  onDragStart={() => setDragId(t.id)}
-                  onDragOver={e => { if (dragId && canEdit) e.preventDefault() }}
-                  onDrop={e => { e.stopPropagation(); onDropCard(t) }}
-                  onClick={() => openEditor(t)}
-                  style={{ ...cardStyle, borderLeft: `3px solid ${t.status === 'lapsed' ? OPS_STATUS_COLORS.lapsed : PRIORITY_COLOUR[t.priority]}`, cursor: canEdit ? 'grab' : 'pointer', opacity: dragId === t.id ? 0.4 : t.status === 'lapsed' ? 0.55 : 1 }}
+                  onPointerDown={e => onCardPointerDown(e, t)}
+                  onPointerMove={onCardPointerMove}
+                  onPointerUp={e => onCardPointerUp(e, t)}
+                  onPointerCancel={() => { if (holdTimer.current) clearTimeout(holdTimer.current); dragFrom.current = null; setDragId(null); setDragPt(null); setOverCol(null) }}
+                  // Only once the card is actually being dragged: before that
+                  // the column has to keep scrolling under the finger.
+                  style={{ ...cardStyle, touchAction: dragId === t.id ? 'none' : 'pan-y', borderLeft: `3px solid ${t.status === 'lapsed' ? OPS_STATUS_COLORS.lapsed : PRIORITY_COLOUR[t.priority]}`, cursor: canEdit ? 'grab' : 'pointer', opacity: dragId === t.id ? 0.4 : t.status === 'lapsed' ? 0.55 : 1 }}
                 >
                   <div style={{ color: '#E5D4C2', fontFamily: FAMILY, fontSize: 12, lineHeight: 1.4, textDecoration: t.status === 'lapsed' ? 'line-through' : 'none' }}>
                     {t.template_id && <span title="Recurring" style={{ color: '#9E8FC4', marginRight: 5 }}>↻</span>}
