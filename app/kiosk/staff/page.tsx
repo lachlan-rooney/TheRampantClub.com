@@ -15,6 +15,7 @@ import OpenOrders from '@/components/menus/OpenOrders'
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
 const IDLE_MS = 180_000   // 3 min idle → back to the picker
 
+type View = 'hub' | 'tonight' | 'orders' | 'guests' | 'stock' | 'howto'
 interface Staff { id: string; display_name: string; role_title?: string | null }
 interface OnShift { name: string; shift: string; start: string | null; end: string | null; isMe: boolean }
 interface Bi { en: string; vn: string }
@@ -42,6 +43,22 @@ export default function KioskStaff() {
   const [pin, setPin] = useState('')
   const [err, setErr] = useState('')
   const [floor, setFloor] = useState<Floor | null>(null)
+  // ── THE HUB (2026-10-01) ────────────────────────────────────────────────
+  // Owner: "We need a full back end system that a staff member in the room
+  // would need. also, back buttons, better layouts, more features."
+  //
+  // This screen was one long scroll: who is in, then room orders, then the
+  // stocktake, then the shift rules, then how to take a food order, all of it
+  // below each other. On a tablet held by somebody standing up mid-service,
+  // the thing you want is always three thumb-flicks away, and nothing tells
+  // you anything is waiting.
+  //
+  // It is a HUB now. One screen of large cards, each carrying what is waiting
+  // on it, and each opening a view with a Back button at the top. Adding the
+  // next tool is adding a card, which is the point — "more features" needs
+  // somewhere for features to go.
+  const [view, setView] = useState<View>('hub')
+  const [counts, setCounts] = useState<{ inClub: number; orders: number }>({ inClub: 0, orders: 0 })
   const idle = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const loadMe = useCallback(async () => {
@@ -67,6 +84,35 @@ export default function KioskStaff() {
       .then(j => { if (j) setFloor(j) })
       .catch(() => {})
   }, [me])
+
+  // WHAT IS WAITING, for the cards. Only queues: a number that counts rows
+  // rather than work is a number nobody reads twice, and one decorative badge
+  // makes the rest untrusted. (Same rule as the admin sidebar.)
+  useEffect(() => {
+    if (!me) return
+    let live = true
+    const read = async () => {
+      try {
+        const [a, o] = await Promise.all([
+          fetch('/api/kiosk/staff/arrivals', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch('/api/kiosk/orders/open', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null),
+        ])
+        if (!live) return
+        const rows = a?.rows || a?.arrivals || a?.bookings || []
+        setCounts({
+          inClub: Array.isArray(rows) ? rows.filter((x: { arrived_at?: string | null }) => x.arrived_at).length : 0,
+          orders: Array.isArray(o?.orders) ? o.orders.length : 0,
+        })
+      } catch { /* a card without a number still opens */ }
+    }
+    read()
+    const id = setInterval(read, 30_000)
+    return () => { live = false; clearInterval(id) }
+  }, [me])
+
+  // Leaving staff mode, or going idle, must also drop back to the hub — the
+  // next person to pick this up should not inherit a half-open sub-screen.
+  useEffect(() => { if (!me) setView('hub') }, [me])
 
   // Inactivity auto-logout (only while acting).
   useEffect(() => {
@@ -103,117 +149,151 @@ export default function KioskStaff() {
   // English.
   if (me) return (
     <Scroll>
-      <div style={{ width: 'min(860px, 100%)', margin: '0 auto' }}>
-        <div style={kicker}>The Rampant Club · Floor</div>
-        <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 28, color: '#E5D4C2', margin: '12px 0 6px' }}>
-          {t('Good evening', 'Chào buổi tối')}, {me.display_name}.
-        </div>
+      <div style={{ width: 'min(900px, 100%)', margin: '0 auto' }}>
 
-        {/* WHO ELSE IS ON. Staff names only — no member data — so this is the
-            cheapest thing on the screen to justify. */}
-        {floor && floor.onShift.length > 0 && (
-          <div style={onShiftRow}>
-            {floor.onShift.map((o, i) => (
-              <span key={i} style={{ ...onShiftPill, ...(o.isMe ? onShiftMe : null) }}>
-                {o.name}
-                <span style={onShiftWhen}>{o.start ? o.start.slice(0, 5) : o.shift}</span>
-              </span>
-            ))}
-          </div>
+        {/* THE WAY BACK, on every sub-screen. A tablet has no browser chrome:
+            without this the only exit from a section was the bottom bar, which
+            logs you out and hands the tablet to a member. */}
+        {view !== 'hub' && (
+          <button onClick={() => setView('hub')} style={hubBack}>
+            ← {t('Floor', 'Màn hình sàn')}
+          </button>
         )}
 
-        {/* ARRIVALS. The reason this screen is worth opening: until now a staff
-            member on the floor could not mark anybody in without finding a
-            laptop. Same component as the door tablet, pointed at the room
+        {view === 'hub' && (
+          <>
+            <div style={kicker}>The Rampant Club · {t('Floor', 'Sàn')}</div>
+            <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 28, color: '#E5D4C2', margin: '12px 0 6px' }}>
+              {greeting(t)}, {me.display_name}.
+            </div>
+
+            {/* WHO ELSE IS ON. Staff names only — no member data — so this is
+                the cheapest thing on the screen to justify. */}
+            {floor && floor.onShift.length > 0 && (
+              <div style={onShiftRow}>
+                {floor.onShift.map((o, i) => (
+                  <span key={i} style={{ ...onShiftPill, ...(o.isMe ? onShiftMe : null) }}>
+                    {o.name}
+                    <span style={onShiftWhen}>{o.start ? o.start.slice(0, 5) : o.shift}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div style={cardGrid}>
+              <Card onClick={() => setView('tonight')} title={t('Who is in', 'Khách trong câu lạc bộ')}
+                    sub={t('arrivals, guests, who is booked', 'khách đến, khách mời, ai đã đặt')}
+                    count={counts.inClub} countLabel={t('in', 'trong')} />
+              <Card onClick={() => setView('orders')} title={t('Room orders', 'Yêu cầu gọi món')}
+                    sub={t('what the rooms have asked for', 'các phòng đã gọi gì')}
+                    count={counts.orders} countLabel={t('waiting', 'đang chờ')} urgent />
+              <Card onClick={() => setView('guests')} title={t('Guests', 'Khách mời')}
+                    sub={t('sign a guest in — name, signature, your PIN', 'ghi nhận khách — tên, chữ ký, mã PIN')} />
+              <Card onClick={() => setView('stock')} title={t('Stocktake', 'Kiểm kê')}
+                    sub={t('count the back bar', 'kiểm kê quầy bar')} />
+              <Card onClick={() => setView('howto')} title={t('How we do it', 'Quy trình')}
+                    sub={t('taking a food order, and the shift rules', 'nhận đơn món ăn và quy định ca')} />
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 30 }}>
+              <button onClick={logout} style={switchBtn}>{t('I\u2019m done \u00b7 switch user', 'Xong \u00b7 \u0111\u1ed5i ng\u01b0\u1eddi')}</button>
+              {/* The hand-back. Exiting staff mode returns the tablet to the
+                  BOARD, which is where a member picks it up. */}
+              <button onClick={async () => { await fetch('/api/kiosk/staff/logout', { method: 'POST' }); window.location.href = '/kiosk/board' }} style={boardBtn}>
+                {t('Hand over \u00b7 back to the board', 'B\u00e0n giao \u00b7 v\u1ec1 m\u00e0n h\u00ecnh ch\u00ednh')}
+              </button>
+            </div>
+            <div style={shellNote}>{t('Staff only. Do not leave this screen open on the floor.',
+                                       'Ch\u1ec9 d\u00e0nh cho nh\u00e2n vi\u00ean. Kh\u00f4ng \u0111\u1ec3 m\u00e0n h\u00ecnh n\u00e0y m\u1edf tr\u00ean s\u00e0n.')}</div>
+          </>
+        )}
+
+        {/* ARRIVALS. The reason this screen is worth opening: until this a
+            staff member on the floor could not mark anybody in without finding
+            a laptop. Same component as the door tablet, pointed at the room
             tablet's own route. */}
-        <div style={procHead}>{t('Who is in', 'Khách trong câu lạc bộ')}</div>
-        <div style={{ marginTop: 14 }}>
-          <ArrivalsRow endpoint="/api/kiosk/staff/arrivals" />
-        </div>
+        {view === 'tonight' && (
+          <Section title={t('Who is in', 'Khách trong câu lạc bộ')}>
+            <ArrivalsRow endpoint="/api/kiosk/staff/arrivals" />
+          </Section>
+        )}
 
         {/* WHAT THE ROOMS HAVE ASKED FOR. Before this, an order written on a
-            room tablet could only be read on that tablet — the server walked
-            in blind and read it off the table. The table button is still the
-            call; this is what you see before you answer it. */}
-        <div style={{ ...procHead, marginTop: 34 }}>{t('Room orders', 'Yêu cầu gọi món')}</div>
-        <div style={{ marginTop: 14 }}>
-          <OpenOrders source="kiosk" heading={false} />
-        </div>
-
-        {/* The way into the stocktake. It lives here rather than in the bottom
-            bar because it is a job somebody is sent to do, not a place they
-            wander to — and the count needs the PIN it already asked for. */}
-        {floor?.shiftRules && (
-          <>
-            <div style={{ ...procHead, marginTop: 34 }}>
-              {t(floor.shiftRules.title.en, floor.shiftRules.title.vn)}
-            </div>
-            <div style={ruleBox}>
-              {floor.shiftRules.rows.map((r, i) => (
-                <div key={i} style={ruleRow}>
-                  <span style={ruleWhen}>
-                    <b style={ruleName}>{r.shift}</b>
-                    <span style={ruleTime}>{r.time}</span>
-                  </span>
-                  <span style={ruleText}>{t(r.en, r.vn)}</span>
-                </div>
-              ))}
-              <div style={{ ...ruleText, opacity: .55, marginTop: 4 }}>
-                {t(floor.shiftRules.footnote.en, floor.shiftRules.footnote.vn)}
-              </div>
-            </div>
-          </>
+            room tablet could only be read on that tablet — the server walked in
+            blind and read it off the table. The table button is still the call;
+            this is what you see before you answer it. */}
+        {view === 'orders' && (
+          <Section title={t('Room orders', 'Yêu cầu gọi món')}>
+            <OpenOrders source="kiosk" heading={false} />
+          </Section>
         )}
 
-        {/* GUESTS, BEFORE THE DOOR EXISTS (2026-10-01). The entrance has no
-            tablet yet and the shop opens on 27 October; this is the same flow,
-            reached from the floor. It sits above Stocktake because it happens
-            during service and a stocktake happens after it. */}
-        <div style={{ ...procHead, marginTop: 34 }}>{t('Guests', 'Khách')}</div>
-        {me && <StaffGuestSignIn staffId={me.id} staffName={me.display_name} />}
-
-        <div style={{ ...procHead, marginTop: 38 }}>{t('Stocktake', 'Kiểm kê')}</div>
-        <button onClick={() => { window.location.href = '/kiosk/stocktake' }} style={stockBtn}>
-          {t('Count the back bar', 'Kiểm kê quầy bar')}
-          <span style={stockBtnSub}>{t('search a bottle, tap its level, finish', 'tìm chai, chọn mức, kết thúc')}</span>
-        </button>
-
-        <div style={{ ...procHead, marginTop: 38 }}>{t('Taking a food order', 'Quy trình nhận đơn món ăn')}</div>
-        {!floor && <div style={{ ...muted, margin: '16px 0' }}>…</div>}
-        {floor && (
-          <>
-            <ol style={steps}>
-              {floor.process.steps.map((st, i) => (
-                <li key={i} style={step}>
-                  <span style={stepNo}>{i + 1}</span>
-                  <span>{t(st.en, st.vn)}</span>
-                </li>
-              ))}
-            </ol>
-
-            <div style={noteBox}>
-              {floor.process.notes.map((n, i) => (
-                <div key={i} style={noteLine}>
-                  <b style={noteB}>{t(n.lead_en, n.lead_vn)}</b>{' '}{t(n.en, n.vn)}
-                </div>
-              ))}
-              <div style={{ ...noteLine, opacity: .6, marginBottom: 0 }}>
-                {t(floor.process.footnote.en, floor.process.footnote.vn)}
-              </div>
-            </div>
-          </>
+        {view === 'guests' && (
+          <Section title={t('Guests', 'Khách mời')}>
+            <StaffGuestSignIn staffId={me.id} staffName={me.display_name} />
+          </Section>
         )}
 
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 30 }}>
-          <button onClick={logout} style={switchBtn}>{t('I\u2019m done \u00b7 switch user', 'Xong \u00b7 \u0111\u1ed5i ng\u01b0\u1eddi')}</button>
-          {/* The hand-back. Exiting staff mode returns the tablet to the BOARD,
-              which is where a member picks it up. */}
-          <button onClick={async () => { await fetch('/api/kiosk/staff/logout', { method: 'POST' }); window.location.href = '/kiosk/board' }} style={boardBtn}>
-            {t('Hand over \u00b7 back to the board', 'B\u00e0n giao \u00b7 v\u1ec1 m\u00e0n h\u00ecnh ch\u00ednh')}
-          </button>
-        </div>
-        <div style={shellNote}>{t('Staff only. Do not leave this screen open on the floor.',
-                                   'Ch\u1ec9 d\u00e0nh cho nh\u00e2n vi\u00ean. Kh\u00f4ng \u0111\u1ec3 m\u00e0n h\u00ecnh n\u00e0y m\u1edf tr\u00ean s\u00e0n.')}</div>
+        {/* The stocktake is a job somebody is SENT to do, not a place they
+            wander to — and the count needs the PIN this screen already asked
+            for. */}
+        {view === 'stock' && (
+          <Section title={t('Stocktake', 'Kiểm kê')}>
+            <button onClick={() => { window.location.href = '/kiosk/stocktake' }} style={stockBtn}>
+              {t('Count the back bar', 'Kiểm kê quầy bar')}
+              <span style={stockBtnSub}>{t('search a bottle, tap its level, finish', 'tìm chai, chọn mức, kết thúc')}</span>
+            </button>
+          </Section>
+        )}
+
+        {view === 'howto' && (
+          <Section title={t('How we do it', 'Quy trình')}>
+            {floor?.shiftRules && (
+              <>
+                <div style={procHead}>{t(floor.shiftRules.title.en, floor.shiftRules.title.vn)}</div>
+                <div style={ruleBox}>
+                  {floor.shiftRules.rows.map((r, i) => (
+                    <div key={i} style={ruleRow}>
+                      <span style={ruleWhen}>
+                        <b style={ruleName}>{r.shift}</b>
+                        <span style={ruleTime}>{r.time}</span>
+                      </span>
+                      <span style={ruleText}>{t(r.en, r.vn)}</span>
+                    </div>
+                  ))}
+                  <div style={{ ...ruleText, opacity: .55, marginTop: 4 }}>
+                    {t(floor.shiftRules.footnote.en, floor.shiftRules.footnote.vn)}
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div style={{ ...procHead, marginTop: 34 }}>{t('Taking a food order', 'Quy trình nhận đơn món ăn')}</div>
+            {!floor && <div style={{ ...muted, margin: '16px 0' }}>…</div>}
+            {floor && (
+              <>
+                <ol style={steps}>
+                  {floor.process.steps.map((st, i) => (
+                    <li key={i} style={step}>
+                      <span style={stepNo}>{i + 1}</span>
+                      <span>{t(st.en, st.vn)}</span>
+                    </li>
+                  ))}
+                </ol>
+                <div style={noteBox}>
+                  {floor.process.notes.map((n, i) => (
+                    <div key={i} style={noteLine}>
+                      <b style={noteB}>{t(n.lead_en, n.lead_vn)}</b>{' '}{t(n.en, n.vn)}
+                    </div>
+                  ))}
+                  <div style={{ ...noteLine, opacity: .6, marginBottom: 0 }}>
+                    {t(floor.process.footnote.en, floor.process.footnote.vn)}
+                  </div>
+                </div>
+              </>
+            )}
+          </Section>
+        )}
       </div>
     </Scroll>
   )
@@ -264,6 +344,50 @@ export default function KioskStaff() {
 
 /** The process is longer than a screen on a tablet, so this one scrolls rather
  *  than centring and clipping. */
+// ── THE HUB'S PARTS ────────────────────────────────────────────────────────
+
+// A card is a destination and a queue in one. The number is only drawn when
+// there IS one: a card reading "0 waiting" trains people to ignore the number
+// on the card next to it that says 3.
+function Card({ onClick, title, sub, count, countLabel, urgent }: {
+  onClick: () => void; title: string; sub: string
+  count?: number; countLabel?: string; urgent?: boolean
+}) {
+  const show = typeof count === 'number' && count > 0
+  return (
+    <button onClick={onClick} style={card}>
+      <span style={cardTitle}>{title}</span>
+      <span style={cardSub}>{sub}</span>
+      {show && (
+        <span style={{ ...cardCount, ...(urgent ? cardCountUrgent : null) }}>
+          {count} <span style={cardCountLabel}>{countLabel}</span>
+        </span>
+      )}
+    </button>
+  )
+}
+
+// Every sub-screen wears the same heading, so moving between them feels like
+// one system rather than five pages that grew separately.
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <>
+      <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 26, color: '#E5D4C2', margin: '4px 0 20px' }}>{title}</div>
+      {children}
+    </>
+  )
+}
+
+// The club runs into the small hours; "Good evening" at one in the morning is
+// the sort of small wrongness that makes a screen feel unmaintained.
+function greeting(t: (en: string, vn: string) => string): string {
+  const h = parseInt(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', hour12: false }).format(new Date()), 10) % 24
+  if (h < 5) return t('Still with us', 'Vẫn còn ca')
+  if (h < 12) return t('Good morning', 'Chào buổi sáng')
+  if (h < 17) return t('Good afternoon', 'Chào buổi chiều')
+  return t('Good evening', 'Chào buổi tối')
+}
+
 function Scroll({ children }: { children: React.ReactNode }) {
   return <div style={{ minHeight: 'calc(100dvh - var(--kiosk-bar, 0px))', padding: '36px 24px 40px', overflowY: 'auto' }}>{children}</div>
 }
@@ -273,6 +397,32 @@ function Center({ children }: { children: React.ReactNode }) {
   return <div style={{ minHeight: 'calc(100dvh - var(--kiosk-bar, 0px))', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>{children}</div>
 }
 
+const cardGrid: React.CSSProperties = {
+  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+  gap: 14, marginTop: 26,
+}
+const card: React.CSSProperties = {
+  position: 'relative', textAlign: 'left', cursor: 'pointer',
+  background: 'rgba(229,212,194,0.05)', border: '1px solid rgba(229,212,194,0.16)',
+  borderRadius: 14, padding: '22px 20px 24px', minHeight: 116,
+  display: 'flex', flexDirection: 'column', gap: 8,
+  WebkitTapHighlightColor: 'transparent',
+}
+const cardTitle: React.CSSProperties = { fontFamily: "'Rampant Sans', serif", fontSize: 21, color: '#E5D4C2', lineHeight: 1.2 }
+const cardSub: React.CSSProperties = { fontFamily: MONO, fontSize: 11, color: '#B2AA98', lineHeight: 1.65 }
+const cardCount: React.CSSProperties = {
+  position: 'absolute', top: 16, right: 16, fontFamily: MONO, fontSize: 20, color: '#D4B85A',
+  fontVariantNumeric: 'tabular-nums',
+}
+const cardCountUrgent: React.CSSProperties = { color: '#E8A6A6' }
+const cardCountLabel: React.CSSProperties = { fontSize: 9, letterSpacing: '.12em', textTransform: 'uppercase', opacity: .7 }
+// Not the PIN pad's `backBtn` ("← Not you?"), which is a text link under a
+// name. This is a real target for a thumb on a wall-mounted tablet.
+const hubBack: React.CSSProperties = {
+  background: 'transparent', border: '1px solid rgba(178,170,152,0.3)', borderRadius: 24,
+  padding: '11px 22px', fontFamily: MONO, fontSize: 13, color: '#B2AA98', cursor: 'pointer',
+  marginBottom: 22, WebkitTapHighlightColor: 'transparent',
+}
 const kicker: React.CSSProperties = { fontFamily: MONO, fontSize: 11, color: '#D4B85A', letterSpacing: '0.16em', textTransform: 'uppercase' }
 const muted: React.CSSProperties = { fontFamily: MONO, fontSize: 13, color: '#B2AA98', opacity: 0.8, lineHeight: 1.7, maxWidth: 420, margin: '0 auto' }
 const shellNote: React.CSSProperties = { fontFamily: MONO, fontSize: 10, color: '#7E7864', letterSpacing: '0.06em', marginTop: 24 }
