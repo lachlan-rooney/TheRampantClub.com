@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getActor, svc, socialEmit } from '@/lib/social/server'
 import { parseMediaUrl } from '@/lib/gallery'
+import { recordPrompt } from '@/lib/gallery/prompt'
 
 // Add a contribution to an event.
 //   kind 'image' → {url, storage_path} from a prior Storage upload (browser
@@ -70,14 +71,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // fixture_id column is absent, the upsert fails, and nothing here cares.
   await (async () => {
     const { data: ev } = await a.from('events').select('fixture_id').eq('id', id).maybeSingle()
-    await a.from('gallery_prompts').upsert(
-      { member: actor.id, event_id: id, outcome: 'posted' }, { onConflict: 'member,event_id' })
+    await recordPrompt(a, { member: actor.id, eventId: id }, 'posted')
     // Both spellings of the same answer: the prompt may have been raised against
     // the FIXTURE, before this event existed.
-    if (ev?.fixture_id) {
-      await a.from('gallery_prompts').upsert(
-        { member: actor.id, fixture_id: ev.fixture_id, outcome: 'posted' }, { onConflict: 'member,fixture_id' })
-    }
+    if (ev?.fixture_id) await recordPrompt(a, { member: actor.id, fixtureId: ev.fixture_id }, 'posted')
   })().catch(() => {})
 
   return NextResponse.json({ ok: true, id: ins.data.id })

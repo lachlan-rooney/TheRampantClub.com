@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getActor, svc } from '@/lib/social/server'
 import { vnDateString } from '@/lib/datetime'
+import { recordPrompt } from '@/lib/gallery/prompt'
 
 // ASK THE PEOPLE WHO WERE THERE.
 //
@@ -154,13 +155,13 @@ export async function POST(req: Request) {
   // Recorded against the event where one exists, so the two surfaces agree on
   // what has been asked; against the fixture otherwise.
   if (p?.action === 'dismiss') {
-    const row = existing?.id
-      ? { member: actor.id, event_id: existing.id, outcome: 'dismissed' }
-      : { member: actor.id, fixture_id: fixtureId, outcome: 'dismissed' }
-    const { error } = await a.from('gallery_prompts').upsert(row, {
-      onConflict: existing?.id ? 'member,event_id' : 'member,fixture_id',
-    })
-    if (error) return NextResponse.json({ error: 'Could not save that.' }, { status: 500 })
+    // Through recordPrompt, NOT an upsert: the unique indexes are partial and
+    // Postgres refuses to infer a conflict target from one (42P10), which is
+    // how the first version of this took the answer and threw it away.
+    const ok = existing?.id
+      ? await recordPrompt(a, { member: actor.id, eventId: existing.id }, 'dismissed')
+      : await recordPrompt(a, { member: actor.id, fixtureId }, 'dismissed')
+    if (!ok) return NextResponse.json({ error: 'Could not save that.' }, { status: 500 })
     return NextResponse.json({ ok: true })
   }
 

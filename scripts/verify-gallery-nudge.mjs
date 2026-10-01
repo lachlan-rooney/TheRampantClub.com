@@ -56,7 +56,20 @@ const cookieFor = (sub, email) => {
 
 const ymd = d => new Date(Date.now() + d * 864e5).toISOString().slice(0, 10)
 
-let profile, fixA, fixB, fixOld
+// A THROWAWAY AUTH USER, not just a profiles row. profiles.id is a foreign key
+// to auth.users, so a random uuid is refused (23503) — the harness has to make
+// a real sign-in and take it away again.
+const admin = (path, init) => fetch(`${U}/auth/v1/admin/${path}`, {
+  headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: 'Bearer ' + env.SUPABASE_SERVICE_ROLE_KEY, 'Content-Type': 'application/json' },
+  ...init,
+})
+const makeUser = async email => {
+  const r = await admin('users', { method: 'POST', body: JSON.stringify({ email, password: `zz-${randomUUID()}`, email_confirm: true }) })
+  const j = await r.json().catch(() => ({}))
+  return r.ok ? j.id : null
+}
+
+let profile, staffOnly, fixA, fixB, fixOld
 const wipe = async () => {
   if (profile) await rest(`gallery_prompts?member=eq.${profile}`, { method: 'DELETE' })
   for (const f of [fixA, fixB, fixOld].filter(Boolean)) {
@@ -67,7 +80,22 @@ const wipe = async () => {
     await rest(`fixtures?id=eq.${f}`, { method: 'DELETE' })
   }
   await rest(`fixtures?title=like.${encodeURIComponent(TAG)}*`, { method: 'DELETE' })
-  if (profile) await rest(`profiles?id=eq.${profile}`, { method: 'DELETE' })
+  // ── THE ORDER HERE IS THE WHOLE JOB ─────────────────────────────────────
+  // Creating an album and contributing to it calls socialEmit, which writes to
+  // activity_events — the Ops Hub's append-only spine, whose actor is a FK to
+  // profiles. So the profile cannot be deleted, so the auth user cannot be
+  // deleted (its cascade hits the same constraint, as a 500), so the member
+  // cannot be deleted either. Five runs of this left five throwaway members in
+  // the real roster and five rows in the real activity log before I looked.
+  //
+  // Named by actor, one at a time, and nothing else: a filter that reached any
+  // further would be deleting somebody's real history.
+  for (const id of [profile, staffOnly].filter(Boolean)) {
+    await rest(`activity_events?actor=eq.${id}`, { method: 'DELETE' })
+    await rest(`profiles?id=eq.${id}`, { method: 'DELETE' })
+    await admin(`users/${id}`, { method: 'DELETE' })
+  }
+  // Last: profiles.member_no points at it.
   await rest(`members?member_no=eq.${MEMBER}`, { method: 'DELETE' })
 }
 
@@ -83,9 +111,13 @@ try {
   // ── SETUP: a throwaway member, and three fixtures ──────────────────────
   await wipe()
   await rest('members', { method: 'POST', body: JSON.stringify({ member_no: MEMBER, full_name: `${TAG} Member`, tier: 'Pioneer', status: 'Active' }) })
-  profile = randomUUID()
-  const email = `zz-nudge-${profile.slice(0, 8)}@example.invalid`
-  const prof = await rest('profiles', { method: 'POST', body: JSON.stringify({ id: profile, display_name: `${TAG} Member`, member_no: MEMBER, is_admin: false }) })
+  const email = `zz-nudge-${randomUUID().slice(0, 8)}@example.invalid`
+  profile = await makeUser(email)
+  if (!profile) { console.log('could not make a throwaway auth user'); process.exit(1) }
+  // The trigger on auth.users may already have made the profile row; either way
+  // it must end up non-admin and paired to the throwaway membership.
+  const prof = await rest('profiles', { method: 'POST', headers: { ...svc, Prefer: 'resolution=merge-duplicates,return=representation' },
+    body: JSON.stringify({ id: profile, display_name: `${TAG} Member`, member_no: MEMBER, is_admin: false }) })
   if (!prof.ok) { console.log('could not make a throwaway profile:', await prof.text()); process.exit(1) }
 
   const mk = async (title, date) => {
@@ -122,7 +154,14 @@ try {
   // sign-up) and the one from four months ago (signed up, outside the window).
   // Each exclusion is asserted BY NAME: written as two copies of "ask is null"
   // these two checks both failed for either bug and neither said which.
-  await post({ action: 'dismiss', fixture_id: fixA })
+  // ASSERT THE WRITE, not just that the asking stopped. The first run of this
+  // harness passed "it stops asking" while NOTHING was being recorded: the
+  // upsert was failing with 42P10 (a conflict target cannot be inferred from a
+  // partial unique index), the route was returning 500, and the only check on
+  // it was downstream. Absence is not presence.
+  const dismissed = await post({ action: 'dismiss', fixture_id: fixA })
+  t(dismissed.s === 200 && dismissed.j.ok === true,
+    '3b · "not this time" is ACCEPTED, not quietly refused', `status ${dismissed.s} ${JSON.stringify(dismissed.j)}`)
   const after = await get()
   const raised = after.j.ask?.fixture_id ?? null
   t(raised !== fixB, '4 · a fixture they were not down for is never raised',
@@ -185,12 +224,13 @@ try {
     posted.j.ask ? `raised "${posted.j.ask.title}"` : 'quiet')
 
   // ── NOT A MEMBER, NOT ASKED ────────────────────────────────────────────
-  const staffOnly = randomUUID()
-  await rest('profiles', { method: 'POST', body: JSON.stringify({ id: staffOnly, display_name: `${TAG} Staff`, is_admin: false }) })
-  const staffAsk = await fetch(`${BASE}/api/members/gallery/nudge`, { headers: { cookie: cookieFor(staffOnly, 'zz-nudge-staff@example.invalid') } })
+  const staffEmail = `zz-nudge-staff-${randomUUID().slice(0, 8)}@example.invalid`
+  staffOnly = await makeUser(staffEmail)
+  await rest('profiles', { method: 'POST', headers: { ...svc, Prefer: 'resolution=merge-duplicates,return=representation' },
+    body: JSON.stringify({ id: staffOnly, display_name: `${TAG} Staff`, member_no: null, is_admin: false }) })
+  const staffAsk = await fetch(`${BASE}/api/members/gallery/nudge`, { headers: { cookie: cookieFor(staffOnly, staffEmail) } })
     .then(async r => ({ s: r.status, j: await r.json().catch(() => ({})) }))
   t(staffAsk.s === 200 && staffAsk.j.ask === null, '14 · a login with no membership is never asked', `status ${staffAsk.s}`)
-  await rest(`profiles?id=eq.${staffOnly}`, { method: 'DELETE' })
 
   const anon = await fetch(`${BASE}/api/members/gallery/nudge`)
   t(anon.status === 401, '15 · and nobody signed out is asked anything', `status ${anon.status}`)
@@ -198,6 +238,17 @@ try {
   console.log('✗ THREW:', e?.message || e); fail++
 } finally {
   await wipe()
+  // ASSERT THE CLEANUP. A harness that quietly leaves rows in the real roster
+  // is worse than one that fails: the mess outlives the run and nobody connects
+  // the two. Checked after the wipe, reported with the tally.
+  const left = await Promise.all([
+    rest(`members?member_no=eq.${MEMBER}&select=member_no`).then(r => r.json()).catch(() => []),
+    rest(`profiles?display_name=like.${encodeURIComponent(TAG)}*&select=id`).then(r => r.json()).catch(() => []),
+    rest(`fixtures?title=like.${encodeURIComponent(TAG)}*&select=id`).then(r => r.json()).catch(() => []),
+  ])
+  const n = left.reduce((a, x) => a + (Array.isArray(x) ? x.length : 0), 0)
+  t(n === 0, 'it cleaned up after itself',
+    n ? `LEFT BEHIND — ${left.map(x => (Array.isArray(x) ? x.length : '?')).join(' member / ')} (member/profile/fixture)` : 'nothing left in the roster')
   console.log(`\n${pass} passed, ${fail} failed`)
   process.exit(fail ? 1 : 0)
 }
