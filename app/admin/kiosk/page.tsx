@@ -3,13 +3,19 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useLang } from '@/lib/admin-lang'
 
-// Admin kiosk management: enrol/revoke tablets (the device boundary) and set staff
-// PINs (the picker attribution). Two clearly-separated layers.
+// Admin kiosk management: enrol/revoke tablets (the device boundary), set staff
+// PINs (the picker attribution), and hold each staff member's EMAIL ADDRESS
+// (2026-10-01) so the morning board digest has somewhere to go.
+//
+// The address sits here rather than on Access & Logins because that page is
+// about MEMBER portal accounts and these are staff who deliberately have no
+// login at all — floor staff have PINs, not seats. Same screen, same list of
+// people, one more column. The nav entry says so now: "Kiosk & Staff PINs".
 
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
 
 interface Device { id: string; label: string; room: string | null; purpose?: 'room' | 'door'; status: string; enrolled_at: string | null; last_seen_at: string | null; pair_code: string | null }
-interface Staff { id: string; display_name: string; role_title: string | null; active: boolean; has_pin: boolean }
+interface Staff { id: string; display_name: string; role_title: string | null; active: boolean; has_pin: boolean; email: string | null; email_reminders: boolean; last_digest_on: string | null }
 interface MemberPin { member_no: string; full_name: string; has_pin: boolean; set_at: string | null; fails_15m: number; fails_24h: number; locked: boolean; hard_locked: boolean }
 
 export default function AdminKiosk() {
@@ -27,6 +33,12 @@ export default function AdminKiosk() {
   const [pinFor, setPinFor] = useState<Staff | null>(null)
   const [pin, setPin] = useState('')
   const [msg, setMsg] = useState('')
+  // The address being edited, and what is typed into it. One at a time: a list
+  // of fifteen open text boxes is fifteen ways to save the wrong row.
+  const [mailFor, setMailFor] = useState<Staff | null>(null)
+  const [mail, setMail] = useState('')
+  const [emailsReady, setEmailsReady] = useState(true)
+  const [sending, setSending] = useState(false)
 
   const load = useCallback(async () => {
     const [d, s, m] = await Promise.all([
@@ -34,10 +46,41 @@ export default function AdminKiosk() {
       fetch('/api/admin/kiosk-devices/member-pins'),
     ])
     if (d.ok) { const j = await d.json(); setDevices(j.devices || []); setRooms(j.rooms || []); setDoorReady(j.door_ready === true) }
-    if (s.ok) setStaff((await s.json()).staff || [])
+    if (s.ok) { const j = await s.json(); setStaff(j.staff || []); setEmailsReady(j.emails_ready !== false) }
     if (m.ok) setMpins((await m.json()).members || [])
   }, [])
   useEffect(() => { load() }, [load])
+
+  const saveEmail = async (id: string, email: string | null, reminders?: boolean) => {
+    const r = await fetch('/api/admin/kiosk-devices/pin', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ team_member_id: id, ...(email !== undefined ? { email } : {}), ...(reminders !== undefined ? { email_reminders: reminders } : {}) }),
+    })
+    const j = await r.json().catch(() => ({}))
+    setMsg(r.ok ? t('Saved.', 'Đã lưu.') : (j.error || t('Could not save that.', 'Không lưu được.')))
+    if (r.ok) { setMailFor(null); setMail(''); load() }
+  }
+
+  // SEND IT NOW, so the owner can see what arrives instead of waiting for
+  // nine in the morning and wondering. It ignores "already sent today" and
+  // the quiet hours, and sends to ONE person — a button that mails the whole
+  // team is a button nobody dares press twice.
+  const sendNow = async (s: Staff) => {
+    if (!s.email) return
+    if (!window.confirm(t(`Send ${s.display_name} their board list now, at ${s.email}?`, `Gửi danh sách công việc cho ${s.display_name} tại ${s.email} ngay bây giờ?`))) return
+    setSending(true)
+    const r = await fetch('/api/admin/staff-digest', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ team_member_id: s.id }),
+    })
+    const j = await r.json().catch(() => ({}))
+    setSending(false)
+    if (!r.ok) { setMsg(j.error || t('Could not send.', 'Không gửi được.')); return }
+    const me = (j.people || [])[0]
+    setMsg(me?.outcome === 'sent'
+      ? `${t('Sent to', 'Đã gửi tới')} ${s.email} — ${me.late} ${t('late', 'quá hạn')}, ${me.today} ${t('due today', 'hôm nay')}, ${me.soon} ${t('tomorrow', 'ngày mai')}.`
+      : `${t('Nothing sent', 'Chưa gửi')} — ${me?.outcome || j.reason || '—'}.`)
+  }
 
   const addDevice = async () => {
     if (!label.trim()) return
@@ -73,8 +116,8 @@ export default function AdminKiosk() {
 
   return (
     <div>
-      <h1 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 26, color: '#E5D4C2', marginBottom: 4 }}>{t('Kiosk', 'Kiosk')}</h1>
-      <p style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98', marginBottom: 24 }}>{t('Enrol tablets (the device session is the security boundary) · set staff PINs (attribution)', 'Đăng ký máy tính bảng (phiên thiết bị là ranh giới bảo mật) · đặt mã PIN cho nhân viên (ghi nhận)')}</p>
+      <h1 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 26, color: '#E5D4C2', marginBottom: 4 }}>{t('Kiosk & Staff PINs', 'Kiosk & Mã PIN nhân viên')}</h1>
+      <p style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98', marginBottom: 24 }}>{t('Enrol tablets (the device session is the security boundary) · set staff PINs (attribution) · hold the address a task reminder goes to', 'Đăng ký máy tính bảng (phiên thiết bị là ranh giới bảo mật) · đặt mã PIN cho nhân viên (ghi nhận) · lưu địa chỉ nhận nhắc việc')}</p>
       {msg && <div style={banner}>{msg}</div>}
 
       <div style={sectionLabel}>{t('Enrolled devices', 'Thiết bị đã đăng ký')}</div>
@@ -114,15 +157,47 @@ export default function AdminKiosk() {
       ))}
       {devices.length === 0 && <div style={muted}>{t('No devices enrolled.', 'Chưa có thiết bị nào được đăng ký.')}</div>}
 
-      <div style={{ ...sectionLabel, marginTop: 32 }}>{t('Staff PINs', 'Mã PIN nhân viên')}</div>
+      <div style={{ ...sectionLabel, marginTop: 32 }}>{t('Staff PINs & addresses', 'Mã PIN & địa chỉ nhân viên')}</div>
+      <div style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98', opacity: .7, marginBottom: 12, lineHeight: 1.7, maxWidth: '72ch' }}>
+        {t('A PIN is how somebody signs what they did; an address is where their board list is sent at nine each morning. Neither is a login — nobody here gets a seat from this page. Somebody with nothing due is sent nothing.',
+           'Mã PIN để ghi nhận ai đã làm gì; địa chỉ email là nơi nhận danh sách công việc lúc 9 giờ mỗi sáng. Cả hai đều không phải tài khoản đăng nhập. Ai không có việc đến hạn thì không nhận email.')}
+      </div>
+      {!emailsReady && (
+        <div style={{ ...muted, fontStyle: 'normal', color: '#D4B85A', marginBottom: 12 }}>
+          {t('Run db/staff_emails.sql to switch the addresses on — PINs work either way.',
+             'Chạy db/staff_emails.sql để bật phần địa chỉ — mã PIN vẫn hoạt động bình thường.')}
+        </div>
+      )}
       {staff.map(s => (
-        <div key={s.id} style={row}>
-          <div>
+        <div key={s.id} style={{ ...row, flexWrap: 'wrap' }}>
+          <div style={{ minWidth: 0, flex: '1 1 260px' }}>
             <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 15, color: '#E5D4C2' }}>{s.display_name}</span>
             {s.role_title && <span style={{ fontFamily: MONO, fontSize: 10, color: '#7E7864', marginLeft: 8 }}>{s.role_title}</span>}
             <span style={{ ...pill, ...(s.has_pin ? pillOk : pillPend) }}>{s.has_pin ? t('PIN set', 'Đã đặt PIN') : t('no PIN', 'chưa có PIN')}</span>
+            <div style={{ fontFamily: MONO, fontSize: 11, color: s.email ? '#B2AA98' : '#7E7864', marginTop: 6 }}>
+              {s.email || t('no address', 'chưa có địa chỉ')}
+              {s.email && !s.email_reminders && <span style={{ ...pill, ...pillPend, marginLeft: 8 }}>{t('reminders off', 'tắt nhắc việc')}</span>}
+              {s.email && s.last_digest_on && <span style={{ color: '#7E7864', marginLeft: 8 }}>{t('last sent', 'gửi lần cuối')} {s.last_digest_on}</span>}
+            </div>
           </div>
-          <button onClick={() => { setPinFor(s); setPin('') }} style={smallBtn}>{s.has_pin ? t('Reset PIN', 'Đặt lại PIN') : t('Set PIN', 'Đặt PIN')}</button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button onClick={() => { setPinFor(s); setPin('') }} style={smallBtn}>{s.has_pin ? t('Reset PIN', 'Đặt lại PIN') : t('Set PIN', 'Đặt PIN')}</button>
+            {emailsReady && (
+              <button onClick={() => { setMailFor(s); setMail(s.email || '') }} style={smallBtn}>
+                {s.email ? t('Change address', 'Đổi địa chỉ') : t('Add address', 'Thêm địa chỉ')}
+              </button>
+            )}
+            {emailsReady && s.email && (
+              <>
+                <button onClick={() => saveEmail(s.id, undefined as unknown as string, !s.email_reminders)} style={smallBtn}>
+                  {s.email_reminders ? t('Stop reminders', 'Ngừng nhắc việc') : t('Start reminders', 'Bật nhắc việc')}
+                </button>
+                <button onClick={() => sendNow(s)} disabled={sending} style={{ ...smallBtn, opacity: sending ? .5 : 1 }}>
+                  {t('Send now', 'Gửi ngay')}
+                </button>
+              </>
+            )}
+          </div>
         </div>
       ))}
 
@@ -158,6 +233,30 @@ export default function AdminKiosk() {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 14 }}>
               <button onClick={() => setPinFor(null)} style={smallBtn}>{t('Cancel', 'Hủy')}</button>
               <button onClick={savePin} disabled={!/^[0-9]{4,8}$/.test(pin)} style={{ ...btn, opacity: /^[0-9]{4,8}$/.test(pin) ? 1 : 0.4 }}>{t('Save', 'Lưu')}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* THE ADDRESS. Empty clears it — "we do not have one" has to be sayable
+          or a typo is permanent. */}
+      {mailFor && (
+        <div style={modalBack} onClick={() => setMailFor(null)}>
+          <div style={modal} onClick={e => e.stopPropagation()}>
+            <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 18, color: '#E5D4C2', marginBottom: 6 }}>{t('Address for', 'Địa chỉ của')} {mailFor.display_name}</div>
+            <div style={{ fontFamily: MONO, fontSize: 10.5, color: '#B2AA98', opacity: .75, lineHeight: 1.7, marginBottom: 12 }}>
+              {t('Where their board list is sent each morning. Not a login — it grants nothing. Leave it empty to remove it.',
+                 'Nơi nhận danh sách công việc mỗi sáng. Không phải tài khoản đăng nhập. Để trống để xóa.')}
+            </div>
+            <input value={mail} onChange={e => setMail(e.target.value)} type="email" inputMode="email"
+                   placeholder="name@example.com" style={{ ...input, width: '100%' }} autoFocus />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 14 }}>
+              <button onClick={() => setMailFor(null)} style={smallBtn}>{t('Cancel', 'Hủy')}</button>
+              <button onClick={() => saveEmail(mailFor.id, mail.trim())}
+                      disabled={!!mail.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail.trim())}
+                      style={{ ...btn, opacity: (!mail.trim() || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail.trim())) ? 1 : 0.4 }}>
+                {mail.trim() ? t('Save', 'Lưu') : t('Remove', 'Xóa')}
+              </button>
             </div>
           </div>
         </div>

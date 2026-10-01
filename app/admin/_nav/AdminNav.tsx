@@ -122,7 +122,7 @@ const GROUPS: Group[] = [
     items: [
       { href: '/admin/members', label: 'Access & Logins', vn: 'Truy cập & Đăng nhập', icon: 'badge' },
       { href: '/admin/members/link', label: 'Accounts & Memberships', vn: 'Tài khoản & Hội viên', icon: 'link' },
-      { href: '/admin/kiosk', label: 'Kiosk', vn: 'Kiosk', icon: 'tablet' },
+      { href: '/admin/kiosk', label: 'Kiosk & Staff PINs', vn: 'Kiosk & Mã PIN', icon: 'tablet' },
       { href: '/admin/tier-budgets', label: 'Tier Budgets', vn: 'Ngân sách theo hạng', icon: 'layers' },
       { href: '/admin/observatory', label: 'Observatory', vn: 'Đài quan sát', icon: 'eye' },
       { href: '/admin/decay-fit', label: 'Decay Fit', vn: 'Đường suy giảm', icon: 'trend' },
