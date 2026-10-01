@@ -293,12 +293,14 @@ export default function MenuBoard({
             <span className="mb-tab-sub">{t('private catering, by arrangement', 'tiệc riêng, đặt trước')}</span>
           </button>
 
-          {/* THE SHELF — the room tablet only (owner, 2026-09-25: "with a list
-              of the current whisky stock on a tab too"). Not in the members'
-              portal, which already has the whole whisky library at
-              /members/whisky with the Flavour Compass attached; a fourth tab
-              there would be a worse copy of a page one tap away. */}
-          {variant === 'kiosk' && (
+          {/* THE SHELF. Built kiosk-only on 2026-09-25, on my reasoning that
+              the members' portal already has the whole library at
+              /members/whisky. The owner went looking for it on
+              /members/menus on 2026-10-01 and it was not there — which is the
+              answer: somebody reading a MENU expects the whisky on it, and
+              being told the list lives on another page is the kind of thing
+              only the person who built it finds obvious. Both surfaces now. */}
+          {(
             <button role="tab" aria-selected={service === 'whisky'}
                     className={`mb-tab ${service === 'whisky' ? 'is-on' : ''}`}
                     onClick={() => { setService('whisky'); setOpen(null) }}>

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { svc, deviceOk } from '@/lib/kiosk/server'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 // WHAT THE BAR CAN POUR TONIGHT — the shelf, for the room tablet.
 //
@@ -23,8 +24,17 @@ import { svc, deviceOk } from '@/lib/kiosk/server'
 // and reads, on a menu, as a reason not to order it. NOT added_at, NOT who
 // last topped it up, and there is no cost column on this table at all.
 //
-// DEVICE-GATED, like the menu. No member session is needed: the shelf is the
-// same for everyone in the room, and nothing here belongs to anybody.
+// A TABLET OR A MEMBER (2026-10-01). It began device-gated, because it was
+// built for the room tablets. The owner then went looking for the whisky on
+// /members/menus and it was not there — somebody reading a menu expects the
+// whisky to be on it. The portal has no device cookie, so the gate had to
+// widen: an enrolled tablet, OR a signed-in member.
+//
+// Widening it is safe because of what this route does NOT return. There is no
+// cost column on this table at all, no fill level, no who-topped-it-up — the
+// list is the label, where it is from, how strong, and the club's own note.
+// It is the same answer for everyone, and nothing in it belongs to anybody.
+// Still not public: a stranger gets nothing.
 
 export const dynamic = 'force-dynamic'
 
@@ -51,8 +61,15 @@ function tidyAbv(raw: string | number | null): string | null {
   return `${parseFloat(n.toFixed(2))}%`
 }
 
+async function allowed(): Promise<boolean> {
+  if (await deviceOk()) return true
+  const sb = await createServerSupabaseClient()
+  const { data: { user } } = await sb.auth.getUser()
+  return !!user
+}
+
 export async function GET() {
-  if (!(await deviceOk())) return NextResponse.json({ error: 'Device not enrolled.' }, { status: 403 })
+  if (!(await allowed())) return NextResponse.json({ error: 'Sign in, or use a club tablet.' }, { status: 403 })
 
   if (cached && Date.now() - cached.at < TTL) {
     return NextResponse.json({ whiskies: cached.rows, cached: true })

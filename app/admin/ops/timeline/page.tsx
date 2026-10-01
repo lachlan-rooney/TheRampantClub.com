@@ -41,6 +41,11 @@ export default function MasterTimelinePage() {
   const { t, lang } = useLang()
   const [projects, setProjects] = useState<Project[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
+  // KEPT APART from `tasks`. Everything on this page — the three numbers, the
+  // Gantt, the horizon — answers "what is still coming", and folding finished
+  // work into that list would quietly change every one of those answers. Done
+  // is read by the Done column and nothing else.
+  const [done, setDone] = useState<Task[]>([])
   const [team, setTeam] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
   const [who, setWho] = useState<string | null>(null)
@@ -54,15 +59,19 @@ export default function MasterTimelinePage() {
   useEffect(() => {
     const supabase = createBrowserSupabaseClient()
     ;(async () => {
-      const [{ data: pr }, { data: tk }, { data: tm }] = await Promise.all([
+      const [{ data: pr }, { data: tk }, { data: dn }, { data: tm }] = await Promise.all([
         supabase.from('projects').select('*').is('deleted_at', null).eq('status', 'active').order('created_at'),
         // OPEN work only. A timeline of finished jobs is a history lesson, and
         // the one question this page answers is what is still coming.
         supabase.from('tasks').select('*').eq('status', 'open'),
+        // Finished work, newest first and capped — see DONE_LIMIT.
+        supabase.from('tasks').select('*').eq('status', 'done')
+          .order('completed_at', { ascending: false, nullsFirst: false }).limit(DONE_LIMIT),
         supabase.from('team_members').select('*').order('display_name'),
       ])
       setProjects((pr || []) as Project[])
       setTasks((tk || []) as Task[])
+      setDone((dn || []) as Task[])
       setTeam((tm || []) as TeamMember[])
       const { data: cols } = await supabase.from('board_columns').select('id, name')
       setColName(new Map(((cols || []) as { id: string; name: string }[]).map(c => [c.id, c.name])))
@@ -108,8 +117,8 @@ export default function MasterTimelinePage() {
         <h1 style={pageTitle}>{t('Everything, on one timeline', 'Tất cả trên một dòng thời gian')}</h1>
       </div>
       <p style={lede}>
-        {t('Every open job on every board. Read-only — reschedule on the board that owns the job.',
-           'Tất cả công việc đang mở trên mọi bảng. Chỉ xem — hãy đổi lịch trên bảng sở hữu công việc đó.')}
+        {t('Every open job on every board, and the last 60 finished. Read-only — reschedule on the board that owns the job.',
+           'Tất cả công việc đang mở trên mọi bảng, cùng 60 việc hoàn thành gần nhất. Chỉ xem — hãy đổi lịch trên bảng sở hữu công việc đó.')}
       </p>
 
       {/* the three numbers worth knowing before looking at anything */}
@@ -191,9 +200,17 @@ export default function MasterTimelinePage() {
            where the rest of its column is visible. */
         <div style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 16, alignItems: 'flex-start' }}>
           {COLUMN_ORDER.map(name => {
-            const inCol = shown
-              .filter(x => (colName.get(x.column_id) || 'Backlog') === name)
-              .sort((a, b) => (a.due_date || '9999').localeCompare(b.due_date || '9999'))
+            // Done comes from its own bucket, newest-finished first. The
+            // horizon does not apply to it — "due in the next 60 days" is a
+            // question about work that has not happened.
+            const inCol = name === 'Done'
+              ? done
+                  .filter(x => boardById.has(x.project_id))
+                  .filter(x => !who || x.assignee === who)
+                  .filter(x => !board || x.project_id === board)
+              : shown
+                  .filter(x => (colName.get(x.column_id) || 'Backlog') === name)
+                  .sort((a, b) => (a.due_date || '9999').localeCompare(b.due_date || '9999'))
             return (
               <div key={name} style={columnStyle}>
                 <div style={columnHeader}>
@@ -247,10 +264,18 @@ const backLink: React.CSSProperties = { fontFamily: FAMILY, fontSize: 11, color:
 const pageTitle: React.CSSProperties = { fontFamily: "'Rampant Sans', serif", fontSize: 28, fontWeight: 500, color: '#E5D4C2', letterSpacing: '0.04em', margin: '6px 0 0' }
 const lede: React.CSSProperties = { fontFamily: FAMILY, fontSize: 12, lineHeight: 1.7, color: '#B2AA98', margin: '8px 0 0', maxWidth: 680 }
 const emptyText: React.CSSProperties = { fontFamily: FAMILY, fontSize: 12, color: '#B2AA98', opacity: 0.7, padding: '28px 0' }
-// NO DONE COLUMN HERE. This page loads open work only, so a Done column could
-// never be anything but empty — and a column permanently reading zero looks
-// like a fault rather than a fact. Finished work lives on its own board.
-const COLUMN_ORDER = ['Backlog', 'In progress', 'Blocked']
+// DONE IS BACK (owner, 2026-10-01: "still not seeing a done section here
+// yet either"). It was left off because the page loaded open work only, so the
+// column could never be anything but empty — but the fix for that is to load
+// the finished work, not to hide the column. A master view of every board that
+// cannot show you what has been finished is answering half the question.
+//
+// Done is loaded SEPARATELY and capped, because it only grows: 261 open cards
+// across nine boards is a page, and every card ever completed is a download.
+// The cap is recent-first, and the column says so rather than pretending it is
+// the whole history.
+const COLUMN_ORDER = ['Backlog', 'In progress', 'Blocked', 'Done']
+const DONE_LIMIT = 60
 const vnShort = (d: string, lang: 'en' | 'vn' = 'en') =>
   new Date(`${d}T12:00:00+07:00`).toLocaleDateString(lang === 'vn' ? 'vi-VN' : 'en-GB', { day: 'numeric', month: 'short', timeZone: 'Asia/Ho_Chi_Minh' })
 const columnStyle: React.CSSProperties = {
