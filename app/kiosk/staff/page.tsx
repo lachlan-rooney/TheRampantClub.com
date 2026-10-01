@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLang } from '@/lib/lang'
 import ArrivalsRow from '@/components/admin/ArrivalsRow'
 import StaffGuestSignIn from '@/components/kiosk/StaffGuestSignIn'
+import StaffMemberLookup from '@/components/kiosk/StaffMemberLookup'
 import OpenOrders from '@/components/menus/OpenOrders'
 
 // The gated kiosk shell (device session already verified by middleware). Layer 2:
@@ -15,7 +16,7 @@ import OpenOrders from '@/components/menus/OpenOrders'
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
 const IDLE_MS = 180_000   // 3 min idle → back to the picker
 
-type View = 'hub' | 'tonight' | 'orders' | 'guests' | 'stock' | 'howto'
+type View = 'hub' | 'tonight' | 'orders' | 'guests' | 'member' | 'stock' | 'howto'
 interface Staff { id: string; display_name: string; role_title?: string | null }
 interface OnShift { name: string; shift: string; start: string | null; end: string | null; isMe: boolean }
 interface Bi { en: string; vn: string }
@@ -187,6 +188,8 @@ export default function KioskStaff() {
               <Card onClick={() => setView('orders')} title={t('Room orders', 'Yêu cầu gọi món')}
                     sub={t('what the rooms have asked for', 'các phòng đã gọi gì')}
                     count={counts.orders} countLabel={t('waiting', 'đang chờ')} urgent />
+              <Card onClick={() => setView('member')} title={t('Who is this?', 'Hội viên này là ai?')}
+                    sub={t('what they drink, their locker, when they were last in', 'khách uống gì, tủ khóa, lần ghé gần nhất')} />
               <Card onClick={() => setView('guests')} title={t('Guests', 'Khách mời')}
                     sub={t('sign a guest in — name, signature, your PIN', 'ghi nhận khách — tên, chữ ký, mã PIN')} />
               <Card onClick={() => setView('stock')} title={t('Stocktake', 'Kiểm kê')}
@@ -225,6 +228,14 @@ export default function KioskStaff() {
         {view === 'orders' && (
           <Section title={t('Room orders', 'Yêu cầu gọi món')}>
             <OpenOrders source="kiosk" heading={false} />
+          </Section>
+        )}
+
+        {/* The dossier unmounts with the view, so it is not still on screen
+            when the tablet is picked up again. */}
+        {view === 'member' && (
+          <Section title={t('Who is this?', 'Hội viên này là ai?')}>
+            <StaffMemberLookup />
           </Section>
         )}
 
