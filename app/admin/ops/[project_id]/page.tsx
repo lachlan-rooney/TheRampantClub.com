@@ -22,6 +22,7 @@ import type {
   Project, BoardColumn, Task, TeamMember, ProjectMember, TaskPriority, ProjectRole,
   TaskTemplate, Recurrence,
 } from '@/lib/ops/types'
+import { LABEL_COLOURS } from '@/lib/ops/palette'
 
 const FAMILY = "'Google Sans Code', monospace"
 const PRIORITY_COLOUR: Record<TaskPriority, string> = {
@@ -914,7 +915,11 @@ const btnPrimary: React.CSSProperties = { background: '#5E6650', color: '#E5D4C2
 // Stable per label, so [Legal] is the same colour on every board and nobody
 // has to pick one. Hashed rather than configured: a new workstream invented
 // tomorrow gets a colour without anybody administering it.
-const LABEL_COLOURS = ['#D4B85A', '#7FB3A0', '#9E8FC4', '#C79A6B', '#A9BB84', '#C27070', '#7FA6C4', '#C4907F']
+//
+// The list itself moved to lib/ops/palette.ts (2026-10-01). A label chip sits
+// on the same card as the status pill, and the old list literally contained
+// the overdue red and the upcoming gold — so [Bar] could hash to the alarm
+// colour and sit two millimetres from a pill that meant it.
 const labelColour = (l: string) => {
   let h = 0
   for (let i = 0; i < l.length; i++) h = (h * 31 + l.charCodeAt(i)) >>> 0

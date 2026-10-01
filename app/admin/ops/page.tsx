@@ -10,6 +10,7 @@ import NotificationSettings from '@/components/admin/NotificationSettings'
 import CollapsibleHeader from '@/components/admin/CollapsibleHeader'
 import { useLang } from '@/lib/admin-lang'
 import type { Project, TeamMember } from '@/lib/ops/types'
+import { BOARD_COLOURS, DEFAULT_BOARD_COLOUR } from '@/lib/ops/palette'
 
 const FAMILY = "'Google Sans Code', monospace"
 
@@ -19,20 +20,12 @@ const FAMILY = "'Google Sans Code', monospace"
 // one was missing, so every board was the default until three were set through
 // the RPC by hand.
 //
-// A FIXED SET, not a colour wheel. Eight swatches from the club's own palette
-// keeps a wall of boards looking like one system — an arbitrary picker is how
-// a board ends up magenta.
-const BOARD_COLOURS: { hex: string; name: [string, string] }[] = [
-  { hex: '#5E6650', name: ['Default', 'Mặc định'] },
-  { hex: '#D4B85A', name: ['Gold', 'Vàng'] },
-  { hex: '#7FB3A0', name: ['Sage', 'Xanh xám'] },
-  { hex: '#C45A28', name: ['Amber', 'Cam'] },
-  { hex: '#9E8FC4', name: ['Violet', 'Tím'] },
-  { hex: '#C27070', name: ['Rust', 'Đỏ gạch'] },
-  { hex: '#A9BB84', name: ['Fairway', 'Xanh cỏ'] },
-  { hex: '#C79A6B', name: ['Oloroso', 'Nâu vàng'] },
-]
-const DEFAULT_BOARD_COLOUR = BOARD_COLOURS[0].hex
+// A FIXED SET, not a colour wheel. Eight swatches keeps a wall of boards
+// looking like one system — an arbitrary picker is how a board ends up
+// magenta. They live in lib/ops/palette.ts, beside the status vocabulary they
+// are deliberately kept clear of: identity is cool, status is warm, and the
+// two families never meet. The rule, and why the old set broke it, is written
+// at the top of that file.
 
 interface OpenTask {
   id: string; title: string; due_date: string | null
@@ -41,6 +34,7 @@ interface OpenTask {
 }
 
 function ColourStrip({ value, onPick, label }: { value: string; onPick: (hex: string) => void; label: string }) {
+  const { t, lang } = useLang()
   return (
     <div style={{ marginTop: 14 }}>
       <div style={fieldLabel}>{label}</div>
@@ -49,7 +43,8 @@ function ColourStrip({ value, onPick, label }: { value: string; onPick: (hex: st
           const on = value.toLowerCase() === c.hex.toLowerCase()
           return (
             <button
-              key={c.hex} type="button" onClick={() => onPick(c.hex)} title={c.name[0]} aria-label={c.name[0]}
+              key={c.hex} type="button" onClick={() => onPick(c.hex)}
+              title={lang === 'vn' ? c.name[1] : c.name[0]} aria-label={lang === 'vn' ? c.name[1] : c.name[0]}
               aria-pressed={on}
               style={{
                 width: 30, height: 30, borderRadius: 7, cursor: 'pointer', background: c.hex,
@@ -60,6 +55,17 @@ function ColourStrip({ value, onPick, label }: { value: string; onPick: (hex: st
             />
           )
         })}
+      </div>
+      {/* SAYING THE RULE OUT LOUD, once, where somebody is choosing. Without
+          this the obvious question is "where did gold go?" — and the answer
+          is worth knowing, because it is the same answer as "why is that bar
+          red". */}
+      <div style={{
+        fontFamily: FAMILY, fontSize: 10, lineHeight: 1.7, color: '#7E7864',
+        marginTop: 10, maxWidth: '54ch',
+      }}>
+        {t('A board colour says what something belongs to. Red, amber, green and gold are kept for how it is going — overdue, due soon, done — so a colour here can never be mistaken for an alarm.',
+           'Màu của bảng cho biết công việc thuộc về đâu. Đỏ, cam, xanh lá và vàng được dành riêng cho tiến độ — quá hạn, sắp đến hạn, đã xong — nên màu ở đây không bao giờ bị nhầm thành cảnh báo.')}
       </div>
     </div>
   )
@@ -211,7 +217,7 @@ export default function OpsHubHome() {
   }
 
   const renderCard = (p: Project) => (
-    <div key={p.id} style={{ ...card, borderLeft: `3px solid ${p.colour || '#5E6650'}`, opacity: p.status === 'archived' ? 0.7 : 1 }}>
+    <div key={p.id} style={{ ...card, borderLeft: `3px solid ${p.colour || DEFAULT_BOARD_COLOUR}`, opacity: p.status === 'archived' ? 0.7 : 1 }}>
       <Link href={`/admin/ops/${p.id}`} style={{ textDecoration: 'none' }}>
         <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 16, color: '#E5D4C2', marginBottom: 4 }}>{p.name}</div>
         {p.description && <div style={{ ...metaText, marginBottom: 8 }}>{p.description}</div>}

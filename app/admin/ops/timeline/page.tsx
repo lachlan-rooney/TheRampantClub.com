@@ -7,6 +7,7 @@ import { useLang } from '@/lib/lang'
 import { vnDateString } from '@/lib/datetime'
 import GanttView from '../[project_id]/GanttView'
 import type { Task, Project, TeamMember } from '@/lib/ops/types'
+import { DEFAULT_BOARD_COLOUR } from '@/lib/ops/palette'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // EVERY BOARD, ON ONE TIMELINE.
@@ -135,7 +136,7 @@ export default function MasterTimelinePage() {
         </button>
         {projects.map(p => (
           <button key={p.id} onClick={() => setBoard(b => (b === p.id ? null : p.id))} style={chip(board === p.id)}>
-            <span style={{ width: 8, height: 8, borderRadius: 2, background: p.colour || '#5E6650', display: 'inline-block' }} />
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: p.colour || DEFAULT_BOARD_COLOUR, display: 'inline-block' }} />
             {p.name.split('·')[0].trim()} <b style={chipN}>{countFor(x => x.project_id === p.id)}</b>
           </button>
         ))}
@@ -175,7 +176,7 @@ export default function MasterTimelinePage() {
             onReschedule={() => {}}
             boardOf={(task) => {
               const p = boardById.get(task.project_id)
-              return p ? { name: p.name, colour: p.colour || '#5E6650' } : null
+              return p ? { name: p.name, colour: p.colour || DEFAULT_BOARD_COLOUR } : null
             }}
           />
         )
@@ -204,7 +205,7 @@ export default function MasterTimelinePage() {
                     const late = !!x.due_date && x.due_date < today
                     return (
                       <Link key={x.id} href={`/admin/ops/${x.project_id}?task=${x.id}`} style={{
-                        ...cardStyle, borderLeft: `3px solid ${b?.colour || '#5E6650'}`,
+                        ...cardStyle, borderLeft: `3px solid ${b?.colour || DEFAULT_BOARD_COLOUR}`,
                       }}>
                         <span style={{ display: 'block', color: '#E5D4C2', fontSize: 12, lineHeight: 1.4 }}>{x.title}</span>
                         <span style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
