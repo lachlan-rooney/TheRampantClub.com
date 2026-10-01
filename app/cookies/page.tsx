@@ -7,7 +7,7 @@ export default function CookiePage() {
     <LegalPage
       title="Cookie Policy"
       subtitle="Chính sách cookie"
-      lastUpdated="March 2026"
+      lastUpdated="Last updated: March 2026"
     >
       <Section title="What Are Cookies">
         <P>

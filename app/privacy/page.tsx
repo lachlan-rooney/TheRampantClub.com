@@ -1,64 +1,87 @@
 'use client'
 
-import LegalPage, { Section, P } from '@/components/LegalPage'
+import { useEffect, useState } from 'react'
+import LegalPage from '@/components/LegalPage'
+import LangToggle from '@/components/LangToggle'
+import { useLang } from '@/lib/lang'
+
+// THE PRIVACY NOTICE — the real one, from the register.
+//
+// This page was 64 lines of English hardcoded here, headed "Last updated: March
+// 2026", under the title "Privacy Policy". None of that was true any more. The
+// club's actual notice is "What We Keep, and Why", v1.1, effective 9 September
+// 2026, held in terms_versions in English AND Vietnamese — and it is the
+// document members were asked to consent to.
+//
+// So the public page and the members' copy were two different documents, and
+// the one facing the street was the stale one, in a language half the
+// membership does not read.
+//
+// ── IT FOLLOWS THE REGISTER NOW ───────────────────────────────────────────
+// Whatever version the register says is current is what this prints, with the
+// effective date from the row rather than a string somebody has to remember to
+// edit. Publishing the next version updates this page, which is the whole point
+// — the Snug has to come out of this notice, and that must not need a deploy.
+//
+// ── THE FALLBACK RULE ─────────────────────────────────────────────────────
+// A missing Vietnamese body falls back to English, never to a blank page. The
+// route does that so every surface gets the same answer; the switch is only
+// offered when there really is a Vietnamese text.
+
+interface Doc {
+  version: string
+  effective_date: string | null
+  title_en: string | null
+  title_vn: string | null
+  html_en: string
+  html_vn: string
+  has_vn: boolean
+}
 
 export default function PrivacyPage() {
+  const { t, lang } = useLang()
+  const [doc, setDoc] = useState<Doc | null>(null)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/legal/privacy')
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error('no'))))
+      .then(setDoc)
+      .catch(() => setFailed(true))
+  }, [])
+
+  const vn = lang === 'vn'
+  const title = (vn ? doc?.title_vn : doc?.title_en) || doc?.title_en
+    || t('What We Keep, and Why', 'Những Gì Chúng Tôi Lưu Giữ, và Vì Sao')
+
+  // The date the notice took effect, in the reader's language. Not "last
+  // updated": a legal notice has an effective date, and the two are different
+  // claims.
+  const when = doc?.effective_date
+    ? new Date(doc.effective_date + 'T00:00:00').toLocaleDateString(vn ? 'vi-VN' : 'en-GB',
+        { day: 'numeric', month: 'long', year: 'numeric' })
+    : null
+  const meta = when
+    ? t(`In effect from ${when} · v${doc?.version}`, `Có hiệu lực từ ${when} · v${doc?.version}`)
+    : t('Loading…', 'Đang tải…')
+
   return (
     <LegalPage
-      title="Privacy Policy"
-      subtitle="Chính sách bảo mật"
-      lastUpdated="March 2026"
-    >
-      <Section title="What We Collect">
-        <P>
-          The Club collects only what is necessary to maintain its register of members. When you sign in or apply for membership, we may collect your name, email address, and any information you voluntarily provide on your application &mdash; including, but not limited to, your preferred dram.
-        </P>
-        <P>
-          When you use the members&rsquo; area of the website, we collect standard technical data such as your IP address, browser type, and pages visited. This is handled by our authentication provider and is used solely to keep the site running and secure.
-        </P>
-      </Section>
-
-      <Section title="How We Use Your Information">
-        <P>
-          Your information is used for the following purposes: to authenticate your access to the members&rsquo; area, to communicate with you about Club events and matters, to manage event RSVPs and member records, and to improve the functioning of this website.
-        </P>
-        <P>
-          We do not use your information for marketing purposes, nor do we send unsolicited correspondence. The Club&rsquo;s communications are infrequent and, we hope, worth reading.
-        </P>
-      </Section>
-
-      <Section title="What We Do Not Do">
-        <P>
-          We do not sell, rent, trade, or otherwise share your personal information with third parties. We do not run third-party advertising on this website. We do not track your browsing behaviour across other websites. The Club has no interest in what you do when you are not at the Club.
-        </P>
-      </Section>
-
-      <Section title="Data Storage & Security">
-        <P>
-          Your data is stored securely via our authentication and hosting providers. We use industry-standard encryption for data in transit and at rest. Access to member data is restricted to authorised Club staff &mdash; which is to say, very few people.
-        </P>
-      </Section>
-
-      <Section title="Data Retention">
-        <P>
-          We retain your personal data for as long as your membership is active. Upon termination of membership &mdash; whether voluntary or by Committee decision &mdash; your data will be removed from our active systems within a reasonable period. &ldquo;Reasonable&rdquo; in this context means promptly, not at the Committee&rsquo;s leisure.
-        </P>
-      </Section>
-
-      <Section title="Your Rights">
-        <P>
-          You have the right to access, correct, or request deletion of your personal data at any time. You may also request a copy of the data we hold about you. To exercise any of these rights, please contact us at hello@therampantclub.com.
-        </P>
-        <P>
-          We will respond to all data requests within thirty (30) days. If we require additional time, we will let you know &mdash; and we will feel appropriately guilty about the delay.
-        </P>
-      </Section>
-
-      <Section title="Contact">
-        <P>
-          For any questions or concerns regarding this policy, please write to hello@therampantclub.com or speak with a member of staff at the bar. The latter is often more pleasant.
-        </P>
-      </Section>
-    </LegalPage>
+      title={title}
+      subtitle={vn ? (doc?.title_en || 'What We Keep, and Why') : (doc?.title_vn || 'Những Gì Chúng Tôi Lưu Giữ, và Vì Sao')}
+      lastUpdated={meta}
+      lang={doc?.has_vn ? <LangToggle /> : undefined}
+      html={
+        failed
+          ? `<p>${t('The notice could not be loaded just now. It is also in your member portal, and we will send it on request.',
+                    'Hiện chưa tải được thông báo này. Thông báo cũng có trong cổng hội viên, và chúng tôi sẽ gửi khi quý vị yêu cầu.')}</p>`
+          : doc
+            ? (vn ? doc.html_vn : doc.html_en)
+            // Deliberately a single quiet line rather than a skeleton: this is
+            // one block of text that arrives all at once, and a shimmer
+            // pretending to be fifteen clauses is a worse wait than a word.
+            : `<p>${t('Fetching the notice…', 'Đang tải thông báo…')}</p>`
+      }
+    />
   )
 }

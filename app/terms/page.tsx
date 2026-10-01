@@ -7,7 +7,7 @@ export default function TermsPage() {
     <LegalPage
       title="Terms of Use"
       subtitle="Điều khoản sử dụng"
-      lastUpdated="March 2026"
+      lastUpdated="Last updated: March 2026"
     >
       <Section title="The Club">
         <P>
