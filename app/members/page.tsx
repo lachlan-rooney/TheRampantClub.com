@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/members/Skeleton'
 import { useLang } from '@/lib/lang'
 import { PublicPage, type Ink } from '@/components/public/kit'
 import { CreamInk, CreamInkDefs } from '@/components/public/CreamInk'
+import OnTheShelf from '@/components/members/OnTheShelf'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE MEMBER DASHBOARD — the most-seen page in the house.
@@ -397,6 +398,13 @@ export default function MembersPage() {
               )}
             </div>
           </section>
+
+          {/* WHAT THE CLUB HAS BEEN READING (2026-10-01). Above the index of
+              pages, because it is the one thing on this dashboard with
+              something to say on its own — the rest are doors to rooms that
+              may be empty. It draws nothing until there is enough to mean
+              something, so it cannot itself become another empty panel. */}
+          <OnTheShelf />
 
           <div className="md-index">
             {bucketGroups.map(group => (

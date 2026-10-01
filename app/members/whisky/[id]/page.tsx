@@ -76,6 +76,19 @@ export default function BottleStory() {
       .then(({ data }) => { setW((data as Whisky) || null); setLoading(false) })
   }, [id])
 
+  // ONE LOOK, COUNTED — and nothing about who looked. The route takes a bottle
+  // and a kind and has nowhere to put a member, because the table behind it is
+  // a counter per bottle per day with no member column and no timestamp. It is
+  // fired and forgotten: a member reading about whisky must never see an error
+  // because a tally did not increment.
+  useEffect(() => {
+    if (!id) return
+    fetch('/api/whisky/interest', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ whisky_id: id, kind: 'bottle' }), keepalive: true,
+    }).catch(() => {})
+  }, [id])
+
   if (loading) return <MemberPage title="…" subtitle=""><WhiskyStyle /><p className="wl-text">{t('Pouring…', 'Đang rót…')}</p></MemberPage>
   if (!w) return <MemberPage title={t('Not found', 'Không tìm thấy')} subtitle=""><WhiskyStyle /><p className="wl-text">{t('We couldn’t find that bottle.', 'Chúng tôi không tìm thấy chai này.')}</p></MemberPage>
 
