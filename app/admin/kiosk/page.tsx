@@ -7,10 +7,12 @@ import { useLang } from '@/lib/admin-lang'
 // PINs (the picker attribution), and hold each staff member's EMAIL ADDRESS
 // (2026-10-01) so the morning board digest has somewhere to go.
 //
-// The address sits here rather than on Access & Logins because that page is
-// about MEMBER portal accounts and these are staff who deliberately have no
-// login at all — floor staff have PINs, not seats. Same screen, same list of
-// people, one more column. The nav entry says so now: "Kiosk & Staff PINs".
+// The address sits here rather than on Logins & Admin Rights because that page
+// is a list of SEATS — accounts that sign in — and most of this list has none
+// on purpose: floor staff have PINs, not seats. A PIN and an address are the
+// same kind of thing for the same people: how the club reaches somebody, and
+// how it knows who did what, without giving them a login. Same screen, same
+// list of people, one more column. The nav entry says so: "Kiosk & Staff PINs".
 
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
 

@@ -199,8 +199,8 @@ const SECTIONS: SectionDef[] = [
           vn: '**Events & Content** — Sự Kiện, Thư Viện Sự Kiện, Phòng Studio, Thực Đơn, Nhật ký, Báo chí, Nội Quy.' },
         { en: '**Management** — Weekly Report, Tết Programme, Ops Reports, Rota, **Boards**, Activity.',
           vn: '**Management** — Báo cáo hàng tuần, Chương trình Tết, Báo cáo vận hành, Lịch trực, **Bảng**, Hoạt động.' },
-        { en: '**Setup** — Access & Logins, Accounts & Memberships, Kiosk, Tier Budgets, Observatory, Decay Fit.',
-          vn: '**Setup** — Truy cập & Đăng nhập, Tài khoản & Hội viên, Kiosk, Ngân sách theo hạng, Đài quan sát, Đường suy giảm.' },
+        { en: '**Setup** — Logins & Admin Rights, Accounts & Memberships, Kiosk & Staff PINs, Tier Budgets, Observatory, Decay Fit. The first three are easy to confuse: a LOGIN is a seat somebody signs into, a PIN is how somebody with no seat signs what they did, and the middle one pairs a login to a membership.',
+          vn: '**Setup** — Đăng nhập & Quyền quản trị, Tài khoản & Hội viên, Kiosk & Mã PIN, Ngân sách theo hạng, Đài quan sát, Đường suy giảm. Ba mục đầu dễ nhầm: tài khoản đăng nhập là chỗ ngồi để đăng nhập, mã PIN là cách người không có tài khoản ghi nhận việc mình làm, và mục ở giữa liên kết tài khoản với tư cách hội viên.' },
       ] },
       { kind: 'h4', en: 'How you sign in', vn: 'Cách bạn đăng nhập' },
       { kind: 'ul', items: [

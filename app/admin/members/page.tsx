@@ -69,8 +69,23 @@ export default function AdminMembers() {
   return (
     <>
       <h1 style={{ fontFamily: "'Rampant Sans', serif", fontSize: 24, fontWeight: 500, color: '#E5D4C2', letterSpacing: '0.04em', marginBottom: 24 }}>
-        {t('Access & Logins', 'Truy cập & Đăng nhập')}
+        {t('Logins & Admin Rights', 'Đăng nhập & Quyền quản trị')}
       </h1>
+
+      {/* WHAT THIS PAGE IS, said out loud (2026-10-01). It was called "Access &
+          Logins", which named neither the people nor the thing: it holds every
+          account that can SIGN IN — the staff seats and the members both — and
+          it is where admin rights are granted. Two other Setup pages were being
+          confused with it: Kiosk & Staff PINs (a PIN is not a login, and most
+          of the floor has one and no seat) and Accounts & Memberships (which
+          pairs a login to a membership). */}
+      <p style={{
+        fontFamily: "'Google Sans Code', 'DM Mono', monospace", fontSize: 11,
+        color: '#B2AA98', lineHeight: 1.8, maxWidth: '72ch', margin: '-14px 0 26px',
+      }}>
+        {t('Everyone who can sign in — staff seats and member accounts — and who holds admin rights. Floor staff have a PIN and no login: those are on Kiosk & Staff PINs. Pairing a login to a membership is on Accounts & Memberships.',
+           'Tất cả những người có thể đăng nhập — tài khoản nhân viên và hội viên — cùng quyền quản trị. Nhân viên sàn chỉ có mã PIN, không có tài khoản: xem mục Kiosk & Mã PIN. Việc liên kết tài khoản với hội viên nằm ở Tài khoản & Hội viên.')}
+      </p>
 
       {(() => {
         const staff = members.filter(m => m.is_admin)

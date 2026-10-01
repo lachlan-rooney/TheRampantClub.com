@@ -120,7 +120,7 @@ const GROUPS: Group[] = [
     // preference-scoring maths, not pages staff work in.
     label: 'Setup', vn: 'Thiết lập',
     items: [
-      { href: '/admin/members', label: 'Access & Logins', vn: 'Truy cập & Đăng nhập', icon: 'badge' },
+      { href: '/admin/members', label: 'Logins & Admin Rights', vn: 'Đăng nhập & Quyền quản trị', icon: 'badge' },
       { href: '/admin/members/link', label: 'Accounts & Memberships', vn: 'Tài khoản & Hội viên', icon: 'link' },
       { href: '/admin/kiosk', label: 'Kiosk & Staff PINs', vn: 'Kiosk & Mã PIN', icon: 'tablet' },
       { href: '/admin/tier-budgets', label: 'Tier Budgets', vn: 'Ngân sách theo hạng', icon: 'layers' },
