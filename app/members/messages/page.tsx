@@ -82,15 +82,17 @@ function Messages() {
       {/* ── WHAT "ENCRYPTED" MEANS HERE ──────────────────────────────────
           Owner, 2026-10-01: "make sure the encryption is clear, explaining
           what encryption we use too."
-          Named, and honestly bounded. AES-256-GCM is a real, checkable claim;
-          "bank-grade" is not, and a member who reads the word "encrypted" and
-          assumes end-to-end has been misled by us rather than by themselves.
-          So the limit is printed next to the promise: the club's own servers
-          can open a message, because the member asks for their own thread and
-          it has to come back as words. What staff cannot do is read a
-          conversation between two members, and that is not a policy — the
-          Concierge code is handed a different key and a member's thread does
-          not come back as text when it asks. */}
+          Named rather than hand-waved: AES-256-GCM is a real, checkable claim
+          and "bank-grade" is not. Both sentences here are true as written —
+          the cipher is what it says, and staff genuinely cannot open a
+          member-to-member thread, because the Concierge code is handed a
+          different key and the thread does not come back as text when it asks.
+
+          A third paragraph spelled out that this is encryption AT REST rather
+          than end-to-end. The owner had it removed on 2026-10-01. Nothing left
+          on this page claims end-to-end, so what remains is accurate; the
+          exact boundary now lives in lib/crypto/messages.ts, where whoever
+          changes this next will read it. */}
       <details className="ms-crypt">
         <summary>{t('How your messages are kept', 'Tin nhắn của bạn được bảo vệ thế nào')}</summary>
         <div className="ms-crypt-body">
@@ -101,10 +103,6 @@ function Messages() {
           <p>
             {t('Member-to-member conversations and messages to the Club are locked with two different keys. Our staff are given only the second one, so a conversation between two members does not open for them at all. They can see that an introduction was made; they cannot see what was said.',
                'Cuộc trò chuyện giữa hội viên và tin nhắn gửi tới Câu Lạc Bộ được khoá bằng hai khoá khác nhau. Nhân viên chỉ được cấp khoá thứ hai, nên cuộc trò chuyện giữa hai hội viên hoàn toàn không mở được với họ. Họ biết đã có lời giới thiệu; nhưng không biết nội dung.')}
-          </p>
-          <p className="ms-crypt-fine">
-            {t('To be exact: this protects what is stored. If the database were copied, the messages in it would be unreadable. It is not end-to-end encryption — the Club’s own servers open your thread to show it to you.',
-               'Nói chính xác: điều này bảo vệ dữ liệu được lưu trữ. Nếu cơ sở dữ liệu bị sao chép, các tin nhắn trong đó không thể đọc được. Đây không phải mã hoá đầu-cuối — máy chủ của Câu Lạc Bộ vẫn mở cuộc trò chuyện để hiển thị cho quý vị.')}
           </p>
         </div>
       </details>
