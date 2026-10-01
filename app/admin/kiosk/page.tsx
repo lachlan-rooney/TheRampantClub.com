@@ -41,6 +41,14 @@ export default function AdminKiosk() {
   const [mail, setMail] = useState('')
   const [emailsReady, setEmailsReady] = useState(true)
   const [sending, setSending] = useState(false)
+  // Adding somebody to the team. There was no way to do this at all until
+  // 2026-10-01 — every one of the fifteen people on the list had been put there
+  // by hand in the database.
+  const [addOpen, setAddOpen] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newRole, setNewRole] = useState('')
+  const [newRota, setNewRota] = useState(true)
+  const [showStoodDown, setShowStoodDown] = useState(false)
 
   const load = useCallback(async () => {
     const [d, s, m] = await Promise.all([
@@ -82,6 +90,27 @@ export default function AdminKiosk() {
     setMsg(me?.outcome === 'sent'
       ? `${t('Sent to', 'Đã gửi tới')} ${s.email} — ${me.late} ${t('late', 'quá hạn')}, ${me.today} ${t('due today', 'hôm nay')}, ${me.soon} ${t('tomorrow', 'ngày mai')}.`
       : `${t('Nothing sent', 'Chưa gửi')} — ${me?.outcome || j.reason || '—'}.`)
+  }
+
+  const addPerson = async () => {
+    const r = await fetch('/api/admin/team', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ display_name: newName, role_title: newRole, on_rota: newRota }),
+    })
+    const j = await r.json().catch(() => ({}))
+    if (!r.ok) { setMsg(j.error || t('Could not add them.', 'Không thêm được.')); return }
+    setMsg(`${j.display_name} ${t('is on the team. Give them a PIN if they work the floor, and an address if they get board reminders.', 'đã có trong danh sách. Đặt mã PIN nếu làm việc tại sàn, và địa chỉ email nếu nhận nhắc việc.')}`)
+    setAddOpen(false); setNewName(''); setNewRole(''); setNewRota(true); load()
+  }
+
+  const setActive = async (s2: Staff, active: boolean) => {
+    if (!active && !window.confirm(t(`Stand ${s2.display_name} down? They come off the staff picker, the rota and the reminders. Everything they have done is kept.`, `Cho ${s2.display_name} nghỉ? Sẽ không còn trên màn hình chọn nhân viên, lịch trực và nhắc việc. Mọi ghi nhận vẫn được giữ.`))) return
+    const r = await fetch('/api/admin/team', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ team_member_id: s2.id, active }),
+    })
+    setMsg(r.ok ? t('Saved.', 'Đã lưu.') : t('Could not save that.', 'Không lưu được.'))
+    if (r.ok) load()
   }
 
   const addDevice = async () => {
@@ -170,8 +199,34 @@ export default function AdminKiosk() {
              'Chạy db/staff_emails.sql để bật phần địa chỉ — mã PIN vẫn hoạt động bình thường.')}
         </div>
       )}
-      {staff.map(s => (
-        <div key={s.id} style={{ ...row, flexWrap: 'wrap' }}>
+      {/* ADD SOMEBODY. Above the list, like "Add device" above the devices. */}
+      {!addOpen ? (
+        <button onClick={() => setAddOpen(true)} style={{ ...btn, marginBottom: 14 }}>
+          {t('+ Add someone to the team', '+ Thêm người vào danh sách')}
+        </button>
+      ) : (
+        <div style={{ ...row, flexWrap: 'wrap', borderColor: 'rgba(212,184,90,0.35)', background: 'rgba(212,184,90,0.04)' }}>
+          <input value={newName} onChange={e => setNewName(e.target.value)} autoFocus
+                 onKeyDown={e => { if (e.key === 'Enter' && newName.trim().length > 1) addPerson() }}
+                 placeholder={t('Name, as the team says it', 'Tên, theo cách mọi người gọi')}
+                 style={{ ...input, flex: '1 1 200px' }} />
+          <input value={newRole} onChange={e => setNewRole(e.target.value)}
+                 placeholder={t('Role — optional (e.g. Cleaner, Duncan Taylor)', 'Vai trò — tuỳ chọn')}
+                 style={{ ...input, flex: '1 1 200px' }} />
+          {/* ON THE ROTA IS A SEPARATE QUESTION. A partner contact gets board
+              tasks and reminders; they do not get shifts in a Sài Gòn club. */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 7, fontFamily: MONO, fontSize: 11, color: '#B2AA98', whiteSpace: 'nowrap' }}>
+            <input type="checkbox" checked={newRota} onChange={e => setNewRota(e.target.checked)} />
+            {t('on the rota', 'có trong lịch trực')}
+          </label>
+          <button onClick={addPerson} disabled={newName.trim().length < 2}
+                  style={{ ...btn, opacity: newName.trim().length < 2 ? 0.4 : 1 }}>{t('Add', 'Thêm')}</button>
+          <button onClick={() => { setAddOpen(false); setNewName(''); setNewRole('') }} style={smallBtn}>{t('Cancel', 'Hủy')}</button>
+        </div>
+      )}
+
+      {staff.filter(s => s.active || showStoodDown).map(s => (
+        <div key={s.id} style={{ ...row, flexWrap: 'wrap', opacity: s.active ? 1 : 0.55 }}>
           <div style={{ minWidth: 0, flex: '1 1 260px' }}>
             <span style={{ fontFamily: "'Rampant Sans', serif", fontSize: 15, color: '#E5D4C2' }}>{s.display_name}</span>
             {s.role_title && <span style={{ fontFamily: MONO, fontSize: 10, color: '#7E7864', marginLeft: 8 }}>{s.role_title}</span>}
@@ -189,6 +244,9 @@ export default function AdminKiosk() {
                 {s.email ? t('Change address', 'Đổi địa chỉ') : t('Add address', 'Thêm địa chỉ')}
               </button>
             )}
+            <button onClick={() => setActive(s, !s.active)} style={s.active ? smallBtn : { ...smallBtn, color: '#7AB07A', borderColor: 'rgba(122,176,122,0.4)' }}>
+              {s.active ? t('Stand down', 'Cho nghỉ') : t('Bring back', 'Nhận lại')}
+            </button>
             {emailsReady && s.email && (
               <>
                 <button onClick={() => saveEmail(s.id, undefined as unknown as string, !s.email_reminders)} style={smallBtn}>
@@ -202,6 +260,14 @@ export default function AdminKiosk() {
           </div>
         </div>
       ))}
+
+      {staff.some(s => !s.active) && (
+        <button onClick={() => setShowStoodDown(v => !v)} style={{ ...smallBtn, marginTop: 4 }}>
+          {showStoodDown
+            ? t('Hide those who have left', 'Ẩn người đã nghỉ')
+            : `${t('Show those who have left', 'Hiện người đã nghỉ')} · ${staff.filter(s => !s.active).length}`}
+        </button>
+      )}
 
       <div style={{ ...sectionLabel, marginTop: 32 }}>{t('Member kiosk PINs', 'Mã PIN kiosk của hội viên')}</div>
       <div style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98', opacity: .7, marginBottom: 12, lineHeight: 1.7 }}>
