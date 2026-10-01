@@ -28,7 +28,6 @@ const MEMBER_GROUPS: { label: string; vn: string; links: { href: string; en: str
   { label: 'The Club', vn: 'Câu Lạc Bộ', links: [
     { ...L('/members/spaces'), icon: 'building' },
     { ...L('/members/menus'), icon: 'menu' },
-    { ...L('/members/snug'), icon: 'sofa' },
     { ...L('/members/concierge'), icon: 'bell' },
   ] },
   { label: 'Whisky', vn: 'Whisky', links: [

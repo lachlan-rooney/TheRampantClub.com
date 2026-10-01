@@ -72,8 +72,8 @@ export default function LinkPage() {
         {t('Accounts and memberships', 'Tài khoản và tư cách hội viên')}
       </h1>
       <p style={meta}>
-        {t('An account signs in. A membership is the person. Until they are linked, that account has no visits, no palate and cannot post in The Snug.',
-           'Tài khoản dùng để đăng nhập. Tư cách hội viên là con người. Chưa liên kết thì tài khoản đó không có lịch sử ghé, không có hồ sơ khẩu vị và không đăng được trong The Snug.')}
+        {t('An account signs in. A membership is the person. Until they are linked, that account has no visits and no palate.',
+           'Tài khoản dùng để đăng nhập. Tư cách hội viên là con người. Chưa liên kết thì tài khoản đó không có lịch sử ghé và không có hồ sơ khẩu vị.')}
       </p>
       {msg && <div style={warn}>{msg}</div>}
 

@@ -216,7 +216,6 @@ export default function MembersPage() {
   // Whisky Library is the prominent first Explore tile (it had none before).
   const byHref = Object.fromEntries(buckets.map(b => [b.href, b])) as Record<string, Bucket>
   const extra: Record<string, Bucket> = {
-    snug:   { href: '/members/snug', img: IMG('whisky-lounge'),          en: surfaceName('/members/snug', 'en'),       vn: surfaceName('/members/snug', 'vn'),       icon: 'sofa', secondary: t('The club in conversation \u2014 drams, moments, a word between members', 'Câu lạc bộ trò chuyện \u2014 những ly rượu, khoảnh khắc, đôi lời giữa các thành viên') },
     concierge: { href: '/members/concierge', img: IMG('trc/decanter-pour'), en: surfaceName('/members/concierge', 'en'),  vn: surfaceName('/members/concierge', 'vn'),          icon: 'bell', secondary: t('A line to the Club \u2014 requests, bottles, a word about the evening', 'Đường dây riêng tới Câu Lạc Bộ \u2014 yêu cầu, chai rượu, đôi lời về buổi tối') },
     whisky: { href: '/members/whisky', img: IMG('whisky-library'),        en: surfaceName('/members/whisky', 'en'), vn: surfaceName('/members/whisky', 'vn'), icon: 'glass', secondary: t('The shelf \u00b7 radar \u00b7 300+ drams', 'Kệ rượu \u00b7 radar \u00b7 hơn 300 loại') },
     finder: { href: '/members/whisky/finder', img: IMG('trc/octave-glencairn'), en: surfaceName('/members/whisky/finder', 'en'), vn: surfaceName('/members/whisky/finder', 'vn'), icon: 'compass', secondary: t('Match a dram to your taste', 'Tìm ly hợp khẩu vị của bạn') },
@@ -233,7 +232,7 @@ export default function MembersPage() {
   // Event Gallery sit next to each other — an event and its photos belong together.
   const bucketGroups = [
     { label: "What's On", vn: 'Sự Kiện',    tiles: [byHref['/members/events'], extra.gallery] },
-    { label: 'The Club',  vn: 'Câu Lạc Bộ', tiles: [byHref['/members/spaces'], extra.menus, extra.snug, extra.concierge] },
+    { label: 'The Club',  vn: 'Câu Lạc Bộ', tiles: [byHref['/members/spaces'], extra.menus, extra.concierge] },
     { label: 'Whisky',    vn: 'Whisky',     tiles: [extra.whisky, extra.finder, extra.taste, extra.journey] },
     { label: 'You',       vn: 'Bạn',        tiles: [byHref['/members/profile'], extra.visits] },
     { label: 'Info',      vn: 'Thông Tin',  tiles: [byHref['/members/rules'], extra.terms, byHref['/members/contact']] },

@@ -28,7 +28,6 @@ export const SURFACE: Record<string, SurfaceName> = {
   // the public page and the kiosk both still link to it.
   '/menus':                  { en: 'The Menus',      vn: 'Thực Đơn' },
   '/members/menus':          { en: 'The Menus',      vn: 'Thực Đơn' },
-  '/members/snug':           { en: 'The Snug',       vn: 'Phòng Khách' },
   '/members/concierge':      { en: 'The Concierge',  vn: 'Quản Gia' },
   '/members/whisky':         { en: 'Whisky Library', vn: 'Thư Viện Whisky' },
   '/members/whisky/finder':  { en: 'Flavour Finder', vn: 'Tìm Ly Của Bạn' },

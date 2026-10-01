@@ -12,7 +12,7 @@ import { isAdmin } from '@/lib/admin'
 // member_no is NOT an account-completeness field: admins have always worked
 // without one, and every admin route ignores it. It is specifically the link to
 // a MEMBERSHIP RECORD, and only member-keyed things need it — a palate, visits,
-// bookings, a Snug post attributed to a person.
+// bookings, a tasting note attributed to a person.
 export const dynamic = 'force-dynamic'
 const svc = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 

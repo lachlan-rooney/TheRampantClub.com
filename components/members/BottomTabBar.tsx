@@ -19,7 +19,6 @@ const S = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLineca
 const ICONS: Record<string, ReactNode> = {
   home: <svg width="25" height="25" viewBox="0 0 24 24" {...S}><path d="M3 11 12 4l9 7" /><path d="M5 10v9h14v-9" /><path d="M10 19v-5h4v5" /></svg>,
   library: <svg width="25" height="25" viewBox="0 0 24 24" {...S}><path d="M4 5h6a2 2 0 0 1 2 2v12a2.5 2.5 0 0 0-2.5-1.6H4z" /><path d="M20 5h-6a2 2 0 0 0-2 2v12a2.5 2.5 0 0 1 2.5-1.6H20z" /></svg>,
-  snug: <svg width="25" height="25" viewBox="0 0 24 24" {...S}><path d="M6.5 4h11l-1.1 14.3A1.8 1.8 0 0 1 14.6 20H9.4a1.8 1.8 0 0 1-1.8-1.7z" /><path d="M7.1 9.5h9.8" /></svg>,
   concierge: <svg width="25" height="25" viewBox="0 0 24 24" {...S}><rect x="3.5" y="6" width="17" height="12" rx="1.6" /><path d="M4.2 7.2 12 13l7.8-5.8" /></svg>,
 }
 
@@ -29,7 +28,6 @@ const TABS = [
   // that registry — it is the dashboard — so it carries its own pair.
   { href: '/members',            icon: 'home',      label: 'Home', vn: 'Trang Chính' },
   { href: '/members/whisky',     icon: 'library',   label: 'Library' },
-  { href: '/members/snug',       icon: 'snug',      label: 'Snug' },
   { href: '/members/concierge',  icon: 'concierge', label: 'Concierge' },
 ]
 

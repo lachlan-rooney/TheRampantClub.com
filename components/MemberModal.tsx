@@ -9,7 +9,7 @@ import { useLang } from '@/lib/lang'
 // bug: a non-`none` transform on an ancestor re-bases fixed descendants, so a
 // modal rendered inside MemberPage opened off-centre + missed backdrop clicks).
 // Scroll-locks the background; Esc + backdrop click close. Every member composer
-// (message, tasting note, Snug post, introduction) should build on this.
+// (message, tasting note, introduction) should build on this.
 //
 // Set like the rest of the portal: a sheet of the bottle green over a dimmed,
 // blurred room, a hairline edge rather than a gold box, the title large in the

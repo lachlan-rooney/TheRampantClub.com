@@ -439,7 +439,7 @@ function UnlinkedBanner() {
                  : `${n} accounts have no membership linked`}
       </div>
       <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 10.5, color: '#B2AA98', marginTop: 4 }}>
-        They can sign in, but they have no visits, no palate and cannot post in The Snug. Link them →
+        They can sign in, but they have no visits and no palate. Link them →
       </div>
     </Link>
   )

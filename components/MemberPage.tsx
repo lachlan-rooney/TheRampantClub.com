@@ -32,7 +32,6 @@ const INK_BY_PATH: Record<string, Ink> = {
   '/members/visits': 'lion-reclining',
   '/members/contact': 'butler-tray',
   '/members/concierge': 'butler-tray',
-  '/members/snug': 'cigar',
   '/members/messages': 'sunglasses',
   '/members/introductions': 'gent-toast',
   '/members/members': 'lion-lounging',
@@ -68,9 +67,9 @@ export default function MemberPage({
   const pathname = usePathname() || ''
   // ── ONLY SWAP WHEN THE SUBTITLE IS ACTUALLY VIETNAMESE ───────────────────
   // Most pages pair an English title with a Vietnamese subtitle, but not all:
-  // The Snug's is "THE CLUB, IN CONVERSATION" and the concierge's is "A LINE TO
-  // THE CLUB". Promoting those gives a Vietnamese reader an English heading over
-  // an English subtitle — worse than not switching at all.
+  // The concierge's, for instance, is "A LINE TO THE CLUB". Promoting that
+  // gives a Vietnamese reader an English heading over an English subtitle —
+  // worse than not switching at all.
   //
   // DETECTED BY COMBINING MARKS, not by a hand-written alphabet. The first
   // version listed accented characters and missed the UPPERCASE forms, so it

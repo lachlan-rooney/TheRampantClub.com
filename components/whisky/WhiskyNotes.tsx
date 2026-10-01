@@ -7,8 +7,13 @@ import { useLang } from '@/lib/lang'
 import { catLabel } from './flavour-data'
 
 // A member's tasting notes on one whisky — their own (private or shared) + other
-// members' Snug notes. Composer is the shared MemberModal (portal-to-body). Lazy:
-// nothing is fetched until the section is opened. Default visibility is PRIVATE.
+// Composer is the shared MemberModal (portal-to-body). Lazy:
+// nothing is fetched until the section is opened.
+//
+// PRIVATE ONLY since 2026-10-01, when the Snug was stood down. A note had a
+// choice of "keep private" or "share to the Snug"; with nowhere to share to,
+// offering the choice would publish into a room that no longer exists. The
+// column stays and 'snug' is no longer offered — see app/members/notes.
 // Set on hairlines in the whisky pages' vocabulary (WhiskyStyle): no cards, no
 // pills — a name in tracked mono, the note as reading text, choices underlined.
 
@@ -25,7 +30,6 @@ export default function WhiskyNotes({ whiskyId }: { whiskyId: string }) {
   const [families, setFamilies] = useState<Family[]>([])
   const [composer, setComposer] = useState(false)
   const [draft, setDraft] = useState('')
-  const [visibility, setVisibility] = useState<'private' | 'snug'>('private')
   const [tags, setTags] = useState<string[]>([])
   const [photo, setPhoto] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
@@ -54,21 +58,20 @@ export default function WhiskyNotes({ whiskyId }: { whiskyId: string }) {
       const fd = new FormData()
       fd.set('whisky_id', whiskyId)
       fd.set('note', note)
-      fd.set('visibility', visibility)
       fd.set('flavour_tags', JSON.stringify(tags))
       if (photo) fd.set('photo', photo)
       const r = await fetch('/api/social/tasting-notes', { method: 'POST', body: fd })
-      if (r.ok) { setComposer(false); setDraft(''); setTags([]); setVisibility('private'); setPhoto(null); await load() }
+      if (r.ok) { setComposer(false); setDraft(''); setTags([]); setPhoto(null); await load() }
       else setError((await r.json().catch(() => ({})))?.error || t('Could not save.', 'Không thể lưu.'))
     } finally { setSaving(false) }
-  }, [draft, saving, whiskyId, visibility, tags, photo, load, t])
+  }, [draft, saving, whiskyId, tags, photo, load, t])
 
   const nameOf = (slug: string) => { const f = families.find(x => x.slug === slug); return f ? catLabel(f, lang) : slug }
 
   return (
     <div className="wl-notes">
       <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} className="wl-link is-quiet">
-        {open ? t('↑ Hide notes', '↑ Ẩn ghi chú') : t('✒ Your notes & the Snug', '✒ Ghi chú của bạn & Phòng Khách')}
+        {open ? t('↑ Hide notes', '↑ Ẩn ghi chú') : t('✒ Your notes', '✒ Ghi chú của bạn')}
       </button>
 
       {open && (
@@ -82,7 +85,6 @@ export default function WhiskyNotes({ whiskyId }: { whiskyId: string }) {
               <div className="wl-n-head">
                 <span className={`wl-n-who ${n.is_own ? 'is-own' : ''}`}>
                   {n.author_name}
-                  {n.is_own && n.visibility === 'snug' && <span className="wl-tag is-shared">{t('Shared', 'Đã chia sẻ')}</span>}
                   {n.is_own && n.visibility === 'private' && <span className="wl-tag is-private">{t('Private', 'Riêng tư')}</span>}
                 </span>
                 <span className="wl-date">{fmtDate(n.created_at)}</span>
@@ -112,9 +114,6 @@ export default function WhiskyNotes({ whiskyId }: { whiskyId: string }) {
           <div className="wl-field">
             <div className="wl-field-label">{t('Visibility', 'Chế độ hiển thị')}</div>
             <div className="wl-choices">
-              {([['private', t('Keep private', 'Giữ riêng tư')], ['snug', t('Share to the Snug', 'Chia sẻ lên Phòng Khách')]] as const).map(([v, label]) => (
-                <button type="button" key={v} onClick={() => setVisibility(v)} aria-pressed={visibility === v} className={`wl-choice ${visibility === v ? 'is-on' : ''}`}>{label}</button>
-              ))}
             </div>
           </div>
 

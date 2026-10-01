@@ -5,7 +5,7 @@ import MemberModal from '@/components/MemberModal'
 import { useLang } from '@/lib/lang'
 
 // Branded confirm dialog for the member portal, built on MemberModal — replaces
-// the off-brand native window.confirm() used for destructive actions (Snug post
+// the off-brand native window.confirm() used for destructive actions (note
 // delete, note delete, block member). Portal-rendered so it isn't trapped by
 // MemberPage's transform. The two answers are the site's CTAs — mono lines with
 // an underline, no pills: the confirm in gold (or a soft red when it destroys

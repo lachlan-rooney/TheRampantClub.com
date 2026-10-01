@@ -189,7 +189,7 @@ const SECTIONS: SectionDef[] = [
       { kind: 'ul', items: [
         { en: '**On Shift** — what you need while the club is open: Tonight, Checklists, Weekly Shift Tasks, Member Cards, Room Orders, Calendar, Guest Attendance, Harmony Log, and this Training doc.',
           vn: '**On Shift** — những gì bạn cần khi câu lạc bộ đang mở: Tonight, Checklists, Nhiệm vụ ca tuần, Thẻ hội viên, Yêu cầu gọi món, Lịch, Khách ghé thăm, Nhật ký ca trực, và tài liệu Training này.' },
-        { en: '**Member Care** — MX Daily, Concierge, Notice Board, The Snug, Introductions, Gifting, Newsletter.',
+        { en: '**Member Care** — MX Daily, Concierge, Notice Board, Introductions, Gifting, Newsletter.',
           vn: '**Member Care** — MX Daily, Quản Gia, Bảng Tin, Phòng Khách, Giới thiệu, Quà tặng, Bản Tin Hội Viên.' },
         { en: '**Membership** — Pipeline, Members, Pref Candidates, Agreements, Membership Finance.',
           vn: '**Membership** — Quy trình tuyển chọn, Hội viên, Ứng viên ưu tiên, Thỏa thuận, Tài chính hội viên.' },

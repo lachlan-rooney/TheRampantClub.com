@@ -10,7 +10,13 @@ import { catLabel } from '@/components/whisky/flavour-data'
 import { WhiskyStyle, bare } from '@/components/whisky/WhiskyStyle'
 import { Rise, CREAM, MONO, SERIF } from '@/components/public/kit'
 
-// A member's own tasting-note journal — every note they've logged (private + snug),
+// Tasting notes are PRIVATE ONLY since 2026-10-01, when the Snug was stood
+// down (owner: "I think we need to get rid of the snug just now it's not
+// contributing anything to our system"). The `visibility` column stays, and
+// 'snug' is simply no longer offered or accepted — bringing the Snug back is
+// re-adding one option, not a migration. There were no notes of either kind.
+//
+// A member's own tasting-note journal — every note they've logged,
 // newest first, each editable/deletable through the route (the spine logs it and
 // the palate re-derives). Their personal record of the drams they've met.
 //
@@ -28,7 +34,6 @@ export default function MyNotes() {
   const [families, setFamilies] = useState<Family[]>([])
   const [edit, setEdit] = useState<Note | null>(null)
   const [draft, setDraft] = useState('')
-  const [visibility, setVisibility] = useState<'private' | 'snug'>('private')
   const [tags, setTags] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -45,7 +50,7 @@ export default function MyNotes() {
       .then(({ data }) => { if (data) setFamilies(data) })
   }, [load])
 
-  const openEdit = (n: Note) => { setEdit(n); setDraft(n.note); setVisibility(n.visibility === 'snug' ? 'snug' : 'private'); setTags(n.flavour_tags || []); setError('') }
+  const openEdit = (n: Note) => { setEdit(n); setDraft(n.note); setTags(n.flavour_tags || []); setError('') }
   const toggleTag = (slug: string) => setTags(prev => prev.includes(slug) ? prev.filter(x => x !== slug) : [...prev, slug])
   const nameOf = (slug: string) => { const f = families.find(x => x.slug === slug); return f ? catLabel(f, lang) : slug }
 
@@ -56,12 +61,12 @@ export default function MyNotes() {
     try {
       const r = await fetch(`/api/social/tasting-notes/${edit.id}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ note, visibility, flavour_tags: tags }),
+        body: JSON.stringify({ note, flavour_tags: tags }),
       })
       if (r.ok) { setEdit(null); await load() }
       else setError((await r.json().catch(() => ({})))?.error || t('Could not update.', 'Không thể cập nhật.'))
     } finally { setSaving(false) }
-  }, [edit, draft, visibility, tags, saving, load, t])
+  }, [edit, draft, tags, saving, load, t])
 
   const del = useCallback(async (n: Note) => {
     if (!window.confirm(t('Delete this note? This cannot be undone.', 'Xóa ghi chú này? Thao tác không thể hoàn tác.'))) return
@@ -70,7 +75,7 @@ export default function MyNotes() {
   }, [load, t])
 
   return (
-    <MemberPage title="Your Notes" subtitle="NHẬT KÝ NẾM THỬ" description={t("Every dram you've recorded — private to you, or shared to the Snug. Each one sharpens your palate.", 'Mọi ly bạn đã ghi lại — giữ riêng cho bạn, hoặc chia sẻ lên Phòng Khách. Mỗi ghi chú giúp khẩu vị của bạn thêm tinh tường.')}>
+    <MemberPage title="Your Notes" subtitle="NHẬT KÝ NẾM THỬ" description={t("Every dram you've recorded, private to you. Each one sharpens your palate.", 'Mọi ly bạn đã ghi lại, chỉ riêng bạn thấy. Mỗi ghi chú giúp khẩu vị của bạn thêm tinh tường.')}>
       <WhiskyStyle />
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
       {loading ? (
@@ -90,7 +95,6 @@ export default function MyNotes() {
             <Rise as="article" key={n.id} delay={Math.min(i, 4) * .05} className="wn-entry">
               <div className="wn-when">
                 <span className="wl-date">{fmtDate(n.created_at)}</span>
-                <span className={`wn-vis ${n.visibility === 'snug' ? 'is-shared' : ''}`}>{n.visibility === 'snug' ? t('Shared to the Snug', 'Đã chia sẻ lên Phòng Khách') : t('Private', 'Riêng tư')}</span>
               </div>
               <div style={{ minWidth: 0 }}>
                 <Link href={`/members/whisky/${n.whisky_id}`} className="wn-name">{n.whisky_name}</Link>
@@ -116,14 +120,6 @@ export default function MyNotes() {
         <div className="wl-form">
           {error && <div className="wl-error">{error}</div>}
           <textarea value={draft} onChange={e => setDraft(e.target.value.slice(0, 8000))} rows={5} className="wl-textarea" />
-          <div className="wl-field">
-            <div className="wl-field-label">{t('Visibility', 'Chế độ hiển thị')}</div>
-            <div className="wl-choices">
-              {([['private', t('Keep private', 'Giữ riêng tư')], ['snug', t('Share to the Snug', 'Chia sẻ lên Phòng Khách')]] as const).map(([v, label]) => (
-                <button type="button" key={v} onClick={() => setVisibility(v)} aria-pressed={visibility === v} className={`wl-choice ${visibility === v ? 'is-on' : ''}`}>{label}</button>
-              ))}
-            </div>
-          </div>
           {families.length > 0 && (
             <div className="wl-field">
               <div className="wl-field-label">{t('Flavour notes', 'Nhóm hương vị')}</div>

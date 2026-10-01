@@ -5,14 +5,18 @@ import { rederiveAndPersist } from '@/lib/whisky/derive-taste'
 import { getSharp, imagePipelineDownMember } from '@/lib/attachments/image'
 
 // Member tasting notes — a member's own notes on a whisky (private), optionally
-// shared to the Snug, with an optional photo. Writes route-only (no member INSERT
+// kept private to the member, with an optional photo. Writes route-only (no member INSERT
 // policy). Reads via the SESSION client so RLS enforces visibility (own any ·
-// others' snug only); author names + photo signed-URLs are resolved service-side.
+// own notes only); author names + photo signed-URLs are resolved service-side.
 // Photos: private member-media bucket, EXIF/GPS stripped server-side before store,
 // served only via short-lived signed URLs (no public access).
 
 export const dynamic = 'force-dynamic'
-const VIS = ['private', 'snug']
+// PRIVATE ONLY since 2026-10-01 — the Snug was stood down and there is
+// nowhere to share to. The column keeps its old values (there were none); the
+// API simply stops accepting 'snug'. Putting the Snug back is adding the word
+// to this array and restoring the two files git remembers.
+const VIS = ['private']
 const BUCKET = 'member-media'
 
 export async function GET(req: Request) {
@@ -37,7 +41,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ notes: out })
   }
 
-  // RLS-filtered to own (any visibility) + others' snug.
+  // RLS-filtered to the member's own notes.
   const { data: notes } = await actor.sb.from('tasting_notes')
     .select('id, author, note, flavour_tags, visibility, media_path, created_at')
     .eq('whisky_id', whiskyId).order('created_at', { ascending: false })
@@ -79,7 +83,7 @@ export async function POST(req: Request) {
   if (typeof whiskyId !== 'string' || typeof raw !== 'string') return NextResponse.json({ error: 'Nothing to save.' }, { status: 400 })
   const note = raw.trim()
   if (note.length < 1 || note.length > 8000) return NextResponse.json({ error: 'Keep it between 1 and 8000 characters.' }, { status: 400 })
-  if (!VIS.includes(visibility)) return NextResponse.json({ error: 'Pick private or the Snug.' }, { status: 400 })
+  if (!VIS.includes(visibility)) return NextResponse.json({ error: 'Notes are private.' }, { status: 400 })
   let tags: string[] = []
   try { const parsed = typeof tagsRaw === 'string' ? JSON.parse(tagsRaw) : []; if (Array.isArray(parsed)) tags = parsed.filter((t): t is string => typeof t === 'string').slice(0, 16) } catch { /* no tags */ }
 

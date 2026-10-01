@@ -81,7 +81,6 @@ const SLIDES: Slide[] = [
     items: [
       { icon: 'building', name: { en: 'Our Spaces', vn: 'Không Gian' }, line: { en: 'A tour of the five floors and the sports club.', vn: 'Tham quan năm tầng và câu lạc bộ thể thao.' } },
       { icon: 'menu', name: { en: 'The Menus', vn: 'Thực Đơn' }, line: { en: 'Food and drink menus.', vn: 'Thực đơn đồ ăn và thức uống.' } },
-      { icon: 'sofa', name: { en: 'The Snug', vn: 'Phòng Khách' }, line: { en: 'A members’ chatroom — post drams, photos, and chat.', vn: 'Phòng trò chuyện hội viên — đăng ly, ảnh, trò chuyện.' } },
       { icon: 'bell', name: { en: 'The Concierge', vn: 'Quản Gia' }, line: { en: 'A private line to staff — a real person replies.', vn: 'Đường dây riêng với nhân viên — người thật trả lời.' } },
     ] },
   { key: 'community', icon: 'people', image: 'trc/gala-arrivals', title: { en: 'Community', vn: 'Cộng Đồng' },

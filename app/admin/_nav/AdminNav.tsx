@@ -53,7 +53,6 @@ const GROUPS: Group[] = [
       { href: '/admin/mx-daily', label: 'MX Daily', vn: 'MX Daily', icon: 'clipboard' },
       { href: '/admin/concierge', label: 'Concierge', vn: 'Quản Gia', icon: 'bell' },
       { href: '/admin/notices', label: 'Notice Board', vn: 'Bảng Tin', icon: 'megaphone' },
-      { href: '/admin/snug', label: 'The Snug', vn: 'Phòng Khách', icon: 'cup' },
       { href: '/admin/introductions', label: 'Introductions', vn: 'Giới thiệu', icon: 'people' },
       { href: '/admin/gifts', label: 'Gifting', vn: 'Quà tặng', icon: 'gift' },
       { href: '/admin/newsletters', label: 'Newsletter', vn: 'Bản Tin Hội Viên', icon: 'megaphone' },

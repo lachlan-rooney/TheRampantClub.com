@@ -13,7 +13,7 @@ import { CreamInk } from '@/components/public/CreamInk'
 import { useLang } from '@/lib/lang'
 
 // A bottle's living story — its own data + the FlavourRadar + the members'
-// conversation (WhiskyNotes: own notes any visibility, others' SNUG notes only —
+// conversation (WhiskyNotes: the member's own notes —
 // RLS-enforced; private notes never appear here). Provenance shows the house note
 // when present, a graceful space when not — never fabricated.
 //

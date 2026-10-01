@@ -8,7 +8,11 @@ import { rederiveAndPersist } from '@/lib/whisky/derive-taste'
 // policy exists.
 
 export const dynamic = 'force-dynamic'
-const VIS = ['private', 'snug']
+// PRIVATE ONLY since 2026-10-01 — the Snug was stood down and there is
+// nowhere to share to. The column keeps its old values (there were none); the
+// API simply stops accepting 'snug'. Putting the Snug back is adding the word
+// to this array and restoring the two files git remembers.
+const VIS = ['private']
 const BUCKET = 'member-media'
 
 async function ownNote(a: ReturnType<typeof svc>, id: string, uid: string) {
@@ -35,7 +39,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     patch.note = note
   }
   if (typeof p.visibility === 'string') {
-    if (!VIS.includes(p.visibility)) return NextResponse.json({ error: 'Pick private or the Snug.' }, { status: 400 })
+    if (!VIS.includes(p.visibility)) return NextResponse.json({ error: 'Notes are private.' }, { status: 400 })
     patch.visibility = p.visibility
   }
   if (Array.isArray(p.flavour_tags)) patch.flavour_tags = p.flavour_tags.filter((t: unknown): t is string => typeof t === 'string').slice(0, 16)
