@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { svc, deviceOk, actingStaffId } from '@/lib/kiosk/server'
+import { svc, actingStaff, deviceOk, denyDevice, denyStaff } from '@/lib/kiosk/server'
 
 // STOCKTAKE FROM THE ROOM TABLET.
 //
@@ -40,17 +40,11 @@ const NOTE = {
   missing: 'stocktake · NOT ON THE SHELF',
 } as const
 
-async function actor(): Promise<{ id: string; name: string } | null> {
-  const id = await actingStaffId()
-  if (!id) return null
-  const { data } = await svc().from('team_members')
-    .select('id, display_name, active, pin_hash').eq('id', id).maybeSingle()
-  if (!data || data.active === false || !data.pin_hash) return null
-  return { id: data.id, name: data.display_name }
-}
-
-const denyDevice = () => NextResponse.json({ error: 'This tablet is not paired.' }, { status: 403 })
-const denyStaff = () => NextResponse.json({ error: 'Sign in first.' }, { status: 403 })
+// Moved to lib/kiosk/server (2026-10-01) when the shift list and the back-bar
+// view wanted the same three lines. The wording of the two refusals moved with
+// it, so a tablet does not say "Sign in first" on one screen and "Sign in with
+// your PIN first" on the next.
+const actor = actingStaff
 
 /** Everything this person has counted since `since` — the session, rebuilt. */
 async function countedSince(name: string, sinceIso: string) {

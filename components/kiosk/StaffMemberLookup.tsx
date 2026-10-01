@@ -22,6 +22,13 @@ import { useLang } from '@/lib/lang'
 // can see it. The route refuses to send them at all, so it is not a matter of
 // what this component chooses to draw.
 //
+// ── AND IT LEARNS ─────────────────────────────────────────────────────────
+// It was a one-way mirror: everything the club knew, and no way to record the
+// thing the server had just been told. There is a note box now. It does NOT
+// write to the member's record — it goes to the candidate queue the desk
+// already reviews, and the screen says so, because a note that looks saved and
+// is actually queued is worse than no note.
+//
 // ── AND IT CLOSES ITSELF ──────────────────────────────────────────────────
 // Clearing on hide matters more here than anywhere else on the staff screen: a
 // member's dossier must not still be sitting there when the tablet is picked up
@@ -52,10 +59,13 @@ export default function StaffMemberLookup() {
   const [who, setWho] = useState<Dossier | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [note, setNote] = useState('')
+  const [noteCat, setNoteCat] = useState(CATEGORIES[0])
+  const [noteState, setNoteState] = useState<'idle' | 'open' | 'sent'>('idle')
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Cleared when this unmounts — the dossier does not outlive the look at it.
-  useEffect(() => () => { setWho(null); setHits(null); setQ('') }, [])
+  useEffect(() => () => { setWho(null); setHits(null); setQ(''); setNote('') }, [])
 
   const search = useCallback((text: string) => {
     if (timer.current) clearTimeout(timer.current)
@@ -82,7 +92,21 @@ export default function StaffMemberLookup() {
     } finally { setBusy(false) }
   }
 
-  const back = () => { setWho(null); setQ(''); setHits(null) }
+  const back = () => { setWho(null); setQ(''); setHits(null); setNote(''); setNoteState('idle') }
+
+  const sendNote = async () => {
+    if (!who || note.trim().length < 3) return
+    setBusy(true); setErr('')
+    try {
+      const r = await fetch('/api/kiosk/staff/member', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ member_no: who.member.member_no, note: note.trim(), category: noteCat }),
+      })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok) { setErr(j.error || t('Could not send that to the desk.', 'Không gửi được về quầy.')); return }
+      setNote(''); setNoteState('sent')
+    } finally { setBusy(false) }
+  }
 
   if (who) {
     const m = who.member
@@ -128,6 +152,58 @@ export default function StaffMemberLookup() {
             ))}
           </>
         )}
+
+        {/* ── SOMETHING TO REMEMBER ────────────────────────────────────────
+            The dossier had no way in. This is it, and it is honest about
+            where the note goes: the desk reviews it, and only the desk can
+            put it in the member's record. An allergy is handled differently
+            on the server — locked so it never fades — and nobody on the floor
+            has to know that to type it. */}
+        <div className="sm-note">
+          {noteState === 'sent' ? (
+            <>
+              <div className="sm-note-ok">{t('Sent to the desk.', 'Đã gửi về quầy.')}</div>
+              <p className="sm-quiet" style={{ marginTop: 8 }}>
+                {t('They will check it and add it to the member’s record. It is not on there yet.',
+                   'Quầy sẽ kiểm tra và thêm vào hồ sơ hội viên. Hiện chưa có trên hồ sơ.')}
+              </p>
+              <button onClick={() => setNoteState('open')} style={ghost}>{t('Add another', 'Thêm nữa')}</button>
+            </>
+          ) : noteState === 'open' ? (
+            <>
+              <div className="sm-note-h">{t('Something to remember', 'Điều cần ghi nhớ')}</div>
+              <textarea
+                value={note} onChange={e => setNote(e.target.value)} rows={3} autoFocus
+                placeholder={t('What they said, in their words if you can.', 'Khách đã nói gì — ghi đúng lời nếu được.')}
+                className="sm-note-ta"
+              />
+              <div className="sm-cats">
+                {CATEGORIES.map(c => (
+                  <button key={c} onClick={() => setNoteCat(c)} className={c === noteCat ? 'sm-cat-b sm-cat-on' : 'sm-cat-b'}>
+                    {t(c, CAT_VN[c] || c)}
+                  </button>
+                ))}
+              </div>
+              <p className="sm-quiet">
+                {t('This goes to the desk to check — it does not go straight onto their record.',
+                   'Nội dung này được gửi về quầy để kiểm tra — không vào trực tiếp hồ sơ.')}
+              </p>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
+                <button onClick={sendNote} disabled={busy || note.trim().length < 3}
+                        style={{ ...ghost, borderColor: 'rgba(212,184,90,.5)', color: GOLD, marginBottom: 0, opacity: note.trim().length < 3 ? .4 : 1 }}>
+                  {t('Send to the desk', 'Gửi về quầy')}
+                </button>
+                <button onClick={() => { setNoteState('idle'); setNote('') }} style={{ ...ghost, marginBottom: 0 }}>
+                  {t('Cancel', 'Hủy')}
+                </button>
+              </div>
+            </>
+          ) : (
+            <button onClick={() => setNoteState('open')} style={{ ...ghost, marginBottom: 0 }}>
+              + {t('Something to remember', 'Điều cần ghi nhớ')}
+            </button>
+          )}
+        </div>
       </div>
     )
   }
@@ -175,6 +251,25 @@ function Fact({ label, value, gold }: { label: string; value: string; gold?: boo
       <div className="sm-fact-value" style={gold ? { color: GOLD } : undefined}>{value}</div>
     </div>
   )
+}
+
+// The nine canonical MIS categories. Named here as the queue spells them —
+// a tenth spelling is dropped by reconcile() and the note is silently lost.
+const CATEGORIES = [
+  'Whisky & Beverage', 'Food & Beverage', 'Wellness & Comfort', 'Personal & Lifestyle',
+  'Social & Networking', 'Business & Productivity', 'Cultural & Intellectual',
+  'Family & Personal', 'Travel & Global',
+]
+const CAT_VN: Record<string, string> = {
+  'Whisky & Beverage': 'Whisky & Thức uống',
+  'Food & Beverage': 'Món ăn & Thức uống',
+  'Wellness & Comfort': 'Sức khỏe & Tiện nghi',
+  'Personal & Lifestyle': 'Cá nhân & Lối sống',
+  'Social & Networking': 'Giao lưu & Kết nối',
+  'Business & Productivity': 'Công việc',
+  'Cultural & Intellectual': 'Văn hóa & Tri thức',
+  'Family & Personal': 'Gia đình',
+  'Travel & Global': 'Du lịch',
 }
 
 const wrap: React.CSSProperties = { marginTop: 10 }
@@ -227,5 +322,19 @@ const CSS = `
 .sm-detail { display: block; font-family: ${MONO}; font-size: 11.5px; line-height: 1.75;
              color: rgba(229,212,194,.62); margin-top: 5px; max-width: 62ch; }
 
-@media (pointer: coarse) { .sm-hit { padding: 17px 2px; } }
+.sm-note { margin-top: 32px; padding-top: 22px; border-top: 1px solid rgba(229,212,194,.12); }
+.sm-note-h { font-family: ${MONO}; font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
+             color: ${GOLD}; opacity: .85; margin-bottom: 10px; }
+.sm-note-ok { font-family: ${SERIF}; font-size: 19px; color: #8FC48F; }
+.sm-note-ta { width: 100%; max-width: 560px; box-sizing: border-box;
+              background: rgba(229,212,194,.06); border: 1px solid rgba(229,212,194,.2);
+              border-radius: 8px; color: ${INK}; font-family: ${SERIF}; font-size: 17px;
+              padding: 12px 14px; outline: none; resize: vertical; }
+.sm-cats { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 4px; }
+.sm-cat-b { background: transparent; border: 1px solid rgba(178,170,152,.28); border-radius: 18px;
+            padding: 9px 14px; font-family: ${MONO}; font-size: 10px; letter-spacing: .06em;
+            text-transform: uppercase; color: #B2AA98; cursor: pointer; }
+.sm-cat-on { border-color: rgba(212,184,90,.55); color: ${GOLD}; }
+
+@media (pointer: coarse) { .sm-hit { padding: 17px 2px; } .sm-cat-b { padding: 12px 15px; } }
 `

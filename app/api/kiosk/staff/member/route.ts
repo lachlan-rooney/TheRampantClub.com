@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
-import { svc, deviceOk, actingStaffId } from '@/lib/kiosk/server'
+import { svc, deviceOk, actingStaffId, actingStaff, denyDevice, denyStaff } from '@/lib/kiosk/server'
+import { textIsMedical } from '@/lib/mis/extraction-decay'
+import { CANONICAL_CATEGORIES } from '@/lib/mis/decay-priors'
 
 // WHO THIS IS, AND WHAT THE CLUB ALREADY KNOWS ABOUT THEM.
 //
@@ -93,4 +95,76 @@ export async function GET(req: Request) {
     preference_count: (prefs.data || []).length,
     preferences: groups,
   })
+}
+
+// ── AND WHAT THE FLOOR LEARNS, BACK THE OTHER WAY ─────────────────────────
+// The dossier was a one-way mirror: 159 things the club knew, and no way for
+// the person who had just been told the 160th to record it. A server hears
+// "no ice, ever" at the table and the club has forgotten it by Tuesday.
+//
+// ── IT DOES NOT GO INTO THE MEMBER'S RECORD ───────────────────────────────
+// It goes to preference_candidates — the queue /admin/mis/candidates already
+// reviews, with promote_preference_candidate doing the insert on accept. That
+// is the same path an AI-read Harmony Log takes, and for the same reason: a
+// preference carries a confidence, a decay rate and a score that feed the
+// recommendation engine, and none of that can be set by somebody typing
+// one-handed between two tables.
+//
+// So the floor PROPOSES and the desk DECIDES, and the screen says so — a note
+// that looks saved but is actually queued is worse than no note at all.
+//
+// ── EXCEPT WHEN IT IS MEDICAL ─────────────────────────────────────────────
+// An allergy is not a preference and must never decay. The MIS already decides
+// this deterministically — textIsMedical() over the raw words, fail-safe,
+// covering keyword-free phrasings like "can't have that, my throat closes up" —
+// and locks the row at s0 5 / confidence 1.00 / lambda 0. A floor note gets the
+// IDENTICAL treatment, from the identical function, because the one thing worse
+// than two code paths is two code paths where one of them is about allergies.
+// It is still reviewed; it just cannot arrive at the desk looking casual.
+export async function POST(req: Request) {
+  if (!(await deviceOk())) return denyDevice()
+  const me = await actingStaff()
+  if (!me) return denyStaff()
+
+  const b = await req.json().catch(() => ({}))
+  const memberNo = String(b.member_no || '').trim()
+  const note = String(b.note || '').trim()
+  if (!memberNo) return NextResponse.json({ error: 'Which member?' }, { status: 400 })
+  if (note.length < 3) return NextResponse.json({ error: 'Say what you heard.' }, { status: 400 })
+
+  const a = svc()
+  const { data: m } = await a.from('members').select('member_no').eq('member_no', memberNo).maybeSingle()
+  if (!m) return NextResponse.json({ error: 'No such member.' }, { status: 404 })
+
+  // The nine canonical categories, imported rather than retyped: a tenth
+  // spelling here would be dropped by reconcile() and silently lost.
+  const category = CANONICAL_CATEGORIES.includes(String(b.category))
+    ? String(b.category) : 'Personal & Lifestyle'
+
+  const medical = textIsMedical(note)
+
+  const { error } = await a.from('preference_candidates').insert({
+    member_no: m.member_no,
+    suggested_category: medical ? 'Wellness & Comfort' : category,
+    // The whole note is the suggestion. It is deliberately not split into a
+    // name and a detail on the tablet: the reviewer rewrites it into the club's
+    // own wording, and a form asking for both would get neither.
+    suggested_name: note.slice(0, 200),
+    detail: note.length > 200 ? note.slice(0, 2000) : null,
+    // The words as they were typed. For a medical note this is the part that
+    // matters most, and a reviewer must not have to trust a paraphrase.
+    verbatim_quote: note.slice(0, 1000),
+    // Locked for medical. Otherwise 0.50, not the 0.75 a Harmony Log gets:
+    // this is one person's recollection of one remark, typed at the time. The
+    // reviewer can raise it.
+    suggested_s0: medical ? 5 : 3,
+    suggested_confidence: medical ? 1.00 : 0.50,
+    suggested_lambda: medical ? 0.000 : 0.010,
+    suggested_frequency: 1.0,
+    // Provenance names the PERSON, not the tablet. "Floor · Quy" is what a
+    // reviewer needs to decide whether to go and ask them about it.
+    source: `Floor · ${me.name}`.slice(0, 30),
+  })
+  if (error) return NextResponse.json({ error: 'Could not send that to the desk.' }, { status: 500 })
+  return NextResponse.json({ ok: true, queued: true, medical })
 }

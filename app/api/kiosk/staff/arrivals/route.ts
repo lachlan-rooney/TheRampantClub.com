@@ -15,9 +15,13 @@ import { arrivalsFor, markArrived, markLeft, addGuest } from '@/lib/arrivals'
 // could not mark anybody in — arrivals existed only at /admin, which needs a
 // laptop and a login, and on the door tablet, which is downstairs.
 //
-// The gate is the enrolled DEVICE. The acting staff cookie is attribution only
-// — it is unsigned, which is why it decides whose name is on the action and
-// never whether the action is allowed.
+// The gate is the enrolled DEVICE; the acting staff cookie decides whose name
+// goes on the action. It used to be a bare id in a cookie, so that name was
+// whatever the caller typed — true of every route on this screen, and the
+// reason none of them could be trusted with member data. It is signed as of
+// 2026-10-01 (lib/acting-identity, kiosk prefix), so an unverifiable value is
+// now ABSENT rather than believed. The device is still the gate: an enrolled
+// tablet is what makes this the club's arrivals list and not the internet's.
 
 export const dynamic = 'force-dynamic'
 

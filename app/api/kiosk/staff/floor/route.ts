@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { svc, deviceOk, actingStaffId } from '@/lib/kiosk/server'
+import { svc, deviceOk, actingStaff } from '@/lib/kiosk/server'
 import { doorClock } from '@/lib/guests'
 
 // WHAT THE FLOOR NEEDS, AND THE TWO LINES THAT ARE NOT FOR MEMBERS.
@@ -32,18 +32,25 @@ export async function GET() {
   if (!(await deviceOk())) {
     return NextResponse.json({ error: 'This tablet is not paired.' }, { status: 403 })
   }
-  const id = await actingStaffId()
-  if (!id) return NextResponse.json({ error: 'Sign in first.' }, { status: 403 })
+  // ── THIS ROUTE 403'd FOR EVERYONE (found 2026-10-01) ────────────────────
+  // It asked team_members for `is_active`. The column is `active`. PostgREST
+  // does not return a null field for a column that does not exist — it fails
+  // the whole request — so `who` was ALWAYS null and this always returned
+  // "Sign in first." to somebody who had just signed in.
+  //
+  // Nothing on the screen said so: the floor state is fetched with a
+  // `.catch(() => {})`, so who-else-is-on, the shift rules and the whole
+  // food-order process simply never drew, and the screen looked like a screen
+  // that had nothing on it yet. Playwright found it by watching the network,
+  // which is the only way a silently-swallowed fetch ever gets found.
+  //
+  // The check now goes through lib/kiosk/server's actingStaff(), which the
+  // other staff routes share — one copy of "is this a real person with a PIN",
+  // spelled with the right column name once.
+  const who = await actingStaff()
+  if (!who) return NextResponse.json({ error: 'Sign in first.' }, { status: 403 })
 
   const sb = svc()
-
-  // The cookie names somebody — is that somebody real, and still on the team?
-  const { data: who } = await sb.from('team_members')
-    .select('id, display_name, is_active, pin_hash')
-    .eq('id', id).maybeSingle()
-  if (!who || who.is_active === false || !who.pin_hash) {
-    return NextResponse.json({ error: 'Sign in first.' }, { status: 403 })
-  }
 
   // The same service date the door and the board use: the small hours belong to
   // the evening before, so a 1am shift is still "tonight".
@@ -64,12 +71,12 @@ export async function GET() {
       shift: s.shift_name as string,
       start: (s.start_time as string | null) ?? null,
       end: (s.end_time as string | null) ?? null,
-      isMe: s.member === id,
+      isMe: s.member === who.id,
     }))
     .sort((a, b) => (a.start ?? '').localeCompare(b.start ?? '') || a.name.localeCompare(b.name))
 
   return NextResponse.json({
-    staff: { id: who.id, name: who.display_name },
+    staff: { id: who.id, name: who.name },
     date: serviceDate,
     onShift,
     process: PROCESS,

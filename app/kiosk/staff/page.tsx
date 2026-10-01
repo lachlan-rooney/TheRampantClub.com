@@ -5,6 +5,10 @@ import { useLang } from '@/lib/lang'
 import ArrivalsRow from '@/components/admin/ArrivalsRow'
 import StaffGuestSignIn from '@/components/kiosk/StaffGuestSignIn'
 import StaffMemberLookup from '@/components/kiosk/StaffMemberLookup'
+import StaffTonight, { type Tonight } from '@/components/kiosk/StaffTonight'
+import StaffWhatsOn from '@/components/kiosk/StaffWhatsOn'
+import StaffShiftTasks from '@/components/kiosk/StaffShiftTasks'
+import StaffBar from '@/components/kiosk/StaffBar'
 import OpenOrders from '@/components/menus/OpenOrders'
 
 // The gated kiosk shell (device session already verified by middleware). Layer 2:
@@ -16,7 +20,7 @@ import OpenOrders from '@/components/menus/OpenOrders'
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
 const IDLE_MS = 180_000   // 3 min idle → back to the picker
 
-type View = 'hub' | 'tonight' | 'orders' | 'guests' | 'member' | 'stock' | 'howto'
+type View = 'hub' | 'tonight' | 'orders' | 'guests' | 'member' | 'tasks' | 'bar' | 'stock' | 'howto'
 interface Staff { id: string; display_name: string; role_title?: string | null }
 interface OnShift { name: string; shift: string; start: string | null; end: string | null; isMe: boolean }
 interface Bi { en: string; vn: string }
@@ -59,7 +63,11 @@ export default function KioskStaff() {
   // next tool is adding a card, which is the point — "more features" needs
   // somewhere for features to go.
   const [view, setView] = useState<View>('hub')
-  const [counts, setCounts] = useState<{ inClub: number; orders: number }>({ inClub: 0, orders: 0 })
+  const [counts, setCounts] = useState<{ inClub: number; orders: number; tasks: number }>({ inClub: 0, orders: 0, tasks: 0 })
+  // Tonight is fetched ONCE for the hub and handed down. The strip, the card's
+  // number and the booking list are the same question asked three ways, and
+  // three polls of it on four tablets is twelve requests a minute for one answer.
+  const [tonight, setTonight] = useState<Tonight | null>(null)
   const idle = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const loadMe = useCallback(async () => {
@@ -94,15 +102,22 @@ export default function KioskStaff() {
     let live = true
     const read = async () => {
       try {
-        const [a, o] = await Promise.all([
+        const [a, o, tn, tk] = await Promise.all([
           fetch('/api/kiosk/staff/arrivals', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null),
           fetch('/api/kiosk/orders/open', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch('/api/kiosk/staff/tonight', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch('/api/kiosk/staff/tasks', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null),
         ])
         if (!live) return
         const rows = a?.rows || a?.arrivals || a?.bookings || []
+        if (tn) setTonight(tn)
         setCounts({
           inClub: Array.isArray(rows) ? rows.filter((x: { arrived_at?: string | null }) => x.arrived_at).length : 0,
           orders: Array.isArray(o?.orders) ? o.orders.length : 0,
+          // MY unfinished tasks for today, counted on the server. A badge that
+          // included other people's would never reach zero, and one badge
+          // nobody can clear makes every other badge on the screen untrusted.
+          tasks: Number(tk?.waiting ?? 0),
         })
       } catch { /* a card without a number still opens */ }
     }
@@ -181,6 +196,10 @@ export default function KioskStaff() {
               </div>
             )}
 
+            {/* ON TONIGHT. Read, not opened — so it is a line on the hub
+                rather than a card, and it draws nothing when nothing is on. */}
+            <StaffWhatsOn tonight={tonight} />
+
             <div style={cardGrid}>
               <Card onClick={() => setView('tonight')} title={t('Who is in', 'Khách trong câu lạc bộ')}
                     sub={t('arrivals, guests, who is booked', 'khách đến, khách mời, ai đã đặt')}
@@ -192,6 +211,11 @@ export default function KioskStaff() {
                     sub={t('what they drink, their locker, when they were last in', 'khách uống gì, tủ khóa, lần ghé gần nhất')} />
               <Card onClick={() => setView('guests')} title={t('Guests', 'Khách mời')}
                     sub={t('sign a guest in — name, signature, your PIN', 'ghi nhận khách — tên, chữ ký, mã PIN')} />
+              <Card onClick={() => setView('tasks')} title={t('My shift list', 'Việc trong ca')}
+                    sub={t('what this shift is for, and what is left on it', 'ca này để làm gì và còn việc gì')}
+                    count={counts.tasks} countLabel={t('to do', 'cần làm')} />
+              <Card onClick={() => setView('bar')} title={t('The back bar', 'Quầy bar')}
+                    sub={t('what is left in a bottle, and what runs out tonight', 'còn lại bao nhiêu và chai nào sắp hết')} />
               <Card onClick={() => setView('stock')} title={t('Stocktake', 'Kiểm kê')}
                     sub={t('count the back bar', 'kiểm kê quầy bar')} />
               <Card onClick={() => setView('howto')} title={t('How we do it', 'Quy trình')}
@@ -218,6 +242,13 @@ export default function KioskStaff() {
         {view === 'tonight' && (
           <Section title={t('Who is in', 'Khách trong câu lạc bộ')}>
             <ArrivalsRow endpoint="/api/kiosk/staff/arrivals" />
+            {/* THE BOOK, UNDER THE BUTTONS. The three buttons above record who
+                walked in; this is who is expected and the guest names the club
+                has held all along without the floor ever seeing them. */}
+            <div style={{ marginTop: 36, paddingTop: 26, borderTop: '1px solid rgba(229,212,194,0.12)' }}>
+              <div style={procHead}>{t('In the book tonight', 'Trong sổ tối nay')}</div>
+              <StaffTonight initial={tonight} />
+            </div>
           </Section>
         )}
 
@@ -242,6 +273,18 @@ export default function KioskStaff() {
         {view === 'guests' && (
           <Section title={t('Guests', 'Khách mời')}>
             <StaffGuestSignIn staffId={me.id} staffName={me.display_name} />
+          </Section>
+        )}
+
+        {view === 'tasks' && (
+          <Section title={t('My shift list', 'Việc trong ca')}>
+            <StaffShiftTasks onWaiting={n => setCounts(c => (c.tasks === n ? c : { ...c, tasks: n }))} />
+          </Section>
+        )}
+
+        {view === 'bar' && (
+          <Section title={t('The back bar', 'Quầy bar')}>
+            <StaffBar />
           </Section>
         )}
 
@@ -400,7 +443,23 @@ function greeting(t: (en: string, vn: string) => string): string {
 }
 
 function Scroll({ children }: { children: React.ReactNode }) {
-  return <div style={{ minHeight: 'calc(100dvh - var(--kiosk-bar, 0px))', padding: '36px 24px 40px', overflowY: 'auto' }}>{children}</div>
+  // ── THE LAST BUTTON ON THE PAGE MUST BE TAPPABLE ───────────────────────
+  // minHeight already kept SHORT screens clear of the bottom bar. It does
+  // nothing for a LONG one: KioskBar is position: fixed, so anything past the
+  // fold ends under it. Harmless while every view ended in text — and a real
+  // fault the moment the foot of a view is "Send to the desk" or "Count the
+  // shelf". Playwright found it by being unable to click, which is exactly
+  // what a server standing at the bar would have found.
+  //
+  // The bar's own height is published as --kiosk-bar, so the padding tracks it
+  // rather than guessing at 64px and drifting the next time it changes.
+  return (
+    <div style={{
+      minHeight: 'calc(100dvh - var(--kiosk-bar, 0px))',
+      padding: '36px 24px', paddingBottom: 'calc(40px + var(--kiosk-bar, 0px))',
+      overflowY: 'auto',
+    }}>{children}</div>
+  )
 }
 
 function Center({ children }: { children: React.ReactNode }) {
