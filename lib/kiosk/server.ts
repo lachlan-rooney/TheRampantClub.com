@@ -1,10 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { mintMemberJwt } from './mint'
+import { verifyKioskActor } from '@/lib/acting-identity'
 
 // Kiosk identity helpers. TWO layers:
 //  - DEVICE_COOKIE = the security boundary (an enrolled, revocable device token).
-//  - STAFF_COOKIE  = attribution only (the acting staff's team_member id).
+//  - STAFF_COOKIE  = the acting staff's team_member id, SIGNED (2026-10-01).
 // Cookies are path '/' so both /kiosk pages and /api/kiosk routes receive them.
 
 export const DEVICE_COOKIE = 'trc_kiosk_device'
@@ -24,9 +25,18 @@ export async function deviceOk(): Promise<boolean> {
   return data === true
 }
 
-// Attribution — who's acting (a team_member id), or null. NOT a security gate.
+// WHO IS ACTING, PROVEN (2026-10-01). This used to return the cookie's raw
+// contents, which meant any HTTP client could name itself anybody — so the
+// cookie was documented as "attribution only" and explicitly barred from
+// carrying member PII. It is signed now, by the same machinery the admin desk
+// has used since the shift-ownership work, with its own prefix so a desk
+// cookie cannot be replayed on a tablet.
+//
+// A value that does not verify is treated as ABSENT: the person picks their
+// name and enters their PIN again, which is the right outcome for an identity
+// we cannot vouch for.
 export async function actingStaffId(): Promise<string | null> {
-  return (await cookies()).get(STAFF_COOKIE)?.value || null
+  return verifyKioskActor((await cookies()).get(STAFF_COOKIE)?.value)
 }
 
 export const deviceCookieOpts = { httpOnly: true, secure: true, sameSite: 'lax' as const, path: '/', maxAge: 60 * 60 * 24 * 365 }

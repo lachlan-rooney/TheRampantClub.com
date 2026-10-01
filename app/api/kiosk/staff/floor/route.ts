@@ -11,16 +11,20 @@ import { doorClock } from '@/lib/guests'
 // ever passing the PIN screen. The PIN was a UI gate on text that had already
 // been downloaded. It now comes from here, and only for a caller who has one.
 //
-// ── THE STAFF COOKIE IS NOT A SIGNATURE ───────────────────────────────────
-// lib/kiosk/server documents it plainly: trc_kiosk_staff holds a bare, unsigned
-// team_members id, and the door flow re-verifies the PIN on every real decision
-// because of it. So this route does not trust the cookie's contents either — it
-// checks the id against team_members and requires the row to be ACTIVE and to
-// have a PIN set. That turns "any string" into "a real member of staff who
-// could have logged in", which is the most this cookie can honestly support.
+// ── THE STAFF COOKIE IS A SIGNATURE NOW (2026-10-01) ──────────────────────
+// It used to hold a bare, unsigned team_members id — httpOnly against a
+// browser and nothing against an HTTP client — so this route checked the id
+// against team_members and required the row to be ACTIVE with a PIN set, and
+// the comment here said the cookie "should not be asked to carry anything
+// worse than a margin: no member PII".
 //
-// It is still not a hard boundary, and should not be asked to carry anything
-// worse than a margin: no member PII, no grievance notes, no card numbers.
+// trc_kiosk_staff is signed now (lib/acting-identity, kiosk prefix), so it
+// names a person who actually entered a PIN on this tablet. The row check
+// below stays: a signature proves who, not that they are still on the team.
+//
+// The door flow still re-verifies the PIN on every admit/refuse. Letting
+// somebody INTO the club is a decision worth a fresh PIN even from a proven
+// identity, and that is deliberate rather than left over.
 
 export const dynamic = 'force-dynamic'
 

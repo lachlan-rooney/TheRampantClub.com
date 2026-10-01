@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { svc, deviceOk, STAFF_COOKIE, staffCookieOpts } from '@/lib/kiosk/server'
+import { signKioskActor } from '@/lib/acting-identity'
 
 // The staff picker — ATTRIBUTION, on top of the device session. Verify the PIN
 // (hashed + rate-limited in the DB fn) → set the acting-staff cookie. This is NOT
@@ -16,6 +17,6 @@ export async function POST(req: Request) {
   if (!id) return NextResponse.json({ error: 'Wrong PIN, or too many tries — wait a moment.' }, { status: 401 })
   const { data: tm } = await a.from('team_members').select('display_name').eq('id', id).maybeSingle()
   const res = NextResponse.json({ ok: true, name: tm?.display_name || 'Staff' })
-  res.cookies.set(STAFF_COOKIE, id as string, staffCookieOpts)
+  res.cookies.set(STAFF_COOKIE, signKioskActor(id as string), staffCookieOpts)
   return res
 }
