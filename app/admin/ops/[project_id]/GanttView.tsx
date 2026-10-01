@@ -2,7 +2,9 @@
 
 import { useMemo, useRef, useState } from 'react'
 import { vnDateString } from '@/lib/datetime'
-import { OPS_STATUS_COLORS, OPS_STATUS_LABELS, taskVisualState, type OpsVisualState } from '@/lib/ops/status'
+import { OPS_STATUS_COLORS, taskVisualState, type OpsVisualState } from '@/lib/ops/status'
+import { statusLabel } from '@/lib/ops/labels'
+import { useLang } from '@/lib/admin-lang'
 import type { Task, Project } from '@/lib/ops/types'
 
 const FAMILY = "'Google Sans Code', monospace"
@@ -18,6 +20,7 @@ const FUTURE_PAD = 150    // days of empty future to scroll/drag into (the timel
 const ZOOMS = ['day', 'week', 'month'] as const
 type Zoom = typeof ZOOMS[number]
 const DAY_W: Record<Zoom, number> = { day: 28, week: 8, month: 3 }
+const ZOOM_LABEL: Record<Zoom, [string, string]> = { day: ['Day', 'Ngày'], week: ['Week', 'Tuần'], month: ['Month', 'Tháng'] }
 const RESIZE_UNIT: Record<Zoom, number> = { day: 1, week: 7, month: 30 }   // resize snaps to the visible granularity
 
 // ── date math in whole UTC days (no TZ drift) ──
@@ -50,6 +53,11 @@ export default function GanttView({ tasks, project, canEdit, onOpenCard, onResch
    *  worth more on a bar than "belongs to Halloween". */
   boardOf?: (t: Task) => { name: string; colour: string } | null
 }) {
+  // THE WHOLE COMPONENT HAD NO LANGUAGE (2026-10-01). Every word in it was
+  // typed in English: the legend, the zoom buttons, "Today", "Task", both
+  // empty states and the instruction line. A member of staff switching to
+  // Vietnamese got a Gantt chart that did not move at all.
+  const { t, lang } = useLang()
   const [zoom, setZoom] = useState<Zoom>('day')
   const dayWidth = DAY_W[zoom]
   const dragRef = useRef<DragState | null>(null)
@@ -184,17 +192,20 @@ export default function GanttView({ tasks, project, canEdit, onOpenCard, onResch
     <div style={{ marginTop: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
         <p style={{ fontFamily: FAMILY, fontSize: 11, color: '#B2AA98', margin: 0, flex: 1, minWidth: 240 }}>
-          {canEdit ? 'Drag a task name to reschedule (slides both dates); drag a bar edge to resize; drag a diamond to move its date.' : 'Read-only.'}
+          {canEdit
+            ? t('Drag a task name to reschedule (slides both dates); drag a bar edge to resize; drag a diamond to move its date.',
+                'Kéo tên công việc để dời lịch (cả hai ngày cùng trượt); kéo mép thanh để đổi độ dài; kéo hình thoi để đổi ngày.')
+            : t('Read-only.', 'Chỉ xem.')}
         </p>
         <div style={{ display: 'flex', gap: 6 }}>
-          <button onClick={() => scrollByCols(-1)} style={navBtn} title="Scroll back">‹</button>
-          <button onClick={() => scrollRef.current?.scrollTo({ left: LABEL_W + xOf(todayN) - scrollRef.current.clientWidth / 2, behavior: 'smooth' })} style={navBtn} title="Jump to today">Today</button>
-          <button onClick={() => scrollByCols(1)} style={navBtn} title="Scroll forward">›</button>
+          <button onClick={() => scrollByCols(-1)} style={navBtn} title={t('Scroll back', 'Lùi lại')}>‹</button>
+          <button onClick={() => scrollRef.current?.scrollTo({ left: LABEL_W + xOf(todayN) - scrollRef.current.clientWidth / 2, behavior: 'smooth' })} style={navBtn} title={t('Jump to today', 'Về hôm nay')}>{t('Today', 'Hôm nay')}</button>
+          <button onClick={() => scrollByCols(1)} style={navBtn} title={t('Scroll forward', 'Tiến tới')}>›</button>
         </div>
         <div style={{ display: 'flex', border: '1px solid rgba(229,212,194,0.15)', borderRadius: 6, overflow: 'hidden' }}>
           {ZOOMS.map(z => (
             <button key={z} onClick={() => setZoom(z)} style={{ ...zoomBtn, background: zoom === z ? 'rgba(212,184,90,0.18)' : 'transparent', color: zoom === z ? '#D4B85A' : '#B2AA98' }}>
-              {z[0].toUpperCase() + z.slice(1)}
+              {ZOOM_LABEL[z][lang === 'vn' ? 1 : 0]}
             </button>
           ))}
         </div>
@@ -205,7 +216,7 @@ export default function GanttView({ tasks, project, canEdit, onOpenCard, onResch
         {(['done', 'overdue', 'due_soon', 'upcoming', 'lapsed'] as OpsVisualState[]).map(s => (
           <span key={s} style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: FAMILY, fontSize: 10, color: '#B2AA98' }}>
             <span style={{ width: 10, height: 10, borderRadius: 2, background: OPS_STATUS_COLORS[s] }} />
-            {OPS_STATUS_LABELS[s]}
+            {statusLabel(s, lang)}
           </span>
         ))}
       </div>
@@ -214,7 +225,7 @@ export default function GanttView({ tasks, project, canEdit, onOpenCard, onResch
         <div style={{ width: LABEL_W + trackW, minWidth: '100%' }}>
           {/* header */}
           <div style={{ display: 'flex', borderBottom: '1px solid rgba(229,212,194,0.12)', height: 30 }}>
-            <div style={{ ...stickyLabel, height: 30, display: 'flex', alignItems: 'center', color: '#7E7864', fontSize: 10 }}>Task</div>
+            <div style={{ ...stickyLabel, height: 30, display: 'flex', alignItems: 'center', color: '#7E7864', fontSize: 10 }}>{t('Task', 'Công việc')}</div>
             <div style={{ position: 'relative', width: trackW }}>
               {segments.map((s, i) => (
                 <div key={i} style={{ position: 'absolute', left: s.left, width: s.width, height: 30, borderLeft: '1px solid rgba(229,212,194,0.08)', textAlign: 'center', boxSizing: 'border-box', background: s.today ? 'rgba(212,184,90,0.10)' : undefined, overflow: 'hidden' }}>
@@ -227,7 +238,7 @@ export default function GanttView({ tasks, project, canEdit, onOpenCard, onResch
 
           {/* rows */}
           {placed.length === 0 ? (
-            <div style={{ padding: '20px 14px', fontFamily: FAMILY, fontSize: 12, color: '#B2AA98', opacity: 0.6, fontStyle: 'italic' }}>No dated tasks yet — add a start/due date to a card to place it here.</div>
+            <div style={{ padding: '20px 14px', fontFamily: FAMILY, fontSize: 12, color: '#B2AA98', opacity: 0.6, fontStyle: 'italic' }}>{t('No dated tasks yet — add a start/due date to a card to place it here.', 'Chưa có công việc nào có ngày — thêm ngày bắt đầu/hạn chót vào thẻ để nó xuất hiện ở đây.')}</div>
           ) : placed.map(p => {
             const vColor = OPS_STATUS_COLORS[taskVisualState(p.task)]   // one vocabulary — same as the board
             return (
@@ -270,13 +281,13 @@ export default function GanttView({ tasks, project, canEdit, onOpenCard, onResch
 
       {unscheduled.length > 0 && (
         <div style={{ marginTop: 16 }}>
-          <div style={{ fontFamily: FAMILY, fontSize: 10, color: '#7E7864', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Unscheduled · {unscheduled.length}</div>
+          <div style={{ fontFamily: FAMILY, fontSize: 10, color: '#7E7864', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>{t('Unscheduled', 'Chưa lên lịch')} · {unscheduled.length}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {unscheduled.map(t => (
               <button key={t.id} onClick={() => onOpenCard(t)} style={{ background: 'rgba(229,212,194,0.06)', border: '1px dashed rgba(229,212,194,0.18)', borderRadius: 6, color: '#E5D4C2', fontFamily: FAMILY, fontSize: 11, padding: '5px 10px', cursor: 'pointer' }}>{t.title}</button>
             ))}
           </div>
-          <p style={{ fontFamily: FAMILY, fontSize: 10, color: '#7E7864', marginTop: 6, opacity: 0.7 }}>No start or due date — open a card to give it dates and place it on the timeline.</p>
+          <p style={{ fontFamily: FAMILY, fontSize: 10, color: '#7E7864', marginTop: 6, opacity: 0.7 }}>{t('No start or due date — open a card to give it dates and place it on the timeline.', 'Chưa có ngày bắt đầu hay hạn chót — mở thẻ để đặt ngày và đưa nó lên dòng thời gian.')}</p>
         </div>
       )}
     </div>

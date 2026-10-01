@@ -10,7 +10,7 @@ export default function OpsActivityPage() {
   const { t } = useLang()
   return (
     <>
-      <Link href="/admin/ops" style={backLink}>← {t('Boards', 'Bảng')}</Link>
+      <Link href="/admin/ops" style={backLink}>← {t('All boards', 'Tất cả bảng')}</Link>
       <div style={{ margin: '8px 0 4px' }}>
         <h1 style={pageTitle}>{t('Activity', 'Hoạt động')}</h1>
       </div>

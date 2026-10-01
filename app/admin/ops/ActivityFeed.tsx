@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { describeEvent, actorName, timeAgo } from '@/lib/ops/feed'
+import { useLang } from '@/lib/admin-lang'
 import type { ActivityEvent, Project } from '@/lib/ops/types'
 
 const FAMILY = "'Google Sans Code', monospace"
@@ -14,6 +15,9 @@ interface ProfileLite { id: string; display_name: string | null }
 // without, it's the global feed (admin) with a project filter. RLS scopes the
 // rows; the visibility rule is enforced in the DB, not here.
 export default function ActivityFeed({ projectId }: { projectId?: string }) {
+  // The feed had no language at all (2026-10-01) — thirty English sentences
+  // and five English controls, none of which moved when somebody switched.
+  const { t, lang } = useLang()
   const supabase = createBrowserSupabaseClient()
   const [events, setEvents] = useState<ActivityEvent[]>([])
   const [loading, setLoading] = useState(true)
@@ -61,35 +65,35 @@ export default function ActivityFeed({ projectId }: { projectId?: string }) {
     <div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
         <select value={actorFilter} onChange={e => setActorFilter(e.target.value)} style={select}>
-          <option value="" style={opt}>Everyone</option>
+          <option value="" style={opt}>{t('Everyone', 'Mọi người')}</option>
           {profiles.map(p => <option key={p.id} value={p.id} style={opt}>{p.display_name || p.id.slice(0, 8)}</option>)}
         </select>
         {!projectId && (
           <select value={projectFilter} onChange={e => setProjectFilter(e.target.value)} style={select}>
-            <option value="" style={opt}>All boards</option>
+            <option value="" style={opt}>{t('All boards', 'Tất cả bảng')}</option>
             {projects.map(p => <option key={p.id} value={p.id} style={opt}>{p.name}</option>)}
           </select>
         )}
       </div>
 
       {loading ? (
-        <div style={emptyText}>Loading…</div>
+        <div style={emptyText}>{t('Loading…', 'Đang tải…')}</div>
       ) : events.length === 0 ? (
-        <div style={emptyText}>No activity yet.</div>
+        <div style={emptyText}>{t('No activity yet.', 'Chưa có hoạt động nào.')}</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {events.map(ev => (
             <div key={ev.id} style={row}>
               <span style={dot} />
               <span style={line}>
-                <strong style={{ color: '#E5D4C2', fontWeight: 600 }}>{actorName(ev)}</strong>
-                {' '}<span style={{ color: '#B2AA98' }}>{describeEvent(ev)}</span>
+                <strong style={{ color: '#E5D4C2', fontWeight: 600 }}>{actorName(ev, lang)}</strong>
+                {' '}<span style={{ color: '#B2AA98' }}>{describeEvent(ev, lang)}</span>
               </span>
-              <span style={when}>{timeAgo(ev.created_at)}</span>
+              <span style={when}>{timeAgo(ev.created_at, lang)}</span>
             </div>
           ))}
           {hasMore && (
-            <button onClick={() => fetchPage(offset, false)} style={loadMore}>Load more</button>
+            <button onClick={() => fetchPage(offset, false)} style={loadMore}>{t('Load more', 'Tải thêm')}</button>
           )}
         </div>
       )}

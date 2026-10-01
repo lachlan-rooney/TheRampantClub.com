@@ -8,6 +8,7 @@ import { vnDateString } from '@/lib/datetime'
 import GanttView from '../[project_id]/GanttView'
 import type { Task, Project, TeamMember } from '@/lib/ops/types'
 import { DEFAULT_BOARD_COLOUR } from '@/lib/ops/palette'
+import { columnLabel } from '@/lib/ops/labels'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // EVERY BOARD, ON ONE TIMELINE.
@@ -37,7 +38,7 @@ import { DEFAULT_BOARD_COLOUR } from '@/lib/ops/palette'
 const FAMILY = "'Google Sans Code', monospace"
 
 export default function MasterTimelinePage() {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const [projects, setProjects] = useState<Project[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [team, setTeam] = useState<TeamMember[]>([])
@@ -102,7 +103,7 @@ export default function MasterTimelinePage() {
 
   return (
     <>
-      <Link href="/admin/ops" style={backLink}>← {t('Boards', 'Bảng')}</Link>
+      <Link href="/admin/ops" style={backLink}>← {t('All boards', 'Tất cả bảng')}</Link>
       <div style={{ margin: '8px 0 6px' }}>
         <h1 style={pageTitle}>{t('Everything, on one timeline', 'Tất cả trên một dòng thời gian')}</h1>
       </div>
@@ -196,7 +197,7 @@ export default function MasterTimelinePage() {
             return (
               <div key={name} style={columnStyle}>
                 <div style={columnHeader}>
-                  <span style={{ color: '#E5D4C2' }}>{name}</span>
+                  <span style={{ color: '#E5D4C2' }}>{columnLabel(name, lang)}</span>
                   <span style={{ opacity: 0.6 }}>{inCol.length}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -215,7 +216,7 @@ export default function MasterTimelinePage() {
                           {x.assignee && <span style={pill}>{team.find(m => m.id === x.assignee)?.display_name || '—'}</span>}
                           {x.due_date && (
                             <span style={{ ...pill, color: late ? '#C27070' : '#B2AA98', borderColor: late ? 'rgba(194,112,112,0.5)' : 'rgba(229,212,194,0.18)' }}>
-                              {vnShort(x.due_date)}
+                              {vnShort(x.due_date, lang)}
                             </span>
                           )}
                         </span>
@@ -250,7 +251,8 @@ const emptyText: React.CSSProperties = { fontFamily: FAMILY, fontSize: 12, color
 // never be anything but empty — and a column permanently reading zero looks
 // like a fault rather than a fact. Finished work lives on its own board.
 const COLUMN_ORDER = ['Backlog', 'In progress', 'Blocked']
-const vnShort = (d: string) => new Date(`${d}T12:00:00+07:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Asia/Ho_Chi_Minh' })
+const vnShort = (d: string, lang: 'en' | 'vn' = 'en') =>
+  new Date(`${d}T12:00:00+07:00`).toLocaleDateString(lang === 'vn' ? 'vi-VN' : 'en-GB', { day: 'numeric', month: 'short', timeZone: 'Asia/Ho_Chi_Minh' })
 const columnStyle: React.CSSProperties = {
   flex: '0 0 270px', width: 270, background: 'rgba(229,212,194,0.03)',
   border: '1px solid rgba(229,212,194,0.10)', borderRadius: 10, padding: 10,

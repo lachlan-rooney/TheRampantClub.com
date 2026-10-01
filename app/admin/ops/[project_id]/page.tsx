@@ -23,6 +23,7 @@ import type {
   TaskTemplate, Recurrence,
 } from '@/lib/ops/types'
 import { LABEL_COLOURS } from '@/lib/ops/palette'
+import { columnLabel, priorityLabel } from '@/lib/ops/labels'
 
 const FAMILY = "'Google Sans Code', monospace"
 const PRIORITY_COLOUR: Record<TaskPriority, string> = {
@@ -33,7 +34,7 @@ const PRIORITIES: TaskPriority[] = ['low', 'normal', 'high', 'urgent']
 interface ProfileLite { id: string; display_name: string | null }
 
 export default function OpsBoardPage({ params }: { params: Promise<{ project_id: string }> }) {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const { project_id } = use(params)
   const supabase = createBrowserSupabaseClient()
   const { showToast, toastNode } = useToast()
@@ -354,7 +355,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
 
   return (
     <>
-      <Link href="/admin/ops" style={backLink}>← {t('Boards', 'Bảng')}</Link>
+      <Link href="/admin/ops" style={backLink}>← {t('All boards', 'Tất cả bảng')}</Link>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '8px 0 20px' }}>
         <h1 style={pageTitle}>{project.name}</h1>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -493,7 +494,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
             }}
           >
             <div style={columnHeader}>
-              <span style={{ color: col.is_done_column ? '#7AB07A' : '#E5D4C2' }}>{col.name}</span>
+              <span style={{ color: col.is_done_column ? '#7AB07A' : '#E5D4C2' }}>{columnLabel(col.name, lang)}</span>
               <span style={{ ...metaText, opacity: 0.6 }}>
                 {tasksIn(col.id).length}{filtering ? ` / ${tasks.filter(t => t.column_id === col.id).length}` : ''}
               </span>
@@ -577,7 +578,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
                   </div>
                 </div>
               ) : (
-                <button onClick={() => setNewCardCol(col.id)} style={{ ...tinyBtn, marginTop: 8, width: '100%' }}>+ Card</button>
+                <button onClick={() => setNewCardCol(col.id)} style={{ ...tinyBtn, marginTop: 8, width: '100%' }}>+ {t('Card', 'Thẻ')}</button>
               ))}
           </div>
         ))}
@@ -598,7 +599,7 @@ export default function OpsBoardPage({ params }: { params: Promise<{ project_id:
                 <div style={fieldLabel}>{t('Priority', 'Ưu tiên')}</div>
                 <select style={input} value={draft.priority} disabled={!canEdit}
                   onChange={e => setDraft(d => ({ ...d, priority: e.target.value as TaskPriority }))}>
-                  {PRIORITIES.map(p => <option key={p} value={p} style={{ background: '#052E20' }}>{p}</option>)}
+                  {PRIORITIES.map(p => <option key={p} value={p} style={{ background: '#052E20' }}>{priorityLabel(p, lang)}</option>)}
                 </select>
               </div>
               <div style={{ flex: 1 }}>
@@ -749,7 +750,7 @@ function MembersPanel({ members, profiles, profileName, canEdit, onAdd, onRemove
 
 // Cross-site link picker (Phase 5): choose a type, search the real objects, link one.
 function LinkPicker({ onLink }: { onLink: (type: LinkType, id: string, label: string) => void }) {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const supabase = createBrowserSupabaseClient()
   const [type, setType] = useState<LinkType>('member')
   const [q, setQ] = useState('')
@@ -818,7 +819,7 @@ function RecurringPanel({ templates, columns, team, canEdit, busy, onCreate, onT
   onToggle: (id: string, active: boolean) => void
   onMaterialise: () => void
 }) {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const [title, setTitle] = useState('')
   const [columnId, setColumnId] = useState(columns[0]?.id || '')
   const [priority, setPriority] = useState<TaskPriority>('normal')
@@ -871,10 +872,10 @@ function RecurringPanel({ templates, columns, team, canEdit, busy, onCreate, onT
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('New recurring task title', 'Tiêu đề tác vụ định kỳ mới')} style={input} />
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <select value={columnId} onChange={e => setColumnId(e.target.value)} style={{ ...input, width: 'auto', flex: 1 }}>
-              {columns.map(c => <option key={c.id} value={c.id} style={{ background: '#052E20' }}>{c.name}</option>)}
+              {columns.map(c => <option key={c.id} value={c.id} style={{ background: '#052E20' }}>{columnLabel(c.name, lang)}</option>)}
             </select>
             <select value={priority} onChange={e => setPriority(e.target.value as TaskPriority)} style={{ ...input, width: 'auto' }}>
-              {PRIORITIES.map(p => <option key={p} value={p} style={{ background: '#052E20' }}>{p}</option>)}
+              {PRIORITIES.map(p => <option key={p} value={p} style={{ background: '#052E20' }}>{priorityLabel(p, lang)}</option>)}
             </select>
             <select value={assignee} onChange={e => setAssignee(e.target.value)} style={{ ...input, width: 'auto' }}>
               <option value="" style={{ background: '#052E20' }}>{t('— unassigned —', '— chưa phân công —')}</option>
