@@ -278,8 +278,18 @@ const COLUMN_ORDER = ['Backlog', 'In progress', 'Blocked', 'Done']
 const DONE_LIMIT = 60
 const vnShort = (d: string, lang: 'en' | 'vn' = 'en') =>
   new Date(`${d}T12:00:00+07:00`).toLocaleDateString(lang === 'vn' ? 'vi-VN' : 'en-GB', { day: 'numeric', month: 'short', timeZone: 'Asia/Ho_Chi_Minh' })
+// FOUR COLUMNS HAVE TO FIT (2026-10-01). They were a fixed 270px each, which
+// was fine for three. Adding Done pushed the fourth past the right edge on a
+// laptop: at 1280 it started at x=1143 and ended at 1391, so a sliver showed
+// and the rest was behind a sideways scroll nobody had any reason to try. The
+// owner's report was simply "still no done on the mega board" — the column was
+// rendering the whole time, with twenty-one cards in it, off the edge.
+//
+// They share the width now and shrink to fit, down to 220px — at which point
+// the rail scrolls as before, but only on a screen genuinely too narrow for
+// four.
 const columnStyle: React.CSSProperties = {
-  flex: '0 0 270px', width: 270, background: 'rgba(229,212,194,0.03)',
+  flex: '1 1 0', minWidth: 220, maxWidth: 340, background: 'rgba(229,212,194,0.03)',
   border: '1px solid rgba(229,212,194,0.10)', borderRadius: 10, padding: 10,
 }
 const columnHeader: React.CSSProperties = {
