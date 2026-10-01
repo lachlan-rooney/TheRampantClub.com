@@ -24,19 +24,32 @@ const CHAPTERS = [
        threshold between the everyday and the sacred. They keep faith with what is inside.`,
       `Our lion is both. Scottish in posture, Vietnamese in purpose. Our crest watches from above the door,
        and the rooms behind it answer to its standard.`,
+      // The owner's addition, 2026-10-01. Kept to what is actually recorded:
+      // HIC SVNT LEONES appears on the Lenox Globe of about 1510, over the
+      // eastern coast of Asia — which is the part worth saying here, and the
+      // reason it earns its place on a Sài Gòn club's page rather than being
+      // a flourish. "Here be dragons" is the phrase everyone remembers and is
+      // the rarer one; lions were what the mapmakers actually wrote.
+      `The Romans marked the far edges of their maps hic sunt leones — here are lions. It was written
+       where the known world ran out: not a warning so much as an admission, the cartographer's way of
+       saying that what lay beyond was uncharted and would have to be met rather than read about. On one
+       of the earliest globes to show the New World it sits over the coast of Asia.`,
+      `We took the phrase for a club built far from Scotland, in a city that rewards the same instinct.
+       Here are lions.`,
     ],
   },
   {
     image: 'whisky-lounge',
-    title: 'A house with five floors and a long memory',
+    title: 'A house with a long memory',
     body: [
       `Number 74A/2 Hai Bà Trưng has stood for the better part of a century. It has been many things —
-       a residence, a workshop, a place of quiet commerce — but always a private one, set back from the
-       street and behind a courtyard.`,
-      `When we found it, the bones were intact and the rooms had stories: tile floors warm with use,
-       balconies that faced the right kind of weather, a stairwell that climbed exactly five flights.
+       a residence, a workshop, a building of commerce and even an Indian restaurant. These days it
+       enjoys a quieter life, set back from the street behind a curtain, calmly awaiting our Rampant Lions.`,
+      `When we found it, the bones were intact and the rooms had stories: tiled floors warm with use,
+       cosy rooms with balconies that faced the sun, a stairwell that climbed exactly six flights.
        It asked to be a clubhouse.`,
-      `The restoration was patient. Nothing erased; much restored. Where we built new, we built quietly.`,
+      `The restoration was patient. Where we built new, we built quietly — erasing nothing, rejuvenating
+       tastefully.`,
     ],
   },
   {
@@ -183,8 +196,8 @@ export default function OriginPage() {
           <Rise><h2 className="pk-h2">Membership is by invitation or referral only.</h2></Rise>
           <Rise delay={.1}>
             <p className="pk-lede">
-              We do not advertise. We do not currently accept applications. If The Rampant Club is for you, we will
-              most likely meet through one of our Lions.
+              We do not advertise, nor do we currently accept applications. If The Rampant Club is for you,
+              we will most likely meet through one of our Lions or at one of our events.
             </p>
           </Rise>
           <Rise delay={.18}><Cta href="/">Return to the front door</Cta></Rise>

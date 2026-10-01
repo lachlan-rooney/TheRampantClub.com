@@ -68,16 +68,26 @@ export default function Clubhouse() {
     if (!open) return
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(null) }
     document.addEventListener('keydown', onKey)
-    // keep the opened floor in view as it grows
+    // KEEP IT IN VIEW, AND DO IT AT THE SAME TIME AS IT GROWS (2026-10-01:
+    // "the action when these are clicked is not very smooth"). The scroll used
+    // to start at 420ms while the box was still growing for 600ms, so the page
+    // moved underneath something that had not finished changing size — two
+    // motions fighting rather than one. They now begin together and land
+    // together, which is the whole fix.
     const row = rows.current[open]
-    const t = setTimeout(() => {
+    const t = requestAnimationFrame(() => {
       const r = row?.getBoundingClientRect()
       if (r && (r.top < 70 || r.bottom > innerHeight)) row?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }, 420)
-    return () => { document.removeEventListener('keydown', onKey); clearTimeout(t) }
+    })
+    return () => { document.removeEventListener('keydown', onKey); cancelAnimationFrame(t) }
   }, [open])
 
-  const toggle = (id: string) => setOpen(o => (o === id ? null : id))
+  // ONCE TOUCHED, NEVER STAGGERED AGAIN. The delay below exists so the floors
+  // settle from the street up on arrival. It was still attached to the card
+  // afterwards, so CLOSING one waited out a stagger meant for the entrance —
+  // the card sat there for half a second before moving.
+  const [touched, setTouched] = useState(false)
+  const toggle = (id: string) => { setTouched(true); setOpen(o => (o === id ? null : id)) }
   const focus = open ?? hover
 
   return (
@@ -129,9 +139,17 @@ export default function Clubhouse() {
         .ch-card.is-on:not(.is-open) .ch-look { opacity: 1; }
         .ch-card.is-open .ch-look { display: none; }
         /* what the opened floor says */
-        .ch-more { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .6s cubic-bezier(.16,.84,.44,1); margin-left: 110px; }
+        /* .42s, not .6s. Six-tenths of a second is a long time to wait for a
+           tap to answer — it reads as the page thinking, not responding. */
+        .ch-more { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .42s cubic-bezier(.16,.84,.44,1); margin-left: 110px; }
         .ch-card.is-open .ch-more { grid-template-rows: 1fr; }
         .ch-more > div { overflow: hidden; }
+        /* The words rise INTO the space rather than being uncovered by it —
+           without this they are simply unclipped, which looks like a reveal
+           that forgot to animate. */
+        .ch-more > div > * { opacity: 0; transform: translateY(8px);
+                             transition: opacity .34s ease .08s, transform .34s cubic-bezier(.16,.84,.44,1) .08s; }
+        .ch-card.is-open .ch-more > div > * { opacity: 1; transform: none; }
         .ch-desc { font-family: 'Google Sans Code', monospace; font-size: 13px; line-height: 1.85; max-width: 44ch; margin: 14px 0 0; }
         .ch-foot { display: flex; align-items: center; gap: 18px; margin-top: 18px; padding-bottom: 4px; }
         .ch-step { color: var(--trc-green-deep); text-decoration: none; border-bottom: 1px solid var(--trc-green-deep); padding-bottom: 5px;
@@ -163,7 +181,8 @@ export default function Clubhouse() {
         }
         @media (prefers-reduced-motion: reduce) {
           .ch-rise, .ch.is-in .ch-rise { opacity: 1; transform: none; animation: none; }
-          .ch-row, .ch-strip, .ch-card, .ch-more { transition: none; }
+          .ch-row, .ch-strip, .ch-card, .ch-more, .ch-more > div > * { transition: none; }
+          .ch-more > div > * { opacity: 1; transform: none; }
           .ch-strip, .ch-card { opacity: 1; transform: none; }
         }
       ` }} />
@@ -177,7 +196,7 @@ export default function Clubhouse() {
           const on = focus === f.id
           const isOpen = open === f.id
           // settle from the street up: the lowest floor lands first
-          const delay = visible && !focus ? `${0.15 + (FLOORS.length - i) * 0.12}s` : '0s'
+          const delay = visible && !focus && !touched ? `${0.15 + (FLOORS.length - i) * 0.12}s` : '0s'
           return (
             <div key={f.id} ref={el => { rows.current[f.id] = el }} className={`ch-row ${isOpen ? 'is-open' : ''}`}>
               <button type="button" className={`ch-strip ${on ? 'is-on' : ''}`} style={{ transitionDelay: delay }}

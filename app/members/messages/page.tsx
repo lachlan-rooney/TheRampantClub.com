@@ -78,6 +78,37 @@ function Messages() {
   return (
     <MemberPage title="Messages" subtitle="TIN NHẮN" description={t('Private conversations, opened by an introduction. Our system flags an introduction; staff see that it happened — they never read your messages. All messages are encrypted.', 'Những cuộc trò chuyện riêng, mở ra từ một lời giới thiệu. Hệ thống ghi nhận lời giới thiệu; nhân viên biết điều đó đã xảy ra — nhưng không bao giờ đọc tin nhắn của bạn. Mọi tin nhắn đều được mã hoá.')}>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
+
+      {/* ── WHAT "ENCRYPTED" MEANS HERE ──────────────────────────────────
+          Owner, 2026-10-01: "make sure the encryption is clear, explaining
+          what encryption we use too."
+          Named, and honestly bounded. AES-256-GCM is a real, checkable claim;
+          "bank-grade" is not, and a member who reads the word "encrypted" and
+          assumes end-to-end has been misled by us rather than by themselves.
+          So the limit is printed next to the promise: the club's own servers
+          can open a message, because the member asks for their own thread and
+          it has to come back as words. What staff cannot do is read a
+          conversation between two members, and that is not a policy — the
+          Concierge code is handed a different key and a member's thread does
+          not come back as text when it asks. */}
+      <details className="ms-crypt">
+        <summary>{t('How your messages are kept', 'Tin nhắn của bạn được bảo vệ thế nào')}</summary>
+        <div className="ms-crypt-body">
+          <p>
+            {t('Every message is encrypted with AES-256-GCM before it is written down — the same cipher used to protect traffic on the web. Each one gets its own key material and a seal that would break if a single character were altered.',
+               'Mỗi tin nhắn được mã hoá bằng AES-256-GCM trước khi được lưu — cùng loại mã hoá dùng để bảo vệ dữ liệu trên web. Mỗi tin nhắn có khoá riêng và một dấu niêm phong sẽ vỡ nếu chỉ một ký tự bị thay đổi.')}
+          </p>
+          <p>
+            {t('Member-to-member conversations and messages to the Club are locked with two different keys. Our staff are given only the second one, so a conversation between two members does not open for them at all. They can see that an introduction was made; they cannot see what was said.',
+               'Cuộc trò chuyện giữa hội viên và tin nhắn gửi tới Câu Lạc Bộ được khoá bằng hai khoá khác nhau. Nhân viên chỉ được cấp khoá thứ hai, nên cuộc trò chuyện giữa hai hội viên hoàn toàn không mở được với họ. Họ biết đã có lời giới thiệu; nhưng không biết nội dung.')}
+          </p>
+          <p className="ms-crypt-fine">
+            {t('To be exact: this protects what is stored. If the database were copied, the messages in it would be unreadable. It is not end-to-end encryption — the Club’s own servers open your thread to show it to you.',
+               'Nói chính xác: điều này bảo vệ dữ liệu được lưu trữ. Nếu cơ sở dữ liệu bị sao chép, các tin nhắn trong đó không thể đọc được. Đây không phải mã hoá đầu-cuối — máy chủ của Câu Lạc Bộ vẫn mở cuộc trò chuyện để hiển thị cho quý vị.')}
+          </p>
+        </div>
+      </details>
+
       {!sel ? (
         <div className="ms-col">
           {!loaded ? (
@@ -157,6 +188,23 @@ const SERIF = "'Rampant Sans', serif"
 const LINE = 'rgba(229,212,194,.18)'
 
 const CSS = `
+/* The encryption note: closed by default — a promise that shouts is a promise
+   nobody believes. Open it and it is specific. */
+.ms-crypt { margin: 0 0 22px; border-top: 1px solid rgba(229,212,194,.12);
+            border-bottom: 1px solid rgba(229,212,194,.12); }
+.ms-crypt > summary { list-style: none; cursor: pointer; padding: 13px 2px;
+            font-family: 'Google Sans Code', monospace; font-size: 10.5px;
+            letter-spacing: .14em; text-transform: uppercase; color: rgba(229,212,194,.6); }
+.ms-crypt > summary::-webkit-details-marker { display: none; }
+.ms-crypt > summary::after { content: ' +'; color: #D4B85A; }
+.ms-crypt[open] > summary::after { content: ' –'; }
+.ms-crypt > summary:hover { color: #E5D4C2; }
+.ms-crypt-body { padding: 2px 2px 16px; max-width: 62ch; }
+.ms-crypt-body p { font-family: 'Google Sans Code', monospace; font-size: 11.5px;
+            line-height: 1.95; color: rgba(229,212,194,.72); margin: 0 0 12px; }
+.ms-crypt-fine { opacity: .62; }
+@media (pointer: coarse) { .ms-crypt > summary { padding: 16px 2px; } }
+
   .ms-col { max-width: 820px; }
   .ms-quiet { font-family: ${MONO}; font-size: 14px; line-height: 1.95; color: #E5D4C2; opacity: .8; max-width: 560px; margin: 0; }
   .ms-link { color: #D4B85A; text-decoration: none; border-bottom: 1px solid rgba(212,184,90,.5); padding-bottom: 1px; }
