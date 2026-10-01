@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getActor, svc } from '@/lib/social/server'
+import { openBodySafe } from '@/lib/crypto/messages'
 
 // The staff concierge inbox: every member↔Club thread, with the ops-honesty signal
 // — RESPONSE AGE (time since the member's last unanswered message). A thread is
@@ -41,7 +42,8 @@ export async function GET() {
       thread_id: t.id,
       member_no: prof?.member_no ?? null,
       member_name: prof?.name ?? 'Member',
-      last_preview: lm ? lm.body.slice(0, 120) : '',
+      // Opened in the concierge scope only — see the note in [id]/route.ts.
+      last_preview: lm ? openBodySafe(lm.body, 'concierge', t.id).slice(0, 120) : '',
       last_at: lm?.created_at ?? t.last_message_at ?? null,
       awaiting,
       awaiting_since: awaiting ? lm!.created_at : null,

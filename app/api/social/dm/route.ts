@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getActor, svc } from '@/lib/social/server'
+import { openBodySafe } from '@/lib/crypto/messages'
 
 // The member's direct (member↔member) threads. Read via the SESSION client so RLS
 // (can_read_thread) honours block severance — a blocked direct thread simply isn't
@@ -36,7 +37,7 @@ export async function GET() {
       const last = tm[tm.length - 1]
       const readAt = myReadAt[t.id] ? new Date(myReadAt[t.id]!).getTime() : 0
       const unread = tm.filter(m => m.sender !== actor.id && new Date(m.created_at).getTime() > readAt).length
-      out.push({ thread_id: t.id, other_name: nameOf[otherOf[t.id]] || 'A member', last_preview: last ? last.body.slice(0, 80) : '', last_at: last?.created_at ?? t.last_message_at ?? null, unread })
+      out.push({ thread_id: t.id, other_name: nameOf[otherOf[t.id]] || 'A member', last_preview: last ? openBodySafe(last.body, 'direct', t.id).slice(0, 80) : '', last_at: last?.created_at ?? t.last_message_at ?? null, unread })
     }
     out.sort((x, y) => new Date(y.last_at || 0).getTime() - new Date(x.last_at || 0).getTime())
   }

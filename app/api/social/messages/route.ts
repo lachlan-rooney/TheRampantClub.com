@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getActor, svc, socialEmit, notify, rateLimitOk } from '@/lib/social/server'
+import { sealBody } from '@/lib/crypto/messages'
 
 // Send a message into a thread the caller is party to.
 // Guards: participant (or concierge-staff) · body 1–4000 (mirrors the DB check) ·
@@ -58,7 +59,14 @@ export async function POST(req: Request) {
     await a.from('thread_participants').insert({ thread_id: thread.id, participant: actor.id, role: 'staff' })
   }
 
-  const ins = await a.from('messages').insert({ thread_id: thread.id, sender: actor.id, body }).select('id').single()
+  // SEALED BEFORE IT IS STORED (2026-10-01). The body never reaches the
+  // database as text. lib/crypto/messages.ts says what that does and does not
+  // promise; the short version is that a dump, a backup or a leaked
+  // service-role key yields ciphertext, and a direct thread is sealed under a
+  // key the staff Concierge code is not given.
+  const ins = await a.from('messages')
+    .insert({ thread_id: thread.id, sender: actor.id, body: sealBody(body, thread.kind, thread.id) })
+    .select('id').single()
   if (ins.error) return NextResponse.json({ error: 'Could not send.' }, { status: 500 })
   await a.from('threads').update({ last_message_at: new Date().toISOString() }).eq('id', thread.id)
   await socialEmit(actor.sb, 'message.sent', 'message', ins.data.id, { thread_id: thread.id, kind: thread.kind })

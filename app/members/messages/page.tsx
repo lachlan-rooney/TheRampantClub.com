@@ -76,7 +76,7 @@ function Messages() {
   const onKey = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }
 
   return (
-    <MemberPage title="Messages" subtitle="TIN NHẮN" description={t('Private conversations, opened by an introduction. Staff see that introductions happen — they never read your messages.', 'Những cuộc trò chuyện riêng, mở ra từ một lời giới thiệu. Nhân viên biết có lời giới thiệu — nhưng không bao giờ đọc tin nhắn của bạn.')}>
+    <MemberPage title="Messages" subtitle="TIN NHẮN" description={t('Private conversations, opened by an introduction. Our system flags an introduction; staff see that it happened — they never read your messages. All messages are encrypted.', 'Những cuộc trò chuyện riêng, mở ra từ một lời giới thiệu. Hệ thống ghi nhận lời giới thiệu; nhân viên biết điều đó đã xảy ra — nhưng không bao giờ đọc tin nhắn của bạn. Mọi tin nhắn đều được mã hoá.')}>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
       {!sel ? (
         <div className="ms-col">

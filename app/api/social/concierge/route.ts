@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { openBodySafe } from '@/lib/crypto/messages'
 import { getActor, svc, socialEmit } from '@/lib/social/server'
 
 // The member's ONE persistent thread with The Club.
@@ -20,9 +21,10 @@ export async function GET() {
     .eq('kind', 'concierge').eq('created_by', actor.id).maybeSingle()
   if (!thread) return NextResponse.json({ thread: null, messages: [] })
 
-  const { data: messages } = await actor.sb.from('messages')
+  const { data: sealed } = await actor.sb.from('messages')
     .select('id, sender, body, created_at').eq('thread_id', thread.id).order('created_at', { ascending: true })
-  return NextResponse.json({ thread, messages: messages || [] })
+  const messages = (sealed || []).map(m => ({ ...m, body: openBodySafe(m.body, 'concierge', thread.id) }))
+  return NextResponse.json({ thread, messages })
 }
 
 export async function POST() {
