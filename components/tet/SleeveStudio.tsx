@@ -213,9 +213,9 @@ export default function SleeveStudio({ onUse, onAsk }: {
     if (!/^image\/(png|jpeg|webp)$/.test(f.type)) {
       setErr(t('PNG, JPEG or WebP, please.', 'Vui lòng dùng PNG, JPEG hoặc WebP.')); return
     }
-    if (f.size > 5 * 1024 * 1024) {
-      setErr(t(`That file is ${(f.size / 1048576).toFixed(1)}MB. The limit is 5MB.`,
-               `Tệp ${(f.size / 1048576).toFixed(1)}MB. Giới hạn là 5MB.`)); return
+    if (f.size > 25 * 1024 * 1024) {
+      setErr(t(`That file is ${(f.size / 1048576).toFixed(1)}MB. The limit is 25MB.`,
+               `Tệp ${(f.size / 1048576).toFixed(1)}MB. Giới hạn là 25MB.`)); return
     }
     const url = URL.createObjectURL(f)
     const img = new Image()
@@ -422,7 +422,7 @@ export default function SleeveStudio({ onUse, onAsk }: {
               </>
             ) : (
               <button onClick={() => fileRef.current?.click()} className="ss-drop">
-                {t('Add a PNG, JPEG or WebP — up to 5MB', 'Thêm tệp PNG, JPEG hoặc WebP — tối đa 5MB')}
+                {t('Add a PNG, JPEG or WebP — up to 25MB', 'Thêm tệp PNG, JPEG hoặc WebP — tối đa 25MB')}
               </button>
             )}
           </div>

@@ -43,15 +43,30 @@ export function caskColourOf(
   c: { colour_srm?: number | null; colour_hex?: string | null },
 ): (CaskColour & { measured: boolean }) | null {
   if (c.colour_srm != null && Number.isFinite(Number(c.colour_srm))) {
-    const srm = Math.min(40, Math.max(1, Math.round(Number(c.colour_srm))))
+    const srm = Math.min(SRM_CEILING, Math.max(1, Math.round(Number(c.colour_srm))))
     return { srm, ebc: Math.round(srm * 1.97), swatch: SRM_SWATCH[srm], measured: true }
   }
   const est = caskColour(c.colour_hex)
   return est ? { ...est, measured: false } : null
 }
 
-/** The published SRM ladder, 1–40, as the reference charts print it. The index
- *  is the SRM value, so SRM_SWATCH[17] is SRM 17. */
+/** THE CEILING (owner, 2026-10-01: "stop the srm scale at 20").
+ *
+ *  The published chart runs to 40, and we drew all of it. Duncan Taylor's own
+ *  assessments are the numbers on this page — "current colour FIFTEEN", "colour
+ *  FOUR" — and across all twenty casks they run 4 to 15. So half the ladder was
+ *  empty space, and every real cask was squeezed into its left third.
+ *
+ *  Nothing collapses onto the cap: there is no cask above 20 to flatten. If a
+ *  darker one is ever measured it sits on the last rung, which is a cask at the
+ *  dark end of the scale rather than a wrong number — and the day that matters,
+ *  this constant is the one thing to change.
+ */
+export const SRM_CEILING = 20
+
+/** The published SRM swatches. Kept to 40 so a number past the ceiling still
+ *  has a colour to draw; only the LADDER stops at 20. The index is the SRM
+ *  value, so SRM_SWATCH[17] is SRM 17. */
 const SRM_SWATCH: Record<number, string> = {
   1:'#FFE699',  2:'#FFD878',  3:'#FFCA5A',  4:'#FFBF42',  5:'#FBB123',
   6:'#F8A600',  7:'#F39C00',  8:'#EA8F00',  9:'#E58500', 10:'#DE7C00',
@@ -63,10 +78,11 @@ const SRM_SWATCH: Record<number, string> = {
   36:'#440607', 37:'#3F0708', 38:'#3B0607', 39:'#3A070B', 40:'#36080A',
 }
 
-/** The ladder in order, SRM 1 → 40, for anything that draws the scale itself
- *  (the Tết colour ladder). Same table, not a copy. */
+/** The ladder in order, SRM 1 → SRM_CEILING, for anything that draws the scale
+ *  itself (the Tết colour ladder). Same table, not a copy. */
 export const SRM_LADDER: { srm: number; hex: string }[] =
-  Object.keys(SRM_SWATCH).map(Number).sort((a, b) => a - b).map(srm => ({ srm, hex: SRM_SWATCH[srm] }))
+  Object.keys(SRM_SWATCH).map(Number).filter(srm => srm <= SRM_CEILING)
+    .sort((a, b) => a - b).map(srm => ({ srm, hex: SRM_SWATCH[srm] }))
 
 function rgb(hex: string): [number, number, number] | null {
   const h = hex.replace('#', '').trim()
@@ -90,7 +106,7 @@ function lab([r, g, b]: [number, number, number]): [number, number, number] {
 }
 
 export interface CaskColour {
-  /** SRM, 1–40. */
+  /** SRM, 1–SRM_CEILING. */
   srm: number
   /** EBC, rounded. The number Scotch is actually quoted in. */
   ebc: number
@@ -125,8 +141,12 @@ export function caskColour(hex: string | null | undefined): CaskColour | null {
 
   // The ladder by lightness, darkest last. Built once per call from the table
   // so there is no second copy of the numbers to fall out of step.
+  // Only the rungs the ladder actually has. Interpolating across all forty and
+  // then clamping would put every dark swatch on exactly SRM 20 with none of
+  // the spread between 15 and 20 that the scale still has to give.
   const rungs = Object.keys(SRM_SWATCH)
-    .map(k => ({ srm: Number(k), L: lab(rgb(SRM_SWATCH[Number(k)])!)[0] }))
+    .map(Number).filter(srm => srm <= SRM_CEILING)
+    .map(srm => ({ srm, L: lab(rgb(SRM_SWATCH[srm])!)[0] }))
     .sort((a, b) => b.L - a.L)
 
   let srm: number
@@ -139,6 +159,6 @@ export function caskColour(hex: string | null | undefined): CaskColour | null {
     const t = (a.L - L) / (a.L - b.L || 1)
     srm = a.srm + t * (b.srm - a.srm)
   }
-  srm = Math.min(40, Math.max(1, Math.round(srm)))
+  srm = Math.min(SRM_CEILING, Math.max(1, Math.round(srm)))
   return { srm, ebc: Math.round(srm * 1.97), swatch: SRM_SWATCH[srm] }
 }

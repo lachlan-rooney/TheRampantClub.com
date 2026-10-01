@@ -339,8 +339,6 @@ export default function HomePage() {
         .trc-tet-in { max-width: 1180px; margin: 0 auto; display: grid;
                       grid-template-columns: minmax(0, 1fr) auto;
                       gap: clamp(32px, 6vw, 80px); align-items: center; }
-        .trc-tet-eyebrow { font-family: 'Google Sans Code', monospace; font-size: 10.5px;
-                           letter-spacing: .22em; text-transform: uppercase; opacity: .6; }
         .trc-tet-title { font-family: 'Rampant Sans', serif; font-weight: 400;
                          font-size: clamp(38px, 6vw, 76px); line-height: .98; margin: 16px 0 0; }
         .trc-tet-lede { font-family: 'Google Sans Code', monospace; font-size: 13.5px;
@@ -672,7 +670,12 @@ export default function HomePage() {
         <section className="trc-tet">
           <div className="trc-tet-in">
             <div>
-              <div className="trc-tet-eyebrow">Duncan Taylor × The Rampant Club</div>
+              {/* The little label above the title is gone (owner, 2026-10-01:
+                  "these little fringe titles above the actual titles are
+                  grinding my gears" — the second time he has said it, after the
+                  admin sweep on 30 September). Duncan Taylor are still named:
+                  their crest sits beside this block, which says the same thing
+                  without whispering it first. */}
               <h2 className="trc-tet-title">Tết Đinh Mùi<br />2027</h2>
               <p className="trc-tet-lede">
                 Whisky for the companies you thank at Tết — three blends in a sleeve

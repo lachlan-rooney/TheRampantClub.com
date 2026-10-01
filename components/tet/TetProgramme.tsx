@@ -247,8 +247,12 @@ export default function TetProgramme({
       {/* ── THE BLENDS ────────────────────────────────────────────────── */}
       <section className="pk-wrap pk-section">
         <Reveal>
+          {/* The eyebrow stating the minimum is gone (owner, 2026-10-01).
+              The minimum is still said — it moved to the end of the section,
+              after the tiers, where somebody has just seen what that many
+              bottles actually buys. Leading with a minimum is leading with the
+              thing that stops people reading. */}
           <SectionHead
-            eyebrow={t('From fifty bottles', 'Từ năm mươi chai')}
             title={blendCat ? (vn ? blendCat.name_vn : blendCat.name_en) : 'Duncan Taylor'}
           />
         </Reveal>
@@ -286,8 +290,8 @@ export default function TetProgramme({
           <div style={{ marginTop: 52 }}>
             <TetTiers tiers={tiers} provisional={blendProvisional} />
             <p className="pk-meta" style={{ marginTop: 22, maxWidth: 560, lineHeight: 1.9 }}>
-              {t('The tier is set by the total across all three, so a mixed order still climbs. Every sleeve carries your logo.',
-                 'Mức chiết khấu tính trên tổng số chai của cả ba dòng, nên đơn hàng pha trộn vẫn được nâng mức. Mỗi hộp đều in logo của quý vị.')}
+              {t('The tier is set by the total across all three, so a mixed order still climbs. Every sleeve carries your logo. From purchases of fifty bottles and above.',
+                 'Mức chiết khấu tính trên tổng số chai của cả ba dòng, nên đơn hàng pha trộn vẫn được nâng mức. Mỗi hộp đều in logo của quý vị. Áp dụng cho đơn hàng từ năm mươi chai trở lên.')}
             </p>
           </div>
         )}
@@ -300,8 +304,8 @@ export default function TetProgramme({
           with our logo on it". Prose cannot answer that. */}
       <section className="pk-wrap pk-section">
         <Reveal>
+          {/* The last fringe title on this page, gone with the others. */}
           <SectionHead
-            eyebrow={t('Make it yours', 'Cá nhân hoá')}
             title={t('The sleeve', 'Hộp đựng')}
           />
         </Reveal>
@@ -327,7 +331,7 @@ export default function TetProgramme({
           a pair of hands, not a product line. Each keeps its own shape; they
           stack on a phone rather than shrinking to stamps. */}
       <section className="pk-wrap" style={{ paddingTop: 96 }}>
-        <div className="tp-pair">
+        <div className="tp-pair is-levelled">
           <TetPlate
             src="/images/tet/cooper.webp" sm="/images/tet/cooper-sm.webp"
             width={1082} height={592} smWidth={820} maxWidth={620}
@@ -347,13 +351,12 @@ export default function TetProgramme({
       {/* ── THE CASKS ─────────────────────────────────────────────────── */}
       <section className="pk-wrap pk-section">
         <Reveal>
+          {/* The counted eyebrow ("20 single casks") is gone — owner,
+              2026-10-01. The number is still true and still visible: the list
+              below it is the casks, and counting them for somebody about to
+              scroll through them was telling them what they were about to
+              see. */}
           <SectionHead
-            /* COUNTED, NOT WRITTEN. It said "Fourteen single casks" while the
-               selection stood at one: casks come off the list when Huntly say
-               they will not be ready, and a hard-coded number becomes a lie
-               the moment that happens. */
-            eyebrow={t(`${casks.length} single ${casks.length === 1 ? 'cask' : 'casks'}`,
-                       `${casks.length} thùng đơn`)}
             title={caskCat ? (vn ? caskCat.name_vn : caskCat.name_en) : 'The Octave Selection'}
           />
         </Reveal>
@@ -363,29 +366,12 @@ export default function TetProgramme({
           </Reveal>
         )}
 
-        {/* THE OFFER — the owner's words, 2026-09-22: "Every octave bought
-            this tet will be shipped out with its cask end!" Nothing added to
-            it: no size, weight or finish is promised, because none was given.
-            The drawing is a cask end — the staves, the hoops' line — and it
-            draws itself once, when it arrives. */}
-        <Reveal step={2}>
-          <div className="ck-offer">
-            <svg className="ck-end" viewBox="0 0 64 64" aria-hidden>
-              <circle cx="32" cy="32" r="29" />
-              <circle cx="32" cy="32" r="24" />
-              {[-16, -8, 0, 8, 16].map(x => (
-                <line key={x} x1={32 + x} y1={32 - Math.sqrt(24 * 24 - x * x)} x2={32 + x} y2={32 + Math.sqrt(24 * 24 - x * x)} />
-              ))}
-            </svg>
-            <div>
-              <div className="pk-eyebrow" style={{ color: '#D4B85A' }}>{t('This Tết only', 'Chỉ trong dịp Tết này')}</div>
-              <p className="ck-offer-line">
-                {t('Every Octave bought this Tết is shipped with its cask end.',
-                   'Mỗi thùng Octave mua trong dịp Tết này sẽ được giao kèm mặt thùng của chính nó.')}
-              </p>
-            </div>
-          </div>
-        </Reveal>
+        {/* THE CASK-END OFFER IS GONE (2026-10-01). It read "Every Octave
+            bought this Tết is shipped with its cask end" — the owner's own
+            words from 22 September. Duncan Taylor pushed back on it, so it is
+            off the page rather than left standing as a promise the club cannot
+            keep. The drawing and its styles go with it; nothing about the
+            casks themselves changes. git remembers the markup if it returns. */}
 
         {/* THE MEMBERS' PRICE (owner, 2026-09-24: "Get in touch for a member
             cask price discount ... somewhere clear and big"). The prices on
@@ -849,18 +835,6 @@ const CASK_CSS = `
 .ck-member-go { color: ${GOLD}; white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .ck-member { transition: none; } }
 
-.ck-offer { display: grid; grid-template-columns: 64px 1fr; gap: 24px; align-items: center;
-            margin-top: 44px; padding: 26px 0; border-top: 1px solid rgba(212,184,90,.45);
-            border-bottom: 1px solid rgba(212,184,90,.45); }
-.ck-offer-line { font-family: 'Rampant Sans', Georgia, serif; font-size: clamp(21px, 2.6vw, 30px);
-                 line-height: 1.2; margin: 8px 0 0; color: #E5D4C2; }
-.ck-end { width: 64px; height: 64px; fill: none; stroke: #D4B85A; stroke-width: 1.2; }
-.ck-end * { stroke-dasharray: 190; stroke-dashoffset: 190;
-            transition: stroke-dashoffset 1.6s cubic-bezier(.16,.84,.44,1) .35s; }
-.ck-end line { transition-delay: .9s; }
-.tr.is-in .ck-end * { stroke-dashoffset: 0; }
-@media (max-width: 560px) { .ck-offer { grid-template-columns: 44px 1fr; gap: 16px; } .ck-end { width: 44px; height: 44px; } }
-@media (prefers-reduced-motion: reduce) { .ck-end * { transition: none; stroke-dashoffset: 0; } }
 .ck { border-top: 1px solid rgba(229,212,194,.14); }
 .ck-head { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr) auto;
            gap: 18px; align-items: baseline; width: 100%; text-align: left;

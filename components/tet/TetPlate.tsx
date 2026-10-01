@@ -112,6 +112,22 @@ export const TET_PLATE_CSS = `
    rather than shrinking to stamps. */
 .tp-pair { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(20px, 3vw, 40px);
            align-items: start; }
-@media (max-width: 780px) { .tp-pair { grid-template-columns: 1fr; gap: 44px; } }
+
+/* A PAIR THAT READS AS A PAIR (owner, 2026-10-01: "make these two pictures
+   closer to equal sizes").
+   Equal columns do NOT give equal pictures: two photographs of different shape
+   in two columns of one width come out at two different heights, and the
+   squarer one looks bigger. The cooper is 1082×592 and the char 1152×768 —
+   1.83 against 1.50 — so the char stood a fifth taller.
+   The columns are weighted by those ratios instead, which lands both at the
+   same HEIGHT with nothing cropped. The numbers are the pictures' own, so if
+   either photograph is replaced this ratio is the thing to update with it.
+   A CLASS, NOT AN INLINE STYLE: an inline grid-template-columns would outrank
+   the phone breakpoint below and the pair would never stack. */
+.tp-pair.is-levelled { grid-template-columns: 1.83fr 1.50fr; }
+
+@media (max-width: 780px) {
+  .tp-pair, .tp-pair.is-levelled { grid-template-columns: 1fr; gap: 44px; }
+}
 
 `

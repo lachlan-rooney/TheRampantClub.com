@@ -21,18 +21,24 @@ import { TET_COOKIE, tetPassValid } from '@/lib/tet/gate'
 //
 // So this route hands out a SIGNED UPLOAD URL and the browser PUTs the file
 // straight to storage. Nothing large crosses the function at all, which also
-// means the 5MB ceiling is no longer the largest thing we can carry — it is
-// just the number we chose.
+// means the ceiling is no longer the largest thing we can carry — it is just
+// the number we chose. It is 25MB.
 //
 // WHAT STILL GUARDS IT:
 //   · the pass — the same door as the rest of the page
 //   · the rate limit — 20 an hour per IP, unchanged
 //   · the mime type — png, jpeg or webp. An SVG is a document that can carry
 //     script, and this one is opened later by a member of staff
-//   · the SIZE, at the bucket. file_size_limit is 5MB and Supabase enforces it
-//     on the real upload, so a client that lies about `size` is refused by
+//   · the SIZE, at the bucket. file_size_limit is 25MB and Supabase enforces
+//     it on the real upload, so a client that lies about `size` is refused by
 //     storage rather than trusted. The check below is only there to say so
 //     politely before the file is sent.
+//
+//     ⚠ THE BUCKET IS THE REAL CEILING. Raising MAX_BYTES here without raising
+//     `file_size_limit` on the tet-artwork bucket changes nothing: the browser
+//     is told the file is fine and then storage refuses the PUT. Both moved
+//     together on 2026-10-01, from 5MB to 25MB — a customer sent a 20.9MB
+//     logo, which is an ordinary size for an unflattened brand export.
 //   · the path — minted here, never supplied by the caller, so nobody can
 //     aim an upload at somebody else's object
 //
@@ -42,7 +48,7 @@ import { TET_COOKIE, tetPassValid } from '@/lib/tet/gate'
 
 export const dynamic = 'force-dynamic'
 
-const MAX_BYTES = 5 * 1024 * 1024
+const MAX_BYTES = 25 * 1024 * 1024
 const KIND: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' }
 
 const WINDOW_MS = 60 * 60 * 1000

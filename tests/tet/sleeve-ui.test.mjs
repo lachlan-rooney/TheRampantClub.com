@@ -109,12 +109,12 @@ const canShare = await p.evaluate(() => { try { return !!navigator.canShare?.({ 
 t((await p.locator('text=Share · Zalo').count() === 1) === canShare, 'Share appears exactly where the browser can share a file', `canShare ${canShare}`)
 await p.locator('.ss-toggle', { hasText: 'Flat' }).click()
 
-// THE OFFER
-const offer = p.locator('.ck-offer'); await offer.scrollIntoViewIfNeeded(); await p.waitForTimeout(2800)
-const of = await offer.evaluate(el => ({ text: el.textContent, dash: getComputedStyle(el.querySelector('.ck-end circle')).strokeDashoffset }))
-t(/Every Octave bought this Tết is shipped with its cask end/.test(of.text), 'the cask-end offer is on the page', of.text.slice(0, 90))
-t(parseFloat(of.dash) === 0, 'and its cask end has drawn itself', `dashoffset ${of.dash}`)
-await p.screenshot({ path: '/tmp/s-offer.png', clip: await offer.boundingBox() })
+// THE OFFER IS GONE (2026-10-01) — Duncan Taylor pushed back on the cask-end
+// promise, so the block was removed. The assertion that replaces it is that it
+// is NOT there: a removed promise that quietly comes back is the failure this
+// test now guards against.
+t(await p.locator('.ck-offer').count() === 0, 'the withdrawn cask-end offer is not on the page')
+t(!/cask end/i.test(await p.locator('body').innerText()), 'and nothing else promises one')
 
 // THE TIMELINE — plays in order, counts up, answers the pointer and the keys
 const tl = p.locator('.tl'); await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(300)
@@ -159,9 +159,20 @@ await p.mouse.move(10, 10)
 const st = p.locator('.tt-stair'); await st.scrollIntoViewIfNeeded(); await p.waitForTimeout(500)
 const sbx = await st.boundingBox()
 await p.mouse.click(sbx.x + sbx.width * 0.7, sbx.y + sbx.height / 2); await p.waitForTimeout(500)
-const bottlesNow = +(await p.locator('.tt-range').inputValue())
+// The count is read off the page now, not out of a slider: the range input
+// was removed on 2026-10-01 (the owner did not like dragging it, and it was a
+// one-pixel-tall target on a phone). The chips and the staircase remain.
+const bottlesNow = +(await p.locator('.tt-num').first().textContent())
 t(bottlesNow >= 500, 'pointing high on the staircase moves the bottle count up the ladder', `${bottlesNow} bottles`)
 t(/12%/.test(await p.locator('.tt-stair text[fill="#D4B85A"]').first().textContent()), 'and lights the step it lands on')
+t(await p.locator('.tt-range').count() === 0, 'the drag slider is gone')
+
+// THE CHIPS ARE THE RUNGS — one per tier, and tapping one lands exactly on it.
+const chips = await p.$$eval('.tt-chip', els => els.map(e => +e.textContent.trim()))
+t(chips.length >= 8 && chips[0] === 50, 'a chip for every rung on the ladder', chips.join(','))
+await p.locator('.tt-chip', { hasText: /^300$/ }).first().click(); await p.waitForTimeout(500)
+t(+(await p.locator('.tt-num').first().textContent()) === 300, 'tapping a chip lands on that rung exactly')
+t(/10%/.test(await p.locator('.tt-num').nth(1).textContent()), 'and shows that rung\'s discount', await p.locator('.tt-num').nth(1).textContent())
 
 // THE BOTTLE BARS
 const bar0 = async () => p.locator('.ck-bar').first().evaluate(e => [...e.children].map(c => Math.round(c.getBoundingClientRect().width)))

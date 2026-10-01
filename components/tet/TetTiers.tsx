@@ -29,7 +29,11 @@ const GOLD = '#D4B85A'
 const CREAM = '#E5D4C2'
 const SAGE = '#7AB07A'
 
-const STEPS = [50, 100, 250, 500]
+// THE QUICK PICKS ARE THE LADDER ITSELF (2026-10-01). They were four
+// hand-written numbers — 50, 100, 250, 500 — chosen when the ladder had four
+// rungs. It has eight now, and a hard-coded list beside a table-driven chart is
+// two sources for one fact. Every rung is a chip, so the control and the thing
+// it controls cannot drift.
 const MAX = 800
 
 export default function TetTiers({ tiers, provisional }: { tiers: VolumeTier[]; provisional: boolean }) {
@@ -48,6 +52,7 @@ export default function TetTiers({ tiers, provisional }: { tiers: VolumeTier[]; 
     [tiers, current],
   )
   const min = tiers[0]?.min_bottles ?? 50
+  const STEPS = tiers.map(x => x.min_bottles)
 
   // Only once the numbers are real. While anything is provisional the page
   // shows no price at all, and asking for one would be asking the database to
@@ -85,20 +90,21 @@ export default function TetTiers({ tiers, provisional }: { tiers: VolumeTier[]; 
 
   return (
     <div>
-      <style dangerouslySetInnerHTML={{ __html: `
-        .tt-range { -webkit-appearance: none; appearance: none; width: 100%; height: 1px;
-                    background: rgba(229,212,194,.25); outline: none; margin: 26px 0 0; }
-        .tt-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none;
-                    width: 18px; height: 18px; background: ${GOLD}; border-radius: 50%;
-                    cursor: grab; border: none; }
-        .tt-range::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.12); }
-        .tt-range::-moz-range-thumb { width: 18px; height: 18px; background: ${GOLD};
+      <style dangerouslySetInnerHTML={{ __html: `; border-radius: 50%;
+                    cursor: grab; border: none; };
                     border: none; border-radius: 50%; cursor: grab; }
         .tt-chip { background: none; border: none; cursor: pointer; padding: 4px 0;
                    font-family: 'Google Sans Code', monospace; font-size: 12px;
                    letter-spacing: .1em; color: ${CREAM}; opacity: .45;
                    border-bottom: 1px solid transparent; }
         .tt-chip.is-on { opacity: 1; color: ${GOLD}; border-bottom-color: ${GOLD}; }
+        /* ── REACHABLE BY THUMB (2026-10-01) ──────────────────────────────
+           The chips were 17px wide: "50" is two characters and that was the
+           whole target. They are the only way to jump to a rung now that the
+           slider has gone, so they have to be easy to hit. */
+        @media (pointer: coarse) {
+          .tt-chip { padding: 11px 14px; min-width: 44px; }
+        }
         .tt-num { font-variant-numeric: tabular-nums; }
         .tt-stair { display: block; width: 100%; height: auto; margin-top: 22px; cursor: pointer; touch-action: pan-y; overflow: visible; }
         .tt-stair text { font-family: 'Google Sans Code', monospace; }
@@ -107,11 +113,15 @@ export default function TetTiers({ tiers, provisional }: { tiers: VolumeTier[]; 
         @media (prefers-reduced-motion: reduce) { .tt-reach, .tt-mark { transition: none; } }
       ` }} />
 
-      <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'baseline' }}>
-        <span className="pk-eyebrow">{t('If you took', 'Nếu quý vị đặt')}</span>
-        {STEPS.map(s => (
-          <button key={s} onClick={() => { setBottles(s); setPrice(null) }}
-                  className={`tt-chip ${bottles === s ? 'is-on' : ''}`}>{s}</button>
+      {/* TAP A NUMBER. The chips ARE the rungs, so every discount on the chart
+          below is one tap away and the thing you want is never between two of
+          them. */}
+      <div style={{ display: 'flex', gap: 'clamp(6px, 2vw, 22px)', flexWrap: 'wrap', alignItems: 'center' }}>
+        <span className="pk-eyebrow" style={{ marginRight: 4 }}>{t('If you took', 'Nếu quý vị đặt')}</span>
+        {STEPS.map(n => (
+          <button key={n} onClick={() => { setBottles(n); setPrice(null) }}
+                  aria-pressed={bottles === n}
+                  className={`tt-chip ${bottles === n ? 'is-on' : ''}`}>{n}</button>
         ))}
       </div>
 
@@ -144,9 +154,12 @@ export default function TetTiers({ tiers, provisional }: { tiers: VolumeTier[]; 
         </g>
       </svg>
 
-      <input className="tt-range" type="range" min={min} max={MAX} step={10}
-             value={bottles} onChange={e => { setBottles(Number(e.target.value)); setPrice(null) }}
-             aria-label={t('How many bottles', 'Số lượng chai')} />
+      {/* THE DRAGGABLE SLIDER IS GONE (owner, 2026-10-01: "the drag discount
+          button is not that great"). It was the third way to set one number —
+          after the chips above and the staircase itself, which already scrubs
+          under a finger — and it was a one-pixel-tall track with an 18px thumb,
+          so on a phone the only way to move it was to land on the thumb
+          exactly. Two controls, both of them easy to hit. */}
 
       <div style={{ display: 'flex', gap: 'clamp(24px, 6vw, 72px)', flexWrap: 'wrap', alignItems: 'baseline', marginTop: 24 }}>
         <div>
@@ -182,11 +195,12 @@ export default function TetTiers({ tiers, provisional }: { tiers: VolumeTier[]; 
           : t('That is the best rate on the ladder.', 'Đây là mức tốt nhất trên bảng.')}
       </p>
 
-      {provisional ? (
-        <p className="pk-meta" style={{ marginTop: 10, opacity: .6 }}>
-          {t('Per-bottle prices are shown once Huntly confirm them.', 'Giá mỗi chai sẽ hiển thị khi Huntly xác nhận.')}
-        </p>
-      ) : (
+      {/* The line that said per-bottle prices appear once Huntly confirm them
+          is gone (owner, 2026-10-01). While prices are provisional the block
+          simply shows nothing rather than explaining its own absence — a buyer
+          reading about discounts does not need to be told which supplier has
+          not replied yet. */}
+      {provisional ? null : (
         <div style={{ marginTop: 14 }}>
           {price ? (
             <p className="pk-meta" style={{ color: CREAM, fontSize: 13 }}>

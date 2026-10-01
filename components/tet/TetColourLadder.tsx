@@ -104,6 +104,14 @@ const CSS = `
            transition: transform .55s cubic-bezier(.34,1.6,.5,1), opacity .4s ease;
            transition-delay: calc(.1s + var(--i) * 55ms); }
 .cl-mark::after { content: ''; position: absolute; left: 50%; top: 100%; width: 1px; height: 8px; background: rgba(229,212,194,.3); }
+/* A bigger reach on a touch screen, but only a little: the marks STACK 20px
+   apart when two casks share a rung, so an expander large enough to hit 44px
+   would cover the cask above it. 34px is as far as it goes without one mark
+   stealing another's tap. The cask list below is the reliable way in, and the
+   map says the same of its pins. */
+@media (pointer: coarse) {
+  .cl-mark::before { content: ''; position: absolute; inset: -9px; border-radius: 50%; }
+}
 .tr.is-in .cl-mark { opacity: 1; transform: none; }
 .cl-mark.is-gone { background: transparent; border-color: rgba(229,212,194,.5); }
 .cl-mark.is-hot { transform: scale(1.35); transition-delay: 0s; box-shadow: 0 0 0 3px rgba(212,184,90,.5); }

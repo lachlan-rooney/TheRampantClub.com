@@ -76,7 +76,7 @@ export default function TetEnquiry({
         try {
           // TWO STEPS, AND THE BYTES SKIP OUR SERVER. We ask for a one-shot
           // signed URL, then PUT the file straight to storage. It used to be
-          // base64 in a JSON body, which is 4/3 the size — a 5MB logo is
+          // base64 in a JSON body, which is 4/3 the size — a 25MB logo is
           // ~6.7MB on the wire and Vercel refuses a request body over 4.5MB
           // before the route runs. That failure would have appeared in
           // production only; `next dev` has no such limit.
@@ -92,7 +92,7 @@ export default function TetEnquiry({
               body: design.logo_file,
             })
             // Only claim the path if storage actually took it. The bucket
-            // enforces the 5MB ceiling itself, so a file that lies about its
+            // enforces the 25MB ceiling itself, so a file that lies about its
             // size is refused here rather than trusted upstream.
             if (put.ok) logo_path = uj.path
           }

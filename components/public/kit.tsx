@@ -58,6 +58,15 @@ const KIT_CSS = `
             border-bottom: 1px solid currentColor; padding: 0 0 6px; cursor: pointer;
             font-family: ${MONO}; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
   .pk-go { display: inline-block; transition: transform .35s ease; }
+  /* A THUMB IS NOT A CURSOR (2026-10-01). The CTA is an underlined line of
+     type, which made it 22px tall — the smallest thing on the page is the one
+     it is asking you to press. The hit area is grown with a pseudo-element
+     rather than padding, so the rule stays exactly where it was drawn and only
+     the reachable box changes: 22 + 11 + 11 = 44. */
+  @media (pointer: coarse) {
+    .pk-cta { position: relative; }
+    .pk-cta::before { content: ''; position: absolute; inset: -11px -10px; }
+  }
   .pk-cta:hover .pk-go, .pk-hover:hover .pk-go { transform: translateX(7px); }
 
   .pk-mast { display: grid; grid-template-columns: 1.1fr .9fr; gap: 48px; align-items: center; padding-top: 140px; padding-bottom: 80px; }

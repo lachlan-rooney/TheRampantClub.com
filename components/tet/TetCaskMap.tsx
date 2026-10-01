@@ -310,6 +310,7 @@ const CSS = `
 .cm-row { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; width: 100%;
           background: none; border: none; border-bottom: 1px solid rgba(229,212,194,.1); cursor: pointer;
           padding: 9px 2px; text-align: left; color: inherit; font-family: ${MONO}; font-size: 12.5px;
+          min-height: 44px; box-sizing: border-box;
           transition: color .2s ease, border-color .2s ease; }
 .cm-row-name { color: rgba(229,212,194,.85); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cm-row-q { color: ${GOLD}; opacity: .7; }
