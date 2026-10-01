@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server'
 import { svc } from '@/lib/kiosk/server'
-import { doorDevice } from '@/lib/kiosk/door'
+import { doorFlowDevice, loggedBy } from '@/lib/kiosk/door'
+import { verifiedStaff } from '../shared'
 import { cleanGuestName, doorClock, greetingName, matchTokens, namesMatch } from '@/lib/guests'
 
-// POST /api/kiosk/door/sign-in   { name, signature }  — the door iPad only.
+// POST /api/kiosk/door/sign-in   { name, signature }  — the door iPad,
+// or { name, signature, team_member_id, pin } on a FLOOR tablet, where a named
+// staff member signs the guest in because the club has no door device yet.
+// lib/kiosk/door.ts explains why the floor route demands a PIN and the door
+// does not.
 //
 // ONE CALL, NAME AND SIGNATURE TOGETHER. The obvious design checks the name
 // first and asks for the signature second. That turns the door into an oracle:
@@ -28,10 +33,12 @@ function validSignature(s: unknown): s is string {
 }
 
 export async function POST(req: Request) {
-  const dev = await doorDevice()
-  if (!dev) return NextResponse.json({ error: 'This tablet is not the door.' }, { status: 403 })
-
   const body = await req.json().catch(() => null)
+  const dev = await doorFlowDevice()
+  if (!dev) return NextResponse.json({ error: 'This tablet is not enrolled.' }, { status: 403 })
+  // At the door, nobody signs for the guest. On a floor tablet, somebody does.
+  const staff = dev.isDoor ? null : await verifiedStaff(body?.team_member_id, body?.pin)
+  if (!dev.isDoor && !staff) return NextResponse.json({ error: 'Wrong PIN, or too many tries — wait a moment.' }, { status: 401 })
   const name = cleanGuestName(body?.name)
   if (!name || matchTokens(name).join('').length < 2) return NextResponse.json({ error: 'name' }, { status: 400 })
   if (!validSignature(body?.signature)) return NextResponse.json({ error: 'signature' }, { status: 400 })
@@ -80,7 +87,7 @@ export async function POST(req: Request) {
     host_member_no: match ? hostOf.get(match.booking_id) || null : null,
     visit_date: clock.serviceDate,
     party_size: 1,
-    logged_by: `door · ${dev.label}`.slice(0, 120),
+    logged_by: loggedBy(dev, staff?.display_name),
     booking_id: match?.booking_id || null,
     booking_guest_id: match?.id || null,
     signed_in_at: new Date().toISOString(),

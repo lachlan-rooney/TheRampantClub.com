@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { svc } from '@/lib/kiosk/server'
-import { doorDevice } from '@/lib/kiosk/door'
+import { doorFlowDevice } from '@/lib/kiosk/door'
 import { greetingName } from '@/lib/guests'
 import { verifiedStaff, pendingVisit, DECIDABLE_MS } from '../shared'
 
@@ -13,12 +13,12 @@ import { verifiedStaff, pendingVisit, DECIDABLE_MS } from '../shared'
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: Request) {
-  const dev = await doorDevice()
-  if (!dev) return NextResponse.json({ error: 'This tablet is not the door.' }, { status: 403 })
   const body = await req.json().catch(() => null)
   const decision = body?.decision
   if (decision !== 'admitted' && decision !== 'refused') return NextResponse.json({ error: 'Admit or refuse.' }, { status: 400 })
 
+  const dev = await doorFlowDevice()
+  if (!dev) return NextResponse.json({ error: 'This tablet is not enrolled.' }, { status: 403 })
   const staff = await verifiedStaff(body?.team_member_id, body?.pin)
   if (!staff) return NextResponse.json({ error: 'Wrong PIN, or too many tries — wait a moment.' }, { status: 401 })
   const visit = await pendingVisit(dev.id, body?.visit_id)

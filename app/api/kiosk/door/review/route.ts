@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { svc } from '@/lib/kiosk/server'
-import { doorDevice } from '@/lib/kiosk/door'
+import { doorFlowDevice } from '@/lib/kiosk/door'
 import { verifiedStaff, pendingVisit } from '../shared'
 
 // POST /api/kiosk/door/review  { visit_id, team_member_id, pin }
@@ -12,9 +12,11 @@ import { verifiedStaff, pendingVisit } from '../shared'
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: Request) {
-  const dev = await doorDevice()
-  if (!dev) return NextResponse.json({ error: 'This tablet is not the door.' }, { status: 403 })
   const body = await req.json().catch(() => null)
+  // The staff PIN gates this on EVERY tablet, the door included: a referral's
+  // host name is not shown to whoever happens to pick the iPad up.
+  const dev = await doorFlowDevice()
+  if (!dev) return NextResponse.json({ error: 'This tablet is not enrolled.' }, { status: 403 })
   const staff = await verifiedStaff(body?.team_member_id, body?.pin)
   if (!staff) return NextResponse.json({ error: 'Wrong PIN, or too many tries — wait a moment.' }, { status: 401 })
 

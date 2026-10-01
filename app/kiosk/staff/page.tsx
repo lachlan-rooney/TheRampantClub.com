@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLang } from '@/lib/lang'
 import ArrivalsRow from '@/components/admin/ArrivalsRow'
+import StaffGuestSignIn from '@/components/kiosk/StaffGuestSignIn'
 import OpenOrders from '@/components/menus/OpenOrders'
 
 // The gated kiosk shell (device session already verified by middleware). Layer 2:
@@ -164,7 +165,14 @@ export default function KioskStaff() {
           </>
         )}
 
-        <div style={{ ...procHead, marginTop: 34 }}>{t('Stocktake', 'Kiểm kê')}</div>
+        {/* GUESTS, BEFORE THE DOOR EXISTS (2026-10-01). The entrance has no
+            tablet yet and the shop opens on 27 October; this is the same flow,
+            reached from the floor. It sits above Stocktake because it happens
+            during service and a stocktake happens after it. */}
+        <div style={{ ...procHead, marginTop: 34 }}>{t('Guests', 'Khách')}</div>
+        {me && <StaffGuestSignIn staffId={me.id} staffName={me.display_name} />}
+
+        <div style={{ ...procHead, marginTop: 38 }}>{t('Stocktake', 'Kiểm kê')}</div>
         <button onClick={() => { window.location.href = '/kiosk/stocktake' }} style={stockBtn}>
           {t('Count the back bar', 'Kiểm kê quầy bar')}
           <span style={stockBtnSub}>{t('search a bottle, tap its level, finish', 'tìm chai, chọn mức, kết thúc')}</span>
