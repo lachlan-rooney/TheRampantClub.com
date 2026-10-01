@@ -4,6 +4,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useLang, pick } from '@/lib/lang'
 import { NOTE_MAX, charges, SERVICE_PCT, VAT_PCT, VAT_ALCOHOL_PCT } from '@/lib/menus/orders'
 import { venueState, waitLabel, LAST_CALL_MIN, type VenueState } from '@/lib/menus/hours'
+import WhiskyShelf from './WhiskyShelf'
 import {
   ALLERGEN_LABEL, DIETARY_LABEL, price, mediaUrl, arrivingDate, isArriving,
   type Allergen, type Dietary, type MenuPlate, type MenuSet, type MenuVenueGroup,
@@ -54,7 +55,7 @@ import {
 // there to be read back, not settled.
 // ═══════════════════════════════════════════════════════════════════════════
 
-type Service = 'plates' | 'cocktails' | 'dining'
+type Service = 'plates' | 'cocktails' | 'dining' | 'whisky'
 
 export default function MenuBoard({
   venues, variant = 'member', masthead = false,
@@ -257,6 +258,20 @@ export default function MenuBoard({
             {t('The Dining Room', 'Phòng ăn')}
             <span className="mb-tab-sub">{t('private catering, by arrangement', 'tiệc riêng, đặt trước')}</span>
           </button>
+
+          {/* THE SHELF — the room tablet only (owner, 2026-09-25: "with a list
+              of the current whisky stock on a tab too"). Not in the members'
+              portal, which already has the whole whisky library at
+              /members/whisky with the Flavour Compass attached; a fourth tab
+              there would be a worse copy of a page one tap away. */}
+          {variant === 'kiosk' && (
+            <button role="tab" aria-selected={service === 'whisky'}
+                    className={`mb-tab ${service === 'whisky' ? 'is-on' : ''}`}
+                    onClick={() => { setService('whisky'); setOpen(null) }}>
+              {t('The Whisky', 'Whisky')}
+              <span className="mb-tab-sub">{t('on the shelf tonight', 'trên kệ tối nay')}</span>
+            </button>
+          )}
         </div>
 
         <p className="mb-note">
@@ -264,13 +279,22 @@ export default function MenuBoard({
             ? t('Quick-order small plates to share, sent up from the kitchens above us and plated here. Ask any of the team and it comes to wherever you are sitting.',
                 'Món nhỏ gọi nhanh để dùng chung, được gửi từ các nhà bếp phía trên và bày biện tại đây. Chỉ cần gọi nhân viên, món sẽ được mang đến tận chỗ quý vị ngồi.')
             : service === 'cocktails'
-            ? t('Mixed at the Library Bar and carried to you. The whisky list is a separate thing entirely — ask for it.',
-                'Được pha tại Library Bar và mang đến tận nơi. Danh sách whisky là một phần riêng — vui lòng hỏi nhân viên.')
+            /* The line used to end "the whisky list is a separate thing
+               entirely — ask for it", which on a tablet that now HAS the list
+               sent a member to find a person for something a tap away. */
+            ? (variant === 'kiosk'
+                ? t('Mixed at the Library Bar and carried to you. The whisky is on its own tab.',
+                    'Được pha tại Library Bar và mang đến tận nơi. Whisky có tab riêng.')
+                : t('Mixed at the Library Bar and carried to you. The whisky list is a separate thing entirely — ask for it.',
+                    'Được pha tại Library Bar và mang đến tận nơi. Danh sách whisky là một phần riêng — vui lòng hỏi nhân viên.'))
+            : service === 'whisky'
+            ? t('Everything standing on the shelf tonight, by region. Tap a bottle for the club\u2019s own note on it. Pours are priced by the measure — ask your server.',
+                'Toàn bộ những chai đang có trên kệ, theo vùng. Chạm vào một chai để xem ghi chú của câu lạc bộ. Giá rót theo từng ly — vui lòng hỏi nhân viên.')
             : t('Private catering for larger groups, cooked in our dining room and served at the table downstairs. Not available elsewhere in the club, and arranged in advance.',
                 'Tiệc riêng cho nhóm đông, được nấu tại phòng ăn và phục vụ tại bàn ở tầng dưới. Không phục vụ ở khu vực khác, và cần đặt trước.')}
         </p>
 
-        {!shown.length && (
+        {service !== 'whisky' && !shown.length && (
           <p className="mb-empty">
             {t('Nothing is published on this menu yet.', 'Chưa có món nào trên thực đơn này.')}
           </p>
@@ -289,7 +313,9 @@ export default function MenuBoard({
             added one on the bar bit too"). The bar tab is the club itself and
             nothing else; putting its logo up as a tile to tap asks a question
             with one answer. Straight to the list. */}
-        {shown.length === 1 ? (
+        {service === 'whisky' ? (
+          <WhiskyShelf />
+        ) : shown.length === 1 ? (
           <section className="mb-solo">
             <VenueHead v={shown[0]} lang={lang} t={t} state={states.get(shown[0].slug)}
                        hideName={shown[0].kind === 'house'} />
@@ -816,7 +842,12 @@ const CSS = `
 .mb-wordmark { font-family: var(--serif); font-size: 27px; letter-spacing: .07em;
                text-transform: uppercase; margin-top: 12px; }
 
-.mb-switch { display: flex; border-bottom: 1px solid var(--hair); margin-bottom: 22px; }
+/* A GAP, because the fourth tab arrived (2026-10-01). Three tabs had room to
+   spare; four put "private catering, by arrangement" hard against "on the shelf
+   tonight" on a 1280px tablet, which reads as one run-on line. The gap is on
+   the row rather than padding on the tab so the gold underline still measures
+   the tab itself. */
+.mb-switch { display: flex; gap: 20px; border-bottom: 1px solid var(--hair); margin-bottom: 22px; }
 .mb-tab { flex: 1; background: none; border: none; cursor: pointer; text-align: left;
           padding: 14px 4px 16px; color: rgba(229,212,194,.5);
           font-family: var(--serif); font-size: 19px; line-height: 1.1;
