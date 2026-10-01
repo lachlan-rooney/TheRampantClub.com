@@ -158,9 +158,43 @@ export default function MenuBoard({
     () => serving.filter(v => v.sets.length || v.dining_only),
     [serving],
   )
-  const shown = service === 'plates' ? withPlates
+  // ── OPEN FIRST, THEN CLOSED ─────────────────────────────────────────────
+  // Owner, 2026-10-01: "move the open restaurants to the top of the page,
+  // closed ones below, coming soon at the bottom."
+  //
+  // A member reading a tablet at nine o'clock wants the kitchens that will
+  // actually cook, and the admin's display_order knows nothing about the time
+  // of night. Within each group that order is kept, so the club still decides
+  // who leads — it just no longer leads with a kitchen that shut at eight.
+  //
+  // A venue with no hours recorded counts as OPEN (venueState returns
+  // `unknown: true` with `open: true`): the club has not said it is shut, and
+  // demoting a kitchen because nobody has filled its hours in would punish a
+  // gap in the data rather than report a fact.
+  //
+  // Sorted on BOTH surfaces, not only the kiosk. A menu that differs between
+  // the phone in a member's hand and the tablet on the table beside them is a
+  // menu that will be wrong in one of the two places — the reason this file is
+  // one component at all.
+  //
+  // `clock` ticks every 20s, so a kitchen that reaches last orders moves down
+  // the page by itself on a screen nobody has touched.
+  // THREE BANDS, in the order the owner asked for them: cooking now, shut for
+  // the moment, and the partners who have signed but have not sent a menu yet
+  // ("Menu coming soon"). That last group was sitting in among the open
+  // kitchens, which is the worst place for it — it looks like somewhere you
+  // could order from until you tap it.
+  const ordered = useMemo(() => {
+    const rank = (v: MenuVenueGroup) => {
+      if (!v.plates.length && !v.sets.length) return 2        // nothing to order yet
+      return states.get(v.slug)?.open === false ? 1 : 0       // shut, or cooking
+    }
+    return (list: MenuVenueGroup[]) => [...list].sort((a, b) => rank(a) - rank(b))
+  }, [states])
+
+  const shown = ordered(service === 'plates' ? withPlates
               : service === 'cocktails' ? withCocktails
-              : withSets
+              : withSets)
 
   // One restaurant on a tab (the bar is only ever the club itself) should not
   // hide its list behind a tap — there is nothing to choose between.
