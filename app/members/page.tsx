@@ -8,6 +8,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import TonightPanel from '@/components/TonightPanel'
 import AnticipationCard from '@/components/members/AnticipationCard'
 import ReturnCard from '@/components/members/ReturnCard'
+import GalleryNudge from '@/components/members/GalleryNudge'
 import CorkBoard, { type BoardNotice } from '@/components/members/CorkBoard'
 import EmptyState from '@/components/members/EmptyState'
 import { typeLabel } from '@/lib/fixtures'
@@ -381,6 +382,10 @@ export default function MembersPage() {
           <div className="md-cards">
             <AnticipationCard />
             <ReturnCard />
+            {/* Last of the three personal cards, and the only one that asks for
+                something. Each renders nothing unless it has something to say,
+                so in the ordinary case this whole block is empty. */}
+            <GalleryNudge />
           </div>
 
           <section className="md-rise" style={{ animationDelay: '.26s' }}>

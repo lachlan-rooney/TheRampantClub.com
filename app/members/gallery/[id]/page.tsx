@@ -153,7 +153,8 @@ export default function EventDetailPage() {
         .evd-cat { color: ${GOLD}; }
         .evd-desc { font-family:${MONO}; font-size: 14px; line-height: 2; max-width: 620px; margin: 22px 0 0; opacity: .9; white-space: pre-line; }
 
-        .evd-bar { display:flex; gap: 20px 34px; flex-wrap:wrap; align-items:center; margin: 48px 0 0; padding-bottom: 22px;
+        /* Clear of the portal's own furniture when arrived at by fragment. */
+        .evd-bar { scroll-margin-top: 96px; display:flex; gap: 20px 34px; flex-wrap:wrap; align-items:center; margin: 48px 0 0; padding-bottom: 22px;
                    border-bottom: 1px solid rgba(229,212,194,.16); }
         .evd-cta { background: none; border: none; border-bottom: 1px solid currentColor; border-radius: 0; padding: 0 0 6px; cursor: pointer;
                    color: ${CREAM}; font-family: ${MONO}; font-size: 12.5px; letter-spacing: .14em; text-transform: uppercase; }
@@ -248,7 +249,11 @@ export default function EventDetailPage() {
         {!loading && event && (
           <>
 
-            <div className="evd-bar">
+            {/* #add — where the gallery nudge on the dashboard lands. A plain
+                fragment, handled by the browser: the alternative was ?add=1
+                opening the file dialog for them, which browsers block without a
+                gesture and which would be rude if they did not. */}
+            <div className="evd-bar" id="add">
               <button className="evd-cta gold" onClick={() => fileRef.current?.click()} disabled={uploading > 0}>
                 {uploading > 0 ? t(`Uploading ${uploading}…`, `Đang tải lên ${uploading}…`) : t('+ Add photos', '+ Thêm ảnh')}
               </button>

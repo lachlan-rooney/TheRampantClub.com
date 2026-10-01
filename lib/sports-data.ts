@@ -155,8 +155,11 @@ export const SPORT_ODDS: Record<string, OddsBoard> = {
   },
 }
 
-// Legacy export (keep for any old imports — same data flattened).
-export const ODDS: OddsBoard[] = Object.values(SPORT_ODDS)
+// ODDS (the flattened list) went with components/sports/BookmakersOdds.tsx on
+// 2026-10-01. It was "kept for any old imports" and the only importer was that
+// one dead component — a legacy export kept for a legacy caller, each the sole
+// reason the other survived. The live surface is components/sports/SportOdds,
+// which reads SPORT_ODDS per sport.
 
 // ── Captain's Column rotating aphorisms ────────────────────────
 export const CAPTAINS_COLUMN: string[] = [

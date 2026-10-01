@@ -58,5 +58,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }).select('id').single()
   if (ins.error) return NextResponse.json({ error: 'Could not add it.' }, { status: 500 })
   await socialEmit(actor.sb, 'contributed', 'event_media', ins.data.id, { event_id: id, kind })
+
+  // ── THE NUDGE IS ANSWERED HERE, NOT WHEN IT IS TAPPED ───────────────────
+  // /api/members/gallery/nudge records 'dismissed' when somebody says not this
+  // time, and deliberately records nothing when they tap through — because the
+  // point of keeping which outcome it was is learning whether asking works, and
+  // a tap that led nowhere is not a photograph. This is the photograph.
+  //
+  // Best-effort, and last: a contribution that is already saved must not fail
+  // because the asking ledger did. Where db/gallery_nudge.sql has not run the
+  // fixture_id column is absent, the upsert fails, and nothing here cares.
+  await (async () => {
+    const { data: ev } = await a.from('events').select('fixture_id').eq('id', id).maybeSingle()
+    await a.from('gallery_prompts').upsert(
+      { member: actor.id, event_id: id, outcome: 'posted' }, { onConflict: 'member,event_id' })
+    // Both spellings of the same answer: the prompt may have been raised against
+    // the FIXTURE, before this event existed.
+    if (ev?.fixture_id) {
+      await a.from('gallery_prompts').upsert(
+        { member: actor.id, fixture_id: ev.fixture_id, outcome: 'posted' }, { onConflict: 'member,fixture_id' })
+    }
+  })().catch(() => {})
+
   return NextResponse.json({ ok: true, id: ins.data.id })
 }
