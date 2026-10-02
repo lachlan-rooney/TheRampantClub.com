@@ -33,9 +33,10 @@ const MEMBER_GROUPS: { label: string; vn: string; links: { href: string; en: str
   { label: 'Whisky', vn: 'Whisky', links: [
     { ...L('/members/whisky'), icon: 'glass' },
     { ...L('/members/whisky/finder'), icon: 'compass' },
+    // ONE ENTRY, not three. Your Palate now carries the radar, the journey
+    // and the notes as its three sections — they were one subject with three
+    // nav lines, and a member tapping all three saw their own radar twice.
     { ...L('/members/taste'), icon: 'radar' },
-    { ...L('/members/notes'), icon: 'quill' },
-    { ...L('/members/journey'), icon: 'flag' },
   ] },
   { label: 'Community', vn: 'Cộng Đồng', links: [
     { ...L('/members/members'), icon: 'people' },

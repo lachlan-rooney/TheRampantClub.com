@@ -111,8 +111,13 @@ export default function AgreePage() {
               <>
                 <h1 className="ag-h1 ag-rise">{t('Before you go on', 'Trước khi tiếp tục')}</h1>
                 <p className="ag-intro ag-rise" style={{ animationDelay: '.08s' }}>
-                  {t('Two documents, read at your own pace. You can keep a copy of either without agreeing to it, and we’ll email you what you agreed to and when.',
-                    'Hai văn bản, xin bạn cứ đọc thong thả. Bạn có thể lưu bản sao của từng văn bản mà không cần đồng ý, và chúng tôi sẽ gửi email xác nhận nội dung bạn đã đồng ý cùng thời điểm đồng ý.')}
+                  {/* It used to promise "we'll email you what you agreed to and
+                      when". The Privacy Notice is no longer emailed — it is
+                      kept here and public at /privacy — so the promise was
+                      about to be half true. What is always true is that the
+                      club records it and you can take a copy. */}
+                  {t('Two documents, read at your own pace. You can keep a copy of either without agreeing to it, and we record what you agreed to and when.',
+                    'Hai văn bản, xin bạn cứ đọc thong thả. Bạn có thể lưu bản sao của từng văn bản mà không cần đồng ý, và chúng tôi ghi lại nội dung bạn đã đồng ý cùng thời điểm đồng ý.')}
                 </p>
               </>
             )}

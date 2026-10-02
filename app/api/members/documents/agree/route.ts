@@ -17,6 +17,24 @@ import { renderDocument } from '@/lib/documents/render'
 
 export const dynamic = 'force-dynamic'
 
+// ── WHICH DOCUMENTS ARE EMAILED (owner, 2026-10-02) ───────────────────────
+// "Dont send a what we keep and why email please. It's just saved in the
+// settings."
+//
+// An ALLOW-LIST, not a block-list. Every document agreed to used to be posted
+// back in full, which for the Privacy Notice is a long email nobody asked for
+// about something they can read whenever they like — it is in the portal under
+// their documents and public at /privacy, and the register records which
+// version they agreed to and when.
+//
+// The membership Terms stay: that one IS the member's copy of an agreement they
+// have signed, and a signed agreement you cannot produce later is worth less
+// than one you can. The version is in its subject line for exactly that reason.
+//
+// A list that must be opted INTO means publishing a fourth document does not
+// silently start emailing it.
+const EMAIL_A_COPY = new Set(['membership_terms'])
+
 export async function POST(req: Request) {
   const sb = await createServerSupabaseClient()
   const { data: { user } } = await sb.auth.getUser()
@@ -36,7 +54,7 @@ export async function POST(req: Request) {
     : { data: null }
 
   let emailed = false
-  if (v && granted !== false && process.env.RESEND_API_KEY && user.email) {
+  if (v && granted !== false && EMAIL_A_COPY.has(doc_key) && process.env.RESEND_API_KEY && user.email) {
     try {
       const { data: prof } = await sb.from('profiles').select('member_no').eq('id', user.id).maybeSingle()
       const title = (vn ? v.title_vn : v.title_en) || (vn ? row?.name_vn : row?.name_en) || 'Document'

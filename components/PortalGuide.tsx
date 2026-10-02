@@ -116,7 +116,9 @@ const SUGGESTED: L[] = [
 ]
 const FIRST_MOVES: { icon: string; label: L; href: string }[] = [
   { icon: 'compass', label: { en: 'Find your dram', vn: 'Tìm ly của bạn' }, href: '/members/whisky/finder' },
-  { icon: 'quill', label: { en: 'Write a note', vn: 'Ghi cảm nhận' }, href: '/members/notes' },
+  // Straight to the notes SECTION of Your Palate; /members/notes redirects
+  // there anyway, but a guide should not teach a member a retired address.
+  { icon: 'quill', label: { en: 'Write a note', vn: 'Ghi cảm nhận' }, href: '/members/taste#notes' },
   { icon: 'calendar', label: { en: 'See what’s on', vn: 'Xem sự kiện' }, href: '/members/events' },
   { icon: 'bell', label: { en: 'Message the Concierge', vn: 'Nhắn Quản gia' }, href: '/members/concierge' },
 ]

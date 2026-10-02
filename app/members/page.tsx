@@ -223,8 +223,9 @@ export default function MembersPage() {
     finder: { href: '/members/whisky/finder', img: IMG('trc/octave-glencairn'), en: surfaceName('/members/whisky/finder', 'en'), vn: surfaceName('/members/whisky/finder', 'vn'), icon: 'compass', secondary: t('Match a dram to your taste', 'Tìm ly hợp khẩu vị của bạn') },
     menus:  { href: '/menus', img: IMG('trc/cocktail-pour'),                 en: surfaceName('/menus', 'en'),      vn: surfaceName('/menus', 'vn'),     icon: 'menu', secondary: t('Food & drink lists', 'Thực đơn đồ ăn & thức uống') },
     terms:  { href: '/members/terms', img: IMG('trc/pins-seals'),         en: surfaceName('/members/terms', 'en'),          vn: surfaceName('/members/terms', 'vn'),   icon: 'document', secondary: t('Full terms & conditions', 'Điều khoản & điều kiện đầy đủ') },
-    taste:  { href: '/members/taste', img: IMG('trc/ags-bottle'),         en: surfaceName('/members/taste', 'en'),    vn: surfaceName('/members/taste', 'vn'), icon: 'radar', secondary: t('Your taste \u00b7 radar \u00b7 loved drams', 'Khẩu vị \u00b7 radar \u00b7 những ly yêu thích') },
-    journey: { href: '/members/journey', img: IMG('trc/cask-lid'),      en: surfaceName('/members/journey', 'en'),   vn: surfaceName('/members/journey', 'vn'), icon: 'flag', secondary: t('Your whisky story over time \u00b7 milestones \u00b7 palate drift', 'Câu chuyện whisky của bạn \u00b7 cột mốc \u00b7 khẩu vị đổi thay') },
+    // The palate tile now stands for all three sections, so it says all three.
+    // The journey tile is gone with the page it pointed at.
+    taste:  { href: '/members/taste', img: IMG('trc/ags-bottle'),         en: surfaceName('/members/taste', 'en'),    vn: surfaceName('/members/taste', 'vn'), icon: 'radar', secondary: t('Your radar \u00b7 how it has moved \u00b7 your notes', 'Radar khẩu vị \u00b7 đã thay đổi thế nào \u00b7 ghi chú của bạn') },
     visits: { href: '/members/visits', img: IMG('trc/card-deck'),        en: surfaceName('/members/visits', 'en'),    vn: surfaceName('/members/visits', 'vn'), icon: 'pin', secondary: t('Your record at the club', 'Những lần bạn ghé câu lạc bộ') },
     gifts:  { href: '/members/gifts', img: IMG('trc/pins-dish'),         en: surfaceName('/members/gifts', 'en'),          vn: surfaceName('/members/gifts', 'vn'),          icon: 'gift', secondary: t('Gifts from the club', 'Quà tặng từ câu lạc bộ') },
     gallery: { href: '/members/gallery', img: IMG('trc/gala-arrivals'),     en: surfaceName('/members/gallery', 'en'),  vn: surfaceName('/members/gallery', 'vn'), icon: 'image', secondary: t('Photos & video from fixtures, dinners & socials', 'Ảnh & video từ các trận đấu, bữa tối & buổi gặp mặt') },
@@ -235,7 +236,7 @@ export default function MembersPage() {
   const bucketGroups = [
     { label: "What's On", vn: 'Sự Kiện',    tiles: [byHref['/members/events'], extra.gallery] },
     { label: 'The Club',  vn: 'Câu Lạc Bộ', tiles: [byHref['/members/spaces'], extra.menus, extra.concierge] },
-    { label: 'Whisky',    vn: 'Whisky',     tiles: [extra.whisky, extra.finder, extra.taste, extra.journey] },
+    { label: 'Whisky',    vn: 'Whisky',     tiles: [extra.whisky, extra.finder, extra.taste] },
     { label: 'You',       vn: 'Bạn',        tiles: [byHref['/members/profile'], extra.visits] },
     { label: 'Info',      vn: 'Thông Tin',  tiles: [byHref['/members/rules'], extra.terms, byHref['/members/contact']] },
   ].map(g => ({ ...g, tiles: g.tiles.filter(Boolean) }))
