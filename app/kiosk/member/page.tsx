@@ -7,6 +7,7 @@ import { RADAR_GOLD, type Cat, type ShapeValues } from '@/components/whisky/flav
 import EmptyState from '@/components/members/EmptyState'
 import { SkeletonLines } from '@/components/members/Skeleton'
 import { typeLabel } from '@/lib/fixtures'
+import { useLang } from '@/lib/lang'
 import { DateBlock, dotOf, kindMeta, whatsOnCss, whatsOnNarrowCss } from '@/components/events/whats-on'
 
 // MEMBER MODE — the PIN screen, then the member's own view.
@@ -20,6 +21,7 @@ import { DateBlock, dotOf, kindMeta, whatsOnCss, whatsOnNarrowCss } from '@/comp
 const SERIF = "'Rampant Sans', Georgia, serif"
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
 const INK = '#E5D4C2'
+const GOLD = '#D4B85A'
 const GROUND = '#052E20'
 
 const ABANDON_MS = 15_000   // tap-and-walk-away must not leave a name on the bar
@@ -27,6 +29,8 @@ const IDLE_MS = 85_000      // just inside the server's 90s, so the exit is grac
 
 interface Me {
   first_name: string | null; palate: string[]; room: string | null; expires_at: string
+  card_credit_vnd?: number | null
+  locker?: { no: string; label: string | null } | null
   cats: Cat[] | null; shape: ShapeValues | null
 }
 interface Entry { id: string; title: string; title_vn: string | null; entry_date: string
@@ -50,11 +54,13 @@ const vnNow = () => new Date(new Date().toLocaleString('en-US', { timeZone: VN }
 // THE CLUB RUNS PAST MIDNIGHT. "Good morning" to someone three drinks into a
 // Thursday reads as broken, so the evening runs until 05:00 — the day boundary is
 // not where the evening ends. Same lesson as the board's midnight arithmetic.
-function greeting(): string {
-  const h = vnNow().getHours()
-  if (h >= 5 && h < 12) return 'Good morning'
-  if (h >= 12 && h < 18) return 'Good afternoon'
-  return 'Good evening'
+function greeting(vn: boolean): string {
+  const h = Number(new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hour12: false, timeZone: VN }).format(new Date()))
+  // THE CLUB RUNS PAST MIDNIGHT. "Good morning" to someone three drinks into a
+  // Friday is the tablet admitting it does not know where it is.
+  if (h >= 5 && h < 12) return vn ? 'Chào buổi sáng' : 'Good morning'
+  if (h >= 12 && h < 18) return vn ? 'Chào buổi chiều' : 'Good afternoon'
+  return vn ? 'Chào buổi tối' : 'Good evening'
 }
 
 // ── THE LINE, AND THE THREE STRINGS THAT DRESS IT ────────────────────────
@@ -93,6 +99,10 @@ export default function KioskMember() {
   const [pin, setPin] = useState('')
   const [err, setErr] = useState(false)
   const [busy, setBusy] = useState(false)
+  // The bottom bar's EN/VN switch changed the context and this page ignored it:
+  // every string here was English, with a few printed "EN · VN" side by side.
+  const { t, lang } = useLang()
+  const goRef = useRef<HTMLButtonElement | null>(null)
   const [me, setMe] = useState<Me | null>(null)
   const [week, setWeek] = useState<Week | null>(null)
   const [joining, setJoining] = useState<string | null>(null)
@@ -161,6 +171,21 @@ export default function KioskMember() {
   }, [me, router])
   useEffect(() => { bumpAbandon(); return () => { if (abandon.current) clearTimeout(abandon.current) } }, [bumpAbandon, pin, num])
 
+  // ── THE BUTTON COMES TO THEM ────────────────────────────────────────────
+  // Padding the page clear of the bar means Continue can be SCROLLED to; it
+  // does not mean anybody sees it. With the Android keyboard up, a landscape
+  // tablet has about 280px of room above the bar and this screen needs 468 —
+  // so the button starts below the fold every time, and the member is looking
+  // at a PIN they have finished typing and no way to send it.
+  //
+  // The sixth digit is the exact moment the button becomes the only thing that
+  // matters, so that is when it is brought into view. Cheaper and far more
+  // predictable than trying to track the keyboard with visualViewport, which
+  // fires differently on every Android build the club might end up with.
+  useEffect(() => {
+    if (pin.length === 6) goRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [pin])
+
   // ── IDLE, once signed in. Reset on REAL INTERACTION — scroll and touch, not just
   //    navigation. Phase 3 has a scrollable newsletter and comfortable reading
   //    exceeds 90 seconds of no navigation; being logged out mid-read reads as broken.
@@ -192,15 +217,24 @@ export default function KioskMember() {
   const submit = async () => {
     if (pin.length !== 6 || busy) return
     setBusy(true); setErr(false)
-    const r = await fetch('/api/kiosk/member/login', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ member_no: num.trim(), pin }),
-    })
-    setBusy(false)
-    if (!r.ok) { setErr(true); setPin(''); return }
-    const m = await fetch('/api/kiosk/member/me', { cache: 'no-store' })
-    if (!m.ok) { setErr(true); setPin(''); return }
-    setMe((await m.json()).member)
+    // ── BUSY COVERS BOTH REQUESTS ───────────────────────────────────────
+    // setBusy(false) used to run between them, so for the whole of the second
+    // call — the one that actually fetches the member — the screen showed an
+    // idle "Continue" button and no sign anything was happening. On a tablet
+    // that is a member pressing it again. (Owner, 2026-10-02: "There should
+    // also be a loading wheel or something to show its loading after you enter
+    // your code.")
+    try {
+      const r = await fetch('/api/kiosk/member/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ member_no: num.trim(), pin }),
+      })
+      if (!r.ok) { setErr(true); setPin(''); return }
+      const m = await fetch('/api/kiosk/member/me', { cache: 'no-store' })
+      if (!m.ok) { setErr(true); setPin(''); return }
+      setMe((await m.json()).member)
+    } catch { setErr(true); setPin('') }
+    finally { setBusy(false) }
   }
 
   // ── THE MEMBER'S OWN VIEW ───────────────────────────────────────────────
@@ -258,15 +292,53 @@ export default function KioskMember() {
             {me.room}
           </div>
           <div style={{ fontFamily: SERIF, fontSize: 'clamp(30px,4.4vh,52px)', lineHeight: 1.1, marginTop: 10 }}>
-            {greeting()}, {me.first_name}
+            {greeting(lang === 'vn')}, {me.first_name}
           </div>
           <div style={{ fontFamily: MONO, fontSize: 13, color: 'rgba(229,212,194,.55)', marginTop: 10 }}>
-            {vnNow().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: VN })}
+            {vnNow().toLocaleDateString(lang === 'vn' ? 'vi-VN' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: VN })}
           </div>
+
+          {/* ── WHAT IS ACTUALLY YOURS ──────────────────────────────────────
+              A member with no taste profile used to get a greeting, a date and
+              a Done button — "literally nothing on that page". These two are
+              facts the club already holds about THEM, and the two a person
+              standing at a bar wants: what is on the card, and where the bottle
+              is. Each drawn only when there is something to draw. */}
+          {(me.card_credit_vnd != null || me.locker) && (
+            <div style={factRow}>
+              {me.card_credit_vnd != null && (
+                <div>
+                  <div style={factLabel}>{t('On your card', 'Số dư thẻ')}</div>
+                  <div style={{ ...factValue, color: GOLD }}>
+                    {new Intl.NumberFormat('en-US').format(me.card_credit_vnd)} ₫
+                  </div>
+                </div>
+              )}
+              {me.locker && (
+                <div>
+                  <div style={factLabel}>{t('Your locker', 'Tủ khóa')}</div>
+                  <div style={factValue}>{me.locker.no}{me.locker.label ? ` · ${me.locker.label}` : ''}</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* No palate yet? Then say what fills it, rather than leaving the
+              column blank. The Finder is already on the bottom bar — this is a
+              line pointing at it, not a second way in. */}
+          {!(me.cats && me.shape && Object.keys(me.shape).length > 0) && (
+            <div style={{ marginTop: 'clamp(14px,3vh,32px)' }}>
+              <div style={sectionLabel}>{t('Your palate', 'Khẩu vị của bạn')}</div>
+              <p style={inviteText}>
+                {t('Nothing recorded yet. Try the Flavour Finder on the bar below — a few taps and the club starts learning what you like.',
+                   'Chưa ghi nhận gì. Hãy thử Flavour Finder ở thanh dưới — chỉ vài lần chạm là câu lạc bộ bắt đầu hiểu khẩu vị của bạn.')}
+              </p>
+            </div>
+          )}
 
           {me.cats && me.shape && Object.keys(me.shape).length > 0 && (
             <div style={{ marginTop: 'clamp(14px,3vh,32px)' }}>
-              <div style={sectionLabel}>Your palate</div>
+              <div style={sectionLabel}>{t('Your palate', 'Khẩu vị của bạn')}</div>
               {/* The portal's radar, not a second one — so it inherits f5d2c90. */}
               <div style={{ marginLeft: -18 }}>
                 <RadarChart cats={me.cats} shapes={[{ values: me.shape, color: RADAR_GOLD, label: '' }]} size={230} />
@@ -276,7 +348,7 @@ export default function KioskMember() {
 
           {/* Sign-out is unmissable but NOT in the top-right, where the eye goes for
               the clock and a wandering thumb would dump a member to the board. */}
-          <button onClick={() => toBoard('done')} style={doneBtn}>Done</button>
+          <button onClick={() => toBoard('done')} style={doneBtn}>{t('Done', 'Xong')}</button>
         </div>
 
         {/* ── SCROLLS: what's on ──────────────────────────────────────────── */}
@@ -302,16 +374,21 @@ ${whatsOnNarrowCss('          ')}
         .wo-kiosk .wo-thumb { max-height: 200px; border-radius: 10px; }
         .wo-kiosk .wo-msg { font-family: ${MONO}; font-size: 12.5px; line-height: 1.7; margin-top: 12px; }
           ` }} />
-          <div style={sectionLabel}>This week <span style={{ opacity: .5 }}>· Tuần này</span></div>
+          <div style={sectionLabel}>{t('This week', 'Tuần này')}</div>
 
           {!week ? (
             <div style={{ marginTop: 22 }}><SkeletonLines lines={6} gap={16} /></div>
           ) : lines.length === 0 ? (
             <div style={{ marginTop: 30, maxWidth: 420 }}>
+              {/* It read "Nothing in the diary THIS WEEK" directly under a
+                  heading that already said "This week" — the owner read the
+                  words twice and said so. And its Vietnamese was an empty
+                  comment waiting for a translation that never came, so half
+                  the membership got nothing at all. */}
               <EmptyState
-                title="Nothing in the diary this week."
-                body={<>The bar is the event.<br />
-                  <span style={{ opacity: .55 }}>{/* VN — Miss Châu, not machine-translated */}</span></>}
+                title={t('Nothing in the diary.', 'Chưa có gì trong lịch.')}
+                body={t('The bar is the event. Ask whoever is pouring what is open tonight.',
+                        'Quầy bar chính là sự kiện. Hãy hỏi người đang phục vụ xem tối nay có gì đang mở.')}
               />
             </div>
           ) : (
@@ -323,7 +400,7 @@ ${whatsOnNarrowCss('          ')}
                     <div className="wo-tags">
                       <span className="wo-type"><i style={{ background: it.dot }} />{it.tag}</span>
                       {rel(it.ms) && <span className="wo-rel">{rel(it.ms)}</span>}
-                      {it.signed && <span className="wo-in">✓ You&rsquo;re in · Đã đăng ký</span>}
+                      {it.signed && <span className="wo-in">✓ {t('You\u2019re in', 'Đã đăng ký')}</span>}
                     </div>
                     <h3 className="wo-title">{it.title}</h3>
                     {it.title_vn && <h3 className="wo-title" style={{ fontSize: 22, opacity: .5, marginTop: 4 }}>{it.title_vn}</h3>}
@@ -386,21 +463,34 @@ ${whatsOnNarrowCss('          ')}
   // ── THE PIN SCREEN (fallback — normal entry is from the board) ───────────
   return (
     <div style={wrap} onPointerDown={bumpAbandon}>
+      {/* A WHEEL, not just a word. "One moment" on its own is a label that
+          might have been there all along; a turning thing is the only part a
+          member reads as "it is working". Reduced motion gets the word alone,
+          because a spinner that does not spin is furniture. */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        .km-spin { display: inline-block; width: 13px; height: 13px; vertical-align: -1px;
+                   border: 2px solid rgba(229,212,194,.28); border-top-color: #D4B85A;
+                   border-radius: 50%; animation: km-turn .75s linear infinite; }
+        @keyframes km-turn { to { transform: rotate(360deg); } }
+        @media (prefers-reduced-motion: reduce) { .km-spin { display: none; } }
+      ` }} />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', maxWidth: 460 }}>
         {tap?.first_name
-          ? <div style={{ fontFamily: SERIF, fontSize: 'clamp(28px,4.2vw,46px)' }}>Good evening, {tap.first_name}</div>
-          : <div style={{ fontFamily: SERIF, fontSize: 'clamp(24px,3.4vw,38px)' }}>Your surname</div>}
+          /* It said "Good evening" at every hour of the day, beside a
+             greeting() that has known better since it was written. */
+          ? <div style={{ fontFamily: SERIF, fontSize: 'clamp(28px,4.2vw,46px)' }}>{greeting(lang === 'vn')}, {tap.first_name}</div>
+          : <div style={{ fontFamily: SERIF, fontSize: 'clamp(24px,3.4vw,38px)' }}>{t('Your surname', 'Họ của bạn')}</div>}
 
         {!tap && (
           <input
             value={num} onChange={e => { setNum(e.target.value); bumpAbandon() }}
-            placeholder="Your surname" autoCapitalize="words" autoComplete="off" spellCheck={false}
+            placeholder={t('Your surname', 'Họ của bạn')} autoCapitalize="words" autoComplete="off" spellCheck={false}
             style={{ ...field, marginTop: 18 }}
           />
         )}
 
         <div style={{ fontFamily: MONO, fontSize: 13, letterSpacing: '.14em', textTransform: 'uppercase', color: 'rgba(229,212,194,.5)', marginTop: 26 }}>
-          Enter your six-digit PIN
+          {t('Enter your six-digit PIN', 'Nhập mã PIN sáu chữ số')}
         </div>
         <input
           value={pin} inputMode="numeric" autoFocus={!!tap}
@@ -409,9 +499,11 @@ ${whatsOnNarrowCss('          ')}
           style={{ ...field, marginTop: 12, fontSize: 34, letterSpacing: '.5em' }}
         />
 
-        <button onClick={submit} disabled={pin.length !== 6 || !num.trim() || busy}
+        <button ref={goRef} onClick={submit} disabled={pin.length !== 6 || !num.trim() || busy}
           style={{ ...ghost, marginTop: 20, opacity: pin.length === 6 && num.trim() && !busy ? 1 : .35 }}>
-          {busy ? 'One moment' : 'Continue'}
+          {busy
+            ? <><span className="km-spin" aria-hidden /> {t('One moment', 'Xin chờ một chút')}</>
+            : t('Continue', 'Tiếp tục')}
         </button>
 
         {/* ONE generic failure. It never says which membership numbers exist, and the
@@ -436,6 +528,20 @@ const twoCol: React.CSSProperties = {
   height: 'calc(100dvh - var(--kiosk-bar, 0px))', background: GROUND, color: INK, display: 'flex',
   gap: 'clamp(20px,4vw,64px)', padding: 'clamp(16px,4vh,44px) clamp(20px,5vw,64px)', overflow: 'hidden',
 }
+const factRow: React.CSSProperties = {
+  display: 'flex', gap: 'clamp(18px,3vw,40px)', flexWrap: 'wrap',
+  marginTop: 'clamp(14px,3vh,30px)', paddingTop: 'clamp(12px,2.4vh,22px)',
+  borderTop: '1px solid rgba(229,212,194,.12)',
+}
+const factLabel: React.CSSProperties = {
+  fontFamily: MONO, fontSize: 10, letterSpacing: '.16em', textTransform: 'uppercase',
+  color: 'rgba(229,212,194,.45)',
+}
+const factValue: React.CSSProperties = { fontFamily: SERIF, fontSize: 'clamp(20px,2.6vh,28px)', marginTop: 7 }
+const inviteText: React.CSSProperties = {
+  fontFamily: MONO, fontSize: 12.5, lineHeight: 1.85, color: 'rgba(229,212,194,.62)',
+  margin: '10px 0 0', maxWidth: '34ch',
+}
 const fixedCol: React.CSSProperties = {
   flex: '0 0 clamp(280px, 34%, 420px)', display: 'flex', flexDirection: 'column', minHeight: 0,
 }
@@ -453,9 +559,24 @@ const doneBtn: React.CSSProperties = {
   padding: '16px 34px', minHeight: 56, cursor: 'pointer',
 }
 
+// ── THE KEYPAD SCREEN ──────────────────────────────────────────────────────
+// minHeight KEEPS A SHORT SCREEN CLEAR OF THE BAR AND NOTHING ELSE. The moment
+// the content is taller than the viewport it overflows, and KioskBar is
+// position: fixed — so the last things on the page end up underneath it.
+//
+// Which is every time somebody signs in: focusing the PIN field opens the
+// Android keyboard, 100dvh collapses to about 45% of the screen, and at
+// 1280x360 the CONTINUE button lands at 286-329 with the bar at 277.
+// elementFromPoint over its own centre returns the bar. The member is looking
+// at the button they cannot press. (Owner, 2026-10-02: "The member log in
+// button on the tbalet is hidden behind the bottom nav".)
+//
+// Same fault and same fix as the staff screen's Scroll: pad the bottom by the
+// bar's own published height so overflowing content clears it.
 const wrap: React.CSSProperties = {
   minHeight: 'calc(100dvh - var(--kiosk-bar, 0px))', background: GROUND, color: INK,
-  display: 'flex', flexDirection: 'column', padding: '5vh 6vw',
+  display: 'flex', flexDirection: 'column',
+  padding: '5vh 6vw', paddingBottom: 'calc(5vh + var(--kiosk-bar, 0px))',
 }
 const field: React.CSSProperties = {
   background: 'rgba(229,212,194,.07)', border: '1px solid rgba(229,212,194,.2)', borderRadius: 4,

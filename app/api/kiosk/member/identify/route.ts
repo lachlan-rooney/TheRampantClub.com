@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { displayFirstName } from '@/lib/kiosk/name'
 import { svc, deviceOk } from '@/lib/kiosk/server'
 import { uidCandidates } from '@/lib/cards/uid'
 
@@ -17,15 +18,12 @@ import { uidCandidates } from '@/lib/cards/uid'
 
 export const dynamic = 'force-dynamic'
 
-/** Prefer the nickname — what we actually call them. First-token splitting is
- *  wrong for Vietnamese name order ("Nguyen Van Binh" would be greeted as the
- *  family name), so full_name is only the fallback. */
-function firstName(nickname: string | null, fullName: string | null): string | null {
-  const nick = (nickname || '').trim()
-  if (nick) return nick.split(/\s+/)[0]
-  const full = (fullName || '').trim()
-  return full ? full.split(/\s+/)[0] : null
-}
+// Moved to lib/kiosk/name (2026-10-02) when /api/kiosk/member/me turned out to
+// have its own, worse answer to the same question — it greeted "Mr Rooney" as
+// "Mr". This one already preferred the nickname; the shared version also drops
+// honorifics and handles Vietnamese name order, which this one described in its
+// comment and did not actually do.
+const firstName = displayFirstName
 
 export async function POST(req: Request) {
   if (!(await deviceOk())) return NextResponse.json({ error: 'Device not enrolled.' }, { status: 403 })
