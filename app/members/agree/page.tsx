@@ -80,6 +80,11 @@ export default function AgreePage() {
   const pending = (docs || []).filter(d => d.needs_action)
   const optional = (docs || []).filter(d => !d.required && d.satisfied_by === 'consent')
   const signed = (docs || []).filter(d => d.satisfied_by === 'signature')
+  // FALSE WHILE LOADING, not true. Showing "Before you go on · Two documents,
+  // read at your own pace" and then taking it away is worse than a moment with
+  // no heading: it is wrong information, briefly, to somebody who has nothing
+  // to read. The body prints "Loading…" meanwhile.
+  const hasWork = docs !== null && pending.length > 0
 
   return (
     <PublicPage ground="#052E20" ink="#E5D4C2">
@@ -90,13 +95,27 @@ export default function AgreePage() {
           still land under the bar — which is exactly what intercepted a real tap on the
           agree control during verification. */}
       <div className="ag-wrap" style={{ paddingBottom: 96 }}>
+        {/* ── THE PREAMBLE IS FOR PEOPLE WITH SOMETHING TO READ ─────────────
+            Owner, 2026-10-02: once "You're up to date" shows, all of this
+            should be gone "except the language toggle".
+            "Before you go on", "Two documents, read at your own pace" and the
+            which-language-prevails line are instructions for a task. With
+            nothing outstanding they describe work that does not exist, and they
+            sat ABOVE the one thing left to do — so the way out was below a
+            screenful of text about documents that were already agreed.
+            The toggle stays, because the optional settings and the signed list
+            below are still worth reading in either language. */}
         <header className="ag-mast">
           <div className="ag-words">
-            <h1 className="ag-h1 ag-rise">{t('Before you go on', 'Trước khi tiếp tục')}</h1>
-            <p className="ag-intro ag-rise" style={{ animationDelay: '.08s' }}>
-              {t('Two documents, read at your own pace. You can keep a copy of either without agreeing to it, and we’ll email you what you agreed to and when.',
-                'Hai văn bản, xin bạn cứ đọc thong thả. Bạn có thể lưu bản sao của từng văn bản mà không cần đồng ý, và chúng tôi sẽ gửi email xác nhận nội dung bạn đã đồng ý cùng thời điểm đồng ý.')}
-            </p>
+            {hasWork && (
+              <>
+                <h1 className="ag-h1 ag-rise">{t('Before you go on', 'Trước khi tiếp tục')}</h1>
+                <p className="ag-intro ag-rise" style={{ animationDelay: '.08s' }}>
+                  {t('Two documents, read at your own pace. You can keep a copy of either without agreeing to it, and we’ll email you what you agreed to and when.',
+                    'Hai văn bản, xin bạn cứ đọc thong thả. Bạn có thể lưu bản sao của từng văn bản mà không cần đồng ý, và chúng tôi sẽ gửi email xác nhận nội dung bạn đã đồng ý cùng thời điểm đồng ý.')}
+                </p>
+              </>
+            )}
 
             <div className="ag-tabs ag-rise" style={{ animationDelay: '.14s' }}>
               {(['en', 'vn'] as const).map(l => (
@@ -104,12 +123,15 @@ export default function AgreePage() {
                   className={`ag-tab ${lang === l ? 'is-on' : ''}`}>{l === 'en' ? 'English' : 'Tiếng Việt'}</button>
               ))}
             </div>
-            {/* Surfaced, not buried at paragraph six where the source document puts it. */}
-            <p className="ag-prevails ag-rise" style={{ animationDelay: '.18s' }}>
-              {/* Both languages stay on screen; the chosen one leads. */}
-              {t(PREVAILS_EN, PREVAILS_VN)}
-              <span style={{ opacity: .7 }}> · {t(PREVAILS_VN, PREVAILS_EN)}</span>
-            </p>
+            {/* Surfaced, not buried at paragraph six where the source document
+                puts it — but only while there is a document to read. */}
+            {hasWork && (
+              <p className="ag-prevails ag-rise" style={{ animationDelay: '.18s' }}>
+                {/* Both languages stay on screen; the chosen one leads. */}
+                {t(PREVAILS_EN, PREVAILS_VN)}
+                <span style={{ opacity: .7 }}> · {t(PREVAILS_VN, PREVAILS_EN)}</span>
+              </p>
+            )}
           </div>
           <div className="ag-art ag-rise" style={{ animationDelay: '.2s' }}>
             <CreamInk name="lion-suit" width="100%" rot={4} dur={9} />

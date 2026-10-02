@@ -178,7 +178,21 @@ try {
     '11 · and a member who arrives already up to date is not stranded',
     await again.count() ? 'button present' : 'NO WAY OUT')
 
-  t(errs.length === 0, '12 · no page errors', errs.slice(0, 2).join(' | '))
+  // ── AND THE PREAMBLE IS GONE WITH IT ───────────────────────────────────
+  // "Before you go on", "Two documents, read at your own pace" and the
+  // prevails line are instructions for a task. With nothing outstanding they
+  // described work that did not exist, and they sat ABOVE the way out.
+  const left = await p.evaluate(() => ({
+    h1: !!document.querySelector('.ag-h1'),
+    intro: !!document.querySelector('.ag-intro'),
+    prevails: !!document.querySelector('.ag-prevails'),
+    tabs: !!document.querySelector('.ag-tabs'),
+  }))
+  t(!left.h1 && !left.intro && !left.prevails, '12 · the preamble is gone once there is nothing to read',
+    JSON.stringify(left))
+  t(left.tabs, '12b · but the language toggle stays')
+
+  t(errs.length === 0, '13 · no page errors', errs.slice(0, 2).join(' | '))
 } catch (e) {
   console.log('✗ THREW:', e?.message || e); fail++
 } finally {
