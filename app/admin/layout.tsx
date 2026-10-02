@@ -39,19 +39,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div style={{ flex: 1, minWidth: 0 }}>
           {children}
         </div>
-        {/* TEMP: licence line hidden 2026-06-04, restore 2026-06-05 — flip to `true` */}
-        {false && (
-        <div style={{
-          marginTop: 48,
-          paddingTop: 16,
-          textAlign: 'right',
-          borderTop: '1px solid rgba(229,212,194,0.06)',
-          fontFamily: "'Google Sans Code', monospace", fontSize: 9,
-          color: '#7E7864', letterSpacing: '0.08em',
-        }}>
-          Licensed from LR Growth Solutions PTE LTD
-        </div>
-        )}
+        {/* The licence line — "Licensed from LR Growth Solutions PTE LTD", set
+            small and right-aligned at the foot of every admin page — was hidden
+            on 2026-06-04 behind `{false && …}` with a note to restore it the
+            next day. It stayed hidden for four months, which made it look like
+            an oversight rather than a decision.
+            REMOVED on the owner's instruction, 2026-10-02. Deleted rather than
+            left switched off: a dead branch carrying a date that has passed
+            tells the next reader nothing except that somebody forgot. If the
+            line is ever wanted back it is this commit's parent — and that is a
+            decision about what the club asserts, not a flag to flip. */}
       </main>
     </div>
     </>

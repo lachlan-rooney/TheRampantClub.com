@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useLang } from '@/lib/lang'
 import { PublicPage } from '@/components/public/kit'
 import { CreamInk, CreamInkDefs } from '@/components/public/CreamInk'
@@ -16,7 +15,6 @@ interface Doc {
 }
 
 export default function AgreePage() {
-  const router = useRouter()
   const [docs, setDocs] = useState<Doc[] | null>(null)
   // Folded onto the shared context. BEHAVIOUR IS UNCHANGED: `lang` still drives
   // what is rendered AND what goes into the consent payload, so `evidence` keeps
@@ -27,9 +25,15 @@ export default function AgreePage() {
   const [busy, setBusy] = useState<string | null>(null)
   const [msg, setMsg] = useState('')
 
-  const load = useCallback(async () => {
+  // Returns the list as well as storing it: `agree` below needs the FRESH
+  // documents to decide whether anything is still outstanding, and reading the
+  // `docs` state straight after setting it reads the previous render's value.
+  const load = useCallback(async (): Promise<Doc[]> => {
     const r = await fetch('/api/members/documents', { cache: 'no-store' })
-    if (r.ok) setDocs((await r.json()).documents || [])
+    if (!r.ok) return []
+    const next = (await r.json()).documents || []
+    setDocs(next)
+    return next
   }, [])
   useEffect(() => { load() }, [load])
 
@@ -43,9 +47,28 @@ export default function AgreePage() {
     const j = await r.json().catch(() => ({}))
     if (!r.ok) return setMsg(j.error || t('Could not record that.', 'Chưa ghi nhận được.'))
     setMsg(j.emailed ? t('Recorded. A copy is on its way to your email.', 'Đã ghi nhận. Một bản sao đang được gửi đến email của bạn.') : t('Recorded.', 'Đã ghi nhận.'))
-    await load()
-    const left = (docs || []).filter(x => x.doc_key !== d.doc_key && x.needs_action)
-    if (left.length === 0) setTimeout(() => router.push('/members'), 1200)
+
+    // ── GETTING OFF THIS PAGE (owner, 2026-10-02: "it's hard to navigate off
+    // it when agreed. You have to reload the page") ─────────────────────────
+    // It was router.push('/members'), and middleware redirects anybody behind
+    // on a required document to /members/agree. The App Router had that
+    // redirect in its client cache, so pushing /members bounced straight back
+    // here and the page looked stuck — a hard reload was the only way through.
+    // A member who has just agreed to a legal document and appears to be
+    // trapped on the agreement page is the worst possible moment for that.
+    //
+    // A FULL NAVIGATION, so middleware re-runs against the consent row that now
+    // exists and nothing is served from a cache that predates it. The same
+    // reason components/NavOverlay signs out with location.href rather than
+    // router.push.
+    //
+    // Decided from the FRESHLY loaded list, not the `docs` in this closure,
+    // which is the value from before the agreement was recorded.
+    const next = await load()
+    if (!next.some(x => x.needs_action)) {
+      setMsg(t('Thank you. Taking you through…', 'Xin cảm ơn. Đang chuyển bạn vào…'))
+      setTimeout(() => { window.location.href = '/members' }, 900)
+    }
   }
 
   const pending = (docs || []).filter(d => d.needs_action)
@@ -259,23 +282,41 @@ const CSS = `
   .ag-h2 { font-family: ${SERIF}; font-weight: 400; font-size: clamp(30px, 3.6vw, 46px); line-height: 1; margin: 0; }
   .ag-ver { font-family: ${MONO}; font-size: 12px; letter-spacing: .04em; opacity: .75; }
 
+  /* Tighter padding to match the smaller type — 56px of margin around 11.5px
+     text reads as a large sheet with a little writing on it. */
   .ag-sheet { max-height: 58vh; overflow-y: auto; background: ${PAPER}; color: ${INK}; border-radius: 4px;
-              padding: clamp(28px, 4.5vw, 56px) clamp(22px, 5vw, 64px);
+              padding: clamp(20px, 3vw, 34px) clamp(18px, 3.4vw, 40px);
               box-shadow: 0 30px 70px rgba(0,0,0,.36), 0 8px 22px rgba(0,0,0,.2);
               scrollbar-width: thin; scrollbar-color: rgba(5,46,32,.3) transparent; }
-  .ag-html { font-family: ${MONO}; font-size: 13.5px; line-height: 2; overflow-wrap: anywhere; }
-  .ag-html h1 { font-family: ${SERIF}; font-weight: 400; font-size: clamp(30px, 4vw, 48px); line-height: 1; margin: 0 0 16px; overflow-wrap: normal; }
-  .ag-html h2 { font-family: ${SERIF}; font-weight: 400; font-size: clamp(22px, 2.6vw, 30px); line-height: 1.05; margin: 44px 0 14px; overflow-wrap: normal; }
-  .ag-html h3 { font-family: ${SERIF}; font-weight: 400; font-size: clamp(19px, 2vw, 23px); line-height: 1.15; margin: 30px 0 10px; }
-  .ag-html p { margin: 0 0 16px; opacity: .9; }
-  .ag-html ul, .ag-html ol { margin: 0 0 18px; padding-left: 20px; opacity: .9; }
-  .ag-html li { margin-bottom: 8px; padding-left: 4px; }
+  /* ── SET AS FINE PRINT (owner, 2026-10-02: "the terms should be tiny not
+     huge") ─────────────────────────────────────────────────────────────────
+     The sheet was set editorially — body at 13.5/2 with headings running to
+     48px — inside a box 58vh tall. On a 33,000-character agreement that makes
+     every clause a screenful and the scroll feel bottomless, which is the
+     opposite of what this page asks of somebody: read it, reach the end, agree.
+     A contract looks like a contract. Small, dense, close-set, with the
+     headings just large enough to find — so the document can be taken in and
+     scrolled through rather than toured.
+     NOTHING IS HIDDEN BY THIS. Every word is still on the sheet and still
+     scrolled past before the control enables; only its setting changed. */
+  .ag-html { font-family: ${MONO}; font-size: 11.5px; line-height: 1.75; overflow-wrap: anywhere; }
+  /* The document's own title. The head above the sheet already prints it, and
+     twice over is how the first screenful became a title page. */
+  .ag-html h1 { display: none; }
+  .ag-html h2 { font-family: ${SERIF}; font-weight: 400; font-size: 16px; line-height: 1.2;
+                margin: 26px 0 8px; overflow-wrap: normal; }
+  .ag-html > h2:first-of-type { margin-top: 0; }
+  .ag-html h3 { font-family: ${MONO}; font-weight: 400; font-size: 9.5px; letter-spacing: .14em;
+                text-transform: uppercase; opacity: .62; margin: 16px 0 6px; }
+  .ag-html p { margin: 0 0 9px; opacity: .9; }
+  .ag-html ul, .ag-html ol { margin: 0 0 10px; padding-left: 17px; opacity: .9; }
+  .ag-html li { margin-bottom: 4px; padding-left: 2px; }
   .ag-html li::marker { color: rgba(5,46,32,.55); }
   .ag-html em { opacity: .75; }
   .ag-html strong { font-weight: 600; }
   .ag-html a { color: inherit; text-underline-offset: 3px; }
-  .ag-html hr { border: none; border-top: 1px solid rgba(5,46,32,.16); margin: 32px 0; }
-  .ag-html table { width: 100%; border-collapse: collapse; margin: 0 0 18px; font-size: 12.5px; line-height: 1.7; }
+  .ag-html hr { border: none; border-top: 1px solid rgba(5,46,32,.16); margin: 18px 0; }
+  .ag-html table { width: 100%; border-collapse: collapse; margin: 0 0 10px; font-size: 10.5px; line-height: 1.6; }
   .ag-html td, .ag-html th { border-top: 1px solid rgba(5,46,32,.16); border-bottom: 1px solid rgba(5,46,32,.16); padding: 10px 12px 10px 0; vertical-align: top; text-align: left; }
 
   .ag-actions { display: flex; align-items: baseline; gap: 18px 32px; flex-wrap: wrap; margin-top: 28px; }
