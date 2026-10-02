@@ -16,10 +16,21 @@ export default function MemberPin() {
   const [again, setAgain] = useState('')
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
+  // Whether this visit STARTED without a PIN. The gate in middleware sends a
+  // member here when they have none, and the moment they set one `hasPin` flips
+  // — so without remembering how the visit began, the "that's it, carry on"
+  // state is indistinguishable from somebody who dropped in to change a PIN
+  // they already had.
+  const [wasForced, setWasForced] = useState(false)
+  const [justSet, setJustSet] = useState(false)
 
   const load = useCallback(async () => {
     const r = await fetch('/api/members/kiosk-pin', { cache: 'no-store' })
-    if (r.ok) { const j = await r.json(); setHasPin(j.has_pin); setSetAt(j.set_at) }
+    if (r.ok) {
+      const j = await r.json()
+      setHasPin(j.has_pin); setSetAt(j.set_at)
+      if (!j.has_pin) setWasForced(true)
+    }
   }, [])
   useEffect(() => { load() }, [load])
 
@@ -34,7 +45,8 @@ export default function MemberPin() {
     setBusy(false)
     const j = await r.json().catch(() => ({}))
     if (!r.ok) return setMsg({ ok: false, text: j.error || t('Could not set your PIN.', 'Chưa đặt được mã PIN.') })
-    setPin(''); setAgain(''); setMsg({ ok: true, text: t('Your PIN is set.', 'Đã đặt mã PIN của bạn.') }); load()
+    setPin(''); setAgain(''); setJustSet(true)
+    setMsg({ ok: true, text: t('Your PIN is set.', 'Đã đặt mã PIN của bạn.') }); load()
   }
 
   return (
@@ -49,6 +61,27 @@ export default function MemberPin() {
               {t('Six digits, used only on the tablets in the club. Tap your card, enter these six digits, and the tablet becomes yours for a few minutes. Nobody at the club can see or set it — if you forget it, we can clear it and you set a new one here.',
                 'Sáu chữ số, chỉ dùng trên các máy tính bảng tại câu lạc bộ. Chạm thẻ, nhập sáu chữ số này, và máy tính bảng sẽ dành riêng cho bạn trong vài phút. Không ai ở câu lạc bộ có thể xem hay đặt mã này — nếu bạn quên, chúng tôi có thể xoá mã cũ để bạn đặt mã mới tại đây.')}
             </p>
+
+            {/* ── WHY YOU ARE HERE ──────────────────────────────────────────
+                Sent by the gate, not chosen from the menu. Without a line
+                saying so, a member who clicked "My Calendar" and arrived at a
+                PIN form has been interrupted with no explanation. */}
+            {wasForced && !hasPin && (
+              <div className="pn-required">
+                {t('One thing before you go on: choose a PIN. It is the only thing standing between your card and the tablets in the club, so the club cannot set it for you.',
+                   'Một việc trước khi tiếp tục: hãy chọn mã PIN. Đây là thứ duy nhất nằm giữa thẻ của bạn và các máy tính bảng trong câu lạc bộ, nên câu lạc bộ không thể đặt thay bạn.')}
+              </div>
+            )}
+
+            {/* And the way onward once it is done — the same lesson as the
+                agreement page, where a timed redirect left members stranded. */}
+            {wasForced && justSet && hasPin && (
+              <div className="pn-through">
+                <a href="/members" className="pk-cta pn-enter">
+                  {t('Go to the portal', 'Vào cổng hội viên')} <span className="pk-go">→</span>
+                </a>
+              </div>
+            )}
 
             {hasPin !== null && (
               <div className="pn-status">
@@ -99,6 +132,21 @@ const CSS = `
   .pn-rise { opacity: 0; transform: translateY(22px); animation: pk-rise .9s cubic-bezier(.16,.84,.44,1) both; }
   .pn-h1 { font-family: ${SERIF}; font-weight: 400; font-size: clamp(48px, 6.6vw, 96px); line-height: .92; margin: 0; text-wrap: balance; }
   .pn-lede { font-family: ${MONO}; font-size: 14px; line-height: 1.95; opacity: .9; max-width: 540px; margin: 26px 0 0; }
+  /* Why you are here, when the gate sent you. Set as a statement, not a
+     warning: nothing has gone wrong, there is simply one thing to do. */
+  .pn-required { font-family: ${MONO}; font-size: 13px; line-height: 1.95; color: #E5D4C2;
+                 border-left: 2px solid rgba(212,184,90,.5); padding: 2px 0 2px 16px;
+                 margin: 30px 0 0; max-width: 60ch; }
+
+  /* The way onward, matching /members/agree: a filled object, not a word. */
+  .pn-through { margin: 30px 0 0; }
+  .pk-cta.pn-enter { margin-top: 0; background: #D4B85A; color: #052E20; text-decoration: none;
+                     border-radius: 2px; padding: 17px 30px; font-family: ${MONO}; font-size: 13px;
+                     letter-spacing: .14em; text-transform: uppercase;
+                     box-shadow: 0 10px 26px rgba(0,0,0,.28); }
+  .pk-cta.pn-enter::before { content: none; }
+  @media (max-width: 560px) { .pk-cta.pn-enter { display: block; width: 100%; text-align: center; } }
+
   .pn-status { font-family: ${MONO}; font-size: 13.5px; line-height: 1.8; color: #D4B85A; margin: 26px 0 0; }
   .pn-form { max-width: 420px; margin-top: 44px; }
   .pn-lbl { display: block; font-family: ${MONO}; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .75; }

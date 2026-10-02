@@ -141,7 +141,7 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
-  // ── DOCUMENTS OUTSTANDING ───────────────────────────────────────────────
+  // ── WHAT A MEMBER MUST DO BEFORE THE PORTAL ─────────────────────────────
   // Same shape as the must_change_password gate above, and for the same reason: a
   // member behind on a REQUIRED document cannot reach the portal until they agree.
   //
@@ -152,12 +152,42 @@ export async function middleware(request: NextRequest) {
   // THE PORTAL ONLY. Nothing under /kiosk is checked here, deliberately: nobody
   // agrees to a contract on a bar-top tablet with a queue behind them, and the
   // schema refuses it anyway ('kiosk' is not a valid consent method).
-  if (user && request.nextUrl.pathname.startsWith('/members')
-      && request.nextUrl.pathname !== '/members/agree') {
+  //
+  // ── AND A KIOSK PIN, ON FIRST ARRIVAL (owner, 2026-10-02: "They should have
+  //    to set their pin on first log in/sign up") ─────────────────────────────
+  // Setting a PIN was a field on the profile page that nobody had to visit, so
+  // a member's first tap on a club tablet was the moment they discovered they
+  // had no PIN — standing at the bar, with staff watching.
+  //
+  // ⚠ ONE GATE, NOT TWO. Written as a second independent block this DEADLOCKS:
+  // a member owing both would be sent from /members to /members/agree, which
+  // the PIN check would bounce to /members/pin, which the consent check would
+  // bounce back to /members/agree, forever. So the two are decided together —
+  // the first outstanding step wins, and if the member is already standing on
+  // that step they are let through to do it.
+  //
+  // ⚠ AND IT MUST NEVER TRAP AN ACCOUNT THAT CANNOT COMPLY.
+  // my_kiosk_pin_state() returns NO ROWS when the profile has no member_no,
+  // which is every staff and admin account — and set_my_kiosk_pin refuses them
+  // ("no member linked"). Gating on "no row" rather than on has_pin === false
+  // would put them in a loop with no way out. The row must EXIST and say false.
+  //
+  // DOCUMENTS FIRST, deliberately: a legal obligation outranks a convenience.
+  if (user && request.nextUrl.pathname.startsWith('/members')) {
     const { data: consent } = await supabase.rpc('my_consent_state')
-    if ((consent || []).some((r: { needs_action?: boolean }) => r.needs_action)) {
+    const owesDocs = (consent || []).some((r: { needs_action?: boolean }) => r.needs_action)
+
+    let needed: string | null = owesDocs ? '/members/agree' : null
+    if (!needed) {
+      const { data: pin } = await supabase.rpc('my_kiosk_pin_state')
+      const row = (Array.isArray(pin) ? pin[0] : pin) as { has_pin?: boolean } | undefined
+      if (row && row.has_pin === false) needed = '/members/pin'
+    }
+
+    // Already on the step → let them do it. Anywhere else → send them to it.
+    if (needed && request.nextUrl.pathname !== needed) {
       const url = request.nextUrl.clone()
-      url.pathname = '/members/agree'; url.search = ''
+      url.pathname = needed; url.search = ''
       return NextResponse.redirect(url)
     }
   }
