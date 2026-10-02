@@ -8,6 +8,7 @@ import EmptyState from '@/components/members/EmptyState'
 import { SkeletonLines } from '@/components/members/Skeleton'
 import { typeLabel } from '@/lib/fixtures'
 import { useLang } from '@/lib/lang'
+import MemberPour from '@/components/kiosk/MemberPour'
 import { DateBlock, dotOf, kindMeta, whatsOnCss, whatsOnNarrowCss } from '@/components/events/whats-on'
 
 // MEMBER MODE — the PIN screen, then the member's own view.
@@ -214,6 +215,14 @@ export default function KioskMember() {
       .catch(() => setWeek({ from: '', to: '', entries: [], fixtures: [] }))
   }, [me])
 
+  // Re-read /me after a note is logged: rederiveAndPersist has just rebuilt the
+  // taste vector, so the radar beside the button fills in without the member
+  // having to do anything. The point of the tap is visible, immediately.
+  const refreshMe = useCallback(async () => {
+    const m = await fetch('/api/kiosk/member/me', { cache: 'no-store' })
+    if (m.ok) setMe((await m.json()).member)
+  }, [])
+
   const submit = async () => {
     if (pin.length !== 6 || busy) return
     setBusy(true); setErr(false)
@@ -323,18 +332,23 @@ export default function KioskMember() {
             </div>
           )}
 
-          {/* No palate yet? Then say what fills it, rather than leaving the
-              column blank. The Finder is already on the bottom bar — this is a
-              line pointing at it, not a second way in. */}
+          {/* No palate yet? Say what fills it — and then offer the thing that
+              fills it, right here. The club has no tasting notes at all, which
+              is why this radar is empty for almost everybody; the fix is not a
+              better empty state, it is asking at the bar. */}
           {!(me.cats && me.shape && Object.keys(me.shape).length > 0) && (
             <div style={{ marginTop: 'clamp(14px,3vh,32px)' }}>
               <div style={sectionLabel}>{t('Your palate', 'Khẩu vị của bạn')}</div>
               <p style={inviteText}>
-                {t('Nothing recorded yet. Try the Flavour Finder on the bar below — a few taps and the club starts learning what you like.',
-                   'Chưa ghi nhận gì. Hãy thử Flavour Finder ở thanh dưới — chỉ vài lần chạm là câu lạc bộ bắt đầu hiểu khẩu vị của bạn.')}
+                {t('Nothing recorded yet. Note what is in your glass and it starts here.',
+                   'Chưa ghi nhận gì. Hãy ghi lại ly bạn đang uống và khẩu vị bắt đầu từ đây.')}
               </p>
             </div>
           )}
+
+          {/* ── THE ONE THING WORTH DOING ON THIS SCREEN ──────────────────
+              Directly under the palate, because it is what moves it. */}
+          <MemberPour onLogged={refreshMe} />
 
           {me.cats && me.shape && Object.keys(me.shape).length > 0 && (
             <div style={{ marginTop: 'clamp(14px,3vh,32px)' }}>

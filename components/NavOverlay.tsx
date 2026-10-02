@@ -364,19 +364,17 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
         /* MEMBER SIDE: hidden on a desk, where the portal's own corner switch
            covers it, and shown in the menu on a phone (the media query below). */
         .nav-lang { display: none; }
-        /* PUBLIC SIDE: there IS no corner switch, so this is the only one —
-           shown at every width. A control that exists only under 768px is the
-           same as no control for anybody on a laptop.
-           STACKED, not space-between. The member row is space-between and that
-           is fine in a full-width phone panel; here the drawer is 400px and the
-           label would not shrink, so the toggle was pushed to x=423 — OUTSIDE
-           the panel, onto the scrim. It drew perfectly and could not be tapped.
-           A column cannot overflow sideways at any width. (elementFromPoint on
-           the button's own centre returned .nav-scrim; same proof as the admin
-           menu under its own scrim.) */
-        .nav-lang-always {
-          display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
-          margin: 16px 0 2px; padding: 14px 0 2px; border-top: 1px solid rgba(5, 46, 32, .14);
+        /* PUBLIC SIDE: top right, above the links it governs. There is no
+           corner switch out here, so this is the only one and it shows at every
+           width — a control that exists only under 768px is no control at all
+           for anybody on a laptop.
+           JUSTIFIED RIGHT, not space-between with a caption: the caption is
+           gone, and with it the bug it caused. A label that would not shrink
+           pushed the toggle to x=423 in a 400px drawer — OUTSIDE the panel, on
+           top of the scrim, where it drew perfectly and could never be tapped.
+           One item cannot overflow past its own container. */
+        .nav-lang-top {
+          display: flex; justify-content: flex-end; margin: 0 0 18px;
         }
         .nav-lang-label {
           font-family: 'Google Sans Code', monospace;
@@ -488,6 +486,20 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
         <div className="nav-glass-tint" />
       </div>
       <div ref={navRef} className={`nav-menu has-glass ${open ? 'is-open' : ''}`}>
+        {/* ── THE SWITCH, TOP RIGHT ──────────────────────────────────────────
+            Owner, 2026-10-02: "put the toggle at the top of the nav top right.
+            Not bottom", and of its caption — "Ngôn ngữ · Language" — "No ned
+            for this." He is right about the caption: the control reads EN | VN,
+            which is the only label a language switch has ever needed, and
+            naming it in two languages to explain a thing already written in two
+            languages is the kind of help that adds a line and nothing else.
+            At the TOP because it governs everything below it; a setting found
+            after the list it changes is found too late. */}
+        {variant === 'public' && (
+          <div className="nav-lang-top">
+            <LangToggle compact />
+          </div>
+        )}
         {variant === 'public' ? (
           <>
             <Link href="/" className="nav-link" onClick={() => setOpen(false)}>
@@ -535,24 +547,6 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
               <div className="nav-link-en">Tết Đinh Mùi 2027</div>
               <div className="nav-link-vn">Quà Tết doanh nghiệp</div>
             </Link>
-            {/* ── THE SWITCH, ON THE PUBLIC SIDE (2026-10-01) ─────────────
-                This component has carried a LangToggle since the portal work,
-                but it sat BELOW — inside the member branch. Grepping the file
-                for LangToggle makes the public pages look covered; they were
-                not, and I read it that way myself before checking which side of
-                the ternary it fell on.
-                ⚠ MOST PUBLIC COPY IS STILL ENGLISH-ONLY. Flipping this changes
-                /privacy and /menus, which read their text from the database,
-                and the nav's own two lines. The hand-written pages — /, /spaces,
-                /sports, /studio, /origin, /vacancies, /press — have no
-                Vietnamese to switch to yet, and that is a copy job, not a
-                plumbing one. The switch is here because /privacy is a legal
-                notice that half the membership cannot otherwise read; it is not
-                a claim that the site is bilingual. */}
-            <div className="nav-lang nav-lang-always">
-              <span className="nav-lang-label">Ngôn ngữ · Language</span>
-              <LangToggle compact />
-            </div>
           </>
         ) : (
           <>

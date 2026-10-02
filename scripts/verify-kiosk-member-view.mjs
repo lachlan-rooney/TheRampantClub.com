@@ -45,6 +45,7 @@ const wipe = async () => {
   await rest(`member_cards?member_number=eq.${M}`, { method: 'DELETE' })
   await rest(`lockers?member_no=eq.${M}`, { method: 'DELETE' })
   await rest(`member_taste_profiles?member_no=eq.${M}`, { method: 'DELETE' })
+  if (uid) await rest(`tasting_notes?author=eq.${uid}`, { method: 'DELETE' })
   await rest(`kiosk_member_sessions?member_no=eq.${M}`, { method: 'DELETE' }).catch(() => {})
   if (uid) {
     await rest(`activity_events?actor=eq.${uid}`, { method: 'DELETE' })
@@ -109,6 +110,14 @@ try {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, hasTouch: true })
   await ctx.addCookies([{ name: 'trc_kiosk_device', value: device, domain: 'localhost', path: '/' }])
   const p = await ctx.newPage()
+  // Surface what the note route actually says — a silent failure here looks
+  // identical to a slow one.
+  p.on('response', async r => {
+    if (!r.url().includes('/api/kiosk/member/note')) return
+    let body = ''
+    try { body = JSON.stringify(await r.json()) } catch { body = '(unreadable)' }
+    console.log(`   [note route] ${r.status()} ${body}`)
+  })
   await p.goto(`${BASE}/kiosk/member`, { waitUntil: 'networkidle' })
   await p.waitForTimeout(1200)
 
@@ -158,6 +167,56 @@ try {
     t(!/chào buổi/.test(vnL) === false && !/good (morning|afternoon|evening)/.test(vnL) && !vnL.includes('on your card'),
       '6d · with no English left behind')
   }
+  // ── THE LOOP: NOTE A DRAM, AND THE PALATE MOVES ─────────────────────────
+  // The club has ZERO tasting notes, which is why every palate surface is
+  // empty. This is the thing that fills them, and the test is not "a row was
+  // written" — it is that the member's taste profile exists afterwards and the
+  // radar appears on the same screen without a reload.
+  const before = await (await rest(`member_taste_profiles?member_no=eq.${M}&select=source_count`)).json()
+  t(Array.isArray(before) && before.length === 0, '7 · HARNESS: no palate to start with',
+    `${before.length} profile row(s)`)
+  const radarBefore = await p.$$eval('svg', s2 => s2.length)
+
+  await p.locator('button', { hasText: /What are you drinking|Bạn đang uống gì/ }).first().click()
+  await p.waitForTimeout(400)
+  const shelfBox = p.locator('input.mp-field')
+  await shelfBox.fill('glen')
+  await p.waitForTimeout(900)
+  const firstHit = p.locator('button.mp-hit').first()
+  t(await firstHit.count() > 0, '8 · the shelf can be searched from the tablet',
+    await firstHit.count() ? norm(await firstHit.innerText()).slice(0, 40) : 'no hits')
+  await firstHit.click()
+  await p.waitForSelector('.mp-done-t, .mp-err', { timeout: 20000 })
+  const errTxt = await p.$('.mp-err') ? norm(await p.innerText('.mp-err')) : ''
+  if (errTxt) console.log('   [screen said]', errTxt)
+  const doneTxt = await p.$('.mp-done-t') ? norm(await p.innerText('.mp-done-t')) : ''
+  // MATCHED IN BOTH LANGUAGES. The toggle was flipped to Vietnamese in check 6
+  // and never flipped back, so an English-only assertion failed on a screen that
+  // was working perfectly — and testing the pour flow in VN is worth more than
+  // resetting it would have been.
+  t(/Noted|Đã ghi/i.test(doneTxt), '9 · one tap logs it', doneTxt.slice(0, 48))
+
+  const after = await (await rest(`member_taste_profiles?member_no=eq.${M}&select=source_count,vector`)).json()
+  t(after.length === 1 && (after[0].source_count ?? 0) > 0,
+    '10 · and the palate is DERIVED on the spot, not just a row written',
+    after.length ? `source_count=${after[0].source_count}, families=${Object.keys(after[0].vector || {}).length}` : 'no profile')
+
+  await p.waitForTimeout(2500)
+  const radarAfter = await p.$$eval('svg', s2 => s2.length)
+  t(radarAfter > radarBefore, '11 · and the radar appears on the same screen, no reload',
+    `${radarBefore} → ${radarAfter} svg`)
+
+  // Twice in an evening is not twice as much whisky.
+  await p.locator('button', { hasText: /Note another|Ghi ly khác/ }).first().click()
+  await p.waitForTimeout(300)
+  await p.locator('input.mp-field').fill('glen')
+  await p.waitForTimeout(900)
+  await p.locator('button.mp-hit').first().click()
+  await p.waitForSelector('.mp-done-t', { timeout: 20000 })
+  const twice = norm(await p.innerText('.mp-done-t'))
+  const notes = await (await rest(`tasting_notes?author=eq.${uid}&select=id`)).json()
+  t(/Already|Đã ghi nhận/i.test(twice) && notes.length === 1, '12 · the same dram twice does not double-count it',
+    `"${twice.slice(0, 32)}" · ${notes.length} note row(s)`)
 } catch (e) {
   console.log('✗ THREW:', e?.message || e); fail++
 } finally {

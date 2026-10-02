@@ -81,14 +81,14 @@ const burger = await p.$('button[aria-label="Open menu"]')
 t(!!burger, '10 · the public nav opens')
 if (burger) {
   await burger.click(); await p.waitForTimeout(600)
-  const vnBtn = await p.$('.nav-lang-always button:text-is("VN")')
+  const vnBtn = await p.$('.nav-lang-top button:text-is("VN")')
   t(!!vnBtn, '11 · and carries an EN/VN switch at desk width', vnBtn ? 'present' : 'MISSING — member branch only?')
 
-  // IT MUST BE HITTABLE, NOT MERELY PRESENT. space-between in a 400px drawer
-  // pushed it to x=423, outside the panel and onto the scrim: it drew perfectly
-  // and could never be tapped. elementFromPoint over its own centre is the proof.
+  // IT MUST BE HITTABLE, NOT MERELY PRESENT. a caption that would not shrink pushed it to
+  // x=423 in a 400px drawer, outside the panel and onto the scrim: it drew
+  // perfectly and could never be tapped. elementFromPoint is the proof.
   const reachable = vnBtn ? await p.evaluate(() => {
-    const el = document.querySelector('.nav-lang-always button')
+    const el = document.querySelector('.nav-lang-top button')
     if (!el) return false
     const r = el.getBoundingClientRect()
     return el.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2))
