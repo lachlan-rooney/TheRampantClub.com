@@ -21,6 +21,7 @@ export default function AgreePage() {
   // recording the language actually read — which is the whole point of capturing
   // it. Reading one language still suffices; that decision is untouched.
   const { lang, setLang, t } = useLang()
+  const through = useRef<HTMLAnchorElement | null>(null)
   const [reached, setReached] = useState<Record<string, boolean>>({})
   const [busy, setBusy] = useState<string | null>(null)
   const [msg, setMsg] = useState('')
@@ -66,8 +67,13 @@ export default function AgreePage() {
     // which is the value from before the agreement was recorded.
     const next = await load()
     if (!next.some(x => x.needs_action)) {
-      setMsg(t('Thank you. Taking you through…', 'Xin cảm ơn. Đang chuyển bạn vào…'))
-      setTimeout(() => { window.location.href = '/members' }, 900)
+      setMsg(t('Thank you. That is everything.', 'Xin cảm ơn. Vậy là xong.'))
+      // THE BUTTON, NOT A TIMED JUMP. It used to navigate itself after 1.2s,
+      // which is both unreliable — it was bouncing off the cached redirect —
+      // and wrong: the optional settings sit below this, and throwing somebody
+      // past them the moment they agree is not a kindness. Brought into view
+      // instead, and they decide when to go.
+      setTimeout(() => through.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 250)
     }
   }
 
@@ -113,8 +119,23 @@ export default function AgreePage() {
         <div className="ag-body">
           {docs === null && <p className="ag-quiet">{t('Loading…', 'Đang tải…')}</p>}
 
+          {/* ── A WAY THROUGH, ALWAYS (owner, 2026-10-02: "I just dont see a
+              button to go past when your terms are done") ──────────────────
+              This was ONE SENTENCE and nothing else — no link, no button. The
+              only way onward was a timed router.push inside agree(), which
+              fired only if you had just agreed in that same session and was
+              bouncing off the cached middleware redirect anyway. Arrive here
+              already up to date and you were simply stranded on a full stop.
+              A plain <a>, not <Link>: a real navigation, so middleware
+              re-evaluates instead of the App Router serving the redirect it
+              cached on the way in. */}
           {docs && pending.length === 0 && (
-            <p className="ag-done">{t('You’re up to date. Nothing to agree to.', 'Bạn đã hoàn tất. Không còn văn bản nào cần đồng ý.')}</p>
+            <div className="ag-through">
+              <p className="ag-done">{t('You’re up to date. Nothing to agree to.', 'Bạn đã hoàn tất. Không còn văn bản nào cần đồng ý.')}</p>
+              <a href="/members" ref={through} className="pk-cta ag-enter">
+                {t('Go to the portal', 'Vào cổng hội viên')} <span className="pk-go">→</span>
+              </a>
+            </div>
           )}
 
           {pending.map(d => (
@@ -319,10 +340,49 @@ const CSS = `
   .ag-html table { width: 100%; border-collapse: collapse; margin: 0 0 10px; font-size: 10.5px; line-height: 1.6; }
   .ag-html td, .ag-html th { border-top: 1px solid rgba(5,46,32,.16); border-bottom: 1px solid rgba(5,46,32,.16); padding: 10px 12px 10px 0; vertical-align: top; text-align: left; }
 
-  .ag-actions { display: flex; align-items: baseline; gap: 18px 32px; flex-wrap: wrap; margin-top: 28px; }
-  .pk-cta.ag-agree { margin-top: 0; color: #D4B85A; font-size: 13px; }
-  .pk-cta.ag-agree:disabled { opacity: .35; cursor: not-allowed; }
+  .ag-actions { display: flex; align-items: center; gap: 16px 28px; flex-wrap: wrap; margin-top: 26px; }
+
+  /* ── THE TWO BUTTONS THAT MATTER, MADE OBVIOUS ──────────────────────────
+     Owner, 2026-10-02: "make the agree button very easy to see". It was the
+     site's standard pk-cta — a 13px gold word with a sliding arrow, which is
+     right for "Read more" on a public page and wrong for the ONE action
+     standing between a member and the portal. Everything else on this screen
+     is quiet type on green, so a quiet link disappears into it.
+     Filled, in the house gold, with the dark green reading THROUGH it: the
+     only solid object on the page. */
+  .pk-cta.ag-agree, .pk-cta.ag-enter {
+    margin-top: 0; background: #D4B85A; color: #052E20; text-decoration: none;
+    border-radius: 2px; padding: 17px 30px;
+    font-family: ${MONO}; font-size: 13px; letter-spacing: .14em; text-transform: uppercase;
+    box-shadow: 0 10px 26px rgba(0,0,0,.28);
+    transition: background .25s ease, box-shadow .25s ease, transform .25s ease;
+  }
+  .pk-cta.ag-agree:hover:not(:disabled), .pk-cta.ag-enter:hover {
+    background: #E2CB77; box-shadow: 0 14px 32px rgba(0,0,0,.34); }
+  .pk-cta.ag-agree:active:not(:disabled), .pk-cta.ag-enter:active { transform: translateY(1px); }
+  /* The arrow slides on gold too; pk-cta's ::before hit-area expander would
+     otherwise sit outside the fill on a touch screen. */
+  .pk-cta.ag-agree::before, .pk-cta.ag-enter::before { content: none; }
+
+  /* NOT MERELY FADED WHEN IT CANNOT BE USED. opacity .35 on a filled gold
+     button still reads as a button somebody should be able to press. Unfilled,
+     outlined and grey says "not yet" — which is what the hint beside it says
+     in words. */
+  .pk-cta.ag-agree:disabled {
+    background: transparent; color: rgba(229,212,194,.45);
+    border: 1px solid rgba(229,212,194,.22); box-shadow: none;
+    cursor: not-allowed; padding: 16px 29px;
+  }
   .pk-cta.ag-agree:disabled .pk-go { transform: none; }
+
+  .ag-through { display: flex; flex-direction: column; align-items: flex-start; gap: 22px; }
+
+  @media (max-width: 560px) {
+    /* Full width on a phone: the thing you must press should not be something
+       you have to aim at. */
+    .pk-cta.ag-agree, .pk-cta.ag-enter { display: block; width: 100%; text-align: center; }
+    .ag-actions { gap: 14px; }
+  }
   .ag-quietbtn { background: none; border: none; padding: 0 0 5px; cursor: pointer; color: #E5D4C2; opacity: .8;
                  border-bottom: 1px solid rgba(229,212,194,.35); border-radius: 0;
                  font-family: ${MONO}; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; transition: opacity .2s ease; }

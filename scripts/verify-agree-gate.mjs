@@ -123,10 +123,40 @@ try {
   await p.waitForTimeout(900)
   t(await btn.isEnabled(), '7 · scrolling to the end enables it')
 
+  // ── IT MUST BE OBVIOUS, NOT JUST PRESENT ───────────────────────────────
+  // It was the site's standard 13px gold text link with a sliding arrow —
+  // right for "Read more" on a public page, wrong for the one action between a
+  // member and the portal, on a screen that is otherwise all quiet type.
+  const look = await p.evaluate(() => {
+    const el = document.querySelector('button.ag-agree')
+    if (!el) return null
+    const c = getComputedStyle(el)
+    const r = el.getBoundingClientRect()
+    return { bg: c.backgroundColor, area: Math.round(r.width * r.height), h: Math.round(r.height) }
+  })
+  const filled = look && !/rgba\(0, 0, 0, 0\)|transparent/.test(look.bg)
+  t(!!filled && look.h >= 44 && look.area >= 6000,
+    '7b · and it is a filled, finger-sized object, not a word',
+    look ? `${look.bg}, ${look.h}px tall, ${look.area}px²` : 'no button')
+
   await btn.click()
+  await p.waitForTimeout(2500)
+
+  // ── THERE MUST BE A BUTTON (owner: "I just dont see a button to go past") ─
+  // The done state was one sentence and nothing else. Asserted as a real,
+  // visible, clickable link BEFORE following it — "the url changed eventually"
+  // would pass on a timed jump with no control on screen, which is the state
+  // being fixed.
+  const enter = p.locator('a.ag-enter').first()
+  t(await enter.count() > 0 && await enter.isVisible(), '8 · a way through is ON SCREEN once nothing is outstanding',
+    await enter.count() ? (await enter.innerText()).replace(/\s+/g, ' ') : 'NO BUTTON')
+  t(await enter.getAttribute('href') === '/members', '8b · and it is a real navigation, not a cached push',
+    await enter.getAttribute('href') || 'none')
+
+  await enter.click()
   // THE REAL TEST. router.push kept the cached redirect and bounced back here.
   await p.waitForURL(u => !u.toString().includes('/members/agree'), { timeout: 15000 }).catch(() => {})
-  t(!p.url().includes('/agree'), '8 · and clicking it takes them THROUGH, with no reload',
+  t(!p.url().includes('/agree'), '8c · and it takes them THROUGH, with no reload',
     p.url().replace(BASE, '') || '(still on the agreement)')
 
   const consents = await (await rest(`member_terms_consents?member_no=eq.${MEMBER}&doc_key=eq.privacy&select=granted,terms_version_id`)).json()
@@ -137,7 +167,18 @@ try {
   // And it stays through — a second visit must not bounce them back.
   await p.goto(`${BASE}/members`, { waitUntil: 'networkidle' })
   t(!p.url().includes('/agree'), '10 · and they stay through on the next visit', p.url().replace(BASE, ''))
-  t(errs.length === 0, '11 · no page errors', errs.slice(0, 2).join(' | '))
+  // ── ARRIVING ALREADY UP TO DATE ────────────────────────────────────────
+  // The stranded case: the page open with nothing outstanding and no agreement
+  // just made in this session, so no timed redirect could ever fire. Before
+  // today this was a sentence and a full stop.
+  await p.goto(`${BASE}/members/agree`, { waitUntil: 'networkidle' })
+  await p.waitForTimeout(1200)
+  const again = p.locator('a.ag-enter').first()
+  t(await again.count() > 0 && await again.isVisible(),
+    '11 · and a member who arrives already up to date is not stranded',
+    await again.count() ? 'button present' : 'NO WAY OUT')
+
+  t(errs.length === 0, '12 · no page errors', errs.slice(0, 2).join(' | '))
 } catch (e) {
   console.log('✗ THREW:', e?.message || e); fail++
 } finally {
