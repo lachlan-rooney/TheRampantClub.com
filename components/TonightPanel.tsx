@@ -150,7 +150,15 @@ export default function TonightPanel({
     rows.push({
       tag: t('Clubhouse', 'Câu lạc bộ'),
       value: count === 0 ? t('Quiet', 'Yên tĩnh') : t(`${count} ${count === 1 ? 'member' : 'members'} in`, `${count} thành viên`),
-      remark: t('Tapped within the last 4 hours', 'Quẹt thẻ trong 4 giờ qua'),
+      // NAME WHAT WAS TAPPED (owner, 2026-10-05). "Tapped within the last 4
+      // hours" does not say tapped WHAT — a phone, a screen, a card — and this
+      // line sits under a count of people, where the obvious wrong reading is
+      // that the members did the tapping on something.
+      //
+      // The Vietnamese already had it right: "Quẹt thẻ" names the card. Only
+      // the English was vague, so this brings the two into line rather than
+      // changing what the panel means.
+      remark: t('Membership cards tapped in the last 4 hours', 'Thẻ hội viên quẹt trong 4 giờ qua'),
     })
   }
 
