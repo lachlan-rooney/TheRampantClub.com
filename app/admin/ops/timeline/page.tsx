@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createBrowserSupabaseClient } from '@/lib/supabase-browser'
 import { useLang } from '@/lib/lang'
@@ -9,6 +9,7 @@ import GanttView from '../[project_id]/GanttView'
 import type { Task, Project, TeamMember } from '@/lib/ops/types'
 import { DEFAULT_BOARD_COLOUR } from '@/lib/ops/palette'
 import { columnLabel } from '@/lib/ops/labels'
+import { moveTask } from '@/lib/ops/api'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // EVERY BOARD, ON ONE TIMELINE.
@@ -73,8 +74,20 @@ export default function MasterTimelinePage() {
       setTasks((tk || []) as Task[])
       setDone((dn || []) as Task[])
       setTeam((tm || []) as TeamMember[])
-      const { data: cols } = await supabase.from('board_columns').select('id, name')
-      setColName(new Map(((cols || []) as { id: string; name: string }[]).map(c => [c.id, c.name])))
+      // project_id AND name: a card dropped on "Done" has to land in ITS OWN
+      // board's Done column, not in some shared one — there isn't a shared one.
+      const { data: cols } = await supabase.from('board_columns').select('id, name, project_id')
+      const cc = (cols || []) as { id: string; name: string; project_id: string }[]
+      setColName(new Map(cc.map(c => [c.id, c.name])))
+      setColOf(new Map(cc.map(c => [`${c.project_id}|${c.name}`, c.id])))
+
+      // canEdit, the same rule as a single board: admin, or owner/contributor on
+      // a project. A viewer drags nothing.
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: prof } = await supabase.from('profiles').select('is_admin').eq('id', user.id).maybeSingle()
+        setCanEdit(prof?.is_admin === true)
+      }
       setLoading(false)
     })()
   }, [])
@@ -82,7 +95,116 @@ export default function MasterTimelinePage() {
   const boardById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects])
   // Which column each task sits in, by name — every board uses the same four.
   const [colName, setColName] = useState<Map<string, string>>(new Map())
+  // (project_id|column name) → column_id, the inverse of colName and the thing
+  // that makes a cross-board drop possible at all.
+  const [colOf, setColOf] = useState<Map<string, string>>(new Map())
+  const [canEdit, setCanEdit] = useState(false)
+
+  // ── DRAG, ON THE MASTER BOARD (owner, 2026-10-06: "i cannot drag items
+  //    between columns to done") ───────────────────────────────────────────
+  // This view was deliberately read-only — "a card is moved on its own board,
+  // where the rest of its column is visible". That reasoning is sound for
+  // ORDERING and it is wrong for FINISHING: the master board is where the whole
+  // club is surveyed, ticking something off is the commonest thing anyone wants
+  // to do from here, and position in the Done column means nothing.
+  //
+  // The gestures are lifted from the single board rather than reinvented — same
+  // 6px threshold, same 260ms hold on touch, same elementFromPoint drop — so a
+  // card behaves identically whichever board it is dragged on.
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [dragPt, setDragPt] = useState<{ x: number; y: number } | null>(null)
+  const [overCol, setOverCol] = useState<string | null>(null)
+  const dragFrom = useRef<{ x: number; y: number; id: string; touch: boolean } | null>(null)
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const didDrag = useRef(false)
+  const TOUCH_HOLD_MS = 260
+  const MOVE_THRESHOLD = 6
   const today = vnDateString()
+
+  // Which of the four named columns is under the finger.
+  const columnUnder = (x: number, y: number): string | null => {
+    const el = document.elementFromPoint(x, y)
+    return (el?.closest('[data-col-name]') as HTMLElement | null)?.dataset.colName ?? null
+  }
+
+  const dropOn = (colNameTarget: string | null) => {
+    const id = dragId
+    setDragId(null); setDragPt(null); setOverCol(null); dragFrom.current = null
+    if (!id || !colNameTarget || !canEdit) return
+
+    const card = [...tasks, ...done].find(x => x.id === id)
+    if (!card) return
+    if ((colName.get(card.column_id) || 'Backlog') === colNameTarget) return   // no-op
+
+    // THE CARD'S OWN BOARD. Every board has the same four column NAMES and four
+    // different column IDS; dropping on "Done" here means that board's Done.
+    const target = colOf.get(`${card.project_id}|${colNameTarget}`)
+    if (!target) return   // a board without that column: do nothing rather than guess
+
+    const isDone = colNameTarget === 'Done'
+    // Optimistic, and ACROSS TWO ARRAYS: open work lives in `tasks` and finished
+    // work in `done`, so finishing a card is a move between the two, not a field
+    // change. Without this the card sits in its old column until the reload.
+    const moved = {
+      ...card, column_id: target,
+      status: isDone ? 'done' : 'open',
+      completed_at: isDone ? (card.completed_at || new Date().toISOString()) : null,
+    } as Task
+    if (isDone) {
+      setTasks(prev => prev.filter(x => x.id !== id))
+      setDone(prev => [moved, ...prev.filter(x => x.id !== id)])
+    } else {
+      setDone(prev => prev.filter(x => x.id !== id))
+      setTasks(prev => [moved, ...prev.filter(x => x.id !== id)])
+    }
+
+    const pos = [...tasks, ...done].filter(x => x.project_id === card.project_id && x.column_id === target).length
+    moveTask(id, target, pos).catch(() => {
+      // Put it back rather than leave the board telling a lie.
+      if (isDone) { setDone(prev => prev.filter(x => x.id !== id)); setTasks(prev => [card, ...prev]) }
+      else { setTasks(prev => prev.filter(x => x.id !== id)); setDone(prev => [card, ...prev]) }
+    })
+  }
+
+  const onCardPointerDown = (e: React.PointerEvent, id: string) => {
+    if (!canEdit || e.button !== 0) return
+    const touch = e.pointerType === 'touch'
+    didDrag.current = false
+    dragFrom.current = { x: e.clientX, y: e.clientY, id, touch }
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    if (touch) {
+      // Hold to pick up, so the column still scrolls under a finger that is
+      // only scrolling.
+      holdTimer.current = setTimeout(() => {
+        const f = dragFrom.current
+        if (!f) return
+        didDrag.current = true
+        setDragId(f.id); setDragPt({ x: f.x, y: f.y })
+      }, TOUCH_HOLD_MS)
+    }
+  }
+  const onCardPointerMove = (e: React.PointerEvent) => {
+    const f = dragFrom.current
+    if (!f) return
+    const movedBy = Math.hypot(e.clientX - f.x, e.clientY - f.y)
+    if (!dragId) {
+      if (f.touch) {
+        if (movedBy > MOVE_THRESHOLD) { if (holdTimer.current) clearTimeout(holdTimer.current); dragFrom.current = null }
+        return
+      }
+      if (movedBy > MOVE_THRESHOLD) { didDrag.current = true; setDragId(f.id) }
+      else return
+    }
+    e.preventDefault()
+    setDragPt({ x: e.clientX, y: e.clientY })
+    setOverCol(columnUnder(e.clientX, e.clientY))
+  }
+  const onCardPointerUp = (e: React.PointerEvent) => {
+    if (holdTimer.current) clearTimeout(holdTimer.current)
+    if (!dragId) { dragFrom.current = null; return }   // a tap stays a tap: the Link opens the card
+    dropOn(columnUnder(e.clientX, e.clientY))
+  }
+
   const horizonEnd = useMemo(() => {
     if (horizon == null) return null
     const d = new Date(`${today}T12:00:00+07:00`)
@@ -212,7 +334,11 @@ export default function MasterTimelinePage() {
                   .filter(x => (colName.get(x.column_id) || 'Backlog') === name)
                   .sort((a, b) => (a.due_date || '9999').localeCompare(b.due_date || '9999'))
             return (
-              <div key={name} style={columnStyle}>
+              <div key={name} data-col-name={name} style={{
+                ...columnStyle,
+                // Where it would land, lit as the finger passes over.
+                outline: overCol === name && dragId ? '1px solid rgba(212,184,90,0.55)' : 'none',
+              }}>
                 <div style={columnHeader}>
                   <span style={{ color: '#E5D4C2' }}>{columnLabel(name, lang)}</span>
                   <span style={{ opacity: 0.6 }}>{inCol.length}</span>
@@ -222,9 +348,29 @@ export default function MasterTimelinePage() {
                     const b = boardById.get(x.project_id)
                     const late = !!x.due_date && x.due_date < today
                     return (
-                      <Link key={x.id} href={`/admin/ops/${x.project_id}?task=${x.id}`} style={{
-                        ...cardStyle, borderLeft: `3px solid ${b?.colour || DEFAULT_BOARD_COLOUR}`,
-                      }}>
+                      <Link
+                        key={x.id}
+                        href={`/admin/ops/${x.project_id}?task=${x.id}`}
+                        onPointerDown={e => onCardPointerDown(e, x.id)}
+                        onPointerMove={onCardPointerMove}
+                        onPointerUp={onCardPointerUp}
+                        onPointerCancel={() => { if (holdTimer.current) clearTimeout(holdTimer.current); dragFrom.current = null; setDragId(null); setDragPt(null); setOverCol(null) }}
+                        // A DRAG MUST NOT ALSO FOLLOW THE LINK. The card is an
+                        // anchor so that a tap still opens it and middle-click
+                        // and ⌘-click keep working; without this, finishing a
+                        // drag would navigate away from the board you just
+                        // used, which is the one place you wanted to stay.
+                        onClick={e => { if (didDrag.current) { e.preventDefault(); didDrag.current = false } }}
+                        // Only while actually dragging: the browser's own text
+                        // selection and image drag fight the pointer handlers.
+                        style={{
+                          ...cardStyle, borderLeft: `3px solid ${b?.colour || DEFAULT_BOARD_COLOUR}`,
+                          ...(canEdit ? { cursor: dragId === x.id ? 'grabbing' : 'grab' } : null),
+                          ...(dragId ? { userSelect: 'none' as const, touchAction: 'none' as const } : null),
+                          ...(dragId === x.id ? { opacity: 0.4 } : null),
+                        }}
+                        draggable={false}
+                      >
                         <span style={{ display: 'block', color: '#E5D4C2', fontSize: 12, lineHeight: 1.4 }}>{x.title}</span>
                         <span style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                           <span style={{ ...pill, color: b?.colour || '#B2AA98', borderColor: (b?.colour || '#B2AA98') + '55' }}>
@@ -246,6 +392,30 @@ export default function MasterTimelinePage() {
           })}
         </div>
       )}
+
+      {/* The card under the finger, following it. pointer-events off so
+          elementFromPoint can answer with the COLUMN rather than with the ghost. */}
+      {dragId && dragPt && (() => {
+        const t = [...tasks, ...done].find(x => x.id === dragId)
+        if (!t) return null
+        const b = boardById.get(t.project_id)
+        return (
+          <div style={{
+            position: 'fixed', left: dragPt.x - 90, top: dragPt.y - 18, width: 180, zIndex: 80,
+            pointerEvents: 'none', transform: 'rotate(-1.5deg)', opacity: 0.95,
+            ...cardStyle, borderLeft: `3px solid ${b?.colour || DEFAULT_BOARD_COLOUR}`,
+            boxShadow: '0 12px 28px rgba(0,0,0,0.45)',
+          }}>
+            <div style={{ color: '#E5D4C2', fontFamily: FAMILY, fontSize: 12, lineHeight: 1.4 }}>{t.title}</div>
+            {/* WHICH BOARD IT WILL LAND ON. On a single board that is obvious; here
+                the card could belong to any of a dozen, and "Done" means that
+                board's Done. */}
+            {b && <div style={{ fontFamily: FAMILY, fontSize: 10, color: b.colour || '#B2AA98', marginTop: 5 }}>
+              {(b.name || '').split('·')[0].trim()}
+            </div>}
+          </div>
+        )
+      })()}
 
     </>
   )
