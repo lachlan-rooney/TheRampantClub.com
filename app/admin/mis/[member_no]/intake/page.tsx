@@ -3,6 +3,7 @@
 import { use, useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { useLang } from '@/lib/admin-lang'
+import { usePreviewPs, type PsDraft } from '@/lib/mis/use-preview-ps'
 
 // MIS Pass 4 — Transcript intake UI.
 // The stream still emits per-preference 'preference' events for the live
@@ -73,10 +74,26 @@ interface Usage {
   cache_creation_input_tokens: number
 }
 
-function predictPs(s0: number, c: number, f: number): number {
-  // At save time t=0 and the new vc=1 → R=1.0. Visits=0 → M=1.0.
-  return Math.min(5, s0 * c * f * 1.0 * 1.0)
-}
+// THE PS(t) SHOWN ON EACH EXTRACTED CARD IS NOT COMPUTED HERE.
+//
+// There used to be a predictPs(s0, c, f) in this file: min(5, s0·c·f), with a
+// comment explaining that R and M were both 1.0 because visits was empty. That
+// stopped being true. M is 0.8 / 0.81 / 1.09 across the live data and never
+// 1.0.
+//
+// MEASURED: the preview mis-predicted the save on 146 of 159 rows, by up to
+// 0.91 points of 5, over-promising on 98 and under-promising on 48. The cause
+// is M alone: a preview is always at t = 0, so the decay term is e^0 = 1 on
+// both sides and the omitted decay was dead code rather than a live error.
+// (An earlier note here said "156 rows, 3.5 points". That compared the preview
+// against the row's CURRENT score, which has decayed for up to 190 days — a
+// different quantity, and not the preview's error.)
+//
+// PS(t) lives in SQL. usePreviewPs sends the whole extracted batch to
+// /api/admin/mis/preview-score in one request, which calls mis_preview_ps(),
+// which calls the same mis_ps_t() the preference_scores view calls.
+// db/mis_ps_one_implementation.sql has the reasoning. Do not put the formula
+// back in this file.
 
 function lambdaOriginLabel(o: LambdaOrigin | null, t: (en: string, vi: string) => string): { text: string; tone: 'gold' | 'green' | 'grey' | 'red' | 'amber' } {
   switch (o) {
@@ -108,6 +125,23 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
   const [saved, setSaved] = useState<{ inserted: number; medicalReforced: number; identityReforced: number; permanentReforced: number } | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const resultsRef = useRef<HTMLDivElement | null>(null)
+
+  // ── EVERY EXTRACTED CARD, PRICED IN ONE REQUEST ─────────────────────
+  // The array order is the batch order and mis_preview_ps answers by index, so
+  // scores[i] belongs to extracted[i]. A whole intake is one round trip, which
+  // is why the RPC takes an array rather than being called per card.
+  //
+  // days_since is 0 and validation_count is 1: these rows do not exist yet, so
+  // a save writes last_validated = today and the first validation.
+  const previewDrafts = useMemo<PsDraft[] | null>(() => {
+    if (extracted.length === 0) return null
+    return extracted.map(p => ({
+      s0: p.s0, confidence: p.confidence, lambda: p.lambda, frequency: p.frequency,
+      validation_count: 1,
+      days_since: 0,
+    }))
+  }, [extracted])
+  const preview = usePreviewPs(member_no, previewDrafts)
 
   useEffect(() => {
     fetch('/api/admin/mis/members', { cache: 'no-store' })
@@ -407,9 +441,8 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
 
       {extracted.length > 0 && (
         <div ref={resultsRef} style={resultsList}>
-          {extracted.map(p => {
-            const pred = predictPs(p.s0, p.confidence, p.frequency)
-            const healthPct = Math.round((pred / Math.max(p.s0, 1)) * 100)
+          {extracted.map((p, i) => {
+            const scored = preview.scores?.find(x => x.idx === i) || null
             const locked = isLockedOrigin(p.lambda_origin)
             const isMedical   = p.lambda_origin === 'forced_medical'
             const isPermanent = p.lambda_origin === 'ai_permanent'
@@ -439,8 +472,21 @@ export default function MisIntakePage({ params }: { params: Promise<{ member_no:
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={prefScorePreview}>
-                      <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 22, color: '#D4B85A', fontWeight: 600 }}>{pred.toFixed(2)}</div>
-                      <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 9, color: '#B2AA98', letterSpacing: '0.10em' }}>PS(t) · {healthPct}%</div>
+                      {/* A dash while SQL is being asked, and a dash if it
+                          could not be asked. Never a locally-guessed number —
+                          a plausible wrong score is exactly what was shipping
+                          here before. */}
+                      <div style={{ fontFamily: "'Rampant Sans', serif", fontSize: 22, color: scored ? '#D4B85A' : '#8A8575', fontWeight: 600 }}>
+                        {scored ? Number(scored.ps_t).toFixed(2) : '—'}
+                      </div>
+                      <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 9, color: '#B2AA98', letterSpacing: '0.10em' }}>
+                        PS(t){scored ? ` · ${Number(scored.score_health_pct)}%` : ''}
+                      </div>
+                      {scored && (
+                        <div style={{ fontFamily: "'Google Sans Code', monospace", fontSize: 8.5, color: '#8A8575', letterSpacing: '0.08em', marginTop: 2 }}>
+                          M {Number(scored.m_engage).toFixed(2)}
+                        </div>
+                      )}
                     </div>
                     <label style={acceptToggle}>
                       <input

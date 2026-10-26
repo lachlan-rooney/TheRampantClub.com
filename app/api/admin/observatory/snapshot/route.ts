@@ -52,7 +52,7 @@ export async function GET() {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const sb = svc()
 
-  const [prefsRes, membersRes, statsRes, ldcRes, eventsCountRes] = await Promise.all([
+  const [prefsRes, membersRes, statsRes, ldcRes, eventsCountRes, flagRes] = await Promise.all([
     sb.from('preferences')
       .select('preference_id, member_no, category, preference_name, detail, s0, confidence, lambda, frequency, validation_count, last_validated, lambda_origin, status')
       .eq('status', 'active')
@@ -65,12 +65,24 @@ export async function GET() {
       .order('fit_timestamp', { ascending: false })
       .limit(500),
     sb.from('validation_events').select('event_id', { count: 'exact', head: true }),
+    // THE REVALIDATION FLAG COMES FROM THE VIEW, NOT FROM ARITHMETIC HERE.
+    // This route used to recompute PS(t) inline to decide the flag, with M
+    // pinned to 1.0 and a comment saying "exact numerics not needed" — even
+    // though it fetches member_stats two lines above and had the real M to
+    // hand. M is 0.8 / 0.81 / 1.09 in the live data and never 1.0, so the
+    // inline score was always low-biased, which under-flags. It happens not to
+    // change today's count because all 159 preferences are flagged on the
+    // day-count rules anyway, so the bug was latent rather than visible —
+    // which is exactly how it survived. preference_scores filters on
+    // status = 'active', the same filter as the query above.
+    sb.from('preference_scores').select('preference_id, needs_revalidation').limit(2000),
   ])
 
   if (prefsRes.error)    return NextResponse.json({ error: prefsRes.error.message    }, { status: 500 })
   if (membersRes.error)  return NextResponse.json({ error: membersRes.error.message  }, { status: 500 })
   if (statsRes.error)    return NextResponse.json({ error: statsRes.error.message    }, { status: 500 })
   if (ldcRes.error)      return NextResponse.json({ error: ldcRes.error.message      }, { status: 500 })
+  if (flagRes.error)     return NextResponse.json({ error: flagRes.error.message     }, { status: 500 })
 
   const preferences = (prefsRes.data || []) as PreferenceRow[]
   const members     = (membersRes.data || []) as MemberRow[]
@@ -128,19 +140,15 @@ export async function GET() {
 
   // Vitals — Panel 5.
   const medicalLocked = preferences.filter(p => p.lambda === 0 || p.lambda_origin === 'forced_medical').length
-  const flaggedForRevalidation = preferences.filter(p => {
-    if (!p.last_validated) return false
-    const days = Math.max(0, Math.floor((Date.now() - Date.parse(p.last_validated)) / 86400000))
-    if (days > 180) return true
-    if (p.s0 >= 4 && days > 90) return true
-    // Score-based flag: PS(t) below 0.7·S0. Compute inline (live-pst is a
-    // client module; this is a snapshot count, exact numerics not needed).
-    const decay = Math.exp(-p.lambda * days)
-    const r = Math.min(1.3, 1 + 0.075 * (p.validation_count - 1))
-    const raw = p.s0 * p.confidence * decay * p.frequency * r * 1.0
-    const pst = Math.min(5, raw)
-    return pst < 0.7 * p.s0
-  }).length
+  // Counted from the view's own verdict. The rule — PS(t) < 0.7·S0, or more
+  // than 180 days, or S0 ≥ 4 and more than 90 — is stated once, in SQL, in
+  // preference_scores.needs_revalidation. Nothing here reimplements it.
+  const flaggedIds = new Set(
+    (flagRes.data || [])
+      .filter((r: { needs_revalidation: string | null }) => (r.needs_revalidation || '').includes('REVALIDATE'))
+      .map((r: { preference_id: string }) => r.preference_id),
+  )
+  const flaggedForRevalidation = preferences.filter(p => flaggedIds.has(p.preference_id)).length
   const totalExposureDays = preferences.reduce((acc, p) => {
     if (!p.last_validated) return acc
     const d = Math.max(0, Math.floor((Date.now() - Date.parse(p.last_validated)) / 86400000))
