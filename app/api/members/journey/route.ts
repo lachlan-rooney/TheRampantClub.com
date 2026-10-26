@@ -47,7 +47,7 @@ export async function GET() {
   const [{ data: member }, { data: cons }, { data: notes }, { data: visits }, { data: tp }] = await Promise.all([
     sb.from('members').select('join_date').eq('member_no', mno).maybeSingle(),
     sb.from('member_consumption').select('whisky_id, bottle_name, consumed_on, whiskies(name, distillery)').eq('member_no', mno),
-    sb.from('tasting_notes').select('whisky_id, note, flavour_tags, created_at, whiskies(name, distillery)').eq('author', user.id),
+    sb.from('tasting_notes').select('whisky_id, note, flavour_tags, created_at, composed, whiskies(name, distillery)').eq('author', user.id),
     sb.from('visits').select('visit_date, space').eq('member_no', mno),
     sb.from('member_taste_profiles').select('vector').eq('member_no', mno).maybeSingle(),
   ])
@@ -56,7 +56,7 @@ export async function GET() {
 
   const timeline = [
     ...(cons || []).map(c => ({ kind: 'dram' as const, date: c.consumed_on, whisky_id: c.whisky_id, whisky_name: wname(c.whiskies) || c.bottle_name || 'a dram', distillery: wdist(c.whiskies) || null })),
-    ...(notes || []).map(n => ({ kind: 'note' as const, date: n.created_at, whisky_id: n.whisky_id, whisky_name: wname(n.whiskies) || 'a whisky', distillery: wdist(n.whiskies) || null, note: n.note, flavour_tags: (n.flavour_tags || []) as string[] })),
+    ...(notes || []).map(n => ({ kind: 'note' as const, date: n.created_at, whisky_id: n.whisky_id, whisky_name: wname(n.whiskies) || 'a whisky', distillery: wdist(n.whiskies) || null, note: n.note, composed: !!n.composed, flavour_tags: (n.flavour_tags || []) as string[] })),
   ].filter(t => t.date).sort((a, b) => +new Date(a.date) - +new Date(b.date))
 
   // distinct whiskies + top distillery (real, computed)

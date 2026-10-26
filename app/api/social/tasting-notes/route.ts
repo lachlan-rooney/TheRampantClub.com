@@ -29,14 +29,20 @@ export async function GET(req: Request) {
   // each with its whisky name + a signed photo URL. Their personal journal.
   if (!whiskyId) {
     const { data: mine } = await actor.sb.from('tasting_notes')
-      .select('id, note, flavour_tags, visibility, media_path, created_at, whisky_id, whiskies(name)')
+      .select('id, note, flavour_tags, visibility, media_path, created_at, whisky_id, composed, whiskies(name)')
       .eq('author', actor.id).order('created_at', { ascending: false })
     const out = []
     for (const n of mine || []) {
       let photo_url: string | null = null
       if (n.media_path) { const { data: sig } = await a.storage.from(BUCKET).createSignedUrl(n.media_path, 3600); photo_url = sig?.signedUrl ?? null }
       const wname = Array.isArray(n.whiskies) ? n.whiskies[0]?.name : (n.whiskies as { name?: string } | null)?.name
-      out.push({ id: n.id, note: n.note, flavour_tags: n.flavour_tags || [], visibility: n.visibility, created_at: n.created_at, whisky_id: n.whisky_id, whisky_name: wname || 'A whisky', photo_url })
+      // composed MUST be forwarded. It was selected above and then dropped
+      // here, which is the worst version of this bug: the column was set
+      // correctly by the kiosk, the query asked for it, and the member's own
+      // notes list still never received it — so the page went on showing the
+      // club's sentence as the member's words. Caught by
+      // scripts/verify-note-attribution.mjs step 6, not by reading the code.
+      out.push({ id: n.id, note: n.note, flavour_tags: n.flavour_tags || [], visibility: n.visibility, created_at: n.created_at, whisky_id: n.whisky_id, whisky_name: wname || 'A whisky', photo_url, composed: !!n.composed })
     }
     return NextResponse.json({ notes: out })
   }

@@ -37,6 +37,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const note = p.note.trim()
     if (note.length < 1 || note.length > 8000) return NextResponse.json({ error: 'Keep it between 1 and 8000 characters.' }, { status: 400 })
     patch.note = note
+    // THE NOTE BECOMES THEIRS. If the body came from the kiosk's one-tap pour
+    // log it was marked composed = true — the club's sentence, not the
+    // member's. The moment they write their own words it stops being ours, so
+    // the flag comes off in the same statement that stores the text. Setting
+    // it unconditionally is right: a member editing an already-own note is
+    // simply re-asserting authorship.
+    patch.composed = false
   }
   if (typeof p.visibility === 'string') {
     if (!VIS.includes(p.visibility)) return NextResponse.json({ error: 'Notes are private.' }, { status: 400 })

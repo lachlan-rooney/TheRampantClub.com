@@ -30,7 +30,11 @@ import { CreamInk } from '@/components/public/CreamInk'
 // numbers on the left, the palate's radar on the right; the story beneath as
 // a run of dated entries on hairlines, a lion at his ease beside its heading.
 
-interface Entry { kind: 'dram' | 'note'; date: string; whisky_id?: string; whisky_name: string; distillery?: string | null; note?: string; flavour_tags?: string[] }
+// composed = the CLUB wrote this body, not the member. The kiosk's one-tap
+// pour log has no prose to store, so it stores a true sentence of its own and
+// says so. Rendering that in quotation marks under "you noted it" would be
+// putting words in a member's mouth — which it did until 2026-10-08.
+interface Entry { kind: 'dram' | 'note'; date: string; whisky_id?: string; whisky_name: string; distillery?: string | null; note?: string; composed?: boolean; flavour_tags?: string[] }
 interface Milestone { label: string; value: string }
 
 const fmt = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -140,10 +144,20 @@ export default function PalateJourney() {
                         {e.whisky_id ? <Link href={`/members/whisky/${e.whisky_id}`} className="wj-link">{e.whisky_name}</Link> : e.whisky_name === 'a dram' ? t('a dram', 'một ly') : e.whisky_name === 'a whisky' ? t('a whisky', 'một chai whisky') : e.whisky_name}
                       </div>
                       <div className="wj-kind">
-                        <span className="wj-dot" style={{ background: e.kind === 'note' ? GOLD : '#9CC79C' }} aria-hidden="true" />
-                        {e.kind === 'note' ? t('you noted it', 'bạn đã ghi chú') : t('poured for you', 'đã rót cho bạn')}{e.distillery ? ` · ${e.distillery}` : ''}
+                        <span className="wj-dot" style={{ background: e.kind !== 'note' ? '#9CC79C' : e.composed ? 'rgba(229,212,194,.35)' : GOLD }} aria-hidden="true" />
+                        {e.kind !== 'note'
+                          ? t('poured for you', 'đã rót cho bạn')
+                          : e.composed
+                            /* The club logged the pour; the member wrote nothing. */
+                            ? t('logged at the bar', 'đã ghi tại quầy')
+                            : t('you noted it', 'bạn đã ghi chú')}{e.distillery ? ` · ${e.distillery}` : ''}
                       </div>
-                      {e.note && <div className="wj-note">“{e.note}”</div>}
+                      {e.note && (
+                        e.composed
+                          /* No quotation marks: these are not their words. */
+                          ? <div className="wj-note wj-note-ours">{e.note}</div>
+                          : <div className="wj-note">“{e.note}”</div>
+                      )}
                     </div>
                   </li>
                 ))}
@@ -179,6 +193,9 @@ const CSS = `
              display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .wj-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
   .wj-note { font-family: ${MONO}; font-size: 13px; line-height: 1.9; color: ${CREAM}; opacity: .88; margin-top: 10px; max-width: 660px; }
+  /* The club's own record, not the member's prose: no quote marks above, and
+     set back so the eye reads it as a log line rather than a quotation. */
+  .wj-note-ours { font-style: normal; opacity: .55; font-size: 12px; }
 
   .wj-sparse-text { font-family: ${MONO}; font-size: 14px; line-height: 2; color: ${CREAM}; opacity: .9; max-width: 580px; margin: 24px 0 0; }
 

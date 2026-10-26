@@ -27,6 +27,13 @@ import { rederiveAndPersist } from '@/lib/whisky/derive-taste'
 // 60-second minted JWT that never reaches the device (lib/kiosk/server). The
 // write is the same; only the proof of who is asking differs.
 //
+// ── IT NEVER PUTS WORDS IN A MEMBER'S MOUTH ───────────────────────────────
+// tasting_notes.note is NOT NULL, so a wordless tap has to store SOMETHING.
+// It stores a true sentence about what happened and flags it composed = true,
+// which is how every reader knows the club wrote it rather than the member.
+// A typed note is composed = false and is theirs. See
+// db/tasting_note_attribution.sql.
+//
 // ── WHAT IT WILL NOT TAKE ─────────────────────────────────────────────────
 // No photo, no visibility, no tags. A camera on a shared bar-top tablet is a
 // different conversation, and tasting notes have been PRIVATE ONLY since the
@@ -102,8 +109,20 @@ export async function POST(req: Request) {
     : (vn ? 'Đã uống tại câu lạc bộ.' : 'Poured at the club.')
   const note = typed || fallback
 
+  // AND IT SAYS WHOSE WORDS THEY ARE.
+  //
+  // Writing the club's sentence into the member's own note column was only
+  // half a fix. The other half is admitting it: composed = true means the club
+  // wrote this, and every member-facing surface renders it as the club's
+  // record rather than in quotation marks under "you noted it". The moment the
+  // member types something, composed is false and the note is theirs.
+  // db/tasting_note_attribution.sql, and the ruling of 2026-10-08.
   const ins = await a.from('tasting_notes')
-    .insert({ author: session.profileId, whisky_id: whiskyId, note, flavour_tags: [], visibility: 'private' })
+    .insert({
+      author: session.profileId, whisky_id: whiskyId, note,
+      flavour_tags: [], visibility: 'private',
+      composed: !typed,
+    })
     .select('id').single()
   if (ins.error) return NextResponse.json({ error: 'Could not save that.' }, { status: 500 })
 

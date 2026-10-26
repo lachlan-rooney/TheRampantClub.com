@@ -37,7 +37,10 @@ import { Rise, CREAM, MONO, SERIF } from '@/components/public/kit'
 // Set as a journal: each entry on a hairline, the date in its own column on a
 // desk, the bottle's name in the display face, the note as reading text.
 
-interface Note { id: string; note: string; flavour_tags: string[]; visibility: string; created_at: string; whisky_id: string; whisky_name: string; photo_url: string | null }
+// composed = the body was written by the CLUB, not the member: the kiosk's
+// one-tap pour log stores a true sentence because note is NOT NULL, and flags
+// it so no surface presents it as the member's own writing.
+interface Note { id: string; note: string; flavour_tags: string[]; visibility: string; created_at: string; whisky_id: string; whisky_name: string; photo_url: string | null; composed?: boolean }
 interface Family { slug: string; name: string }
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 
@@ -64,7 +67,9 @@ export default function PalateNotes() {
       .then(({ data }) => { if (data) setFamilies(data) })
   }, [load])
 
-  const openEdit = (n: Note) => { setEdit(n); setDraft(n.note); setTags(n.flavour_tags || []); setError('') }
+  // A composed note opens EMPTY. Pre-filling the club's own sentence would
+  // make the member delete our words before writing theirs.
+  const openEdit = (n: Note) => { setEdit(n); setDraft(n.composed ? '' : n.note); setTags(n.flavour_tags || []); setError('') }
   const toggleTag = (slug: string) => setTags(prev => prev.includes(slug) ? prev.filter(x => x !== slug) : [...prev, slug])
   const nameOf = (slug: string) => { const f = families.find(x => x.slug === slug); return f ? catLabel(f, lang) : slug }
 
@@ -112,7 +117,17 @@ export default function PalateNotes() {
               </div>
               <div style={{ minWidth: 0 }}>
                 <Link href={`/members/whisky/${n.whisky_id}`} className="wn-name">{n.whisky_name}</Link>
-                <div className="wn-text">{n.note}</div>
+                {n.composed ? (
+                  /* The club's record of a pour, not a note the member wrote.
+                     Set back, unquoted, and labelled — with the invitation
+                     that makes it worth keeping on the page at all. */
+                  <>
+                    <div className="wn-text wn-text-ours">{n.note}</div>
+                    <div className="wn-ours-label">{t('Logged at the bar · not your words yet', 'Đã ghi tại quầy · chưa phải lời của bạn')}</div>
+                  </>
+                ) : (
+                  <div className="wn-text">{n.note}</div>
+                )}
                 {n.photo_url && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={n.photo_url} alt={t('Tasting note photograph', 'Ảnh ghi chú nếm thử')} loading="lazy" decoding="async" className="wl-photo" />
@@ -121,7 +136,9 @@ export default function PalateNotes() {
                   <div className="wl-fams">{n.flavour_tags.map(nameOf).join('  ·  ')}</div>
                 )}
                 <div className="wl-acts">
-                  <button type="button" onClick={() => openEdit(n)} className="wl-link is-quiet">{t('Edit', 'Sửa')}</button>
+                  <button type="button" onClick={() => openEdit(n)} className={n.composed ? 'wl-link is-gold' : 'wl-link is-quiet'}>
+                    {n.composed ? t('Add your words', 'Thêm cảm nhận của bạn') : t('Edit', 'Sửa')}
+                  </button>
                   <button type="button" onClick={() => del(n)} className="wl-link is-danger">{t('Delete', 'Xóa')}</button>
                 </div>
               </div>
@@ -130,7 +147,7 @@ export default function PalateNotes() {
         </div>
       )}
 
-      <MemberModal open={!!edit} onClose={() => setEdit(null)} title={t('Edit your note', 'Sửa ghi chú của bạn')} subtitle={edit?.whisky_name?.toUpperCase()}>
+      <MemberModal open={!!edit} onClose={() => setEdit(null)} title={edit?.composed ? t('Add your note', 'Thêm ghi chú của bạn') : t('Edit your note', 'Sửa ghi chú của bạn')} subtitle={edit?.whisky_name?.toUpperCase()}>
         <div className="wl-form">
           {error && <div className="wl-error">{error}</div>}
           <textarea value={draft} onChange={e => setDraft(e.target.value.slice(0, 8000))} rows={5} className="wl-textarea" />
@@ -166,6 +183,11 @@ const CSS = `
              background-repeat: no-repeat; background-position: 0 100%; transition: background-size .45s cubic-bezier(.16,.84,.44,1);
              overflow-wrap: anywhere; }
   .wn-name:hover { background-size: 100% 1px; }
+  /* The club's record of a pour. Dimmer and smaller than a real note, so the
+     page never presents it with the weight of something a member wrote. */
+  .wn-text-ours { opacity: .5; font-size: 12.5px; }
+  .wn-ours-label { font-family: ${MONO}; font-size: 9.5px; letter-spacing: .12em;
+                   text-transform: uppercase; color: rgba(229,212,194,.4); margin-top: 6px; }
   .wn-text { font-family: ${MONO}; font-size: 13.5px; line-height: 1.95; color: ${CREAM}; opacity: .9; white-space: pre-wrap;
              max-width: 680px; margin-top: 14px; }
 
