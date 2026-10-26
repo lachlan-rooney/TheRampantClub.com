@@ -11,6 +11,7 @@ import GiftingPanel from '../GiftingPanel'
 import ActivityTimeline from '../ActivityTimeline'
 import MemberLoginPanel from '@/components/admin/MemberLoginPanel'
 import { useLang } from '@/lib/admin-lang'
+import { usePreviewPs, type PsDraft } from '@/lib/mis/use-preview-ps'
 
 interface Member {
   member_no: string
@@ -74,18 +75,29 @@ const TIPS = {
   status:    'Active = appears in live PS(t) view. Invalidated = hidden from live view but kept for audit history. Archived = soft-deleted.',
 } as const
 
-// Predict the PS(t) the row will have right after a save.
-// At save time:  t = 0 (last_validated refreshes), vc → vc+1, M = 1.0 while visits is empty.
-function predictPs(draft: EditDraft, currentValidationCount: number): { ps: number; health: number } {
-  if (draft.status !== 'active') return { ps: 0, health: 0 }
-  const newVc = currentValidationCount + 1
-  const r = Math.min(1.3, 1.0 + 0.075 * (newVc - 1))
-  const m = 1.0  // visits is empty for now; will reflect real M once Pass 2 Harmony Log lands
-  const raw = draft.s0 * draft.confidence * draft.frequency * r * m
-  const ps = Math.min(5, raw)
-  const health = Math.round((ps / Math.max(draft.s0, 1)) * 100)
-  return { ps, health }
-}
+// THE POST-SAVE PREDICTION IS NOT COMPUTED HERE ANY MORE.
+//
+// There used to be a predictPs() in this file. It was wrong: it dropped the
+// decay term e^(−λ·t) and pinned M to 1.0 behind the comment "visits is empty
+// for now". Visits is not empty, and M is 0.8 / 0.81 / 1.09 in the live data —
+// never 1.0 for any row. A member of staff moved a slider, read a number,
+// saved, and got something else.
+//
+// MEASURED: the preview mis-predicted the save on 146 of 159 rows, by up to
+// 0.91 points of 5, over-promising on 98 and under-promising on 48. The cause
+// is M alone: a preview is always at t = 0, so the decay term is e^0 = 1 on
+// both sides and the omitted decay was dead code rather than a live error.
+// (An earlier note here said "156 rows, 3.5 points". That compared the preview
+// against the row's CURRENT score, which has decayed for up to 190 days — a
+// different quantity, and not the preview's error.)
+//
+// PS(t) lives in SQL and only in SQL. usePreviewPs asks
+// /api/admin/mis/preview-score, which calls mis_preview_ps(), which calls the
+// same mis_ps_t() that the preference_scores view calls. One implementation,
+// two call sites — see db/mis_ps_one_implementation.sql.
+//
+// Do not reintroduce the arithmetic here, however convenient a synchronous
+// number would be.
 
 const CATEGORIES = [
   'All categories',
@@ -145,7 +157,13 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
   // Provisional allocation to Active), and join date. Optimistic + reverts.
   const patchMember = useCallback(async (fields: Record<string, unknown>, label: string) => {
     if (!member || tierSaving) return
-    const prev = { tier: member.tier, status: member.status, join_date: member.join_date }
+    // Snapshot every field this patch could touch, not just the three it
+    // originally handled: a failed save used to revert tier/status/join_date
+    // and leave an optimistic name sitting on screen as though it had saved.
+    const prev = {
+      full_name: member.full_name, nickname: member.nickname,
+      tier: member.tier, status: member.status, join_date: member.join_date,
+    }
     setTierSaving(true)
     setMember(m => m ? { ...m, ...fields } as typeof m : m)
     try {
@@ -166,6 +184,33 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
     patchMember({ status, ...extra }, `${t('Status changed to', 'Đổi trạng thái thành')} ${status}`)
   }
   const changeJoin = (join_date: string) => { patchMember({ join_date: join_date || null }, t('Join date updated.', 'Đã cập nhật ngày gia nhập.')) }
+
+  // ── EDIT THE NAME ──────────────────────────────────────────
+  // Behind a deliberate click rather than an always-live input. The name is on
+  // the page as a heading, and a heading that is secretly a text box invites
+  // the accidental edit — this is the field every other surface reads.
+  const [editName, setEditName] = useState(false)
+  const [nameDraft, setNameDraft] = useState('')
+  const [nickDraft, setNickDraft] = useState('')
+  const openName = () => {
+    if (!member) return
+    setNameDraft(member.full_name)
+    setNickDraft(member.nickname || '')
+    setEditName(true)
+  }
+  const saveName = async () => {
+    if (!member) return
+    const full_name = nameDraft.replace(/\s+/g, ' ').trim()
+    const nickname = nickDraft.replace(/\s+/g, ' ').trim()
+    if (!full_name) { showToast(t('A member needs a name.', 'Hội viên cần có tên.'), 'error'); return }
+    // Nothing to send if nothing moved — and no spurious audit entry either.
+    if (full_name === member.full_name && nickname === (member.nickname || '')) { setEditName(false); return }
+    setEditName(false)
+    await patchMember(
+      { full_name, nickname: nickname || null },
+      t('Name updated.', 'Đã cập nhật tên.'),
+    )
+  }
 
   const startVisit = useCallback(async () => {
     if (startingVisit) return
@@ -191,6 +236,28 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
   const setDraft = (preference_id: string, patch: Partial<EditDraft>) => {
     setDrafts(prev => ({ ...prev, [preference_id]: { ...draftFor(preferences.find(x => x.preference_id === preference_id)!), ...prev[preference_id], ...patch } }))
   }
+  // ── THE POST-SAVE PREVIEW, SCORED IN SQL ─────────────────────────
+  // One row's editor is open at a time (expandedId), so this is a batch of one.
+  // The draft is sent as it stands and mis_preview_ps() returns what the row
+  // will score once it is saved — including the member's real M, which this
+  // page has no business computing and used to get wrong.
+  const expandedPref = expandedId ? preferences.find(x => x.preference_id === expandedId) || null : null
+  const previewDrafts = useMemo<PsDraft[] | null>(() => {
+    if (!expandedPref) return null
+    const d = drafts[expandedPref.preference_id] || {
+      s0: expandedPref.s0, confidence: expandedPref.confidence,
+      lambda: expandedPref.lambda, frequency: expandedPref.frequency,
+    }
+    return [{
+      s0: d.s0, confidence: d.confidence, lambda: d.lambda, frequency: d.frequency,
+      // Saving a validation increments the count, so the preview is at vc + 1.
+      validation_count: expandedPref.validation_count + 1,
+      // A save refreshes last_validated, so the predicted score is at t = 0.
+      days_since: 0,
+    }]
+  }, [expandedPref, drafts])
+  const preview = usePreviewPs(member_no, previewDrafts)
+
   const isDirty = (p: Preference) => {
     const d = drafts[p.preference_id]
     if (!d) return false
@@ -288,8 +355,57 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
       <div style={profileHeader}>
         <div>
           <div style={memberNoBadge}>{member.member_no}</div>
-          <h1 style={pageTitle}>{member.full_name}</h1>
-          {member.nickname && <div style={nicknameText}>“{member.nickname}”</div>}
+          {editName ? (
+            /* THE ONLY PLACE A MEMBER'S NAME CAN BE CORRECTED. Everything else
+               in the estate reads it — 81 files — and before this the only fix
+               was SQL. */
+            <div style={{ display: 'grid', gap: 8, maxWidth: 420 }}>
+              <div>
+                <div style={nameFieldLabel}>{t('Full name', 'Họ và tên')}</div>
+                <input
+                  value={nameDraft} autoFocus
+                  onChange={e => setNameDraft(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditName(false) }}
+                  maxLength={120} style={nameInput}
+                />
+              </div>
+              <div>
+                <div style={nameFieldLabel}>
+                  {t('Nickname', 'Tên thường gọi')}
+                  <span style={{ opacity: 0.6, textTransform: 'none', letterSpacing: 0 }}>
+                    {' — '}{t('what the club calls them. Leave blank if none.', 'cách câu lạc bộ gọi họ. Để trống nếu không có.')}
+                  </span>
+                </div>
+                <input
+                  value={nickDraft}
+                  onChange={e => setNickDraft(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditName(false) }}
+                  maxLength={60} style={nameInput}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginTop: 2 }}>
+                <button onClick={saveName} disabled={tierSaving} style={nameSave}>
+                  {tierSaving ? t('Saving…', 'Đang lưu…') : t('Save name', 'Lưu tên')}
+                </button>
+                <button onClick={() => setEditName(false)} style={nameCancel}>{t('Cancel', 'Hủy')}</button>
+              </div>
+              {/* Said before they save, not after they wonder. */}
+              <div style={nameNote}>
+                {t('Receipts already issued keep the name they were issued under.',
+                   'Các biên nhận đã phát hành vẫn giữ tên lúc phát hành.')}
+              </div>
+            </div>
+          ) : (
+            <>
+              <h1 style={pageTitle}>
+                {member.full_name}
+                <button onClick={openName} style={nameEditBtn} title={t('Edit name', 'Sửa tên')}>
+                  {t('Edit', 'Sửa')}
+                </button>
+              </h1>
+              {member.nickname && <div style={nicknameText}>“{member.nickname}”</div>}
+            </>
+          )}
         </div>
         <div style={metaPanel}>
           <div style={metaItem}><span style={metaLabel}>{t('Tier', 'Hạng')}</span>
@@ -473,12 +589,12 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
                       </div>
                     </div>
 
-                    {/* Live preview of post-save PS(t) */}
+                    {/* Post-save PS(t) — computed by mis_ps_t() in SQL, never here */}
                     {(() => {
                       const d = draftFor(p)
-                      const pred = predictPs(d, p.validation_count)
-                      const delta = pred.ps - p.ps_t
+                      const row = preview.scores?.find(x => x.idx === 0) || null
                       const isHidden = d.status !== 'active'
+                      const delta = row ? row.ps_t - p.ps_t : 0
                       return (
                         <div style={previewRow}>
                           <div style={previewItem}>
@@ -493,16 +609,35 @@ export default function MisMemberProfile({ params }: { params: Promise<{ member_
                             <span style={previewLabel}>{t('After save', 'Sau khi lưu')}</span>
                             {isHidden ? (
                               <span style={{ ...previewValue, color: '#C27070', fontSize: 12 }}>{t('(hidden from live view)', '(ẩn khỏi chế độ xem trực tiếp)')}</span>
+                            ) : preview.error ? (
+                              /* A dash, not a guess. A wrong number here is worse
+                                 than no number — that was the whole bug. */
+                              <span style={{ ...previewValue, color: '#C27070', fontSize: 12 }} title={preview.error}>—</span>
+                            ) : !row ? (
+                              <span style={{ ...previewValue, color: '#B2AA98' }}>…</span>
                             ) : (
                               <span style={previewValue}>
-                                {pred.ps.toFixed(2)}
-                                <span style={{ ...previewSub, color: pred.health >= 100 ? '#D4B85A' : '#B2AA98' }}> · {pred.health}%</span>
+                                {Number(row.ps_t).toFixed(2)}
+                                <span style={{ ...previewSub, color: Number(row.score_health_pct) >= 100 ? '#D4B85A' : '#B2AA98' }}> · {Number(row.score_health_pct)}%</span>
                               </span>
                             )}
                           </div>
-                          {!isHidden && Math.abs(delta) > 0.005 && (
+                          {!isHidden && row && Math.abs(delta) > 0.005 && (
                             <span style={{ ...previewDelta, color: delta > 0 ? '#7AB07A' : '#C27070' }}>
                               {delta > 0 ? '▲' : '▼'} {delta > 0 ? '+' : ''}{delta.toFixed(2)}
+                            </span>
+                          )}
+                          {/* SAY WHICH TERMS PRODUCED IT. The preview used to
+                              show a bare number that nobody could reconcile
+                              with the row above it — because it was computed
+                              from a different formula. Showing R and M makes a
+                              future disagreement visible instead of silent. */}
+                          {!isHidden && row && (
+                            <span style={{ ...previewSub, color: '#8A8575', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+                              R {Number(row.r_reinforce).toFixed(3)} · M {Number(row.m_engage).toFixed(3)}
+                              {row.avg_visits_per_month === null
+                                ? ` · ${t('no visits yet', 'chưa có lượt ghé')}`
+                                : ` · ${Number(row.avg_visits_per_month).toFixed(2)}${t('/mo', '/tháng')}`}
                             </span>
                           )}
                         </div>
@@ -594,6 +729,33 @@ const memberNoBadge: React.CSSProperties = {
   color: '#D4B85A', letterSpacing: '0.10em',
   background: 'rgba(212,184,90,0.08)', border: '1px solid rgba(212,184,90,0.20)',
   borderRadius: 4,
+}
+const nameFieldLabel: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9.5, letterSpacing: '0.14em',
+  textTransform: 'uppercase', color: '#8A8575', marginBottom: 5,
+}
+const nameInput: React.CSSProperties = {
+  width: '100%', boxSizing: 'border-box', background: 'rgba(212,184,90,0.08)',
+  border: '1px solid rgba(212,184,90,0.35)', borderRadius: 5, color: '#E5D4C2',
+  fontFamily: "'Rampant Sans', Georgia, serif", fontSize: 20, padding: '7px 10px', outline: 'none',
+}
+const nameSave: React.CSSProperties = {
+  background: 'rgba(212,184,90,0.14)', border: '1px solid rgba(212,184,90,0.45)',
+  borderRadius: 5, color: '#D4B85A', cursor: 'pointer', padding: '6px 14px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase',
+}
+const nameCancel: React.CSSProperties = {
+  background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0', color: '#8A8575',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase',
+}
+const nameNote: React.CSSProperties = {
+  fontFamily: "'Google Sans Code', monospace", fontSize: 10, lineHeight: 1.7, color: '#7E7864', maxWidth: '42ch',
+}
+const nameEditBtn: React.CSSProperties = {
+  marginLeft: 12, verticalAlign: 'middle', background: 'none',
+  border: '1px solid rgba(212,184,90,0.30)', borderRadius: 4, color: '#8A8575',
+  cursor: 'pointer', padding: '3px 9px',
+  fontFamily: "'Google Sans Code', monospace", fontSize: 9.5, letterSpacing: '0.12em', textTransform: 'uppercase',
 }
 const nicknameText: React.CSSProperties = {
   fontFamily: "'Google Sans Code', monospace", fontSize: 11,
