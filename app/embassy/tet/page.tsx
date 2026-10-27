@@ -2,32 +2,39 @@ import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 import type { Metadata } from 'next'
 import { TET_COOKIE, tetPassValid } from '@/lib/tet/gate'
-import { getCaskBoard } from '@/lib/tet/queries'
-import TetGate from '@/components/tet/TetGate'
-import EmbassyCasks from '@/components/embassy/EmbassyCasks'
-import { EMBASSY_CASKS } from '@/components/embassy/EmbassyBrand'
+import { getCategories, getCaskBoard, getBlendBoard, getTiers, getCountdown, getCaskCompass } from '@/lib/tet/queries'
+import TetGate from '@/components/embassy/tet/TetGate'
+import TetProgramme from '@/components/embassy/tet/TetProgramme'
+import { EMBASSY_CASKS } from '@/components/embassy/casks'
 
-// THE SPIRITS EMBASSY · TẾT 2027 — ten casks, Embassy blue, on a tablet.
+// THE SPIRITS EMBASSY · TẾT 2027 — the club's page, in the Embassy's colours.
 //
-// Built 2026-10-27 for an event the same evening. The club's own /tet is
-// untouched: this page shares the data layer and nothing else, so a mistake
-// here cannot reach it.
+// A copy of app/tet/page.tsx, line for line, with two differences: it renders
+// the forked components in components/embassy/tet (navy #151d2a, gold
+// #d2b37f, Embassy lockup), and the cask board is cut to the ten the Embassy
+// offers. Everything else — the gate, the no-store client, the per-query
+// guards, the noindex — is the club page's behaviour and is meant to stay
+// that way.
 //
-// Server-rendered and gated before a single figure is fetched, exactly like
-// /tet — a visitor without a pass never receives the board at all. It reuses
-// THE SAME Tết pass: staff enter the password once on the tablet and the
-// signed httpOnly cookie lasts 30 days, which is the behaviour you want on a
-// device standing on a table all evening. No second password to brief anyone
-// on, and no new gate code written on the day of an event.
+// Server-rendered on purpose: the gate is checked before a single figure is
+// fetched, so a visitor without a pass never receives the programme at all,
+// rather than receiving it and being asked politely not to look.
 //
-// Data comes through the ANON key, as a browser would get it, so wrong RLS or
-// grants surface here rather than in front of a buyer.
+// Data comes through the ANON key, exactly as a browser would get it — so if
+// the RLS or the grants are wrong, this page is wrong too and we find out here
+// instead of in front of a buyer.
 
 export const dynamic = 'force-dynamic'
 
+// THE TABLET'S OWN CHROME. The root layout sets theme-color to the club's
+// #052E20, which tints the browser bar on Android and the status area when a
+// kiosk runs full-screen — so an Embassy page was framed in club green. Route
+// metadata overrides it; the club's pages are unaffected.
+export const viewport = { themeColor: '#151d2a' }
+
 export const metadata: Metadata = {
   title: 'Tết Đinh Mùi 2027 · The Spirits Embassy',
-  description: 'Single casks from Duncan Taylor for Tết 2027.',
+  description: 'Corporate gifting and single casks for Tết 2027.',
   // A password-gated commercial page has no business in a search index.
   robots: { index: false, follow: false },
 }
@@ -36,10 +43,11 @@ export default async function EmbassyTetPage() {
   const pass = (await cookies()).get(TET_COOKIE)?.value
   if (!tetPassValid(pass)) return <TetGate />
 
-  // NEVER A CACHED BOARD. supabase-js calls fetch and Next caches fetch, so a
-  // server-rendered page will happily serve yesterday's availability. On a
-  // board whose job is to say what is gone, a stale answer is worse than a
-  // slow one — and tonight it would be said out loud to a buyer.
+  // NEVER A CACHED BOARD. supabase-js calls fetch, and Next caches fetch — so a
+  // server-rendered page will happily serve yesterday's availability. Caught on
+  // 18 Sept: four casks had been marked sold and the page still showed them as
+  // held. On a board whose whole job is to say what is gone, a stale answer is
+  // worse than a slow one.
   const db = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -49,19 +57,32 @@ export default async function EmbassyTetPage() {
     },
   )
 
-  const board = await getCaskBoard(db).catch(() => [])
+  // Each is guarded separately: a programme with no casks yet should still show
+  // its countdown, and a missing countdown should not take the page down.
+  const [categories, allCasks, blends, tiers, countdown, compass] = await Promise.all([
+    getCategories(db).catch(() => []),
+    getCaskBoard(db).catch(() => []),
+    getBlendBoard(db).catch(() => []),
+    getTiers(db).catch(() => []),
+    getCountdown(db).catch(() => null),
+    getCaskCompass(db).catch(() => []),
+  ])
 
   // TEN OF THE TWENTY, IN THE OWNER'S ORDER.
   //
-  // Filtered by an explicit allow-list rather than by anything derived: the
-  // Embassy offer is a commercial decision, not a property of a cask, so
-  // nothing about a cask row should be able to add one to this page. A ref on
-  // the list that is not on the board is dropped silently here and reported by
-  // scripts/verify-embassy-tet.mjs — a page that renders nine casks is better
-  // at an event than a page that throws, but nobody should learn about the
-  // tenth from a guest.
-  const byRef = new Map(board.map(c => [c.cask_ref, c]))
+  // An explicit allow-list, not anything derived: which casks the Embassy
+  // offers is a commercial decision, not a property of a cask, so nothing
+  // about a cask row should be able to add one to this page. A ref on the list
+  // that is not on the board is dropped here and reported by
+  // scripts/verify-embassy-tet.mjs — nine casks at an event beats a page that
+  // throws, but nobody should learn about the tenth from a guest.
+  const byRef = new Map(allCasks.map(c => [c.cask_ref, c]))
   const casks = EMBASSY_CASKS.map(ref => byRef.get(ref)).filter((c): c is NonNullable<typeof c> => !!c)
 
-  return <EmbassyCasks casks={casks} />
+  // The Compass radars follow the casks, or a cask the Embassy does not offer
+  // would still have its flavour profile drawn on the page.
+  const shown = new Set(casks.map(c => c.cask_ref))
+  const compassShown = compass.filter(r => shown.has(r.cask_ref))
+
+  return <TetProgramme categories={categories} casks={casks} blends={blends} tiers={tiers} countdown={countdown} compass={compassShown} />
 }
