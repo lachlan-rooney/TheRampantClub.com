@@ -34,17 +34,32 @@ export default function KioskPair() {
         <div style={title}>The Rampant Club</div>
         <div style={sub}>Kiosk enrolment</div>
         <p style={hint}>Enter the pairing code from the admin portal to make this tablet a trusted kiosk.</p>
-        <input value={code} onChange={e => setCode(e.target.value.toUpperCase())} onKeyDown={e => { if (e.key === 'Enter') pair() }}
-          placeholder="CODE" maxLength={8} autoFocus style={input} />
-        {err && <div style={errStyle}>{err}</div>}
-        <button onClick={pair} disabled={busy || !code.trim()} style={{ ...btn, opacity: busy || !code.trim() ? 0.4 : 1 }}>{busy ? 'Pairing…' : 'Pair this tablet'}</button>
+        {/* A REAL FORM. The Enter handler alone was not enough on an iPad: iOS
+            shows a plain "return" key outside a form and the submit never
+            fired, so staff had a code typed in and no visible way in once the
+            keyboard covered the button. A form plus enterKeyHint puts a GO key
+            on the keyboard that submits. */}
+        <form onSubmit={e => { e.preventDefault(); pair() }}>
+          <input value={code} onChange={e => setCode(e.target.value.toUpperCase())}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); pair() } }}
+            placeholder="CODE" maxLength={8} autoFocus
+            enterKeyHint="go" autoCapitalize="characters" autoCorrect="off" spellCheck={false}
+            style={input} />
+          {err && <div style={errStyle}>{err}</div>}
+          <button type="submit" disabled={busy || !code.trim()} style={{ ...btn, opacity: busy || !code.trim() ? 0.4 : 1 }}>{busy ? 'Pairing…' : 'Pair this tablet'}</button>
+        </form>
       </div>
     </div>
   )
 }
 
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
-const wrap: React.CSSProperties = { minHeight: '100vh', background: '#052E20', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }
+// 100vh does NOT shrink when the iOS keyboard opens, so a vertically centred
+// card keeps its position in the full height and the button ends up under the
+// keyboard. 100dvh follows the visible viewport, and starting at the top with
+// generous bottom padding means the button stays reachable even when dvh is
+// unsupported.
+const wrap: React.CSSProperties = { minHeight: '100dvh', background: '#052E20', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 24px 50vh' }
 const card: React.CSSProperties = { width: 'min(420px, 92vw)', textAlign: 'center', border: '1px solid rgba(212,184,90,0.3)', borderRadius: 16, background: 'rgba(229,212,194,0.03)', padding: '40px 32px' }
 const diamond: React.CSSProperties = { width: 10, height: 10, background: '#D4B85A', transform: 'rotate(45deg)', opacity: 0.6, margin: '0 auto 24px' }
 const title: React.CSSProperties = { fontFamily: "'Rampant Sans', serif", fontSize: 24, color: '#E5D4C2', letterSpacing: '0.04em' }
