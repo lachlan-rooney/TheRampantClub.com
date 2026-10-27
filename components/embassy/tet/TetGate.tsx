@@ -58,11 +58,37 @@ export default function TetGate() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (busy) return
-    setBusy(true); setErr('')
+    setErr('')
     try {
+      setBusy(true)
+      // READ THE FORM, NOT THE STATE.
+      //
+      // On the shop iPad this gate was unusable: the password field would not
+      // keep what was typed and the Enter button never enabled, so staff with
+      // the correct password had no way in. A controlled input does that
+      // whenever React's state is not updating — a stale or half-loaded
+      // bundle, a hydration error — and the page still LOOKS fine, which is
+      // why it cost an evening.
+      //
+      // The DOM always has what the person actually typed. So the submit takes
+      // its values from the form element and falls back to state, rather than
+      // the other way round. Nothing here depends on a re-render having
+      // happened.
+      const form = e.currentTarget as HTMLFormElement
+      const fd = new FormData(form)
+      const typedPassword = String(fd.get('password') ?? '') || password
+      const tickedAge = form.querySelector<HTMLInputElement>('input[type="checkbox"]')?.checked ?? age
+
+      if (!typedPassword.trim()) {
+        setErr(t('Enter the password.', 'Vui lòng nhập mật khẩu.')); return
+      }
+      if (!tickedAge) {
+        setErr(t('Please confirm you are 18 or over.', 'Vui lòng xác nhận bạn từ 18 tuổi trở lên.')); return
+      }
+
       const r = await fetch('/api/tet/enter', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password, age_confirmed: age }),
+        body: JSON.stringify({ password: typedPassword, age_confirmed: tickedAge }),
       })
       const j = await r.json().catch(() => ({}))
       if (!r.ok) { setErr(j.message || t('That did not work.', 'Không thành công.')); return }
@@ -74,7 +100,11 @@ export default function TetGate() {
     } finally { setBusy(false) }
   }
 
-  const ready = !busy && age && !!password.trim()
+  // NEVER DISABLED. A greyed-out button is a dead end: it cannot say what is
+  // missing, and if the field is not keeping text — which is exactly what went
+  // wrong here — it never comes back to life. It is always pressable now and
+  // the submit says what is missing.
+  const ready = !busy
 
   return (
     <main className="tg">
@@ -125,7 +155,7 @@ export default function TetGate() {
           </label>
 
           <input
-            type="password" value={password} onChange={e => setPassword(e.target.value)}
+            type="password" name="password" defaultValue="" value={password} onChange={e => setPassword(e.target.value)}
             placeholder={t('Password', 'Mật khẩu')}
             autoComplete="off" spellCheck={false}
             className="tg-field" aria-label={t('Password', 'Mật khẩu')}
