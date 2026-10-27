@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 // Tablet enrolment entry (public). An admin issues a pairing code in the portal;
 // typed here, the tablet exchanges it for a device token (the security boundary)
@@ -10,12 +10,35 @@ export default function KioskPair() {
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [auto, setAuto] = useState(false)
+  const fired = useRef(false)
 
-  const pair = async () => {
-    if (!code.trim() || busy) return
+  // ── PAIR FROM THE URL: /kiosk/pair?code=1234 ─────────────────────────────
+  // Typing a code on a tablet is the part that goes wrong. The keyboard may
+  // not appear, autofocus may not take, the soft keyboard can bury the button,
+  // and the button stays DISABLED until the field has content — so a member of
+  // staff with the right code can be left with nothing to press and no idea
+  // why. A link removes all of it: open it and the tablet is paired.
+  //
+  // It is no weaker than typing the same code into the same box. The code is
+  // one-use, expires, and is useless without it.
+  useEffect(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get('code')
+    if (!fromUrl || fired.current) return
+    fired.current = true
+    setAuto(true)
+    setCode(fromUrl.toUpperCase())
+    void pairWith(fromUrl)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const pair = () => pairWith(code)
+
+  const pairWith = async (raw: string) => {
+    if (!raw.trim() || busy) return
     setBusy(true); setErr('')
     try {
-      const r = await fetch('/api/kiosk/pair', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) })
+      const r = await fetch('/api/kiosk/pair', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: raw }) })
       if (r.ok) {
         // Land on this tablet's own floor. Falls back to the board when the device
         // has no room set yet — never onto the staff sign-in.
@@ -23,7 +46,10 @@ export default function KioskPair() {
         window.location.href = j.next || '/kiosk/board'
         return
       }
-      else setErr((await r.json().catch(() => ({})))?.error || 'Could not pair.')
+      else {
+        setErr((await r.json().catch(() => ({})))?.error || 'Could not pair.')
+        setAuto(false)   // fall back to the manual form so staff can retry
+      }
     } finally { setBusy(false) }
   }
 
@@ -33,7 +59,9 @@ export default function KioskPair() {
         <div style={diamond} />
         <div style={title}>The Rampant Club</div>
         <div style={sub}>Kiosk enrolment</div>
-        <p style={hint}>Enter the pairing code from the admin portal to make this tablet a trusted kiosk.</p>
+        <p style={hint}>{auto && busy
+          ? 'Pairing this tablet…'
+          : 'Enter the pairing code from the admin portal to make this tablet a trusted kiosk.'}</p>
         {/* A REAL FORM. The Enter handler alone was not enough on an iPad: iOS
             shows a plain "return" key outside a form and the submit never
             fired, so staff had a code typed in and no visible way in once the
