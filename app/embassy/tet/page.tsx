@@ -4,7 +4,7 @@ import type { Metadata } from 'next'
 import { TET_COOKIE, tetPassValid } from '@/lib/tet/gate'
 import { getCategories, getCaskBoard, getBlendBoard, getTiers, getCountdown, getCaskCompass } from '@/lib/tet/queries'
 import TetGate from '@/components/embassy/tet/TetGate'
-import TetProgramme from '@/components/embassy/tet/TetProgramme'
+import EmbassyTabs from '@/components/embassy/EmbassyTabs'
 import { EMBASSY_CASKS } from '@/components/embassy/casks'
 
 // THE SPIRITS EMBASSY · TẾT 2027 — the club's page, in the Embassy's colours.
@@ -84,5 +84,6 @@ export default async function EmbassyTetPage() {
   const shown = new Set(casks.map(c => c.cask_ref))
   const compassShown = compass.filter(r => shown.has(r.cask_ref))
 
-  return <TetProgramme categories={categories} casks={casks} blends={blends} tiers={tiers} countdown={countdown} compass={compassShown} />
+  // TWO TABS on the kiosk: the programme, and the mailing list.
+  return <EmbassyTabs categories={categories} casks={casks} blends={blends} tiers={tiers} countdown={countdown} compass={compassShown} />
 }
