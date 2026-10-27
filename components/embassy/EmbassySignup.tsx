@@ -192,11 +192,14 @@ const CSS = `
              -webkit-tap-highlight-color: transparent; }
   .es-chip.is-on { background: ${GOLD}; border-color: ${GOLD}; color: ${GROUND}; font-weight: 600; }
 
-  .es-consent { display: flex; gap: 13px; align-items: flex-start; cursor: pointer;
+  .es-consent { display: flex; gap: 14px; align-items: center; cursor: pointer;
                 margin: clamp(18px,2.6vh,28px) 0 0; padding: 14px;
                 border: 1px solid rgba(210,179,127,.22); border-radius: 8px;
                 background: rgba(229,212,194,.04); }
-  .es-consent input { width: 26px; height: 26px; flex: 0 0 auto; margin: 1px 0 0; accent-color: ${GOLD}; cursor: pointer; }
+  /* 26px measured on every iPad size in WebKit — under a finger's 40px. The
+     whole label is tappable, so it was never broken, but a guest aims at the
+     BOX. */
+  .es-consent input { width: 40px; height: 40px; flex: 0 0 auto; margin: 0; accent-color: ${GOLD}; cursor: pointer; }
   .es-consent span { font-family: ${MONO}; font-size: 12.5px; line-height: 1.75; color: ${CREAM}; opacity: .88; }
 
   .es-go { width: 100%; min-height: 60px; margin-top: clamp(18px,2.6vh,28px); cursor: pointer;

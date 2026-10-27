@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 import { TET_COOKIE, tetPassValid } from '@/lib/tet/gate'
+import { deviceOk, DEVICE_COOKIE, svc as kioskSvc } from '@/lib/kiosk/server'
 
 // THE SPIRITS EMBASSY MAILING LIST — the only way a row reaches the table.
 //
@@ -43,8 +44,26 @@ const svc = () => createClient(
 
 export async function POST(req: Request) {
   const jar = await cookies()
-  if (!tetPassValid(jar.get(TET_COOKIE)?.value)) {
+  // Same two doors as the page: an enrolled kiosk, or the Tết pass.
+  const onKiosk = await deviceOk()
+  if (!tetPassValid(jar.get(TET_COOKIE)?.value) && !onKiosk) {
     return NextResponse.json({ error: 'This page is not open.' }, { status: 403 })
+  }
+
+  // WHICH TABLET TOOK IT. Worth knowing which floor a sign-up came from, and
+  // the device is the only thing that can say so truthfully — a label posted
+  // by the browser would be whatever the browser felt like claiming. Read
+  // server-side from the enrolled token, never from the request body.
+  let deviceLabel: string | null = null
+  if (onKiosk) {
+    const token = jar.get(DEVICE_COOKIE)?.value
+    if (token) {
+      const { createHash } = await import('node:crypto')
+      const hash = createHash('sha256').update(token).digest('hex')
+      const { data } = await kioskSvc().from('kiosk_devices')
+        .select('label, room').eq('token_hash', hash).maybeSingle()
+      deviceLabel = data ? [data.label, data.room].filter(Boolean).join(' · ').slice(0, 80) : null
+    }
   }
 
   const b = await req.json().catch(() => null)
@@ -103,8 +122,8 @@ export async function POST(req: Request) {
     consent_text: consentText,
     consented_at: new Date().toISOString(),
     locale,
-    source: 'kiosk_embassy_tet',
-    device_label: typeof b.device_label === 'string' ? b.device_label.slice(0, 80) : null,
+    source: onKiosk ? 'kiosk_embassy_tet' : 'web_embassy_tet',
+    device_label: deviceLabel,
   }
 
   const res = existing

@@ -2,6 +2,7 @@ import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 import type { Metadata } from 'next'
 import { TET_COOKIE, tetPassValid } from '@/lib/tet/gate'
+import { deviceOk } from '@/lib/kiosk/server'
 import { getCategories, getCaskBoard, getBlendBoard, getTiers, getCountdown, getCaskCompass } from '@/lib/tet/queries'
 import TetGate from '@/components/embassy/tet/TetGate'
 import EmbassyTabs from '@/components/embassy/EmbassyTabs'
@@ -40,8 +41,19 @@ export const metadata: Metadata = {
 }
 
 export default async function EmbassyTetPage() {
+  // TWO WAYS IN, AND A PAIRED KIOSK NEEDS NEITHER A PASSWORD NOR A PERSON.
+  //
+  // The club runs a real kiosk estate: tablets enrolled through
+  // /api/kiosk/pair, carrying an httpOnly device token that kiosk_device_active
+  // re-checks on every request and that an admin can revoke. Those devices are
+  // the point of the system — nobody should be typing a shared password into
+  // one in front of guests, and a password is the weaker proof anyway: it can
+  // be read over a shoulder, and it cannot be revoked for one tablet.
+  //
+  // So an enrolled kiosk opens this page because of WHAT IT IS. Everyone else
+  // — a laptop, a phone, a buyer following a link — still meets the Tết door.
   const pass = (await cookies()).get(TET_COOKIE)?.value
-  if (!tetPassValid(pass)) return <TetGate />
+  if (!tetPassValid(pass) && !(await deviceOk())) return <TetGate />
 
   // NEVER A CACHED BOARD. supabase-js calls fetch, and Next caches fetch — so a
   // server-rendered page will happily serve yesterday's availability. Caught on
