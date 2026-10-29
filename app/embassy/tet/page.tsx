@@ -52,8 +52,25 @@ export default async function EmbassyTetPage() {
   //
   // So an enrolled kiosk opens this page because of WHAT IT IS. Everyone else
   // — a laptop, a phone, a buyer following a link — still meets the Tết door.
-  const pass = (await cookies()).get(TET_COOKIE)?.value
-  if (!tetPassValid(pass) && !(await deviceOk())) return <TetGate />
+  // ── THE DOOR IS OFF ──────────────────────────────────────────────────────
+  // Owner's explicit instruction during the launch event, 2026-10-27:
+  // "disable it now". The gate was unusable on the shop iPad — the password
+  // field would not keep what was typed and the Enter button never enabled —
+  // and staff were standing in front of guests with no way in.
+  //
+  // ⚠ /embassy/tet IS NOW OPEN TO ANYONE WITH THE LINK.
+  //
+  // What that does and does not expose: the page is noindex, and the board
+  // carries no cost or margin at all (lib/tet/types) — only Duncan Taylor
+  // Vietnam's own list prices, which are quoted to buyers anyway. The mailing
+  // list behind it is NOT affected: /api/embassy/signup keeps its own check.
+  //
+  // TO PUT IT BACK, restore these two lines:
+  //   const pass = (await cookies()).get(TET_COOKIE)?.value
+  //   if (!tetPassValid(pass) && !(await deviceOk())) return <TetGate />
+  //
+  // The club's own /tet is untouched and still gated.
+  void TET_COOKIE; void tetPassValid; void deviceOk; void TetGate; void cookies
 
   // NEVER A CACHED BOARD. supabase-js calls fetch, and Next caches fetch — so a
   // server-rendered page will happily serve yesterday's availability. Caught on
