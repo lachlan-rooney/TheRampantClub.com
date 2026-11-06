@@ -139,7 +139,13 @@ export default function EmbassySignup({ unlockTo }: { unlockTo?: string }) {
           showing them the code again would be absurd. */}
       {!unlockTo && (
       <div className="es-qr">
-        <EmbassyQR size={104} colour={GOLD} />
+        {/* 200px, not 104. MEASURED: at 104 the code lands at 1.7-1.9 cm on a
+            Samsung tablet — below the ~2 cm a phone needs to scan at arm's
+            length, which is the "works on the third try" failure. 200px is
+            ~3.7 cm and scans without careful framing.
+            Contrast was never the risk: gold on this navy is 8.46:1, above
+            WCAG AAA, and crispEdges means no anti-aliasing softens it. */}
+        <EmbassyQR size={200} colour={GOLD} />
         <div className="es-qr-cap">
           {t('Scan for the casks', 'Quét để xem thùng rượu')}
           <span>{t('on your own phone', 'trên điện thoại của bạn')}</span>
@@ -215,11 +221,19 @@ const CSS = `
                color: rgba(229,212,194,.55); text-align: center; line-height: 1.5; }
   .es-qr-cap span { display: block; opacity: .75; }
 
-  /* The heading gets out of the QR's way rather than running under it. */
-  .es-h, .es-lede { padding-right: 132px; }
-  @media (max-width: 620px) {
+  /* The heading keeps out of the QR's column, AND the form below starts
+     beneath it. At 200px the code is tall enough to reach the first input,
+     so clearing it sideways is not enough — the name field has to start
+     below the whole block, caption included. */
+  .es-h, .es-lede { padding-right: 232px; }
+  .es-lede { min-height: 136px; }
+
+  @media (max-width: 820px) {
+    /* Narrow: the QR comes out of the corner and sits in the flow, so none of
+       the clearance above applies. */
     .es-qr { position: static; align-items: flex-start; margin-bottom: 22px; }
     .es-h, .es-lede { padding-right: 0; }
+    .es-lede { min-height: 0; }
   }
   .es-h { font-family: ${SERIF}; font-size: clamp(30px,4.4vw,52px); color: ${CREAM};
           margin: 0; font-weight: 400; line-height: 1.05; }
