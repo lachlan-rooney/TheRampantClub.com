@@ -72,6 +72,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       status:    'Pending Signature',
       join_date: null,
       referred_by: prospect.referred_by_name,
+      // Same as the allocate path: the channel is lost forever if not copied now.
+      source_channel: prospect.source_channel ?? null,
     })
     if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 })
   }

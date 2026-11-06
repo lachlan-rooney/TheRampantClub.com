@@ -31,6 +31,7 @@ interface OpenTask {
   id: string; title: string; due_date: string | null
   priority: 'low' | 'normal' | 'high' | 'urgent'
   project_id: string; status: string; completed_at: string | null
+  column_id: string
 }
 
 function ColourStrip({ value, onPick, label }: { value: string; onPick: (hex: string) => void; label: string }) {
@@ -126,16 +127,30 @@ export default function OpsHubHome() {
   // business, and a list of somebody's work that is mostly ticked-off cards is
   // not a list anybody reads. Read straight through RLS, like every other read
   // on this surface.
+  // Blocked and done columns, by flag. Work parked in them is not "overdue":
+  // it is waiting on somebody else, and a red number tells the assignee to
+  // chase themselves.
+  const [parkedCols, setParkedCols] = useState<Set<string>>(new Set())
   useEffect(() => {
     if (!whoAll) { setMine([]); return }
     let cancelled = false
     setMineLoading(true)
     const supabase = createBrowserSupabaseClient()
-    supabase.from('tasks')
-      .select('id, title, due_date, priority, project_id, status, completed_at')
-      .eq('assignee', whoAll).eq('status', 'open')
-      .then(({ data }) => {
+    // column_id comes too, so blocked work can be told apart. Blocked is a
+    // property of the COLUMN (is_blocked_column), never of its name.
+    Promise.all([
+      supabase.from('tasks')
+        .select('id, title, due_date, priority, project_id, status, completed_at, column_id')
+        .eq('assignee', whoAll).eq('status', 'open'),
+      // select('*'): the flag may not exist yet (db/ops_blocked_column_flag.sql).
+      // Naming it would 400 the query and empty this panel.
+      supabase.from('board_columns').select('*'),
+    ]).then(([{ data }, { data: cols }]) => {
         if (cancelled) return
+        const park = new Set((cols || [])
+          .filter((c: { is_blocked_column?: boolean; is_done_column?: boolean }) => c.is_blocked_column || c.is_done_column)
+          .map((c: { id: string }) => c.id))
+        setParkedCols(park)
         setMine((data || []) as OpenTask[])
         setMineLoading(false)
       })
@@ -309,8 +324,15 @@ export default function OpsHubHome() {
                 <b style={{ color: '#E5D4C2' }}>{mine.length}</b> {t('open across', 'việc đang mở trên')}{' '}
                 {new Set(mine.map(x => x.project_id)).size} {t('boards', 'bảng')}
                 {(() => {
-                  const late = mine.filter(x => x.due_date && x.due_date < todayVN).length
-                  return late ? <span style={{ color: '#C27070' }}> · {late} {t('overdue', 'quá hạn')}</span> : null
+                  const live = mine.filter(x => !parkedCols.has(x.column_id))
+                  const late = live.filter(x => x.due_date && x.due_date < todayVN).length
+                  const blocked = mine.length - live.length
+                  return (late || blocked) ? (
+                    <>
+                      {late ? <span style={{ color: '#C27070' }}> · {late} {t('overdue', 'quá hạn')}</span> : null}
+                      {blocked ? <span style={{ color: '#7E7864' }}> · {blocked} {t('blocked', 'bị chặn')}</span> : null}
+                    </>
+                  ) : null
                 })()}
               </div>
               {Object.entries(

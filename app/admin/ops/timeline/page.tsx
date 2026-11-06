@@ -76,8 +76,20 @@ export default function MasterTimelinePage() {
       setTeam((tm || []) as TeamMember[])
       // project_id AND name: a card dropped on "Done" has to land in ITS OWN
       // board's Done column, not in some shared one — there isn't a shared one.
-      const { data: cols } = await supabase.from('board_columns').select('id, name, project_id')
-      const cc = (cols || []) as { id: string; name: string; project_id: string }[]
+      // The FLAGS come too. "Blocked" and "Done" are properties of a column,
+      // not of its name — rename one, translate it, or add a board whose
+      // holding column is called "Waiting on supplier", and a name test
+      // silently stops working.
+      // select('*') ON PURPOSE. Naming is_blocked_column here would make the
+      // whole query 400 on any environment where db/ops_blocked_column_flag.sql
+      // has not been run yet — breaking the page to add a count. With '*' the
+      // flag is simply absent until the migration lands, and the sets below
+      // come out empty, which degrades to the old behaviour instead of a
+      // blank screen.
+      const { data: cols } = await supabase.from('board_columns').select('*')
+      const cc = (cols || []) as { id: string; name: string; project_id: string; is_done_column?: boolean; is_blocked_column?: boolean }[]
+      setParked(new Set(cc.filter(c => c.is_blocked_column || c.is_done_column).map(c => c.id)))
+      setBlockedCols(new Set(cc.filter(c => c.is_blocked_column).map(c => c.id)))
       setColName(new Map(cc.map(c => [c.id, c.name])))
       setColOf(new Map(cc.map(c => [`${c.project_id}|${c.name}`, c.id])))
 
@@ -95,6 +107,11 @@ export default function MasterTimelinePage() {
   const boardById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects])
   // Which column each task sits in, by name — every board uses the same four.
   const [colName, setColName] = useState<Map<string, string>>(new Map())
+  // Columns whose work is NOT "overdue": blocked (waiting on someone else) and
+  // done (finished). Read from the flags; empty until they load, which is the
+  // safe direction — a count can be briefly high, never briefly wrong-low.
+  const [parked, setParked] = useState<Set<string>>(new Set())
+  const [blockedCols, setBlockedCols] = useState<Set<string>>(new Set())
   // (project_id|column name) → column_id, the inverse of colName and the thing
   // that makes a cross-board drop possible at all.
   const [colOf, setColOf] = useState<Map<string, string>>(new Map())
@@ -223,11 +240,25 @@ export default function MasterTimelinePage() {
   }), [tasks, who, board, horizonEnd, boardById])
 
   const dated = shown.filter(x => x.due_date || x.start_date)
-  const overdue = shown.filter(x => x.due_date && x.due_date < today)
+
+  // BLOCKED WORK IS NOT OVERDUE. It is waiting on someone else, so counting it
+  // red tells the assignee to chase themselves. It gets its own number instead,
+  // and its date still shows red on the card if it has passed — the fact that
+  // a blocked job is late is exactly what makes it worth unblocking.
+  //
+  // Done-flagged columns are excluded too. In practice `tasks` already holds
+  // only status='open' and no open task currently sits in a Done column, so
+  // this changes nothing today — it is here so the count does not depend on
+  // that invariant being maintained by the create and move paths forever.
+  const isParked = (x: Task) => parked.has(x.column_id)
+  const counts = shown.filter(x => !isParked(x))
+
+  const overdue = counts.filter(x => x.due_date && x.due_date < today)
+  const blocked = shown.filter(x => blockedCols.has(x.column_id))
   const thisWeek = (() => {
     const d = new Date(`${today}T12:00:00+07:00`); d.setDate(d.getDate() + 7)
     const end = d.toISOString().slice(0, 10)
-    return shown.filter(x => x.due_date && x.due_date >= today && x.due_date <= end)
+    return counts.filter(x => x.due_date && x.due_date >= today && x.due_date <= end)
   })()
 
   const countFor = (fn: (x: Task) => boolean) => tasks.filter(x => boardById.has(x.project_id) && fn(x)).length
@@ -247,6 +278,9 @@ export default function MasterTimelinePage() {
       <div style={{ display: 'flex', gap: 22, margin: '14px 0 16px', flexWrap: 'wrap' }}>
         <Stat n={overdue.length} label={t('overdue', 'quá hạn')} tone="#C27070" />
         <Stat n={thisWeek.length} label={t('due in seven days', 'đến hạn trong 7 ngày')} tone="#D4B85A" />
+        {blocked.length > 0 && (
+          <Stat n={blocked.length} label={t('blocked', 'bị chặn')} tone="#7E7864" />
+        )}
         <Stat n={shown.length} label={t('open', 'đang mở')} tone="#E5D4C2" />
       </div>
 
