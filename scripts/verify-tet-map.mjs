@@ -28,6 +28,8 @@ for (const l of readFileSync('.env.local', 'utf8').split('\n')) {
 const exp = String(Date.now() + 30 * 24 * 60 * 60 * 1000)
 const tp = `${exp}.${createHmac('sha256', env.SUPABASE_JWT_SECRET).update(exp).digest('base64url')}`
 const B = process.env.BASE || 'http://localhost:3001'
+// Same checks, either page — the two are forks of one component.
+const PATH = process.env.MAP_PATH || '/embassy/tet'
 
 let pass = 0, fail = 0
 const t = (ok, m, d = '') => { ok ? pass++ : fail++; console.log(`${ok ? '✓' : '✗'} ${m}${d ? ' — ' + d : ''}`) }
@@ -37,7 +39,7 @@ const open = async (ctxOpts) => {
   const c = await br.newContext(ctxOpts)
   await c.addCookies([{ name: 'trc_tet', value: tp, domain: 'localhost', path: '/' }])
   const p = await c.newPage()
-  await p.goto(`${B}/embassy/tet`, { waitUntil: 'domcontentloaded', timeout: 60000 })
+  await p.goto(`${B}${PATH}`, { waitUntil: 'domcontentloaded', timeout: 60000 })
   await p.waitForTimeout(3500)
   await p.locator('.cm-map').scrollIntoViewIfNeeded()
   await p.waitForTimeout(600)

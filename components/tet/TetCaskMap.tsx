@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { MONO, GOLD } from '@/components/public/kit'
 import { SCOTLAND, SCOTLAND_PATH, project } from '@/lib/tet/scotland'
 import { ATLAS_REGIONS } from '@/lib/whisky-atlas-data'
@@ -60,6 +60,29 @@ export default function TetCaskMap({ casks, t, vn, region, onRegion, onPick }: {
   onPick?: (caskRef: string) => void
 }) {
   const [hover, setHover] = useState<string | null>(null)
+  // TAP-DRIVEN SELECTION, separate from hover. There is no hover on a phone,
+  // so everything that depended on it — the label, the card — was unreachable
+  // on a phone entirely.
+  //
+  // It also fixes the sticky toggle. Tapping a pin used to run
+  // onRegion(region === pl.region ? null : pl.region), so tapping a DIFFERENT
+  // distillery in the SAME region CLEARED the selection instead of moving it.
+  // Six of these sit within a few miles on Speyside, so that was most taps.
+  const [picked, setPicked] = useState<string | null>(null)
+  const shown = picked ?? hover
+
+  const clear = () => { setPicked(null); onRegion(null) }
+  const choose = (name: string, r: string) => {
+    if (picked === name) { clear(); return }   // the same pin again still dismisses
+    setPicked(name); onRegion(r)               // anything else REPLACES
+  }
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') clear() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picked])
   const counts = new Map<string, { all: number; open: number }>()
   for (const c of casks) {
     const k = counts.get(c.region) ?? { all: 0, open: 0 }
@@ -137,17 +160,21 @@ export default function TetCaskMap({ casks, t, vn, region, onRegion, onPick }: {
   const unplaced = [...counts.keys()].filter(k => !regions.some(r => r.key === k))
   if (!places.length) return null
   const shownRegion = ATLAS_REGIONS.find(r => r.key === (hover ?? region)) ?? null
-  const shownPlace = places.find(p => p.name === hover) ?? null
+  const shownPlace = places.find(p => p.name === shown) ?? null
 
   return (
     <div className="cm">
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
+      {/* Tapping empty map space dismisses. Pins stop the event, so this
+          never fires underneath one. */}
       <svg className="cm-map" viewBox={`0 0 ${SCOTLAND.w} ${SCOTLAND.h}`}
-           role="group" aria-label={t('Where the casks come from', 'Nguồn gốc các thùng')}>
+           role="group" aria-label={t('Where the casks come from', 'Nguồn gốc các thùng')}
+           onClick={clear}>
+        <rect x={0} y={0} width={SCOTLAND.w} height={SCOTLAND.h} fill="transparent" />
         <path d={SCOTLAND_PATH} className="cm-land" />
         {laid.map(({ pl, x, y, rad }, i) => {
           const n = pl.casks.length
-          const on = hover === pl.name || region === pl.region
+          const on = shown === pl.name || region === pl.region
           const dim = region !== null && region !== pl.region
           // Labels lean away from the middle of the country so neighbours do
           // not overprint one another.
@@ -157,8 +184,8 @@ export default function TetCaskMap({ casks, t, vn, region, onRegion, onPick }: {
                style={{ ['--i' as string]: i }} transform={`translate(${x} ${y})`}
                role="button" tabIndex={0} aria-pressed={on}
                aria-label={`${pl.name}, ${pl.region}: ${n} ${t(n === 1 ? 'cask' : 'casks', 'thùng')}`}
-               onClick={() => onRegion(region === pl.region ? null : pl.region)}
-               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onRegion(region === pl.region ? null : pl.region) } }}
+               onClick={e => { e.stopPropagation(); choose(pl.name, pl.region) }}
+               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(pl.name, pl.region) } }}
                onPointerEnter={() => setHover(pl.name)} onPointerLeave={() => setHover(null)}>
               {/* The hit area was rad+14, which on Speyside meant a pin's
                   neighbour swallowed it — Craigellachie could not be pointed
@@ -174,7 +201,11 @@ export default function TetCaskMap({ casks, t, vn, region, onRegion, onPick }: {
                   label drew them on top of one another and ran Islay off the
                   edge. The names live in the list beside the map, which has
                   room for them; the map keeps the geography. */}
-              {on && (
+              {/* ONE LABEL AT A TIME. This rendered for `on`, true for every
+                  distillery in the chosen region — so selecting Speyside
+                  printed six names on top of each other. Overlap is now
+                  impossible by construction. */}
+              {shown === pl.name && (
                 <>
                   <text x={left ? -(rad + 8) : rad + 8} y={4} className="cm-label"
                         textAnchor={left ? 'end' : 'start'}>{pl.name}</text>
@@ -203,6 +234,10 @@ export default function TetCaskMap({ casks, t, vn, region, onRegion, onPick }: {
         <div className="cm-slot">
         {shownPlace ? (
           <div className="cm-card">
+            {(picked || region) && (
+              <button className="cm-x" onClick={clear}
+                      aria-label={t('Clear selection', 'Bỏ chọn')}>×</button>
+            )}
             <div className="cm-name">{shownPlace.name}</div>
             <p className="cm-blurb">
               {shownPlace.casks.length} {t(shownPlace.casks.length === 1 ? 'cask' : 'casks', 'thùng')}
@@ -218,6 +253,10 @@ export default function TetCaskMap({ casks, t, vn, region, onRegion, onPick }: {
           </div>
         ) : shownRegion ? (
           <div className="cm-card">
+            {(picked || region) && (
+              <button className="cm-x" onClick={clear}
+                      aria-label={t('Clear selection', 'Bỏ chọn')}>×</button>
+            )}
             <div className="cm-name">{shownRegion.name}{shownRegion.native && <span> · {shownRegion.native}</span>}</div>
             <p className="cm-blurb">{vn ? (VN[shownRegion.key] ?? shownRegion.blurb) : shownRegion.blurb}</p>
             <div className="cm-dist">{t('Distilleries here include', 'Các nhà chưng cất trong vùng')}: {shownRegion.distilleries.slice(0, 4).join(', ')}</div>
@@ -243,7 +282,7 @@ export default function TetCaskMap({ casks, t, vn, region, onRegion, onPick }: {
                 className={`cm-row${hover === pl.name ? ' is-on' : ''}${region && region !== pl.region ? ' is-dim' : ''}`}
                 onPointerEnter={() => setHover(pl.name)} onPointerLeave={() => setHover(null)}
                 onFocus={() => setHover(pl.name)} onBlur={() => setHover(null)}
-                onClick={() => (onPick ? onPick(pl.casks[0].cask_ref) : onRegion(region === pl.region ? null : pl.region))}
+                onClick={() => { choose(pl.name, pl.region); if (onPick) onPick(pl.casks[0].cask_ref) }}
                 title={onPick ? t(`Open ${pl.casks[0].cask_ref} below`, `Mở ${pl.casks[0].cask_ref} bên dưới`) : undefined}>
                 <span className="cm-row-name">{pl.name}{!pl.pinned && <span className="cm-row-q"> ?</span>}</span>
                 <span className="cm-row-n">
@@ -255,8 +294,10 @@ export default function TetCaskMap({ casks, t, vn, region, onRegion, onPick }: {
           ))}
         </ul>
 
-        {region && (
-          <button className="cm-clear" onClick={() => onRegion(null)}>{t('Show every region', 'Xem tất cả các vùng')}</button>
+        {(region || picked) && (
+          <button className="cm-clear" onClick={clear}>
+            {t('Show everything', 'Xem tất cả')}
+          </button>
         )}
         {unplaced.length > 0 && (
           <p className="cm-dist" style={{ marginTop: 14 }}>{t('Also:', 'Ngoài ra:')} {unplaced.map(u => `${u} ${counts.get(u)!.all}`).join(' · ')}</p>
@@ -267,6 +308,15 @@ export default function TetCaskMap({ casks, t, vn, region, onRegion, onPick }: {
 }
 
 const CSS = `
+  .cm-card { position: relative; }
+  .cm-x { position: absolute; top: -6px; right: -6px; width: 34px; height: 34px;
+          display: flex; align-items: center; justify-content: center;
+          background: none; border: 1px solid rgba(229,212,194,.22); border-radius: 50%;
+          color: #E5D4C2; opacity: .65; cursor: pointer; font-size: 19px; line-height: 1;
+          -webkit-tap-highlight-color: transparent; }
+  .cm-x:hover, .cm-x:focus-visible { opacity: 1; border-color: rgba(229,212,194,.5); }
+  @media (pointer: coarse) { .cm-x { width: 44px; height: 44px; font-size: 22px; } }
+
 .cm { display: grid; grid-template-columns: minmax(0, 520px) minmax(0, 1fr); gap: clamp(24px, 5vw, 72px);
       align-items: center; margin-top: 64px; }
 .cm-map { display: block; width: 100%; height: auto; overflow: visible; }

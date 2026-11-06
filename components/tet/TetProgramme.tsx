@@ -174,6 +174,18 @@ export default function TetProgramme({
   /** Every cask carries Duncan Taylor's own quote. */
   const quotedPrices = casks.length > 0 && casks.every(c => typeof c.list_price_inc_vat_vnd === 'number')
 
+  const COUNT_EN = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+                    'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen',
+                    'Eighteen', 'Nineteen', 'Twenty']
+  const caskLede = (() => {
+    const raw = (vn ? caskCat?.standfirst_vn : caskCat?.standfirst_en) || ''
+    if (!raw || !casks.length) return raw
+    const word = COUNT_EN[casks.length] ?? String(casks.length)
+    return vn
+      ? raw.replace(/^\s*\d+/, String(casks.length))
+      : raw.replace(/^\s*(One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten|Eleven|Twelve|Thirteen|Fourteen|Fifteen|Sixteen|Seventeen|Eighteen|Nineteen|Twenty|\d+)\b/i, word)
+  })()
+
   const openCaskDiscount = () => setTarget({
     kind: 'cask',
     title: t('A member price for a cask', 'Giá thùng dành cho hội viên'),
@@ -362,7 +374,12 @@ export default function TetProgramme({
         </Reveal>
         {caskCat && (
           <Reveal step={1}>
-            <p className="pk-lede">{vn ? caskCat.standfirst_vn : caskCat.standfirst_en}</p>
+            {/* THE COUNT IS DERIVED, NOT COPY. tet_categories.standfirst said
+                "Fourteen single casks" while this board showed twenty — a
+                number typed into prose cannot follow the data. The leading
+                number is replaced with however many casks are on the page;
+                the rest of the sentence is left alone. */}
+            <p className="pk-lede">{caskLede}</p>
           </Reveal>
         )}
 
