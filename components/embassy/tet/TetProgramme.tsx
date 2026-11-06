@@ -5,6 +5,7 @@ import { useLang } from '@/lib/lang'
 import LangToggle from '../LangToggle'
 import { PublicPage, Masthead, SectionHead, Details, Cta, MONO } from '@/components/public/kit'
 import { GOLD, TSE_LOGO } from '../palette'
+import { VU_LE, vuLePct, vuLePrice, vuLeSaving } from '../discount'
 import { timeRemaining } from '@/lib/tet/queries'
 import { caskColourOf } from '@/lib/tet/colour'
 import { vnd, type BlendBoardRow, type CaskBoardRow, type Countdown, type TetCategory, type VolumeTier } from '@/lib/tet/types'
@@ -173,6 +174,22 @@ export default function TetProgramme({
   const blendProvisional = blends.some(b => b.is_placeholder)
   /** Every cask carries Duncan Taylor's own quote. */
   const quotedPrices = casks.length > 0 && casks.every(c => typeof c.list_price_inc_vat_vnd === 'number')
+
+  // The standfirst's leading number, replaced with the real count.
+  const COUNT_EN = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+                    'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen',
+                    'Eighteen', 'Nineteen', 'Twenty']
+  const caskLede = (() => {
+    const raw = (vn ? caskCat?.standfirst_vn : caskCat?.standfirst_en) || ''
+    if (!raw || !casks.length) return raw
+    const word = COUNT_EN[casks.length] ?? String(casks.length)
+    // English: swap the leading number-word. Vietnamese: swap a leading digit
+    // run. Anything that does not match is left exactly as written rather
+    // than mangled.
+    return vn
+      ? raw.replace(/^\s*\d+/, String(casks.length))
+      : raw.replace(/^\s*(One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten|Eleven|Twelve|Thirteen|Fourteen|Fifteen|Sixteen|Seventeen|Eighteen|Nineteen|Twenty|\d+)\b/i, word)
+  })()
 
   const openCaskDiscount = () => setTarget({
     kind: 'cask',
@@ -384,7 +401,27 @@ export default function TetProgramme({
         </Reveal>
         {caskCat && (
           <Reveal step={1}>
-            <p className="pk-lede">{vn ? caskCat.standfirst_vn : caskCat.standfirst_en}</p>
+            {/* THE COUNT IS DERIVED, NOT COPY. tet_categories.standfirst said
+                "Fourteen single casks" while the club's board showed twenty and
+                this one shows ten — it had been wrong on both pages for weeks,
+                because a number typed into prose cannot follow the data. The
+                leading number is replaced with however many casks are actually
+                on the page, and the rest of the sentence is left alone. */}
+            <p className="pk-lede">{caskLede}</p>
+            {/* SAID ONCE, LOUDLY, BEFORE ANY PRICE. Every figure below is
+                already discounted, so the banner explains what the buyer is
+                looking at rather than leaving them to work out why the number
+                differs from Duncan Taylor's sheet. */}
+            {quotedPrices && (
+              <div className="vl-banner">
+                <span className="vl-banner-pct">−{vuLePct}%</span>
+                <span className="vl-banner-txt">
+                  <strong>{vn ? VU_LE.name_vn : VU_LE.name_en}</strong>
+                  <span>{t('Every price below already includes your 10% discount.',
+                           'Tất cả giá bên dưới đã bao gồm chiết khấu 10% của bạn.')}</span>
+                </span>
+              </div>
+            )}
           </Reveal>
         )}
 
@@ -395,22 +432,26 @@ export default function TetProgramme({
             keep. The drawing and its styles go with it; nothing about the
             casks themselves changes. git remembers the markup if it returns. */}
 
-        {/* THE MEMBERS' PRICE (owner, 2026-09-24: "Get in touch for a member
-            cask price discount ... somewhere clear and big"). The prices on
-            this page are Duncan Taylor's list; what a member pays is a
-            conversation, and this is the invitation to have it. It is a
-            BUTTON, not a line of type: the enquiry it opens is the whole
-            point, and a member should not have to hunt for the way in. */}
+        {/* THE ENQUIRY. On the club's page this is the MEMBERS' price callout —
+            "the prices below are Duncan Taylor's list, members do not pay
+            them". Both halves of that are wrong here: this is an Embassy page,
+            not a club one, and the prices below are NOT Duncan Taylor's list
+            any more — they already carry the Vu Le & Buddies 10%. Leaving it
+            would have put two contradictory claims about the same figures one
+            above the other, which is exactly what the discount banner exists
+            to prevent.
+            The enquiry route itself is worth keeping, so the button stays and
+            only the claim changes. */}
         <Reveal step={2}>
           <button className="ck-member" onClick={openCaskDiscount}>
-            <span className="ck-member-eyebrow">{t('Members', 'Hội viên')}</span>
+            <span className="ck-member-eyebrow">{vn ? VU_LE.name_vn : VU_LE.name_en}</span>
             <span className="ck-member-line">
-              {t('Get in touch for a member cask price', 'Liên hệ để nhận giá thùng dành cho hội viên')}
+              {t('Ask about a cask', 'Hỏi về một thùng')}
             </span>
             <span className="ck-member-sub">
-              {t('The prices below are Duncan Taylor’s list. Members do not pay them.',
-                 'Giá bên dưới là giá niêm yết của Duncan Taylor. Hội viên không trả mức giá đó.')}
-              <span className="ck-member-go"> {t('Ask about a cask', 'Hỏi về một thùng')} →</span>
+              {t('Your 10% is already in every price below. Tell us which cask and we will take it from there.',
+                 'Chiết khấu 10% của bạn đã có trong mọi mức giá bên dưới. Hãy cho chúng tôi biết bạn quan tâm thùng nào.')}
+              <span className="ck-member-go"> {t('Enquire', 'Liên hệ')} →</span>
             </span>
           </button>
         </Reveal>
@@ -704,13 +745,27 @@ function CaskRow({ c, strength, vn, t, provisional, onChoose, open, onToggle, ma
               {/* The cask leads: it is the thing on offer. The bottle price is
                   what makes it comparable with the one below it. */}
               {caskTotal && (
-                <span style={{ display: 'block', fontSize: 17 }}>{vnd(caskTotal)}</span>
+                <>
+                  {/* VU LE & BUDDIES. The discounted figure LEADS, because it
+                      is what they will actually pay; the list price sits
+                      under it, struck through, so the saving is visible
+                      rather than asserted. */}
+                  <span style={{ display: 'block', fontSize: 17, color: GOLD }}>
+                    {vnd(vuLePrice(caskTotal))}
+                  </span>
+                  <span style={{ display: 'block', fontSize: 11, opacity: .5, textDecoration: 'line-through' }}>
+                    {vnd(caskTotal)}
+                  </span>
+                  <span className="vl-tag">
+                    {vn ? VU_LE.name_vn : VU_LE.name_en} · −{vuLePct}%
+                  </span>
+                </>
               )}
               <span style={{ display: 'block', fontSize: 10.5, opacity: .5, letterSpacing: '.04em' }}>
                 {t('the cask', 'cả thùng')}
               </span>
               <span style={{ display: 'block', marginTop: 6, fontSize: 13, opacity: .8 }}>
-                {vnd(unitAt ?? quoted)}
+                {vnd(vuLePrice(unitAt ?? quoted))}
                 <span style={{ display: 'block', fontSize: 10.5, opacity: .62, letterSpacing: '.04em' }}>
                   {strength === 'cask' || noSuchStrength
                     ? t('a bottle · Duncan Taylor list', 'mỗi chai · giá niêm yết Duncan Taylor')
@@ -836,6 +891,28 @@ function CaskRow({ c, strength, vn, t, provisional, onChoose, open, onToggle, ma
 }
 
 const CASK_CSS = `
+  /* VU LE & BUDDIES — the discount, said where a price is read. */
+  .vl-tag { display: inline-block; margin-top: 5px; padding: 2px 7px; border-radius: 3px;
+            background: rgba(210,179,127,.16); border: 1px solid rgba(210,179,127,.42);
+            color: #d2b37f; font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+            white-space: nowrap; line-height: 1.6; }
+
+  .vl-banner { display: flex; align-items: center; gap: 16px; margin-top: clamp(18px,3vh,28px);
+               padding: 16px 20px; border: 1px solid rgba(210,179,127,.45); border-radius: 10px;
+               background: rgba(210,179,127,.09); max-width: 620px; }
+  .vl-banner-pct { flex: 0 0 auto; font-family: 'Rampant Sans', Georgia, serif; font-size: 30px;
+                   line-height: 1; color: #d2b37f; font-variant-numeric: tabular-nums; }
+  .vl-banner-txt { display: flex; flex-direction: column; gap: 5px; }
+  .vl-banner-txt strong { font-family: 'Google Sans Code', monospace; font-size: 12px;
+                          letter-spacing: .14em; text-transform: uppercase; color: #d2b37f; font-weight: 600; }
+  .vl-banner-txt span { font-family: 'Google Sans Code', monospace; font-size: 12px;
+                        line-height: 1.6; color: #E5D4C2; opacity: .85; }
+  @media (max-width: 520px) {
+    .vl-banner { gap: 12px; padding: 14px 16px; }
+    .vl-banner-pct { font-size: 24px; }
+    .vl-banner-txt span { font-size: 11.5px; }
+  }
+
 .ck-compass { margin-top: 22px; max-width: 520px; }
 .ck-bar { display: flex; height: 3px; margin: -6px 0 12px; background: rgba(229,212,194,.06); border-radius: 2px; overflow: hidden; }
 .ck-bar span { display: block; height: 100%; transition: width .7s cubic-bezier(.16,.84,.44,1); }
