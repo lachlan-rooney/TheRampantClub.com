@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useLang } from '@/lib/lang'
 import { GOLD, GROUND, CREAM } from './palette'
+import { EmbassyQR, QR_TARGET } from './EmbassyQR'
 
 // THE MAILING LIST — the kiosk's second tab.
 //
@@ -35,7 +36,13 @@ const INTERESTS = [
 const SERIF = "'Rampant Sans', Georgia, serif"
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
 
-export default function EmbassySignup() {
+/**
+ * unlockTo — where to send them once they are in. Set on the phone flow (the
+ * QR lands on /embassy/welcome, the form opens the casks). Left unset on the
+ * kiosk tab, where the guest is already looking at the casks and must NOT be
+ * navigated away mid-service.
+ */
+export default function EmbassySignup({ unlockTo }: { unlockTo?: string }) {
   const { t, lang } = useLang()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -83,6 +90,14 @@ export default function EmbassySignup() {
       setDone({ returning: !!j.returning })
       // THE SCREEN MUST NOT HOLD THE LAST GUEST'S DETAILS.
       reset()
+      if (unlockTo) {
+        // The form was the key: go straight to what it unlocked. A full
+        // navigation, not a router push — the casks page is server-rendered
+        // behind the cookie the server has just set, and a client-side push
+        // would re-use the page it already has.
+        setTimeout(() => { window.location.href = unlockTo }, 900)
+        return
+      }
       setTimeout(() => setDone(null), 6000)
     } catch {
       setErr(t('Could not save that. Please tell a member of staff.', 'Không lưu được. Vui lòng báo nhân viên.'))
@@ -95,6 +110,9 @@ export default function EmbassySignup() {
         <style dangerouslySetInnerHTML={{ __html: CSS }} />
         <div className="es-done">
           <div className="es-done-t">{t('Thank you.', 'Cảm ơn bạn.')}</div>
+          {unlockTo && (
+            <p className="es-done-s">{t('Opening the casks…', 'Đang mở bảng thùng rượu…')}</p>
+          )}
           <p className="es-done-s">
             {done.returning
               ? t('You were already on the list — we have added your new interests.',
@@ -113,6 +131,21 @@ export default function EmbassySignup() {
   return (
     <div className="es-wrap">
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
+
+      {/* TOP RIGHT, ON THIS TAB ONLY. The language switch is inside the casks
+          panel, which is hidden when this one is showing, so the corner is
+          free and nothing collides. */}
+      {/* Only on the kiosk tab. On the phone the guest has already scanned it;
+          showing them the code again would be absurd. */}
+      {!unlockTo && (
+      <div className="es-qr">
+        <EmbassyQR size={104} colour={GOLD} />
+        <div className="es-qr-cap">
+          {t('Scan for the casks', 'Quét để xem thùng rượu')}
+          <span>{t('on your own phone', 'trên điện thoại của bạn')}</span>
+        </div>
+      </div>
+      )}
 
       <h2 className="es-h">{t('Keep in touch', 'Giữ liên lạc')}</h2>
       <p className="es-lede">
@@ -170,7 +203,24 @@ export default function EmbassySignup() {
 }
 
 const CSS = `
-  .es-wrap { max-width: 760px; margin: 0 auto; padding: clamp(20px,3vw,40px) clamp(18px,4vw,48px) clamp(40px,6vh,80px); }
+  .es-wrap { position: relative; max-width: 760px; margin: 0 auto;
+             padding: clamp(20px,3vw,40px) clamp(18px,4vw,48px) clamp(40px,6vh,80px); }
+
+  /* The QR, top right. Absolute within the panel rather than fixed to the
+     viewport: fixed would float over the form as a guest scrolled down to the
+     consent box and the Join button. */
+  .es-qr { position: absolute; top: clamp(16px,2.5vw,32px); right: clamp(18px,4vw,48px);
+           display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 2; }
+  .es-qr-cap { font-family: ${MONO}; font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+               color: rgba(229,212,194,.55); text-align: center; line-height: 1.5; }
+  .es-qr-cap span { display: block; opacity: .75; }
+
+  /* The heading gets out of the QR's way rather than running under it. */
+  .es-h, .es-lede { padding-right: 132px; }
+  @media (max-width: 620px) {
+    .es-qr { position: static; align-items: flex-start; margin-bottom: 22px; }
+    .es-h, .es-lede { padding-right: 0; }
+  }
   .es-h { font-family: ${SERIF}; font-size: clamp(30px,4.4vw,52px); color: ${CREAM};
           margin: 0; font-weight: 400; line-height: 1.05; }
   .es-lede { font-family: ${SERIF}; font-size: clamp(15px,1.5vw,19px); line-height: 1.6;

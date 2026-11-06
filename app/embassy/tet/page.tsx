@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 import type { Metadata } from 'next'
 import { TET_COOKIE, tetPassValid } from '@/lib/tet/gate'
 import { deviceOk } from '@/lib/kiosk/server'
+import { EMBASSY_PASS_COOKIE, embassyPassValid } from '@/lib/embassy/pass'
+import { redirect } from 'next/navigation'
 import { getCategories, getCaskBoard, getBlendBoard, getTiers, getCountdown, getCaskCompass } from '@/lib/tet/queries'
 import TetGate from '@/components/embassy/tet/TetGate'
 import EmbassyTabs from '@/components/embassy/EmbassyTabs'
@@ -52,25 +54,27 @@ export default async function EmbassyTetPage() {
   //
   // So an enrolled kiosk opens this page because of WHAT IT IS. Everyone else
   // — a laptop, a phone, a buyer following a link — still meets the Tết door.
-  // ── THE DOOR IS OFF ──────────────────────────────────────────────────────
-  // Owner's explicit instruction during the launch event, 2026-10-27:
-  // "disable it now". The gate was unusable on the shop iPad — the password
-  // field would not keep what was typed and the Enter button never enabled —
-  // and staff were standing in front of guests with no way in.
+  // ── WHO GETS IN ───────────────────────────────────────────────────────────
+  // Three ways, and none of them is a password:
   //
-  // ⚠ /embassy/tet IS NOW OPEN TO ANYONE WITH THE LINK.
+  //   1. AN ENROLLED KIOSK. The tablet on the floor opens the board because of
+  //      what it is. This is first on purpose: whatever else breaks tonight,
+  //      the showcase device must never be asked for anything.
+  //   2. A GUEST WHO FILLED THE FORM. They scanned the QR, left their details,
+  //      and /api/embassy/signup issued the pass. The form IS the key.
+  //   3. The Tết pass, if they already hold one from the club's own page.
   //
-  // What that does and does not expose: the page is noindex, and the board
-  // carries no cost or margin at all (lib/tet/types) — only Duncan Taylor
-  // Vietnam's own list prices, which are quoted to buyers anyway. The mailing
-  // list behind it is NOT affected: /api/embassy/signup keeps its own check.
-  //
-  // TO PUT IT BACK, restore these two lines:
-  //   const pass = (await cookies()).get(TET_COOKIE)?.value
-  //   if (!tetPassValid(pass) && !(await deviceOk())) return <TetGate />
-  //
-  // The club's own /tet is untouched and still gated.
-  void TET_COOKIE; void tetPassValid; void deviceOk; void TetGate; void cookies
+  // Anyone else is sent to /embassy/welcome, which is open to all and asks for
+  // a name and an email. NOBODY CAN BE LOCKED OUT — the worst case is that a
+  // guest types their name. That is the whole point: the shop launch was lost
+  // to a password door that would not accept a correct password, and this gate
+  // is built so there is nothing to mistype and nothing to be told.
+  const jar = await cookies()
+  const onKiosk = await deviceOk()
+  const hasPass = embassyPassValid(jar.get(EMBASSY_PASS_COOKIE)?.value)
+  const hasTet = tetPassValid(jar.get(TET_COOKIE)?.value)
+  if (!onKiosk && !hasPass && !hasTet) redirect('/embassy/welcome')
+  void TetGate
 
   // NEVER A CACHED BOARD. supabase-js calls fetch, and Next caches fetch — so a
   // server-rendered page will happily serve yesterday's availability. Caught on

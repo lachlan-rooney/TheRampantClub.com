@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 import { TET_COOKIE, tetPassValid } from '@/lib/tet/gate'
 import { deviceOk, DEVICE_COOKIE, svc as kioskSvc } from '@/lib/kiosk/server'
+import { EMBASSY_PASS_COOKIE, embassyPassOpts, mintEmbassyPass } from '@/lib/embassy/pass'
 
 // THE SPIRITS EMBASSY MAILING LIST — the only way a row reaches the table.
 //
@@ -44,11 +45,19 @@ const svc = () => createClient(
 
 export async function POST(req: Request) {
   const jar = await cookies()
-  // Same two doors as the page: an enrolled kiosk, or the Tết pass.
   const onKiosk = await deviceOk()
-  if (!tetPassValid(jar.get(TET_COOKIE)?.value) && !onKiosk) {
-    return NextResponse.json({ error: 'This page is not open.' }, { status: 403 })
-  }
+
+  // ── DELIBERATELY OPEN ────────────────────────────────────────────────────
+  // This used to require the Tết pass or an enrolled kiosk. That was right
+  // when the form only ever appeared on the tablet; it is wrong now that the
+  // form IS the front door. A guest scanning the QR on their own phone holds
+  // neither, so every submission 403'd — the gate would have rejected exactly
+  // the people it exists to capture.
+  //
+  // What protects it instead: the hourly ceiling below, the consent
+  // requirement, and the fact that the only thing on offer is being added to
+  // a mailing list. Nothing here reads data back.
+  void TET_COOKIE; void tetPassValid
 
   // WHICH TABLET TOOK IT. Worth knowing which floor a sign-up came from, and
   // the device is the only thing that can say so truthfully — a label posted
@@ -138,5 +147,11 @@ export async function POST(req: Request) {
     )
   }
 
-  return NextResponse.json({ ok: true, returning: !!existing, interests: merged })
+  // THE FORM IS THE KEY. Signing up unlocks the cask board, so a guest who
+  // scanned the QR goes straight there. Set server-side on success only — a
+  // browser cannot mint this for itself.
+  // `res` above is the upsert result — this is the HTTP reply.
+  const reply = NextResponse.json({ ok: true, returning: !!existing, interests: merged, unlocked: true })
+  reply.cookies.set(EMBASSY_PASS_COOKIE, mintEmbassyPass(), embassyPassOpts)
+  return reply
 }
