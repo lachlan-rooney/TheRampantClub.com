@@ -28,7 +28,7 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
   )
 
   const { data: prospect } = await sb.from('prospects')
-    .select('prospect_id, full_name, nickname, converted_member_no, stage')
+    .select('prospect_id, full_name, nickname, converted_member_no, stage, source_channel')
     .eq('prospect_id', id)
     .maybeSingle()
   if (!prospect) return NextResponse.json({ error: 'prospect not found' }, { status: 404 })
@@ -48,6 +48,11 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
     tier:      'Pioneer',          // placeholder; real tier set at conversion
     status:    'Provisional',
     join_date: null,
+    // ACQUISITION SOURCE TRAVELS WITH THEM. prospects.source_channel is well
+    // kept (185 of 220) and was being dropped here, so no analysis could ever
+    // ask which channel produced the members the club actually has. It cannot
+    // be reconstructed afterwards once the prospect is archived.
+    source_channel: prospect.source_channel ?? null,
   })
   if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 })
 
