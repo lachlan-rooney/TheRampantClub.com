@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useLang } from '@/lib/lang'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE HOMEPAGE HERO — set to the /studio benchmark, with the house's own ink.
@@ -24,8 +25,11 @@ const INK_OBJECTS: { src: string; w: string; top: string; left: string; rot: num
 ]
 
 export default function HomeHero({ onEthos }: { onEthos: () => void }) {
+  const { t } = useLang()
   const [entered, setEntered] = useState(false)
-  useEffect(() => { const t = setTimeout(() => setEntered(true), 60); return () => clearTimeout(t) }, [])
+  // `id`, not `t` — the translator is called t in every component in the house
+  // and a shadowed one here would read as a bug every time somebody opened it.
+  useEffect(() => { const id = setTimeout(() => setEntered(true), 60); return () => clearTimeout(id) }, [])
 
   return (
     <section className={`hh ${entered ? 'is-in' : ''}`}>
@@ -78,14 +82,18 @@ export default function HomeHero({ onEthos }: { onEthos: () => void }) {
         <div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/whisky-girl-opt.png" alt="" aria-hidden="true" className="hh-girl hh-rise" />
-          <h1 className="hh-title hh-rise" style={{ animationDelay: '.08s' }}>A Members&rsquo;<br />Club</h1>
-          <div className="hh-sub hh-rise" style={{ animationDelay: '.16s' }}>For kindred spirits</div>
+          <h1 className="hh-title hh-rise" style={{ animationDelay: '.08s' }}>
+            {/* Two lines in both languages, so the break lands in the same
+                place and the hero keeps its shape when the switch moves. */}
+            {t('A Members’', 'Câu Lạc Bộ')}<br />{t('Club', 'Hội Viên')}
+          </h1>
+          <div className="hh-sub hh-rise" style={{ animationDelay: '.16s' }}>{t('For kindred spirits', 'Dành cho những tâm hồn đồng điệu')}</div>
           <p className="hh-lede hh-rise" style={{ animationDelay: '.24s' }}>
-            Scottish heritage meets Vietnamese soul in a five-storey townhouse in the heart of Sài Gòn.
-            Whisky, art, conversation, and community &mdash; sustained by its members, not for profit.
+            {t('Scottish heritage meets Vietnamese soul in a five-storey townhouse in the heart of Sài Gòn. Whisky, art, conversation, and community — sustained by its members, not for profit.',
+               'Di sản Scotland hoà cùng tâm hồn Việt trong một toà nhà năm tầng giữa lòng Sài Gòn. Whisky, nghệ thuật, những cuộc trò chuyện và một cộng đồng — do chính hội viên gìn giữ, không vì lợi nhuận.')}
           </p>
           <button type="button" className="hh-cta hh-rise" style={{ animationDelay: '.32s' }} onClick={onEthos}>
-            Club Ethos <span>→</span>
+            {t('Club Ethos', 'Tinh Thần Câu Lạc Bộ')} <span>→</span>
           </button>
         </div>
 

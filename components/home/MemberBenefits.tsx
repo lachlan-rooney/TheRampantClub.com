@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useLang } from '@/lib/lang'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MEMBER BENEFITS — eight things, each with an object from the house's ink.
@@ -15,28 +16,42 @@ import { useEffect, useRef, useState } from 'react'
 // `opens` holds the year; the page shows "Opening 2027" only while it is
 // still ahead, then says nothing.
 
-const BENEFITS: { title: string; desc: string; ink: string; opens?: number }[] = [
-  { title: 'The Rampant Room', ink: 'butler-tray',
-    desc: 'Hundreds of open bottles in a world-class bottle-share room. Pour for yourself, stay as long as you like.' },
-  { title: 'Club Picks', ink: 'lion-bottle',
-    desc: 'Taste, discuss, and select bespoke casks to be bottled exclusively under The Rampant Club label.' },
-  { title: 'Blending Workshops', ink: 'glass-botanical',
-    desc: 'Private blending sessions where members learn to blend whisky and make their own small bottlings.' },
-  { title: 'Our Scottish Castle', ink: 'lion-lounging', opens: 2027,
-    desc: 'Members enjoy exclusive discounts on accommodation, fishing, shooting, golf, and dining at our sister castle in the Scottish Highlands, which will also be home to an exclusive Rampant Club satellite outpost.' },
-  { title: 'The Rampant Club Apartment', ink: 'key',
-    desc: 'Complimentary stays in Huntly, Scotland, furnished with cask samples for members to enjoy. Perfect for those visiting Speyside.' },
-  { title: 'Reciprocal Club Access', ink: 'newspaper',
-    desc: 'Bespoke access to a vetted global network of premier private clubs in London, New York, Tokyo, and Singapore.' },
-  { title: 'Luxury Transport', ink: 'sunglasses',
-    desc: 'Complimentary GF VIP chauffeur service, plus airport fast-track and private car transfer for out-of-town members.' },
-  { title: 'Events & Networking', ink: 'tee-glass',
-    desc: 'Highland Games, golf tournaments, round table events, business brunches, and private dinners.' },
+// BILINGUAL BY DEFAULT. The copy used to be English only, with a Vietnamese
+// eyebrow above it — which is how a switch above an English page ends up doing
+// nothing. Both languages now live beside each other in the table, so adding a
+// ninth benefit without its Vietnamese is a visible omission rather than a
+// silent one.
+const BENEFITS: { title: string; title_vn: string; desc: string; desc_vn: string; ink: string; opens?: number }[] = [
+  { title: 'The Rampant Room', title_vn: 'Phòng Rampant', ink: 'butler-tray',
+    desc: 'Hundreds of open bottles in a world-class bottle-share room. Pour for yourself, stay as long as you like.',
+    desc_vn: 'Hàng trăm chai đã khui trong một phòng chia sẻ whisky đẳng cấp thế giới. Tự tay rót cho mình, ở lại bao lâu cũng được.' },
+  { title: 'Club Picks', title_vn: 'Thùng Rượu Của Câu Lạc Bộ', ink: 'lion-bottle',
+    desc: 'Taste, discuss, and select bespoke casks to be bottled exclusively under The Rampant Club label.',
+    desc_vn: 'Cùng nếm, cùng bàn và cùng chọn những thùng rượu riêng, đóng chai độc quyền dưới nhãn The Rampant Club.' },
+  { title: 'Blending Workshops', title_vn: 'Lớp Phối Trộn Whisky', ink: 'glass-botanical',
+    desc: 'Private blending sessions where members learn to blend whisky and make their own small bottlings.',
+    desc_vn: 'Những buổi phối trộn riêng tư, nơi hội viên học cách pha whisky và tự tay làm ra mẻ đóng chai nhỏ của mình.' },
+  { title: 'Our Scottish Castle', title_vn: 'Lâu Đài Scotland', ink: 'lion-lounging', opens: 2027,
+    desc: 'Members enjoy exclusive discounts on accommodation, fishing, shooting, golf, and dining at our sister castle in the Scottish Highlands, which will also be home to an exclusive Rampant Club satellite outpost.',
+    desc_vn: 'Hội viên được ưu đãi riêng về lưu trú, câu cá, bắn súng, golf và ăn uống tại lâu đài chị em của chúng tôi ở vùng Cao nguyên Scotland — nơi cũng sẽ là một tiền đồn Rampant Club dành riêng cho hội viên.' },
+  { title: 'The Rampant Club Apartment', title_vn: 'Căn Hộ Rampant Club', ink: 'key',
+    desc: 'Complimentary stays in Huntly, Scotland, furnished with cask samples for members to enjoy. Perfect for those visiting Speyside.',
+    desc_vn: 'Lưu trú miễn phí tại Huntly, Scotland, với sẵn các mẫu rượu lấy từ thùng để hội viên thưởng thức. Lý tưởng cho những ai ghé Speyside.' },
+  { title: 'Reciprocal Club Access', title_vn: 'Quyền Vào Các Câu Lạc Bộ Đối Ứng', ink: 'newspaper',
+    desc: 'Bespoke access to a vetted global network of premier private clubs in London, New York, Tokyo, and Singapore.',
+    desc_vn: 'Quyền vào riêng một mạng lưới câu lạc bộ tư nhân hàng đầu đã được tuyển chọn tại London, New York, Tokyo và Singapore.' },
+  { title: 'Luxury Transport', title_vn: 'Di Chuyển Hạng Sang', ink: 'sunglasses',
+    desc: 'Complimentary GF VIP chauffeur service, plus airport fast-track and private car transfer for out-of-town members.',
+    desc_vn: 'Dịch vụ tài xế riêng GF VIP miễn phí, kèm lối ưu tiên tại sân bay và xe riêng đưa đón cho hội viên từ nơi khác đến.' },
+  { title: 'Events & Networking', title_vn: 'Sự Kiện & Kết Nối', ink: 'tee-glass',
+    desc: 'Highland Games, golf tournaments, round table events, business brunches, and private dinners.',
+    desc_vn: 'Highland Games, các giải golf, toạ đàm bàn tròn, tiệc trưa doanh nhân và những bữa tối riêng tư.' },
 ]
 
 const thisYear = () => Number(new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 4))
 
 export default function MemberBenefits() {
+  const { t, lang } = useLang()
   const ref = useRef<HTMLElement>(null)
   const [visible, setVisible] = useState(false)
   const [year, setYear] = useState<number | null>(null)
@@ -119,8 +134,10 @@ export default function MemberBenefits() {
         <img src="/images/member-card-opt.webp" alt="" />
       </div>
 
-      <div className="mb-eyebrow mb-rise" style={{ animationDelay: '.05s' }}>Quyền Lợi Thành Viên</div>
-      <h2 className="mb-title mb-rise" style={{ animationDelay: '.1s' }}>Member Benefits</h2>
+      {/* The eyebrow carries the OTHER language, so the pair reads as one
+          heading either way round rather than saying the same thing twice. */}
+      <div className="mb-eyebrow mb-rise" style={{ animationDelay: '.05s' }}>{t('Quyền Lợi Thành Viên', 'Member Benefits')}</div>
+      <h2 className="mb-title mb-rise" style={{ animationDelay: '.1s' }}>{t('Member Benefits', 'Quyền Lợi Thành Viên')}</h2>
 
       <div className="mb-grid">
         {BENEFITS.map((b, i) => (
@@ -129,9 +146,9 @@ export default function MemberBenefits() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={`/images/ink/${b.ink}.webp`} alt="" loading="lazy" />
             </div>
-            <div className="mb-name">{b.title}</div>
-            {b.opens && year !== null && year < b.opens && <div className="mb-when">Opening {b.opens}</div>}
-            <p className="mb-desc">{b.desc}</p>
+            <div className="mb-name">{lang === 'vn' ? b.title_vn : b.title}</div>
+            {b.opens && year !== null && year < b.opens && <div className="mb-when">{t('Opening', 'Khai trương')} {b.opens}</div>}
+            <p className="mb-desc">{lang === 'vn' ? b.desc_vn : b.desc}</p>
           </div>
         ))}
       </div>

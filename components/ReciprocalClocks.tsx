@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useLang } from '@/lib/lang'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // A WORLD BEYOND SÀI GÒN — the lobby wall of clocks.
@@ -106,6 +107,7 @@ function Clock({ i, size, night, iata, target }: {
 }
 
 export default function ReciprocalClocks() {
+  const { t } = useLang()
   const root = useRef<HTMLElement>(null)
   const hands = useRef<Hands[]>(CITIES.map(() => ({ h: null, m: null, s: null })))
   const [visible, setVisible] = useState(false)
@@ -195,7 +197,7 @@ export default function ReciprocalClocks() {
   const sizeOf = (isHome: boolean) => narrow ? (isHome ? 90 : 76) : (isHome ? 96 : 72)
 
   return (
-    <section ref={root} className={`rc ${visible ? 'is-in' : ''}`} aria-label="Reciprocal clubs — local times">
+    <section ref={root} className={`rc ${visible ? 'is-in' : ''}`} aria-label={t('Reciprocal clubs — local times', 'Câu lạc bộ đối ứng — giờ địa phương')}>
       <style dangerouslySetInnerHTML={{ __html: `
         .rc { background: ${INK}; color: ${CREAM}; overflow: hidden; }
         .rc-inner { max-width: 1180px; margin: 0 auto; padding: 48px 24px 40px; }
@@ -240,15 +242,16 @@ export default function ReciprocalClocks() {
       <div className="rc-inner">
         <div className="rc-rise" style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '.22em', textTransform: 'uppercase',
                                            color: GOLD, animationDelay: '.05s' }}>
-          Câu Lạc Bộ Đối Ứng · Reciprocal Clubs
+          {t('Câu Lạc Bộ Đối Ứng · Reciprocal Clubs', 'Reciprocal Clubs · Câu Lạc Bộ Đối Ứng')}
         </div>
         <h2 className="rc-rise" style={{ fontFamily: SERIF, fontWeight: 400, fontSize: 'clamp(26px, 3.4vw, 42px)',
                                           lineHeight: .98, margin: '16px 0 0', animationDelay: '.1s' }}>
-          A World Beyond Sài Gòn
+          {t('A World Beyond Sài Gòn', 'Một Thế Giới Ngoài Sài Gòn')}
         </h2>
         <p className="rc-rise" style={{ fontFamily: MONO, fontSize: 12.5, lineHeight: 1.7, maxWidth: 540, margin: '8px 0 0',
                                          opacity: .8, animationDelay: '.16s' }}>
-          Bespoke reciprocal access to a vetted network of premier private clubs.
+          {t('Bespoke reciprocal access to a vetted network of premier private clubs.',
+             'Quyền vào riêng một mạng lưới câu lạc bộ tư nhân hàng đầu đã được tuyển chọn.')}
         </p>
 
         <div ref={wall} className="rc-wall">

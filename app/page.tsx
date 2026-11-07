@@ -14,6 +14,7 @@ import EthosLetter from '@/components/home/EthosLetter'
 import Spotlight from '@/components/Spotlight'
 import useEasterEggs from '@/hooks/useEasterEggs'
 import Link from 'next/link'
+import { useLang } from '@/lib/lang'
 
 // ═══════════════════════════════════════════════════════════════════
 // THE RAMPANT CLUB — Homepage
@@ -76,20 +77,26 @@ const TIERS = [
   {
     name: 'The Legacy Membership',
     short: 'Legacy',
+    short_vn: 'Legacy',
     price: 'US$5,000',
     desc: 'For established individuals shaping their communities. Full use of the Club and its shared resources, balanced through mutual consideration rather than formal limits.',
+    desc_vn: 'Dành cho những cá nhân đã có vị thế, đang góp phần định hình cộng đồng của mình. Toàn quyền sử dụng câu lạc bộ và các tài nguyên chung, được giữ cân bằng bằng sự tôn trọng lẫn nhau thay vì những giới hạn cứng nhắc.',
   },
   {
     name: 'The Pioneer Membership',
     short: 'Pioneer',
+    short_vn: 'Pioneer',
     price: 'US$3,000',
     desc: 'For emerging leaders and rising creatives under 33. Full access to all areas, events, and member privileges at a preferential rate designed to nurture the next generation.',
+    desc_vn: 'Dành cho những nhà lãnh đạo mới và người làm sáng tạo dưới 33 tuổi. Toàn quyền vào mọi không gian, sự kiện và quyền lợi hội viên với mức ưu đãi dành riêng để nuôi dưỡng thế hệ tiếp theo.',
   },
   {
     name: 'The Corporate Membership',
     short: 'Corporate',
+    short_vn: 'Corporate',
     price: 'US$8,000',
     desc: 'Three nominated representative seats per company. Access to all spaces, events, and networking opportunities \u2014 ideal for hosting, relationship-building, and representation.',
+    desc_vn: 'Ba suất đại diện được chỉ định cho mỗi công ty. Quyền vào mọi không gian, sự kiện và cơ hội kết nối — lý tưởng để tiếp khách, xây dựng quan hệ và đại diện cho doanh nghiệp.',
   },
 ]
 
@@ -171,6 +178,7 @@ function GolfFilm() {
 
 // ─── Main Page ───────────────────────────────────────────────────
 export default function HomePage() {
+  const { t, lang } = useLang()
   const easterEggs = useEasterEggs()
   const [showGrid, setShowGrid] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
@@ -615,10 +623,10 @@ export default function HomePage() {
           <div className="trc-cup-head">
             <div>
               <div className="trc-tiers-eyebrow">
-                {['Ngày Hội Golf', cupTense, dateRange(CUP.opens, CUP.closes)].filter(Boolean).join('  ·  ')}
+                {[t('Ngày Hội Golf', 'Golf Day'), cupTense, dateRange(CUP.opens, CUP.closes)].filter(Boolean).join('  ·  ')}
               </div>
-              <h2 className="trc-tiers-title">The Rampant Cup</h2>
-              <Link href="/sports#golf" className="trc-cta">The Cup at The Sports Club <span className="trc-go">→</span></Link>
+              <h2 className="trc-tiers-title">{t('The Rampant Cup', 'Cúp Rampant')}</h2>
+              <Link href="/sports#golf" className="trc-cta">{t('The Cup at The Sports Club', 'Cúp tại Câu Lạc Bộ Thể Thao')} <span className="trc-go">→</span></Link>
             </div>
             <div className="trc-cup-ink" aria-hidden="true">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -678,10 +686,10 @@ export default function HomePage() {
                   without whispering it first. */}
               <h2 className="trc-tet-title">Tết Đinh Mùi<br />2027</h2>
               <p className="trc-tet-lede">
-                Whisky for the companies you thank at Tết — three blends in a sleeve
-                carrying your name, or a single cask with every bottle numbered.
+                {t('Whisky for the companies you thank at Tết — three blends in a sleeve carrying your name, or a single cask with every bottle numbered.',
+                   'Whisky để tri ân đối tác dịp Tết — ba loại rượu phối trong hộp mang tên doanh nghiệp bạn, hoặc một thùng rượu riêng với từng chai được đánh số.')}
               </p>
-              <Link href="/tet" className="trc-cta">The Tết programme <span className="trc-go">→</span></Link>
+              <Link href="/tet" className="trc-cta">{t('The Tết programme', 'Chương trình Tết')} <span className="trc-go">→</span></Link>
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/images/tet/dt-crest.png" width={900} height={913}
@@ -726,15 +734,16 @@ export default function HomePage() {
         <div ref={tiersSec.ref} id="tiers" className={`trc-tiers ${tiersSec.visible ? 'is-in' : ''}`}>
           <div className="trc-tiers-head">
             <div>
-              <div className="trc-tiers-eyebrow trc-tiers-rise">Membership · Thành Viên</div>
-              <h2 className="trc-tiers-title trc-tiers-rise" style={{ animationDelay: '.06s' }}>By Invitation</h2>
+              <div className="trc-tiers-eyebrow trc-tiers-rise">{t('Membership · Thành Viên', 'Thành Viên · Membership')}</div>
+              <h2 className="trc-tiers-title trc-tiers-rise" style={{ animationDelay: '.06s' }}>{t('By Invitation', 'Theo Lời Mời')}</h2>
               <p className="trc-tiers-lede trc-tiers-rise" style={{ animationDelay: '.14s' }}>
-                Membership is by invitation or referral only. We do not currently accept applications.
+                {t('Membership is by invitation or referral only. We do not currently accept applications.',
+                   'Hội viên chỉ nhận theo lời mời hoặc giới thiệu. Hiện chúng tôi không nhận đơn đăng ký.')}
               </p>
               {/* Somewhere to go from here: the club's own membership address,
                   the one the footer already carries. */}
               <a href="mailto:membership@therampantclub.com" className="trc-cta trc-tiers-rise" style={{ animationDelay: '.2s' }}>
-                Enquiries · membership@therampantclub.com <span className="trc-go">→</span>
+                {t('Enquiries', 'Liên hệ')} · membership@therampantclub.com <span className="trc-go">→</span>
               </a>
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -749,14 +758,14 @@ export default function HomePage() {
                   <span className="trc-tier-no">{String(i + 1).padStart(2, '0')}</span>
                   <span className="trc-tier-line" />
                 </div>
-                <div className="trc-tier-name">{tier.short}</div>
+                <div className="trc-tier-name">{lang === 'vn' ? tier.short_vn : tier.short}</div>
                 {/* Under the title, as asked. Set in the mono face rather than
                     the display serif so it reads as a fact about the tier and
                     not as a second, competing heading. */}
                 <div className="trc-tier-price">
-                  {tier.price}<span className="trc-tier-per">a year</span>
+                  {tier.price}<span className="trc-tier-per">{t('a year', 'mỗi năm')}</span>
                 </div>
-                <p className="trc-tier-desc">{tier.desc}</p>
+                <p className="trc-tier-desc">{lang === 'vn' ? tier.desc_vn : tier.desc}</p>
               </div>
             ))}
           </div>

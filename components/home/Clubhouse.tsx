@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useLang } from '@/lib/lang'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE CLUBHOUSE — the building, floor by floor, and every floor opens.
@@ -25,22 +26,31 @@ import Link from 'next/link'
 // The bottom floor is Floor B — the entrance at 74A/2 Hai Bà Trưng. It is
 // drawn and numbered, but has no page of its own, so it does not open.
 
+// `vn` is the floor's Vietnamese name, shown as the second line either way
+// round; `desc_vn` is the Vietnamese of what happens there. Both sit in the
+// table so a new floor cannot ship half-translated without it being obvious.
 const FLOORS = [
   { num: '05', id: 'lab',          name: 'Source & Origin Lab', vn: 'Phòng Thí Nghiệm',
-    desc: 'Our in-house culinary innovation lab, bringing cutting-edge beverage experiences exclusively to members.' },
+    desc: 'Our in-house culinary innovation lab, bringing cutting-edge beverage experiences exclusively to members.',
+    desc_vn: 'Phòng thí nghiệm sáng tạo ẩm thực của riêng câu lạc bộ, mang những trải nghiệm thức uống tiên phong dành riêng cho hội viên.' },
   { num: '04', id: 'rampant-room', name: 'The Rampant Room',    vn: 'Phòng Rampant',
-    desc: 'A world-class bottle-share room of global whiskies, enjoyed at your leisure with guests and fellow members. Private lockers available.' },
+    desc: 'A world-class bottle-share room of global whiskies, enjoyed at your leisure with guests and fellow members. Private lockers available.',
+    desc_vn: 'Phòng chia sẻ whisky đẳng cấp thế giới với rượu từ khắp nơi, thưởng thức thong thả cùng khách mời và các hội viên khác. Có tủ riêng cho hội viên.' },
   { num: '03', id: 'dining',       name: 'The Dining Room',     vn: 'Phòng Ăn Riêng',
-    desc: 'The ultimate discreet city-centre room for meetings, birthday soirées, private dinners, and intimate gatherings.' },
+    desc: 'The ultimate discreet city-centre room for meetings, birthday soirées, private dinners, and intimate gatherings.',
+    desc_vn: 'Không gian kín đáo bậc nhất giữa trung tâm thành phố cho các cuộc họp, tiệc sinh nhật, bữa tối riêng và những buổi gặp thân mật.' },
   { num: '02', id: 'studio',       name: 'The Studio',          vn: 'Phòng Nghệ Thuật',
-    desc: 'A quarterly rotating, curated sensory art space — interact with, touch, hear, taste, and smell immersive installations.' },
+    desc: 'A quarterly rotating, curated sensory art space — interact with, touch, hear, taste, and smell immersive installations.',
+    desc_vn: 'Không gian nghệ thuật đa cảm giác, được tuyển chọn và thay mới mỗi quý — chạm, nghe, nếm và ngửi những tác phẩm sắp đặt bao trùm.' },
   { num: '01', id: 'library-bar',  name: 'The Library Bar',     vn: 'Quầy Bar Thư Viện',
-    desc: 'Your private cocktail bar. Seasonal cocktails, vintage spirits, curated books and games, with resident musicians and DJs.' },
+    desc: 'Your private cocktail bar. Seasonal cocktails, vintage spirits, curated books and games, with resident musicians and DJs.',
+    desc_vn: 'Quầy cocktail riêng của bạn. Cocktail theo mùa, rượu lâu năm, sách và trò chơi được tuyển chọn, cùng nhạc sĩ và DJ thường trú.' },
 ]
 const small = (id: string) => `/images/clubhouse/${id}-1300.webp`
 const large = (id: string) => `/images/clubhouse/${id}-2530.webp`
 
 export default function Clubhouse() {
+  const { t, lang } = useLang()
   const ref = useRef<HTMLElement>(null)
   const [visible, setVisible] = useState(false)
   const [hover, setHover] = useState<string | null>(null)
@@ -187,9 +197,9 @@ export default function Clubhouse() {
         }
       ` }} />
 
-      <h2 className="ch-title ch-rise" style={{ animationDelay: '.1s' }}>Hai Bà Trưng Clubhouse</h2>
+      <h2 className="ch-title ch-rise" style={{ animationDelay: '.1s' }}>{t('Hai Bà Trưng Clubhouse', 'Toà Nhà Hai Bà Trưng')}</h2>
       <Link href="/spaces" className="ch-cta ch-rise" style={{ animationDelay: '.16s' }}>Explore the spaces <span>→</span></Link>
-      <p className="ch-hint ch-rise" style={{ animationDelay: '.2s' }}>Tap a floor to look inside.</p>
+      <p className="ch-hint ch-rise" style={{ animationDelay: '.2s' }}>{t('Tap a floor to look inside.', 'Chạm vào một tầng để xem bên trong.')}</p>
 
       <div className={`ch-building ${focus ? 'has-focus' : ''}`} onMouseLeave={() => setHover(null)}>
         {FLOORS.map((f, i) => {
@@ -200,7 +210,7 @@ export default function Clubhouse() {
           return (
             <div key={f.id} ref={el => { rows.current[f.id] = el }} className={`ch-row ${isOpen ? 'is-open' : ''}`}>
               <button type="button" className={`ch-strip ${on ? 'is-on' : ''}`} style={{ transitionDelay: delay }}
-                      aria-expanded={isOpen} aria-controls={`ch-more-${f.id}`} aria-label={`${f.name} — look inside`}
+                      aria-expanded={isOpen} aria-controls={`ch-more-${f.id}`} aria-label={`${lang === 'vn' ? f.vn : f.name} — ${t('look inside', 'xem bên trong')}`}
                       onMouseEnter={() => setHover(f.id)} onFocus={() => setHover(f.id)} onBlur={() => setHover(null)}
                       onClick={() => toggle(f.id)}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -211,16 +221,18 @@ export default function Clubhouse() {
                 <button type="button" className="ch-head" tabIndex={-1} aria-hidden="true" onClick={() => toggle(f.id)}>
                   <div className="ch-no">{f.num}</div>
                   <div>
-                    <div className="ch-name">{f.name}</div>
-                    <div className="ch-vn">{f.vn}</div>
-                    <div className="ch-look">Step inside →</div>
+                    {/* The floor keeps both names, in the chosen order — the
+                        same rule the public nav rows follow. */}
+                    <div className="ch-name">{lang === 'vn' ? f.vn : f.name}</div>
+                    <div className="ch-vn">{lang === 'vn' ? f.name : f.vn}</div>
+                    <div className="ch-look">{t('Step inside', 'Vào xem')} →</div>
                   </div>
                 </button>
                 <div className="ch-more" id={`ch-more-${f.id}`} aria-hidden={!isOpen}>
                   <div>
-                    <p className="ch-desc">{f.desc}</p>
+                    <p className="ch-desc">{lang === 'vn' ? f.desc_vn : f.desc}</p>
                     <div className="ch-foot">
-                      <Link href={`/spaces#${f.id}`} className="ch-step" tabIndex={isOpen ? 0 : -1}>Step inside <span className="ch-go">→</span></Link>
+                      <Link href={`/spaces#${f.id}`} className="ch-step" tabIndex={isOpen ? 0 : -1}>{t('Step inside', 'Vào xem')} <span className="ch-go">→</span></Link>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={`/images/ink/floor-${f.id}.webp`} alt="" aria-hidden="true" className="ch-lion" />
                     </div>

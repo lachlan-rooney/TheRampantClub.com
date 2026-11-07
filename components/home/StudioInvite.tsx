@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useLang } from '@/lib/lang'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE STUDIO — an invitation, not a section.
@@ -20,6 +21,7 @@ const INK  = '#052E20'
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
 
 export default function StudioInvite() {
+  const { t } = useLang()
   const ref = useRef<HTMLAnchorElement>(null)
   const [visible, setVisible] = useState(false)
   useEffect(() => {
@@ -64,16 +66,16 @@ export default function StudioInvite() {
       ` }} />
       <div className="si-inner">
         <div className="si-copy">
-          <div className="si-eyebrow si-rise">Floor 2 · Phòng Studio</div>
+          <div className="si-eyebrow si-rise">{t('Floor 2 · Phòng Studio', 'Tầng 2 · The Studio')}</div>
           {/* The Studio's own wordmark rather than the words set in the club's
               face — it is a mark, and the room has one. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/studio/studio-wordmark.png" alt="The Studio" className="si-mark si-rise" style={{ animationDelay: '.06s' }} />
           <p className="si-lede si-rise" style={{ animationDelay: '.14s' }}>
-            A quarterly rotating art space. Each exhibition is made with the artist,
-            and each one leaves a whisky behind.
+            {t('A quarterly rotating art space. Each exhibition is made with the artist, and each one leaves a whisky behind.',
+               'Không gian nghệ thuật thay mới mỗi quý. Mỗi triển lãm được làm cùng nghệ sĩ, và mỗi triển lãm để lại một chai whisky.')}
           </p>
-          <span className="si-cta si-rise" style={{ animationDelay: '.22s' }}>Step inside <span>→</span></span>
+          <span className="si-cta si-rise" style={{ animationDelay: '.22s' }}>{t('Step inside', 'Vào xem')} <span>→</span></span>
         </div>
         <div className="si-lion" aria-hidden="true">
           {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -115,8 +115,16 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
   // the portal had no switch: both readers were served at once. Now the switch
   // is right there at the top of this menu, so the second line repeats what the
   // member has just chosen not to read, and the menu is twice as tall for it.
-  // `lines()[0]` is the chosen language; [1] is kept for the PUBLIC nav, which
-  // has no switch and still shows both.
+  // `lines()[0]` is the chosen language; [1] is the other one.
+  //
+  // THE PUBLIC NAV SHOWS BOTH, IN THE CHOSEN ORDER. It used to hard-code
+  // English above Vietnamese on every row, from a time when the public menu
+  // had no switch. A switch was later added at the top of this very menu
+  // (.nav-lang-top) and nobody revisited these rows — so pressing VN moved
+  // nothing, in the one place a visitor is looking straight at it while they
+  // press it. The rows now swap: the chosen language on the top line, the
+  // other beneath. Both readers are still served, which is why the second
+  // line stays here and not in the member menu.
   const lines = (en: string, vn: string) => lang === 'vn' ? [vn, en] : [en, vn]
   const [open, setOpen] = useState(false)
   const [logoInverted, setLogoInverted] = useState(dark)
@@ -503,24 +511,24 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
         {variant === 'public' ? (
           <>
             <Link href="/" className="nav-link" onClick={() => setOpen(false)}>
-              <div className="nav-link-en">Home</div>
-              <div className="nav-link-vn">Trang chủ</div>
+              <div className="nav-link-en">{lines('Home', 'Trang chủ')[0]}</div>
+              <div className="nav-link-vn">{lines('Home', 'Trang chủ')[1]}</div>
             </Link>
             <Link href="/login" className="nav-link nav-link-primary" onClick={() => setOpen(false)}>
-              <div className="nav-link-en">Member Log in</div>
-              <div className="nav-link-vn">Đăng Nhập</div>
+              <div className="nav-link-en">{lines('Member Log in', 'Đăng Nhập')[0]}</div>
+              <div className="nav-link-vn">{lines('Member Log in', 'Đăng Nhập')[1]}</div>
             </Link>
             <Link href="/atlas" className="nav-link" onClick={() => setOpen(false)}>
-              <div className="nav-link-en">The Atlas</div>
-              <div className="nav-link-vn">Bản Đồ Whisky</div>
+              <div className="nav-link-en">{lines('The Atlas', 'Bản Đồ Whisky')[0]}</div>
+              <div className="nav-link-vn">{lines('The Atlas', 'Bản Đồ Whisky')[1]}</div>
             </Link>
             <Link href="/origin" className="nav-link" onClick={() => setOpen(false)}>
-              <div className="nav-link-en">The Origin</div>
-              <div className="nav-link-vn">Nguồn Gốc</div>
+              <div className="nav-link-en">{lines('The Origin', 'Nguồn Gốc')[0]}</div>
+              <div className="nav-link-vn">{lines('The Origin', 'Nguồn Gốc')[1]}</div>
             </Link>
             <Link href="/spaces" className="nav-link" onClick={() => setOpen(false)}>
-              <div className="nav-link-en">Club Spaces</div>
-              <div className="nav-link-vn">Không Gian</div>
+              <div className="nav-link-en">{lines('Club Spaces', 'Không Gian')[0]}</div>
+              <div className="nav-link-vn">{lines('Club Spaces', 'Không Gian')[1]}</div>
             </Link>
             {/* This line has been both ways. English only twice (b31cb09,
                 22a6d0b), on the reasoning that the Studio carries its own
@@ -528,24 +536,24 @@ export default function NavOverlay({ variant, dark = false, hideLogo = false }: 
                 call on 2026-09-12 is that it matches every other item, so
                 "Phòng Studio" it is — the same words /studio uses of itself. */}
             <Link href="/studio" className="nav-link" onClick={() => setOpen(false)}>
-              <div className="nav-link-en">The Studio</div>
-              <div className="nav-link-vn">Phòng Studio</div>
+              <div className="nav-link-en">{lines('The Studio', 'Phòng Studio')[0]}</div>
+              <div className="nav-link-vn">{lines('The Studio', 'Phòng Studio')[1]}</div>
             </Link>
             <Link href="/sports" className="nav-link" onClick={() => setOpen(false)}>
-              <div className="nav-link-en">The Sports Club</div>
-              <div className="nav-link-vn">Câu Lạc Bộ Thể Thao</div>
+              <div className="nav-link-en">{lines('The Sports Club', 'Câu Lạc Bộ Thể Thao')[0]}</div>
+              <div className="nav-link-vn">{lines('The Sports Club', 'Câu Lạc Bộ Thể Thao')[1]}</div>
             </Link>
             <Link href="/vacancies" className="nav-link" onClick={() => setOpen(false)}>
-              <div className="nav-link-en">Staff & Vacancies</div>
-              <div className="nav-link-vn">Tuyển dụng</div>
+              <div className="nav-link-en">{lines('Staff & Vacancies', 'Tuyển dụng')[0]}</div>
+              <div className="nav-link-vn">{lines('Staff & Vacancies', 'Tuyển dụng')[1]}</div>
             </Link>
             {/* Tết 2027 is a dated campaign, so it sits last rather than among
                 the permanent surfaces. It is password-gated: this link reaches
                 the door, not the prices, which is the point — the password
                 travels on the leaflet and the QR. */}
             <Link href="/tet" className="nav-link" onClick={() => setOpen(false)}>
-              <div className="nav-link-en">Tết Đinh Mùi 2027</div>
-              <div className="nav-link-vn">Quà Tết doanh nghiệp</div>
+              <div className="nav-link-en">{lines('Tết Đinh Mùi 2027', 'Quà Tết doanh nghiệp')[0]}</div>
+              <div className="nav-link-vn">{lines('Tết Đinh Mùi 2027', 'Quà Tết doanh nghiệp')[1]}</div>
             </Link>
           </>
         ) : (
