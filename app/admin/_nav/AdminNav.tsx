@@ -111,6 +111,7 @@ const GROUPS: Group[] = [
       // of the Boards page, which is not where anyone looks for it.
       { href: '/admin/ops/timeline', label: 'All Boards', vn: 'Tất cả bảng', icon: 'bars' },
       { href: '/admin/ops/activity', label: 'Activity', vn: 'Hoạt động', icon: 'pulse' },
+      { href: '/admin/analytics', label: 'Scorecard', vn: 'Bảng điểm', icon: 'trend' },
     ],
   },
   {
