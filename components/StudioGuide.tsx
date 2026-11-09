@@ -47,6 +47,10 @@ export interface GuideCollab {
   food_en: string | null; food_vn: string | null
   drinks_en: string | null; drinks_vn: string | null
 }
+// What THIS exhibition does with a sense, as opposed to the room's standing
+// method. Keyed by the sense's English name, lowercased, from senses.ts.
+export interface GuideSense { sense: string; body_en: string | null; body_vn: string | null }
+
 export interface GuidePiece {
   id: string; sort: number
   title_en: string | null; title_vn: string | null
@@ -92,8 +96,8 @@ const dateRange = (a: string | null, b: string | null) => {
   return b && b !== a ? `${f(a)} — ${f(b)}` : f(a)
 }
 
-export default function StudioGuide({ collaboration: c, pieces }: {
-  collaboration: GuideCollab; pieces: GuidePiece[]
+export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
+  collaboration: GuideCollab; pieces: GuidePiece[]; senses?: GuideSense[]
 }) {
   const { lang, t } = useLang()
   const accent = c.accent || INK
@@ -412,7 +416,25 @@ export default function StudioGuide({ collaboration: c, pieces }: {
           {sense !== null && (
             <div className="sg-sense-panel" id={`sense-${sense}`} role="tabpanel">
               <div className="sg-sense-h">{lang === 'vn' ? SENSES[sense].vn : SENSES[sense].en}</div>
+              {/* THE ROOM'S METHOD — true of every exhibition, from senses.ts. */}
               {SENSES[sense].line && <p className="sg-sense-line">{SENSES[sense].line}</p>}
+
+              {/* AND WHAT THIS ONE DOES. Separated by a label rather than run
+                  on, because the two say different kinds of thing: one is how
+                  The Studio always works, the other is a decision made with
+                  this artist. Absent until somebody writes it — the aroma is
+                  composed per show and must never be guessed at. */}
+              {(() => {
+                const own = senses.find(x => x.sense === SENSES[sense].en.toLowerCase())
+                const body = pick(lang, own?.body_en ?? null, own?.body_vn ?? null)
+                if (!body) return null
+                return (
+                  <div className="sg-sense-block">
+                    <div className="sg-sense-sub">{t('In this exhibition', 'Trong triển lãm này')}</div>
+                    <div className="sg-desc">{paras(body).map((b, j) => <p key={j}>{b}</p>)}</div>
+                  </div>
+                )
+              })()}
 
               {/* Taste carries this exhibition's own menu. */}
               {SENSES[sense].en === 'Taste' && (

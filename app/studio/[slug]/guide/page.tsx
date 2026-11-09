@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import NavOverlay from '@/components/NavOverlay'
-import StudioGuide, { type GuideCollab, type GuidePiece } from '@/components/StudioGuide'
+import StudioGuide, { type GuideCollab, type GuidePiece, type GuideSense } from '@/components/StudioGuide'
 
 // /studio/<slug>/guide — ONE EXHIBITION'S GUIDE, permanently.
 //
@@ -46,6 +46,12 @@ export default async function StudioGuidePage({ params }: { params: Promise<{ sl
   const { data: pieces } = await sb.from('collaboration_pieces')
     .select('*').eq('collaboration_id', collaboration.id).order('sort')
 
+  // A request of its own: db/collaboration_senses.sql may not have been run,
+  // and selecting it alongside the pieces would fail the whole page over a
+  // table that only adds detail to five tabs.
+  const { data: senses } = await sb.from('collaboration_senses')
+    .select('sense, body_en, body_vn').eq('collaboration_id', collaboration.id)
+
   return (
     <>
       {/* THE SAME MENU AS EVERY OTHER PUBLIC PAGE. The guide shipped without
@@ -60,6 +66,7 @@ export default async function StudioGuidePage({ params }: { params: Promise<{ sl
       <StudioGuide
         collaboration={collaboration as GuideCollab}
         pieces={(pieces || []) as GuidePiece[]}
+        senses={(senses || []) as GuideSense[]}
       />
     </>
   )

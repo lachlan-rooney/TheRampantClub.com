@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useLang } from '@/lib/lang'
+import { SENSES } from '@/lib/studio/senses'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE STUDIO, EDITABLE — so a wording change is typing, not a migration.
@@ -47,11 +48,23 @@ export default function StudioAdmin() {
   const [pieces, setPieces] = useState<Piece[]>([])
   // NULL means nobody who reads Vietnamese has been through it.
   const [vnReviewed, setVnReviewed] = useState<string | null>(null)
+  // What THIS exhibition does with each sense. The room's standing method
+  // lives in lib/studio/senses and is not editable here — it is the same
+  // every show, and that file says why.
+  const [senses, setSenses] = useState<Record<string, { body_en?: string | null; body_vn?: string | null }>>({})
+  const [sensesMissing, setSensesMissing] = useState(false)
 
   const loadPieces = useCallback((id: string | null) => {
     if (!id) { setPieces([]); setVnReviewed(null); return }
     fetch(`/api/admin/studio/pieces?collaboration=${id}`, { cache: 'no-store' })
       .then(r => r.json()).then(j => { setPieces(j.pieces || []); setVnReviewed(j.vn_reviewed_at ?? null) })
+      .catch(() => {})
+    fetch(`/api/admin/studio/senses?collaboration=${id}`, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(j => {
+        setSensesMissing(!!j.missing)
+        setSenses(Object.fromEntries((j.senses || []).map((x: { sense: string }) => [x.sense, x])))
+      })
       .catch(() => {})
   }, [])
   useEffect(() => { loadPieces(sel) }, [sel, loadPieces])
@@ -150,6 +163,15 @@ export default function StudioAdmin() {
     setMsg(r.ok ? t('Marked as reviewed.', 'Đã đánh dấu là đã kiểm tra.') : (j.error || t('Could not save.', 'Không thể lưu.')))
     if (r.ok) loadPieces(c.id)
     setBusy(false)
+  }
+
+  const saveSense = async (sense: string, patch: Record<string, unknown>) => {
+    if (!c) return
+    const r = await fetch('/api/admin/studio/senses', { method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ collaboration_id: c.id, sense, ...patch }) })
+    if (!r.ok) setMsg((await r.json().catch(() => ({}))).error || t('Could not save.', 'Không thể lưu.'))
+    else loadPieces(sel)
   }
 
   const removePiece = async (id: string) => {
@@ -467,6 +489,45 @@ export default function StudioAdmin() {
                    'Chưa có tác phẩm. Trang hướng dẫn sẽ thông báo đang được soạn, thay vì hiện nội dung mẫu dưới tên một nghệ sĩ thật.')}
               </div>
             )}
+            {/* ══ THE FIVE SENSES, FOR THIS SHOW ════════════════════════
+                The guide already prints the room's standing line for each
+                sense — "Composed with the artist. A place, a memory, an
+                environment." — which is true of every exhibition. These boxes
+                are the other half: what THIS one actually does. Measured on
+                the Rizal guide before they existed, four of the five tabs
+                carried under 70 characters because only Taste had anywhere to
+                put the specifics. Leave one blank and that tab simply shows
+                the room's method, which is what it did before. */}
+            <div style={{ marginTop: 22, paddingTop: 18, borderTop: '1px solid rgba(229,212,194,0.12)' }}>
+              <div style={sectionLabel}>{t('The five senses — in this exhibition', 'Năm giác quan — trong triển lãm này')}</div>
+              {sensesMissing && (
+                <div style={warn}>
+                  {t('Run db/collaboration_senses.sql to turn these on. The guide works without it — the tabs just show the room’s standing line.',
+                     'Hãy chạy db/collaboration_senses.sql để bật phần này. Trang hướng dẫn vẫn hoạt động — các mục chỉ hiển thị câu mô tả chung của phòng.')}
+                </div>
+              )}
+              {SENSES.map(sn => {
+                const key = sn.en.toLowerCase()
+                const row = senses[key] || {}
+                return (
+                  <div key={key} style={{ marginTop: 14 }}>
+                    <div style={{ ...meta, color: '#E5D4C2', marginBottom: 4 }}>
+                      {sn.en} · {sn.vn}
+                      <span style={{ opacity: .55 }}>  —  {sn.line}</span>
+                    </div>
+                    <textarea style={{ ...input, minHeight: 64, lineHeight: 1.7 }} disabled={sensesMissing}
+                              defaultValue={row.body_en || ''}
+                              placeholder={t('What this exhibition does with it — English', 'Triển lãm này làm gì với giác quan đó — Tiếng Anh')}
+                              onBlur={e => e.target.value !== (row.body_en || '') && saveSense(key, { body_en: e.target.value })} />
+                    <textarea style={{ ...input, minHeight: 64, lineHeight: 1.7, marginTop: 6 }} disabled={sensesMissing}
+                              defaultValue={row.body_vn || ''}
+                              placeholder={t('…and in Vietnamese', '…và bằng Tiếng Việt')}
+                              onBlur={e => e.target.value !== (row.body_vn || '') && saveSense(key, { body_vn: e.target.value })} />
+                  </div>
+                )
+              })}
+            </div>
+
             <button disabled={busy} onClick={addPiece} style={{ ...btn, marginTop: 14 }}>
               {busy ? '…' : t('+ Add a piece', '+ Thêm tác phẩm')}
             </button>
