@@ -43,11 +43,14 @@ export default function StudioAdmin() {
   const [draft, setDraft] = useState<Record<string, unknown>>({})
   const fileRef = useRef<HTMLInputElement>(null)
   const [pieces, setPieces] = useState<Piece[]>([])
+  // NULL means nobody who reads Vietnamese has been through it.
+  const [vnReviewed, setVnReviewed] = useState<string | null>(null)
 
   const loadPieces = useCallback((id: string | null) => {
-    if (!id) { setPieces([]); return }
+    if (!id) { setPieces([]); setVnReviewed(null); return }
     fetch(`/api/admin/studio/pieces?collaboration=${id}`, { cache: 'no-store' })
-      .then(r => r.json()).then(j => setPieces(j.pieces || [])).catch(() => {})
+      .then(r => r.json()).then(j => { setPieces(j.pieces || []); setVnReviewed(j.vn_reviewed_at ?? null) })
+      .catch(() => {})
   }, [])
   useEffect(() => { loadPieces(sel) }, [sel, loadPieces])
 
@@ -133,6 +136,20 @@ export default function StudioAdmin() {
     if (r.ok) loadPieces(sel)
     setBusy(false)
   }
+  const markVnReviewed = async () => {
+    if (!c) return
+    const by = window.prompt(t('Who checked the Vietnamese?', 'Ai đã kiểm tra bản tiếng Việt?'))
+    if (!by?.trim()) return
+    setBusy(true)
+    const r = await fetch('/api/admin/studio/pieces', { method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind: 'vn-review', collaboration_id: c.id, by }) })
+    const j = await r.json().catch(() => ({}))
+    setMsg(r.ok ? t('Marked as reviewed.', 'Đã đánh dấu là đã kiểm tra.') : (j.error || t('Could not save.', 'Không thể lưu.')))
+    if (r.ok) loadPieces(c.id)
+    setBusy(false)
+  }
+
   const removePiece = async (id: string) => {
     setBusy(true)
     await fetch(`/api/admin/studio/pieces?piece=${id}`, { method: 'DELETE' })
@@ -301,6 +318,31 @@ export default function StudioAdmin() {
                 {t('Open the guide', 'Mở hướng dẫn')} →
               </a>
             </div>
+            {/* ── IS THE VIETNAMESE CHECKED? ─────────────────────────────
+                The guide was translated in one pass the night before the show
+                opened, because a flagged draft beats an English-only guide for
+                a room where half the guests read Vietnamese. Unreviewed
+                Vietnamese that nobody flags just becomes the house Vietnamese,
+                so it says so here until somebody takes responsibility for it.
+                A hardcoded banner would be wrong the day it was reviewed and
+                nobody would be prompted to delete it — so it is data. */}
+            {!vnReviewed && pieces.length > 0 && (
+              <div style={{ ...warn, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ flex: 1, minWidth: 220 }}>
+                  {t('The Vietnamese here is an unchecked draft. It is live to guests, which is the right state for now — but it is not house Vietnamese until somebody who reads it has been through it.',
+                     'Bản tiếng Việt ở đây là bản nháp chưa kiểm tra. Khách đã xem được, và hiện tại như vậy là hợp lý — nhưng chưa phải bản chuẩn cho đến khi có người đọc tiếng Việt rà lại.')}
+                </span>
+                <button style={mini} disabled={busy} onClick={markVnReviewed}>
+                  {t('Mark as checked', 'Đánh dấu đã kiểm tra')}
+                </button>
+              </div>
+            )}
+            {vnReviewed && (
+              <div style={{ ...meta, marginBottom: 10 }}>
+                {t(`Vietnamese checked ${new Date(vnReviewed).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' })}.`,
+                   `Bản tiếng Việt đã được kiểm tra ngày ${new Date(vnReviewed).toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' })}.`)}
+              </div>
+            )}
             <div style={{ ...meta, marginBottom: 10 }}>
               {t('In the order a guest walks past them. Each field saves when you click away. Anything left empty is simply left off the label — nothing is invented.',
                  'Theo thứ tự khách sẽ đi qua. Mỗi ô tự lưu khi bạn bấm ra ngoài. Ô để trống sẽ không hiện trên nhãn — hệ thống không tự điền.')}

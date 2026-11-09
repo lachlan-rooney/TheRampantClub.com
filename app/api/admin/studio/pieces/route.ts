@@ -61,7 +61,20 @@ export async function GET(req: NextRequest) {
   if (collaboration_id) q = q.eq('collaboration_id', collaboration_id)
   const { data, error } = await q
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-  return NextResponse.json({ pieces: data || [] })
+
+  // ── THE TRANSLATION REVIEW FLAG, IN A QUERY OF ITS OWN ──────────────────
+  // db/collaboration_vn_review.sql may not have been run. Selecting the column
+  // alongside anything else would fail the WHOLE request and black out the
+  // pieces editor over an advisory notice. Asked separately, and a failure
+  // means "not reviewed" — the safe answer, since unreviewed is the state that
+  // needs saying.
+  let vn_reviewed_at: string | null = null
+  if (collaboration_id) {
+    const { data: flag } = await sb.from('collaborations')
+      .select('vn_reviewed_at').eq('id', collaboration_id).maybeSingle()
+    vn_reviewed_at = (flag as { vn_reviewed_at?: string } | null)?.vn_reviewed_at ?? null
+  }
+  return NextResponse.json({ pieces: data || [], vn_reviewed_at })
 }
 
 // A new piece, empty. It arrives at the END of the walk, because a piece is
@@ -83,6 +96,22 @@ export async function PUT(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Staff only.' }, { status: 403 })
   const b = await req.json().catch(() => ({}))
+
+  // Marking the Vietnamese as checked. Records WHO, because "reviewed" with no
+  // name is a claim nobody can question later. Reversible: send reviewed:false.
+  if (b.kind === 'vn-review') {
+    if (!b.collaboration_id) return NextResponse.json({ error: 'Which exhibition?' }, { status: 400 })
+    const who = typeof b.by === 'string' ? b.by.replace(/\s+/g, ' ').trim().slice(0, 120) : ''
+    if (b.reviewed !== false && !who) return NextResponse.json({ error: 'Who reviewed it?' }, { status: 400 })
+    const { error } = await svc().from('collaborations').update(
+      b.reviewed === false
+        ? { vn_reviewed_at: null, vn_reviewed_by: null }
+        : { vn_reviewed_at: new Date().toISOString(), vn_reviewed_by: who },
+    ).eq('id', b.collaboration_id)
+    if (error) return NextResponse.json({ error: `${error.message} — has db/collaboration_vn_review.sql been run?` }, { status: 400 })
+    return NextResponse.json({ ok: true })
+  }
+
   if (!b.id) return NextResponse.json({ error: 'Which piece?' }, { status: 400 })
   const patch: Record<string, unknown> = {}
   for (const f of FIELDS) {
@@ -109,6 +138,8 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ ok: true })
 }
 
+// Somebody who reads Vietnamese has been through it. Records WHO, because
+// "reviewed" with no name is a claim nobody can question later.
 export async function POST(req: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Staff only.' }, { status: 403 })
   const form = await req.formData().catch(() => null)
