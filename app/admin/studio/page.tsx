@@ -27,7 +27,9 @@ interface Piece { id: string; collaboration_id: string; sort: number
   title_en: string | null; title_vn: string | null; artist_name: string | null
   year: string | null; medium_en: string | null; medium_vn: string | null
   dimensions: string | null; image_path: string | null
-  description_en: string | null; description_vn: string | null; provenance: string | null }
+  description_en: string | null; description_vn: string | null; provenance: string | null
+  beneficiary_en?: string | null; beneficiary_vn?: string | null
+  beneficiary_logo_path?: string | null; beneficiary_url?: string | null }
 
 const SECTIONS = [
   ['collaboration', 'The collaboration'], ['inspiration', 'In the artist’s words'],
@@ -424,6 +426,36 @@ export default function StudioAdmin() {
                       <input style={input} defaultValue={pc.provenance || ''}
                              onBlur={e => e.target.value !== (pc.provenance || '') && patchPiece(pc.id, { provenance: e.target.value })} />
                     </Row>
+                    {/* ── WHERE THE PROCEEDS GO ──────────────────────────────
+                        For an auction piece. Shown under the work in the
+                        guide, set apart with the exhibition's accent, with the
+                        logo above it if one is given — the club speaking, not
+                        the artist. Leave blank on every piece that is not
+                        raising funds; the block only renders when there is
+                        something to say. */}
+                    <Row label={t('Proceeds — English (auction pieces only)', 'Tiền thu được — Tiếng Anh (chỉ cho tác phẩm đấu giá)')}>
+                      <textarea style={{ ...input, minHeight: 56, lineHeight: 1.7 }} defaultValue={pc.beneficiary_en || ''}
+                                placeholder={t('e.g. A significant portion of funds raised from this auction piece will be donated to…', 'ví dụ: Một phần đáng kể số tiền thu được từ tác phẩm đấu giá này sẽ được quyên góp cho…')}
+                                onBlur={e => e.target.value !== (pc.beneficiary_en || '') && patchPiece(pc.id, { beneficiary_en: e.target.value })} />
+                    </Row>
+                    <Row label={t('Proceeds — Vietnamese', 'Tiền thu được — Tiếng Việt')}>
+                      <textarea style={{ ...input, minHeight: 56, lineHeight: 1.7 }} defaultValue={pc.beneficiary_vn || ''}
+                                onBlur={e => e.target.value !== (pc.beneficiary_vn || '') && patchPiece(pc.id, { beneficiary_vn: e.target.value })} />
+                    </Row>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 180 }}>
+                        <Row label={t('Beneficiary logo — image URL', 'Logo đơn vị thụ hưởng — đường dẫn ảnh')}>
+                          <input style={input} defaultValue={pc.beneficiary_logo_path || ''} placeholder="/images/… or https://…"
+                                 onBlur={e => e.target.value !== (pc.beneficiary_logo_path || '') && patchPiece(pc.id, { beneficiary_logo_path: e.target.value })} />
+                        </Row>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 180 }}>
+                        <Row label={t('Beneficiary website — optional', 'Website đơn vị thụ hưởng — không bắt buộc')}>
+                          <input style={input} defaultValue={pc.beneficiary_url || ''} placeholder="https://…"
+                                 onBlur={e => e.target.value !== (pc.beneficiary_url || '') && patchPiece(pc.id, { beneficiary_url: e.target.value })} />
+                        </Row>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

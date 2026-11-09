@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useLang, pick } from '@/lib/lang'
 import LangToggle from '@/components/LangToggle'
+import { SENSES } from '@/lib/studio/senses'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE SELF-GUIDED GALLERY GUIDE — a guest, their own phone, the room in order.
@@ -54,6 +55,11 @@ export interface GuidePiece {
   dimensions: string | null; image_path: string | null
   description_en: string | null; description_vn: string | null
   provenance: string | null
+  // Where proceeds from this piece go, if it is raising funds. Optional on the
+  // type as well as in the database, so the guide renders on an installation
+  // where db/collaboration_pieces_beneficiary.sql has not been run.
+  beneficiary_en?: string | null; beneficiary_vn?: string | null
+  beneficiary_logo_path?: string | null; beneficiary_url?: string | null
 }
 
 // One <p> per paragraph. A statement arrives with its blank lines intact (the
@@ -97,6 +103,9 @@ export default function StudioGuide({ collaboration: c, pieces }: {
   // the scroll, and an IntersectionObserver is the only way to know that
   // without listening to every scroll event on a phone's main thread.
   const [at, setAt] = useState(0)
+  // Which sense is open. One at a time, and closed to begin with — the tabs
+  // are an offer, not five paragraphs between the guest and the first work.
+  const [sense, setSense] = useState<number | null>(null)
   const marks = useRef<(HTMLElement | null)[]>([])
   useEffect(() => {
     if (!total) return
@@ -131,7 +140,17 @@ export default function StudioGuide({ collaboration: c, pieces }: {
 
         .sg-bar { position: sticky; top: 0; z-index: 5; background: ${SAGE};
                   padding: 12px 0 10px; border-bottom: 1px solid ${INK}22; }
-        .sg-bar-in { display: flex; align-items: center; gap: 12px; }
+        /* ⚠ THE BURGER SITS ON TOP OF THIS BAR. NavOverlay's trigger is
+           position:fixed at 18,18 and 40px square, so it covers x18–58 of
+           whatever is underneath — and the EN half of this toggle was at
+           x21–54. The control rendered perfectly and could not be tapped,
+           which is the same shape of fault as the admin menu that drew under
+           its own scrim. elementFromPoint is the thirty-second proof, and the
+           verifier now runs it on both halves. Space reserved, not z-index
+           raised: winning a stacking fight with the site nav would just make
+           the menu untappable instead. */
+        .sg-bar-in { display: flex; align-items: center; gap: 12px; padding-left: 48px; }
+        @media (min-width: 900px) { .sg-bar-in { padding-left: 56px; } }
         .sg-count { font-family: ${MONO}; font-size: 11px; letter-spacing: .1em;
                     white-space: nowrap; color: ${INK}; opacity: .72; }
         .sg-track { flex: 1; height: 2px; background: ${INK}1f; border-radius: 2px; overflow: hidden; }
@@ -218,10 +237,44 @@ export default function StudioGuide({ collaboration: c, pieces }: {
         .sg-prov { font-family: ${MONO}; font-size: 11px; line-height: 1.7; margin: 14px 0 0;
                    padding-top: 12px; border-top: 1px solid ${INK}1f; opacity: .6; max-width: 60ch; }
 
-        .sg-menu { margin: 76px 0 0; padding-top: 28px; border-top: 1px solid ${INK}26; }
-        .sg-menu-h { font-family: ${SERIF}; font-weight: 400; font-size: clamp(26px, 7vw, 38px);
-                     text-transform: uppercase; margin: 0 0 6px; line-height: 1.06; }
-        .sg-menu-item { margin: 26px 0 0; }
+        .sg-menu-item { margin: 22px 0 0; }
+
+        /* ── THE FIVE SENSES ───────────────────────────────────────────────
+           A strip of marks, not a second block of prose. Closed by default:
+           the guest came to look at paintings, and five open paragraphs
+           between the intro and piece one would be the biography mistake
+           again. Horizontally scrollable at phone width rather than wrapped
+           to two rows, so the five read as one set. */
+        .sg-senses { margin: 26px 0 0; }
+        .sg-senses-lede { font-family: ${MONO}; font-size: 11.5px; letter-spacing: .04em;
+                          opacity: .62; margin-bottom: 12px; }
+        .sg-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;
+                   scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+        .sg-tabs::-webkit-scrollbar { display: none; }
+        .sg-tab { flex: 1 0 auto; min-width: 66px; display: flex; flex-direction: column;
+                  align-items: center; gap: 5px; padding: 11px 8px 9px; cursor: pointer;
+                  background: transparent; border: 1px solid ${INK}22; border-radius: 8px;
+                  color: ${INK}; transition: background .2s ease, border-color .2s ease; }
+        .sg-tab.is-on { background: ${INK}0f; border-color: ${accent}; }
+        .sg-tab-mark path { stroke: ${INK}; fill: none; stroke-width: 1.5;
+                            stroke-linecap: round; stroke-linejoin: round; }
+        .sg-tab.is-on .sg-tab-mark path { stroke: ${accent}; }
+        .sg-tab-art { width: 34px; height: 34px; object-fit: contain; }
+        .sg-tab-name { font-family: ${MONO}; font-size: 9.5px; letter-spacing: .1em;
+                       text-transform: uppercase; white-space: nowrap; }
+        .sg-sense-panel { margin: 14px 0 0; padding: 16px 0 0; border-top: 1px solid ${INK}26; }
+        .sg-sense-h { font-family: ${SERIF}; font-weight: 400; font-size: 26px;
+                      text-transform: uppercase; line-height: 1.06; }
+        .sg-sense-line { font-family: ${MONO}; font-size: 14px; line-height: 2; margin: 6px 0 0;
+                         max-width: 56ch; }
+        .sg-sense-block { margin: 22px 0 0; }
+        .sg-sense-sub { font-family: ${MONO}; font-size: 10px; letter-spacing: .2em;
+                        text-transform: uppercase; opacity: .6; }
+        .sg-benefit { margin: 20px 0 0; padding: 16px 0 0; border-top: 2px solid ${accent}; }
+        .sg-benefit-logo { display: block; max-width: 150px; max-height: 58px; width: auto;
+                           height: auto; margin: 0 0 12px; }
+        .sg-benefit-text { font-family: ${MONO}; font-size: 12.5px; line-height: 1.85; margin: 0;
+                           max-width: 54ch; }
         .sg-empty { padding: 60px 0; font-family: ${MONO}; font-size: 13px; line-height: 1.9;
                     max-width: 52ch; opacity: .78; }
         .sg-lion { display: block; width: 74px; height: auto; margin: 26px 0 0; }
@@ -282,6 +335,81 @@ export default function StudioGuide({ collaboration: c, pieces }: {
           <hr className="sg-rule" />
         </header>
 
+        {/* ══ THE FIVE SENSES ══════════════════════════════════════════════
+            The room is built to answer the work — the light it is seen in,
+            what reaches your hand and your glass, what you hear, and the air.
+            /studio already says that, and the marks and the wording already
+            live in lib/studio/senses, so this reuses them rather than drawing
+            a second set that would drift from the first.
+
+            The exhibition's own food and drink hang off TASTE, because that is
+            where a guest looks for them. Everything else carries the room's
+            method, which is the honest content: it is how The Studio works
+            every time, not something composed for this show.
+
+            ⚠ SCENT HAS NO PER-EXHIBITION COPY AND NO COLUMN TO PUT IT IN. The
+            aroma is composed with the artist for each show, so the general
+            line is all there is to say here. It is not guessed at — the same
+            rule that kept this line blank in senses.ts until Lachlan wrote it. */}
+        <section className="sg-senses" aria-label={t('The five senses', 'Năm giác quan')}>
+          <div className="sg-senses-lede">
+            {t('Every exhibition is answered in five senses. Tap one.',
+               'Mỗi triển lãm được đáp lại bằng năm giác quan. Chạm vào một mục.')}
+          </div>
+          <div className="sg-tabs" role="tablist">
+            {SENSES.map((sn, i) => {
+              const on = sense === i
+              return (
+                <button key={sn.en} role="tab" aria-selected={on} aria-controls={`sense-${i}`}
+                        className={`sg-tab ${on ? 'is-on' : ''}`}
+                        onClick={() => setSense(on ? null : i)}>
+                  {sn.art
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    ? <img src={sn.art} alt="" aria-hidden="true" className="sg-tab-art" />
+                    : (
+                      <svg viewBox="0 0 64 64" width="34" height="34" aria-hidden="true" className="sg-tab-mark">
+                        <path d={sn.path} />
+                      </svg>
+                    )}
+                  <span className="sg-tab-name">{lang === 'vn' ? sn.vn : sn.en}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          {sense !== null && (
+            <div className="sg-sense-panel" id={`sense-${sense}`} role="tabpanel">
+              <div className="sg-sense-h">{lang === 'vn' ? SENSES[sense].vn : SENSES[sense].en}</div>
+              {SENSES[sense].line && <p className="sg-sense-line">{SENSES[sense].line}</p>}
+
+              {/* Taste carries this exhibition's own menu. */}
+              {SENSES[sense].en === 'Taste' && (
+                <>
+                  {pick(lang, c.food_en, c.food_vn) && (
+                    <div className="sg-sense-block">
+                      <div className="sg-sense-sub">{t('The canapés', 'Món khai vị')}</div>
+                      {asLabelled(pick(lang, c.food_en, c.food_vn)).map((item, i) => (
+                        <div key={i} className="sg-menu-item">
+                          {item.label && <div className="sg-pf">{item.label}</div>}
+                          <div className="sg-desc">{item.body.map((b, j) => <p key={j}>{b}</p>)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {pick(lang, c.drinks_en, c.drinks_vn) && (
+                    <div className="sg-sense-block">
+                      <div className="sg-sense-sub">{t('The cocktails', 'Cocktail')}</div>
+                      <div className="sg-desc">
+                        {paras(pick(lang, c.drinks_en, c.drinks_vn)).map((b, j) => <p key={j}>{b}</p>)}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </section>
+
         {total === 0 ? (
           // HONEST, AND IN BOTH LANGUAGES. The alternative — placeholder labels
           // under a real artist's name on a public URL — would be a lie told in
@@ -335,27 +463,32 @@ export default function StudioGuide({ collaboration: c, pieces }: {
                 </div>
               )}
               {p.provenance && <p className="sg-prov">{p.provenance}</p>}
+
+              {/* WHERE THE MONEY GOES. Set apart from the statement with a
+                  rule and the exhibition's accent, because it is the club
+                  speaking rather than the artist — running it on as another
+                  paragraph would read as part of his text. The logo sits
+                  beside it when there is one; a charity credit in plain type
+                  looks like a disclaimer. */}
+              {pick(lang, p.beneficiary_en ?? null, p.beneficiary_vn ?? null) && (
+                <div className="sg-benefit">
+                  {p.beneficiary_logo_path && (
+                    p.beneficiary_url
+                      ? <a href={p.beneficiary_url} target="_blank" rel="noreferrer noopener">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={p.beneficiary_logo_path} alt="" loading="lazy" className="sg-benefit-logo" />
+                        </a>
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      : <img src={p.beneficiary_logo_path} alt="" loading="lazy" className="sg-benefit-logo" />
+                  )}
+                  <p className="sg-benefit-text">
+                    {pick(lang, p.beneficiary_en ?? null, p.beneficiary_vn ?? null)}
+                  </p>
+                </div>
+              )}
             </section>
           )
         })}
-
-        {/* ══ THE CANAPÉS ══════════════════════════════════════════════════
-            They belong in the guide because they are part of the argument:
-            the food is written in the same register as the work, naming the
-            same appetite. Pulled from collaborations.food_en, which the
-            exhibition page already renders and /admin/studio already edits —
-            one place to change it, not two. */}
-        {pick(lang, c.food_en, c.food_vn) && (
-          <section className="sg-menu">
-            <h2 className="sg-menu-h">{t('The canapés', 'Món khai vị')}</h2>
-            {asLabelled(pick(lang, c.food_en, c.food_vn)).map((item, i) => (
-              <div key={i} className="sg-menu-item">
-                {item.label && <div className="sg-pf">{item.label}</div>}
-                <div className="sg-desc">{item.body.map((b, j) => <p key={j}>{b}</p>)}</div>
-              </div>
-            ))}
-          </section>
-        )}
 
         {/* ══ THE CREDITS ══════════════════════════════════════════════════
             The booklet's back matter, as names rather than marks. Of the five

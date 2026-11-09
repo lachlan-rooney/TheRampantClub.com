@@ -23,7 +23,8 @@ const svc = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.en
 const BUCKET = 'event-media'   // public: a gallery guide is read by guests
 
 const FIELDS = ['sort','title_en','title_vn','artist_name','year','medium_en','medium_vn',
-  'dimensions','description_en','description_vn','provenance'] as const
+  'dimensions','description_en','description_vn','provenance',
+  'beneficiary_en','beneficiary_vn','beneficiary_logo_path','beneficiary_url'] as const
 
 // Long enough for a real wall label and a paragraph of story; short enough that
 // a paste accident cannot put a novel on a phone.
@@ -31,6 +32,8 @@ const LIMIT: Record<string, number> = {
   title_en: 200, title_vn: 200, artist_name: 160, year: 40,
   medium_en: 200, medium_vn: 200, dimensions: 120,
   description_en: 4000, description_vn: 4000, provenance: 1000,
+  beneficiary_en: 600, beneficiary_vn: 600,
+  beneficiary_logo_path: 500, beneficiary_url: 500,
 }
 // ⚠ TWO KINDS OF FIELD, AND ONLY ONE OF THEM IS A LINE.
 // A title, a medium and a dimension are single lines: collapsing their
@@ -40,7 +43,8 @@ const LIMIT: Record<string, number> = {
 // way in, with no way back. So the long fields keep their paragraph breaks
 // (the page sets white-space: pre-line for exactly this), and only runs of
 // spaces and tabs within a line are collapsed.
-const PROSE = new Set(['description_en', 'description_vn', 'provenance'])
+const PROSE = new Set(['description_en', 'description_vn', 'provenance',
+  'beneficiary_en', 'beneficiary_vn'])
 const tidy = (v: unknown, cap: number, prose = false) => {
   if (typeof v !== 'string') return null
   const cleaned = prose

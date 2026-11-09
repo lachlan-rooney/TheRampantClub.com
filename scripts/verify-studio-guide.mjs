@@ -237,7 +237,11 @@ if (live[0]?.accent) {
 
 // BILINGUAL BY DEFAULT — the switch, and the page actually moving.
 const enText = await page.textContent('.sg-eyebrow')
-await page.locator('button[title="Tiếng Việt"]').first().click()
+// ⚠ SCOPED TO .sg-bar. The guide now carries the site nav as well, so a bare
+// button[title=…] matches two controls and .first() reaches for the one inside
+// the closed menu — a selector that was unambiguous until the page gained a
+// second, identical control.
+await page.locator('.sg-bar button[title="Tiếng Việt"]').first().click()
 await page.waitForTimeout(400)
 const vnText = await page.textContent('.sg-eyebrow')
 t(enText !== vnText, 'the EN/VN switch moves the same measured spot', `"${enText}" → "${vnText}"`)
@@ -252,7 +256,7 @@ t(/Hướng dẫn/.test(vnText || ''), 'and the Vietnamese is really Vietnamese'
 // translated page unless it is counted.
 {
   const vnBodies = await page.locator('.sg-desc').allTextContents()
-  await page.locator('button[title="English"]').first().click()
+  await page.locator('.sg-bar button[title="English"]').first().click()
   await page.waitForTimeout(400)
   const enBodies = await page.locator('.sg-desc').allTextContents()
   const DIACRITIC = /[ăâêôơưđạảấầẩẫậắằẳẵặếềểễệốồổỗộớờởỡợúụủứừửữựíìỉĩịýỳỷỹỵ]/i
@@ -263,14 +267,111 @@ t(/Hướng dẫn/.test(vnText || ''), 'and the Vietnamese is really Vietnamese'
   // Titles are deliberately NOT translated — "Sawit" is Indonesian, and the
   // printed booklet beside this guide prints one form only. Asserted so that
   // "the titles are still English" reads as the decision it is.
-  await page.locator('button[title="Tiếng Việt"]').first().click()
+  await page.locator('.sg-bar button[title="Tiếng Việt"]').first().click()
   await page.waitForTimeout(400)
   const vnTitles = await page.locator('.sg-pt').allTextContents()
-  await page.locator('button[title="English"]').first().click()
+  await page.locator('.sg-bar button[title="English"]').first().click()
   await page.waitForTimeout(400)
   const enTitles = await page.locator('.sg-pt').allTextContents()
   t(JSON.stringify(vnTitles) === JSON.stringify(enTitles),
     'titles stay as the wall prints them in both languages (deliberate)', vnTitles[0] || '')
+}
+
+// ── THE FIVE SENSES ───────────────────────────────────────────────────────
+// The room answers the work, and the tabs are how a guest finds out what is in
+// the glass and in the air. Reused from lib/studio/senses rather than redrawn,
+// so a commissioned mark dropped in there appears here too.
+{
+  await page.goto(`${BASE}/studio/guide`, { waitUntil: 'networkidle' })
+  await page.waitForTimeout(800)
+  const tabs = page.locator('.sg-tab')
+  t(await tabs.count() === 5, 'five senses, as a strip of tabs', `${await tabs.count()}`)
+  t(await page.locator('.sg-sense-panel').count() === 0,
+    'closed to begin with — the guest came to look at paintings, not read five paragraphs')
+
+  // Every tab must be TAPPABLE, not merely present. The strip scrolls
+  // horizontally and sits under a fixed nav trigger; both are ways a control
+  // renders perfectly and cannot be pressed.
+  const unreachable = await page.evaluate(() =>
+    [...document.querySelectorAll('.sg-tab')].map((el, i) => {
+      el.scrollIntoView({ block: 'center' })
+      const r = el.getBoundingClientRect()
+      const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
+      return (el === hit || el.contains(hit)) ? null : i
+    }).filter(x => x !== null))
+  t(unreachable.length === 0, 'every one of the five can actually be tapped',
+    unreachable.length ? `tabs ${unreachable.join(', ')} are covered` : 'all five')
+
+  // TASTE carries this exhibition's own menu — that is where a guest looks for
+  // what they are eating and drinking, and it is the only tab with content
+  // that changes between shows.
+  await tabs.nth(2).click(); await page.waitForTimeout(400)
+  const panel = (await page.textContent('.sg-sense-panel')) || ''
+  t(/canapé|khai vị/i.test(panel) && /cocktail/i.test(panel),
+    'Taste carries the canapés AND the cocktails', `${panel.length} chars`)
+  t(/Foie Gras/i.test(panel), 'and it is the real menu, not a heading with nothing under it')
+
+  // The menu must live in ONE place. It was a standalone section before the
+  // tabs existed, and leaving both would have put the same copy on the page
+  // twice.
+  t(await page.locator('.sg-menu').count() === 0, 'and the menu is not also duplicated further down')
+
+  // Closing is the same tap.
+  await tabs.nth(2).click(); await page.waitForTimeout(300)
+  t(await page.locator('.sg-sense-panel').count() === 0, 'tapping the open tab closes it again')
+}
+
+// ── THE SWITCH IS WHERE THE REST OF THE SITE KEEPS IT ─────────────────────
+// The guide shipped with its own EN/VN pill and NO nav menu. Everywhere else
+// the switch lives inside the burger, so a guest who knew where to look found
+// nothing there. Both controls now exist, as on /menus — and because they are
+// the same component on the same context they cannot disagree, which is the
+// part worth asserting rather than assuming.
+{
+  await page.goto(`${BASE}/studio/guide`, { waitUntil: 'networkidle' })
+  await page.evaluate(() => { try { localStorage.setItem('trc_lang', 'en') } catch {} })
+  await page.reload({ waitUntil: 'networkidle' }); await page.waitForTimeout(700)
+
+  const burger = page.locator('button[aria-label="Open menu"]').first()
+  t(await burger.count() === 1, 'the guide has the same menu as every other public page')
+
+  // ── BOTH HALVES OF THE PILL MUST BE TAPPABLE ────────────────────────────
+  // The nav trigger is fixed at the top-left and overlays whatever is beneath
+  // it. When the nav was added, EN fell underneath it: drawn correctly, 4.5:1
+  // contrast, and completely unreachable. Only elementFromPoint catches that —
+  // a screenshot shows a perfect control.
+  const reach = await page.evaluate(() => ['English', 'Tiếng Việt'].map(ttl => {
+    const b = document.querySelector(`.sg-bar button[title="${ttl}"]`)
+    if (!b) return { ttl, ok: false, over: 'MISSING' }
+    const r = b.getBoundingClientRect()
+    const hits = [[r.x + 4, r.y + r.height / 2], [r.x + r.width / 2, r.y + r.height / 2], [r.right - 4, r.y + r.height / 2]]
+      .map(([x, y]) => document.elementFromPoint(x, y))
+    return { ttl, ok: hits.every(e => e === b), over: hits.find(e => e !== b)?.className || '' }
+  }))
+  for (const r of reach) {
+    t(r.ok, `the ${r.ttl} half of the switch can actually be tapped, edge to edge`,
+      r.ok ? '' : `covered by .${r.over}`)
+  }
+
+  const before = (await page.textContent('.sg-eyebrow')) || ''
+  await burger.click(); await page.waitForTimeout(400)
+  const inMenu = page.locator('.nav-lang-top button[title="Tiếng Việt"]').first()
+  t(await inMenu.count() > 0, 'and the EN/VN switch is inside it, where people look')
+  await inMenu.click(); await page.waitForTimeout(600)
+
+  // The guide sits UNDER the open menu, and the close button scrolls out of
+  // reach at phone height. Reloading proves more anyway: that the choice was
+  // recorded and survives, which is what a guest who switches and keeps
+  // reading actually depends on.
+  await page.reload({ waitUntil: 'networkidle' }); await page.waitForTimeout(700)
+  const after = (await page.textContent('.sg-eyebrow')) || ''
+  t(before !== after && /Hướng dẫn/.test(after),
+    'switching from inside the menu moves the guide itself', `"${before.trim()}" → "${after.trim()}"`)
+
+  // Two controls, one setting. If they could drift, this is where it shows.
+  const pill = page.locator('.sg-bar button[title="Tiếng Việt"]').first()
+  t(await pill.getAttribute('aria-pressed') === 'true',
+    'and the guide\'s own pill agrees — two controls, one setting, no drift')
 }
 
 // The permalink still works on its own, for anything dated.

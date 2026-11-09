@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
+import NavOverlay from '@/components/NavOverlay'
 import StudioGuide, { type GuideCollab, type GuidePiece } from '@/components/StudioGuide'
 
 // /studio/<slug>/guide — ONE EXHIBITION'S GUIDE, permanently.
@@ -46,9 +47,20 @@ export default async function StudioGuidePage({ params }: { params: Promise<{ sl
     .select('*').eq('collaboration_id', collaboration.id).order('sort')
 
   return (
-    <StudioGuide
-      collaboration={collaboration as GuideCollab}
-      pieces={(pieces || []) as GuidePiece[]}
-    />
+    <>
+      {/* THE SAME MENU AS EVERY OTHER PUBLIC PAGE. The guide shipped without
+          it, on the reasoning that a guest scanning a code in the room wants
+          to read and not to navigate. That was wrong in one specific way: the
+          EN/VN switch lives inside this menu everywhere else on the site, so a
+          guest who already knows where the language control is found nothing
+          where they looked. /menus is the precedent — nav AND an on-page
+          toggle. Both are the same LangToggle on the same context, so they
+          cannot disagree. hideLogo, as on /studio and /studio/[slug]. */}
+      <NavOverlay variant="public" hideLogo />
+      <StudioGuide
+        collaboration={collaboration as GuideCollab}
+        pieces={(pieces || []) as GuidePiece[]}
+      />
+    </>
   )
 }
