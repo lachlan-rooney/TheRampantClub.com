@@ -277,6 +277,37 @@ t(/Hướng dẫn/.test(vnText || ''), 'and the Vietnamese is really Vietnamese'
     'titles stay as the wall prints them in both languages (deliberate)', vnTitles[0] || '')
 }
 
+// ── WHERE THE MONEY GOES ──────────────────────────────────────────────────
+// One work in this show is the auction piece. The failure worth catching is
+// not the credit missing — that is visible — but the credit appearing under
+// the other nine, which would have the club making a claim about paintings it
+// has made no such claim about.
+{
+  await page.goto(`${BASE}/studio/guide`, { waitUntil: 'networkidle' })
+  await page.waitForTimeout(700)
+  const blocks = page.locator('.sg-benefit')
+  const n = await blocks.count()
+  if (n > 0) {
+    t(n === 1, 'exactly one piece carries a beneficiary credit', `${n} on the page`)
+    const under = await page.evaluate(() =>
+      document.querySelector('.sg-benefit')?.closest('section')?.querySelector('.sg-pt')?.textContent)
+    t(under === 'Rainforest', 'and it is under Rainforest, the auction piece', under || 'unknown')
+    await blocks.first().scrollIntoViewIfNeeded(); await page.waitForTimeout(1200)
+    const logo = await page.evaluate(() => {
+      const i = document.querySelector('.sg-benefit-logo')
+      const r = i?.getBoundingClientRect()
+      return i ? { ok: i.naturalWidth > 0, h: Math.round(r.height) } : null
+    })
+    t(logo?.ok === true, 'the beneficiary mark loads', JSON.stringify(logo))
+    // A circular seal with two rings of type is unreadable at wordmark height.
+    t((logo?.h ?? 0) >= 80, 'and is large enough for a seal to be read, not just seen', `${logo?.h}px tall`)
+    const href = await page.getAttribute('.sg-benefit a', 'href')
+    t(/borneonaturefoundation/.test(href || ''), 'and links to the foundation itself', href || 'no link')
+  } else {
+    console.log('· no beneficiary credit on the page — db/collaboration_pieces_beneficiary.sql may be unrun')
+  }
+}
+
 // ── THE SUPPLIED MARKS ────────────────────────────────────────────────────
 // The lockup, the lion, the sponsors and the wordmark. A logo that 404s shows
 // as nothing at all on a page with no borders — an absent sponsor mark looks

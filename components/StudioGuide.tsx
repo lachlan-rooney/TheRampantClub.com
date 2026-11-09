@@ -271,8 +271,13 @@ export default function StudioGuide({ collaboration: c, pieces }: {
         .sg-sense-sub { font-family: ${MONO}; font-size: 10px; letter-spacing: .2em;
                         text-transform: uppercase; opacity: .6; }
         .sg-benefit { margin: 20px 0 0; padding: 16px 0 0; border-top: 2px solid ${accent}; }
-        .sg-benefit-logo { display: block; max-width: 150px; max-height: 58px; width: auto;
-                           height: auto; margin: 0 0 12px; }
+        /* ⚠ SIZED FOR A SEAL, NOT A WORDMARK. The first rule here capped the
+           height at 58px, which is right for a line of type like Duncan
+           Taylor's and wrong for a circular seal — the Borneo mark is square
+           and carries two rings of text, and at 58px neither ring is readable.
+           Height leads; the width cap only stops a very wide mark running on. */
+        .sg-benefit-logo { display: block; width: auto; height: auto;
+                           max-height: 104px; max-width: 190px; margin: 0 0 14px; }
         .sg-benefit-text { font-family: ${MONO}; font-size: 12.5px; line-height: 1.85; margin: 0;
                            max-width: 54ch; }
         .sg-empty { padding: 60px 0; font-family: ${MONO}; font-size: 13px; line-height: 1.9;
