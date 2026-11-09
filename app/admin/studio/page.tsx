@@ -20,6 +20,14 @@ interface Collab { id: string; slug: string; artist_name: string; artist_name_vn
   [k: string]: unknown }
 interface Img { id: string; collaboration_id: string; storage_path: string
   caption_en: string | null; caption_vn: string | null; orientation: string; sort: number }
+// A PIECE ON THE WALL, which is not the same object as a photograph of the
+// room — see db/collaboration_pieces.sql. These feed the public gallery guide
+// at /studio/<slug>/guide, in `sort` order, which is the WALKING order.
+interface Piece { id: string; collaboration_id: string; sort: number
+  title_en: string | null; title_vn: string | null; artist_name: string | null
+  year: string | null; medium_en: string | null; medium_vn: string | null
+  dimensions: string | null; image_path: string | null
+  description_en: string | null; description_vn: string | null; provenance: string | null }
 
 const SECTIONS = [
   ['collaboration', 'The collaboration'], ['inspiration', 'In the artist’s words'],
@@ -34,6 +42,17 @@ export default function StudioAdmin() {
   const [msg, setMsg] = useState<string | null>(null)
   const [draft, setDraft] = useState<Record<string, unknown>>({})
   const fileRef = useRef<HTMLInputElement>(null)
+  const [pieces, setPieces] = useState<Piece[]>([])
+  // NULL means nobody who reads Vietnamese has been through it.
+  const [vnReviewed, setVnReviewed] = useState<string | null>(null)
+
+  const loadPieces = useCallback((id: string | null) => {
+    if (!id) { setPieces([]); setVnReviewed(null); return }
+    fetch(`/api/admin/studio/pieces?collaboration=${id}`, { cache: 'no-store' })
+      .then(r => r.json()).then(j => { setPieces(j.pieces || []); setVnReviewed(j.vn_reviewed_at ?? null) })
+      .catch(() => {})
+  }, [])
+  useEffect(() => { loadPieces(sel) }, [sel, loadPieces])
 
   const load = useCallback(() => {
     fetch('/api/admin/studio', { cache: 'no-store' }).then(r => r.json())
@@ -81,6 +100,62 @@ export default function StudioAdmin() {
     await patchImg(list[i].id, { sort: list[j].sort })
     await patchImg(list[j].id, { sort: list[i].sort })
   }
+  // ── PIECES ──────────────────────────────────────────────────────────────
+  const addPiece = async () => {
+    if (!c) return
+    setBusy(true); setMsg(null)
+    const r = await fetch('/api/admin/studio/pieces', { method: 'PUT',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ collaboration_id: c.id }) })
+    const j = await r.json().catch(() => ({}))
+    setMsg(r.ok ? t('Piece added — fill it in below.', 'Đã thêm tác phẩm — điền thông tin bên dưới.')
+                : (j.error || t('Could not add it.', 'Không thể thêm.')))
+    if (r.ok) loadPieces(c.id)
+    setBusy(false)
+  }
+  // Saved on blur, one field at a time. A single Save for a 20-piece catalogue
+  // is a form somebody loses an afternoon of typing out of.
+  const patchPiece = async (id: string, patch: Record<string, unknown>) => {
+    await fetch('/api/admin/studio/pieces', { method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...patch }) })
+    loadPieces(sel)
+  }
+  const movePiece = async (pc: Piece, dir: -1 | 1) => {
+    const list = [...pieces].sort((a, b) => a.sort - b.sort)
+    const i = list.findIndex(x => x.id === pc.id)
+    const j = i + dir
+    if (j < 0 || j >= list.length) return
+    await patchPiece(list[i].id, { sort: list[j].sort })
+    await patchPiece(list[j].id, { sort: list[i].sort })
+  }
+  const pieceImage = async (id: string, f: File) => {
+    setBusy(true); setMsg(null)
+    const fd = new FormData(); fd.append('file', f); fd.append('id', id)
+    const r = await fetch('/api/admin/studio/pieces', { method: 'POST', body: fd })
+    const j = await r.json().catch(() => ({}))
+    setMsg(r.ok ? t('Image added.', 'Đã thêm ảnh.') : (j.error || t('Could not add that image.', 'Không thể thêm ảnh.')))
+    if (r.ok) loadPieces(sel)
+    setBusy(false)
+  }
+  const markVnReviewed = async () => {
+    if (!c) return
+    const by = window.prompt(t('Who checked the Vietnamese?', 'Ai đã kiểm tra bản tiếng Việt?'))
+    if (!by?.trim()) return
+    setBusy(true)
+    const r = await fetch('/api/admin/studio/pieces', { method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind: 'vn-review', collaboration_id: c.id, by }) })
+    const j = await r.json().catch(() => ({}))
+    setMsg(r.ok ? t('Marked as reviewed.', 'Đã đánh dấu là đã kiểm tra.') : (j.error || t('Could not save.', 'Không thể lưu.')))
+    if (r.ok) loadPieces(c.id)
+    setBusy(false)
+  }
+
+  const removePiece = async (id: string) => {
+    setBusy(true)
+    await fetch(`/api/admin/studio/pieces?piece=${id}`, { method: 'DELETE' })
+    loadPieces(sel); setBusy(false)
+  }
+
   const removeImg = async (id: string) => {
     setBusy(true)
     await fetch(`/api/admin/studio?image=${id}`, { method: 'DELETE' })
@@ -228,6 +303,145 @@ export default function StudioAdmin() {
             {imgs.length === 0 && <div style={{ ...meta, marginTop: 10 }}>
               {t('No images yet — the page will read as a wall of text until there are some.',
                  'Chưa có ảnh — trang sẽ chỉ toàn chữ cho đến khi có ảnh.')}</div>}
+          </div>
+
+          {/* ══ THE GALLERY GUIDE ══════════════════════════════════════════
+              The pieces a guest walks past, in that order, with the label a
+              gallery would print and the story behind it. This is what the QR
+              in the printed booklet leads to. Saved field by field on blur —
+              one Save button for a twenty-piece catalogue is an afternoon of
+              typing somebody eventually loses. */}
+          <div style={{ ...card, marginTop: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+              <div style={sectionLabel}>{t('Gallery guide — the pieces', 'Hướng dẫn tham quan — các tác phẩm')}</div>
+              <a href={`/studio/${c.slug}/guide`} target="_blank" rel="noreferrer" style={{ ...mini, textDecoration: 'none' }}>
+                {t('Open the guide', 'Mở hướng dẫn')} →
+              </a>
+            </div>
+            {/* ── IS THE VIETNAMESE CHECKED? ─────────────────────────────
+                The guide was translated in one pass the night before the show
+                opened, because a flagged draft beats an English-only guide for
+                a room where half the guests read Vietnamese. Unreviewed
+                Vietnamese that nobody flags just becomes the house Vietnamese,
+                so it says so here until somebody takes responsibility for it.
+                A hardcoded banner would be wrong the day it was reviewed and
+                nobody would be prompted to delete it — so it is data. */}
+            {!vnReviewed && pieces.length > 0 && (
+              <div style={{ ...warn, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ flex: 1, minWidth: 220 }}>
+                  {t('The Vietnamese here is an unchecked draft. It is live to guests, which is the right state for now — but it is not house Vietnamese until somebody who reads it has been through it.',
+                     'Bản tiếng Việt ở đây là bản nháp chưa kiểm tra. Khách đã xem được, và hiện tại như vậy là hợp lý — nhưng chưa phải bản chuẩn cho đến khi có người đọc tiếng Việt rà lại.')}
+                </span>
+                <button style={mini} disabled={busy} onClick={markVnReviewed}>
+                  {t('Mark as checked', 'Đánh dấu đã kiểm tra')}
+                </button>
+              </div>
+            )}
+            {vnReviewed && (
+              <div style={{ ...meta, marginBottom: 10 }}>
+                {t(`Vietnamese checked ${new Date(vnReviewed).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' })}.`,
+                   `Bản tiếng Việt đã được kiểm tra ngày ${new Date(vnReviewed).toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' })}.`)}
+              </div>
+            )}
+            <div style={{ ...meta, marginBottom: 10 }}>
+              {t('In the order a guest walks past them. Each field saves when you click away. Anything left empty is simply left off the label — nothing is invented.',
+                 'Theo thứ tự khách sẽ đi qua. Mỗi ô tự lưu khi bạn bấm ra ngoài. Ô để trống sẽ không hiện trên nhãn — hệ thống không tự điền.')}
+            </div>
+
+            {[...pieces].sort((a, b) => a.sort - b.sort).map((pc, i) => (
+              <div key={pc.id} style={{ padding: '16px 0', borderTop: '1px solid rgba(229,212,194,0.09)' }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
+                  <span style={{ ...meta, fontWeight: 700, color: '#E5D4C2' }}>
+                    {String(i + 1).padStart(2, '0')} / {String(pieces.length).padStart(2, '0')}
+                  </span>
+                  <button style={mini} disabled={i === 0} onClick={() => movePiece(pc, -1)}>↑</button>
+                  <button style={mini} disabled={i === pieces.length - 1} onClick={() => movePiece(pc, 1)}>↓</button>
+                  <button style={{ ...mini, color: '#C27070', borderColor: '#C27070', marginLeft: 'auto' }}
+                          onClick={() => removePiece(pc.id)}>{t('Remove', 'Xoá')}</button>
+                </div>
+
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                  <div style={{ width: 96, flexShrink: 0 }}>
+                    {pc.image_path
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      ? <img src={pc.image_path} alt="" style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 4, display: 'block' }} />
+                      : <div style={{ width: 96, height: 96, borderRadius: 4, border: '1px dashed rgba(229,212,194,0.25)',
+                                      display: 'grid', placeItems: 'center', ...meta, textAlign: 'center', padding: 6 }}>
+                          {t('no image', 'chưa có ảnh')}
+                        </div>}
+                    <input type="file" accept="image/jpeg,image/png,image/webp"
+                           onChange={e => { const f = e.target.files?.[0]; if (f) pieceImage(pc.id, f); e.target.value = '' }}
+                           style={{ ...input, padding: 5, fontSize: 9, marginTop: 6 }} />
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: 220 }}>
+                    <Row label={t('Title — English', 'Tên — Tiếng Anh')}>
+                      <input style={input} defaultValue={pc.title_en || ''} placeholder={t('As the label prints it', 'Như trên nhãn')}
+                             onBlur={e => e.target.value !== (pc.title_en || '') && patchPiece(pc.id, { title_en: e.target.value })} />
+                    </Row>
+                    <Row label={t('Title — Vietnamese', 'Tên — Tiếng Việt')}>
+                      <input style={input} defaultValue={pc.title_vn || ''}
+                             onBlur={e => e.target.value !== (pc.title_vn || '') && patchPiece(pc.id, { title_vn: e.target.value })} />
+                    </Row>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 110 }}>
+                        <Row label={t('Year', 'Năm')}>
+                          {/* Text, not a number: "2023–24", "n.d." and "c. 1890" are all real labels. */}
+                          <input style={input} defaultValue={pc.year || ''} placeholder="2026"
+                                 onBlur={e => e.target.value !== (pc.year || '') && patchPiece(pc.id, { year: e.target.value })} />
+                        </Row>
+                      </div>
+                      <div style={{ flex: 2, minWidth: 140 }}>
+                        <Row label={t('Dimensions', 'Kích thước')}>
+                          <input style={input} defaultValue={pc.dimensions || ''} placeholder="120 × 90 cm"
+                                 onBlur={e => e.target.value !== (pc.dimensions || '') && patchPiece(pc.id, { dimensions: e.target.value })} />
+                        </Row>
+                      </div>
+                    </div>
+                    <Row label={t('Medium — English', 'Chất liệu — Tiếng Anh')}>
+                      <input style={input} defaultValue={pc.medium_en || ''} placeholder="Oil on linen"
+                             onBlur={e => e.target.value !== (pc.medium_en || '') && patchPiece(pc.id, { medium_en: e.target.value })} />
+                    </Row>
+                    <Row label={t('Medium — Vietnamese', 'Chất liệu — Tiếng Việt')}>
+                      <input style={input} defaultValue={pc.medium_vn || ''}
+                             onBlur={e => e.target.value !== (pc.medium_vn || '') && patchPiece(pc.id, { medium_vn: e.target.value })} />
+                    </Row>
+                    <Row label={t('Artist — only if not the exhibition’s own', 'Nghệ sĩ — chỉ khi khác với nghệ sĩ của triển lãm')}>
+                      <input style={input} defaultValue={pc.artist_name || ''} placeholder={c.artist_name}
+                             onBlur={e => e.target.value !== (pc.artist_name || '') && patchPiece(pc.id, { artist_name: e.target.value })} />
+                    </Row>
+                    <Row label={t('Description — English', 'Mô tả — Tiếng Anh')}>
+                      <textarea style={{ ...input, minHeight: 92, lineHeight: 1.7 }} defaultValue={pc.description_en || ''}
+                                placeholder={t('What the guest is looking at, and what they would not see by looking.',
+                                               'Khách đang xem gì, và điều gì họ sẽ không tự nhận ra.')}
+                                onBlur={e => e.target.value !== (pc.description_en || '') && patchPiece(pc.id, { description_en: e.target.value })} />
+                    </Row>
+                    <Row label={t('Description — Vietnamese', 'Mô tả — Tiếng Việt')}>
+                      <textarea style={{ ...input, minHeight: 92, lineHeight: 1.7 }} defaultValue={pc.description_vn || ''}
+                                onBlur={e => e.target.value !== (pc.description_vn || '') && patchPiece(pc.id, { description_vn: e.target.value })} />
+                    </Row>
+                    <Row label={t('Provenance — optional', 'Nguồn gốc — không bắt buộc')}>
+                      <input style={input} defaultValue={pc.provenance || ''}
+                             onBlur={e => e.target.value !== (pc.provenance || '') && patchPiece(pc.id, { provenance: e.target.value })} />
+                    </Row>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {pieces.length === 0 && (
+              <div style={{ ...meta, marginTop: 10 }}>
+                {t('No pieces yet. The guide tells a guest it is being written rather than showing placeholders under a real artist’s name.',
+                   'Chưa có tác phẩm. Trang hướng dẫn sẽ thông báo đang được soạn, thay vì hiện nội dung mẫu dưới tên một nghệ sĩ thật.')}
+              </div>
+            )}
+            <button disabled={busy} onClick={addPiece} style={{ ...btn, marginTop: 14 }}>
+              {busy ? '…' : t('+ Add a piece', '+ Thêm tác phẩm')}
+            </button>
+            <div style={{ ...meta, marginTop: 10 }}>
+              {t('The printed booklet’s QR points at /studio/guide, which always follows whichever exhibition is live. Regenerate it with: node scripts/studio-qr.mjs',
+                 'Mã QR trong sách hướng dẫn in trỏ tới /studio/guide, luôn theo triển lãm đang diễn ra. Tạo lại bằng: node scripts/studio-qr.mjs')}
+            </div>
           </div>
         </>
       )}
