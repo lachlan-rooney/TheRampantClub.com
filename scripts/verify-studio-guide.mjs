@@ -243,6 +243,36 @@ const vnText = await page.textContent('.sg-eyebrow')
 t(enText !== vnText, 'the EN/VN switch moves the same measured spot', `"${enText}" → "${vnText}"`)
 t(/Hướng dẫn/.test(vnText || ''), 'and the Vietnamese is really Vietnamese', vnText || '')
 
+// ── VIETNAMESE COVERAGE, NOT A SPOT CHECK ─────────────────────────────────
+// One eyebrow moving proves the switch is wired, not that a Vietnamese guest
+// can read the exhibition. The page is in VN right now, so every statement and
+// every medium line is measured: each must differ from its English and carry
+// Vietnamese diacritics. A field with no translation falls back to the English
+// through pick(), which is correct behaviour and ALSO indistinguishable from a
+// translated page unless it is counted.
+{
+  const vnBodies = await page.locator('.sg-desc').allTextContents()
+  await page.locator('button[title="English"]').first().click()
+  await page.waitForTimeout(400)
+  const enBodies = await page.locator('.sg-desc').allTextContents()
+  const DIACRITIC = /[ăâêôơưđạảấầẩẫậắằẳẵặếềểễệốồổỗộớờởỡợúụủứừửữựíìỉĩịýỳỷỹỵ]/i
+  const translated = vnBodies.filter((v, i) => v.trim() && v !== enBodies[i] && DIACRITIC.test(v)).length
+  const withText = enBodies.filter(x => x.trim()).length
+  t(translated === withText, 'every statement on the page is translated, not falling back to English',
+    `${translated} of ${withText}`)
+  // Titles are deliberately NOT translated — "Sawit" is Indonesian, and the
+  // printed booklet beside this guide prints one form only. Asserted so that
+  // "the titles are still English" reads as the decision it is.
+  await page.locator('button[title="Tiếng Việt"]').first().click()
+  await page.waitForTimeout(400)
+  const vnTitles = await page.locator('.sg-pt').allTextContents()
+  await page.locator('button[title="English"]').first().click()
+  await page.waitForTimeout(400)
+  const enTitles = await page.locator('.sg-pt').allTextContents()
+  t(JSON.stringify(vnTitles) === JSON.stringify(enTitles),
+    'titles stay as the wall prints them in both languages (deliberate)', vnTitles[0] || '')
+}
+
 // The permalink still works on its own, for anything dated.
 if (slug) {
   const perma = await page.goto(`${BASE}/studio/${slug}/guide`, { waitUntil: 'domcontentloaded' })
