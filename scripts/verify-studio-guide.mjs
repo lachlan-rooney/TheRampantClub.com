@@ -197,14 +197,31 @@ if (sections > 0) {
   // Lazy below the fold, eager at the top: the first image is what the guest
   // is standing in front of, the rest can wait for the scroll.
   const loading = await page.locator('.sg-fig img').evaluateAll(els => els.map(e => e.getAttribute('loading')))
-  t(loading.length === 0 || (loading[0] === 'eager' && loading.slice(1).every(v => v === 'lazy')),
-    'first image eager, every later one lazy', loading.join(', ') || 'no images yet')
+  const placeholders = await page.locator('.sg-nofig').count()
+  if (loading.length === 0) {
+    // NOT A PASS. No images means the loading rule is untested, and a tick
+    // here would be the zero-row harness passing everything again. Said out
+    // loud instead, and the honest placeholder is what gets asserted.
+    console.log(`· the lazy-loading rule is UNTESTED — 0 images on ${placeholders} piece(s)`)
+    t(placeholders === sections, 'every piece without an image says so, rather than rendering a gap',
+      `${placeholders} of ${sections}`)
+  } else {
+    t(loading[0] === 'eager' && loading.slice(1).every(v => v === 'lazy'),
+      'first image eager, every later one lazy', loading.join(', '))
+  }
 } else {
   // An empty guide must SAY it is empty, in both languages, rather than
   // rendering a bare page or inventing a label.
   const body = await page.textContent('body')
   t(/being written|đang được soạn/i.test(body), 'an empty guide says so instead of showing placeholders')
 }
+
+// CONSOLE ERRORS FROM THE GUIDE ITSELF. Taken here, before this script
+// deliberately navigates to a 404 further down — that navigation logs a
+// failed request, which is the harness's own noise and not the page's fault.
+// Asserting at the end instead made the suite fail on its own test.
+const guideErrors = [...errors]
+t(guideErrors.length === 0, 'no console errors on the guide', guideErrors.slice(0, 2).join(' | '))
 
 // THE STUDIO'S OWN COLOURS, measured off the rendered page rather than read
 // off the source — a stylesheet can win against an inline value.
@@ -234,8 +251,6 @@ if (slug) {
 // A DRAFT exhibition must not be guessable. RLS, not the obscurity of the URL.
 const draft = await page.goto(`${BASE}/studio/not-a-real-exhibition/guide`, { waitUntil: 'domcontentloaded' })
 t(draft.status() === 404, 'an unknown or unopened exhibition is a 404, not a blank guide', `HTTP ${draft.status()}`)
-
-t(errors.length === 0, 'no console errors', errors.slice(0, 2).join(' | '))
 
 await browser.close()
 console.log(`\n${fail === 0 ? '✓ ALL' : '✗'} ${pass} passed, ${fail} failed`)

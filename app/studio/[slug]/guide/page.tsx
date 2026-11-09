@@ -22,7 +22,7 @@ const anon = () => createClient(
   { auth: { persistSession: false } },
 )
 
-const FIELDS = 'id,slug,artist_name,artist_name_vn,title_en,title_vn,accent,opens_on,closes_on,bio_en,bio_vn'
+const FIELDS = 'id,slug,artist_name,artist_name_vn,title_en,title_vn,accent,opens_on,closes_on,bio_en,bio_vn,food_en,food_vn,drinks_en,drinks_vn'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params

@@ -32,8 +32,26 @@ const LIMIT: Record<string, number> = {
   medium_en: 200, medium_vn: 200, dimensions: 120,
   description_en: 4000, description_vn: 4000, provenance: 1000,
 }
-const tidy = (v: unknown, cap: number) =>
-  typeof v === 'string' ? (v.replace(/\s+/g, ' ').trim().slice(0, cap) || null) : null
+// ⚠ TWO KINDS OF FIELD, AND ONLY ONE OF THEM IS A LINE.
+// A title, a medium and a dimension are single lines: collapsing their
+// whitespace is right, because a stray newline pasted into a label is a
+// mistake. A DESCRIPTION is prose in paragraphs, and `\s+ → ' '` would run an
+// artist's four-paragraph statement into one wall of text — silently, on the
+// way in, with no way back. So the long fields keep their paragraph breaks
+// (the page sets white-space: pre-line for exactly this), and only runs of
+// spaces and tabs within a line are collapsed.
+const PROSE = new Set(['description_en', 'description_vn', 'provenance'])
+const tidy = (v: unknown, cap: number, prose = false) => {
+  if (typeof v !== 'string') return null
+  const cleaned = prose
+    ? v.replace(/\r\n?/g, '\n')          // one newline convention
+       .replace(/[ \t]+/g, ' ')           // runs of spaces WITHIN a line
+       .replace(/ *\n */g, '\n')          // no trailing spaces on a line
+       .replace(/\n{3,}/g, '\n\n')        // at most one blank line between paragraphs
+       .trim()
+    : v.replace(/\s+/g, ' ').trim()
+  return cleaned.slice(0, cap) || null
+}
 
 export async function GET(req: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Staff only.' }, { status: 403 })
@@ -70,9 +88,21 @@ export async function PATCH(req: NextRequest) {
   for (const f of FIELDS) {
     if (!(f in b)) continue
     // sort is a number; everything else is text that gets trimmed and capped.
-    patch[f] = f === 'sort' ? Number(b[f]) || 0 : tidy(b[f], LIMIT[f] ?? 400)
+    patch[f] = f === 'sort' ? Number(b[f]) || 0 : tidy(b[f], LIMIT[f] ?? 400, PROSE.has(f))
   }
   if (!Object.keys(patch).length) return NextResponse.json({ error: 'Nothing to change.' }, { status: 400 })
+  // REFUSE RATHER THAN TRUNCATE. slice() quietly losing the last paragraph of
+  // a statement is worse than an error: the save appears to succeed and nobody
+  // reads to the end of a label to check.
+  for (const f of FIELDS) {
+    if (f === 'sort' || !(f in b) || typeof b[f] !== 'string') continue
+    const cap = LIMIT[f] ?? 400
+    if (String(b[f]).trim().length > cap) {
+      return NextResponse.json({
+        error: `${f} is ${String(b[f]).trim().length} characters; the limit is ${cap}. Shorten it rather than let it be cut.`,
+      }, { status: 400 })
+    }
+  }
   const sb = svc()
   const { error } = await sb.from('collaboration_pieces').update(patch).eq('id', b.id)
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
