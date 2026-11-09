@@ -277,6 +277,28 @@ t(/Hướng dẫn/.test(vnText || ''), 'and the Vietnamese is really Vietnamese'
     'titles stay as the wall prints them in both languages (deliberate)', vnTitles[0] || '')
 }
 
+// ── THE SUPPLIED MARKS ────────────────────────────────────────────────────
+// The lockup, the lion, the sponsors and the wordmark. A logo that 404s shows
+// as nothing at all on a page with no borders — an absent sponsor mark looks
+// identical to a sponsor who was never credited, which is the one failure
+// worth catching automatically here.
+{
+  await page.goto(`${BASE}/studio/guide`, { waitUntil: 'networkidle' })
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+  await page.waitForTimeout(1800)
+  const marks = await page.evaluate(() => [...document.querySelectorAll('img')]
+    .filter(i => i.src.includes('/studio/brand/'))
+    .map(i => ({ f: i.src.split('/').pop(), ok: i.naturalWidth > 0, w: Math.round(i.getBoundingClientRect().width) })))
+  t(marks.length >= 5, 'the supplied marks are on the page', marks.map(m => m.f).join(', '))
+  const broken = marks.filter(m => !m.ok)
+  t(broken.length === 0, 'every one of them actually loads',
+    broken.length ? broken.map(m => m.f).join(', ') : `${marks.length} marks`)
+  // The exhibition lockup carries the title, so the page must still have a
+  // real heading for anything that cannot see the image.
+  const alt = await page.getAttribute('h1 img', 'alt')
+  t(!!alt && alt.length > 3, 'the lockup carries the exhibition title as its alt', alt || 'MISSING')
+}
+
 // ── THE FIVE SENSES ───────────────────────────────────────────────────────
 // The room answers the work, and the tabs are how a guest finds out what is in
 // the glass and in the air. Reused from lib/studio/senses rather than redrawn,

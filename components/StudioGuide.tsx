@@ -277,15 +277,28 @@ export default function StudioGuide({ collaboration: c, pieces }: {
                            max-width: 54ch; }
         .sg-empty { padding: 60px 0; font-family: ${MONO}; font-size: 13px; line-height: 1.9;
                     max-width: 52ch; opacity: .78; }
-        .sg-lion { display: block; width: 74px; height: auto; margin: 26px 0 0; }
+        .sg-lion { display: block; width: 62px; height: auto; margin: 26px 0 0; }
+        .sg-lockup { display: block; width: min(300px, 76%); height: auto; }
+        /* The lockup replaces type inside the h1, so the h1's own type metrics
+           must not add space around an image. */
+        .sg-title { display: block; }
+
+        .sg-marks { display: flex; align-items: center; flex-wrap: wrap;
+                    gap: 18px 26px; margin: 16px 0 0; }
+        .sg-mark { display: block; height: auto; width: auto; }
+        /* Sized by OPTICAL weight, not to a common width. Duncan Taylor is a
+           6.4:1 line of type and LR Growth is a 1.5:1 block; matching their
+           widths would make one shout and the other vanish. */
+        .sg-mark-dt { max-width: 196px; }
+        .sg-mark-lr { max-width: 112px; }
+        .sg-mark-type { font-family: ${SERIF}; font-size: 21px; text-transform: uppercase;
+                        line-height: 1; }
+        .sg-wordmark { display: block; width: min(280px, 74%); height: auto; margin: 30px 0 0; }
         .sg-foot { margin: 80px 0 0; padding-top: 28px; border-top: 1px solid ${INK}26;
                    font-family: ${MONO}; font-size: 11.5px; line-height: 1.9; }
         .sg-foot a { color: ${INK}; display: inline-block; margin-top: 18px; }
         .sg-credit-label { font-family: ${MONO}; font-size: 10px; letter-spacing: .22em;
                            text-transform: uppercase; opacity: .6; }
-        .sg-credits { display: flex; flex-direction: column; gap: 4px; margin: 10px 0 0; }
-        .sg-credits span { font-family: ${SERIF}; font-size: 19px; text-transform: uppercase;
-                           line-height: 1.3; }
         .sg-foot-line { margin: 22px 0 0; opacity: .62; }
 
         @media (prefers-reduced-motion: reduce) { .sg-fill { transition: none; } }
@@ -311,11 +324,23 @@ export default function StudioGuide({ collaboration: c, pieces }: {
         </div>
 
         <header className="sg-head">
-          {/* The lion, cream on sage, as on the booklet's cover. */}
+          {/* The Studio's own lion, cream on sage, as on the booklet's cover —
+              not the club's general one, which is a different drawing. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/cup/rampant-lion-cream.webp" alt="" aria-hidden="true" className="sg-lion" />
+          <img src="/images/studio/brand/studio-lion.webp" alt="" aria-hidden="true" className="sg-lion" />
           <div className="sg-eyebrow">{t('Gallery guide · The Studio', 'Hướng dẫn tham quan · The Studio')}</div>
-          {exhibitionTitle && <h1 className="sg-title">{exhibitionTitle}</h1>}
+          {/* THE LOCKUP, NOT THE WORDS. "The Octave × Toni." is a mark — the
+              Octave logotype, the cross, and Toni's own signature — and
+              setting it in the club's display face would be a worse version of
+              a thing the artist already signed. It stays inside the h1 with
+              the title as its alt, so the page still has a real heading: the
+              same arrangement /studio uses for the Studio wordmark. */}
+          {exhibitionTitle && (
+            <h1 className="sg-title">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/studio/brand/octave-x-toni.webp" alt={exhibitionTitle} className="sg-lockup" />
+            </h1>
+          )}
           <div className="sg-artist">{artist}</div>
           {dateRange(c.opens_on, c.closes_on) && (
             <div className="sg-dates">{dateRange(c.opens_on, c.closes_on)}</div>
@@ -506,14 +531,27 @@ export default function StudioGuide({ collaboration: c, pieces }: {
             is read for three months after that evening. */}
         <footer className="sg-foot">
           <div className="sg-credit-label">{t('Powered by', 'Được hỗ trợ bởi')}</div>
-          <div className="sg-credits">
-            <span>Lactone Labs</span>
-            <span>LR Growth Solutions</span>
-            <span>Duncan Taylor Scotch Whisky</span>
+          <div className="sg-marks">
+            {/* ⚠ LACTONE LABS HAS NO FILE. It is first on the leaflet's
+                "powered by" stack, and it is the only one of the five set in
+                type here — not an oversight, an absence. Send the mark and it
+                joins the row. */}
+            <span className="sg-mark-type">Lactone Labs</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/studio/brand/lr-growth.webp" alt="LR Growth Solutions"
+                 loading="lazy" className="sg-mark sg-mark-lr" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/studio/brand/duncan-taylor.webp" alt="Duncan Taylor Scotch Whisky"
+                 loading="lazy" className="sg-mark sg-mark-dt" />
           </div>
+
+          {/* The leaflet closes on this, so the guide does too. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/studio/brand/studio-wordmark.webp" alt="The Studio @ The Rampant Club"
+               loading="lazy" className="sg-wordmark" />
+
           <div className="sg-foot-line">
-            {t('The Studio @ The Rampant Club · Floor 2 · 74A/2 Hai Bà Trưng',
-               'The Studio @ The Rampant Club · Tầng 2 · 74A/2 Hai Bà Trưng')}
+            {t('Floor 2 · 74A/2 Hai Bà Trưng · Sài Gòn', 'Tầng 2 · 74A/2 Hai Bà Trưng · Sài Gòn')}
           </div>
           <Link href={`/studio/${c.slug}`}>
             {t('More about this exhibition', 'Tìm hiểu thêm về triển lãm này')} →
