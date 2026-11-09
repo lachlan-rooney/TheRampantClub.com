@@ -296,8 +296,10 @@ export default function StudioGuide({ collaboration: c, pieces }: {
            widths would make one shout and the other vanish. */
         .sg-mark-dt { max-width: 196px; }
         .sg-mark-lr { max-width: 112px; }
-        .sg-mark-type { font-family: ${SERIF}; font-size: 21px; text-transform: uppercase;
-                        line-height: 1; }
+        /* The pixel logotype is a delicate, open letterform — at the width
+           that balances Duncan Taylor's serif it reads as a faint texture
+           rather than a name, so it gets the extra width its drawing needs. */
+        .sg-mark-ll { max-width: 170px; }
         .sg-wordmark { display: block; width: min(280px, 74%); height: auto; margin: 30px 0 0; }
         .sg-foot { margin: 80px 0 0; padding-top: 28px; border-top: 1px solid ${INK}26;
                    font-family: ${MONO}; font-size: 11.5px; line-height: 1.9; }
@@ -537,11 +539,9 @@ export default function StudioGuide({ collaboration: c, pieces }: {
         <footer className="sg-foot">
           <div className="sg-credit-label">{t('Powered by', 'Được hỗ trợ bởi')}</div>
           <div className="sg-marks">
-            {/* ⚠ LACTONE LABS HAS NO FILE. It is first on the leaflet's
-                "powered by" stack, and it is the only one of the five set in
-                type here — not an oversight, an absence. Send the mark and it
-                joins the row. */}
-            <span className="sg-mark-type">Lactone Labs</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/studio/brand/lactone-labs.webp" alt="Lactone Labs"
+                 loading="lazy" className="sg-mark sg-mark-ll" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/images/studio/brand/lr-growth.webp" alt="LR Growth Solutions"
                  loading="lazy" className="sg-mark sg-mark-lr" />
