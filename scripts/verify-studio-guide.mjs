@@ -236,16 +236,16 @@ if (live[0]?.accent) {
 }
 
 // BILINGUAL BY DEFAULT — the switch, and the page actually moving.
-const enText = await page.textContent('.sg-eyebrow')
+const enText = await page.textContent('.sg-senses-h')
 // ⚠ SCOPED TO .sg-bar. The guide now carries the site nav as well, so a bare
 // button[title=…] matches two controls and .first() reaches for the one inside
 // the closed menu — a selector that was unambiguous until the page gained a
 // second, identical control.
 await page.locator('.sg-bar button[title="Tiếng Việt"]').first().click()
 await page.waitForTimeout(400)
-const vnText = await page.textContent('.sg-eyebrow')
+const vnText = await page.textContent('.sg-senses-h')
 t(enText !== vnText, 'the EN/VN switch moves the same measured spot', `"${enText}" → "${vnText}"`)
-t(/Hướng dẫn/.test(vnText || ''), 'and the Vietnamese is really Vietnamese', vnText || '')
+t(/Khám phá/.test(vnText || ''), 'and the Vietnamese is really Vietnamese', vnText || '')
 
 // ── VIETNAMESE COVERAGE, NOT A SPOT CHECK ─────────────────────────────────
 // One eyebrow moving proves the switch is wired, not that a Vietnamese guest
@@ -275,6 +275,56 @@ t(/Hướng dẫn/.test(vnText || ''), 'and the Vietnamese is really Vietnamese'
   const enTitles = await page.locator('.sg-pt').allTextContents()
   t(JSON.stringify(vnTitles) === JSON.stringify(enTitles),
     'titles stay as the wall prints them in both languages (deliberate)', vnTitles[0] || '')
+}
+
+// ── THE THINGS THAT WERE WRONG ON A PHONE ─────────────────────────────────
+// Every one of these was reported from an actual phone, and every one of them
+// renders perfectly in a screenshot — which is why they are measured here
+// rather than looked at.
+{
+  await page.goto(`${BASE}/studio/guide`, { waitUntil: 'networkidle' })
+  await page.waitForTimeout(1200)
+  const m = await page.evaluate(() => {
+    const r = (sel) => { const e = document.querySelector(sel); return e ? e.getBoundingClientRect() : null }
+    return {
+      vw: window.innerWidth,
+      hero: r('.sg-hero img'),
+      bar: r('.sg-bar-in'),
+      tabs: [...document.querySelectorAll('.sg-tab')].map(e => e.getBoundingClientRect()),
+      lion: r('.sg-lion'),
+      marks: [...document.querySelectorAll('.sg-marks .sg-mark')].map(e => e.getBoundingClientRect()),
+      eyebrow: !!document.querySelector('.sg-senses-h') && !document.querySelector('.sg-head .sg-eyebrow'),
+      address: /Hai Bà Trưng/.test(document.querySelector('.sg-foot')?.textContent || ''),
+      lockupCentred: (() => { const e = r('.sg-lockup'); if (!e) return false
+        return Math.abs((e.left + e.right) / 2 - window.innerWidth / 2) < 3 })(),
+      artistSize: parseFloat(getComputedStyle(document.querySelector('.sg-artist')).fontSize),
+    }
+  })
+  t(m.hero && Math.round(m.hero.left) === 0 && Math.round(m.hero.width) === m.vw,
+    'the portrait runs full bleed at the top', m.hero ? `${Math.round(m.hero.left)}→${Math.round(m.hero.right)} of ${m.vw}` : 'no hero')
+  t(m.lockupCentred, 'the lockup is centred')
+  t(m.artistSize >= 28, 'the artist\'s name is set at title scale, not caption scale', `${m.artistSize}px`)
+  t(m.eyebrow, 'the eyebrow above the lockup is gone')
+
+  // THE TABS MUST NOT BE CLIPPED BY THE SCREEN. They were flex: 1 0 auto with
+  // a 66px floor, which overflowed a 350px content box and cut the outer two
+  // off at the edges on load.
+  const clipped = m.tabs.filter(b => b.left < -0.5 || b.right > m.vw + 0.5).length
+  t(m.tabs.length === 5 && clipped === 0, 'all five sense tabs are fully on screen',
+    `${m.tabs.length} tabs, ${clipped} clipped`)
+
+  // The bar's track has to reach the right edge rather than stopping short.
+  t(m.bar && m.bar.right >= m.vw - 24, 'the progress bar reaches the edge of the screen',
+    m.bar ? `right edge at ${Math.round(m.bar.right)} of ${m.vw}` : 'no bar')
+
+  // Sponsors in a single centred column, and the lion last.
+  const centred = m.marks.every(b => Math.abs((b.left + b.right) / 2 - m.vw / 2) < 3)
+  t(m.marks.length === 3 && centred, 'the three sponsor marks run down the centre',
+    `${m.marks.length} marks, centred: ${centred}`)
+  t(!!m.lion && Math.abs((m.lion.left + m.lion.right) / 2 - m.vw / 2) < 3, 'and the lion is centred at the foot')
+  t(m.lion && m.marks.length > 0 && m.lion.top > m.marks[m.marks.length - 1].top,
+    'with the lion BELOW the sponsors, closing the page')
+  t(!m.address, 'the Floor 2 address line is gone from the guide\'s own footer')
 }
 
 // ── WHERE THE MONEY GOES ──────────────────────────────────────────────────
@@ -406,7 +456,7 @@ t(/Hướng dẫn/.test(vnText || ''), 'and the Vietnamese is really Vietnamese'
       r.ok ? '' : `covered by .${r.over}`)
   }
 
-  const before = (await page.textContent('.sg-eyebrow')) || ''
+  const before = (await page.textContent('.sg-senses-h')) || ''
   await burger.click(); await page.waitForTimeout(400)
   const inMenu = page.locator('.nav-lang-top button[title="Tiếng Việt"]').first()
   t(await inMenu.count() > 0, 'and the EN/VN switch is inside it, where people look')
@@ -417,8 +467,8 @@ t(/Hướng dẫn/.test(vnText || ''), 'and the Vietnamese is really Vietnamese'
   // recorded and survives, which is what a guest who switches and keeps
   // reading actually depends on.
   await page.reload({ waitUntil: 'networkidle' }); await page.waitForTimeout(700)
-  const after = (await page.textContent('.sg-eyebrow')) || ''
-  t(before !== after && /Hướng dẫn/.test(after),
+  const after = (await page.textContent('.sg-senses-h')) || ''
+  t(before !== after && /Khám phá/.test(after),
     'switching from inside the menu moves the guide itself', `"${before.trim()}" → "${after.trim()}"`)
 
   // Two controls, one setting. If they could drift, this is where it shows.

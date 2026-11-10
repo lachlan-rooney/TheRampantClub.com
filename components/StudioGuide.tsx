@@ -43,6 +43,7 @@ export interface GuideCollab {
   id: string; slug: string; artist_name: string; artist_name_vn: string | null
   title_en: string | null; title_vn: string | null; accent: string | null
   opens_on: string | null; closes_on: string | null
+  hero_path: string | null
   bio_en: string | null; bio_vn: string | null
   food_en: string | null; food_vn: string | null
   drinks_en: string | null; drinks_vn: string | null
@@ -110,6 +111,20 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
   // Which sense is open. One at a time, and closed to begin with — the tabs
   // are an offer, not five paragraphs between the guest and the first work.
   const [sense, setSense] = useState<number | null>(null)
+  // The strip animates in once, when it is scrolled to. Observed rather than
+  // run on mount: on mount it is below the fold and the whole point is that
+  // the guest sees the movement.
+  const sensesRef = useRef<HTMLElement | null>(null)
+  const [sensesIn, setSensesIn] = useState(false)
+  useEffect(() => {
+    const el = sensesRef.current
+    if (!el) return
+    const io = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) { setSensesIn(true); io.disconnect() }
+    }, { threshold: .35 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
   const marks = useRef<(HTMLElement | null)[]>([])
   useEffect(() => {
     if (!total) return
@@ -140,7 +155,7 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
            also capped the full-bleed figure at the 350px content box, so the
            artwork stopped 20px short of the right edge and the bleed looked
            like a mistake instead of a decision. */
-        .sg-fig, .sg-fig img { max-width: none; }
+        .sg-fig, .sg-fig img, .sg-hero, .sg-hero img { max-width: none; }
 
         .sg-bar { position: sticky; top: 0; z-index: 5; background: ${SAGE};
                   padding: 12px 0 10px; border-bottom: 1px solid ${INK}22; }
@@ -153,20 +168,41 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
            verifier now runs it on both halves. Space reserved, not z-index
            raised: winning a stacking fight with the site nav would just make
            the menu untappable instead. */
-        .sg-bar-in { display: flex; align-items: center; gap: 12px; padding-left: 48px; }
-        @media (min-width: 900px) { .sg-bar-in { padding-left: 56px; } }
-        .sg-count { font-family: ${MONO}; font-size: 11px; letter-spacing: .1em;
-                    white-space: nowrap; color: ${INK}; opacity: .72; }
-        .sg-track { flex: 1; height: 2px; background: ${INK}1f; border-radius: 2px; overflow: hidden; }
+        /* ⚠ THE BURGER SITS ON TOP OF THIS BAR. NavOverlay's trigger is fixed
+           at 18,18 and 40px square, so it covers x18–58 of whatever is under
+           it. The space is reserved on the LEFT only — the row's contents then
+           run from there to the right edge, instead of the whole row being
+           pushed in and the track stopping short of the screen. */
+        .sg-bar-in { display: flex; align-items: center; gap: 10px; padding-left: 46px; }
+        @media (min-width: 900px) { .sg-bar-in { padding-left: 54px; } }
+        .sg-count { font-family: ${MONO}; font-size: 11px; letter-spacing: .08em;
+                    white-space: nowrap; color: ${INK}; opacity: .72;
+                    font-variant-numeric: tabular-nums; }
+        /* min-width 0 so the track can actually shrink and grow inside the
+           flex row rather than being held open by its own content box. */
+        .sg-track { flex: 1 1 auto; min-width: 0; height: 2px; background: ${INK}1f;
+                    border-radius: 2px; overflow: hidden; }
         .sg-fill { height: 100%; background: ${accent}; transition: width .35s ease; }
 
-        .sg-head { padding: 34px 0 10px; }
-        .sg-eyebrow { font-family: ${MONO}; font-size: 10.5px; letter-spacing: .2em;
-                      text-transform: uppercase; opacity: .64; }
-        .sg-title { font-family: ${SERIF}; font-weight: 400; font-size: clamp(34px, 9vw, 56px);
-                    line-height: 1.02; margin: 12px 0 0; }
-        .sg-artist { font-family: ${SERIF}; font-size: clamp(19px, 5vw, 25px); margin: 8px 0 0; opacity: .82; }
-        .sg-dates { font-family: ${MONO}; font-size: 11.5px; margin: 14px 0 0; opacity: .66; }
+        /* THE PORTRAIT, FULL BLEED, FIRST. Breaks the 20px gutter the same
+           way the artwork does, so the page opens on Rizal rather than on
+           type. */
+        .sg-hero { margin: 0 -20px; }
+        .sg-hero img { display: block; width: 100%; height: auto; }
+        @media (min-width: 800px) { .sg-hero { margin: 0; } }
+
+        /* CENTRED, because the lockup is a mark and a mark with a signature in
+           it hangs badly off a left edge. Everything from the artist's name
+           down goes back to the left, where the reading is. */
+        .sg-head { padding: 30px 0 10px; text-align: center; }
+        .sg-title { display: block; margin: 0; }
+        .sg-lockup { display: block; width: min(300px, 80%); height: auto; margin: 0 auto; }
+        /* Set at the Studio page's own title scale. It was 19–25px under the
+           lockup and read as a caption; this is the artist's name. */
+        .sg-artist { font-family: ${SERIF}; font-weight: 400; line-height: .98;
+                     font-size: clamp(30px, 8vw, 58px); margin: 18px 0 0; }
+        .sg-dates { font-family: ${MONO}; font-size: 11.5px; margin: 12px 0 0; opacity: .66; }
+        .sg-head .sg-bio, .sg-head .sg-intro { text-align: left; }
         .sg-intro { font-family: ${MONO}; font-size: 14px; line-height: 2; margin: 22px 0 0;
                     max-width: 56ch; }
         /* ── THE BIOGRAPHY IS FOLDED AWAY ────────────────────────────────
@@ -250,21 +286,43 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
            again. Horizontally scrollable at phone width rather than wrapped
            to two rows, so the five read as one set. */
         .sg-senses { margin: 26px 0 0; }
-        .sg-senses-lede { font-family: ${MONO}; font-size: 11.5px; letter-spacing: .04em;
-                          opacity: .62; margin-bottom: 12px; }
-        .sg-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;
-                   scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-        .sg-tabs::-webkit-scrollbar { display: none; }
-        .sg-tab { flex: 1 0 auto; min-width: 66px; display: flex; flex-direction: column;
-                  align-items: center; gap: 5px; padding: 11px 8px 9px; cursor: pointer;
+        .sg-senses-h { font-family: ${SERIF}; font-weight: 400; line-height: 1.04;
+                       font-size: clamp(24px, 6.4vw, 38px); margin: 0 0 16px; }
+        /* ⚠ FIVE THAT ALWAYS FIT, NOT FIVE THAT SCROLL. They were
+           flex: 1 0 auto with a 66px floor, which at 390px overflowed the
+           350px content box — so the strip scrolled sideways and the outer
+           tabs were cut off at the screen edge on load, which reads as a
+           broken layout rather than as something to swipe. 1 1 0 with a zero
+           basis makes them share whatever width there is. */
+        .sg-tabs { display: flex; gap: 5px; }
+        .sg-tab { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column;
+                  align-items: center; gap: 5px; padding: 11px 4px 9px; cursor: pointer;
                   background: transparent; border: 1px solid ${INK}22; border-radius: 8px;
-                  color: ${INK}; transition: background .2s ease, border-color .2s ease; }
+                  color: ${INK}; transition: background .2s ease, border-color .2s ease;
+                  /* ── A NUDGE, ONCE, WHEN THEY COME INTO VIEW ──────────────
+                     Five quiet outlined boxes do not read as controls. They
+                     lift in turn as the strip arrives, which says "these do
+                     something" without a line of copy telling the guest so. */
+                  opacity: 0; transform: translateY(8px); }
+        .sg-senses.is-in .sg-tab { animation: sg-tab-in .5s cubic-bezier(.16,.84,.44,1) forwards; }
+        .sg-senses.is-in .sg-tab:nth-child(1) { animation-delay: .00s }
+        .sg-senses.is-in .sg-tab:nth-child(2) { animation-delay: .07s }
+        .sg-senses.is-in .sg-tab:nth-child(3) { animation-delay: .14s }
+        .sg-senses.is-in .sg-tab:nth-child(4) { animation-delay: .21s }
+        .sg-senses.is-in .sg-tab:nth-child(5) { animation-delay: .28s }
+        @keyframes sg-tab-in { to { opacity: 1; transform: none } }
+        /* ⚠ REDUCED MOTION MUST STILL SHOW THEM. An animation that only fades
+           in is invisible to anyone who has turned animation off, and these
+           start at opacity 0 — the tabs would simply never appear. */
+        @media (prefers-reduced-motion: reduce) {
+          .sg-tab, .sg-senses.is-in .sg-tab { opacity: 1; transform: none; animation: none; }
+        }
         .sg-tab.is-on { background: ${INK}0f; border-color: ${accent}; }
         .sg-tab-mark path { stroke: ${INK}; fill: none; stroke-width: 1.5;
                             stroke-linecap: round; stroke-linejoin: round; }
         .sg-tab.is-on .sg-tab-mark path { stroke: ${accent}; }
         .sg-tab-art { width: 34px; height: 34px; object-fit: contain; }
-        .sg-tab-name { font-family: ${MONO}; font-size: 9.5px; letter-spacing: .1em;
+        .sg-tab-name { font-family: ${MONO}; font-size: 9px; letter-spacing: .04em;
                        text-transform: uppercase; white-space: nowrap; }
         .sg-sense-panel { margin: 14px 0 0; padding: 16px 0 0; border-top: 1px solid ${INK}26; }
         .sg-sense-h { font-family: ${SERIF}; font-weight: 400; font-size: 26px;
@@ -286,14 +344,14 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
                            max-width: 54ch; }
         .sg-empty { padding: 60px 0; font-family: ${MONO}; font-size: 13px; line-height: 1.9;
                     max-width: 52ch; opacity: .78; }
-        .sg-lion { display: block; width: 62px; height: auto; margin: 26px 0 0; }
+        .sg-lion { display: block; width: 86px; height: auto; margin: 40px auto 0; }
         .sg-lockup { display: block; width: min(300px, 76%); height: auto; }
         /* The lockup replaces type inside the h1, so the h1's own type metrics
            must not add space around an image. */
         .sg-title { display: block; }
 
-        .sg-marks { display: flex; align-items: center; flex-wrap: wrap;
-                    gap: 18px 26px; margin: 16px 0 0; }
+        .sg-marks { display: flex; flex-direction: column; align-items: center;
+                    gap: 26px; margin: 22px 0 0; }
         .sg-mark { display: block; height: auto; width: auto; }
         /* Sized by OPTICAL weight, not to a common width. Duncan Taylor is a
            6.4:1 line of type and LR Growth is a 1.5:1 block; matching their
@@ -304,13 +362,12 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
            that balances Duncan Taylor's serif it reads as a faint texture
            rather than a name, so it gets the extra width its drawing needs. */
         .sg-mark-ll { max-width: 170px; }
-        .sg-wordmark { display: block; width: min(280px, 74%); height: auto; margin: 30px 0 0; }
+        .sg-wordmark { display: block; width: min(280px, 74%); height: auto; margin: 38px auto 0; }
         .sg-foot { margin: 80px 0 0; padding-top: 28px; border-top: 1px solid ${INK}26;
-                   font-family: ${MONO}; font-size: 11.5px; line-height: 1.9; }
-        .sg-foot a { color: ${INK}; display: inline-block; margin-top: 18px; }
+                   font-family: ${MONO}; font-size: 11.5px; line-height: 1.9; text-align: center; }
+        .sg-more { color: ${INK}; display: inline-block; margin-top: 26px; }
         .sg-credit-label { font-family: ${MONO}; font-size: 10px; letter-spacing: .22em;
                            text-transform: uppercase; opacity: .6; }
-        .sg-foot-line { margin: 22px 0 0; opacity: .62; }
 
         @media (prefers-reduced-motion: reduce) { .sg-fill { transition: none; } }
       ` }} />
@@ -319,33 +376,39 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
         {/* The switch first, because a Vietnamese guest should not have to read
             an English page to find out the page has Vietnamese. */}
         <div className="sg-bar">
+          {/* COUNT, THEN THE TRACK, THEN THE SWITCH AT THE RIGHT EDGE. The
+              toggle used to sit first, which pushed the bar's whole contents
+              in behind the fixed burger and left the track stopping short of
+              the screen. The 48px reserved for the burger is now dead space on
+              the left rather than a gap in the middle of the row. */}
           <div className="sg-bar-in">
-            <LangToggle compact tone="light" />
             {total > 0 && (
               <>
+                <div className="sg-count">
+                  {String(Math.min(at + 1, total)).padStart(2, '0')}/{String(total).padStart(2, '0')}
+                </div>
                 <div className="sg-track" aria-hidden="true">
                   <div className="sg-fill" style={{ width: `${((at + 1) / total) * 100}%` }} />
                 </div>
-                <div className="sg-count">
-                  {t(`${at + 1} of ${total}`, `${at + 1} / ${total}`)}
-                </div>
               </>
             )}
+            <LangToggle compact tone="light" />
           </div>
         </div>
 
+        {/* The portrait runs full bleed at the very top — the exhibition's own
+            hero, the way the Studio page opens on the work rather than on
+            words. */}
+        {c.hero_path && (
+          <div className="sg-hero">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={c.hero_path} alt="" aria-hidden="true" />
+          </div>
+        )}
+
         <header className="sg-head">
-          {/* The Studio's own lion, cream on sage, as on the booklet's cover —
-              not the club's general one, which is a different drawing. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/studio/brand/studio-lion.webp" alt="" aria-hidden="true" className="sg-lion" />
-          <div className="sg-eyebrow">{t('Gallery guide · The Studio', 'Hướng dẫn tham quan · The Studio')}</div>
-          {/* THE LOCKUP, NOT THE WORDS. "The Octave × Toni." is a mark — the
-              Octave logotype, the cross, and Toni's own signature — and
-              setting it in the club's display face would be a worse version of
-              a thing the artist already signed. It stays inside the h1 with
-              the title as its alt, so the page still has a real heading: the
-              same arrangement /studio uses for the Studio wordmark. */}
+          {/* NO EYEBROW. "Gallery guide · The Studio" sat above the lockup and
+              told a guest standing in The Studio where they were. */}
           {exhibitionTitle && (
             <h1 className="sg-title">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -387,11 +450,12 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
             aroma is composed with the artist for each show, so the general
             line is all there is to say here. It is not guessed at — the same
             rule that kept this line blank in senses.ts until Lachlan wrote it. */}
-        <section className="sg-senses" aria-label={t('The five senses', 'Năm giác quan')}>
-          <div className="sg-senses-lede">
-            {t('Every exhibition is answered in five senses. Tap one.',
-               'Mỗi triển lãm được đáp lại bằng năm giác quan. Chạm vào một mục.')}
-          </div>
+        <section ref={sensesRef} className={`sg-senses ${sensesIn ? 'is-in' : ''}`}
+                 aria-label={t('The five senses', 'Năm giác quan')}>
+          <h2 className="sg-senses-h">
+            {t('Explore this exhibit through your five senses',
+               'Khám phá triển lãm qua năm giác quan')}
+          </h2>
           <div className="sg-tabs" role="tablist">
             {SENSES.map((sn, i) => {
               const on = sense === i
@@ -560,6 +624,9 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
             is read for three months after that evening. */}
         <footer className="sg-foot">
           <div className="sg-credit-label">{t('Powered by', 'Được hỗ trợ bởi')}</div>
+          {/* STACKED DOWN THE CENTRE, one per line. Side by side they had to be
+              sized against each other and the row still broke differently at
+              every width; in a column each mark is sized only against itself. */}
           <div className="sg-marks">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/images/studio/brand/lactone-labs.webp" alt="Lactone Labs"
@@ -572,17 +639,19 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
                  loading="lazy" className="sg-mark sg-mark-dt" />
           </div>
 
-          {/* The leaflet closes on this, so the guide does too. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/studio/brand/studio-wordmark.webp" alt="The Studio @ The Rampant Club"
                loading="lazy" className="sg-wordmark" />
 
-          <div className="sg-foot-line">
-            {t('Floor 2 · 74A/2 Hai Bà Trưng · Sài Gòn', 'Tầng 2 · 74A/2 Hai Bà Trưng · Sài Gòn')}
-          </div>
-          <Link href={`/studio/${c.slug}`}>
+          <Link href={`/studio/${c.slug}`} className="sg-more">
             {t('More about this exhibition', 'Tìm hiểu thêm về triển lãm này')} →
           </Link>
+
+          {/* The lion closes the page, centred and last — the mark the room
+              signs off with, not a decoration at the top competing with the
+              exhibition's own lockup. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/studio/brand/studio-lion.webp" alt="" aria-hidden="true" className="sg-lion" />
         </footer>
       </div>
     </main>

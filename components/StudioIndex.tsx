@@ -255,11 +255,11 @@ export default function StudioIndex({ collaborations, images }: {
             </div>
           )}
 
-          <Link href={`/studio/${c.slug}`} className="st-cta"
+          <Link href={`/studio/${c.slug}/guide`} className="st-cta"
                 style={{ display: 'inline-block', marginTop: 30, textDecoration: 'none', color: INK,
                          fontFamily: MONO, fontSize: 12, letterSpacing: '.12em', textTransform: 'uppercase',
                          borderBottom: `1px solid ${INK}`, paddingBottom: 6 }}>
-            See the exhibition <span className="st-go">→</span>
+            Explore the exhibition <span className="st-go">→</span>
           </Link>
         </div>
       )}
@@ -276,7 +276,7 @@ export default function StudioIndex({ collaborations, images }: {
                       margin: '26px 0 30px', opacity: .55 }}>Every exhibition</div>
         <div style={{ display: 'grid', gap: 40, gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))' }}>
           {collaborations.map(x => (
-            <Link key={x.id} href={`/studio/${x.slug}`} className="st-card"
+            <Link key={x.id} href={`/studio/${x.slug}/guide`} className="st-card"
                   style={{ textDecoration: 'none', color: INK, display: 'block' }}>
               {cardOf(x) && (
                 <div className="st-thumb" style={{ width: '100%', aspectRatio: '4 / 5', borderRadius: 14,
