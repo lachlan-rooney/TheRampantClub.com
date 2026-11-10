@@ -426,6 +426,66 @@ t(/Khám phá/.test(vnText || ''), 'and the Vietnamese is really Vietnamese', vn
   await page.setViewportSize({ width: 390, height: 844 })
 }
 
+// ── A REAL GUTTER AT PHONE WIDTH ──────────────────────────────────────────
+// The centring was correct and still did not READ as centred: at 390px the
+// measure was the whole content box, so every line ran within a few pixels of
+// both edges and only a paragraph's last line moved. "Centred" and "looks
+// centred" are two different questions and this is the second one.
+{
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(`${BASE}/studio/guide`, { waitUntil: 'networkidle' })
+  await page.waitForTimeout(900)
+  const g = await page.evaluate(() => {
+    const d = document.querySelector('.sg-desc'); if (!d) return null
+    const b = d.getBoundingClientRect()
+    return { left: b.left, right: window.innerWidth - b.right, vw: window.innerWidth }
+  })
+  t(g && g.left >= 24 && g.right >= 24 && Math.abs(g.left - g.right) < 2,
+    'at 390px the prose sits in a column with sage either side, not edge to edge',
+    g ? `${Math.round(g.left)}px / ${Math.round(g.right)}px of ${g.vw}` : 'no .sg-desc')
+}
+
+// ── THE SENSE TABS PULSE, AND THEN STOP ───────────────────────────────────
+// A one-shot lift as the strip scrolls past is finished before a guest has
+// looked at it, which is why five outlined boxes still did not read as
+// controls. Sampled over TIME rather than read off getComputedStyle: an
+// animation-name proves a rule was matched, not that anything on the screen
+// actually moved.
+{
+  await page.goto(`${BASE}/studio/guide`, { waitUntil: 'networkidle' })
+  await page.locator('.sg-senses').scrollIntoViewIfNeeded()
+  await page.waitForTimeout(1300)                      // the lift lands, the pulse begins
+  const sample = async (n, gap) => {
+    const seen = []
+    for (let i = 0; i < n; i++) {
+      seen.push(await page.evaluate(() =>
+        [...document.querySelectorAll('.sg-tab')].map(e => getComputedStyle(e).transform).join('|')))
+      await page.waitForTimeout(gap)
+    }
+    return seen
+  }
+  const moving = await sample(26, 85)                  // ~2.2s, a full cycle
+  const distinct = new Set(moving).size
+  t(distinct > 2, 'the sense tabs are actually moving, sampled frame by frame',
+    `${distinct} distinct states across ${moving.length} samples over ~2.2s`)
+  // A WAVE, NOT A TWITCH. All five moving in lockstep would be one flash; the
+  // stagger is what makes it read as an invitation along the strip.
+  const apart = moving.some(row => new Set(row.split('|')).size > 1)
+  t(apart, 'and they move in sequence, not all at once — the five read as one wave')
+
+  // ⚠ AND IT STOPS WHEN ANSWERED.
+  await page.locator('.sg-tab').nth(1).click()
+  await page.waitForTimeout(700)
+  const still = await sample(10, 110)
+  t(new Set(still).size === 1, 'the pulse stops for good once a sense has been opened',
+    `${new Set(still).size} state across ${still.length} samples`)
+  // Closing it again is a guest who understood the control, not one to re-ask.
+  await page.locator('.sg-tab').nth(1).click()
+  await page.waitForTimeout(600)
+  const closed = await sample(8, 110)
+  t(new Set(closed).size === 1, 'and does not start again when they close it')
+}
+
 // ── WHERE THE MONEY GOES ──────────────────────────────────────────────────
 // One work in this show is the auction piece. The failure worth catching is
 // not the credit missing — that is visible — but the credit appearing under

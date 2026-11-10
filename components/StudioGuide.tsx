@@ -111,6 +111,10 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
   // Which sense is open. One at a time, and closed to begin with — the tabs
   // are an offer, not five paragraphs between the guest and the first work.
   const [sense, setSense] = useState<number | null>(null)
+  // Once ANY sense has been opened the pulse has done its job and stops for
+  // good — not just while that one is open. Opening and closing again is a
+  // guest who has understood the control, not one who needs asking twice.
+  const [opened, setOpened] = useState(false)
   // The strip animates in once, when it is scrolled to. Observed rather than
   // run on mount: on mount it is below the fold and the whole point is that
   // the guest sees the movement.
@@ -316,18 +320,41 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
                      lift in turn as the strip arrives, which says "these do
                      something" without a line of copy telling the guest so. */
                   opacity: 0; transform: translateY(8px); }
-        .sg-senses.is-in .sg-tab { animation: sg-tab-in .5s cubic-bezier(.16,.84,.44,1) forwards; }
-        .sg-senses.is-in .sg-tab:nth-child(1) { animation-delay: .00s }
-        .sg-senses.is-in .sg-tab:nth-child(2) { animation-delay: .07s }
-        .sg-senses.is-in .sg-tab:nth-child(3) { animation-delay: .14s }
-        .sg-senses.is-in .sg-tab:nth-child(4) { animation-delay: .21s }
-        .sg-senses.is-in .sg-tab:nth-child(5) { animation-delay: .28s }
+        /* TWO ANIMATIONS, NOT ONE. The lift says "these arrived"; the pulse
+           says "press one". The lift alone was what shipped, and a single
+           movement as the strip scrolls past reads as decoration — by the
+           time a guest has looked at it, it has finished.
+           The pulse runs SIX times and then settles: a control that never
+           stops throbbing stops meaning anything, and starts competing with
+           the paintings. The second delay in each pair holds it off until the
+           lift has landed, and staggers it so the five read as one wave
+           across the strip rather than five things twitching at once. */
+        .sg-senses.is-in .sg-tab { animation: sg-tab-in .5s cubic-bezier(.16,.84,.44,1) forwards,
+                                              sg-tab-pulse 2.1s ease-in-out 6; }
+        .sg-senses.is-in .sg-tab:nth-child(1) { animation-delay: .00s, .95s }
+        .sg-senses.is-in .sg-tab:nth-child(2) { animation-delay: .07s, 1.04s }
+        .sg-senses.is-in .sg-tab:nth-child(3) { animation-delay: .14s, 1.13s }
+        .sg-senses.is-in .sg-tab:nth-child(4) { animation-delay: .21s, 1.22s }
+        .sg-senses.is-in .sg-tab:nth-child(5) { animation-delay: .28s, 1.31s }
         @keyframes sg-tab-in { to { opacity: 1; transform: none } }
+        /* A press, not a glow: it rises, a ring opens out of its edge, and it
+           comes back. Most of the cycle is the rest between presses. */
+        @keyframes sg-tab-pulse {
+          0%, 62%, 100% { transform: none; box-shadow: 0 0 0 0 ${accent}00; border-color: ${INK}22 }
+          74%           { transform: translateY(-3px); box-shadow: 0 0 0 4px ${accent}26; border-color: ${accent} }
+          88%           { transform: none; box-shadow: 0 0 0 7px ${accent}00; border-color: ${INK}22 }
+        }
+        /* ⚠ IT STOPS THE MOMENT THE GUEST ANSWERS IT. Naming ONE animation
+           here drops the pulse and keeps the lift's finished state; leave the
+           tabs pulsing after a sense is open and the page is nagging someone
+           who has already done the thing. */
+        .sg-senses.has-opened .sg-tab { animation-name: sg-tab-in; }
         /* ⚠ REDUCED MOTION MUST STILL SHOW THEM. An animation that only fades
            in is invisible to anyone who has turned animation off, and these
            start at opacity 0 — the tabs would simply never appear. */
         @media (prefers-reduced-motion: reduce) {
-          .sg-tab, .sg-senses.is-in .sg-tab { opacity: 1; transform: none; animation: none; }
+          .sg-tab, .sg-senses.is-in .sg-tab, .sg-senses.has-opened .sg-tab {
+            opacity: 1; transform: none; box-shadow: none; animation: none; }
         }
         .sg-tab.is-on { background: ${INK}0f; border-color: ${accent}; }
         .sg-tab-mark path { stroke: ${INK}; fill: none; stroke-width: 1.5;
@@ -401,6 +428,26 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
         .sg-sense-line,
         .sg-benefit-text,
         .sg-empty { text-align: center; margin-left: auto; margin-right: auto; }
+
+        /* ⚠ AND IT HAS TO LOOK CENTRED, WHICH IS A THIRD THING.
+           At 390px the measure is the whole content box, so every line runs
+           within a few pixels of both screen edges and only the ragged last
+           line of a paragraph moves. The type was centred and measured
+           centred and still read as a slab pushed against both edges — there
+           was no middle for it to be in the middle OF. A real gutter is what
+           makes the alignment visible, so the prose is narrower than the
+           column it sits in rather than filling it.
+           Phone only: above 560px the 60ch measure already leaves 140px of
+           sage either side and narrowing again would just make it spindly. */
+        @media (max-width: 560px) {
+          .sg-intro,
+          .sg-bio p,
+          .sg-desc,
+          .sg-prov,
+          .sg-sense-line,
+          .sg-benefit-text,
+          .sg-empty { width: 88%; }
+        }
       ` }} />
 
       <div className="sg">
@@ -481,7 +528,8 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
             aroma is composed with the artist for each show, so the general
             line is all there is to say here. It is not guessed at — the same
             rule that kept this line blank in senses.ts until Lachlan wrote it. */}
-        <section ref={sensesRef} className={`sg-senses ${sensesIn ? 'is-in' : ''}`}
+        <section ref={sensesRef}
+                 className={`sg-senses ${sensesIn ? 'is-in' : ''} ${opened ? 'has-opened' : ''}`}
                  aria-label={t('The five senses', 'Năm giác quan')}>
           <h2 className="sg-senses-h">
             {t('Explore this exhibit through your five senses',
@@ -493,7 +541,7 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
               return (
                 <button key={sn.en} role="tab" aria-selected={on} aria-controls={`sense-${i}`}
                         className={`sg-tab ${on ? 'is-on' : ''}`}
-                        onClick={() => setSense(on ? null : i)}>
+                        onClick={() => { setSense(on ? null : i); setOpened(true) }}>
                   {sn.art
                     /* eslint-disable-next-line @next/next/no-img-element */
                     ? <img src={sn.art} alt="" aria-hidden="true" className="sg-tab-art" />
