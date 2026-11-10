@@ -327,6 +327,105 @@ t(/Khám phá/.test(vnText || ''), 'and the Vietnamese is really Vietnamese', vn
   t(!m.address, 'the Floor 2 address line is gone from the guide\'s own footer')
 }
 
+// ── THE BODY PROSE RUNS DOWN THE MIDDLE, AND THE LABELS DO NOT ────────────
+// Measured off the LINE BOXES, not off getComputedStyle. A computed
+// `text-align: center` is the instruction, not the result — it is satisfied by
+// a rule that never reaches the element and by a 60ch box sitting hard left in
+// a 760px column with its lines dutifully centred inside it. A Range over the
+// paragraph's contents gives one rect per rendered line, which is the thing a
+// guest actually sees.
+//
+// THE CONTROL IS ON THE SAME PAGE, both ways round: the statements must read
+// as centred and the artwork titles must read as LEFT. A probe that cannot
+// tell those two apart would pass this file whatever the stylesheet said.
+{
+  const probe = async (w) => {
+    await page.setViewportSize({ width: w, height: 900 })
+    await page.goto(`${BASE}/studio/guide`, { waitUntil: 'networkidle' })
+    await page.waitForTimeout(900)
+    return page.evaluate(() => {
+      // One rect per line box. Zero-area rects are the collapsed whitespace
+      // between nodes and are not lines.
+      const lines = (el) => {
+        const r = document.createRange(); r.selectNodeContents(el)
+        return [...r.getClientRects()].filter(b => b.width > 1 && b.height > 1)
+          .map(b => ({ left: b.left, right: b.right, width: b.width }))
+      }
+      const read = (el) => {
+        const box = el.getBoundingClientRect()
+        const ls = lines(el)
+        if (!ls.length) return null
+        const mid = (box.left + box.right) / 2
+        return {
+          text: (el.textContent || '').slice(0, 40),
+          n: ls.length,
+          boxLeft: box.left, boxWidth: box.width,
+          // How far every line's centre is from the box's centre, and how far
+          // every line's left edge is from the box's left edge. Centred text
+          // is tight on the first; left-aligned text is tight on the second.
+          offCentre: Math.max(...ls.map(l => Math.abs((l.left + l.right) / 2 - mid))),
+          offLeft: Math.max(...ls.map(l => Math.abs(l.left - box.left))),
+          // Lines must differ in length, or the two are indistinguishable.
+          ragged: Math.max(...ls.map(l => l.width)) - Math.min(...ls.map(l => l.width)),
+          slack: box.width - Math.max(...ls.map(l => l.width)),
+          align: getComputedStyle(el).textAlign,
+        }
+      }
+      const col = document.querySelector('.sg')
+      const ps = [...document.querySelectorAll('.sg-desc p')]
+        .map(read).filter(Boolean).sort((a, b) => b.n - a.n)
+      const titles = [...document.querySelectorAll('.sg-pt')]
+        .map(read).filter(Boolean).sort((a, b) => b.slack - a.slack)
+      return {
+        vw: window.innerWidth,
+        colBox: col ? { left: col.getBoundingClientRect().left, width: col.getBoundingClientRect().width } : null,
+        stmt: ps[0] || null,
+        allAligns: [...new Set(ps.map(x => x.align))],
+        title: titles[0] || null,
+        // The block itself, not its lines: is the 60ch measure sitting in the
+        // middle of the column, or hard against its left edge?
+        descBox: (() => {
+          const d = document.querySelector('.sg-desc'); if (!d || !col) return null
+          const a = d.getBoundingClientRect(), c = col.getBoundingClientRect()
+          return { gapLeft: a.left - c.left, gapRight: c.right - a.right }
+        })(),
+      }
+    })
+  }
+
+  for (const w of [390, 1200]) {
+    const m = await probe(w)
+    const s = m.stmt
+    if (!s) { t(false, `a statement paragraph to measure at ${w}px`); continue }
+    // ⚠ WITHOUT RAGGED LINES THE REST IS VACUOUS. A block of equal-length
+    // lines is centred and left-aligned at the same coordinates.
+    t(s.n >= 2 && s.ragged > 12,
+      `at ${w}px there is a real statement to judge — several lines, of different lengths`,
+      `${s.n} lines, ${Math.round(s.ragged)}px between longest and shortest`)
+    t(s.offCentre < 2 && s.offLeft > 4,
+      `at ${w}px the artist's statement reads as CENTRED, line by line`,
+      `centres within ${s.offCentre.toFixed(1)}px, left edges vary by ${s.offLeft.toFixed(1)}px`)
+    t(!m.allAligns.includes('justify'),
+      `at ${w}px no statement is justified — text-align holds one value and centre is it`,
+      m.allAligns.join(', '))
+    // THE OTHER SIDE OF THE CONTROL.
+    const ti = m.title
+    t(!!ti && ti.slack > 10 && ti.offLeft < 2 && ti.offCentre > 4,
+      `at ${w}px the artwork title still reads off the LEFT edge, as a label does`,
+      ti ? `"${ti.text.trim()}" left within ${ti.offLeft.toFixed(1)}px, ${Math.round(ti.slack)}px of slack unused` : 'no title')
+  }
+
+  // AND THE BOX, NOT JUST ITS LINES. The 60ch measure must sit in the middle
+  // of the 760px column; with the margin shorthand resetting the auto sides it
+  // would hug the left and the centring would look half-applied.
+  const wide = await probe(1200)
+  const b = wide.descBox
+  t(b && Math.abs(b.gapLeft - b.gapRight) < 2 && b.gapLeft > 10,
+    'and the reading measure itself is centred in the column, not just its lines',
+    b ? `${Math.round(b.gapLeft)}px left / ${Math.round(b.gapRight)}px right` : 'no .sg-desc')
+  await page.setViewportSize({ width: 390, height: 844 })
+}
+
 // ── WHERE THE MONEY GOES ──────────────────────────────────────────────────
 // One work in this show is the auction piece. The failure worth catching is
 // not the credit missing — that is visible — but the credit appearing under

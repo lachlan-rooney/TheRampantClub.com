@@ -192,8 +192,8 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
         @media (min-width: 800px) { .sg-hero { margin: 0; } }
 
         /* CENTRED, because the lockup is a mark and a mark with a signature in
-           it hangs badly off a left edge. Everything from the artist's name
-           down goes back to the left, where the reading is. */
+           it hangs badly off a left edge. The prose beneath it used to step
+           back to the left; it runs down the same centre line now. */
         .sg-head { padding: 30px 0 10px; text-align: center; }
         .sg-title { display: block; margin: 0; }
         .sg-lockup { display: block; width: min(300px, 80%); height: auto; margin: 0 auto; }
@@ -202,7 +202,6 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
         .sg-artist { font-family: ${SERIF}; font-weight: 400; line-height: .98;
                      font-size: clamp(30px, 8vw, 58px); margin: 18px 0 0; }
         .sg-dates { font-family: ${MONO}; font-size: 11.5px; margin: 12px 0 0; opacity: .66; }
-        .sg-head .sg-bio, .sg-head .sg-intro { text-align: left; }
         .sg-intro { font-family: ${MONO}; font-size: 14px; line-height: 2; margin: 22px 0 0;
                     max-width: 56ch; }
         /* ── THE BIOGRAPHY IS FOLDED AWAY ────────────────────────────────
@@ -221,6 +220,20 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
         .sg-bio[open] summary::after { content: ' −'; }
         .sg-bio p { font-family: ${MONO}; font-size: 14px; line-height: 2; margin: 20px 0 0;
                     max-width: 56ch; }
+        /* ── WHAT CENTRES AND WHAT DOES NOT ──────────────────────────────
+           THE BODY PROSE CENTRES. The labels do not: a title, its facts
+           line, the piece number and the section headings all read off a
+           left edge, which is how a gallery sets a label and how /studio
+           sets its type. Centre those too and the page reads as a
+           certificate rather than a wall.
+
+           ⚠ EVERY CENTRED BLOCK NEEDS BOTH HALVES. text-align centres the
+           LINES inside a box; a 60ch box inside the 760px column still
+           sits hard left without auto side margins, so on a desktop the
+           centring would look like it had half worked. One without the other
+           is the bug to watch for here.
+
+           The rule itself is at the FOOT of this stylesheet, not here. */
         .sg-rule { height: 1px; background: ${INK}26; margin: 34px 0 0; border: 0; }
 
         /* ── A PIECE ───────────────────────────────────────────────────────
@@ -267,12 +280,11 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
            hole, and it cannot be tuned separately from the leading. */
         .sg-desc { margin: 18px 0 0; max-width: 60ch; }
         .sg-desc p { font-family: ${MONO}; font-size: 14px; line-height: 2; margin: 0 0 20px; }
-        /* THE ONE BOOKLET PROPERTY THAT DOES NOT SURVIVE THE FORMAT.
-           The printed page justifies its statements, at a fixed measure wide
-           enough to carry it. At 390px a mono line holds about 34 characters,
-           and justifying that opens rivers of white down the middle of every
-           paragraph. So it justifies only where there is measure for it. */
-        @media (min-width: 700px) { .sg-desc p { text-align: justify; } }
+        /* ⚠ THE JUSTIFICATION IS GONE AND MUST NOT COME BACK. It used to set
+           the statements justified above 700px, the way the printed page
+           does. text-align holds ONE value, so that rule now silently
+           cancels the centring on exactly the blocks carrying the artist's
+           statements — the longest text on the page. */
         .sg-desc p:last-child { margin-bottom: 0; }
         .sg-prov { font-family: ${MONO}; font-size: 11px; line-height: 1.7; margin: 14px 0 0;
                    padding-top: 12px; border-top: 1px solid ${INK}1f; opacity: .6; max-width: 60ch; }
@@ -339,7 +351,7 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
            and carries two rings of text, and at 58px neither ring is readable.
            Height leads; the width cap only stops a very wide mark running on. */
         .sg-benefit-logo { display: block; width: auto; height: auto;
-                           max-height: 104px; max-width: 190px; margin: 0 0 14px; }
+                           max-height: 104px; max-width: 190px; margin: 0 auto 14px; }
         .sg-benefit-text { font-family: ${MONO}; font-size: 12.5px; line-height: 1.85; margin: 0;
                            max-width: 54ch; }
         .sg-empty { padding: 60px 0; font-family: ${MONO}; font-size: 13px; line-height: 1.9;
@@ -370,6 +382,25 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
                            text-transform: uppercase; opacity: .6; }
 
         @media (prefers-reduced-motion: reduce) { .sg-fill { transition: none; } }
+
+        /* ══ THE BODY PROSE, DOWN THE MIDDLE ═══════════════════════════════
+           Every block of reading on the page, and nothing that is a label.
+           ONE rule rather than a line added to each block, so a new piece of
+           prose is centred by being named here and cannot be half-done.
+
+           ⚠ IT IS DECLARED LAST ON PURPOSE. Each of these blocks sets its
+           own margin SHORTHAND above (margin: 18px 0 0 and so on), and a
+           shorthand resets the side margins to 0 — so the same rule written
+           further up this sheet would centre the lines and leave the box
+           itself hard left in the 760px column. Equal specificity, later
+           wins. Do not move it up. */
+        .sg-intro,
+        .sg-bio p,
+        .sg-desc,
+        .sg-prov,
+        .sg-sense-line,
+        .sg-benefit-text,
+        .sg-empty { text-align: center; margin-left: auto; margin-right: auto; }
       ` }} />
 
       <div className="sg">
