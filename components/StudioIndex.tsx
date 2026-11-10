@@ -115,6 +115,12 @@ export default function StudioIndex({ collaborations, images }: {
         .st-thumb img { transition: transform .7s cubic-bezier(.16,.84,.44,1); }
         .st-card:hover .st-thumb img { transform: scale(1.05); }
         .st-go { display: inline-block; transition: transform .35s ease; }
+        /* The credit under the guide link. A hairline, not a button and not a
+           mark: it says who made the thing, in the page's own quiet voice. */
+        .st-credit a { color: inherit; text-decoration: none;
+                       border-bottom: 1px solid currentColor; padding-bottom: 1px;
+                       opacity: .85; transition: opacity .2s ease; }
+        .st-credit a:hover { opacity: 1; }
         .st-card:hover .st-go, .st-cta:hover .st-go { transform: translateX(7px); }
         @keyframes drift { from { transform: rotate(6deg) translateY(0) } to { transform: rotate(4deg) translateY(-16px) } }
         /* On a DESK it sits beside the masthead, in the empty half. It is
@@ -261,6 +267,17 @@ export default function StudioIndex({ collaborations, images }: {
                          borderBottom: `1px solid ${INK}`, paddingBottom: 6 }}>
             Explore the exhibition <span className="st-go">→</span>
           </Link>
+
+          {/* WHO MADE THE GUIDE. Set at the page's quiet-line size, under the
+              door it refers to — not in the footer, where a reader who has just
+              been offered the guide would never look for it. No logo: the
+              marks on this page belong to the exhibition. */}
+          <div className="st-credit"
+               style={{ fontFamily: MONO, fontSize: 11, lineHeight: 1.7, opacity: .55,
+                        marginTop: 16 }}>
+            Exhibition guide and DramFinder by{' '}
+            <a href="https://lactonelabs.co.uk" target="_blank" rel="noreferrer noopener">Lactone Labs</a>
+          </div>
         </div>
       )}
 
