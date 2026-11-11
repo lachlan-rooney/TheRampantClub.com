@@ -30,6 +30,35 @@ import { readFileSync } from 'node:fs'
 import { createHmac, randomUUID } from 'node:crypto'
 
 const BASE = process.env.BASE || 'http://localhost:3001'
+
+// ══ WHO THIS RUN WILL DISTURB ═══════════════════════════════════
+// Two things in this file reach real staff: the fixture ENQUIRY in section J,
+// which emails whoever alerts are routed to, and a bid whose confirmation
+// email is made to fail in section B, which rings the admin bell.
+//
+// On this machine DEV_ALERT_ONLY_TO pins both to one address. On PRODUCTION
+// that variable does not exist, and if AUCTION_ALERT_TO has not been set
+// either, the fallback is every admin — five people. Running this against a
+// live site without checking cost four "Enquiry — Fixture Priced Work" emails
+// to all five admins on 11 Nov 2026.
+//
+// So a remote run must say which it wants:
+//   SKIP_STAFF_ALERTS=1   run everything that disturbs nobody (4 assertions
+//                         are skipped and named, not silently dropped)
+//   ALERTS_ROUTED=1       you have confirmed AUCTION_ALERT_TO is set; run the
+//                         whole thing, alerts included
+const REMOTE = !/^https?:\/\/(localhost|127\.0\.0\.1)/.test(BASE)
+const SKIP_ALERTS = process.env.SKIP_STAFF_ALERTS === '1'
+if (REMOTE && !SKIP_ALERTS && process.env.ALERTS_ROUTED !== '1') {
+  console.log(`✗ REFUSING to run against ${BASE}.`)
+  console.log('  This file files a real enquiry and rings the admin bell. Against a live')
+  console.log('  site that reaches whoever alerts are routed to — every admin, if')
+  console.log('  AUCTION_ALERT_TO is unset.')
+  console.log('  Re-run with SKIP_STAFF_ALERTS=1, or with ALERTS_ROUTED=1 once you have')
+  console.log('  confirmed the named list is set on Vercel.')
+  process.exit(2)
+}
+if (SKIP_ALERTS) console.log('⚠ SKIP_STAFF_ALERTS=1 — nothing in this run will reach a member of staff.\n')
 const env = {}
 for (const l of readFileSync('.env.local', 'utf8').split('\n')) {
   const m = l.match(/^([A-Z_0-9]+)=(.*)$/); if (m) env[m[1]] = m[2].trim().replace(/^["']|["']$/g, '')
@@ -276,7 +305,12 @@ try {
   //                                 that genuinely fails, on demand.
   //
   // ⚠ Accepted bids still cost sending quota — roughly 40 per full run.
-  const FAIL_EMAIL = 'trc-verify@example.com'
+  // ⚠ example.com is REFUSED by Resend, which is what makes the two
+  // assertions below real — and also what rings the admin bell, because a
+  // failed confirmation is something staff are told about. Under
+  // SKIP_STAFF_ALERTS the send must succeed instead, so those two are skipped
+  // by name rather than quietly passing against a different code path.
+  const FAIL_EMAIL = SKIP_ALERTS ? 'delivered+first@resend.dev' : 'trc-verify@example.com'
   // `cookie` matters: without one every request looks like a NEW device, so
   // the per-device ceiling could never be reached — and a limit that cannot be
   // reached in a test is a limit nobody has tested.
@@ -299,9 +333,14 @@ try {
   const first = await bid(500, FAIL_EMAIL)
   t(first.status === 200 && first.body.ok, 'the first bid at the starting bid is accepted', `US$${first.body.amount}`)
   // THE EMAIL FAILED ON PURPOSE (the domain cannot receive) AND THE BID STANDS.
-  t(first.body.emailed === false, 'and when its confirmation email fails, the bid still stands and says so',
-    `emailed: ${first.body.emailed}`)
-  {
+  if (SKIP_ALERTS) {
+    console.log('– SKIPPED: the confirmation-email failure path (it rings the admin bell)')
+    console.log('– SKIPPED: its database row check, which depends on that failure')
+  } else {
+    t(first.body.emailed === false, 'and when its confirmation email fails, the bid still stands and says so',
+      `emailed: ${first.body.emailed}`)
+  }
+  if (!SKIP_ALERTS) {
     const r = await rest(`studio_bids?lot_id=eq.${lotId}&select=id,amount_usd,confirmation_sent_at`)
     const rows = await r.json()
     t(rows.length === 1 && rows[0].confirmation_sent_at === null,
@@ -537,6 +576,11 @@ try {
 
   // ══ J · THE PRICED WORKS ════════════════════════════════════════════════
   console.log('\n── J · enquiries ──')
+  if (SKIP_ALERTS) {
+    console.log('– SKIPPED: all four enquiry assertions — an enquiry emails staff.')
+    console.log('–   They are covered by a local run, where DEV_ALERT_ONLY_TO pins the')
+    console.log('–   recipient to one address.')
+  } else {
   {
     const enquire = (lot, extra = {}) => fetch(`${BASE}/api/studio/auction/enquire`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -561,6 +605,8 @@ try {
   }
 
   // ══ G · THE RATE LIMIT ══════════════════════════════════════════════════
+  }
+
   console.log('\n── G · the ceilings ──')
   // ⚠ D CLOSED THIS AUCTION AND H CLOSED ITS OWN LOT. Run as-is, every bid
   // below is refused with "bidding has closed", no row is written, and the
