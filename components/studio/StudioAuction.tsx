@@ -223,9 +223,22 @@ export function AuctionBanner({ lots, pieces, skew = 0 }: {
             )
           })}
         </div>
+        {/* ══ THE SUPPLIER'S CREDIT ════════════════════════════════
+            ⚠ ON A DARK GROUND, AND THAT IS NOT A STYLE CHOICE. The brand's
+            green mark measures #26a25e: 4.52:1 against the Studio's ink, but
+            1.69:1 against the sage this banner sits on — on sage it would be
+            a green shape on a green field, which is not a logo, it is a
+            smudge. So the credit gets its own inset strip of ink and the mark
+            is legible on it. (The cream wordmark already in the project is the
+            same logo for the opposite problem; the owner asked for the green
+            one, so the ground moves instead.) */}
         <div className="sga-credit">
-          {tr(lang, 'credit')}{' '}
-          <a href="https://lactonelabs.co.uk" target="_blank" rel="noreferrer noopener">Lactone Labs</a>
+          <span className="sga-credit-t">{tr(lang, 'credit')}</span>
+          <a href="https://lactonelabs.co.uk" target="_blank" rel="noreferrer noopener"
+             aria-label="Lactone Labs">
+            <img src="/images/studio/brand/lactone-labs-green.png" alt="Lactone Labs"
+                 width={552} height={188} loading="lazy" decoding="async" />
+          </a>
         </div>
       </section>
     </>
@@ -713,10 +726,19 @@ export function AuctionStyles({ accent }: { accent: string }) {
                   text-decoration: none; border-bottom: 1px solid ${INK}59; padding-bottom: 2px; }
       .sga-jump:hover { border-bottom-color: ${INK}; }
       /* The same quiet-line setting as the guide credit on /studio. */
-      .sga-credit { font-family: ${MONO}; font-size: 11px; line-height: 1.7; opacity: .55; margin: 16px 0 0; }
-      .sga-credit a { color: inherit; text-decoration: none; border-bottom: 1px solid currentColor;
-                      padding-bottom: 1px; opacity: .85; transition: opacity .2s ease; }
-      .sga-credit a:hover { opacity: 1; }
+      .sga-credit { display: inline-flex; align-items: center; gap: 14px; margin: 20px 0 0;
+                    padding: 12px 18px; border-radius: 6px; background: ${INK};
+                    color: ${PAPER}; }
+      .sga-credit-t { font-family: ${MONO}; font-size: 10px; letter-spacing: .12em;
+                      text-transform: uppercase; opacity: .72; }
+      .sga-credit a { display: inline-flex; align-items: center; line-height: 0; }
+      /* ⚠ 28px, NOT 15. The mark is a TWO-LINE lock-up — "LACTONE" over
+         "LABS" — so its height is split between two rows of letters and a
+         gap. At 15px each row was about six pixels tall and the supplier's
+         name was an illegible smudge, which is worse than no credit at all. */
+      .sga-credit img { height: 28px; width: auto; display: block;
+                        transition: opacity .25s ease; opacity: .95; }
+      .sga-credit a:hover img { opacity: 1; }
 
       /* ── UNDER A WORK ───────────────────────────────────────────────── */
       .sga-saleblock { margin: 0; }

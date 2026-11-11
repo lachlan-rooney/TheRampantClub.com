@@ -232,14 +232,40 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [], has
            somebody standing in front of piece one. It is the artist's own
            text, so none of it is cut; it is one tap away instead, and the
            work comes first. */
-        .sg-bio { margin: 20px 0 0; }
-        .sg-bio summary { font-family: ${MONO}; font-size: 11px; letter-spacing: .14em;
-                          text-transform: uppercase; cursor: pointer; padding: 10px 0;
-                          border-top: 1px solid ${INK}26; border-bottom: 1px solid ${INK}26;
-                          list-style: none; opacity: .75; }
+        /* ══ "ABOUT THE ARTIST" ════════════════════════════════
+           It was an 11px line of mono at 75% opacity with a bare "+" after the
+           words — correct, quiet, and almost nobody opened it. The owner wants
+           it pressed, so it is now shaped like something that can be pressed:
+           full width, 56px tall, the label at a readable size in the brand
+           face, and the marker in a ringed circle at the right where a
+           disclosure control is looked for.
+
+           Still hairlines, not a box: the rules above and below are the
+           Studio's, and the circle is a 1px ring, not a filled button. The
+           affordance comes from SIZE and POSITION rather than from chrome. */
+        .sg-bio { margin: 24px 0 0; }
+        .sg-bio summary { display: flex; align-items: center; justify-content: space-between;
+                          gap: 16px; width: 100%; box-sizing: border-box;
+                          font-family: ${SERIF}; font-size: 14px; font-weight: 600;
+                          letter-spacing: .14em; text-transform: uppercase;
+                          cursor: pointer; padding: 18px 2px; min-height: 56px;
+                          border-top: 1px solid ${INK}2e; border-bottom: 1px solid ${INK}2e;
+                          list-style: none; opacity: .9;
+                          transition: opacity .2s ease, border-color .2s ease; }
+        .sg-bio summary:hover { opacity: 1; border-color: ${INK}59; }
         .sg-bio summary::-webkit-details-marker { display: none; }
-        .sg-bio summary::after { content: ' +'; }
-        .sg-bio[open] summary::after { content: ' −'; }
+        /* THE MARKER. A ring with a + in it, turning to − when open. */
+        .sg-bio summary::after { content: '+'; flex: none;
+                                 display: inline-flex; align-items: center; justify-content: center;
+                                 width: 30px; height: 30px; border-radius: 50%;
+                                 border: 1px solid ${INK}4d; font-size: 17px; font-weight: 400;
+                                 line-height: 1; padding-bottom: 2px;
+                                 transition: background .2s ease, border-color .2s ease, transform .3s ease; }
+        .sg-bio summary:hover::after { border-color: ${INK}; background: ${INK}0f; }
+        .sg-bio[open] summary::after { content: '−'; border-color: ${INK}; background: ${INK}0f; }
+        @media (prefers-reduced-motion: reduce) {
+          .sg-bio summary, .sg-bio summary::after { transition: none; }
+        }
         .sg-bio p { font-family: ${MONO}; font-size: 14px; line-height: 2; margin: 20px 0 0;
                     max-width: 56ch; }
         /* ── WHAT CENTRES AND WHAT DOES NOT ──────────────────────────────
@@ -587,7 +613,13 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [], has
             <div className="sg-sense-panel" id={`sense-${sense}`} role="tabpanel">
               <div className="sg-sense-h">{lang === 'vn' ? SENSES[sense].vn : SENSES[sense].en}</div>
               {/* THE ROOM'S METHOD — true of every exhibition, from senses.ts. */}
-              {SENSES[sense].line && <p className="sg-sense-line">{SENSES[sense].line}</p>}
+              {SENSES[sense].line && (
+                <p className="sg-sense-line">
+                  {/* The room's method, in the language being read. It used to
+                      print the English to a Vietnamese reader. */}
+                  {pick(lang, SENSES[sense].line, SENSES[sense].lineVn)}
+                </p>
+              )}
 
               {/* AND WHAT THIS ONE DOES. Separated by a label rather than run
                   on, because the two say different kinds of thing: one is how

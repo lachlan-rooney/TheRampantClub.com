@@ -320,7 +320,10 @@ export const AUCTION_STRINGS = {
   },
 
   // ── The credit ──────────────────────────────────────────────────────────
-  credit: { en: 'Auction by', vn: 'Đấu giá bởi' },
+  // ⚠ "PROVIDED BY", not "by". The club is not telling guests who ran its
+  // auction as a flourish — it is naming the supplier of the software, which
+  // is a different and more precise claim.
+  credit: { en: 'Auction software provided by', vn: 'Phần mềm đấu giá được cung cấp bởi' },
 
   // ── Emails ──────────────────────────────────────────────────────────────
   mail_confirm_subject: {

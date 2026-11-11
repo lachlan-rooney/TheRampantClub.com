@@ -41,6 +41,19 @@ interface Sense {
   line: string | null // null renders NOTHING at all — kept so a future sense can
                       // be added mute rather than guessed at, which is how Scent
                       // shipped while it was waiting for real words
+  /**
+   * ⚠ DRAFT VIETNAMESE, AWAITING A NATIVE READER.
+   *
+   * These five lines rendered in ENGLISH on the Vietnamese page — the method
+   * of the room, stated in the wrong language to half the people standing in
+   * it. The English above is quoted from the F&B brief and must not be
+   * recomposed; translating it is a different act, and leaving a Vietnamese
+   * guest with English was not a neutral choice.
+   *
+   * They are mine, not the club's. Have them read before anyone treats them
+   * as final, and correct them here.
+   */
+  lineVn: string | null
   /** Inline geometry for a stand-in mark: one continuous path, dash-revealed. */
   path: string
   /** A commissioned file in /public. Set this and it wins; no animation. */
@@ -58,23 +71,27 @@ export const SENSES: Sense[] = [
   // "Lighting, directed, soft and warm, designed to complement both the
   //  artworks and the whisky's amber tones." — brief, Practical Requirements
   { en: 'Sight', vn: 'Thị giác', line: 'Lighting, directed, soft and warm.',
+    lineVn: 'Ánh sáng, có chủ đích, dịu và ấm.',
     // a candle — "directed, soft and warm" is candlelight, not a lamp icon
     path: 'M32 12 C 27 18, 28 24, 32 27 C 36 24, 37 18, 32 12 Z M24 31 Q32 28 40 31 L40 52 L24 52 Z' },
 
   // "All canapés must be one-bite, no cutlery required." — brief, F&B Programme
   { en: 'Touch', vn: 'Xúc giác', line: 'One bite. No cutlery.',
+    lineVn: 'Một miếng. Không dao dĩa.',
     // a canapé on its base — the one bite you pick up, no cutlery
     path: 'M18 51 L46 51 M25 51 C 25 34, 39 34, 39 51 M32 34 L32 26 M32 29 L37 25' },
 
   // "Colour palette in stone, blush, and dusk tones, reminiscent of the piece
   //  of art itself." — brief, Canapé — Twilight / Threshold
   { en: 'Taste', vn: 'Vị giác', line: 'Reminiscent of the piece of art itself.',
+    lineVn: 'Gợi lại chính tác phẩm.',
     // the dram — a rocks glass and the line of whisky in it. A tulip
     // bowl came out reading as a martini, which is the wrong drink entirely.
     path: 'M23 17 L26 51 L38 51 L41 17 M24.7 33 L39.3 33' },
 
   // "Soft ambient music." — Programme Flow. "Soundscape controlled." — Environment
   { en: 'Sound', vn: 'Thính giác', line: 'Soft ambient. Soundscape controlled.',
+    lineVn: 'Âm nền nhẹ. Không gian âm thanh được kiểm soát.',
     // a bell — something that SOUNDS, not a speaker that reproduces
     path: 'M21 46 C 21 29, 25 20, 32 20 C 39 20, 43 29, 43 46 M18 46 L46 46 M32 46 L32 51 M32 20 L32 15' },
 
@@ -88,6 +105,7 @@ export const SENSES: Sense[] = [
   // for the same reason it was blank before.
   { en: 'Scent', vn: 'Khứu giác',
     line: 'Composed with the artist. A place, a memory, an environment.',
+    lineVn: 'Được tạo nên cùng nghệ sĩ. Một nơi chốn, một ký ức, một không gian.',
     // a sprig, giving off — stem, two leaves, one rising wisp
     path: 'M32 52 L32 26 M32 38 C 39 38, 43 33, 42 27 C 36 27, 32 32, 32 38 Z M32 46 C 25 46, 21 41, 22 35 C 28 35, 32 40, 32 46 Z M29 21 C 31 17, 35 19, 33 14' },
 ]
