@@ -563,21 +563,27 @@ select a.id, p.id, p.sort, w.kind, w.status,
 on conflict (piece_id) do nothing;
 
 -- ── THE NINTH PIECE: NO LOT, DELIBERATELY ───────────────────────
--- collaboration_pieces holds NINE works; the owner's list names eight. The
--- ninth is "A Series Of Body" — the only one not acrylic and oil on canvas
--- (cotton paper and cardboard).
+-- collaboration_pieces once held NINE works while the owner's list named
+-- eight. The ninth was "A Series Of Body" — the only one not acrylic and oil
+-- on canvas (cotton paper and cardboard).
 --
--- An earlier draft of this file gave it a DRAFT lot, so that the decision was
--- visible rather than silent. The owner has now made that decision: it is not
--- in the auction and it is not for sale. So it gets no row at all.
+-- Three states, in order, because the reasoning is worth keeping:
+--   1 · it had a DRAFT lot, so the undecided question was visible rather
+--       than silent;
+--   2 · the owner decided it was not in the auction and not for sale, so the
+--       lot went — a draft lot is one dropdown away from being published by
+--       someone tidying the admin screen;
+--   3 · on 11 Nov 2026 he confirmed it is not in the EXHIBITION at all, and
+--       its collaboration_pieces row was deleted. The guide counts pieces
+--       from the data, so every count moved from nine to eight on its own.
 --
--- ⚠ WHY NO ROW RATHER THAN A DRAFT ONE. A draft lot is one dropdown away
--- from being published by someone tidying the admin screen. With no row, the
--- piece still hangs on the wall and still appears in the guide — it simply has
--- no price block and no auction block, which is the truth about it.
+-- ⚠ THE WAY BACK IS db/restore_a_series_of_body.sql. It puts the row back
+-- with its original id, its 1,968-character statement and its image, at
+-- sort 9 — and the counts return to nine by themselves.
 --
--- This DELETE matters on a re-run: an earlier run of this file created that
--- draft lot, and without this the file would leave it behind.
+-- The DELETE below still earns its place: it removes a lot for ANY piece not
+-- on the owner's list, so an earlier run of this file that created that draft
+-- lot is cleaned up, and a piece added later cannot inherit one by accident.
 delete from studio_lots l
  using collaboration_pieces p, collaborations c
  where l.piece_id = p.id

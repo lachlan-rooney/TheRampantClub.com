@@ -70,8 +70,13 @@ const text = html
   .replace(/\s+/g, ' ')
 
 t(/Rizal Fathoni/i.test(text), 'CONTROL: the rendered text DOES contain the artist — the search can see it')
-t(/A Series Of Body/i.test(text), 'CONTROL: and A Series Of Body, which stays in the guide, on the wall, not for sale')
-t(/9 pieces/i.test(text), 'CONTROL: and the nine-piece walking order')
+// ⚠ THIS USED TO BE A CONTROL ASSERTING THE OPPOSITE. A Series Of Body was
+// kept in the guide while the owner decided; on 11 Nov 2026 he confirmed it is
+// not in the exhibition and its row was deleted. A control that asserts the
+// presence of something since removed does not fail loudly — it just quietly
+// stops being a control, so it is inverted rather than deleted.
+t(!/A Series Of Body/i.test(text), 'A Series Of Body is gone — it is not in the exhibition')
+t(/8 pieces/i.test(text), 'CONTROL: the walking order reads EIGHT pieces, counted from the data')
 
 // ⚠ EXACT LABELS AND MARKUP, NOT ENGLISH WORDS. A first pass looked for
 // "reserve" and "sold" and found both: "All rights reserved" in the footer,
