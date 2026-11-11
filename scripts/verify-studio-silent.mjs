@@ -43,7 +43,18 @@ const a = createClient(U, K, { auth: { persistSession: false } })
 
 // ── 1 · THE STATE, as the owner sees it ──────────────────────────────────
 const { data: auction } = await a.from('studio_auctions').select('published')
-t(auction?.[0]?.published === false, 'the auction is NOT published', `published = ${auction?.[0]?.published}`)
+// ⚠ TWO MODES, BECAUSE THE RIGHT ANSWER CHANGES WHEN THE OWNER PRESSES
+// PUBLISH. Before publication the whole point is that the guide says nothing.
+// After it, the guide SHOULD show the auction — and this file reporting
+// "NOT SILENT" in red for a correct, deliberate state is how a harness
+// teaches people to ignore it. What does not change either way is that a
+// reserve, a buyer and a sale price must never appear, so those run in both
+// modes and the mode is announced.
+const PUBLISHED = auction?.[0]?.published === true
+console.log(PUBLISHED
+  ? '⚠ THE AUCTION IS PUBLISHED. The silence assertions do not apply; the private-data\n  assertions below do, and still must pass.\n'
+  : 'the auction is not published — running the full silence check.\n')
+t(typeof auction?.[0]?.published === 'boolean', 'the auction row was read', `published = ${auction?.[0]?.published}`)
 const { data: lots } = await a.from('studio_lots')
   .select('kind,status,price_usd,reserve_usd,sold_price_usd,sold_to,starting_bid_usd,collaboration_pieces(title_en)')
 t(lots.length === 8, 'eight lots exist in the database, waiting', `${lots.length}`)
@@ -54,7 +65,10 @@ const r = await fetch(`${U}/rest/v1/rpc/studio_auction_public`, {
   body: JSON.stringify({ p_slug: 'rizal-fathoni' }),
 })
 const rows = await r.json()
-t(Array.isArray(rows) && rows.length === 0, 'the public function returns NOTHING to anon', `${rows.length} row(s)`)
+t(Array.isArray(rows) && (PUBLISHED ? rows.length === lots.length : rows.length === 0),
+  PUBLISHED ? 'the public function returns every published lot to anon'
+            : 'the public function returns NOTHING to anon',
+  `${rows.length} row(s)`)
 
 // ── 3 · THE RENDERED PAGE ────────────────────────────────────────────────
 const page = await fetch(`${BASE}/studio/rizal-fathoni/guide`)
@@ -84,22 +98,24 @@ t(/8 pieces/i.test(text), 'CONTROL: the walking order reads EIGHT pieces, counte
 // consumed". Neither has anything to do with an auction. The words a guest
 // would see IF the auction were published are specific strings and specific
 // class names, so those are what is checked.
+const silenceOnly = PUBLISHED ? () => {} : t
+if (PUBLISHED) console.log('– SKIPPED: the "nothing is drawn" assertions — the auction is published on purpose.')
 for (const w of ['Silent auction', 'Place a bid', 'Enquire', 'Current highest bid',
                  'Reserve met', 'Reserve not yet met', 'Starting bid', 'Bidding has closed',
                  'have sold', 'has sold', 'Sold as a pair']) {
-  t(!new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(text),
+  silenceOnly(!new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(text),
     `the rendered page never says "${w}"`)
 }
 // The component's own markup. If any of this is in the HTML, something drew.
 for (const cls of ['sga-banner', 'sga-lot', 'sga-sale', 'sga-cta', 'sga-form', 'sga-sold']) {
-  t(!html.includes(`class="${cls}`) && !html.includes(`${cls} `) || !html.includes('sga-'),
+  silenceOnly(!html.includes(`class="${cls}`) && !html.includes(`${cls} `) || !html.includes('sga-'),
     `no ${cls} element was rendered`)
 }
-t(!/\bsga-/.test(html), 'not one element of the auction component is in the HTML')
+silenceOnly(!/\bsga-/.test(html), 'not one element of the auction component is in the HTML')
 // ⚠ ANY money at all. Not "not these figures" — no figure, in either currency
 // form the page can produce.
 const money = text.match(/US\$\s?[\d,]+/g) || []
-t(money.length === 0, 'no money of any kind is printed on the page', money.join(', ') || 'none')
+silenceOnly(money.length === 0, 'no money of any kind is printed on the page', money.join(', ') || 'none')
 
 // ── 4 · THE PAGE'S JAVASCRIPT, for the things that ARE secret ────────────
 const srcs = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map(m => m[1])
@@ -119,11 +135,15 @@ for (const col of ['reserve_usd', 'sold_to', 'sold_price_usd', 'bidder_email', '
 }
 // Money formatted the way the page would write it, across everything.
 const formatted = [...new Set(lots.flatMap(l => [l.reserve_usd, l.sold_price_usd, l.price_usd, l.starting_bid_usd]).filter(Boolean))]
-for (const v of formatted) {
+// Once published, starting bids and current highests are MEANT to be on the
+// page; only the private figures must still be absent.
+const privateOnly = [...new Set(lots.flatMap(l => [l.reserve_usd, l.sold_price_usd]).filter(Boolean))]
+for (const v of (PUBLISHED ? privateOnly : formatted)) {
   const forms = [`US$${v}`, `US$${Number(v).toLocaleString('en-US')}`]
   const found = forms.find(f => bodies.some(b => b.includes(f)))
   t(!found, `no figure written as ${forms[1]} appears anywhere`, found || '')
 }
 
-console.log(`\n${fail ? '✗' : '✓'} ${pass} passed, ${fail} failed — ${fail ? 'NOT SILENT' : 'silent while unpublished'}`)
+console.log(`\n${fail ? '✗' : '✓'} ${pass} passed, ${fail} failed — ${
+  fail ? 'FAILED' : PUBLISHED ? 'published, and nothing private is on the page' : 'silent while unpublished'}`)
 process.exit(fail ? 1 : 0)

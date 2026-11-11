@@ -388,6 +388,103 @@ try {
       `US$${high} + US$50 accepted while the auction-wide step is US$999`)
   }
 
+  // ══ K · "SOMEONE HAS BID HIGHER" ══════════════════════════════
+  // On its own lot, so the hourly ceiling is not already spent by the bids
+  // above. Every address is the simulator: these really send, and they must
+  // land nowhere real.
+  console.log('\n── K · the outbid email ──')
+  {
+    const pk = await rest('collaboration_pieces', {
+      method: 'POST', prefer: 'return=representation',
+      body: JSON.stringify({ collaboration_id: collabId, sort: 4, title_en: 'Fixture Outbid Work' }),
+    })
+    const pieceK = (await pk.json())[0].id
+    const lk = await rest('studio_lots', {
+      method: 'POST', prefer: 'return=representation',
+      body: JSON.stringify({
+        auction_id: auctionId, piece_id: pieceK, sort: 4,
+        kind: 'auction', status: 'live', starting_bid_usd: 100, step_usd: 50, reserve_usd: 918273,
+      }),
+    })
+    const kLot = (await lk.json())[0].id
+    const ALPHA = 'delivered+alpha@resend.dev'
+    const BRAVO = 'delivered+bravo@resend.dev'
+    const kBid = (amount, email, extra = {}) => bid(amount, email, extra, null, kLot)
+
+    const stamp = async (email) => {
+      // A null here means the query found nothing, which is never a valid
+      // state in this section: every address below has bid. Fail loudly.
+      void 0;
+      // ⚠ ENCODED. These addresses carry a '+', and a bare '+' in a query
+      // string is a SPACE — the filter matched nothing and the lookup
+      // returned null, which read as "no such bidder" rather than "bad query".
+      const r = await rest(`studio_bids?lot_id=eq.${kLot}&bidder_email_key=eq.${encodeURIComponent(email)}&select=amount_usd,outbid_notified_at&order=amount_usd.desc`)
+      const rows = await r.json()
+      if (!rows.length) throw new Error(`no bid found for ${email} on the outbid lot — the lookup is wrong, not the product`)
+      return rows[0]
+    }
+
+    // Alpha leads, then Bravo takes it.
+    const a1 = await kBid(100, ALPHA)
+    t(a1.status === 200, 'the first bidder leads', `US$${a1.body.amount}`)
+    const alphaBefore = await stamp(ALPHA)
+    t(alphaBefore.outbid_notified_at === null, 'and has not been told anything yet')
+
+    const b1 = await kBid(150, BRAVO)
+    t(b1.status === 200, 'a higher bid is placed by someone else', `US$${b1.body.amount}`)
+
+    // 1 · THE RIGHT PERSON. Alpha is stamped; Bravo, who did the outbidding,
+    //     is not — nobody is told they outbid themselves into the lead.
+    const alphaAfter = await stamp(ALPHA)
+    const bravoAfter = await stamp(BRAVO)
+    t(alphaAfter.outbid_notified_at !== null, 'the PREVIOUS leader was emailed', alphaAfter.outbid_notified_at)
+    t(bravoAfter.outbid_notified_at === null, 'and the new bidder was NOT — they are not outbid, they are leading')
+
+    // 2 · THE NEW BIDDER IS NEVER REVEALED. Asserted against the builder's
+    //     own source: it is a pure function, so what it can possibly say is
+    //     exactly what it is passed. If a bidder field were ever added to
+    //     those parameters this fails, which is the point — the template is
+    //     reviewed by a person, the signature is reviewed by this.
+    {
+      const src = readFileSync('lib/studio/outbid.ts', 'utf8')
+      const sig = src.slice(src.indexOf('export function buildOutbidEmail'), src.indexOf('const subject ='))
+      const leaky = ['name', 'email', 'bidder', 'phone'].filter(w => new RegExp(`\\b${w}`, 'i').test(sig))
+      t(leaky.length === 0,
+        'the email builder is given NOTHING that identifies a bidder',
+        leaky.length ? `found: ${leaky.join(', ')}` : 'only the work, the amount, the link and the times')
+      // CONTROL: the same search DOES find the things it is given.
+      t(/title/.test(sig) && /amount/.test(sig),
+        'CONTROL: the search can see the parameters it does have')
+    }
+
+    // 3 · THE HOURLY CEILING. A second raise inside the hour must not stamp
+    //     Alpha again.
+    const firstStamp = alphaAfter.outbid_notified_at
+    const b2 = await kBid(200, 'delivered+charlie@resend.dev')
+    t(b2.status === 200, 'a third bidder raises again, minutes later', `US$${b2.body.amount}`)
+    const alphaAgain = await stamp(ALPHA)
+    t(alphaAgain.outbid_notified_at === firstStamp,
+      'the previous leader is NOT emailed twice inside the hour', 'stamp unchanged')
+    // And Bravo, who has only just been outbid for the first time, IS told.
+    const bravoNow = await stamp(BRAVO)
+    t(bravoNow.outbid_notified_at !== null,
+      'while the person outbid for the first time IS told — the ceiling is per bidder, not per lot')
+
+    // 4 · A VOID SENDS NOTHING. Void the leader and confirm no new stamp
+    //     appears on anybody: being restored to the lead is not an event.
+    {
+      const before = JSON.stringify([await stamp(ALPHA), await stamp(BRAVO)])
+      const r = await rest(`studio_bids?lot_id=eq.${kLot}&amount_usd=eq.200&select=id`)
+      const top = (await r.json())[0]
+      await rest(`studio_bids?id=eq.${top.id}`, {
+        method: 'PATCH', body: JSON.stringify({ void: true, void_reason: 'verification', voided_at: new Date().toISOString() }),
+      })
+      await new Promise(r2 => setTimeout(r2, 400))
+      const after = JSON.stringify([await stamp(ALPHA), await stamp(BRAVO)])
+      t(before === after, 'voiding the leading bid emails nobody')
+    }
+  }
+
   // ══ D · THE CLOSE ═══════════════════════════════════════════════════════
   console.log('\n── D · the close is the server’s, not the page’s ──')
   await rest(`studio_auctions?id=eq.${auctionId}`, {
@@ -438,7 +535,13 @@ try {
     // THREE: the auction lot, the sold one and the priced one. The draft lot
     // H adds later is not in this set yet. Counting them is the point — a
     // function that returned only the first would hide two whole works.
-    t(rows.length === 3, 'every non-draft lot on a published show comes back', `${rows.length} row(s)`)
+    // ⚠ COUNTED, NOT TYPED — for the second time. This said 3 and broke the
+    // moment section K added a fourth lot to the fixture. The number of works
+    // in a fixture is a property of the fixture, so it is read from the
+    // fixture.
+    const expected = (await (await rest(`studio_lots?auction_id=eq.${auctionId}&status=neq.draft&select=id`)).json()).length
+    t(rows.length === expected, 'every non-draft lot on a published show comes back',
+      `${rows.length} of ${expected}`)
     // ⚠ BY KIND, NOT BY POSITION. This block used to read rows[0] and assert
     // against "the" lot; the moment the fixture grew a second and third work
     // that was a sort order, not a statement about anything.

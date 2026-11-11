@@ -6,6 +6,7 @@ import { EMAIL, emailShell } from '@/lib/email/shell'
 import { closeLabel, dateLabel, money, stampLabel, tr, type Lang } from '@/lib/studio/auction'
 import { BID_COOKIE, COOKIE_OPTS, deviceFrom, hashDevice } from '@/lib/studio/device'
 import { alertAdmins } from '@/lib/studio/alert'
+import { notifyOutbid } from '@/lib/studio/outbid'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PLACING A BID — the only way a row reaches studio_bids.
@@ -247,6 +248,23 @@ export async function POST(req: Request) {
       bid_id: out.bid_id, lot_id: lotId, amount, email, detail: emailError,
     })
   }
+
+  // ── AND THE PERSON WHO HAS JUST LOST THE LEAD ─────────────────────────
+  // Awaited, not fired and forgotten: on a serverless function the process can
+  // be frozen the moment the response is returned, and a floating promise is
+  // an email that sometimes sends. It is wholly wrapped in its own try/catch,
+  // so it cannot fail the bid that is already written.
+  //
+  // ⚠ NOTHING ABOUT THIS BIDDER IS PASSED. Only the bid id to exclude, so the
+  // person doing the outbidding cannot be the one told about it.
+  await notifyOutbid(a, {
+    lotId,
+    excludeBidId: String(out.bid_id),
+    title,
+    link,
+    closesAt: auctionRow!.closes_at,
+    announceAt: auctionRow!.announce_at,
+  })
 
   const reply = NextResponse.json({
     ok: true,
