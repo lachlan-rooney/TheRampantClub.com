@@ -89,12 +89,52 @@ const PHONE = { width: 390, height: 844 }
 const DESK = { width: 1280, height: 900 }
 
 async function main() {
+  // ══ THE GUARD ═══════════════════════════════════════════
+  // There is one database. Running this publishes a temporary exhibition that
+  // real visitors can see, so it must be a decision, not a reflex — above all
+  // on an evening when the room is full.
+  if (process.env.ALLOW_PUBLIC_FIXTURE !== '1') {
+    console.log('✗ REFUSING to run.')
+    console.log('  This script creates a REAL exhibition row in the shared database and')
+    console.log('  publishes it. For the two or three minutes it runs, a second entry is')
+    console.log('  on the live /studio page for anyone looking.')
+    console.log('  Re-run with ALLOW_PUBLIC_FIXTURE=1 when that is acceptable — not while')
+    console.log('  the club is open.')
+    process.exit(2)
+  }
+
+  // Anything an earlier crashed run left behind goes first, so a stray fixture
+  // cannot sit on the public page until somebody happens to notice it.
+  {
+    const r = await fetch(`${U}/rest/v1/collaborations?slug=like.shoot-auction-*&select=id`, {
+      headers: { apikey: SRV, Authorization: 'Bearer ' + SRV },
+    })
+    const stale = await r.json().catch(() => [])
+    if (Array.isArray(stale) && stale.length) {
+      for (const row of stale) {
+        await fetch(`${U}/rest/v1/collaborations?id=eq.${row.id}`, {
+          method: 'DELETE', headers: { apikey: SRV, Authorization: 'Bearer ' + SRV },
+        })
+      }
+      console.log(`  swept ${stale.length} fixture exhibition(s) left by an earlier run`)
+    }
+  }
+
   // ── THE FIXTURE ────────────────────────────────────────────────────────
   // 'past', not 'live': the guide renders for live and past alike, and a
   // second LIVE exhibition would change what /studio shows the public while
   // this runs.
+  // ⚠ THIS ROW IS PUBLICLY VISIBLE WHILE THE RUN LASTS. collaboration_pieces
+  // is readable by anon for live and past shows — which is what lets the shoot
+  // photograph a real page — so for the two or three minutes of a run this
+  // exhibition is ON /studio, as a tab, to anyone looking.
+  //
+  // It used to be called "Rizal Fathoni". On the evening the auction opened it
+  // put a SECOND Rizal Fathoni tab on the live studio page and the owner saw
+  // it. A fixture must never be mistakable for the real thing: the name now
+  // says what it is, in both places a guest could read it.
   const collab = await insert('collaborations', {
-    slug: tag, artist_name: 'Rizal Fathoni', status: 'past', sort: 9998,
+    slug: tag, artist_name: 'VERIFICATION FIXTURE — not an exhibition', status: 'past', sort: 9998,
     accent: '#052E20', opens_on: '2026-11-10', closes_on: '2027-02-11',
   })
   collabId = collab.id
@@ -353,7 +393,7 @@ async function main() {
       // of them matched zero elements, so the loop checked nothing, found no
       // fault and printed a tick — the count quietly fell from 13 to 4 and
       // that was the only sign. Each selector now reports its own emptiness.
-      for (const sel of ['.sga-banner', '.sga-panel', '.sga-p-figure', '.sga-p-meta',
+      for (const sel of ['.sga-banner', '.sga-panel', '.sga-flaps', '.sga-flaps .fl-cell', '.sga-p-meta',
                          '.sga-p-closes', '.sga-bar', '.sg-piece']) {
         const found = [...document.querySelectorAll(sel)]
         if (found.length === 0) { out.push({ sel, missing: true, visible: false, opacity: 0, transform: 'none', text: '' }); continue }

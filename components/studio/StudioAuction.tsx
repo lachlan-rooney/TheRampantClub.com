@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import Flaps from '@/components/public/menus/Flaps'
 import { useLang } from '@/lib/lang'
 import {
   closeLabel, countWord, dateLabel, minNext, money, stampLabel, timeLeft, tr,
@@ -355,20 +356,24 @@ function AuctionLive({ lot, accent, lang, title, slug, myHigh, skew, onPlaced }:
     <section className="sga-panel" aria-label={tr(lang, 'banner_eyebrow')}>
       <div className="sga-p-eyebrow">{tr(lang, 'banner_eyebrow')}</div>
 
-      {/* THE FIGURE. Display face, large, and the hairline draws beneath it
-          when it changes — the same move as the success moment, so a bid
-          arriving and your own bid landing feel like one family. */}
+      {/* ══ THE FIGURE, ON THE DEPARTURES BOARD ═════════════════════
+          The same split-flap component the noticeboard uses — imported, not
+          imitated, so there is one board on this site and not two that drift
+          apart. Only its colours are overridden, to the Studio's ink and
+          cream, by .sga-flaps below.
+
+          It earns its place here rather than being decoration: a bid landing
+          while you are standing in front of the work IS a board changing, and
+          the flap is how this club already shows a number changing. */}
       <div className="sga-p-amount">
         <div className="sga-p-label">{bigLabel}</div>
-        <div className="sga-p-figure" key={flash}>
-          {money(bigFigure)}
-          <i className="sga-draw" aria-hidden="true" />
+        <div className="sga-flaps">
+          <Flaps text={money(bigFigure)} run size="clamp(26px, 7.2vw, 40px)" font={SERIF} />
         </div>
       </div>
 
-      {/* MET OR NOT MET, and never the number — the figure is not in the
-          payload this component is given, it is computed in the database.
-          Beside it the count, so the guest can see whether anyone is here. */}
+      {/* Reserve and count on one line; never the reserve FIGURE, which is not
+          in this payload at all. */}
       <div className="sga-p-meta">
         <span className={lot.reserve_met ? 'sga-p-reserve is-met' : 'sga-p-reserve'}>
           {lot.reserve_met ? tr(lang, 'lot_reserve_met') : tr(lang, 'lot_reserve_not_met')}
@@ -381,10 +386,12 @@ function AuctionLive({ lot, accent, lang, title, slug, myHigh, skew, onPlaced }:
         </span>
       </div>
 
-      {/* THE CLOSE, ON ITS OWN LINE. */}
+      {/* ⚠ ONE LINE, NOT TWO. The close and the time remaining were stacked
+          and said "Closes" twice between them. The banner above still carries
+          the full sentence with the timezone, so this is the short form. */}
       <div className="sga-p-closes">
         {closeLabel(lang, lot.closes_at)}
-        {!closed && left && <em className="sga-p-left">{tr(lang, 'banner_left', { t: left })}</em>}
+        {!closed && left && <> · {tr(lang, 'lot_left_short', { t: left })}</>}
       </div>
 
       {/* ON A RETURN VISIT. Said before the control, because it is the reason
@@ -720,58 +727,78 @@ export function AuctionStyles({ accent }: { accent: string }) {
       .sga-sale-note { font-family: ${MONO}; font-size: 11.5px; opacity: .6; }
       .sga-sold { font-family: ${SERIF}; font-size: clamp(20px, 5vw, 26px); text-transform: uppercase; opacity: .55; }
 
-      /* ══ THE BIDDING PANEL ════════════════════════════════════════════
+      /* ══ THE BIDDING PANEL ════════════════════════════════
          OWNER RULING, 11 Nov 2026: this one block is a boxed panel that
          stands off the page. Everything else on the guide keeps the Studio's
          hairlines-not-boxes rule, which is why none of this leaks outside
          .sga-panel.
 
-         It inverts: cream paper and dark ink against a sage page, the same
-         pairing the club already prints agreements on. A gold rule along the
-         top edge, the product's 8px panel radius, and generous padding so it
-         reads as a card laid on the page rather than a region of it. */
-      .sga-panel { position: relative; margin: 22px 0 0; padding: 26px 28px 28px;
+         It inverts — cream paper and dark ink against a sage page, the
+         pairing the club already prints agreements on — with a gold rule
+         along the top edge and the product's 8px panel radius.
+
+         ⚠ CENTRED, LIKE THE READING. The guide sets its prose down the middle
+         and this sat hard left against it, reading as a stray form rather
+         than part of the page.
+
+         ⚠ RAMPANT SANS THROUGHOUT. The labels were set in Google Sans Code,
+         uppercase — the Studio's voice for data, not the club's voice for
+         speech. Inside this panel the club speaks, so it speaks in its own
+         typeface. Only the flap board keeps fixed-width cells, and they are
+         set in Rampant Sans too. */
+      .sga-panel { position: relative; margin: 24px 0 0; padding: 28px 26px 30px;
                    background: ${PAPER}; color: ${INK}; border-radius: 8px;
-                   border-top: 3px solid ${GOLD};
-                   box-shadow: 0 1px 0 ${INK}14, 0 18px 40px -28px ${INK}8c; }
+                   border-top: 3px solid ${GOLD}; text-align: center;
+                   /* STANDING UP FROM THE PAGE: a close contact shadow plus a
+                      longer, softer one. One shadow alone reads as a sticker;
+                      two read as a card with air under it. */
+                   box-shadow: 0 1px 2px ${INK}1f, 0 10px 18px -10px ${INK}59,
+                               0 30px 56px -34px ${INK}8c; }
 
-      .sga-p-eyebrow { font-family: ${MONO}; font-size: 10px; letter-spacing: .22em;
-                       text-transform: uppercase; color: ${GOLD}; font-weight: 700; }
+      .sga-p-eyebrow { font-family: ${SERIF}; font-size: 12px; font-weight: 600;
+                       letter-spacing: .2em; text-transform: uppercase; color: ${GOLD}; }
 
-      /* THE FIGURE. One large number, never two competing for the eye. */
-      .sga-p-amount { margin: 14px 0 0; }
-      .sga-p-label { font-family: ${MONO}; font-size: 10px; letter-spacing: .18em;
-                     text-transform: uppercase; opacity: .55; }
-      .sga-p-figure { position: relative; display: inline-block; margin: 2px 0 0;
-                      font-family: ${SERIF}; font-weight: 400; line-height: 1;
-                      font-size: clamp(40px, 11vw, 60px); font-variant-numeric: tabular-nums;
-                      animation: sga-fig-in .5s cubic-bezier(.16,.84,.44,1) both; }
-      .sga-p-figure .sga-draw { background: ${GOLD}; height: 2px; bottom: -8px; }
+      .sga-p-amount { margin: 16px 0 0; }
+      .sga-p-label { font-family: ${SERIF}; font-size: 12.5px; font-weight: 500;
+                     letter-spacing: .14em; text-transform: uppercase; opacity: .6;
+                     margin-bottom: 10px; }
 
-      .sga-p-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px;
-                    margin: 20px 0 0; font-family: ${MONO}; font-size: 11px;
+      /* ══ THE DEPARTURES BOARD, IN THE STUDIO'S COLOURS ══════════════
+         components/public/menus/Flaps ships near-black cells with cream
+         glyphs. Here the cells are the Studio's ink and the glyphs its sage,
+         so the board belongs to this room — same mechanism, same flap, this
+         exhibition's palette. Overridden rather than forked: one board on the
+         site, not two that drift. */
+      .sga-flaps { display: flex; justify-content: center; }
+      .sga-flaps .fl-cell {
+        background: linear-gradient(180deg, #0a4330 0%, #073626 49.5%, #042014 50.5%, #06291b 100%);
+        color: ${SAGE};
+        box-shadow: inset 0 -1px 0 rgba(0,0,0,.55), 0 1px 0 ${PAPER}73; }
+      .sga-flaps .fl-blank {
+        background: linear-gradient(180deg, #073626 0%, #052e20 49.5%, #03190f 50.5%, #052117 100%); }
+
+      .sga-p-meta { display: flex; flex-wrap: wrap; justify-content: center;
+                    align-items: baseline; gap: 8px; margin: 18px 0 0;
+                    font-family: ${SERIF}; font-size: 13px; font-weight: 500;
                     letter-spacing: .1em; text-transform: uppercase; }
       .sga-p-reserve { opacity: .6; }
       .sga-p-reserve.is-met { opacity: 1; font-weight: 700; color: ${INK}; }
       .sga-p-sep { opacity: .35; }
-      .sga-p-count { opacity: .6; font-variant-numeric: tabular-nums; }
+      .sga-p-count { opacity: .6; }
 
-      .sga-p-closes { margin: 10px 0 0; font-family: ${MONO}; font-size: 12.5px;
-                      line-height: 1.6; opacity: .8; }
-      .sga-p-left { display: block; font-style: normal; font-size: 11px; opacity: .8;
-                    letter-spacing: .1em; text-transform: uppercase; margin-top: 3px;
-                    font-variant-numeric: tabular-nums; }
+      .sga-p-closes { margin: 8px 0 0; font-family: ${SERIF}; font-size: 13.5px;
+                      line-height: 1.6; opacity: .72; }
 
-      /* A SOLD WORK. The same panel one voice quieter: no gold rule at full
-         strength, no figure, nothing to press. */
-      .sga-panel.is-sold { padding: 18px 28px; border-top-width: 1px;
-                           border-top-color: ${GOLD}80; box-shadow: 0 1px 0 ${INK}0f; }
-      .sga-p-sold { font-family: ${MONO}; font-size: 12px; letter-spacing: .22em;
-                    text-transform: uppercase; opacity: .62; }
+      /* A SOLD WORK. The same panel one voice quieter. */
+      .sga-panel.is-sold { padding: 20px 26px; border-top-width: 1px;
+                           border-top-color: ${GOLD}80;
+                           box-shadow: 0 1px 2px ${INK}14, 0 8px 16px -12px ${INK}3d; }
+      .sga-p-sold { font-family: ${SERIF}; font-size: 14px; font-weight: 600;
+                    letter-spacing: .22em; text-transform: uppercase; opacity: .55; }
 
       /* WHERE THIS DEVICE STANDS. */
-      .sga-standing { font-family: ${MONO}; font-size: 12px; line-height: 1.7; margin: 16px 0 0;
-                      padding-left: 10px; border-left: 2px solid ${INK}59; opacity: .85; }
+      .sga-standing { font-family: ${SERIF}; font-size: 13.5px; line-height: 1.7; margin: 18px 0 0;
+                      opacity: .85; }
       .sga-standing.is-outbid { border-left-color: ${GOLD}; opacity: 1; font-weight: 600; }
 
       /* ══ THE ACTION ═══════════════════════════════════════════════════
@@ -783,8 +810,9 @@ export function AuctionStyles({ accent }: { accent: string }) {
                  width: 100%; box-sizing: border-box; margin: 22px 0 0;
                  min-height: 54px; padding: 16px 20px;
                  background: ${GOLD}; color: ${INK}; border: none; border-radius: 6px;
-                 font-family: ${MONO}; font-size: 12.5px; font-weight: 700;
+                 font-family: ${SERIF}; font-size: 14px; font-weight: 700;
                  letter-spacing: .16em; text-transform: uppercase; cursor: pointer;
+                 box-shadow: 0 1px 0 ${INK}26, 0 6px 14px -8px ${INK}73;
                  transition: filter .25s ease; }
       .sga-bar:hover { filter: brightness(1.06); }
       .sga-bar[disabled] { opacity: .55; cursor: default; }
@@ -811,7 +839,7 @@ export function AuctionStyles({ accent }: { accent: string }) {
          as one sentence. A column with a gap gives the bar its full width AND
          keeps every following control on its own line. */
       .sga-panel .sga-actions { display: flex; flex-direction: column;
-                                align-items: flex-start; gap: 2px; }
+                                align-items: center; gap: 2px; }
 
       /* ── THE FORM. Underlined fields, the way the portal sets them —
          no boxes, nothing that looks like a dialog. ── */
@@ -841,11 +869,11 @@ export function AuctionStyles({ accent }: { accent: string }) {
          this draws a 3px gold halo outside the box, which survives being
          looked at from arm's length at an angle. */
       .sga-panel .sga-field { display: block; margin: 18px 0 0; }
-      .sga-panel .sga-field > span { display: block; font-family: ${MONO}; font-size: 10px;
-                          letter-spacing: .16em; text-transform: uppercase;
-                          opacity: .62; margin-bottom: 7px; }
+      .sga-panel .sga-field > span { display: block; font-family: ${SERIF}; font-size: 12px;
+                          font-weight: 500; letter-spacing: .14em; text-transform: uppercase;
+                          opacity: .62; margin-bottom: 7px; text-align: left; }
       .sga-panel .sga-field input, .sga-panel .sga-field textarea {
-                          width: 100%; box-sizing: border-box; min-height: 48px;
+                          width: 100%; box-sizing: border-box; min-height: 48px; /* text face, not the caps display face */
                           background: #ffffff8c; color: ${INK};
                           border: 1px solid ${INK}2e; border-radius: 6px;
                           padding: 12px 14px; font-family: ${MONO}; font-size: 16px;
@@ -853,14 +881,46 @@ export function AuctionStyles({ accent }: { accent: string }) {
       .sga-panel .sga-field input:focus, .sga-panel .sga-field textarea:focus {
                           border-color: ${GOLD}; box-shadow: 0 0 0 3px ${GOLD}59; }
       .sga-panel .sga-field input:disabled, .sga-panel .sga-field textarea:disabled { opacity: .55; }
-      .sga-panel .sga-hint { display: block; font-family: ${MONO}; font-size: 11px;
-                             font-style: normal; opacity: .62; margin-top: 7px; }
+      .sga-panel .sga-hint { display: block; font-family: ${SERIF}; font-size: 12.5px;
+                             font-style: normal; opacity: .62; margin-top: 7px; text-align: left; }
 
       /* THE TWO BOXES. Both untouched in meaning; only the tap target grows —
          a 13px checkbox is not something a guest hits holding a glass. */
       .sga-panel .sga-check { align-items: center; gap: 12px; margin: 10px 0 0;
                               padding: 8px 0; min-height: 44px; }
       .sga-panel .sga-check input { width: 20px; height: 20px; margin: 0; accent-color: ${GOLD}; flex: none; }
+
+      /* ⚠ THE FORM READS LEFT. The panel is centred, but centred form labels
+         and a centred paragraph of terms are a chore to read — the eye has no
+         fixed left edge to return to. The panel centres its headline figures;
+         anything that is a SENTENCE or a FIELD goes back to the left. */
+      .sga-panel .sga-form, .sga-panel .sga-terms, .sga-panel .sga-prevails,
+      .sga-panel .sga-check, .sga-panel .sga-err { text-align: left; }
+      /* ⚠ ONE TYPEFACE INSIDE THE PANEL. The terms, the consent lines, the
+         errors and the inputs were all still Google Sans Code — the Studio's
+         voice for DATA. Inside this panel the club is speaking to a person
+         about money, so it speaks in Rampant Sans throughout. Sizes go up a
+         touch with it: the mono was set small because mono reads dense. */
+      /* ⚠ RAMPANT SANS IS A CAPS FACE. Setting the whole panel in it turned
+         the terms into "A BID IS A COMMITMENT TO BUY AT THAT PRICE IF IT
+         WINS" — a paragraph shouting at someone about to spend money — and
+         would have forced a guest's own typed NAME into capitals.
+         So the rule is by JOB, not by element:
+           · LABELS, the eyebrow, the meta line and the bar are Rampant Sans.
+             They are already uppercase by design, and the brand face is what
+             the owner asked for.
+           · SENTENCES and INPUTS stay in the Studio's text face, lower case,
+             which is what the artist's statement above them is set in. The
+             objection was capitalised Google Sans on the labels, and that is
+             what has gone. */
+      .sga-panel .sga-terms { font-size: 12.5px; line-height: 1.8; }
+      .sga-panel .sga-check { font-size: 12.5px; }
+      .sga-panel .sga-err { font-size: 12.5px; border-left-color: ${GOLD}; }
+      .sga-panel .sga-ok-when, .sga-panel .sga-ok-standing,
+      .sga-panel .sga-ok-sub { font-size: 13px; }
+      .sga-panel .sga-ok-title { font-family: ${SERIF}; }
+      .sga-panel .sga-form-h { font-family: ${SERIF}; text-align: center; }
+      .sga-panel .sga-ok, .sga-panel .sga-done { text-align: center; border-left: none; padding-left: 0; }
 
       .sga-terms { font-family: ${MONO}; font-size: 12px; line-height: 1.85; margin: 20px 0 0; opacity: .85; }
       .sga-prevails { font-family: ${MONO}; font-size: 10.5px; line-height: 1.8; margin: 8px 0 0; opacity: .55; }
@@ -926,7 +986,12 @@ export function AuctionStyles({ accent }: { accent: string }) {
            their phone to stop moving things. The shoot counts the animated
            elements it can prove are visible, so a drop in that count is the
            tell. */
-        .sga-rise, .sga-figure, .sga-p-figure, .sga-form, .sga-done,
+        /* ⚠ THE FLAP BOARD NEEDS NOTHING HERE. Flaps' own CSS stops the flip
+           under reduced motion, and its effect returns early, so the cells
+           simply show their letters. What DOES need listing is anything of
+           ours that animates from opacity 0 — .sga-p-figure was renamed away
+           and the shoot's selector guard caught it the same minute. */
+        .sga-rise, .sga-figure, .sga-form, .sga-done,
         .sga-ok-eyebrow, .sga-ok-amount, .sga-ok-title, .sga-ok-when,
         .sga-ok-standing, .sga-ok-sub, .sga-ok-actions {
           animation: none !important; opacity: 1 !important; transform: none !important; }

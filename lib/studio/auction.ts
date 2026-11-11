@@ -161,6 +161,10 @@ export const AUCTION_STRINGS = {
   // the singular; Vietnamese marks no plural, so its two forms differ only in
   // the number word — the same shape as banner_sold above.
   lot_bid_count: { en: '{n} bids', vn: '{n} lượt đặt giá' },
+  // The short form of the countdown, for the panel's single close line. The
+  // banner above still says "Bidding closes at ... (Ho Chi Minh time)" in
+  // full, so this does not have to carry the timezone a second time.
+  lot_left_short: { en: '{t} left', vn: 'còn {t}' },
   lot_bid_count_one: { en: 'One bid', vn: 'Một lượt đặt giá' },
 
   // ── Under an auction work ───────────────────────────────────────────────
