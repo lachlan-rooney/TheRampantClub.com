@@ -202,7 +202,7 @@ export function AuctionBanner({ lots, pieces, skew = 0 }: {
             mono voice rather than the display face: it is a fact about the
             room, not the headline. */}
         {soldCount > 0 && (
-          <div className="sga-sold">
+          <div className="sga-soldnote">
             {soldCount === 1
               ? tr(lang, 'banner_sold_one')
               : tr(lang, 'banner_sold', { n: countWord(lang, soldCount) })}
@@ -717,7 +717,14 @@ export function AuctionStyles({ accent }: { accent: string }) {
                   font-variant-numeric: tabular-nums; }
       /* The same quiet voice as the countdown, one notch further back: it is
          standing information, not something ticking. */
-      .sga-sold { font-family: ${MONO}; font-size: 11.5px; letter-spacing: .12em;
+      /* ⚠ NAMED .sga-soldnote, NOT .sga-sold. Two rules called .sga-sold
+         existed — this quiet one, and a leftover from the old sale block
+         setting it in 26px display type. The leftover came later in the
+         sheet, so it won, and "Four works in this exhibition have sold"
+         shipped at 20px against a 21px lead: a quiet aside rendered as a
+         second headline. The old rule is deleted and this one has a name
+         nothing else will take. */
+      .sga-soldnote { font-family: ${MONO}; font-size: 11.5px; letter-spacing: .12em;
                   text-transform: uppercase; opacity: .5; margin: 12px 0 0; }
       .sga-jumps { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 14px; margin: 16px 0 0; }
       .sga-jump-label { font-family: ${MONO}; font-size: 10px; letter-spacing: .18em;
@@ -747,7 +754,6 @@ export function AuctionStyles({ accent }: { accent: string }) {
                         text-transform: uppercase; opacity: .55; }
       .sga-sale-figure { font-family: ${SERIF}; font-size: clamp(20px, 5vw, 26px); }
       .sga-sale-note { font-family: ${MONO}; font-size: 11.5px; opacity: .6; }
-      .sga-sold { font-family: ${SERIF}; font-size: clamp(20px, 5vw, 26px); text-transform: uppercase; opacity: .55; }
 
       /* ══ THE BIDDING PANEL ════════════════════════════════
          OWNER RULING, 11 Nov 2026: this one block is a boxed panel that
