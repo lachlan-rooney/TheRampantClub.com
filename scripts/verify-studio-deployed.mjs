@@ -27,6 +27,7 @@ let pass = 0, fail = 0
 const t = (ok, m, d = '') => { ok ? pass++ : fail++; console.log(`${ok ? '✓' : '✗'} ${m}${d ? ' — ' + d : ''}`) }
 
 console.log(`against ${SITE}\n`)
+let publicLots = null
 
 const page = await fetch(`${SITE}/studio/${SLUG}/guide`, { cache: 'no-store' })
 t(page.status === 200, 'the live guide loads', `HTTP ${page.status}`)
@@ -86,6 +87,7 @@ for (const path of ['/admin/studio/auction', '/admin/studio/auction/vn']) {
   // state, so it is reported and checked against that state, not assumed.
   t(Array.isArray(j?.lots), 'the route answered with a list',
     Array.isArray(j?.lots) ? `${j.lots.length} lots` : 'the route did not answer')
+  publicLots = Array.isArray(j?.lots) ? j.lots.length : null
   if (Array.isArray(j?.lots)) {
     console.log(j.lots.length === 0
       ? '  · the list is empty — the auction is not published yet'
@@ -97,6 +99,7 @@ for (const path of ['/admin/studio/auction', '/admin/studio/auction/vn']) {
   t(r.status !== 404, '/api/studio/auction/mine is deployed', `HTTP ${r.status}`)
 }
 
-console.log(`\n${fail ? '✗' : '✓'} ${pass} passed, ${fail} failed — ${fail ? 'NOT fully deployed' : 'the auction code is live (and still unpublished)'}`)
+const publishedNote = publicLots === null ? '' : publicLots === 0 ? ' (not published yet)' : ` (PUBLISHED — ${publicLots} lots public)`
+console.log(`\n${fail ? '✗' : '✓'} ${pass} passed, ${fail} failed — ${fail ? 'NOT fully deployed' : `the auction code is live${publishedNote}`}`)
 if (!fail) console.log('Next: node scripts/verify-studio-silent.mjs with BASE set to the live site.')
 process.exit(fail ? 1 : 0)
