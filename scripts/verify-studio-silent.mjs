@@ -33,6 +33,7 @@ for (const l of readFileSync('/Users/lachlanrooney/Downloads/rampant-club/.env.l
   const m = l.match(/^([A-Z_0-9]+)=(.*)$/); if (m) env[m[1]] = m[2].trim().replace(/^["']|["']$/g, '')
 }
 const BASE = process.env.BASE || 'http://localhost:3001'
+const SLUG = process.env.SLUG || 'rizal-fathoni'
 const U = env.NEXT_PUBLIC_SUPABASE_URL, K = env.SUPABASE_SERVICE_ROLE_KEY, A = env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 let pass = 0, fail = 0
 const t = (ok, m, d = '') => { ok ? pass++ : fail++; console.log(`${ok ? '✓' : '✗'} ${m}${d ? ' — ' + d : ''}`) }
@@ -55,14 +56,23 @@ console.log(PUBLISHED
   ? '⚠ THE AUCTION IS PUBLISHED. The silence assertions do not apply; the private-data\n  assertions below do, and still must pass.\n'
   : 'the auction is not published — running the full silence check.\n')
 t(typeof auction?.[0]?.published === 'boolean', 'the auction row was read', `published = ${auction?.[0]?.published}`)
+// ⚠ SCOPED TO THIS EXHIBITION'S AUCTION. Unscoped, this read EVERY row in
+// studio_lots — including the throwaway lots of a verification run happening
+// at the same moment. It reported two failures against production that were
+// nothing but another script's fixtures, which is the worst kind of red: one
+// that is real, reproducible for ten minutes, and about nothing.
+const { data: thisAuction } = await a.from('studio_auctions')
+  .select('id').eq('collaboration_id',
+    (await a.from('collaborations').select('id').eq('slug', SLUG).single()).data.id).single()
 const { data: lots } = await a.from('studio_lots')
   .select('kind,status,price_usd,reserve_usd,sold_price_usd,sold_to,starting_bid_usd,collaboration_pieces(title_en)')
-t(lots.length === 8, 'eight lots exist in the database, waiting', `${lots.length}`)
+  .eq('auction_id', thisAuction.id)
+t(lots.length === 8, 'eight lots exist in this exhibition', `${lots.length}`)
 
 // ── 2 · THE PUBLIC DOOR, through the anon key ────────────────────────────
 const r = await fetch(`${U}/rest/v1/rpc/studio_auction_public`, {
   method: 'POST', headers: { apikey: A, Authorization: 'Bearer ' + A, 'Content-Type': 'application/json' },
-  body: JSON.stringify({ p_slug: 'rizal-fathoni' }),
+  body: JSON.stringify({ p_slug: SLUG }),
 })
 const rows = await r.json()
 t(Array.isArray(rows) && (PUBLISHED ? rows.length === lots.length : rows.length === 0),
@@ -71,7 +81,7 @@ t(Array.isArray(rows) && (PUBLISHED ? rows.length === lots.length : rows.length 
   `${rows.length} row(s)`)
 
 // ── 3 · THE RENDERED PAGE ────────────────────────────────────────────────
-const page = await fetch(`${BASE}/studio/rizal-fathoni/guide`)
+const page = await fetch(`${BASE}/studio/${SLUG}/guide`)
 t(page.status === 200, 'the guide loads', `HTTP ${page.status}`)
 const html = await page.text()
 // Rendered text: tags stripped, and <style>/<script> contents removed, because
