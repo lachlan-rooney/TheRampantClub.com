@@ -210,6 +210,16 @@ async function main() {
     await page.evaluate(() => window.scrollTo(0, 0))
     await shot('01-page')
 
+    // 02a · A WORK WITH NO BIDS — the panel leads with the STARTING bid, and
+    // the meta line reads "no bids yet". A different state from 02, not a
+    // dimmer version of it.
+    {
+      const none = piece(lots['Punch Punch'].index)
+      await none.scrollIntoViewIfNeeded()
+      await page.waitForTimeout(600)
+      await shot('02a-no-bids', none)
+    }
+
     // 02 · A WORK WITH BIDS.
     const withBids = piece(lots['Reminds Me Of'].index)
     await withBids.scrollIntoViewIfNeeded()
@@ -217,7 +227,7 @@ async function main() {
     await shot('02-work-with-bids', withBids)
 
     // 03 · THE FORM, open in place.
-    await withBids.locator('.sga-cta').first().click()
+    await withBids.locator('.sga-bar').first().click()
     await page.waitForSelector('.sga-form', { timeout: 10_000 })
     await page.waitForTimeout(800)
     await withBids.scrollIntoViewIfNeeded()
@@ -234,7 +244,7 @@ async function main() {
       // is going nowhere either way; failing to abort it is not a failure.
       await route.abort().catch(() => {})
     })
-    await withBids.locator('.sga-cta').first().click()
+    await withBids.locator('.sga-bar').first().click()
     await page.waitForTimeout(900)
     await shot('04-busy', withBids)
     await page.unroute('**/api/studio/auction/bid')
@@ -244,11 +254,11 @@ async function main() {
     await go()
     const live = piece(lots['Reminds Me Of'].index)
     await live.scrollIntoViewIfNeeded()
-    await live.locator('.sga-cta').first().click()
+    await live.locator('.sga-bar').first().click()
     await page.waitForSelector('.sga-form')
     await live.locator('.sga-field input').nth(0).fill('Fixture Guest')
     await live.locator('.sga-field input').nth(1).fill(`delivered+ok-${label}@resend.dev`)
-    await live.locator('.sga-cta').first().click()
+    await live.locator('.sga-bar').first().click()
     await page.waitForSelector('.sga-ok', { timeout: 20_000 })
     await page.waitForTimeout(1600)
     await live.scrollIntoViewIfNeeded()
@@ -263,11 +273,11 @@ async function main() {
     }))
     const live2 = piece(lots['Reminds Me Of'].index)
     await live2.scrollIntoViewIfNeeded()
-    await live2.locator('.sga-cta').first().click()
+    await live2.locator('.sga-bar').first().click()
     await page.waitForSelector('.sga-form')
     await live2.locator('.sga-field input').nth(0).fill('Fixture Guest')
     await live2.locator('.sga-field input').nth(1).fill('delivered+stub@resend.dev')
-    await live2.locator('.sga-cta').first().click()
+    await live2.locator('.sga-bar').first().click()
     await page.waitForSelector('.sga-ok', { timeout: 20_000 })
     await page.waitForTimeout(1600)
     await live2.scrollIntoViewIfNeeded()
@@ -337,8 +347,17 @@ async function main() {
     // off for reduced motion. Every animated thing is measured here.
     const checks = await page.evaluate(() => {
       const out = []
-      for (const sel of ['.sga-banner', '.sga-lot', '.sga-facts dd', '.sg-piece', '.sga-reserve']) {
-        for (const el of [...document.querySelectorAll(sel)].slice(0, 3)) {
+      // ⚠ A SELECTOR THAT MATCHES NOTHING MUST FAIL, NOT PASS. This list read
+      // '.sga-lot', '.sga-facts dd' and '.sga-reserve' after the bidding block
+      // was rebuilt as a panel and those classes stopped existing. Every one
+      // of them matched zero elements, so the loop checked nothing, found no
+      // fault and printed a tick — the count quietly fell from 13 to 4 and
+      // that was the only sign. Each selector now reports its own emptiness.
+      for (const sel of ['.sga-banner', '.sga-panel', '.sga-p-figure', '.sga-p-meta',
+                         '.sga-p-closes', '.sga-bar', '.sg-piece']) {
+        const found = [...document.querySelectorAll(sel)]
+        if (found.length === 0) { out.push({ sel, missing: true, visible: false, opacity: 0, transform: 'none', text: '' }); continue }
+        for (const el of found.slice(0, 3)) {
           const cs = getComputedStyle(el)
           const r = el.getBoundingClientRect()
           out.push({
@@ -352,6 +371,7 @@ async function main() {
     })
     let bad = 0
     for (const c of checks) {
+      if (c.missing) { bad++; console.log(`  ✗ reduced motion: selector ${c.sel} matched NOTHING — it is checking a class that no longer exists`); continue }
       const ok = c.visible && c.opacity > 0.3 && (c.transform === 'none' || /matrix\(1, 0, 0, 1, 0, 0\)/.test(c.transform))
       if (!ok) { bad++; console.log('  ✗ reduced motion leaves it hidden:', JSON.stringify(c)) }
     }
@@ -378,11 +398,11 @@ async function main() {
     await page.waitForSelector('.sga-banner', { timeout: 60_000 })
     const live = page.locator(`#piece-${lots['Reminds Me Of'].index}`)
     await live.scrollIntoViewIfNeeded()
-    await live.locator('.sga-cta').first().click()
+    await live.locator('.sga-bar').first().click()
     await page.waitForSelector('.sga-form')
     await live.locator('.sga-field input').nth(0).fill('Fixture Guest')
     await live.locator('.sga-field input').nth(1).fill('delivered+frames@resend.dev')
-    await live.locator('.sga-cta').first().click()
+    await live.locator('.sga-bar').first().click()
     const t0 = Date.now()
     for (const at of [0, 150, 400, 700, 1100, 1600]) {
       const wait = at - (Date.now() - t0)

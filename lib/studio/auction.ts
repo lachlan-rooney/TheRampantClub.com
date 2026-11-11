@@ -156,6 +156,13 @@ export const AUCTION_STRINGS = {
   cd_mins:  { en: '{n}m', vn: '{n} phút' },
   cd_secs:  { en: '{n}s', vn: '{n} giây' },
 
+  // ── In the bidding panel ────────────────────────────────────────────────
+  // The count sits under the figure, beside the reserve status. English needs
+  // the singular; Vietnamese marks no plural, so its two forms differ only in
+  // the number word — the same shape as banner_sold above.
+  lot_bid_count: { en: '{n} bids', vn: '{n} lượt đặt giá' },
+  lot_bid_count_one: { en: 'One bid', vn: 'Một lượt đặt giá' },
+
   // ── Under an auction work ───────────────────────────────────────────────
   lot_starting: { en: 'Starting bid', vn: 'Giá khởi điểm' },
   lot_highest:  { en: 'Current highest bid', vn: 'Giá cao nhất hiện tại' },

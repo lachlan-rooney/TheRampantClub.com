@@ -39,6 +39,13 @@ import {
 
 const SAGE = '#B0C18E'
 const INK = '#052E20'
+// ⚠ NOT NEW COLOURS. Both are lifted from MembershipSigning, where the club
+// already sets documents as cream paper with gold rules: PAPER is the ground
+// the agreement is printed on and GOLD is the colour of its agree control.
+// The bidding panel is the only thing on this page that leaves the sage, and
+// it leaves it for a ground the club already owns.
+const PAPER = '#E5D4C2'
+const GOLD = '#C9A84C'
 const SERIF = "'Rampant Sans', serif"
 const MONO = "'Google Sans Code', 'DM Mono', monospace"
 
@@ -241,18 +248,33 @@ export function AuctionLotBlock({ lot, accent, title, slug, myHigh, skew = 0, on
   // payload at all: the database withholds it.
   if (lot.kind === 'sale') {
     if (lot.status === 'sold') {
-      return <div className="sga-sale"><span className="sga-sold">{tr(lang, 'lot_sold')}</span></div>
+      return <SoldPanel lang={lang} />
     }
     if (lot.price_usd == null) return null
     return <SaleLot lot={lot} lang={lang} accent={accent} title={title} />
   }
 
-  if (lot.status === 'sold') {
-    return <div className="sga-sale"><span className="sga-sold">{tr(lang, 'lot_sold')}</span></div>
-  }
+  if (lot.status === 'sold') return <SoldPanel lang={lang} />
 
   return <AuctionLive lot={lot} accent={accent} lang={lang} title={title} slug={slug}
                       myHigh={myHigh ?? null} skew={skew} onPlaced={onPlaced} />
+}
+
+// ═══ A WORK THAT HAS SOLD ═════════════════════════════════════════════════
+// The same panel, one voice quieter: same cream ground, same radius, a thinner
+// gold rule and no figure at all. It belongs to the bidding panel's family so
+// the page reads as one system — four works you can bid for, four you cannot,
+// and the difference legible at a glance rather than spelled out.
+//
+// ⚠ NO PRICE, AND NOT BECAUSE THIS HIDES IT. A sold work's price is not in the
+// payload: studio_auction_public returns null for it. There is nothing here to
+// withhold.
+function SoldPanel({ lang }: { lang: Lang }) {
+  return (
+    <section className="sga-panel is-sold">
+      <span className="sga-p-sold">{tr(lang, 'lot_sold')}</span>
+    </section>
+  )
 }
 
 // ═══ A PRICED WORK ════════════════════════════════════════════════════════
@@ -320,38 +342,49 @@ function AuctionLive({ lot, accent, lang, title, slug, myHigh, skew, onPlaced }:
   const leading = myHigh != null && lot.highest_usd != null && myHigh >= lot.highest_usd
   const outbid = myHigh != null && lot.highest_usd != null && myHigh < lot.highest_usd
 
-  return (
-    <div className="sga-lot" style={{ borderTopColor: accent }}>
-      <dl className="sga-facts">
-        <div>
-          <dt>{tr(lang, 'lot_starting')}</dt>
-          <dd>{money(lot.starting_bid_usd)}</dd>
-        </div>
-        <div>
-          <dt>{tr(lang, 'lot_highest')}</dt>
-          {/* AMOUNT ONLY. There is no bidder in the data this page receives. */}
-          <dd className="sga-high" style={{ color: accent }}>
-            {lot.highest_usd == null
-              ? <span className="sga-none">{tr(lang, 'lot_none')}</span>
-              : <span key={flash} className="sga-figure">
-                  {money(lot.highest_usd)}
-                  <i className="sga-draw" style={{ background: accent }} aria-hidden="true" />
-                </span>}
-          </dd>
-        </div>
-        <div>
-          <dt>{tr(lang, 'lot_closes')}</dt>
-          <dd className="sga-when">
-            {closeLabel(lang, lot.closes_at)}
-            {!closed && left && <em className="sga-left-inline">{tr(lang, 'banner_left', { t: left })}</em>}
-          </dd>
-        </div>
-      </dl>
+  // ── WHICH FIGURE IS THE BIG ONE ─────────────────────────────────────────
+  // The panel leads with the number that matters right now: the current
+  // highest once anybody has bid, the starting bid before that. One large
+  // figure, never two competing for the eye — "no bids yet" set at display
+  // size would be the loudest thing on the page and the least useful.
+  const hasBids = lot.highest_usd != null
+  const bigFigure = hasBids ? lot.highest_usd! : lot.starting_bid_usd
+  const bigLabel = tr(lang, hasBids ? 'lot_highest' : 'lot_starting')
 
-      {/* MET OR NOT MET, and never the number. The figure does not exist in
-          the payload this component is given — it is computed in the database. */}
-      <div className={`sga-reserve ${lot.reserve_met ? 'is-met' : ''}`}>
-        {lot.reserve_met ? tr(lang, 'lot_reserve_met') : tr(lang, 'lot_reserve_not_met')}
+  return (
+    <section className="sga-panel" aria-label={tr(lang, 'banner_eyebrow')}>
+      <div className="sga-p-eyebrow">{tr(lang, 'banner_eyebrow')}</div>
+
+      {/* THE FIGURE. Display face, large, and the hairline draws beneath it
+          when it changes — the same move as the success moment, so a bid
+          arriving and your own bid landing feel like one family. */}
+      <div className="sga-p-amount">
+        <div className="sga-p-label">{bigLabel}</div>
+        <div className="sga-p-figure" key={flash}>
+          {money(bigFigure)}
+          <i className="sga-draw" aria-hidden="true" />
+        </div>
+      </div>
+
+      {/* MET OR NOT MET, and never the number — the figure is not in the
+          payload this component is given, it is computed in the database.
+          Beside it the count, so the guest can see whether anyone is here. */}
+      <div className="sga-p-meta">
+        <span className={lot.reserve_met ? 'sga-p-reserve is-met' : 'sga-p-reserve'}>
+          {lot.reserve_met ? tr(lang, 'lot_reserve_met') : tr(lang, 'lot_reserve_not_met')}
+        </span>
+        <span className="sga-p-sep" aria-hidden="true">·</span>
+        <span className="sga-p-count">
+          {lot.bid_count === 0 ? tr(lang, 'lot_none')
+            : lot.bid_count === 1 ? tr(lang, 'lot_bid_count_one')
+            : tr(lang, 'lot_bid_count', { n: String(lot.bid_count) })}
+        </span>
+      </div>
+
+      {/* THE CLOSE, ON ITS OWN LINE. */}
+      <div className="sga-p-closes">
+        {closeLabel(lang, lot.closes_at)}
+        {!closed && left && <em className="sga-p-left">{tr(lang, 'banner_left', { t: left })}</em>}
       </div>
 
       {/* ON A RETURN VISIT. Said before the control, because it is the reason
@@ -374,11 +407,11 @@ function AuctionLive({ lot, accent, lang, title, slug, myHigh, skew, onPlaced }:
                  onCancel={() => setOpen(false)}
                  onDone={d => { setDone(d); setOpen(false); onPlaced() }} />
       ) : (
-        <button className="sga-cta" onClick={() => setOpen(true)}>
+        <button className="sga-bar" onClick={() => setOpen(true)}>
           {tr(lang, outbid ? 'lot_bid_again' : 'lot_cta')} <span className="sga-go" aria-hidden="true">→</span>
         </button>
       )}
-    </div>
+    </section>
   )
 }
 
@@ -535,7 +568,7 @@ function BidForm({ lot, lang, accent, next, onCancel, onDone }: {
           and Cancel goes with it — a guest who cancels mid-write does not know
           whether their bid exists, and neither do we. */}
       <div className="sga-actions">
-        <button className="sga-cta" onClick={submit} disabled={busy} style={{ borderBottomColor: accent }}>
+        <button className="sga-bar" onClick={submit} disabled={busy}>
           {busy ? <>{tr(lang, 'form_submitting')}<Dots /></> : <>{tr(lang, 'form_submit')}<span className="sga-go" aria-hidden="true"> →</span></>}
         </button>
         {!busy && <button className="sga-quiet" onClick={onCancel}>{tr(lang, 'form_cancel')}</button>}
@@ -687,33 +720,79 @@ export function AuctionStyles({ accent }: { accent: string }) {
       .sga-sale-note { font-family: ${MONO}; font-size: 11.5px; opacity: .6; }
       .sga-sold { font-family: ${SERIF}; font-size: clamp(20px, 5vw, 26px); text-transform: uppercase; opacity: .55; }
 
-      .sga-lot { margin: 20px 0 0; padding: 16px 0 0; border-top: 2px solid ${INK}; }
-      .sga-facts { display: flex; flex-wrap: wrap; gap: 14px 30px; margin: 0; }
-      .sga-facts > div { margin: 0; }
-      .sga-facts dt { font-family: ${MONO}; font-size: 10px; letter-spacing: .18em;
-                      text-transform: uppercase; opacity: .55; }
-      .sga-facts dd { margin: 4px 0 0; font-family: ${SERIF}; font-size: clamp(19px, 4.6vw, 25px);
-                      font-variant-numeric: tabular-nums; }
-      .sga-high { font-weight: 400; }
-      .sga-none { font-family: ${MONO}; font-size: 12.5px; opacity: .6; }
-      .sga-when { font-family: ${MONO} !important; font-size: 12.5px !important; line-height: 1.6; opacity: .8; }
-      .sga-left-inline { display: block; font-style: normal; font-size: 11px; opacity: .75;
-                         letter-spacing: .1em; text-transform: uppercase; margin-top: 3px;
-                         font-variant-numeric: tabular-nums; }
+      /* ══ THE BIDDING PANEL ════════════════════════════════════════════
+         OWNER RULING, 11 Nov 2026: this one block is a boxed panel that
+         stands off the page. Everything else on the guide keeps the Studio's
+         hairlines-not-boxes rule, which is why none of this leaks outside
+         .sga-panel.
 
-      .sga-reserve { font-family: ${MONO}; font-size: 11px; letter-spacing: .1em;
-                     text-transform: uppercase; margin: 14px 0 0; opacity: .6; }
-      .sga-reserve.is-met { opacity: 1; font-weight: 700; }
+         It inverts: cream paper and dark ink against a sage page, the same
+         pairing the club already prints agreements on. A gold rule along the
+         top edge, the product's 8px panel radius, and generous padding so it
+         reads as a card laid on the page rather than a region of it. */
+      .sga-panel { position: relative; margin: 22px 0 0; padding: 26px 28px 28px;
+                   background: ${PAPER}; color: ${INK}; border-radius: 8px;
+                   border-top: 3px solid ${GOLD};
+                   box-shadow: 0 1px 0 ${INK}14, 0 18px 40px -28px ${INK}8c; }
 
-      /* WHERE THIS DEVICE STANDS. A hairline on the left, like the error line,
-         because it is the same kind of thing: the page speaking to one guest. */
-      .sga-standing { font-family: ${MONO}; font-size: 12px; line-height: 1.7; margin: 12px 0 0;
+      .sga-p-eyebrow { font-family: ${MONO}; font-size: 10px; letter-spacing: .22em;
+                       text-transform: uppercase; color: ${GOLD}; font-weight: 700; }
+
+      /* THE FIGURE. One large number, never two competing for the eye. */
+      .sga-p-amount { margin: 14px 0 0; }
+      .sga-p-label { font-family: ${MONO}; font-size: 10px; letter-spacing: .18em;
+                     text-transform: uppercase; opacity: .55; }
+      .sga-p-figure { position: relative; display: inline-block; margin: 2px 0 0;
+                      font-family: ${SERIF}; font-weight: 400; line-height: 1;
+                      font-size: clamp(40px, 11vw, 60px); font-variant-numeric: tabular-nums;
+                      animation: sga-fig-in .5s cubic-bezier(.16,.84,.44,1) both; }
+      .sga-p-figure .sga-draw { background: ${GOLD}; height: 2px; bottom: -8px; }
+
+      .sga-p-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px;
+                    margin: 20px 0 0; font-family: ${MONO}; font-size: 11px;
+                    letter-spacing: .1em; text-transform: uppercase; }
+      .sga-p-reserve { opacity: .6; }
+      .sga-p-reserve.is-met { opacity: 1; font-weight: 700; color: ${INK}; }
+      .sga-p-sep { opacity: .35; }
+      .sga-p-count { opacity: .6; font-variant-numeric: tabular-nums; }
+
+      .sga-p-closes { margin: 10px 0 0; font-family: ${MONO}; font-size: 12.5px;
+                      line-height: 1.6; opacity: .8; }
+      .sga-p-left { display: block; font-style: normal; font-size: 11px; opacity: .8;
+                    letter-spacing: .1em; text-transform: uppercase; margin-top: 3px;
+                    font-variant-numeric: tabular-nums; }
+
+      /* A SOLD WORK. The same panel one voice quieter: no gold rule at full
+         strength, no figure, nothing to press. */
+      .sga-panel.is-sold { padding: 18px 28px; border-top-width: 1px;
+                           border-top-color: ${GOLD}80; box-shadow: 0 1px 0 ${INK}0f; }
+      .sga-p-sold { font-family: ${MONO}; font-size: 12px; letter-spacing: .22em;
+                    text-transform: uppercase; opacity: .62; }
+
+      /* WHERE THIS DEVICE STANDS. */
+      .sga-standing { font-family: ${MONO}; font-size: 12px; line-height: 1.7; margin: 16px 0 0;
                       padding-left: 10px; border-left: 2px solid ${INK}59; opacity: .85; }
-      .sga-standing.is-outbid { border-left-color: ${INK}; opacity: 1; }
+      .sga-standing.is-outbid { border-left-color: ${GOLD}; opacity: 1; font-weight: 600; }
 
-      /* THE HOUSE CTA, measured off /studio: mono 12, .12em, uppercase, a 1px
-         underline and an arrow that slides 7px. No button chrome anywhere on
-         these pages. */
+      /* ══ THE ACTION ═══════════════════════════════════════════════════
+         A full-width filled gold bar — the same unmistakable treatment the
+         club uses for the agree control on an agreement, because this is the
+         same kind of act: a commitment, not a navigation. The arrow slides
+         7px, as every arrow on the site does. */
+      .sga-bar { display: flex; align-items: center; justify-content: center; gap: 10px;
+                 width: 100%; box-sizing: border-box; margin: 22px 0 0;
+                 min-height: 54px; padding: 16px 20px;
+                 background: ${GOLD}; color: ${INK}; border: none; border-radius: 6px;
+                 font-family: ${MONO}; font-size: 12.5px; font-weight: 700;
+                 letter-spacing: .16em; text-transform: uppercase; cursor: pointer;
+                 transition: filter .25s ease; }
+      .sga-bar:hover { filter: brightness(1.06); }
+      .sga-bar[disabled] { opacity: .55; cursor: default; }
+      .sga-bar .sga-go { display: inline-block; transition: transform .35s ease; }
+      .sga-bar:hover .sga-go { transform: translateX(7px); }
+
+      /* THE HOUSE CTA stays for anything OUTSIDE the panel — the Studio's own
+         treatment, mono and underlined, no button chrome. */
       .sga-cta { display: inline-block; margin: 16px 0 0; background: none; border: none; cursor: pointer;
                  color: ${INK}; font-family: ${MONO}; font-size: 12px; letter-spacing: .12em;
                  text-transform: uppercase; border-bottom: 1px solid ${INK}; padding: 0 0 6px;
@@ -723,9 +802,16 @@ export function AuctionStyles({ accent }: { accent: string }) {
       .sga-cta:hover .sga-go { transform: translateX(7px); }
       .sga-quiet { background: none; border: none; cursor: pointer; color: ${INK}; opacity: .6;
                    font-family: ${MONO}; font-size: 11.5px; letter-spacing: .08em;
-                   text-transform: uppercase; padding: 0 0 6px; }
+                   text-transform: uppercase; padding: 12px 4px; min-height: 44px; }
       .sga-quiet:hover { opacity: 1; }
-      .sga-actions { display: flex; align-items: baseline; gap: 22px; flex-wrap: wrap; }
+      .sga-actions { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+      /* ⚠ NOT display:block. That was the first try, and it made the submit bar
+         full width correctly while running "Bid again →" straight into "Back to
+         the exhibition →" with no space between them at 1280 — two links read
+         as one sentence. A column with a gap gives the bar its full width AND
+         keeps every following control on its own line. */
+      .sga-panel .sga-actions { display: flex; flex-direction: column;
+                                align-items: flex-start; gap: 2px; }
 
       /* ── THE FORM. Underlined fields, the way the portal sets them —
          no boxes, nothing that looks like a dialog. ── */
@@ -744,6 +830,37 @@ export function AuctionStyles({ accent }: { accent: string }) {
       .sga-field input:disabled, .sga-field textarea:disabled { opacity: .55; }
       .sga-hint { display: block; font-family: ${MONO}; font-size: 11px; font-style: normal;
                   opacity: .6; margin-top: 6px; }
+
+      /* ══ FIELDS WITH PRESENCE, inside the panel only ══════════════════
+         The underlined field is right for a page of prose; it is wrong inside
+         a card where the ground has already changed. Scoped to .sga-panel so
+         the Studio's own forms are untouched.
+
+         ⚠ 48px MINIMUM, AND THE FOCUS RING IS NOT A COLOUR CHANGE. A 1px
+         border going from faint to solid is invisible on a phone in a gallery;
+         this draws a 3px gold halo outside the box, which survives being
+         looked at from arm's length at an angle. */
+      .sga-panel .sga-field { display: block; margin: 18px 0 0; }
+      .sga-panel .sga-field > span { display: block; font-family: ${MONO}; font-size: 10px;
+                          letter-spacing: .16em; text-transform: uppercase;
+                          opacity: .62; margin-bottom: 7px; }
+      .sga-panel .sga-field input, .sga-panel .sga-field textarea {
+                          width: 100%; box-sizing: border-box; min-height: 48px;
+                          background: #ffffff8c; color: ${INK};
+                          border: 1px solid ${INK}2e; border-radius: 6px;
+                          padding: 12px 14px; font-family: ${MONO}; font-size: 16px;
+                          outline: none; resize: vertical; transition: border-color .2s ease, box-shadow .2s ease; }
+      .sga-panel .sga-field input:focus, .sga-panel .sga-field textarea:focus {
+                          border-color: ${GOLD}; box-shadow: 0 0 0 3px ${GOLD}59; }
+      .sga-panel .sga-field input:disabled, .sga-panel .sga-field textarea:disabled { opacity: .55; }
+      .sga-panel .sga-hint { display: block; font-family: ${MONO}; font-size: 11px;
+                             font-style: normal; opacity: .62; margin-top: 7px; }
+
+      /* THE TWO BOXES. Both untouched in meaning; only the tap target grows —
+         a 13px checkbox is not something a guest hits holding a glass. */
+      .sga-panel .sga-check { align-items: center; gap: 12px; margin: 10px 0 0;
+                              padding: 8px 0; min-height: 44px; }
+      .sga-panel .sga-check input { width: 20px; height: 20px; margin: 0; accent-color: ${GOLD}; flex: none; }
 
       .sga-terms { font-family: ${MONO}; font-size: 12px; line-height: 1.85; margin: 20px 0 0; opacity: .85; }
       .sga-prevails { font-family: ${MONO}; font-size: 10.5px; line-height: 1.8; margin: 8px 0 0; opacity: .55; }
@@ -789,8 +906,27 @@ export function AuctionStyles({ accent }: { accent: string }) {
          An entrance that only fades in is invisible to anyone who has turned
          animation off, so each one is pinned to its FINAL state rather than
          simply switched off: full opacity, no offset, the hairlines drawn. */
+      /* ══ ON A PHONE ═══════════════════════════════════════════════════
+         The page gutter is 20px (.sg). The panel pulls 12px of it back on each
+         side so it runs nearly edge to edge with 8px of sage still showing —
+         it reads as a card laid on the page, not as the page. Its own padding
+         stays generous, so nothing inside is cramped. */
+      @media (max-width: 600px) {
+        .sga-panel { margin-left: -12px; margin-right: -12px; padding: 22px 20px 24px;
+                     border-radius: 10px; }
+        .sga-panel.is-sold { padding: 16px 20px; }
+        .sga-bar { min-height: 56px; }
+      }
+
       @media (prefers-reduced-motion: reduce) {
-        .sga-rise, .sga-figure, .sga-form, .sga-done,
+        /* ⚠ .sga-p-figure MUST BE LISTED. The panel's big figure animates with
+           sga-fig-in, which starts at opacity 0 — renaming it from .sga-figure
+           and forgetting this line would leave the single most important
+           number on the page permanently invisible to anyone who has asked
+           their phone to stop moving things. The shoot counts the animated
+           elements it can prove are visible, so a drop in that count is the
+           tell. */
+        .sga-rise, .sga-figure, .sga-p-figure, .sga-form, .sga-done,
         .sga-ok-eyebrow, .sga-ok-amount, .sga-ok-title, .sga-ok-when,
         .sga-ok-standing, .sga-ok-sub, .sga-ok-actions {
           animation: none !important; opacity: 1 !important; transform: none !important; }

@@ -30,7 +30,7 @@ const SAGE = '#7AB07A'
 // The order the guest meets them, with a heading before each run.
 const GROUPS: { title: string; note: string; keys: (keyof typeof AUCTION_STRINGS)[] }[] = [
   { title: 'The banner, above the works', note: 'The first thing a guest reads.',
-    keys: ['banner_eyebrow', 'banner_lead', 'banner_sold', 'banner_sold_one', 'banner_closes', 'banner_announce', 'banner_jump'] },
+    keys: ['banner_eyebrow', 'banner_lead', 'banner_sold', 'banner_sold_one', 'lot_bid_count', 'lot_bid_count_one', 'banner_closes', 'banner_announce', 'banner_jump'] },
   { title: 'The countdown', note: 'Assembled from two parts — "2d 6h", "14m 09s". The units are what need checking.',
     keys: ['banner_left', 'cd_days', 'cd_hours', 'cd_mins', 'cd_secs'] },
   { title: 'Under each work', note: 'The label a guest reads standing in front of the painting.',
