@@ -78,9 +78,19 @@ for (const path of ['/admin/studio/auction', '/admin/studio/auction/vn']) {
   // ⚠ ONLY MEANINGFUL IF IT ANSWERED. This used to accept `undefined` as
   // "empty" and passed against a 404 — an absent route reported as proof that
   // nothing was published.
-  t(Array.isArray(j?.lots) && j.lots.length === 0,
-    '⚠ and the list is EMPTY, because nothing is published yet',
+  //
+  // ⚠ AND THE RIGHT ANSWER DEPENDS ON THE SWITCH. This asserted the list was
+  // EMPTY, which was true until the owner pressed Publish and then reported a
+  // correctly working auction as "NOT fully deployed". What this file is for
+  // is whether the CODE arrived; whether lots come back is the auction's
+  // state, so it is reported and checked against that state, not assumed.
+  t(Array.isArray(j?.lots), 'the route answered with a list',
     Array.isArray(j?.lots) ? `${j.lots.length} lots` : 'the route did not answer')
+  if (Array.isArray(j?.lots)) {
+    console.log(j.lots.length === 0
+      ? '  · the list is empty — the auction is not published yet'
+      : `  · ${j.lots.length} lots are public — the auction is PUBLISHED`)
+  }
 }
 {
   const r = await fetch(`${SITE}/api/studio/auction/mine`, { cache: 'no-store' })
