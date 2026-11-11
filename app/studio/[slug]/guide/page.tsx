@@ -52,6 +52,20 @@ export default async function StudioGuidePage({ params }: { params: Promise<{ sl
   const { data: senses } = await sb.from('collaboration_senses')
     .select('sense, body_en, body_vn').eq('collaboration_id', collaboration.id)
 
+  // ── IS THERE AN AUCTION AT ALL ─────────────────────────────────────────
+  // ONE BOOLEAN, AND DELIBERATELY NOT THE FIGURES. Whether the auction is
+  // published changes about once in its life, so it is perfectly cacheable at
+  // this page's 60 seconds; a current highest is not, which is why the numbers
+  // are fetched in the browser instead. This exists so the guide can tell
+  // "the bids are still loading" apart from "this exhibition has no auction"
+  // and show its loading line only in the first case.
+  //
+  // studio_auction_public is SECURITY DEFINER and granted to anon, so this
+  // read holds no privilege. If db/studio_auction.sql has not been run the
+  // call errors and the page simply renders without an auction.
+  const { data: publicLots } = await sb.rpc('studio_auction_public', { p_slug: slug })
+  const hasAuction = Array.isArray(publicLots) && publicLots.length > 0
+
   return (
     <>
       {/* THE SAME MENU AS EVERY OTHER PUBLIC PAGE. The guide shipped without
@@ -67,6 +81,7 @@ export default async function StudioGuidePage({ params }: { params: Promise<{ sl
         collaboration={collaboration as GuideCollab}
         pieces={(pieces || []) as GuidePiece[]}
         senses={(senses || []) as GuideSense[]}
+        hasAuction={hasAuction}
       />
     </>
   )

@@ -5,6 +5,10 @@ import Link from 'next/link'
 import { useLang, pick } from '@/lib/lang'
 import LangToggle from '@/components/LangToggle'
 import { SENSES } from '@/lib/studio/senses'
+import {
+  AuctionBanner, AuctionFailed, AuctionLoading, AuctionLotBlock, useAuctionState,
+} from '@/components/studio/StudioAuction'
+import { tr, type Lang } from '@/lib/studio/auction'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // THE SELF-GUIDED GALLERY GUIDE — a guest, their own phone, the room in order.
@@ -97,8 +101,13 @@ const dateRange = (a: string | null, b: string | null) => {
   return b && b !== a ? `${f(a)} — ${f(b)}` : f(a)
 }
 
-export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
+export default function StudioGuide({ collaboration: c, pieces, senses = [], hasAuction = false }: {
   collaboration: GuideCollab; pieces: GuidePiece[]; senses?: GuideSense[]
+  // WHETHER THERE IS AN AUCTION AT ALL — read on the server, where it is
+  // cacheable, unlike the figures. It exists so that "the bids are loading"
+  // and "this exhibition has no auction" can be told apart: without it the
+  // loading line would flash on every exhibition that has none.
+  hasAuction?: boolean
 }) {
   const { lang, t } = useLang()
   const accent = c.accent || INK
@@ -142,6 +151,15 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
     marks.current.forEach(el => el && io.observe(el))
     return () => io.disconnect()
   }, [total])
+
+  // ── THE AUCTION ────────────────────────────────────────────────────
+  // Fetched in the browser, never rendered into this page: the route explains
+  // why (this page is cached for 60s and a current highest cannot be). Until
+  // it answers, `lots` is null and NOTHING auction-shaped is drawn — an empty
+  // list and "not loaded yet" must not look the same, or a guest sees "no
+  // bids yet" on a work that has them.
+  const { lots: auctionLots, mine, failed: auctionFailed, skew, reloadMine } = useAuctionState(c.slug)
+  const lotFor = (pieceId: string) => (auctionLots || []).find(l => l.piece_id === pieceId) || null
 
   const exhibitionTitle = pick(lang, c.title_en, c.title_vn)
   const artist = pick(lang, c.artist_name, c.artist_name_vn)
@@ -244,7 +262,13 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
            The image is the hero and it is never cropped: a painting decides
            its own aspect ratio, so the frame takes whatever shape the work is.
            That is the Studio's rule on /studio/[slug] and it holds here. */
-        .sg-piece { padding: 52px 0 0; scroll-margin-top: 76px; }
+        /* ── THE WORKS ARRIVE. The studio page's own entrance — same curve,
+           same 18px — with a short stagger down the walk, once. The fill mode
+           is deliberate: the animation ENDS at the final state, so a piece can
+           never be left invisible by a missed frame or an early scroll. */
+        @keyframes sg-rise { from { opacity: 0; transform: translateY(18px) } to { opacity: 1; transform: none } }
+        .sg-piece { padding: 52px 0 0; scroll-margin-top: 76px;
+                    animation: sg-rise .9s cubic-bezier(.16,.84,.44,1) both; }
         .sg-no { font-family: ${MONO}; font-size: 11px; letter-spacing: .16em;
                  color: ${accent}; font-weight: 700; }
         /* FULL BLEED. In the booklet the work runs edge to edge off the page
@@ -355,6 +379,9 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
         @media (prefers-reduced-motion: reduce) {
           .sg-tab, .sg-senses.is-in .sg-tab, .sg-senses.has-opened .sg-tab {
             opacity: 1; transform: none; box-shadow: none; animation: none; }
+          /* Same reasoning for the works: pinned to the FINAL state, not
+             merely switched off, or the whole exhibition would be blank. */
+          .sg-piece { animation: none !important; opacity: 1 !important; transform: none !important; }
         }
         .sg-tab.is-on { background: ${INK}0f; border-color: ${accent}; }
         .sg-tab-mark path { stroke: ${INK}; fill: none; stroke-width: 1.5;
@@ -607,6 +634,29 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
           )}
         </section>
 
+        {/* ══ THE SILENT AUCTION ══════════════════════════════════════════
+            Above the works, because a guest who scrolls straight to the piece
+            in front of them should have met it already. The jump links are
+            the same anchors the QR codes beside each work point at. */}
+        {auctionFailed ? (
+          // THE FIGURES FAILED. Said in words, where they would have been — an
+          // empty block here reads as "no bids yet", which is a wrong answer
+          // rather than no answer.
+          hasAuction ? <AuctionFailed /> : null
+        ) : auctionLots === null ? (
+          hasAuction ? <AuctionLoading /> : null
+        ) : auctionLots.length > 0 ? (
+          <AuctionBanner
+            lots={auctionLots}
+            skew={skew}
+            pieces={pieces.map((p, i) => ({
+              id: p.id,
+              index: i + 1,
+              title: pick(lang, p.title_en, p.title_vn) || t('Untitled', 'Không tên'),
+            }))}
+          />
+        ) : null}
+
         {total === 0 ? (
           // HONEST, AND IN BOTH LANGUAGES. The alternative — placeholder labels
           // under a real artist's name on a public URL — would be a lie told in
@@ -624,6 +674,7 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
           const by = p.artist_name || artist
           return (
             <section key={p.id} id={`piece-${i + 1}`} data-i={i} className="sg-piece"
+                     style={{ animationDelay: `${Math.min(i, 8) * 0.06}s` }}
                      ref={el => { marks.current[i] = el }}
                      aria-label={`${i + 1} of ${total}${title ? ` — ${title}` : ''}`}>
               <div className="sg-no">{String(i + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}</div>
@@ -654,6 +705,17 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
                 )}
               </div>
 
+              {/* THE PRICE, OR THE AUCTION — directly under the label, which
+                  is where a gallery puts it and where a guest looks. */}
+              {lotFor(p.id) && (
+                <AuctionLotBlock lot={lotFor(p.id)!} accent={accent}
+                                 title={title || t('Untitled', 'Không tên')}
+                                 slug={c.slug}
+                                 myHigh={mine[lotFor(p.id)!.lot_id] ?? null}
+                                 skew={skew}
+                                 onPlaced={reloadMine} />
+              )}
+
               {desc && (
                 <div className="sg-desc">
                   {paras(desc).map((para, j) => <p key={j}>{para}</p>)}
@@ -678,8 +740,19 @@ export default function StudioGuide({ collaboration: c, pieces, senses = [] }: {
                       /* eslint-disable-next-line @next/next/no-img-element */
                       : <img src={p.beneficiary_logo_path} alt="" loading="lazy" className="sg-benefit-logo" />
                   )}
+                  {/* ── THE FIGURE, ONCE THERE IS ONE ──────────────────
+                      His existing sentence says "a significant portion",
+                      which is what you say before the share is decided. The
+                      moment a percentage is set in the admin the line states
+                      it instead. Both sentences are never shown together:
+                      one of them would be the out-of-date one. */}
                   <p className="sg-benefit-text">
-                    {pick(lang, p.beneficiary_en ?? null, p.beneficiary_vn ?? null)}
+                    {(() => {
+                      const l = lotFor(p.id)
+                      return l?.donation_pct && l.donation_org
+                        ? tr(lang as Lang, 'lot_donation', { pct: l.donation_pct, org: l.donation_org })
+                        : pick(lang, p.beneficiary_en ?? null, p.beneficiary_vn ?? null)
+                    })()}
                   </p>
                 </div>
               )}
