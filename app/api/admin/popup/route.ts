@@ -65,7 +65,7 @@ export async function GET() {
     // that are — and worse, a phone paired during the rehearsal would have been
     // invisible on the run sheet all evening. The pairing IS the list.
     a.from('kiosk_devices')
-      .select('id, label, purpose, enrolled_at, last_seen_at, revoked_at')
+      .select('id, label, purpose, enrolled_at, last_seen_at, revoked_at, popup_slug')
       .eq('purpose', 'popup').is('revoked_at', null)
       .order('label'),
   ])
@@ -89,14 +89,25 @@ export async function GET() {
       last_seen_at: d.last_seen_at ?? null,
       seconds_ago: seen ? Math.round((now - seen) / 1000) : null,
       online: seen ? now - seen < 90_000 : false,
+      practice: (d as { popup_slug?: string | null }).popup_slug === 'palace-practice',
     }
   })
+
+  // The practice evening, if it exists — so the run sheet can say whether
+  // there is anything to switch a phone to.
+  const { data: prac } = await a.from('popup_events')
+    .select('slug, published, is_practice').eq('slug', 'palace-practice').maybeSingle()
+  const { count: pracBookings } = prac
+    ? await a.from('popup_bookings').select('id', { count: 'exact', head: true })
+        .eq('event_id', (await a.from('popup_events').select('id').eq('slug', 'palace-practice').single()).data!.id)
+    : { count: 0 }
 
   return NextResponse.json({
     event: ev,
     sessions: sheet ?? [],
     bookings: bookings ?? [],
     phones,
+    practice: prac ? { exists: true, bookings: pracBookings ?? 0 } : { exists: false, bookings: 0 },
     now: new Date().toISOString(),
   })
 }
@@ -292,6 +303,40 @@ export async function POST(req: NextRequest) {
       .eq('id', String(body.session_id || '')).eq('event_id', ev.id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })
+  }
+
+  // ═══ THE PRACTICE EVENING ═════════════════════════════════════════════
+  // ⚠ A PHONE IS SWITCHED ONE AT A TIME, by device. One handset can be
+  // rehearsing in the back office while another takes real sign-ups, and
+  // putting it back is one tap rather than a deploy.
+  if (action === 'practice_device') {
+    const id = String(body.device_id || '')
+    const on = body.practice === true
+    const { error } = await a.from('kiosk_devices')
+      .update({ popup_slug: on ? 'palace-practice' : null })
+      .eq('id', id).eq('purpose', 'popup')
+    if (error) {
+      return NextResponse.json({
+        error: /popup_slug/.test(error.message)
+          ? 'The practice switch needs db/popup_practice.sql to be run first.' : error.message,
+      }, { status: 500 })
+    }
+    return NextResponse.json({ ok: true, practice: on })
+  }
+
+  // ⚠ ONE CONTROL, AND IT CANNOT TOUCH FRIDAY. popup_practice_reset() refuses
+  // any event not marked is_practice, in Postgres, so a mis-click here cannot
+  // empty the real evening.
+  if (action === 'practice_reset') {
+    const { data, error } = await a.rpc('popup_practice_reset')
+    if (error) {
+      return NextResponse.json({
+        error: /popup_practice_reset/.test(error.message)
+          ? 'Run db/popup_practice.sql first.' : error.message,
+      }, { status: 500 })
+    }
+    const row = Array.isArray(data) ? data[0] : data
+    return NextResponse.json({ ok: true, ...row })
   }
 
   // ── THE SWITCHES AND THE SETTINGS ─────────────────────────────────────

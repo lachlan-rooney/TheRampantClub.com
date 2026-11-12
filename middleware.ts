@@ -114,6 +114,15 @@ export async function middleware(request: NextRequest) {
     // if a phone dies tomorrow evening the nearest working device must be able
     // to take a name. It may NOT open the door list, which carries every
     // guest's name.
+    //
+    // ⚠ A POPUP PHONE REACHES BOTH WITHOUT A SECOND PIN (12 Nov, after the
+    // first staff member was handed one and could not find the door at all).
+    // ON A STAFF PHONE, STAFF ARE THE USERS. The PIN is asked ONCE when she
+    // picks up the handset for the evening; making her re-enter it to move
+    // between the two halves of her own job was a lock on the wrong person.
+    // What still holds: the sign-up form clears between guests, and a guest
+    // handed the phone mid-form cannot walk to the door list — that is done
+    // in the page, which hides the way out while a guest is holding it.
     const atPopupDoor = p.startsWith('/kiosk/popup/door')
     const atPopup = p.startsWith('/kiosk/popup')
     const atClubDoor = p.startsWith('/kiosk/door')

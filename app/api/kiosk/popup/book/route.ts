@@ -6,6 +6,7 @@ import { tr, timeLabel, type Lang } from '@/lib/popup/strings'
 import { ticketUrl } from '@/lib/popup/ticket'
 import { EMAIL, emailShell } from '@/lib/email/shell'
 import { alertAdmins } from '@/lib/studio/alert'
+import { deviceEvent } from '@/lib/popup/event'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,7 +29,6 @@ export const dynamic = 'force-dynamic'
 // booking is never lost to a typo or to Resend having a bad minute.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const SLUG = process.env.POPUP_SLUG || 'palace-2026-11-13'
 const FROM = 'The Rampant Club <events@therampantclub.com>'
 const LOOKS_LIKE_EMAIL = /^[^\s@]+@[^\s@.]+\.[^\s@]{2,}$/
 
@@ -70,9 +70,7 @@ export async function POST(req: NextRequest) {
   }
 
   const a = svc()
-  const { data: ev } = await a.from('popup_events')
-    .select('id, slug, title_en, title_vn, venue_en, venue_vn, timezone, party_max')
-    .eq('slug', SLUG).maybeSingle()
+  const ev = await deviceEvent()
   if (!ev) return NextResponse.json({ error: 'No pop-up is set up.' }, { status: 500 })
 
   // ── THE LOCKED WRITE ────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { deviceOk, actingStaff, denyDevice, denyStaff, svc } from '@/lib/kiosk/server'
+import { deviceEvent } from '@/lib/popup/event'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +17,7 @@ export const dynamic = 'force-dynamic'
 // cannot book a time that has been and gone however stale the tablet's screen.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const SLUG = process.env.POPUP_SLUG || 'palace-2026-11-13'
+
 
 export async function GET() {
   if (!(await deviceOk())) return denyDevice()
@@ -24,15 +25,14 @@ export async function GET() {
   if (!staff) return denyStaff()
 
   const a = svc()
-  const { data: ev } = await a.from('popup_events')
-    .select('id, slug, title_en, title_vn, venue_en, venue_vn, session_minutes, party_max, published, bookings_paused')
-    .eq('slug', SLUG).maybeSingle()
-
+  // Which evening THIS handset is on — the real one, or practice if the run
+  // sheet has switched it. See lib/popup/event.
+  const ev = await deviceEvent()
   if (!ev) {
     return NextResponse.json({ error: 'No pop-up is set up.', hint: 'Has db/popup_timed_entry.sql been run?' }, { status: 500 })
   }
 
-  const { data: sessions, error } = await a.rpc('popup_public', { p_slug: SLUG })
+  const { data: sessions, error } = await a.rpc('popup_public', { p_slug: ev.slug })
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
@@ -45,6 +45,9 @@ export async function GET() {
       party_max: ev.party_max,
       published: ev.published,
       paused: ev.bookings_paused,
+      practice: ev.is_practice,
+      slug: ev.slug,
+      default_cap: ev.default_cap,
     },
     // Empty while unpublished — the tablet shows "ask a member of staff"
     // rather than an empty list pretending the evening is full.

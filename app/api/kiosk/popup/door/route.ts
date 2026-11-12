@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { deviceOk, actingStaff, denyDevice, denyStaff, svc } from '@/lib/kiosk/server'
+import { deviceEvent } from '@/lib/popup/event'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,23 +31,8 @@ export const dynamic = 'force-dynamic'
 // never sent this shape.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const SLUG = process.env.POPUP_SLUG || 'palace-2026-11-13'
-
-interface Ev {
-  id: string; title_en: string; venue_en: string; published: boolean
-  party_max: number; admit_early_minutes: number; admit_late_minutes: number
-}
-
-// ⚠ THE COLUMN LIST IS ONE STRING LITERAL. Built with `+` it stops being a
-// literal, Supabase's generated types give up, and every field below becomes
-// an error about GenericStringError — which reads like a database fault and
-// is only ever a formatting one.
-const eventRow = async (): Promise<Ev | null> => {
-  const { data } = await svc().from('popup_events')
-    .select('id, title_en, venue_en, published, party_max, admit_early_minutes, admit_late_minutes')
-    .eq('slug', SLUG).maybeSingle()
-  return (data as Ev | null) ?? null
-}
+// The evening this handset is on. Practice or real — the same code either way.
+const eventRow = () => deviceEvent()
 
 export async function GET() {
   if (!(await deviceOk())) return denyDevice()
@@ -78,6 +64,7 @@ export async function GET() {
       party_max: ev.party_max,
       admit_early_minutes: ev.admit_early_minutes,
       admit_late_minutes: ev.admit_late_minutes,
+      practice: ev.is_practice,
     },
     sessions: sheet ?? [],
     list: list ?? [],

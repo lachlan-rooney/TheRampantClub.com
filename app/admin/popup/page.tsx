@@ -33,7 +33,7 @@ interface B {
   created_at: string; waiting_since: string | null; source: string
   consent_marketing: boolean; confirmation_sent_at: string | null; taken_by: string | null
 }
-interface Phone { id: string; label: string; paired: boolean; last_seen_at: string | null; seconds_ago: number | null; online: boolean }
+interface Phone { id: string; label: string; paired: boolean; last_seen_at: string | null; seconds_ago: number | null; online: boolean; practice: boolean }
 interface Ev {
   id: string; title_en: string; venue_en: string; event_date: string
   default_cap: number; party_max: number; published: boolean
@@ -57,6 +57,7 @@ export default function RunSheet() {
   const [open, setOpen] = useState<string | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const [capDraft, setCapDraft] = useState('')
+  const [practice, setPractice] = useState<{ exists: boolean; bookings: number }>({ exists: false, bookings: 0 })
 
   const load = useCallback(async () => {
     try {
@@ -65,6 +66,7 @@ export default function RunSheet() {
       if (!r.ok) { setErr(j.error || 'Could not read the pop-up.'); return }
       setErr(null); setEv(j.event); setSessions(j.sessions || [])
       setBookings(j.bookings || []); setPhones(j.phones || [])
+      setPractice(j.practice || { exists: false, bookings: 0 })
       setCapDraft(String(j.event?.default_cap ?? ''))
     } catch { setErr('Could not reach the server.') }
   }, [])
@@ -154,6 +156,41 @@ export default function RunSheet() {
         </div>
       </div>
 
+      {/* ── PRACTICE ──────────────────────────────────────────────────── */}
+      {/* ⚠ FIRST ON THE PAGE TONIGHT, because the real evening is unpublished
+          and a phone pointed at it shows no sessions at all — which is what
+          the first staff member handed one actually saw. */}
+      <div style={sectionLabel}>Practice</div>
+      <div style={{ ...card, ...(practice.exists ? {} : { borderColor: '#C9A84C' }) }}>
+        {!practice.exists ? (
+          <>
+            <b style={{ fontFamily: SERIF, color: '#E5D4C2' }}>There is no practice evening yet.</b>
+            <p style={{ ...muted, margin: '6px 0 0' }}>
+              Run <code>db/popup_practice.sql</code> and reload this page. It creates a whole evening
+              of nine sessions, marked PRACTICE on every screen, that you can switch any phone to.
+            </p>
+          </>
+        ) : (
+          <>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <button disabled={busy} style={{ ...btn, ...btnOn }} onClick={async () => {
+                const j = await post({ action: 'practice_reset' })
+                if (j?.ok) setMsg(`Practice reset — ${j.bookings_removed} booking(s) cleared, ${j.sessions} sessions now running from ${hhmm(j.first_at)}.`)
+              }}>Wipe and restart practice</button>
+              <span style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98' }}>
+                {practice.bookings} practice booking{practice.bookings === 1 ? '' : 's'}
+              </span>
+            </div>
+            <p style={{ ...muted, marginTop: 10 }}>
+              One control. It clears every practice booking and re-times the nine sessions to run from
+              now, so the grid is always live enough to rehearse on. It <b style={{ color: '#E5D4C2' }}>cannot
+              touch Friday</b> — the database refuses any event not marked as practice.
+              Emails are real: whatever address is typed receives a real ticket.
+            </p>
+          </>
+        )}
+      </div>
+
       {/* ── THE PHONES ────────────────────────────────────────────────── */}
       <div style={sectionLabel}>Staff phones</div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 22 }}>
@@ -164,12 +201,23 @@ export default function RunSheet() {
           </div>
         )}
         {phones.map(p => (
-          <div key={p.id} style={{ ...chip, borderColor: p.online ? '#7FA86B' : '#C27070' }}>
-            <span style={{ width: 8, height: 8, borderRadius: 4, background: p.online ? '#7FA86B' : '#C27070' }} />
-            <b>{p.label}</b>
-            <span style={{ opacity: .6 }}>
-              {p.online ? `${p.seconds_ago}s ago` : p.last_seen_at ? `quiet ${Math.round((p.seconds_ago || 0) / 60)} min` : 'never'}
-            </span>
+          <div key={p.id} style={{ ...chip, borderColor: p.practice ? '#C9A84C' : p.online ? '#7FA86B' : '#C27070',
+                                   flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 4, background: p.online ? '#7FA86B' : '#C27070' }} />
+              <b>{p.label}</b>
+              <span style={{ opacity: .6 }}>
+                {p.online ? `${p.seconds_ago}s ago` : p.last_seen_at ? `quiet ${Math.round((p.seconds_ago || 0) / 60)} min` : 'never'}
+              </span>
+            </div>
+            {/* Per handset. One can rehearse while another takes real names. */}
+            <button disabled={busy || !practice.exists} style={{ ...btn, ...(p.practice ? btnOn : {}), minHeight: 30, fontSize: 11 }}
+                    onClick={async () => {
+                      const j = await post({ action: 'practice_device', device_id: p.id, practice: !p.practice })
+                      if (j?.ok) setMsg(`${p.label} is now on the ${j.practice ? 'PRACTICE' : 'real'} evening. Reload that phone.`)
+                    }}>
+              {p.practice ? 'ON PRACTICE — switch to the real evening' : 'Switch to practice'}
+            </button>
           </div>
         ))}
       </div>

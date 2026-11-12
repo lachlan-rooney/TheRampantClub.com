@@ -71,6 +71,49 @@ export const POPUP_STRINGS = {
                   vn: 'Lượt đó đã hết chỗ. Nếu có chỗ trống lúc {time}, chúng tôi sẽ email ngay cho bạn.' },
   k_wait_note:  { en: 'This is not a ticket yet.', vn: 'Đây chưa phải là vé.' },
 
+  // ═══ THE STAFF HOME SCREEN ═══════════════════════════════════════════════
+  // ⚠ THIS SCREEN EXISTS BECAUSE THE FIRST STAFF MEMBER HANDED A PHONE COULD
+  // NOT SEE WHAT TO DO. There was a sign-up form and a small unlabelled ◆ in
+  // the corner that led, behind a second PIN, to the door. Everything about
+  // that was wrong for somebody picking the phone up for the first time.
+  //
+  // Two buttons. Her name. Nothing else.
+  h_signed_in:    { en: 'Signed in as {name}', vn: 'Đang đăng nhập: {name}' },
+  h_signup:       { en: 'Sign up a guest', vn: 'Đăng ký khách' },
+  h_scan:         { en: 'Scan a ticket', vn: 'Quét vé' },
+  h_signout:      { en: 'Sign out', vn: 'Đăng xuất' },
+  h_practice:     { en: 'PRACTICE', vn: 'TẬP DƯỢT' },
+  h_practice_sub: { en: 'This is a practice run. Nothing here is Friday.',
+                    vn: 'Đây là buổi tập dượt. Không phải tối thứ Sáu.' },
+  h_who:          { en: 'Who are you?', vn: 'Bạn là ai?' },
+  h_your_pin:     { en: '{name} — your PIN', vn: '{name} — mã PIN của bạn' },
+  h_start:        { en: 'Start', vn: 'Bắt đầu' },
+  h_someone_else: { en: 'Someone else', vn: 'Người khác' },
+  h_done:         { en: 'Done', vn: 'Xong' },
+  h_back_home:    { en: 'Back', vn: 'Quay lại' },
+
+  // ── The slot list, read at a glance ──────────────────────────────────────
+  s_places:       { en: '{n} places', vn: '{n} chỗ' },
+  s_one_place:    { en: '1 place left', vn: 'còn 1 chỗ' },
+  s_full:         { en: 'FULL', vn: 'HẾT CHỖ' },
+  s_next_free:    { en: 'NEXT WITH SPACE', vn: 'CÒN CHỖ SỚM NHẤT' },
+  s_running:      { en: 'ON NOW', vn: 'ĐANG DIỄN RA' },
+  s_waitlist_btn: { en: 'Add to waiting list', vn: 'Thêm vào danh sách chờ' },
+  s_choose:       { en: 'Choose a time', vn: 'Chọn giờ' },
+  s_how_many:     { en: 'How many people?', vn: 'Bao nhiêu người?' },
+  s_confirm_btn:  { en: 'Confirm', vn: 'Xác nhận' },
+  s_emailed:      { en: 'The QR ticket has been emailed.', vn: 'Vé QR đã được gửi qua email.' },
+  s_not_emailed:  { en: 'No email given — they are on the list by name.',
+                    vn: 'Không có email — khách đã có tên trong danh sách.' },
+  s_email_failed: { en: 'The email could not be sent. They are still on the list.',
+                    vn: 'Không gửi được email. Khách vẫn có trong danh sách.' },
+  s_show_guest:   { en: 'Show this to the guest', vn: 'Cho khách xem màn hình này' },
+
+  // ── The scan screen ──────────────────────────────────────────────────────
+  sc_type:        { en: 'Type the code', vn: 'Nhập mã' },
+  sc_byname:      { en: 'Find by name', vn: 'Tìm theo tên' },
+  sc_let_in:      { en: 'LET THEM IN', vn: 'MỜI VÀO' },
+
   // ═══ THE DOOR (item 1) ═══════════════════════════════════════════════════
   // ⚠ THE DOOR IS A STAFF SURFACE AND IT IS STILL BILINGUAL. Every other
   // /kiosk screen carries the switch, and the people holding these phones on

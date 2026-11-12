@@ -79,7 +79,11 @@ export default function PopupDoor() {
   const [walkup, setWalkup] = useState<string | null>(null) // session id
   const [busy, setBusy] = useState(false)
   const [partyMax, setPartyMax] = useState(2)
-  const [scanning, setScanning] = useState(false)
+  // ⚠ THE CAMERA IS OPEN ON ARRIVAL. "Scan a ticket" means scan a ticket —
+  // making her find and press a second button to start the camera was a step
+  // that existed only because the screen used to be a list with a scanner
+  // bolted on. Typing the code and finding a name sit underneath it.
+  const [scanning, setScanning] = useState(true)
   const [now, setNow] = useState(() => Date.now())
 
   // ── THE CACHE AND THE QUEUE, read once on mount ────────────────────────
@@ -235,6 +239,12 @@ export default function PopupDoor() {
 
   return (
     <main className="dr">
+      {/* Home is at the TOP LEFT, where a back control lives on a phone — not
+          at the bottom of a list she would have to scroll to the end of. */}
+      <button className="dr-home" onClick={() => router.push('/kiosk/popup')}>
+        ← {tr(L, 'h_back_home')}
+      </button>
+
       {/* ── THE BAR: who, when, and whether this phone is actually connected ── */}
       <header className="dr-top">
         <div>
@@ -270,6 +280,7 @@ export default function PopupDoor() {
         ? <Scanner L={L} onCode={c => { setScanning(false); admit(c, null) }} onClose={() => setScanning(false)} />
         : <button className="dr-scan" onClick={() => setScanning(true)}>{tr(L, 'd_scan')}</button>}
 
+      <div className="dr-orlabel">{tr(L, 'sc_type')}</div>
       <form className="dr-manual" onSubmit={e => { e.preventDefault(); if (manual.trim()) { admit(manual.trim().toUpperCase(), null); setManual('') } }}>
         <input value={manual} maxLength={8} inputMode="text" autoCapitalize="characters"
                autoComplete="off" spellCheck={false} placeholder={tr(L, 'd_type_code')}
@@ -281,6 +292,7 @@ export default function PopupDoor() {
                              onUndo={async () => { if (result.booking_id) { await act({ action: 'unadmit', booking_id: result.booking_id }); setResult(null) } }} />}
 
       {/* ── SEARCH ──────────────────────────────────────────────────────── */}
+      <div className="dr-orlabel">{tr(L, 'sc_byname')}</div>
       <input className="dr-search" value={query} onChange={e => setQuery(e.target.value)}
              placeholder={tr(L, 'd_find')}
              autoComplete="off" spellCheck={false} />
@@ -329,7 +341,7 @@ export default function PopupDoor() {
           <button key={l} className={L === l ? 'is-on' : ''} onClick={() => setLang(l)}>{l.toUpperCase()}</button>
         ))}
       </div>
-      <button className="dr-out" onClick={() => router.push('/kiosk/popup')}>{tr(L, 'd_back_signup')}</button>
+      <button className="dr-out" onClick={() => router.push('/kiosk/popup')}>{tr(L, 'h_back_home')}</button>
       <Styles />
     </main>
   )
@@ -785,9 +797,16 @@ function Styles() {
 
     .dr-result { position: relative; margin: 10px 0 14px; padding: 18px 16px; border-radius: 10px;
                  border-left: 4px solid ${GOLD}; background: ${PAPER}12; }
-    .dr-result.is-yes { border-left-color: ${GREEN}; background: ${GREEN}1f; }
-    .dr-result.is-no  { border-left-color: ${RED};   background: ${RED}1f; }
-    .dr-r-h { font-family: ${SERIF}; font-size: clamp(24px, 7vw, 34px); line-height: 1.05; }
+    .dr-result.is-yes { border-left-color: ${GREEN}; background: ${GREEN}2e; }
+    .dr-result.is-yes .dr-r-h { color: #A8D48F; }
+    .dr-result.is-no  { border-left-color: ${RED};   background: ${RED}2e; }
+    .dr-result.is-no .dr-r-h { color: #F0B3B3; }
+    .dr-result.is-wait .dr-r-h { color: ${GOLD}; }
+    /* ⚠ THE ANSWER IS THE BIGGEST THING ON THE SCREEN. She reads it at a
+       glance with somebody waiting in front of her, and the colour says it
+       before the words do. */
+    .dr-r-h { font-family: ${SERIF}; font-size: clamp(30px, 9vw, 42px); line-height: 1.02;
+              letter-spacing: .01em; }
     .dr-r-name { font-size: 19px; margin-top: 6px; word-break: break-word; }
     .dr-r-sub { font-size: 13px; opacity: .78; margin-top: 6px; line-height: 1.5; }
     .dr-x { position: absolute; top: 4px; right: 6px; width: 44px; height: 44px; background: none;
@@ -855,6 +874,10 @@ function Styles() {
                       background: none; color: ${PAPER}; font-family: ${MONO}; font-size: 14px;
                       letter-spacing: .1em; }
     .dr-lang button.is-on { background: ${PAPER}; color: ${INK}; border-color: ${PAPER}; }
+    .dr-home { min-height: 48px; padding: 0 2px; margin-bottom: 2px; background: none;
+               border: none; color: ${PAPER}; font-family: ${MONO}; font-size: 15px; opacity: .8; }
+    .dr-orlabel { font-family: ${SERIF}; font-size: 12px; letter-spacing: .16em;
+                  text-transform: uppercase; opacity: .55; margin: 14px 0 6px; }
     .dr-out { width: 100%; min-height: 48px; margin-top: 10px; background: none;
               border: 1px solid ${PAPER}26; border-radius: 8px; color: ${PAPER};
               font-family: ${MONO}; font-size: 13px; opacity: .7; }
