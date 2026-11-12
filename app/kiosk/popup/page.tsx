@@ -91,7 +91,12 @@ export default function PopupPhone() {
     <Shell L={L} setLang={setLang} practice={ev?.practice}>
       {mode === 'home' ? (
         <Home L={L} me={me} practice={!!ev?.practice}
-              onSignUp={() => { setGuest(g => g + 1); setMode('signup') }}
+              // ⚠ READ THE COUNTS AGAIN AS SHE OPENS THE LIST. The poll runs
+              // every eight seconds, so without this the first thing she sees
+              // can be up to eight seconds stale — and the moment she is most
+              // likely to be looking at it is the moment she has just taken
+              // the phone back from somebody else who booked on it.
+              onSignUp={() => { setGuest(g => g + 1); setMode('signup'); load() }}
               onScan={() => router.push('/kiosk/popup/door')}
               onSignOut={async () => {
                 await fetch('/api/kiosk/staff/logout', { method: 'POST' }).catch(() => {})
