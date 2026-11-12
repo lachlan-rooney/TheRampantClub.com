@@ -156,10 +156,20 @@ export async function POST(req: NextRequest) {
         // blocks remote images... and the CODE is printed underneath, because
         // some clients block data URIs too. Two ways in, plus the guest's name
         // on the door list, which is the third.
-        const url = ticketUrl(ev.slug, out.ticket_code)
-        const png = await QRCode.toDataURL(url, { errorCorrectionLevel: 'M', margin: 1, width: 440 })
+        const site = process.env.NEXT_PUBLIC_SITE_URL || 'https://therampantclub.com'
+      const url = ticketUrl(ev.slug, out.ticket_code)
+        // ⚠ SIZE IS THE RISK, NOT CONTRAST. A QR shown at 104px (about 1.8cm on
+        // a phone) cannot be read across a door; 200px (3.7cm) can. 260 with a
+        // max-width guard so it never overflows a 360px-wide inbox.
+        const png = await QRCode.toDataURL(url, { errorCorrectionLevel: 'M', margin: 1, width: 560 })
         subject = tr(lang, 'mail_ticket_subject', { time: when, title })
         html = emailShell(`
+          <!-- ⚠ THE LION IS ON THE TICKET, NOT IN lib/email/shell. Putting it
+               in the shell would have added it to every club email in one
+               commit at midnight — the weekly report, the agreements, the
+               auction. This is the email that was asked to look like the club. -->
+          <img src="${site}/images/lion-signature-opt.png" width="64" height="64" alt=""
+               style="display:block;margin:0 0 16px;border:0;outline:none;" />
           <h1 style="font-family:Georgia,serif;font-weight:400;font-size:26px;line-height:1.2;color:${EMAIL.ink};margin:0 0 10px;">
             ${esc(tr(lang, 'mail_ticket_lead'))}
           </h1>
@@ -169,9 +179,12 @@ export async function POST(req: NextRequest) {
           </p>
           <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 14px;">
             <tr><td style="background:#ffffff;padding:12px;border-radius:8px;">
-              <img src="${png}" width="220" height="220" alt="${esc(tr(lang, 'mail_ticket_show'))}" style="display:block;" />
+              <img src="${png}" width="260" height="260" alt="${esc(tr(lang, 'mail_ticket_show'))}" style="display:block;max-width:100%;height:auto;border:0;" />
             </td></tr>
           </table>
+          <p style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:${EMAIL.gold};margin:0 0 14px;font-weight:bold;">
+            ${esc(tr(lang, 'mail_ticket_shot'))}
+          </p>
           <p style="font-family:Arial,sans-serif;font-size:13px;line-height:1.75;color:${EMAIL.muted};margin:0 0 4px;">
             ${esc(tr(lang, 'mail_ticket_code'))}
           </p>

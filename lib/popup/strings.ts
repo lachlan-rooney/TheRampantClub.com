@@ -306,6 +306,10 @@ export const POPUP_STRINGS = {
                          vn: 'Hãy quay lại lúc {time}. Vui lòng đến sớm năm phút.' },
   mail_ticket_where:   { en: 'Where', vn: 'Địa điểm' },
   mail_ticket_show:    { en: 'Show this at the door.', vn: 'Vui lòng xuất trình ở cửa.' },
+  // ⚠ THE MOST USEFUL SENTENCE IN THE EMAIL. A guest in a crowd with one bar
+  // of signal cannot open an inbox; a screenshot is on their phone already.
+  mail_ticket_shot:    { en: 'Take a screenshot of this now — it works without signal.',
+                         vn: 'Hãy chụp màn hình ngay — vé vẫn dùng được khi không có mạng.' },
   mail_ticket_code:    { en: 'Or give your name, or this code:', vn: 'Hoặc đọc tên, hoặc mã này:' },
 
   mail_wait_subject: { en: 'You are on the waiting list — {title}', vn: 'Bạn đang ở danh sách chờ — {title}' },
