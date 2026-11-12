@@ -48,7 +48,21 @@ export default function StaffIdle() {
   useEffect(() => {
     // The pairing screen has no session to drop, and the member surface runs
     // its own clock — leave both alone.
-    if (pathname.startsWith('/kiosk/pair') || pathname.startsWith('/kiosk/member')) return
+    //
+    // ⚠ AND /kiosk/popup, WHICH IS A DIFFERENT RISK ENTIRELY. This timer exists
+    // so the next person to pick up a bar tablet does not inherit the last
+    // member of staff's attribution. The pop-up kiosk is the opposite
+    // situation: one named member of staff stands with the tablet for a whole
+    // evening, the screen is locked to a guest sign-up form, and NO member PII
+    // is on it at any point — the only thing the staff cookie carries there is
+    // who is manning the stand.
+    //
+    // Left in, this logs Chau out between guests — gaps at a stand are often
+    // longer than three minutes — and she re-enters her PIN in front of a
+    // queue, or worse, somebody reads it out. The lock on that screen is its
+    // own: leaving the flow asks for the PIN again.
+    if (pathname.startsWith('/kiosk/pair') || pathname.startsWith('/kiosk/member')
+        || pathname.startsWith('/kiosk/popup')) return
     const reset = () => {
       if (timer.current) clearTimeout(timer.current)
       timer.current = setTimeout(logout, IDLE_MS)

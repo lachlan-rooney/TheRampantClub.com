@@ -1,0 +1,369 @@
+'use client'
+
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
+
+// ═══════════════════════════════════════════════════════════════════════════
+// THE RUN SHEET — what the owner watches the evening by.
+// ───────────────────────────────────────────────────────────────────────────
+// Nine sessions, the cap, the two switches, and whether each staff phone is
+// actually talking to us. It is the only screen that carries guest names, and
+// the only one that can change a cap.
+//
+// ══ THE TWO RULES IT EXISTS TO MAKE VISIBLE ══════════════════════════════
+// · RAISING THE CAP PROMOTES AT ONCE. Not on a timer, not on the next page
+//   load — in the same request, under the same lock, and the promoted names
+//   come back so they can be told. A waiting list that fills "soon" is a
+//   waiting list nobody trusts.
+// · LOWERING THE CAP CANCELS NOBODY. It marks the session over capacity and
+//   shows who is last in. The decision is the owner's: move them, waitlist
+//   them, or leave the session over and tell the floor. THE DOOR NEVER
+//   CONSULTS THE CAP, so nothing is turned away by a number changing.
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface Sess {
+  session_id: string; idx: number; starts_at: string; ends_at: string
+  cap: number; booked: number; parties: number; arrived: number
+  no_show: number; waiting: number; over_by: number; closed: boolean; ticked: number
+}
+interface B {
+  id: string; name: string; email: string | null; party_size: number; status: string
+  ticket_code: string; session_id: string; admitted_at: string | null
+  admitted_by: string | null; admitted_party: number | null
+  created_at: string; waiting_since: string | null; source: string
+  consent_marketing: boolean; confirmation_sent_at: string | null; taken_by: string | null
+}
+interface Phone { id: string; label: string; paired: boolean; last_seen_at: string | null; seconds_ago: number | null; online: boolean }
+interface Ev {
+  id: string; title_en: string; venue_en: string; event_date: string
+  default_cap: number; party_max: number; published: boolean
+  public_bookings: boolean; bookings_paused: boolean
+  reminder_lead_minutes: number; admit_early_minutes: number; admit_late_minutes: number
+}
+
+const hhmm = (iso: string | null) => iso ? new Date(iso).toLocaleTimeString('en-GB',
+  { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' }) : '--:--'
+const MONO = "'Google Sans Code', 'DM Mono', monospace"
+const SERIF = "'Rampant Sans', serif"
+
+export default function RunSheet() {
+  const [ev, setEv] = useState<Ev | null>(null)
+  const [sessions, setSessions] = useState<Sess[]>([])
+  const [bookings, setBookings] = useState<B[]>([])
+  const [phones, setPhones] = useState<Phone[]>([])
+  const [err, setErr] = useState<string | null>(null)
+  const [msg, setMsg] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [open, setOpen] = useState<string | null>(null)
+  const [now, setNow] = useState(() => Date.now())
+  const [capDraft, setCapDraft] = useState('')
+
+  const load = useCallback(async () => {
+    try {
+      const r = await fetch('/api/admin/popup', { cache: 'no-store' })
+      const j = await r.json()
+      if (!r.ok) { setErr(j.error || 'Could not read the pop-up.'); return }
+      setErr(null); setEv(j.event); setSessions(j.sessions || [])
+      setBookings(j.bookings || []); setPhones(j.phones || [])
+      setCapDraft(String(j.event?.default_cap ?? ''))
+    } catch { setErr('Could not reach the server.') }
+  }, [])
+  useEffect(() => { load() }, [load])
+  // Six seconds: fast enough that the owner sees a tick from the door while
+  // still looking at the screen, slow enough to be invisible.
+  useEffect(() => { const t = setInterval(load, 6_000); return () => clearInterval(t) }, [load])
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 10_000); return () => clearInterval(t) }, [])
+
+  const post = useCallback(async (body: Record<string, unknown>) => {
+    setBusy(true)
+    try {
+      const r = await fetch('/api/admin/popup', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok) setMsg(j.error || 'That did not work.')
+      await load()
+      return j
+    } finally { setBusy(false) }
+  }, [load])
+
+  const { current, next } = useMemo(() => {
+    const t = now
+    return {
+      current: sessions.find(s => +new Date(s.starts_at) <= t && t <= +new Date(s.ends_at)) || null,
+      next: sessions.find(s => +new Date(s.starts_at) > t) || null,
+    }
+  }, [sessions, now])
+
+  const totals = useMemo(() => sessions.reduce((a, s) => ({
+    booked: a.booked + s.booked, arrived: a.arrived + s.arrived,
+    waiting: a.waiting + s.waiting, no_show: a.no_show + s.no_show,
+  }), { booked: 0, arrived: 0, waiting: 0, no_show: 0 }), [sessions])
+
+  const forSession = (id: string) => bookings.filter(b => b.session_id === id && b.status !== 'cancelled')
+
+  // ── RAISING THE CAP ─────────────────────────────────────────────────────
+  const setCap = async (n: number) => {
+    const j = await post({ action: 'cap', cap: n })
+    if (j?.ok) {
+      // ⚠ REPORT WHAT THE SEND ACTUALLY DID. This used to say "they have been
+      // emailed their ticket" whether or not anything had been sent — and for
+      // a while nothing was.
+      setMsg(j.raising
+        ? j.promoted?.length
+          ? `Cap is ${n}. ${j.promoted.length} promoted off the waiting list · ${j.emailed ?? 0} emailed`
+            + `${j.no_email ? ` · ${j.no_email} gave no address — tell them by name` : ''}`
+            + `${j.failed?.length ? ` · ⚠ ${j.failed.length} COULD NOT BE EMAILED` : ''}`
+          : `Cap is ${n}. Nobody was waiting.`
+        : `Cap is ${n}. NOBODY HAS BEEN CANCELLED — any session now over capacity is marked below for you to decide.`)
+    }
+  }
+
+  if (err) return <Frame><div style={bad}>{err}</div></Frame>
+  if (!ev) return <Frame><div style={muted}>Reading the evening…</div></Frame>
+
+  const over = sessions.filter(s => s.over_by > 0)
+
+  return (
+    <Frame>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+        <h1 style={{ fontFamily: SERIF, fontSize: 26, color: '#E5D4C2', margin: 0 }}>{ev.title_en}</h1>
+        <Link href="/admin/popup/print" style={link}>Printable door sheets →</Link>
+      </div>
+      <p style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98', margin: '4px 0 20px' }}>
+        {ev.venue_en} · {new Date(ev.event_date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
+      </p>
+
+      {msg && <div style={banner} onClick={() => setMsg(null)}>{msg}</div>}
+
+      {/* ── NOW AND NEXT, LARGE ───────────────────────────────────────── */}
+      <div style={nowNext}>
+        <div>
+          <div style={eyebrow}>In now</div>
+          <div style={bigTime}>{current ? hhmm(current.starts_at) : '—'}</div>
+          <div style={sub}>{current ? `${current.arrived} of ${current.booked} in · ${current.parties} ${current.parties === 1 ? 'booking' : 'bookings'}` : 'No session running'}</div>
+        </div>
+        <div>
+          <div style={eyebrow}>Next</div>
+          <div style={{ ...bigTime, color: '#B2AA98' }}>{next ? hhmm(next.starts_at) : '—'}</div>
+          <div style={sub}>{next ? `${next.booked} booked of ${next.cap}${next.waiting ? ` · ${next.waiting} waiting` : ''}` : 'Nothing left tonight'}</div>
+        </div>
+        <div>
+          <div style={eyebrow}>Tonight</div>
+          <div style={{ ...bigTime, fontSize: 40 }}>{totals.arrived}<span style={{ fontSize: 20, opacity: .5 }}>/{totals.booked}</span></div>
+          <div style={sub}>{totals.waiting} waiting · {totals.no_show} no-show</div>
+        </div>
+      </div>
+
+      {/* ── THE PHONES ────────────────────────────────────────────────── */}
+      <div style={sectionLabel}>Staff phones</div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 22 }}>
+        {phones.length === 0 && (
+          <div style={muted}>
+            None paired yet. Admin → Kiosk &amp; Staff PINs → add a device, kind &ldquo;Pop-up staff phone&rdquo;,
+            named after whoever is carrying it.
+          </div>
+        )}
+        {phones.map(p => (
+          <div key={p.id} style={{ ...chip, borderColor: p.online ? '#7FA86B' : '#C27070' }}>
+            <span style={{ width: 8, height: 8, borderRadius: 4, background: p.online ? '#7FA86B' : '#C27070' }} />
+            <b>{p.label}</b>
+            <span style={{ opacity: .6 }}>
+              {p.online ? `${p.seconds_ago}s ago` : p.last_seen_at ? `quiet ${Math.round((p.seconds_ago || 0) / 60)} min` : 'never'}
+            </span>
+          </div>
+        ))}
+      </div>
+      {/* ⚠ "Online" means asked us something recently, not switched on. A phone
+          sitting on a finished screen goes quiet and is not broken. */}
+      <div style={{ ...muted, marginTop: -16, marginBottom: 22 }}>
+        A phone counts as online if it has asked us for something in the last 90 seconds. One left on a
+        finished screen goes quiet without being broken.
+      </div>
+
+      {/* ── THE CAP ───────────────────────────────────────────────────── */}
+      <div style={sectionLabel}>Capacity</div>
+      <div style={card}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: MONO, fontSize: 12, color: '#B2AA98' }}>Every session:</span>
+          {[4, 6, 8, 10, 12].map(n => (
+            <button key={n} onClick={() => setCap(n)} disabled={busy}
+                    style={{ ...btn, ...(ev.default_cap === n ? btnOn : {}) }}>{n}</button>
+          ))}
+          <input value={capDraft} onChange={e => setCapDraft(e.target.value.replace(/\D/g, ''))}
+                 style={{ ...input, width: 70, textAlign: 'center' }} />
+          <button onClick={() => setCap(Number(capDraft))} disabled={busy || !capDraft} style={btn}>Set</button>
+        </div>
+        <p style={{ ...muted, marginTop: 12 }}>
+          Raising it promotes the waiting list immediately and emails whoever moves up.
+          Lowering it <b style={{ color: '#E5D4C2' }}>cancels nobody</b> — any session that ends up over
+          capacity is marked below and left to you.
+        </p>
+      </div>
+
+      {over.length > 0 && (
+        <div style={{ ...card, borderColor: '#C9A84C', background: '#C9A84C14' }}>
+          <b style={{ fontFamily: SERIF, color: '#E5D4C2' }}>
+            {over.length} session{over.length === 1 ? ' is' : 's are'} over capacity.
+          </b>
+          <p style={{ ...muted, margin: '6px 0 0' }}>
+            Nobody has been removed. The last booking taken in each is shown first when you open it,
+            so you can move or cancel by hand — or leave it over and tell the floor.
+          </p>
+        </div>
+      )}
+
+      {/* ── THE SWITCHES ──────────────────────────────────────────────── */}
+      <div style={sectionLabel}>Switches</div>
+      <div style={card}>
+        <Toggle on={ev.published} label="Published"
+                note="Off, the phones show “ask a member of staff” rather than an empty list."
+                onClick={() => post({ action: 'event', fields: { published: !ev.published } })} busy={busy} />
+        <Toggle on={ev.bookings_paused} danger label="Bookings paused"
+                note="Stops new sign-ups at once. The door is unaffected — nobody already booked is turned away."
+                onClick={() => post({ action: 'event', fields: { bookings_paused: !ev.bookings_paused } })} busy={busy} />
+        <Toggle on={ev.public_bookings} label="Public booking page"
+                note="Off by default. The phones are the way in."
+                onClick={() => post({ action: 'event', fields: { public_bookings: !ev.public_bookings } })} busy={busy} />
+      </div>
+
+      {/* ── THE NINE ──────────────────────────────────────────────────── */}
+      <div style={sectionLabel}>The evening</div>
+      {sessions.map(s => {
+        const live = current?.session_id === s.session_id
+        const done = +new Date(s.ends_at) < now
+        const rows = forSession(s.session_id)
+        const isOpen = open === s.session_id
+        return (
+          <div key={s.session_id} style={{ ...row, ...(live ? { borderColor: '#C9A84C', background: '#C9A84C0f' } : {}), ...(done ? { opacity: .6 } : {}) }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', cursor: 'pointer' }}
+                 onClick={() => setOpen(isOpen ? null : s.session_id)}>
+              <span style={{ fontFamily: SERIF, fontSize: 24, color: '#E5D4C2', minWidth: 76 }}>{hhmm(s.starts_at)}</span>
+              <Stat n={s.booked} of={s.cap} label="booked" warn={s.over_by > 0} />
+              <Stat n={s.arrived} label="arrived" />
+              {done && <Stat n={s.no_show} label="no-show" warn={s.no_show > 0} />}
+              {s.waiting > 0 && <Stat n={s.waiting} label="waiting" />}
+              {s.over_by > 0 && <span style={pillWarn}>OVER BY {s.over_by}</span>}
+              {s.closed && <span style={pillWarn}>CLOSED</span>}
+              {live && <span style={pillLive}>IN NOW</span>}
+              <span style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 11, color: '#7E7864' }}>
+                {isOpen ? 'hide' : `${rows.length} name${rows.length === 1 ? '' : 's'}`}
+              </span>
+            </div>
+
+            {isOpen && (
+              <div style={{ marginTop: 12, borderTop: '1px solid #ffffff14', paddingTop: 10 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
+                  <span style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98' }}>This session only:</span>
+                  {[null, 4, 6, 8, 10, 12].map(n => (
+                    <button key={String(n)} disabled={busy} style={btn}
+                            onClick={() => post({ action: 'session_cap', session_id: s.session_id, cap: n })}>
+                      {n === null ? 'use the event cap' : n}
+                    </button>
+                  ))}
+                  <button disabled={busy} style={{ ...btn, marginLeft: 'auto' }}
+                          onClick={() => post({ action: 'close_session', session_id: s.session_id, closed: !s.closed })}>
+                    {s.closed ? 'Re-open' : 'Close'}
+                  </button>
+                </div>
+                {rows.length === 0 && <div style={muted}>Nobody booked.</div>}
+                {/* ⚠ LAST IN, FIRST SHOWN when the session is over capacity:
+                    the booking to move is almost always the most recent one. */}
+                {[...rows].sort((a, b) => s.over_by > 0
+                    ? +new Date(b.created_at) - +new Date(a.created_at)
+                    : a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
+                  .map(b => (
+                  <div key={b.id} style={guest}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ color: '#E5D4C2', fontSize: 14 }}>
+                        {b.name}
+                        {b.status === 'waiting' && <span style={pillWait}>WAITING</span>}
+                        {b.admitted_at && <span style={pillIn}>IN {hhmm(b.admitted_at)}{b.admitted_party != null ? ` · ${b.admitted_party}` : ''}</span>}
+                      </div>
+                      <div style={{ fontSize: 10, color: '#7E7864', marginTop: 2 }}>
+                        {b.party_size > 1 ? `party of ${b.party_size}` : 'one'}
+                        {b.email ? ` · ${b.email}` : ' · no email'}
+                        {b.taken_by ? ` · taken by ${b.taken_by}` : ''}
+                        {b.source === 'door' ? ' · walk-up' : ''}
+                        {' · '}{b.ticket_code}
+                      </div>
+                    </div>
+                    <select disabled={busy} value="" style={{ ...input, width: 128, fontSize: 10 }}
+                            onChange={e => { if (e.target.value) post({ action: 'move', booking_id: b.id, session_id: e.target.value }) }}>
+                      <option value="">move to…</option>
+                      {sessions.filter(x => x.session_id !== s.session_id)
+                        .map(x => <option key={x.session_id} value={x.session_id}>{hhmm(x.starts_at)} ({x.booked}/{x.cap})</option>)}
+                    </select>
+                    <button disabled={busy} style={btnBad}
+                            onClick={() => { if (confirm(`Cancel ${b.name}'s place? They are not told automatically.`)) post({ action: 'cancel', booking_id: b.id }) }}>
+                      Cancel
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 20 }}>
+        <button disabled={busy} style={btn} onClick={async () => {
+          const j = await post({ action: 'promote_all' })
+          if (j?.ok) setMsg(j.promoted?.length ? `${j.promoted.length} promoted off the waiting list.` : 'Nobody could be promoted.')
+        }}>Walk the waiting list</button>
+      </div>
+    </Frame>
+  )
+}
+
+function Stat({ n, of, label, warn }: { n: number; of?: number; label: string; warn?: boolean }) {
+  return (
+    <span style={{ fontFamily: MONO, fontSize: 11, color: warn ? '#C9A84C' : '#B2AA98' }}>
+      <b style={{ fontSize: 15, color: warn ? '#C9A84C' : '#E5D4C2' }}>{n}</b>
+      {of != null && <span style={{ opacity: .5 }}>/{of}</span>} {label}
+    </span>
+  )
+}
+
+function Toggle({ on, label, note, onClick, busy, danger }: {
+  on: boolean; label: string; note: string; onClick: () => void; busy: boolean; danger?: boolean
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '8px 0' }}>
+      <button onClick={onClick} disabled={busy}
+              style={{ ...btn, minWidth: 64, background: on ? (danger ? '#C27070' : '#7FA86B') : 'transparent',
+                       color: on ? '#052E20' : '#B2AA98' }}>
+        {on ? 'ON' : 'OFF'}
+      </button>
+      <div>
+        <div style={{ fontFamily: SERIF, fontSize: 14, color: '#E5D4C2' }}>{label}</div>
+        <div style={{ ...muted, marginTop: 2 }}>{note}</div>
+      </div>
+    </div>
+  )
+}
+
+function Frame({ children }: { children: React.ReactNode }) {
+  return <div style={{ maxWidth: 1000 }}>{children}</div>
+}
+
+const sectionLabel: React.CSSProperties = { fontFamily: MONO, fontSize: 10, letterSpacing: '.18em', textTransform: 'uppercase', color: '#7E7864', margin: '26px 0 10px' }
+const muted: React.CSSProperties = { fontFamily: MONO, fontSize: 11, color: '#B2AA98', opacity: .75, lineHeight: 1.7, maxWidth: '70ch' }
+const bad: React.CSSProperties = { fontFamily: MONO, fontSize: 13, color: '#C27070', padding: 20, border: '1px solid #C27070', borderRadius: 8 }
+const banner: React.CSSProperties = { fontFamily: MONO, fontSize: 12, color: '#052E20', background: '#C9A84C', padding: '12px 14px', borderRadius: 6, marginBottom: 16, lineHeight: 1.6, cursor: 'pointer' }
+const card: React.CSSProperties = { border: '1px solid #ffffff1f', borderRadius: 8, padding: 16, marginBottom: 14 }
+const row: React.CSSProperties = { border: '1px solid #ffffff14', borderRadius: 8, padding: '12px 14px', marginBottom: 8 }
+const guest: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid #ffffff0a' }
+const btn: React.CSSProperties = { minHeight: 34, padding: '0 12px', borderRadius: 5, border: '1px solid #ffffff2e', background: 'transparent', color: '#E5D4C2', fontFamily: MONO, fontSize: 12, cursor: 'pointer' }
+const btnOn: React.CSSProperties = { background: '#C9A84C', color: '#052E20', borderColor: '#C9A84C' }
+const btnBad: React.CSSProperties = { ...btn, borderColor: '#C2707059', color: '#C27070' }
+const input: React.CSSProperties = { minHeight: 34, padding: '0 10px', borderRadius: 5, border: '1px solid #ffffff2e', background: '#ffffff0a', color: '#E5D4C2', fontFamily: MONO, fontSize: 12 }
+const chip: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', border: '1px solid', borderRadius: 6, fontFamily: MONO, fontSize: 11, color: '#E5D4C2' }
+const link: React.CSSProperties = { fontFamily: MONO, fontSize: 11, color: '#C9A84C', textDecoration: 'none' }
+const nowNext: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14, padding: 18, border: '1px solid #ffffff1f', borderRadius: 8, marginBottom: 6 }
+const eyebrow: React.CSSProperties = { fontFamily: MONO, fontSize: 9, letterSpacing: '.2em', textTransform: 'uppercase', color: '#7E7864' }
+const bigTime: React.CSSProperties = { fontFamily: SERIF, fontSize: 52, lineHeight: 1, color: '#E5D4C2', margin: '4px 0 2px' }
+const sub: React.CSSProperties = { fontFamily: MONO, fontSize: 11, color: '#B2AA98' }
+const pillWarn: React.CSSProperties = { fontFamily: MONO, fontSize: 9, letterSpacing: '.1em', background: '#C9A84C', color: '#052E20', padding: '2px 6px', borderRadius: 3 }
+const pillLive: React.CSSProperties = { ...pillWarn, background: '#7FA86B' }
+const pillWait: React.CSSProperties = { ...pillWarn, background: 'transparent', border: '1px solid #C9A84C', color: '#C9A84C', marginLeft: 8 }
+const pillIn: React.CSSProperties = { ...pillWarn, background: '#7FA86B', marginLeft: 8 }

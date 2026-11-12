@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { readAllIntensities, spokesByWhisky } from '@/lib/whisky/flavour-index'
 import { createClient } from '@supabase/supabase-js'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isAdmin } from '@/lib/admin'
@@ -57,14 +58,14 @@ export async function POST(req: NextRequest) {
   }
 
   // Build the mapped index + stock (known = a real fill reading exists).
-  const [{ data: ints }, { data: ws }] = await Promise.all([
-    sb.from('whisky_flavour_intensities').select('whisky_id,category_slug,intensity'),
-    sb.from('whiskies').select('id,name,in_stock,current_fill_pct,last_fill_updated_at'),
-  ])
-  const spokesByW: Record<string, Record<string, number>> = {}
-  for (const r of (ints || []) as { whisky_id: string; category_slug: string; intensity: number }[]) {
-    ;(spokesByW[r.whisky_id] = spokesByW[r.whisky_id] || {})[r.category_slug] = r.intensity
-  }
+  // ⚠ PAGED. This was a plain select and saw 1000 of 1,582 rows — 208 of the
+  // 296 profiled bottles — so eighty-eight could never be recommended to a
+  // member, and some were scored on half a profile. See lib/whisky/flavour-index.
+  let intRows
+  try { intRows = await readAllIntensities(sb) }
+  catch { return NextResponse.json({ error: 'Could not read the flavour index' }, { status: 503 }) }
+  const { data: ws } = await sb.from('whiskies').select('id,name,in_stock,current_fill_pct,last_fill_updated_at')
+  const spokesByW = spokesByWhisky(intRows)
   const stockById = new Map<string, StockInfo>()
   const seen = new Set<string>()
   const index: IndexRow[] = []

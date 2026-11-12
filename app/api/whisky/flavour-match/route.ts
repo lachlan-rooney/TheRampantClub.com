@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { matchWhiskies, type IndexRow, type SetSpokes } from '@/lib/whisky/flavour-match'
+import { readAllIntensities } from '@/lib/whisky/flavour-index'
 
 // POST /api/whisky/flavour-match  — Flavour Finder match.
 // Body: { set: { <category_slug>: 1..4, … }, in_stock_only?: boolean }
@@ -40,13 +41,16 @@ export async function POST(req: NextRequest) {
   if (Object.keys(set).length === 0) return NextResponse.json({ matches: [], bestIsClose: false })
 
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-  const [{ data: ints }, { data: ws }] = await Promise.all([
-    sb.from('whisky_flavour_intensities').select('whisky_id,category_slug,intensity'),
-    sb.from('whiskies').select('id,name,in_stock'),
-  ])
+
+  // The whole index, paged. See lib/whisky/flavour-index for why this is not
+  // a plain select — it was one, and it was losing a third of the library.
+  let ints
+  try { ints = await readAllIntensities(sb) }
+  catch { return NextResponse.json({ error: 'Could not read the flavour index' }, { status: 503 }) }
+  const { data: ws } = await sb.from('whiskies').select('id,name,in_stock')
   const nameById = Object.fromEntries((ws || []).map(w => [w.id, { name: w.name as string, in_stock: w.in_stock as boolean }]))
   const byW: Record<string, Record<string, number>> = {}
-  for (const r of (ints || []) as { whisky_id: string; category_slug: string; intensity: number }[]) {
+  for (const r of ints) {
     ;(byW[r.whisky_id] = byW[r.whisky_id] || {})[r.category_slug] = r.intensity
   }
 

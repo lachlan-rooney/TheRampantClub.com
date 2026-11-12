@@ -5,6 +5,34 @@
 //
 // Bump CACHE_VERSION whenever you change the precache list or cache strategy.
 
+// ═══════════════════════════════════════════════════════════════════════════
+// THE ONE KIOSK PAGE THAT IS CACHED: /kiosk/popup/finder
+// ───────────────────────────────────────────────────────────────────────────
+// The three tablets inside the pop-up at Independence Palace run on a pocket
+// router that will drop during the evening. The Flavour Finder has to keep
+// answering when it does, including through a reload.
+//
+// ⚠ THE EXEMPTION IS ON THE PAGE'S MERITS, NOT FOR CONVENIENCE. It is allowed
+// to be stored because of what it does NOT contain:
+//   · no member data — no names, no numbers, no sessions, no PII of any kind;
+//   · no guest data, and it collects none: nothing is typed into it, nothing
+//     is stored, nothing is queued. The club's own finder logs no searches
+//     either — there is no searches table anywhere in this codebase — and the
+//     pop-up records nothing the club does not;
+//   · what it DOES carry is a list of whiskies and their flavour spokes, which
+//     is printed on the table the tablet is standing next to.
+//
+// ⚠ IT IS AN EXACT PATH MATCH, NOT A PREFIX. `startsWith('/kiosk/popup')`
+// would have quietly caught the sign-up stand and the door list — and the door
+// list carries every guest's name and email. A page added under this path
+// later gets no exemption without an edit here.
+//
+// THE STANDING RULE IS UNCHANGED FOR EVERYTHING ELSE UNDER /kiosk.
+const POPUP_FINDER = '/kiosk/popup/finder';
+function isPopupFinder(url) {
+  return url.pathname === POPUP_FINDER || url.pathname === POPUP_FINDER + '/';
+}
+
 const CACHE_VERSION = 'rampant-v2';
 const PRECACHE = [
   '/offline',
@@ -35,7 +63,11 @@ self.addEventListener('activate', (event) => {
           cache.keys().then((reqs) =>
             Promise.all(
               reqs
-                .filter((r) => new URL(r.url).pathname.startsWith('/kiosk'))
+                // …except the pop-up finder, which is deliberately stored.
+                .filter((r) => {
+                  const u = new URL(r.url);
+                  return u.pathname.startsWith('/kiosk') && !isPopupFinder(u);
+                })
                 .map((r) => cache.delete(r))
             )
           )
@@ -63,8 +95,11 @@ self.addEventListener('fetch', (event) => {
     // carries no member data — but that is a rendering choice, and a rendering
     // choice can be changed by someone who never reads this file. The exclusion
     // is mechanical so it holds regardless.
-    url.pathname === '/kiosk' ||
-    url.pathname.startsWith('/kiosk/')
+    //
+    // ⚠ ONE EXCEPTION, AND IT IS THIS EXACT PATH — see POPUP_FINDER at the top.
+    // Everything else under /kiosk still falls through to `return`.
+    ((url.pathname === '/kiosk' || url.pathname.startsWith('/kiosk/')) &&
+     !isPopupFinder(url))
   ) return;
 
   // Navigation: network-first, fall back to a cached page or the offline shell.

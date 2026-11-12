@@ -50,20 +50,31 @@ export async function POST(req: Request) {
   // THE DOOR (2026-09-14): the guest sign-in iPad at the entrance. Same pairing,
   // same revocation, but it stands in no room — the trigger refuses one — and
   // pairing lands it on /kiosk/door instead of the board.
-  const isDoor = purpose === 'door'
+  //
+  // THE POP-UP STAFF PHONE (2026-11-12, db/popup_staff_phones.sql): one pairing
+  // that opens the pop-up sign-up and the pop-up door list and NOTHING ELSE —
+  // not the board, not the finder, not the menus, not the member pad, not the
+  // club's own door. Label it with the staff member's name: that label is what
+  // the pop-up run sheet's heartbeat lists, so "Chau's phone" is a better name
+  // than "Phone 2".
+  const kind = purpose === 'door' ? 'door' : purpose === 'popup' ? 'popup' : 'room'
+  const roomless = kind !== 'room'
   const pair = code()
   const { error } = await svc().from('kiosk_devices').insert({
     label: label.trim(),
     // Stored VERBATIM as the join key. Floor 1 displays as "The Library Bar" but
     // its space string is "Library Bar" — storing the display name joins nothing.
-    room: !isDoor && typeof room === 'string' && room ? room : null,
-    ...(isDoor ? { purpose: 'door' } : {}),
+    room: !roomless && typeof room === 'string' && room ? room : null,
+    ...(roomless ? { purpose: kind } : {}),
     pair_code: pair, pair_expires_at: new Date(Date.now() + 15 * 60_000).toISOString(),
   })
   if (error) {
-    const msg = isDoor && isMissingSchema(error) ? 'The door iPad needs db/guest_signin.sql to be run first.'
+    const msg = kind === 'door' && isMissingSchema(error) ? 'The door iPad needs db/guest_signin.sql to be run first.'
+      // A constraint that does not yet know the word is the tell: the check
+      // names the column, so say which file adds it rather than "Could not create".
+      : kind === 'popup' && /purpose/.test(error.message) ? 'A pop-up staff phone needs db/popup_staff_phones.sql to be run first.'
       : error.message.includes('space_tables') ? 'That room is not a bookable space.' : 'Could not create.'
     return NextResponse.json({ error: msg }, { status: 400 })
   }
-  return NextResponse.json({ ok: true, pair_code: pair, expires_in_min: 15, purpose: isDoor ? 'door' : 'room' })
+  return NextResponse.json({ ok: true, pair_code: pair, expires_in_min: 15, purpose: kind })
 }

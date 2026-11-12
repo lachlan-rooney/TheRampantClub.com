@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { readAllIntensities, spokesByWhisky } from '@/lib/whisky/flavour-index'
 
 // Live palate derivation — the flywheel. Mirrors scripts/derive-taste-profiles.mjs
 // (loved distilleries + consumption) and ADDS the member's own tasting notes as a
@@ -26,14 +27,17 @@ export interface DerivedTaste {
 }
 
 export async function deriveTasteForMember(sb: SupabaseClient, memberNo: string): Promise<DerivedTaste> {
-  const [{ data: cats }, { data: ws }, { data: ints }] = await Promise.all([
+  // ⚠ THE INDEX IS PAGED. This read 1000 of 1,582 rows, so a member's derived
+  // taste was built from two thirds of the library — and the result is STORED,
+  // which means the wrong answer outlives the request that made it. Anything
+  // derived before 12 Nov 2026 should be rebuilt. See lib/whisky/flavour-index.
+  const [{ data: cats }, { data: ws }, intRows] = await Promise.all([
     sb.from('flavour_categories').select('slug').not('quadrant', 'is', null).order('sort_order'),
     sb.from('whiskies').select('id, name, distillery'),
-    sb.from('whisky_flavour_intensities').select('whisky_id, category_slug, intensity'),
+    readAllIntensities(sb),
   ])
   const categories = (cats || []).map(c => c.slug)
-  const spokesByW: Record<string, Spokes> = {}
-  for (const r of ints || []) (spokesByW[r.whisky_id] = spokesByW[r.whisky_id] || {})[r.category_slug] = r.intensity
+  const spokesByW: Record<string, Spokes> = spokesByWhisky(intRows)
   const mapped: Mapped[] = (ws || []).filter(w => spokesByW[w.id]).map(w => ({ id: w.id, name: w.name, distillery: w.distillery, spokes: spokesByW[w.id] }))
   const byId = new Map(mapped.map(w => [w.id, w]))
 

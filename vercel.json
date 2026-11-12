@@ -32,6 +32,10 @@
     {
       "path": "/api/cron/member-snapshots",
       "schedule": "0 18 * * 0"
+    },
+    {
+      "path": "/api/cron/popup-reminders",
+      "schedule": "*/2 11-14 13 11 *"
     }
   ]
 }

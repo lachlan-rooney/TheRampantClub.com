@@ -48,7 +48,8 @@ export async function GET(req: Request) {
   // Land somewhere useful, and let the destination be chosen in the link so a
   // shop kiosk can go straight to its own page rather than the club board.
   const next = url.searchParams.get('next')
-    || (purpose === 'door' ? '/kiosk/door' : '/kiosk/board')
+    || (purpose === 'door' ? '/kiosk/door'
+      : purpose === 'popup' ? '/kiosk/popup' : '/kiosk/board')
 
   const res = NextResponse.redirect(new URL(next, url.origin))
   res.cookies.set(DEVICE_COOKIE, token as string, deviceCookieOpts)

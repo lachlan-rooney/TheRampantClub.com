@@ -31,7 +31,23 @@ import { CreamInk, CreamInkDefs } from '@/components/public/CreamInk'
 const toShape = (m: Record<string, number>): ShapeValues =>
   Object.fromEntries(Object.entries(m).map(([k, v]) => [k, { intensity: v, confidence: 1 }]))
 
-export default function TouchFinder({ eyebrow, top }: { eyebrow: string; top?: ReactNode }) {
+// ── OFFLINE MODE (2026-11-12) ────────────────────────────────────────────
+// The pop-up at Independence Palace runs on a pocket router that will drop.
+// `offline` hands the component everything it would otherwise fetch — the
+// flavour categories, and a matcher that runs on the tablet.
+//
+// ⚠ IT IS THE SAME COMPONENT, NOT A COPY. A second finder would be a second
+// set of wording, a second radar and a second idea of what a "Good match" is,
+// and the two would part company within a week. Only the two network calls
+// change; every pixel and every sentence below is shared.
+export interface OfflineFinder {
+  cats: Cat[]
+  match: (set: Record<string, number>) => { matches: Match[]; bestIsClose: boolean }
+}
+
+export default function TouchFinder({ eyebrow, top, offline }: {
+  eyebrow: string; top?: ReactNode; offline?: OfflineFinder
+}) {
   const { t, lang } = useLang()
   const [cats, setCats] = useState<Cat[]>([])
   const [value, setValue] = useState<Record<string, number>>({})
@@ -59,11 +75,14 @@ export default function TouchFinder({ eyebrow, top }: { eyebrow: string; top?: R
   // table is signed-in only, so a direct read came back empty and the compass never
   // loaded. See app/api/whisky/categories.
   useEffect(() => {
+    // Offline: the categories came with the page. No request is made at all —
+    // not a failed one, not a cached one.
+    if (offline) { setCats(offline.cats); return }
     fetch('/api/whisky/categories')
       .then(r => r.json())
       .then(j => { const c = (j?.cats || []) as Cat[]; if (c.length) setCats(c); else setCatsFailed(true) })
       .catch(() => setCatsFailed(true))
-  }, [])
+  }, [offline])
 
   const anySet = Object.keys(value).length > 0
   const meShape = toShape(value)
@@ -72,6 +91,16 @@ export default function TouchFinder({ eyebrow, top }: { eyebrow: string; top?: R
     if (!anySet || finding) return
     setFinding(true)
     try {
+      // ⚠ THE SAME SCORER, called directly. offline.match is a thin wrapper
+      // around matchWhiskies() — the identical function the route calls — over
+      // an index that travelled with the page. Nothing about how a match is
+      // scored, ranked or labelled differs between the two.
+      if (offline) {
+        const r = offline.match(value)
+        setMatches(r.matches); setClose(r.bestIsClose)
+        setTimeout(() => document.getElementById('cf-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
+        return
+      }
       const res = await fetch('/api/whisky/flavour-match', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ set: value, in_stock_only: true }),

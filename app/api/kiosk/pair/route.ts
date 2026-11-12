@@ -25,7 +25,12 @@ export async function POST(req: Request) {
   if (!withPurpose.error) { room = withPurpose.data?.room ?? null; purpose = withPurpose.data?.purpose ?? null }
   else { const { data: dev } = await svc().from('kiosk_devices').select('room').eq('token_hash', hash).maybeSingle(); room = dev?.room ?? null }
 
-  const res = NextResponse.json({ ok: true, room, next: purpose === 'door' ? '/kiosk/door' : '/kiosk/board' })
+  // Where a freshly paired device lands, by what it IS. A pop-up staff phone
+  // (db/popup_staff_phones.sql) opens on the sign-up stand: it is the only
+  // surface it can reach, so landing it anywhere else is a redirect.
+  const next = purpose === 'door' ? '/kiosk/door'
+    : purpose === 'popup' ? '/kiosk/popup' : '/kiosk/board'
+  const res = NextResponse.json({ ok: true, room, next })
   res.cookies.set(DEVICE_COOKIE, token as string, deviceCookieOpts)
   return res
 }

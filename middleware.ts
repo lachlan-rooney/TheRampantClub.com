@@ -58,6 +58,12 @@ export async function middleware(request: NextRequest) {
     // so it is gated like the rest — and the route behind it additionally
     // requires a staff PIN, because a count is attributed to a person.
     || p.startsWith('/kiosk/stocktake')
+    // /kiosk/popup (2026-11-12) is the pop-up: the sign-up stand and, under
+    // /kiosk/popup/door, the door list. Gated like the rest so an unpaired
+    // phone is sent to /kiosk/pair rather than loading a booking form that
+    // every API call behind it would then refuse — a guest watching staff poke
+    // at an error is worse than a pairing screen.
+    || p.startsWith('/kiosk/popup')
   if (p === '/kiosk' || (p.startsWith('/kiosk/') && !deviceGated)) {
     return noStore(supabaseResponse)
   }
@@ -86,15 +92,45 @@ export async function middleware(request: NextRequest) {
       return noStore(NextResponse.redirect(url))
     }
 
-    // Each kind of device keeps to its own surface. A room tablet cannot open the
-    // guest sign-in, and the door iPad — used by people who are not members —
-    // cannot reach the member PIN pad or the staff shell by a back-gesture.
-    if (p.startsWith('/kiosk/door') !== (purpose === 'door')) {
+    // ── EACH KIND OF DEVICE KEEPS TO ITS OWN SURFACES ──────────────────────
+    // THREE kinds now (db/popup_staff_phones.sql, 2026-11-12), because the
+    // pop-up moved onto staff phones:
+    //
+    //   room  → the board, the member PIN pad, the staff shell, the finder,
+    //           the menus with member prices. Member PII.
+    //   door  → the club's guest sign-in iPad at the entrance.
+    //   popup → the pop-up sign-up stand and the pop-up door list. ONE
+    //           EVENING'S GUESTS AND NOTHING OF THE CLUB.
+    //
+    // ⚠ `popup` IS NARROWER THAN EITHER OF THE OTHER TWO, which is the whole
+    // reason it exists rather than reusing `door`. A phone being handed to
+    // strangers at Independence Palace must not carry a pairing that also
+    // opens the club's entrance flow, the member pad or the staff shell — not
+    // hidden from it, UNREACHABLE by it.
+    //
+    // The one deliberate overlap: a ROOM tablet may still open the sign-up
+    // stand, because the stand is the least sensitive surface in the building
+    // (popup_public carries no name, no email and no ticket code) and because
+    // if a phone dies tomorrow evening the nearest working device must be able
+    // to take a name. It may NOT open the door list, which carries every
+    // guest's name.
+    const atPopupDoor = p.startsWith('/kiosk/popup/door')
+    const atPopup = p.startsWith('/kiosk/popup')
+    const atClubDoor = p.startsWith('/kiosk/door')
+    const allowed =
+      purpose === 'popup' ? atPopup
+      : purpose === 'door' ? atClubDoor
+      : !atClubDoor && !atPopupDoor          // a room tablet
+    if (!allowed) {
       const url = request.nextUrl.clone()
-      url.pathname = purpose === 'door' ? '/kiosk/door' : '/kiosk/board'; url.search = ''
+      url.pathname = purpose === 'popup' ? '/kiosk/popup'
+        : purpose === 'door' ? '/kiosk/door' : '/kiosk/board'
+      url.search = ''
       return noStore(NextResponse.redirect(url))
     }
-    if (p.startsWith('/kiosk/door')) return noStore(supabaseResponse)
+    // Neither the club's door nor the pop-up has a member session or a staff
+    // shell to protect below, so they are done here.
+    if (atClubDoor || atPopup) return noStore(supabaseResponse)
 
     // ── THE PHASE 2 MODE BOUNDARY ──────────────────────────────────────────
     // Phase 1 gated /kiosk/staff on the DEVICE TOKEN ALONE. In member mode that
