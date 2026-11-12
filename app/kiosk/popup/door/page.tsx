@@ -181,6 +181,10 @@ export default function PopupDoor() {
         body: JSON.stringify({ action: 'find_code', code }) })
       const j = await r.json().catch(() => ({}))
       if (r.status === 429) { setCodeErr(tr(L, 'sc_too_many')); return }
+      // ⚠ AND A 500 IS NOT "NO BOOKING WITH THAT CODE" EITHER. The guest is
+      // standing there with a real code; telling staff it does not exist sends
+      // them looking for a problem that is not theirs.
+      if (!r.ok) { setCodeErr(`${tr(L, 'b_failed')} ${tr(L, 'b_try_again')}`); return }
       // ⚠ WHICH LIST WAS SEARCHED. "No booking with that code" is true of
       // every evening at once and tells a doorman nothing.
       if (!j.found) {
@@ -206,7 +210,12 @@ export default function PopupDoor() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'scan', code, admit: true, party }),
       })
-      const j = await r.json()
+      const j = await r.json().catch(() => ({}))
+      // ⚠ A 500 IS NOT "NOT ON THE LIST". Without this the body came back as
+      // { error: … }, state was undefined, and the card fell through to its
+      // default — telling a doorman the guest had no booking when in fact the
+      // server had fallen over. Worse than silence: a wrong answer, confidently.
+      if (!r.ok) { setResult({ state: 'failed', name: typeof j?.error === 'string' ? j.error : undefined }); return }
       setResult(j)
       read()
     } catch {
@@ -229,14 +238,16 @@ export default function PopupDoor() {
       // through as `{}` and the screen simply carried on looking normal.
       if (!r.ok) {
         setResult({ state: 'failed', name: typeof j?.error === 'string' ? j.error : undefined })
-        return null
+        // The caller is told it failed AND that the network was fine, so it
+        // does not blame the router.
+        return { ok: false, error: typeof j?.error === 'string' ? j.error : undefined }
       }
       read()
       return j
     } catch {
       setOnline(false)
       setResult({ state: 'offline' })
-      return null
+      return { ok: false, offline: true }
     } finally { setBusy(false); setPressing(null) }
   }, [read])
 
@@ -736,7 +747,7 @@ function Scanner({ L, onCode, onClose }: { L: Lang; onCode: (c: string) => void;
 
 function WalkUp({ L, sessionId, partyMax, busy, onClose, onGo }: {
   L: Lang; sessionId: string; partyMax: number; busy: boolean; onClose: () => void
-  onGo: (name: string, party: number, force: boolean) => Promise<{ ok?: boolean; reason?: string; error?: string; places_left?: number } | null>
+  onGo: (name: string, party: number, force: boolean) => Promise<{ ok?: boolean; reason?: string; error?: string; offline?: boolean; places_left?: number } | null>
 }) {
   const [name, setName] = useState('')
   const [party, setParty] = useState(1)
@@ -749,8 +760,12 @@ function WalkUp({ L, sessionId, partyMax, busy, onClose, onGo }: {
   // refused with 'not_published', the component did nothing at all, and a
   // member of staff pressed the button and watched nothing happen. Found on a
   // real phone at the door.
-  const explain = (r: { ok?: boolean; reason?: string; error?: string } | null) => {
-    if (!r) return { bad: true, text: tr(L, 'd_off_title'), sub: tr(L, 'd_off_sub') }
+  const explain = (r: { ok?: boolean; reason?: string; error?: string; offline?: boolean } | null) => {
+    // ⚠ NULL MEANT TWO DIFFERENT THINGS and both read as "no signal": a lost
+    // connection, and the server answering 500. Staff were told to expect the
+    // router when the router was fine.
+    if (!r) return { bad: true, text: tr(L, 'b_failed'), sub: tr(L, 'b_try_again') }
+    if (r.offline) return { bad: true, text: tr(L, 'd_off_title'), sub: tr(L, 'd_off_sub') }
     switch (r.reason) {
       case 'not_published': return { bad: true, text: tr(L, 'm_not_open_lead'), sub: tr(L, 'm_not_open_sub') }
       case 'over':          return { bad: true, text: tr(L, 'b_walkup_over') }
