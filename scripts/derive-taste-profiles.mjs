@@ -6,7 +6,25 @@
 
 const B = process.env.NEXT_PUBLIC_SUPABASE_URL, K = process.env.SUPABASE_SERVICE_ROLE_KEY
 const H = { apikey: K, Authorization: `Bearer ${K}`, 'Content-Type': 'application/json' }
-const get = async (u) => { const r = await fetch(`${B}/rest/v1/${u}`, { headers: H }); if (!r.ok) throw new Error(`${u} ${r.status} ${await r.text()}`); return r.json() }
+// ⚠ PAGED. This was a single fetch with no Range header, and PostgREST caps
+// that at 1000 rows. whisky_flavour_intensities has 1,582 across 296 whiskies,
+// so this script derived every member's taste vector from about two thirds of
+// the library — AND IT PERSISTS, so the wrong answer outlived the run that
+// made it. Any member_taste_profiles row written before 12 Nov 2026 should be
+// rebuilt with `node scripts/derive-taste-profiles.mjs --persist`.
+// The live path has the same fix in lib/whisky/flavour-index.ts.
+const get = async (u) => {
+  const out = []
+  for (let from = 0; ; from += 1000) {
+    const r = await fetch(`${B}/rest/v1/${u}`, { headers: { ...H, Range: `${from}-${from + 999}` } })
+    if (!r.ok && r.status !== 206) throw new Error(`${u} ${r.status} ${await r.text()}`)
+    const page = await r.json()
+    if (!Array.isArray(page)) return page
+    out.push(...page)
+    if (page.length < 1000) break
+  }
+  return out
+}
 
 const STOP = new Set(['single','malt','scotch','whisky','whiskey','blended','grain','cask','casks','finish','finished','bourbon','sherry','oloroso','port','wine','reserve','batch','strength','vintage','edition','release','years','year','distillers','matured','double','peated','peaty','smoky','maritime','classic','comfort','preference','preferred','default','current','always','often','never','occasional','exploration','exploratory','black','white','green','red','coffee','water','sparkling','still','negroni','martini','americano','espresso','brandy','cognac','rum','burgundy','unique','flavours','flavour','bold','delicate','japanese','global','devotee','unusual','origins','finishes','interest','islands','islay','speyside','highland','lowland','campbeltown','fashioned','kingston','passion','learning','elements','morning'])
 const toks = (s) => (s || '').toLowerCase().match(/[a-z0-9]+/g) || []
