@@ -219,15 +219,23 @@ function SignUp({ L, ev, sessions, loadFailed, refresh, onHome }: {
             if (j.refresh) { refresh(); setStep('slots') }
             return
           }
-          throw new Error(j.error || 'unreachable')
+          // ⚠ A SERVER ERROR IS NOT A LOST CONNECTION. Marked as it is thrown,
+          // because by the time the retry loop gives up the two look identical
+          // — and the message was telling staff the signal had gone when the
+          // phone was online and the server had fallen over.
+          const err = new Error(j.error || 'server') as Error & { serverSaid?: string }
+          err.serverSaid = typeof j.error === 'string' ? j.error : ''
+          throw err
         } catch (e) {
           if (Date.now() - started > RETRY_FOR_MS) throw e
           await new Promise(res => setTimeout(res, 900))
         }
       }
-    } catch {
-      // ⚠ NEVER A FALSE CONFIRMATION.
-      setErr({ msg: tr(L, 'k_err_offline'), extra: tr(L, 'k_err_offline_ask') })
+    } catch (e) {
+      // ⚠ NEVER A FALSE CONFIRMATION — and never the wrong reason either.
+      const said = (e as { serverSaid?: string })?.serverSaid
+      if (said !== undefined) setErr({ msg: said || tr(L, 'b_failed'), extra: tr(L, 'b_try_again') })
+      else setErr({ msg: tr(L, 'k_err_offline'), extra: tr(L, 'k_err_offline_ask') })
     } finally { setBusy(false) }
   }
 
