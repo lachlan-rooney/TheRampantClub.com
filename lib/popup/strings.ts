@@ -128,6 +128,40 @@ export const POPUP_STRINGS = {
   sc_byname:      { en: 'Find by name', vn: 'Tìm theo tên' },
   sc_let_in:      { en: 'LET THEM IN', vn: 'MỜI VÀO' },
 
+  // ═══ WHICH EVENING IS THIS PHONE ON ══════════════════════════════════════
+  // ⚠ THE OWNER HELD A PRACTICE TICKET WHILE HIS PHONE WAS ON THE REAL,
+  // UNPUBLISHED EVENING, and every message it gave him was misleading: the
+  // sign-up said "we can't take bookings at the moment" (which reads as a
+  // fault), and the scan said the ticket was simply not on the list. The
+  // phone has to say WHICH EVENING IT IS ON, all the time, before anything
+  // else it says can be trusted.
+  m_practice:     { en: 'PRACTICE', vn: 'TẬP DƯỢT' },
+  m_not_open:     { en: 'Not open yet', vn: 'Chưa mở' },
+  m_open:         { en: 'Open · taking bookings', vn: 'Đang mở · nhận đặt chỗ' },
+  m_paused:       { en: 'Paused', vn: 'Tạm dừng' },
+  // ⚠ NOT "we can't take bookings at the moment". That is what a broken
+  // system says. This says what is true and who can change it.
+  m_not_open_lead:{ en: 'Bookings are not open yet.', vn: 'Chưa mở nhận đặt chỗ.' },
+  m_not_open_sub: { en: 'Lachlan opens them from the run sheet.',
+                    vn: 'Lachlan sẽ mở từ bảng điều hành.' },
+  m_wrong_event_practice: { en: 'This is a PRACTICE ticket. This phone is on the real evening.',
+                            vn: 'Đây là vé TẬP DƯỢT. Máy này đang ở buổi thật.' },
+  m_wrong_event_real:     { en: 'This is a ticket for the real evening. This phone is on PRACTICE.',
+                            vn: 'Đây là vé của buổi thật. Máy này đang ở chế độ TẬP DƯỢT.' },
+  m_no_code_on:   { en: 'No booking with that code on {event}.', vn: 'Không có đặt chỗ với mã này ở {event}.' },
+
+  // ── Every button says what it is doing ──────────────────────────────────
+  b_working:      { en: 'Working…', vn: 'Đang xử lý…' },
+  b_saving:       { en: 'Saving…', vn: 'Đang lưu…' },
+  b_admitting:    { en: 'Letting them in…', vn: 'Đang cho vào…' },
+  b_looking:      { en: 'Looking…', vn: 'Đang tìm…' },
+  b_signing_in:   { en: 'Signing in…', vn: 'Đang đăng nhập…' },
+  b_failed:       { en: 'That did not work.', vn: 'Chưa thực hiện được.' },
+  b_try_again:    { en: 'Try again, or find them by name.', vn: 'Hãy thử lại, hoặc tìm theo tên.' },
+  b_walkup_ok:    { en: '{name} is in.', vn: '{name} đã vào.' },
+  b_walkup_over:  { en: 'That session has finished.', vn: 'Lượt đó đã kết thúc.' },
+  b_walkup_toobig:{ en: 'Too many people for one booking.', vn: 'Quá nhiều người cho một lượt đặt.' },
+
   // ═══ THE DOOR (item 1) ═══════════════════════════════════════════════════
   // ⚠ THE DOOR IS A STAFF SURFACE AND IT IS STILL BILINGUAL. Every other
   // /kiosk screen carries the switch, and the people holding these phones on

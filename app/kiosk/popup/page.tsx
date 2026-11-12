@@ -46,6 +46,21 @@ interface EventInfo {
   session_minutes: number; party_max: number; default_cap: number
   published: boolean; paused: boolean; practice: boolean; slug: string
 }
+
+// ⚠ WHAT THE PHONE IS ON, IN ONE PLACE. The owner held a practice ticket while
+// his phone was set to the real, unpublished evening; every message it gave
+// him was misleading because none of them said which list was being used.
+function eventLine(L: Lang, ev: EventInfo | null): { name: string; state: string; ok: boolean } {
+  if (!ev) return { name: '—', state: '', ok: false }
+  if (ev.practice) return { name: tr(L, 'm_practice'), state: tr(L, 'm_open'), ok: true }
+  const name = (L === 'vn' ? ev.title_vn : ev.title_en) || ev.title_en
+  const where = (L === 'vn' ? ev.venue_vn : ev.venue_en) || ev.venue_en
+  return {
+    name: `${name} · ${where}`,
+    state: !ev.published ? tr(L, 'm_not_open') : ev.paused ? tr(L, 'm_paused') : tr(L, 'm_open'),
+    ok: ev.published && !ev.paused,
+  }
+}
 interface Staff { id: string; display_name: string }
 type Mode = 'home' | 'signup'
 type Step = 'slots' | 'who' | 'done'
@@ -90,7 +105,7 @@ export default function PopupPhone() {
   return (
     <Shell L={L} setLang={setLang} practice={ev?.practice}>
       {mode === 'home' ? (
-        <Home L={L} me={me} practice={!!ev?.practice}
+        <Home L={L} me={me} ev={ev}
               // ⚠ READ THE COUNTS AGAIN AS SHE OPENS THE LIST. The poll runs
               // every eight seconds, so without this the first thing she sees
               // can be up to eight seconds stale — and the moment she is most
@@ -112,15 +127,21 @@ export default function PopupPhone() {
 }
 
 // ── THE HOME SCREEN ───────────────────────────────────────────────────────
-function Home({ L, me, practice, onSignUp, onScan, onSignOut }: {
-  L: Lang; me: string; practice: boolean
+function Home({ L, me, ev, onSignUp, onScan, onSignOut }: {
+  L: Lang; me: string; ev: EventInfo | null
   onSignUp: () => void; onScan: () => void; onSignOut: () => void
 }) {
+  const line = eventLine(L, ev)
   return (
     <div className="ph-home">
       <Lion />
       <div className="ph-me">{tr(L, 'h_signed_in', { name: me })}</div>
-      {practice && <div className="ph-practice-note">{tr(L, 'h_practice_sub')}</div>}
+      {/* ⚠ WHICH EVENING, AND WHETHER IT IS OPEN — in large type, always,
+          before any other message on this phone can be trusted. */}
+      <div className={`ph-event ${line.ok ? 'is-open' : 'is-shut'}`}>
+        <b>{line.name}</b>
+        <span>{line.state}</span>
+      </div>
       <button className="ph-big" onClick={onSignUp}>
         <span className="ph-big-icon" aria-hidden>{ICON.pen}</span>
         {tr(L, 'h_signup')}
@@ -310,7 +331,15 @@ function SignUp({ L, ev, sessions, loadFailed, refresh, onHome }: {
       <button className="ph-back" onClick={onHome}>← {tr(L, 'h_back_home')}</button>
       <h1 className="ph-h">{tr(L, 's_choose')}</h1>
 
-      {loadFailed || (ev && !ev.published) ? (
+      {/* ⚠ THREE DIFFERENT THINGS, SAID DIFFERENTLY. They used to share one
+          message — "we can't take bookings at the moment" — which reads as a
+          fault whichever of the three it actually was. */}
+      {ev && !ev.published ? (
+        <div className="ph-offline">
+          <strong>{tr(L, 'm_not_open_lead')}</strong>
+          <span>{tr(L, 'm_not_open_sub')}</span>
+        </div>
+      ) : loadFailed ? (
         <div className="ph-offline">
           <strong>{tr(L, 'k_err_offline')}</strong>
           <span>{tr(L, 'k_err_offline_ask')}</span>
@@ -461,6 +490,14 @@ function Styles() {
                min-height: calc(var(--pk-vh, 100dvh) - 120px); }
     .ph-me { font-family: ${SERIF}; font-size: 19px; text-align: center; margin-bottom: 4px; }
     .ph-practice-note { font-size: 12px; text-align: center; opacity: .7; margin-bottom: 10px; line-height: 1.5; }
+    .ph-event { display: flex; flex-direction: column; align-items: center; gap: 3px;
+                margin: 10px 0 4px; padding: 11px 14px; border-radius: 9px; text-align: center; }
+    .ph-event b { font-family: ${SERIF}; font-size: 17px; line-height: 1.2; }
+    .ph-event span { font-family: ${MONO}; font-size: 13px; letter-spacing: .06em; }
+    .ph-event.is-open { background: ${INK}; color: ${PAPER}; }
+    .ph-event.is-open span { color: #A8D48F; }
+    .ph-event.is-shut { background: ${RED}; color: ${PAPER}; }
+    .ph-event.is-shut span { color: ${PAPER}; opacity: .9; }
     .ph-big { display: flex; align-items: center; justify-content: center; gap: 12px;
               width: 100%; box-sizing: border-box; min-height: 92px; margin-top: 14px;
               border: none; border-radius: 12px; background: ${GOLD}; color: ${INK};

@@ -126,7 +126,24 @@ export async function POST(req: NextRequest) {
       p_at: at, p_offline: offline,
     })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ ...(one(data) as object), by })
+    const res = one(data) as { state?: string } | null
+
+    // ⚠ "wrong_event" IS NOT ENOUGH. The owner scanned a practice ticket on a
+    // phone set to the real evening and was told only that it was for another
+    // event — which left him with no idea which of the two he was on. Say
+    // which ticket it is, and which evening this phone is.
+    if (res?.state === 'wrong_event') {
+      const { data: other } = await a.from('popup_bookings')
+        .select('event_id, popup_events!inner(slug, is_practice)')
+        .eq('ticket_code', code).maybeSingle()
+      const theirs = (other as unknown as { popup_events?: { is_practice?: boolean } } | null)?.popup_events
+      return NextResponse.json({
+        ...(res as object), by,
+        their_practice: !!theirs?.is_practice,
+        this_practice: !!ev.is_practice,
+      })
+    }
+    return NextResponse.json({ ...(res as object), by })
   }
 
   // ── UNDO ────────────────────────────────────────────────────────────────

@@ -36,6 +36,9 @@ const QUEUE_KEY = 'trc_popup_door_queue_v1'
 type State =
   | 'valid' | 'used' | 'early' | 'late' | 'waiting' | 'cancelled'
   | 'unknown' | 'wrong_event' | 'malformed' | 'queued'
+  // ⚠ ADDED BECAUSE THINGS WERE FAILING SILENTLY. A refused or broken action
+  // now lands on a screen like any other answer.
+  | 'failed' | 'offline'
 
 interface Row {
   booking_id: string; ticket_code: string; name: string; email: string | null
@@ -53,6 +56,7 @@ interface Sess {
 interface Queued { code: string; party: number | null; at: string; name?: string }
 interface Result {
   state: State; booking_id?: string; name?: string; party_size?: number
+  their_practice?: boolean; this_practice?: boolean
   admitted_at?: string | null; admitted_by?: string | null
   admitted_party?: number | null; starts_at?: string | null; code?: string
 }
@@ -87,6 +91,8 @@ export default function PopupDoor() {
   const [walkup, setWalkup] = useState<string | null>(null) // session id
   const [busy, setBusy] = useState(false)
   const [partyMax, setPartyMax] = useState(2)
+  // Which evening this phone is on — so a refusal can name the list it searched.
+  const [evInfo, setEvInfo] = useState<{ title: string; practice: boolean } | null>(null)
   // ⚠ THE CAMERA IS OPEN ON ARRIVAL. "Scan a ticket" means scan a ticket —
   // making her find and press a second button to start the camera was a step
   // that existed only because the screen used to be a list with a scanner
@@ -127,6 +133,7 @@ export default function PopupDoor() {
       setSchemaError(null); setNeedsPin(false); setOnline(true)
       setRows(j.list || []); setSessions(j.sessions || []); setStaff(j.staff)
       setPartyMax(j.event?.party_max ?? 2)
+      setEvInfo({ title: j.event?.title ?? '', practice: !!j.event?.practice })
       const at = Date.now(); setLastRead(at)
       try { localStorage.setItem(CACHE_KEY, JSON.stringify({ rows: j.list, sessions: j.sessions, at })) } catch {}
     } catch {
@@ -167,22 +174,32 @@ export default function PopupDoor() {
 
   // ── FOUR DIGITS: FIND, THEN ASK ────────────────────────────────────────
   const findCode = useCallback(async (code: string) => {
-    setBusy(true); setCodeErr(null); setLookedUp(null)
+    setBusy(true); setPressing('find_code'); setCodeErr(null); setLookedUp(null)
     try {
       const r = await fetch('/api/kiosk/popup/door', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'find_code', code }) })
       const j = await r.json().catch(() => ({}))
       if (r.status === 429) { setCodeErr(tr(L, 'sc_too_many')); return }
-      if (!j.found) { setCodeErr(tr(L, 'sc_no_code')); return }
+      // ⚠ WHICH LIST WAS SEARCHED. "No booking with that code" is true of
+      // every evening at once and tells a doorman nothing.
+      if (!j.found) {
+        const where = evInfo?.practice ? tr(L, 'm_practice') : (evInfo?.title || '—')
+        setCodeErr(tr(L, 'm_no_code_on', { event: where }))
+        return
+      }
       setLookedUp(j)
     } catch { setOnline(false); setCodeErr(tr(L, 'd_off_title')) }
-    finally { setBusy(false) }
-  }, [L])
+    finally { setBusy(false); setPressing(null) }
+  }, [L, evInfo])
 
   // ── ADMITTING ──────────────────────────────────────────────────────────
+  // ⚠ WHICH BUTTON IS WORKING, so the one that was pressed can say so rather
+  // than every button on the screen greying out together.
+  const [pressing, setPressing] = useState<string | null>(null)
+
   const admit = useCallback(async (code: string, party: number | null, name?: string) => {
-    setBusy(true)
+    setBusy(true); setPressing(code)
     const at = new Date().toISOString()
     try {
       const r = await fetch('/api/kiosk/popup/door', {
@@ -198,19 +215,29 @@ export default function PopupDoor() {
       setQueue(q => [...q, { code, party, at, name }])
       setResult({ state: 'queued', name, code })
       setOnline(false)
-    } finally { setBusy(false); setAsking(null) }
+    } finally { setBusy(false); setPressing(null); setAsking(null) }
   }, [read])
 
   const act = useCallback(async (payload: Record<string, unknown>) => {
-    setBusy(true)
+    setBusy(true); setPressing(String(payload.booking_id || payload.action || ''))
     try {
       const r = await fetch('/api/kiosk/popup/door', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload) })
       const j = await r.json().catch(() => ({}))
+      // ⚠ AN HTTP ERROR IS AN ANSWER, NOT A SHRUG. Without this a 500 fell
+      // through as `{}` and the screen simply carried on looking normal.
+      if (!r.ok) {
+        setResult({ state: 'failed', name: typeof j?.error === 'string' ? j.error : undefined })
+        return null
+      }
       read()
       return j
-    } catch { setOnline(false); return null } finally { setBusy(false) }
+    } catch {
+      setOnline(false)
+      setResult({ state: 'offline' })
+      return null
+    } finally { setBusy(false); setPressing(null) }
   }, [read])
 
   // ── WHAT IS HAPPENING NOW, AND WHAT IS NEXT ────────────────────────────
@@ -271,7 +298,10 @@ export default function PopupDoor() {
       {/* ── THE BAR: who, when, and whether this phone is actually connected ── */}
       <header className="dr-top">
         <div>
-          <div className="dr-who">{staff || '…'}</div>
+          <div className="dr-who">
+            {staff || '…'}
+            {evInfo && <em className="dr-on">{evInfo.practice ? tr(L, 'm_practice') : evInfo.title}</em>}
+          </div>
           <div className="dr-when">
             {current ? <>{tr(L, 'd_in_now')} <b>{hhmm(current.starts_at)}</b> · {current.arrived}/{current.booked}</>
               : next ? <>{tr(L, 'd_next')} <b>{hhmm(next.starts_at)}</b></> : tr(L, 'd_no_session')}
@@ -312,7 +342,9 @@ export default function PopupDoor() {
         <input value={manual} maxLength={4} inputMode="numeric" pattern="[0-9]*"
                autoComplete="off" spellCheck={false} placeholder={tr(L, 'sc_code_label')}
                onChange={e => setManual(e.target.value.replace(/\D/g, ''))} />
-        <button type="submit" disabled={manual.length !== 4 || busy}>{tr(L, 'd_go')}</button>
+        <button type="submit" disabled={manual.length !== 4 || busy}>
+          {busy && pressing === 'find_code' ? tr(L, 'b_looking') : tr(L, 'd_go')}
+        </button>
       </form>
       {codeErr && <div className="dr-bad"><strong>{codeErr}</strong></div>}
 
@@ -337,7 +369,7 @@ export default function PopupDoor() {
           ) : lookedUp.status === 'waiting' ? (
             <div className="dr-found-already">{tr(L, 'd_s_waiting_sub')}</div>
           ) : (
-            <button className="dr-found-go" disabled={busy}
+            <button className="dr-found-go" disabled={busy || pressing === lookedUp.ticket_code}
                     onClick={() => {
                       const r = lookedUp
                       setLookedUp(null)
@@ -345,7 +377,7 @@ export default function PopupDoor() {
                       if (r.party_size > 1) setAsking({ name: r.name, party_size: r.party_size, ticket_code: r.ticket_code })
                       else admit(r.ticket_code, 1, r.name)
                     }}>
-              {tr(L, 'sc_confirm_in')}
+              {pressing === lookedUp.ticket_code ? tr(L, 'b_admitting') : tr(L, 'sc_confirm_in')}
             </button>
           )}
         </div>
@@ -361,13 +393,13 @@ export default function PopupDoor() {
              autoComplete="off" spellCheck={false} />
 
       {found
-        ? <Group L={L} title={found.length === 1 ? tr(L, 'd_match_one') : tr(L, 'd_matches', { n: found.length })} rows={found}
+        ? <Group L={L} pressing={pressing} title={found.length === 1 ? tr(L, 'd_match_one') : tr(L, 'd_matches', { n: found.length })} rows={found}
                  onAdmit={r => r.party_size > 1 ? setAsking(r) : admit(r.ticket_code, 1, r.name)}
                  onUndo={r => act({ action: 'unadmit', booking_id: r.booking_id })}
                  onParty={(r, n) => act({ action: 'set_party', booking_id: r.booking_id, party: n })}
                  busy={busy} showTime />
         : ordered.map(s => (
-            <Group L={L} key={s.session_id} rows={byIdx(s.idx)} busy={busy}
+            <Group L={L} key={s.session_id} pressing={pressing} rows={byIdx(s.idx)} busy={busy}
                    title={`${hhmm(s.starts_at)}`}
                    done={+new Date(s.ends_at) < now}
                    note={`${s.arrived}/${s.booked} ${tr(L, 'd_in_count')} · ${s.waiting ? `${tr(L, 'd_waiting_n', { n: s.waiting })} · ` : ''}${tr(L, 'd_cap', { n: s.cap })}${s.over_by ? ` · ${tr(L, 'd_over_by', { n: s.over_by })}` : ''}`}
@@ -394,7 +426,14 @@ export default function PopupDoor() {
                 onClose={() => setWalkup(null)}
                 onGo={async (name, party, force) => {
                   const j = await act({ action: 'walkup', session_id: walkup, name, party, force })
-                  if (j?.ok) { setWalkup(null); setResult({ state: 'valid', name, admitted_party: party, admitted_at: new Date().toISOString() }) }
+                  // ⚠ THE SHEET STAYS OPEN LONG ENOUGH TO SAY SO. It used to
+                  // close the instant it worked, which on a slow connection
+                  // looked identical to nothing happening.
+                  if (j?.ok) {
+                    setResult({ state: 'valid', name, admitted_party: party, party_size: party,
+                                admitted_at: new Date().toISOString() })
+                    setTimeout(() => setWalkup(null), 1400)
+                  }
                   return j
                 }} />
       )}
@@ -422,6 +461,8 @@ const SAY: Record<State, { k: Parameters<typeof tr>[1]; tone: 'yes' | 'no' | 'wa
   unknown:     { k: 'd_s_unknown',   tone: 'no' },
   wrong_event: { k: 'd_s_wrong',     tone: 'no' },
   malformed:   { k: 'd_s_malformed', tone: 'no' },
+  failed:      { k: 'b_failed',       tone: 'no' },
+  offline:     { k: 'd_off_title',    tone: 'no' },
 }
 
 function ResultCard({ L, r, onClose, onUndo }: { L: Lang; r: Result; onClose: () => void; onUndo: () => void }) {
@@ -443,7 +484,17 @@ function ResultCard({ L, r, onClose, onUndo }: { L: Lang; r: Result; onClose: ()
       )}
       {r.state === 'early' && <div className="dr-r-sub">{tr(L, 'd_s_early_sub', { time: hhmm(r.starts_at) })}</div>}
       {r.state === 'waiting' && <div className="dr-r-sub">{tr(L, 'd_s_waiting_sub')}</div>}
-      {r.state === 'wrong_event' && <div className="dr-r-sub">{tr(L, 'd_s_wrong_sub', { code: r.code || '' })}</div>}
+      {r.state === 'wrong_event' && (
+        <div className="dr-r-sub">
+          {/* Which ticket, and which evening this phone is on. "A ticket for
+              another event" on its own left the owner none the wiser. */}
+          {r.their_practice && !r.this_practice ? tr(L, 'm_wrong_event_practice')
+            : !r.their_practice && r.this_practice ? tr(L, 'm_wrong_event_real')
+            : tr(L, 'd_s_wrong_sub', { code: r.code || '' })}
+        </div>
+      )}
+      {r.state === 'failed' && <div className="dr-r-sub">{tr(L, 'b_try_again')}</div>}
+      {r.state === 'offline' && <div className="dr-r-sub">{tr(L, 'd_off_sub')}</div>}
       {(r.state === 'valid' || r.state === 'used') && r.booking_id && (
         <button className="dr-undo" onClick={onUndo}>{tr(L, 'd_s_wrong_row')}</button>
       )}
@@ -452,8 +503,9 @@ function ResultCard({ L, r, onClose, onUndo }: { L: Lang; r: Result; onClose: ()
 }
 
 // ── A SESSION'S NAMES ─────────────────────────────────────────────────────
-function Group({ L, title, note, rows, onAdmit, onUndo, onParty, onWalkup, busy, live, showTime, done }: {
-  L: Lang; title: string; note?: string; rows: Row[]; busy: boolean; live?: boolean; showTime?: boolean
+function Group({ L, title, note, rows, onAdmit, onUndo, onParty, onWalkup, busy, pressing, live, showTime, done }: {
+  L: Lang; title: string; note?: string; rows: Row[]; busy: boolean; pressing?: string | null
+  live?: boolean; showTime?: boolean
   done?: boolean
   onAdmit: (r: Row) => void; onUndo: (r: Row) => void
   onParty: (r: Row, n: number) => void; onWalkup?: () => void
@@ -497,9 +549,12 @@ function Group({ L, title, note, rows, onAdmit, onUndo, onParty, onWalkup, busy,
               )}
             </div>
             {inNow
-              ? <button className="dr-undo-s" disabled={busy} onClick={() => onUndo(r)}>{tr(L, 'd_undo')}</button>
+              ? <button className="dr-undo-s" disabled={busy} onClick={() => onUndo(r)}>
+                  {pressing === r.booking_id ? tr(L, 'b_working') : tr(L, 'd_undo')}
+                </button>
               : <button className="dr-admit" disabled={busy || r.status === 'waiting'} onClick={() => onAdmit(r)}>
-                  {r.status === 'waiting' ? '—' : tr(L, 'd_admit')}
+                  {r.status === 'waiting' ? '—'
+                    : pressing === r.ticket_code ? tr(L, 'b_admitting') : tr(L, 'd_admit')}
                 </button>}
           </div>
         )
@@ -681,11 +736,42 @@ function Scanner({ L, onCode, onClose }: { L: Lang; onCode: (c: string) => void;
 
 function WalkUp({ L, sessionId, partyMax, busy, onClose, onGo }: {
   L: Lang; sessionId: string; partyMax: number; busy: boolean; onClose: () => void
-  onGo: (name: string, party: number, force: boolean) => Promise<{ ok?: boolean; reason?: string; places_left?: number } | null>
+  onGo: (name: string, party: number, force: boolean) => Promise<{ ok?: boolean; reason?: string; error?: string; places_left?: number } | null>
 }) {
   const [name, setName] = useState('')
   const [party, setParty] = useState(1)
   const [full, setFull] = useState(false)
+  const [working, setWorking] = useState(false)
+  const [said, setSaid] = useState<{ bad: boolean; text: string; sub?: string } | null>(null)
+
+  // ⚠ EVERY REFUSAL GETS WORDS. The first version handled reason === 'full'
+  // and nothing else — so a walk-up on the real, unpublished evening was
+  // refused with 'not_published', the component did nothing at all, and a
+  // member of staff pressed the button and watched nothing happen. Found on a
+  // real phone at the door.
+  const explain = (r: { ok?: boolean; reason?: string; error?: string } | null) => {
+    if (!r) return { bad: true, text: tr(L, 'd_off_title'), sub: tr(L, 'd_off_sub') }
+    switch (r.reason) {
+      case 'not_published': return { bad: true, text: tr(L, 'm_not_open_lead'), sub: tr(L, 'm_not_open_sub') }
+      case 'over':          return { bad: true, text: tr(L, 'b_walkup_over') }
+      case 'too_big':       return { bad: true, text: tr(L, 'b_walkup_toobig') }
+      case 'no_session':    return { bad: true, text: tr(L, 'd_s_unknown') }
+      default:              return { bad: true, text: r.error || tr(L, 'b_failed'), sub: tr(L, 'b_try_again') }
+    }
+  }
+
+  const go = async () => {
+    setWorking(true); setSaid(null)
+    try {
+      const j = await onGo(name.trim(), party, full)
+      if (j?.ok) { setSaid({ bad: false, text: tr(L, 'b_walkup_ok', { name: name.trim() }) }); return }
+      // A full session is the one refusal that offers a next step rather than
+      // an apology: the owner can let them in over the cap on purpose.
+      if (j?.reason === 'full') { setFull(true); setSaid({ bad: true, text: tr(L, 'd_walk_full'), sub: tr(L, 'd_walk_full_sub') }); return }
+      setSaid(explain(j))
+    } finally { setWorking(false) }
+  }
+
   return (
     <Sheet L={L} title={tr(L, 'd_walk_title')} sub={tr(L, 'd_walk_sub')} onClose={onClose}>
       <input className="dr-wn" value={name} onChange={e => setName(e.target.value)} placeholder={tr(L, 'd_walk_name')}
@@ -695,18 +781,14 @@ function WalkUp({ L, sessionId, partyMax, busy, onClose, onGo }: {
           <button key={n} className={party === n ? 'is-on' : ''} onClick={() => setParty(n)}>{n}</button>
         ))}
       </div>
-      {full && (
-        <div className="dr-warn">
-          <strong>{tr(L, 'd_walk_full')}</strong>
-          <span>{tr(L, 'd_walk_full_sub')}</span>
+      {said && (
+        <div className={said.bad ? 'dr-warn' : 'dr-good'} role="status">
+          <strong>{said.text}</strong>
+          {said.sub && <span>{said.sub}</span>}
         </div>
       )}
-      <button className="dr-scan" disabled={!name.trim() || busy}
-              onClick={async () => {
-                const j = await onGo(name.trim(), party, full)
-                if (j && !j.ok && j.reason === 'full') setFull(true)
-              }}>
-        {full ? tr(L, 'd_walk_anyway') : tr(L, 'd_walk_go')}
+      <button className="dr-scan" disabled={!name.trim() || busy || working} onClick={go}>
+        {working ? tr(L, 'b_working') : full ? tr(L, 'd_walk_anyway') : tr(L, 'd_walk_go')}
       </button>
       <input type="hidden" value={sessionId} readOnly />
     </Sheet>
@@ -790,6 +872,8 @@ function Styles() {
     .dr-top { display: flex; align-items: flex-start; justify-content: space-between;
               gap: 10px; padding-bottom: 10px; border-bottom: 1px solid ${PAPER}26; }
     .dr-who { font-family: ${SERIF}; font-size: 15px; letter-spacing: .1em; text-transform: uppercase; }
+    .dr-on { display: block; font-style: normal; font-family: ${MONO}; font-size: 10px;
+             letter-spacing: .1em; color: ${GOLD}; margin-top: 2px; text-transform: none; }
     .dr-when { font-size: 12px; opacity: .72; margin-top: 3px; letter-spacing: .04em; }
     .dr-when b { font-size: 16px; opacity: 1; }
     .dr-net { display: flex; align-items: center; gap: 6px; font-size: 11px; opacity: .8;
@@ -880,6 +964,10 @@ function Styles() {
     .dr-bad, .dr-warn { display: flex; flex-direction: column; gap: 4px; margin: 10px 0;
                         padding: 14px 14px; border-radius: 8px; font-size: 13px; line-height: 1.5; }
     .dr-bad { background: ${RED}2e; border-left: 4px solid ${RED}; }
+    .dr-good { display: flex; flex-direction: column; gap: 4px; margin: 10px 0;
+               padding: 14px; border-radius: 8px; font-size: 14px; line-height: 1.5;
+               background: ${GREEN}33; border-left: 4px solid ${GREEN}; }
+    .dr-good strong { color: #A8D48F; font-size: 16px; }
     .dr-warn { background: ${GOLD}26; border-left: 4px solid ${GOLD}; }
     .dr-bad span, .dr-warn span { opacity: .82; font-size: 12px; }
 

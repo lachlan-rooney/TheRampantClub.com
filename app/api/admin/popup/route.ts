@@ -324,6 +324,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, practice: on })
   }
 
+  // ── ALL OF THEM AT ONCE ───────────────────────────────────────────────
+  // ⚠ AND IT REPORTS WHICH PHONES MOVED, by name. "Done" is not an answer
+  // when the next thing somebody does is hand five handsets to five people.
+  if (action === 'practice_all') {
+    const on = body.practice === true
+    const { data: moved, error } = await a.from('kiosk_devices')
+      .update({ popup_slug: on ? 'palace-practice' : null })
+      .eq('purpose', 'popup').is('revoked_at', null)
+      .select('label')
+    if (error) {
+      return NextResponse.json({
+        error: /popup_slug/.test(error.message)
+          ? 'The practice switch needs db/popup_practice.sql to be run first.' : error.message,
+      }, { status: 500 })
+    }
+    return NextResponse.json({ ok: true, practice: on, moved: (moved || []).map(m => m.label) })
+  }
+
   // ⚠ ONE CONTROL, AND IT CANNOT TOUCH FRIDAY. popup_practice_reset() refuses
   // any event not marked is_practice, in Postgres, so a mis-click here cannot
   // empty the real evening.

@@ -180,6 +180,16 @@ export default function RunSheet() {
               <span style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98' }}>
                 {practice.bookings} practice booking{practice.bookings === 1 ? '' : 's'}
               </span>
+              {/* ⚠ ALL OF THEM AT ONCE. Five handsets, five people, one tap —
+                  and it names the phones that moved rather than saying "done". */}
+              <button disabled={busy || !phones.length} style={btn} onClick={async () => {
+                const j = await post({ action: 'practice_all', practice: true })
+                if (j?.ok) setMsg(`${j.moved.length} phone(s) now on PRACTICE: ${j.moved.join(', ')}. Reload each one.`)
+              }}>All phones → practice</button>
+              <button disabled={busy || !phones.length} style={btn} onClick={async () => {
+                const j = await post({ action: 'practice_all', practice: false })
+                if (j?.ok) setMsg(`${j.moved.length} phone(s) back on the real evening: ${j.moved.join(', ')}. Reload each one.`)
+              }}>All phones → real evening</button>
             </div>
             <p style={{ ...muted, marginTop: 10 }}>
               One control. It clears every practice booking and re-times the nine sessions to run from
@@ -206,6 +216,12 @@ export default function RunSheet() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ width: 8, height: 8, borderRadius: 4, background: p.online ? '#7FA86B' : '#C27070' }} />
               <b>{p.label}</b>
+              {/* The mode, in the heartbeat list, so it is visible without
+                  opening anything. */}
+              <span style={{ fontSize: 9, letterSpacing: '.1em', padding: '2px 6px', borderRadius: 3,
+                             background: p.practice ? '#C9A84C' : '#7FA86B', color: '#052E20' }}>
+                {p.practice ? 'PRACTICE' : 'REAL'}
+              </span>
               <span style={{ opacity: .6 }}>
                 {p.online ? `${p.seconds_ago}s ago` : p.last_seen_at ? `quiet ${Math.round((p.seconds_ago || 0) / 60)} min` : 'never'}
               </span>
