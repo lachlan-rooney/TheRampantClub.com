@@ -34,6 +34,21 @@ export const dynamic = 'force-dynamic'
 // The evening this handset is on. Practice or real — the same code either way.
 const eventRow = () => deviceEvent()
 
+// ⚠ RATE-LIMITED, PER MEMBER OF STAFF. Four digits is ten thousand codes
+// against about a hundred guests: left open, a phone could walk the whole
+// space in a few minutes and read back a stranger's name and time. Twelve
+// lookups a minute is far more than a real door needs and far less than a
+// search. It is a SECOND line of defence, not the first — the first is that a
+// code shows a booking and never admits one.
+const LOOKUPS = new Map<string, number[]>()
+function lookupLimited(key: string): boolean {
+  const now = Date.now()
+  const arr = (LOOKUPS.get(key) || []).filter(t => now - t < 60_000)
+  arr.push(now); LOOKUPS.set(key, arr)
+  if (LOOKUPS.size > 2000) for (const [k, v] of LOOKUPS) if (!v.some(t => now - t < 60_000)) LOOKUPS.delete(k)
+  return arr.length > 12
+}
+
 export async function GET() {
   if (!(await deviceOk())) return denyDevice()
   const staff = await actingStaff()
@@ -129,6 +144,29 @@ export async function POST(req: NextRequest) {
       p_party: Number(body.party), p_by: by })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json(one(data))
+  }
+
+  // ── LOOKING UP FOUR DIGITS ──────────────────────────────────────────────
+  // ⚠ IT SHOWS, IT DOES NOT ADMIT. popup_find_by_code has no UPDATE in it, so
+  // there is no path from a guessed code to an admitted guest. The screen asks
+  // staff to check the name, and admitting is a second, deliberate action that
+  // goes through popup_scan with the full ticket code like any other.
+  if (action === 'find_code') {
+    const code = String(body.code || '').replace(/\D/g, '')
+    if (code.length !== 4) return NextResponse.json({ found: false, reason: 'short' })
+    if (lookupLimited(by)) {
+      return NextResponse.json({ found: false, reason: 'rate' }, { status: 429 })
+    }
+    const { data, error } = await a.rpc('popup_find_by_code', { p_event_id: ev.id, p_code: code })
+    if (error) {
+      return NextResponse.json({
+        error: /popup_find_by_code/.test(error.message)
+          ? 'The 4-digit code needs db/popup_door_code.sql to be run first.' : error.message,
+      }, { status: 500 })
+    }
+    const row = one(data)
+    if (!row) return NextResponse.json({ found: false, reason: 'unknown' })
+    return NextResponse.json({ found: true, ...(row as object) })
   }
 
   // ── A WALK-UP ───────────────────────────────────────────────────────────

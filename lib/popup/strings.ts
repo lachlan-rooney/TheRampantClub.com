@@ -108,6 +108,20 @@ export const POPUP_STRINGS = {
   s_email_failed: { en: 'The email could not be sent. They are still on the list.',
                     vn: 'Không gửi được email. Khách vẫn có trong danh sách.' },
   s_show_guest:   { en: 'Show this to the guest', vn: 'Cho khách xem màn hình này' },
+  s_their_code:   { en: 'Their code', vn: 'Mã của khách' },
+
+  // ── The four digits at the door ──────────────────────────────────────────
+  // ⚠ FOUR DIGITS CAN BE GUESSED, so typing one never admits anybody. It
+  // shows the booking, and this line tells staff what to do before the admit
+  // button appears.
+  sc_code_label:  { en: '4-digit code', vn: 'Mã 4 số' },
+  sc_ask_name:    { en: 'Ask their name', vn: 'Hỏi tên của khách' },
+  sc_ask_sub:     { en: 'A code on its own is not proof. Check it matches the person in front of you.',
+                    vn: 'Chỉ có mã thì chưa đủ. Hãy kiểm tra có khớp với người đang đứng trước mặt.' },
+  sc_confirm_in:  { en: 'Name matches — let them in', vn: 'Đúng tên — mời vào' },
+  sc_no_code:     { en: 'No booking with that code.', vn: 'Không có đặt chỗ với mã này.' },
+  sc_too_many:    { en: 'Too many tries. Wait a moment, or find them by name.',
+                    vn: 'Thử quá nhiều lần. Vui lòng đợi một lát, hoặc tìm theo tên.' },
 
   // ── The scan screen ──────────────────────────────────────────────────────
   sc_type:        { en: 'Type the code', vn: 'Nhập mã' },
@@ -300,7 +314,18 @@ export const POPUP_STRINGS = {
                   vn: 'Tôi muốn nhận thông tin từ The Rampant Club sau tối nay.' },
 
   // ── The emails ──────────────────────────────────────────────────────────
-  mail_ticket_subject: { en: 'Your place at {time} — {title}', vn: 'Chỗ của bạn lúc {time} — {title}' },
+  // ⚠ REWRITTEN 13 NOV AFTER A REAL GMAIL TEST. The email said almost nothing:
+  // a line, a time and a QR that Gmail had stripped. It has to read as a
+  // confirmation — who, when, how many, where, and the two ways in.
+  mail_ticket_subject: { en: 'You\u2019re booked — {time}, {title}', vn: 'Đã đặt chỗ — {time}, {title}' },
+  mail_ticket_booked:  { en: 'You\u2019re booked', vn: 'Đã đặt chỗ' },
+  mail_ticket_date:    { en: '{date}', vn: '{date}' },
+  mail_ticket_people_one: { en: 'For one', vn: 'Cho một người' },
+  mail_ticket_people:  { en: 'For {n} people', vn: 'Cho {n} người' },
+  mail_ticket_arrive:  { en: 'Please arrive five minutes before your time.',
+                         vn: 'Vui lòng đến trước giờ của bạn năm phút.' },
+  mail_ticket_doorcode_lead: { en: 'If the QR won\u2019t scan, show this code',
+                               vn: 'Nếu không quét được mã QR, hãy đưa mã này' },
   mail_ticket_lead:    { en: 'Your name is on the list.', vn: 'Tên bạn đã có trong danh sách.' },
   mail_ticket_when:    { en: 'Come back at {time}. Please arrive five minutes early.',
                          vn: 'Hãy quay lại lúc {time}. Vui lòng đến sớm năm phút.' },
@@ -308,9 +333,9 @@ export const POPUP_STRINGS = {
   mail_ticket_show:    { en: 'Show this at the door.', vn: 'Vui lòng xuất trình ở cửa.' },
   // ⚠ THE MOST USEFUL SENTENCE IN THE EMAIL. A guest in a crowd with one bar
   // of signal cannot open an inbox; a screenshot is on their phone already.
-  mail_ticket_shot:    { en: 'Take a screenshot of this now — it works without signal.',
-                         vn: 'Hãy chụp màn hình ngay — vé vẫn dùng được khi không có mạng.' },
-  mail_ticket_code:    { en: 'Or give your name, or this code:', vn: 'Hoặc đọc tên, hoặc mã này:' },
+  mail_ticket_shot:    { en: 'Screenshot this email in case you have no signal at the door.',
+                         vn: 'Hãy chụp màn hình email này phòng khi không có sóng ở cửa.' },
+  mail_ticket_code:    { en: 'Or give your name at the door.', vn: 'Hoặc đọc tên của bạn ở cửa.' },
 
   mail_wait_subject: { en: 'You are on the waiting list — {title}', vn: 'Bạn đang ở danh sách chờ — {title}' },
   mail_wait_lead:    { en: 'You are on the waiting list for {time}.', vn: 'Bạn đang ở danh sách chờ lúc {time}.' },

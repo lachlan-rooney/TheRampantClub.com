@@ -28,7 +28,7 @@ interface Sess {
 }
 interface B {
   id: string; name: string; email: string | null; party_size: number; status: string
-  ticket_code: string; session_id: string; admitted_at: string | null
+  ticket_code: string; door_code: string | null; session_id: string; admitted_at: string | null
   admitted_by: string | null; admitted_party: number | null
   created_at: string; waiting_since: string | null; source: string
   consent_marketing: boolean; confirmation_sent_at: string | null; taken_by: string | null
@@ -332,7 +332,7 @@ export default function RunSheet() {
                         {b.email ? ` · ${b.email}` : ' · no email'}
                         {b.taken_by ? ` · taken by ${b.taken_by}` : ''}
                         {b.source === 'door' ? ' · walk-up' : ''}
-                        {' · '}{b.ticket_code}
+                        {' · code '}<b style={{ color: '#E5D4C2', letterSpacing: '.12em' }}>{b.door_code || b.ticket_code}</b>
                       </div>
                     </div>
                     <select disabled={busy} value="" style={{ ...input, width: 128, fontSize: 10 }}

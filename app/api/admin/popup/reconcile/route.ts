@@ -63,7 +63,7 @@ export async function GET() {
       // generated types give up, and every field below errors as
       // GenericStringError — which reads like a database fault and is a
       // formatting one. Same trap as app/api/kiosk/popup/door/route.ts.
-      .select('id, name, email, party_size, status, ticket_code, session_id, source, admitted_at, admitted_by, admitted_party, admitted_offline, reconciled_at, reconcile_note, taken_by, consent_marketing, followup_sent_at')
+      .select('id, name, email, party_size, status, ticket_code, door_code, session_id, source, admitted_at, admitted_by, admitted_party, admitted_offline, reconciled_at, reconcile_note, taken_by, consent_marketing, followup_sent_at')
       .eq('event_id', ev.id).order('name'),
     a.rpc('popup_runsheet', { p_event_id: ev.id }),
   ])

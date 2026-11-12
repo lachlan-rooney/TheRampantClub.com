@@ -69,6 +69,13 @@ export function readTicket(eventSlug: string, scanned: string): { code: string; 
   return ok ? { code: clean, signed: true } : null
 }
 
+/** The PNG a mail client can actually fetch. ⚠ NOT a data: URI — Gmail strips
+ *  those and showed an email with no QR at all. */
+export function qrImageUrl(eventSlug: string, code: string): string {
+  const site = process.env.NEXT_PUBLIC_SITE_URL || 'https://therampantclub.com'
+  return `${site}/api/popup/qr/${ticketToken(eventSlug, code)}.png`
+}
+
 /** Where the QR points. Scanning it with a phone camera opens the ticket. */
 export function ticketUrl(eventSlug: string, code: string): string {
   const site = process.env.NEXT_PUBLIC_SITE_URL || 'https://therampantclub.com'

@@ -24,7 +24,8 @@ import { useEffect, useState } from 'react'
 
 interface B {
   id: string; name: string; email: string | null; party_size: number
-  status: string; ticket_code: string; session_id: string; source: string
+  status: string; ticket_code: string; door_code: string | null
+  session_id: string; source: string
 }
 interface S { session_id: string; idx: number; starts_at: string; ends_at: string; cap: number; booked: number }
 
@@ -80,7 +81,7 @@ export default function PopupPrint() {
 
             <table>
               <thead>
-                <tr><th className="pp-tick">In</th><th>Name</th><th className="pp-n">Party</th><th className="pp-n">How many came</th><th>Code</th></tr>
+                <tr><th className="pp-tick">In</th><th>Name</th><th className="pp-n">Party</th><th className="pp-n">How many came</th><th className="pp-n">Code</th></tr>
               </thead>
               <tbody>
                 {confirmed.map(r => (
@@ -89,7 +90,9 @@ export default function PopupPrint() {
                     <td className="pp-name">{r.name}{r.source === 'door' ? ' (walk-up)' : ''}</td>
                     <td className="pp-n">{r.party_size}</td>
                     <td className="pp-n"><span className="pp-rule" /></td>
-                    <td className="pp-code">{r.ticket_code}</td>
+                    {/* The four digits the guest reads out — the same number
+                        in their email and on the staff phone. */}
+                    <td className="pp-code">{r.door_code || r.ticket_code}</td>
                   </tr>
                 ))}
                 {/* Room to write in anybody who turns up without a booking. */}
@@ -109,7 +112,7 @@ export default function PopupPrint() {
               <section className="pp-wait">
                 <h2>Waiting list — NOT a ticket</h2>
                 <p>Only let these people in if the run sheet says a place has opened.</p>
-                <ol>{waiting.map(r => <li key={r.id}>{r.name} · party of {r.party_size} · {r.ticket_code}</li>)}</ol>
+                <ol>{waiting.map(r => <li key={r.id}>{r.name} · party of {r.party_size} · {r.door_code || r.ticket_code}</li>)}</ol>
               </section>
             )}
 
@@ -141,7 +144,7 @@ export default function PopupPrint() {
         td { padding: 3.2mm 1mm; border-bottom: 1px solid #ccc; vertical-align: middle; }
         .pp-tick { width: 12mm; } .pp-n { width: 22mm; text-align: center; }
         .pp-name { font-size: 12pt; }
-        .pp-code { font-size: 8pt; color: #666; letter-spacing: .1em; }
+        .pp-code { font-size: 13pt; color: #111; letter-spacing: .18em; text-align: center; font-weight: bold; }
         .pp-box { display: block; width: 7mm; height: 7mm; border: 1.5px solid #111; }
         .pp-rule { display: block; height: 1px; background: #ddd; }
         .pp-blank td { border-bottom: 1px solid #e8e8e8; }

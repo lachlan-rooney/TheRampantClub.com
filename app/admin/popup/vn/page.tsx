@@ -76,7 +76,9 @@ const GROUPS: { title: string; note: string; keys: K[] }[] = [
     keys: ['d_off_title', 'd_off_sub', 'd_bad_title', 'd_bad_sub'] },
 
   { title: 'Email · the ticket', note: 'Sent the moment a place is taken, in the language the guest signed up in.',
-    keys: ['mail_ticket_subject', 'mail_ticket_lead', 'mail_ticket_when', 'mail_ticket_show',
+    keys: ['mail_ticket_subject', 'mail_ticket_booked', 'mail_ticket_lead', 'mail_ticket_date',
+           'mail_ticket_people_one', 'mail_ticket_people', 'mail_ticket_arrive',
+           'mail_ticket_when', 'mail_ticket_show', 'mail_ticket_doorcode_lead',
            'mail_ticket_shot', 'mail_ticket_code', 'mail_ticket_where'] },
   { title: 'Email · the waiting list', note: 'It must say plainly that it is not a ticket.',
     keys: ['mail_wait_subject', 'mail_wait_lead', 'mail_wait_not'] },

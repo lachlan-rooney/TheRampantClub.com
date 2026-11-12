@@ -75,7 +75,15 @@ export default function PopupDoor() {
   const [result, setResult] = useState<Result | null>(null)
   const [query, setQuery] = useState('')
   const [manual, setManual] = useState('')
-  const [asking, setAsking] = useState<Row | null>(null)   // how many of the party
+  // ⚠ A FOUR-DIGIT LOOKUP IS NOT AN ADMIT. It produces a booking to LOOK AT;
+  // admitting is a second, deliberate tap after staff have checked the name.
+  const [lookedUp, setLookedUp] = useState<null | { booking_id: string; name: string
+    party_size: number; status: string; ticket_code: string; door_code: string
+    starts_at: string; admitted_at: string | null; admitted_by: string | null }>(null)
+  const [codeErr, setCodeErr] = useState<string | null>(null)
+  // Only three fields are ever read from it, and a whole Row is not available
+  // from a four-digit lookup. Say what is actually needed.
+  const [asking, setAsking] = useState<{ name: string; party_size: number; ticket_code: string } | null>(null)
   const [walkup, setWalkup] = useState<string | null>(null) // session id
   const [busy, setBusy] = useState(false)
   const [partyMax, setPartyMax] = useState(2)
@@ -156,6 +164,21 @@ export default function PopupDoor() {
       read()
     })()
   }, [online, queue, read])
+
+  // ── FOUR DIGITS: FIND, THEN ASK ────────────────────────────────────────
+  const findCode = useCallback(async (code: string) => {
+    setBusy(true); setCodeErr(null); setLookedUp(null)
+    try {
+      const r = await fetch('/api/kiosk/popup/door', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'find_code', code }) })
+      const j = await r.json().catch(() => ({}))
+      if (r.status === 429) { setCodeErr(tr(L, 'sc_too_many')); return }
+      if (!j.found) { setCodeErr(tr(L, 'sc_no_code')); return }
+      setLookedUp(j)
+    } catch { setOnline(false); setCodeErr(tr(L, 'd_off_title')) }
+    finally { setBusy(false) }
+  }, [L])
 
   // ── ADMITTING ──────────────────────────────────────────────────────────
   const admit = useCallback(async (code: string, party: number | null, name?: string) => {
@@ -281,12 +304,52 @@ export default function PopupDoor() {
         : <button className="dr-scan" onClick={() => setScanning(true)}>{tr(L, 'd_scan')}</button>}
 
       <div className="dr-orlabel">{tr(L, 'sc_type')}</div>
-      <form className="dr-manual" onSubmit={e => { e.preventDefault(); if (manual.trim()) { admit(manual.trim().toUpperCase(), null); setManual('') } }}>
-        <input value={manual} maxLength={8} inputMode="text" autoCapitalize="characters"
-               autoComplete="off" spellCheck={false} placeholder={tr(L, 'd_type_code')}
-               onChange={e => setManual(e.target.value.replace(/[^0-9a-fA-F]/g, '').toUpperCase())} />
-        <button type="submit" disabled={manual.length !== 8 || busy}>{tr(L, 'd_go')}</button>
+      {/* ⚠ FOUR DIGITS, NOT EIGHT HEX CHARACTERS. Nobody reads "7E833C4F"
+          across a door and nobody says it. The eight-character ticket code
+          still exists and still rides in the QR; this is the one a guest can
+          actually read out. */}
+      <form className="dr-manual" onSubmit={e => { e.preventDefault(); if (manual.length === 4) { findCode(manual); setManual('') } }}>
+        <input value={manual} maxLength={4} inputMode="numeric" pattern="[0-9]*"
+               autoComplete="off" spellCheck={false} placeholder={tr(L, 'sc_code_label')}
+               onChange={e => setManual(e.target.value.replace(/\D/g, ''))} />
+        <button type="submit" disabled={manual.length !== 4 || busy}>{tr(L, 'd_go')}</button>
       </form>
+      {codeErr && <div className="dr-bad"><strong>{codeErr}</strong></div>}
+
+      {/* ── WHAT FOUR DIGITS BUY: A NAME TO CHECK ────────────────────────
+          Not an admit button on its own. The guest is in front of her; the
+          code is not proof that they are the person it belongs to. */}
+      {lookedUp && (
+        <div className="dr-found">
+          <button className="dr-x" onClick={() => setLookedUp(null)} aria-label={tr(L, 'd_close')}>×</button>
+          <div className="dr-found-ask">{tr(L, 'sc_ask_name')}</div>
+          <div className="dr-found-name">{lookedUp.name}</div>
+          <div className="dr-found-meta">
+            {hhmm(lookedUp.starts_at)} · {lookedUp.party_size > 1
+              ? tr(L, 'd_party_of', { n: lookedUp.party_size }) : tr(L, 'd_one_person')}
+            {lookedUp.status === 'waiting' && ` · ${tr(L, 'd_waiting_list')}`}
+          </div>
+          <div className="dr-found-sub">{tr(L, 'sc_ask_sub')}</div>
+          {lookedUp.admitted_at ? (
+            <div className="dr-found-already">
+              {tr(L, 'd_s_used')} — {tr(L, 'd_s_used_by', { who: lookedUp.admitted_by || '—', time: hhmm(lookedUp.admitted_at) })}
+            </div>
+          ) : lookedUp.status === 'waiting' ? (
+            <div className="dr-found-already">{tr(L, 'd_s_waiting_sub')}</div>
+          ) : (
+            <button className="dr-found-go" disabled={busy}
+                    onClick={() => {
+                      const r = lookedUp
+                      setLookedUp(null)
+                      // A party of more than one still asks how many are here.
+                      if (r.party_size > 1) setAsking({ name: r.name, party_size: r.party_size, ticket_code: r.ticket_code })
+                      else admit(r.ticket_code, 1, r.name)
+                    }}>
+              {tr(L, 'sc_confirm_in')}
+            </button>
+          )}
+        </div>
+      )}
 
       {result && <ResultCard L={L} r={result} onClose={() => setResult(null)}
                              onUndo={async () => { if (result.booking_id) { await act({ action: 'unadmit', booking_id: result.booking_id }); setResult(null) } }} />}
@@ -876,6 +939,19 @@ function Styles() {
     .dr-lang button.is-on { background: ${PAPER}; color: ${INK}; border-color: ${PAPER}; }
     .dr-home { min-height: 48px; padding: 0 2px; margin-bottom: 2px; background: none;
                border: none; color: ${PAPER}; font-family: ${MONO}; font-size: 15px; opacity: .8; }
+    .dr-manual input { letter-spacing: .3em; font-size: 24px; }
+    .dr-found { position: relative; margin: 10px 0 14px; padding: 18px 16px; border-radius: 10px;
+                background: ${GOLD}1f; border-left: 4px solid ${GOLD}; }
+    .dr-found-ask { font-family: ${SERIF}; font-size: 20px; color: ${GOLD};
+                    letter-spacing: .06em; margin-bottom: 10px; }
+    .dr-found-name { font-size: 26px; line-height: 1.2; word-break: break-word; }
+    .dr-found-meta { font-size: 14px; opacity: .8; margin-top: 4px; }
+    .dr-found-sub { font-size: 12px; opacity: .68; margin-top: 8px; line-height: 1.5; }
+    .dr-found-go { width: 100%; min-height: 60px; margin-top: 14px; border: none; border-radius: 8px;
+                   background: ${GREEN}; color: ${INK}; font-family: ${SERIF}; font-size: 17px;
+                   letter-spacing: .1em; text-transform: uppercase; }
+    .dr-found-already { margin-top: 12px; font-size: 14px; line-height: 1.5;
+                        padding: 12px 14px; border-radius: 8px; background: ${INK}; color: ${PAPER}; }
     .dr-orlabel { font-family: ${SERIF}; font-size: 12px; letter-spacing: .16em;
                   text-transform: uppercase; opacity: .55; margin: 14px 0 6px; }
     .dr-out { width: 100%; min-height: 48px; margin-top: 10px; background: none;

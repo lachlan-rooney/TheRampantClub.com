@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import QRCode from 'qrcode'
 import { deviceOk, actingStaff, denyDevice, denyStaff, svc } from '@/lib/kiosk/server'
 import { tr, timeLabel, type Lang } from '@/lib/popup/strings'
-import { ticketUrl } from '@/lib/popup/ticket'
+import { qrImageUrl } from '@/lib/popup/ticket'
 import { EMAIL, emailShell } from '@/lib/email/shell'
 import { alertAdmins } from '@/lib/studio/alert'
 import { deviceEvent } from '@/lib/popup/event'
@@ -124,6 +123,15 @@ export async function POST(req: NextRequest) {
   }
 
   // ═══ FROM HERE THE PLACE EXISTS. Nothing below may discard it. ═════════
+  // The four digits a guest reads out at the door, assigned by the trigger in
+  // db/popup_door_code.sql. Read back rather than generated here, so there is
+  // one place that decides what a code is.
+  let doorCode: string | null = null
+  {
+    const { data: row } = await a.from('popup_bookings')
+      .select('door_code').eq('id', out.booking_id).maybeSingle()
+    doorCode = (row as { door_code?: string } | null)?.door_code ?? null
+  }
   const waiting = out.status === 'waiting'
   const when = timeLabel(out.starts_at, ev.timezone)
   const title = (lang === 'vn' ? ev.title_vn : ev.title_en) || ev.title_en
@@ -157,44 +165,80 @@ export async function POST(req: NextRequest) {
         // some clients block data URIs too. Two ways in, plus the guest's name
         // on the door list, which is the third.
         const site = process.env.NEXT_PUBLIC_SITE_URL || 'https://therampantclub.com'
-      const url = ticketUrl(ev.slug, out.ticket_code)
-        // ⚠ SIZE IS THE RISK, NOT CONTRAST. A QR shown at 104px (about 1.8cm on
-        // a phone) cannot be read across a door; 200px (3.7cm) can. 260 with a
-        // max-width guard so it never overflows a 360px-wide inbox.
-        const png = await QRCode.toDataURL(url, { errorCorrectionLevel: 'M', margin: 1, width: 560 })
+        // ⚠ A REAL IMAGE AT A REAL URL, NOT A data: URI. Tested in a live
+        // Gmail inbox: the data-URI version arrived with no picture at all,
+        // because Gmail strips them. This is a PNG our own domain serves,
+        // which Gmail's image proxy fetches and caches like any other.
+        const img = qrImageUrl(ev.slug, out.ticket_code)
+        const when = timeLabel(out.starts_at, ev.timezone)
+        const dateLine = new Date(out.starts_at).toLocaleDateString(
+          lang === 'vn' ? 'vi-VN' : 'en-GB',
+          { weekday: 'long', day: 'numeric', month: 'long', timeZone: ev.timezone })
+        const people = party === 1 ? tr(lang, 'mail_ticket_people_one')
+                                   : tr(lang, 'mail_ticket_people', { n: party })
         subject = tr(lang, 'mail_ticket_subject', { time: when, title })
+
+        const big = (txt: string, px: number, colour: string, extra = '') =>
+          `<p style="font-family:Georgia,serif;font-size:${px}px;line-height:1.08;color:${colour};margin:0;${extra}">${esc(txt)}</p>`
+
         html = emailShell(`
-          <!-- ⚠ THE LION IS ON THE TICKET, NOT IN lib/email/shell. Putting it
-               in the shell would have added it to every club email in one
-               commit at midnight — the weekly report, the agreements, the
-               auction. This is the email that was asked to look like the club. -->
-          <img src="${site}/images/lion-signature-opt.png" width="64" height="64" alt=""
-               style="display:block;margin:0 0 16px;border:0;outline:none;" />
-          <h1 style="font-family:Georgia,serif;font-weight:400;font-size:26px;line-height:1.2;color:${EMAIL.ink};margin:0 0 10px;">
-            ${esc(tr(lang, 'mail_ticket_lead'))}
-          </h1>
-          <p style="font-family:Georgia,serif;font-size:40px;line-height:1.1;color:${EMAIL.gold};margin:0 0 6px;">${esc(when)}</p>
-          <p style="font-family:Arial,sans-serif;font-size:15px;line-height:1.7;color:${EMAIL.ink};margin:0 0 20px;">
-            ${esc(tr(lang, 'mail_ticket_when', { time: when }))}
+          <!-- ⚠ THE LION IS ON THIS EMAIL, not in lib/email/shell: putting it
+               in the shell would have added it to every club email at once. -->
+          <img src="${site}/images/lion-signature-opt.png" width="62" height="62" alt=""
+               style="display:block;margin:0 0 18px;border:0;outline:none;" />
+
+          ${big(tr(lang, 'mail_ticket_booked'), 30, EMAIL.ink, 'margin-bottom:6px;')}
+          <p style="font-family:Arial,sans-serif;font-size:19px;line-height:1.3;color:${EMAIL.ink};margin:0 0 22px;">
+            ${esc(name)}
           </p>
-          <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 14px;">
-            <tr><td style="background:#ffffff;padding:12px;border-radius:8px;">
-              <img src="${png}" width="260" height="260" alt="${esc(tr(lang, 'mail_ticket_show'))}" style="display:block;max-width:100%;height:auto;border:0;" />
+
+          <!-- The one fact they will remember. -->
+          ${big(when, 64, EMAIL.gold, 'letter-spacing:-.01em;margin-bottom:2px;')}
+          <p style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:${EMAIL.muted};margin:0 0 4px;">
+            ${esc(dateLine)}
+          </p>
+          <p style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:${EMAIL.ink};margin:0 0 18px;">
+            ${esc(people)}
+          </p>
+
+          <p style="font-family:Arial,sans-serif;font-size:13px;line-height:1.3;color:${EMAIL.muted};margin:0 0 3px;letter-spacing:.1em;text-transform:uppercase;">
+            ${esc(tr(lang, 'mail_ticket_where'))}
+          </p>
+          <p style="font-family:Arial,sans-serif;font-size:16px;line-height:1.6;color:${EMAIL.ink};margin:0 0 20px;">
+            ${esc(title)}<br>${esc(venue)}
+          </p>
+
+          <p style="font-family:Arial,sans-serif;font-size:15px;line-height:1.7;color:${EMAIL.ink};margin:0 0 24px;">
+            ${esc(tr(lang, 'mail_ticket_arrive'))}
+          </p>
+
+          <!-- THE QR, on white so a scanner has something to lock on to.
+               ⚠ THE ALT TEXT IS THE DOOR CODE: a guest with images blocked
+               still has something to show, which is the whole point of having
+               two ways in. -->
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px;">
+            <tr><td style="background:#ffffff;padding:14px;border-radius:10px;" bgcolor="#ffffff">
+              <img src="${img}" width="260" height="260"
+                   alt="${esc(tr(lang, 'mail_ticket_doorcode_lead'))}: ${esc(doorCode || out.ticket_code)}"
+                   style="display:block;max-width:100%;height:auto;border:0;" />
             </td></tr>
           </table>
-          <p style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:${EMAIL.gold};margin:0 0 14px;font-weight:bold;">
-            ${esc(tr(lang, 'mail_ticket_shot'))}
+
+          ${doorCode ? `
+          <p style="font-family:Arial,sans-serif;font-size:13px;line-height:1.4;color:${EMAIL.muted};margin:0 0 4px;">
+            ${esc(tr(lang, 'mail_ticket_doorcode_lead'))}
           </p>
-          <p style="font-family:Arial,sans-serif;font-size:13px;line-height:1.75;color:${EMAIL.muted};margin:0 0 4px;">
+          <p style="font-family:'Courier New',monospace;font-size:44px;letter-spacing:.22em;line-height:1.1;color:${EMAIL.gold};margin:0 0 6px;font-weight:bold;">
+            ${esc(doorCode)}
+          </p>` : ''}
+          <p style="font-family:Arial,sans-serif;font-size:13px;line-height:1.7;color:${EMAIL.muted};margin:0 0 22px;">
             ${esc(tr(lang, 'mail_ticket_code'))}
           </p>
-          <p style="font-family:'Courier New',monospace;font-size:22px;letter-spacing:.18em;color:${EMAIL.ink};margin:0 0 20px;">
-            ${esc(out.ticket_code)}
+
+          <p style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:${EMAIL.ink};margin:0;border-top:1px solid ${EMAIL.rule};padding-top:16px;">
+            <strong>${esc(tr(lang, 'mail_ticket_shot'))}</strong>
           </p>
-          <p style="font-family:Arial,sans-serif;font-size:13px;line-height:1.75;color:${EMAIL.muted};margin:0;border-top:1px solid ${EMAIL.rule};padding-top:16px;">
-            <strong style="color:${EMAIL.ink};">${esc(tr(lang, 'mail_ticket_where'))}</strong><br>${esc(venue)}
-          </p>
-        `, { title: subject, preheader: `${when} — ${venue}` })
+        `, { title: subject, preheader: `${when} · ${dateLine} · ${people}` })
       }
 
       const r = await resend.emails.send({ from: FROM, to: emailRaw, subject, html })
@@ -228,5 +272,7 @@ export async function POST(req: NextRequest) {
     places_left: out.places_left,
     emailed,
     had_email: !!emailRaw,
+    // ⚠ SO SHE CAN SAY IT OUT LOUD AS SHE HANDS THE PHONE ROUND.
+    door_code: doorCode,
   })
 }

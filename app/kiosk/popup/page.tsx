@@ -49,7 +49,7 @@ interface EventInfo {
 interface Staff { id: string; display_name: string }
 type Mode = 'home' | 'signup'
 type Step = 'slots' | 'who' | 'done'
-interface Done { name: string; time: string; waiting: boolean; emailed: boolean; had_email: boolean }
+interface Done { name: string; time: string; waiting: boolean; emailed: boolean; had_email: boolean; door_code: string | null }
 
 export default function PopupPhone() {
   const { lang, setLang } = useLang()
@@ -189,7 +189,8 @@ function SignUp({ L, ev, sessions, loadFailed, refresh, onHome }: {
           const j = await r.json().catch(() => ({}))
           if (r.ok && j.ok) {
             setDone({ name: j.name, time: j.time, waiting: !!j.waiting,
-                      emailed: !!j.emailed, had_email: !!j.had_email })
+                      emailed: !!j.emailed, had_email: !!j.had_email,
+                      door_code: j.door_code ?? null })
             setStep('done'); refresh(); return
           }
           if (r.status === 409 || r.status === 400) {
@@ -225,6 +226,15 @@ function SignUp({ L, ev, sessions, loadFailed, refresh, onHome }: {
           <>
             <div className="ph-time">{done.time}</div>
             <h1 className="ph-done-h">{tr(L, 'k_done_title')}</h1>
+            {/* ⚠ THE FOUR DIGITS, SO SHE CAN SAY THEM OUT LOUD as she hands
+                the phone round: "your code is 4821". It is the same number in
+                the email, on the run sheet and on the printed door list. */}
+            {done.door_code && (
+              <div className="ph-code">
+                <span>{tr(L, 's_their_code')}</span>
+                <b>{done.door_code}</b>
+              </div>
+            )}
             <p className="ph-done-sub">{tr(L, 'k_done_early')}</p>
             <p className={`ph-done-mail ${done.had_email && !done.emailed ? 'is-warn' : ''}`}>
               {!done.had_email ? tr(L, 's_not_emailed')
@@ -532,6 +542,12 @@ function Styles() {
     .ph-done-h { font-family: ${SERIF}; font-weight: 400; font-size: clamp(21px, 5.6vw, 30px);
                  line-height: 1.1; margin: 0; opacity: .85; }
     .ph-done-sub { font-size: 16px; line-height: 1.55; margin: 10px 0 0; }
+    .ph-code { margin: 16px auto 4px; padding: 10px 18px; border-radius: 10px;
+               background: ${INK}; color: ${PAPER}; display: inline-flex;
+               flex-direction: column; align-items: center; gap: 2px; }
+    .ph-code span { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; opacity: .62; }
+    .ph-code b { font-family: ${MONO}; font-size: 40px; letter-spacing: .22em;
+                 font-weight: 700; line-height: 1.1; }
     .ph-done-mail { font-size: 14px; opacity: .72; margin: 14px 0 0; line-height: 1.5; }
     .ph-done-mail.is-warn { opacity: 1; color: ${RED}; font-weight: 700; }
     .ph-done-warn { font-size: 16px; margin: 14px 0 0; padding: 12px 14px; border-radius: 8px;

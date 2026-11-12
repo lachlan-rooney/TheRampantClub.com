@@ -56,7 +56,7 @@ export async function GET() {
   const [{ data: sheet }, { data: bookings }, { data: devices }] = await Promise.all([
     a.rpc('popup_runsheet', { p_event_id: ev.id }),
     a.from('popup_bookings')
-      .select('id,name,email,party_size,status,ticket_code,session_id,admitted_at,admitted_by,created_at,waiting_since,source,consent_marketing,confirmation_sent_at')
+      .select('id,name,email,party_size,status,ticket_code,door_code,session_id,admitted_at,admitted_by,created_at,waiting_since,source,consent_marketing,confirmation_sent_at')
       .eq('event_id', ev.id).order('created_at', { ascending: false }),
     // ⚠ WHAT IS LISTED IS WHATEVER IS PAIRED, not a hardcoded roll call.
     // This was three named room tablets until 12 Nov, when the plan changed and
