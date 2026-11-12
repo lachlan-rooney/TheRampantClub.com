@@ -1,10 +1,69 @@
-# The pop-up — rehearsal checklist
-**Independence Palace · Friday 13 November 2026 · 18:00–21:00**
-Nine sessions of 15 minutes, 20 minutes apart, 18:00 to 20:40. Last one ends 20:55.
+# The pop-up — Friday 13 November 2026
 
-Everything is frozen at **15:00 Friday**.
+**Independence Palace · 18:00–21:00.** Nine sessions of 15 minutes, 20 apart, 18:00 to 20:40.
+Last one ends 20:55. Everything frozen at **15:00**.
 
 ---
+
+# ⚠ THE MORNING CHECKLIST — do these in order
+
+The phones are left on **PRACTICE** overnight, so a rehearsal works the moment anybody picks
+one up. The last two steps are the ones that make the evening real. **Do them last.**
+
+### 1 · Rehearse (any time)
+Pick up a phone. It says **PRACTICE** across the top. Sign in, book a guest, scan the ticket.
+Practice emails are real, so use your own address. Wipe and start again any time from the run
+sheet: **Practice → Wipe and restart practice**.
+
+### 2 · Pick the 40 bottles — `/admin/popup/finder`
+⚠ **NOT DONE YET.** Until it is, the tablets say "No bottles have been chosen yet."
+
+### 3 · Warm the three room tablets — Floor 4, FLOOR 3, FLOOR 1
+On the **club's wifi**, open `therampantclub.com/kiosk/popup/finder` on each and wait for
+**"Ready offline · 40 whiskies"**. Tap a flavour, press Find my dram, leave it on that screen.
+If you change the 40 after warming one, reload it once on the wifi and watch the number change.
+
+### 4 · Pair the rest of the staff phones — Admin → Kiosk & Staff PINs
+Kind: **Pop-up staff phone**, named after whoever carries it.
+Pair at `therampantclub.com/kiosk/pair/go?code=XXXXXX`.
+A new phone starts on the **real** evening — switch it to practice from the run sheet to rehearse.
+
+### 5 · Write the follow-up copy — `/admin/popup` → follow-up
+Both versions, both languages. Preview, test send to yourself, approve.
+⚠ It will not send unapproved.
+
+### 6 · Print the door sheets — `/admin/popup/print`
+One A4 page per session, with the four-digit codes. The fallback if everything fails.
+
+### 7 · Load the car
+Three tablets (**do not reload them at the Palace unless they say "Ready offline"**),
+the printed sheets, the phones, chargers.
+
+---
+
+## ⚠ 8 · SWITCH ALL PHONES TO THE REAL EVENING
+
+`/admin/popup` → **Practice → All phones → real evening**
+
+It names the handsets that moved. **Then reload every phone.** A phone left on PRACTICE will
+take real guests' names into a list nobody reads.
+
+Check each one: the home screen must read **Friday 13 November · Independence Palace**,
+not PRACTICE.
+
+## ⚠ 9 · PUBLISH
+
+`/admin/popup` → **Switches → Published → ON**
+
+Until this moment the phones say *"Bookings are not open yet."* After it they take names.
+Nothing reaches a guest before you press it.
+
+**Last check first:** cap 4 · nine sessions 18:00–20:40 · zero bookings · every phone reading
+the real evening.
+
+---
+
+# The rest of the detail
 
 ## 0 · Before anybody leaves the club
 
