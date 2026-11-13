@@ -135,7 +135,7 @@ function Home({ L, me, ev, onSignUp, onScan, onSignOut }: {
   const line = eventLine(L, ev)
   return (
     <div className="ph-home">
-      <Lion />
+      <Crest />
       <div className="ph-me">{tr(L, 'h_signed_in', { name: me })}</div>
       {/* ⚠ WHICH EVENING, AND WHETHER IT IS OPEN — in large type, always,
           before any other message on this phone can be trusted. */}
@@ -152,6 +152,7 @@ function Home({ L, me, ev, onSignUp, onScan, onSignOut }: {
         {tr(L, 'h_scan')}
       </button>
       <button className="ph-signout" onClick={onSignOut}>{tr(L, 'h_signout')}</button>
+      <PoweredBy />
     </div>
   )
 }
@@ -457,6 +458,36 @@ function Lion() {
               onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
 }
 
+// ── THE CLUB, AT THE TOP OF THE SCREEN SHE HOLDS ALL EVENING ──────────────
+// ⚠ TWO FILES, NOT A LOCKUP IMAGE. logo-mark.svg and logo-script.svg are both
+// already club green (#052E20) on their own tight viewBoxes; the ready-made
+// lockups are near-black on a 2500-square canvas, so on a sage screen they
+// would read as grey and sit in a sea of their own margin.
+function Crest() {
+  const hide = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    (e.currentTarget as HTMLImageElement).style.display = 'none'
+  }
+  return (
+    <div className="ph-crest">
+      <img src="/images/logo-mark.svg" alt="" className="ph-crest-mark" onError={hide} />
+      <img src="/images/logo-script.svg" alt="The Rampant Club" className="ph-crest-word" onError={hide} />
+    </div>
+  )
+}
+
+// ⚠ SMALL, AT THE BOTTOM, AND IT IS NOT THE CLUB'S MARK. The platform is
+// Lactone Labs; the club is the customer. Keeping the two apart on the one
+// screen staff look at all evening is the whole point of saying it at all.
+function PoweredBy() {
+  return (
+    <div className="ph-powered">
+      <span>Powered by</span>
+      <img src="/images/studio/brand/lactone-labs-green.png" alt="Lactone Labs"
+           onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
+    </div>
+  )
+}
+
 const S = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
 const ICON = {
   pen: <svg width="30" height="30" viewBox="0 0 24 24" {...S}><path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17v3z" /><path d="M14.5 6.5 17.5 9.5" /></svg>,
@@ -502,6 +533,18 @@ function Styles() {
     .ph-lang button.is-on { background: ${INK}; color: ${SAGE}; border-color: ${INK}; }
     .ph-wait { text-align: center; padding: 60px 0; font-size: 28px; opacity: .4; }
     .ph-lion { display: block; width: 74px; margin: 6px auto 14px; opacity: .9; }
+    .ph-crest { display: flex; flex-direction: column; align-items: center; gap: 10px;
+                margin: 4px auto 16px; }
+    .ph-crest-mark { display: block; height: 76px; width: auto; }
+    .ph-crest-word { display: block; width: min(230px, 62vw); height: auto; }
+    /* ⚠ MARGIN-TOP AUTO, not a fixed gap: the home screen is a column, so this
+       sits on the bottom of whatever height the phone actually has rather than
+       floating under the last button on a tall one. */
+    .ph-powered { margin-top: auto; padding-top: 22px; display: flex; align-items: center;
+                  justify-content: center; gap: 7px; opacity: .55; }
+    .ph-powered span { font-family: ${MONO}; font-size: 9px; letter-spacing: .16em;
+                       text-transform: uppercase; }
+    .ph-powered img { height: 13px; width: auto; display: block; }
 
     /* ── HOME ─────────────────────────────────────────────────────────── */
     .ph-home { display: flex; flex-direction: column; align-items: stretch;

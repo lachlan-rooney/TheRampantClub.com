@@ -183,6 +183,12 @@ export const POPUP_STRINGS = {
   f_sent:         { en: 'The ticket has been sent again.', vn: 'Đã gửi lại vé.' },
   f_cancelled:    { en: '{name} is cancelled. The place is free.', vn: 'Đã huỷ {name}. Chỗ đã trống.' },
   f_nothing:      { en: 'Nothing was changed.', vn: 'Không có gì thay đổi.' },
+  // ⚠ A CANCELLED BOOKING IS READ, NOT EDITED. Reached by another route — a
+  // four-digit lookup, a link from the sign-up — it says so and offers one way
+  // out, rather than a form whose Save would act on something that is gone.
+  f_is_cancelled: { en: 'This booking is cancelled.', vn: 'Đặt chỗ này đã huỷ.' },
+  f_was_at:       { en: '{name} · was {time}', vn: '{name} · trước đây {time}' },
+  f_returning:    { en: 'Going back…', vn: 'Đang quay lại…' },
   f_no_email:     { en: 'No email on this booking — add one to send a ticket.',
                     vn: 'Đặt chỗ này chưa có email — hãy thêm để gửi vé.' },
   // ⚠ A GUEST ALREADY INSIDE can have their name corrected and nothing else.

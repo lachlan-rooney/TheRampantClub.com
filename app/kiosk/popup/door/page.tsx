@@ -177,12 +177,19 @@ export default function PopupDoor() {
   // ⚠ ARRIVING STRAIGHT ON A BOOKING. The confirmation screen sends her here
   // with ?fix=<id>, so correcting the booking she has just taken is one tap
   // from the screen she is already showing the guest — not a search.
+  // ⚠ AND WHERE SHE CAME FROM. A correction opened from the sign-up
+  // confirmation belongs back at the sign-up when it is finished, not on a
+  // door list she never asked for.
+  const [cameFromSignup, setCameFromSignup] = useState(false)
+  // One camera for the whole visit to this screen. See useDoorCamera.
+  const cam = useDoorCamera()
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('fix')
     if (!id || !rows.length) return
     const r = rows.find(x => x.booking_id === id)
     if (r) {
       setFixing(r)
+      setCameFromSignup(true)
       window.history.replaceState({}, '', '/kiosk/popup/door')
     }
   }, [rows])
@@ -421,7 +428,7 @@ export default function PopupDoor() {
 
       {/* ── SCAN / TYPE ─────────────────────────────────────────────────── */}
       {scanning
-        ? <Scanner L={L} onCode={c => { setScanning(false); admit(c, null) }} onClose={() => setScanning(false)} />
+        ? <Scanner L={L} cam={cam} onCode={c => { setScanning(false); admit(c, null) }} onClose={() => setScanning(false)} />
         : <button className="dr-scan" onClick={() => setScanning(true)}>{tr(L, 'd_scan')}</button>}
 
       <div className="dr-orlabel">{tr(L, 'sc_type')}</div>
@@ -444,7 +451,11 @@ export default function PopupDoor() {
           code is not proof that they are the person it belongs to. */}
       {fixing && (
         <FixBooking L={L} row={fixing} partyMax={partyMax}
-                    onClose={() => { setFixing(null); read() }} />
+                    onClose={() => {
+                      setFixing(null)
+                      if (cameFromSignup) { setCameFromSignup(false); router.push('/kiosk/popup'); return }
+                      read()
+                    }} />
       )}
 
       {lookedUp && (
@@ -813,17 +824,124 @@ function Group({ L, title, note, rows, onAdmit, onUndo, onParty, onWalkup, onFix
 const DECODE_EVERY_MS = 80
 const DECODE_SIZE = 400
 
-type CamState = 'starting' | 'running' | 'denied' | 'none' | 'failed'
+type CamState = 'starting' | 'running' | 'denied' | 'none' | 'failed' | 'idle'
+type Perm = 'granted' | 'prompt' | 'denied' | 'unknown'
 
-function Scanner({ L, onCode, onClose }: { L: Lang; onCode: (c: string) => void; onClose: () => void }) {
+// ── ONE CAMERA, FOR AS LONG AS SHE IS AT THE DOOR ─────────────────────────
+// ⚠ THE PROMPT WAS COMING BACK ALL EVENING, and the reason was ours: the
+// scanner owned the stream, so every result card unmounted it, stopped every
+// track, and the next scan asked the browser for the camera from cold. On
+// iOS that is a fresh permission decision often enough to be unbearable at a
+// door with somebody standing in front of you.
+//
+// The stream now lives above the scanner and outlives it. It is released on
+// exactly two events, both of which are "she is no longer at the door":
+//   · leaving the door screen — home, sign-up, sign out
+//   · the tab hidden for more than a minute — a phone in a pocket should not
+//     hold a green light, but a glance at a message should not cost a prompt
+//
+// ⚠ AND OUR OWN EXPLAINER IS NOT A SECOND PROMPT. "Your phone will ask to use
+// the camera" is true exactly once. Shown again to somebody who has already
+// granted it, it reads as another decision to make.
+const CAM_OK_KEY = 'trc_popup_cam_ok'
+const camEverOk = () => { try { return localStorage.getItem(CAM_OK_KEY) === '1' } catch { return false } }
+
+function useDoorCamera() {
+  const streamRef = useRef<MediaStream | null>(null)
+  const [state, setState] = useState<CamState>('idle')
+  const [perm, setPerm] = useState<Perm>('unknown')
+  const [known, setKnown] = useState(false)   // has this phone ever said yes
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => { setKnown(camEverOk()) }, [])
+
+  // ⚠ READ THE STATE BEFORE ASKING, where that is possible. Chrome on Android
+  // answers this; Safari has no 'camera' permission name at all and throws,
+  // which is why the remembered flag above exists as the only memory there.
+  useEffect(() => {
+    let off = false
+    ;(async () => {
+      try {
+        const q = await (navigator.permissions as unknown as {
+          query?: (d: { name: string }) => Promise<PermissionStatus>
+        })?.query?.({ name: 'camera' })
+        if (off || !q) return
+        setPerm(q.state as Perm)
+        q.onchange = () => setPerm(q.state as Perm)
+      } catch { /* not supported — 'unknown' is the honest answer */ }
+    })()
+    return () => { off = true }
+  }, [])
+
+  const live = () => !!streamRef.current?.getTracks().some(t => t.readyState === 'live')
+
+  const open = useCallback(async (): Promise<MediaStream | null> => {
+    if (live()) { setState('running'); return streamRef.current }
+    if (!navigator.mediaDevices?.getUserMedia) { setState('none'); return null }
+    setState('starting')
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } },
+        audio: false,
+      })
+      streamRef.current = s
+      try { localStorage.setItem(CAM_OK_KEY, '1') } catch { /* private mode */ }
+      setKnown(true); setPerm('granted'); setState('running')
+      return s
+    } catch (e) {
+      // ⚠ THE FAILURES READ DIFFERENTLY TO STAFF. "You said no" and "this
+      // phone has no camera" need different actions from her.
+      const name = (e as { name?: string })?.name || ''
+      setState(name === 'NotAllowedError' || name === 'SecurityError' ? 'denied'
+        : name === 'NotFoundError' || name === 'OverconstrainedError' ? 'none' : 'failed')
+      if (name === 'NotAllowedError') setPerm('denied')
+      return null
+    }
+  }, [])
+
+  const release = useCallback(() => {
+    streamRef.current?.getTracks().forEach(t => t.stop())
+    streamRef.current = null
+    setState('idle')
+  }, [])
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.hidden) {
+        hideTimer.current = setTimeout(() => release(), 60_000)
+      } else if (hideTimer.current) {
+        clearTimeout(hideTimer.current); hideTimer.current = null
+      }
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      document.removeEventListener('visibilitychange', onVis)
+      if (hideTimer.current) clearTimeout(hideTimer.current)
+    }
+  }, [release])
+
+  // Leaving the door at all — home, sign-up, sign out — stops the light.
+  useEffect(() => () => {
+    streamRef.current?.getTracks().forEach(t => t.stop())
+    streamRef.current = null
+  }, [])
+
+  return { open, release, state, perm, known, stream: streamRef }
+}
+
+
+function Scanner({ L, cam, onCode, onClose }: {
+  L: Lang; cam: ReturnType<typeof useDoorCamera>
+  onCode: (c: string) => void; onClose: () => void
+}) {
   const video = useRef<HTMLVideoElement>(null)
   const canvas = useRef<HTMLCanvasElement | null>(null)
-  const [state, setState] = useState<CamState>('starting')
   const [how, setHow] = useState<'native' | 'jsqr' | null>(null)
+  const state = cam.state
+  const { open } = cam
 
   useEffect(() => {
     let stop = false
-    let stream: MediaStream | null = null
     let timer: ReturnType<typeof setTimeout> | null = null
 
     // A QR may carry the whole ticket URL, or CODE.SIGNATURE, or the bare
@@ -839,26 +957,17 @@ function Scanner({ L, onCode, onClose }: { L: Lang; onCode: (c: string) => void;
     }
 
     ;(async () => {
-      // ── 1 · THE CAMERA ───────────────────────────────────────────────
-      try {
-        if (!navigator.mediaDevices?.getUserMedia) { setState('none'); return }
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } },
-          audio: false,
-        })
-      } catch (e) {
-        // ⚠ THE TWO FAILURES READ DIFFERENTLY TO STAFF, so they are told apart.
-        // "You said no" and "this phone has no camera" need different actions.
-        const name = (e as { name?: string })?.name || ''
-        setState(name === 'NotAllowedError' || name === 'SecurityError' ? 'denied'
-          : name === 'NotFoundError' || name === 'OverconstrainedError' ? 'none' : 'failed')
-        return
-      }
-      if (stop || !video.current) { stream.getTracks().forEach(t => t.stop()); return }
+      // ── 1 · THE CAMERA, BORROWED ─────────────────────────────────────
+      // ⚠ THE SCANNER NO LONGER OWNS IT. The same stream is handed back on
+      // every scan all evening, so the browser is asked once and not once a
+      // guest. The teardown below detaches the video and stops decoding; it
+      // does NOT stop a track.
+      const stream = await open()
+      if (!stream || stop || !video.current) return
       video.current.srcObject = stream
-      try { await video.current.play() } catch { setState('failed'); return }
+      try { await video.current.play() } catch { /* a re-attached stream can
+        reject play() on iOS and still render; the decode loop is the test */ }
       if (stop) return
-      setState('running')
 
       // ── 2 · THE DECODER ──────────────────────────────────────────────
       const D = (window as unknown as {
@@ -888,7 +997,7 @@ function Scanner({ L, onCode, onClose }: { L: Lang; onCode: (c: string) => void;
       canvas.current.width = DECODE_SIZE
       canvas.current.height = DECODE_SIZE
       const ctx = canvas.current.getContext('2d', { willReadFrequently: true })
-      if (!ctx) { setState('failed'); return }
+      if (!ctx) return
 
       const tick = () => {
         if (stop || !video.current) return
@@ -913,12 +1022,13 @@ function Scanner({ L, onCode, onClose }: { L: Lang; onCode: (c: string) => void;
     return () => {
       stop = true
       if (timer) clearTimeout(timer)
-      // ⚠ EVERY TRACK STOPPED. A camera left running is a green light on a
-      // phone in somebody's hand for the rest of the evening.
-      stream?.getTracks().forEach(t => t.stop())
+      // ⚠ DETACHED, NOT STOPPED. Stopping the track here is exactly what made
+      // the permission prompt come back on the next scan. The stream is
+      // released by useDoorCamera when she leaves the door or the phone goes
+      // in a pocket — not when a result card appears.
       if (video.current) video.current.srcObject = null
     }
-  }, [onCode, L])
+  }, [onCode, L, open])
 
   const message =
     state === 'denied' ? { h: tr(L, 'd_cam_denied'), s: tr(L, 'd_cam_denied_ios') }
@@ -940,7 +1050,11 @@ function Scanner({ L, onCode, onClose }: { L: Lang; onCode: (c: string) => void;
           <div className="dr-cam-hint">
             {state === 'starting' ? tr(L, 'd_cam_starting') : tr(L, 'd_cam_aim')}
           </div>
-          {state === 'starting' && <div className="dr-cam-ask">{tr(L, 'd_cam_asking')}</div>}
+          {/* ⚠ ONCE. Not every time the camera opens — only while the browser
+              genuinely still has a decision to make. A phone that has already
+              granted it goes straight to the picture. */}
+          {state === 'starting' && cam.perm !== 'granted' && !cam.known &&
+            <div className="dr-cam-ask">{tr(L, 'd_cam_asking')}</div>}
           {how && <span className="dr-cam-how">{how === 'native' ? 'native' : 'jsQR'}</span>}
         </div>
       )}
@@ -1026,6 +1140,18 @@ function FixBooking({ L, row, partyMax, onClose }: {
   L: Lang; row: Row; partyMax: number; onClose: () => void
 }) {
   const inAlready = !!row.admitted_at
+  // ⚠ RESULT, THEN RETURN — the same shape walk-up already had. The sheet used
+  // to sit there saying "cancelled" over a booking that no longer existed,
+  // with Save still pressable and the fixed backdrop holding the page still.
+  const [leaving, setLeaving] = useState(false)
+  // ⚠ ONE PRESS ONLY. A second tap on a slow connection used to send a second
+  // cancel; the database is idempotent about it but the screen was not.
+  const settled = useRef(false)
+  const goBack = useCallback((ms: number) => {
+    settled.current = true
+    setLeaving(true)
+    setTimeout(onClose, ms)
+  }, [onClose])
   const [name, setName] = useState(row.name)
   const [email, setEmail] = useState(row.email || '')
   const [party, setParty] = useState(row.party_size)
@@ -1068,10 +1194,29 @@ function FixBooking({ L, row, partyMax, onClose }: {
       setSaid({ bad: true, text: tr(L, 'b_failed'), sub: tr(L, 'b_try_again') }); return
     }
     if (!j.changed?.length) { setSaid({ bad: false, text: tr(L, 'f_nothing') }); return }
+    const moved = (j.changed as string[]).includes('session')
     setSaid({ bad: false,
-      text: j.resend && j.emailed ? tr(L, 'f_saved_sent') : tr(L, 'f_saved'),
+      text: moved ? tr(L, 'w_moved_to', { time: hhmm(j.starts_at) })
+        : j.resend && j.emailed ? tr(L, 'f_saved_sent') : tr(L, 'f_saved'),
       sub: j.resend && j.emailed === false ? (j.email_error || '') : tr(L, 'f_codes_same') })
     setRooms(null); setSession(null)
+    // ⚠ A MOVE GOES BACK, A SPELLING STAYS. Changing the time changes which
+    // list the guest is on, so the list is the only place the change can be
+    // seen — and the two now behave alike. Correcting a name changes nothing
+    // she needs to go and look at.
+    if (moved) goBack(1500)
+  }
+
+  // ⚠ NO FIELDS AND NO SAVE on something that is already gone. Reached from a
+  // four-digit lookup or a stale link, it says what it is and offers one way
+  // out — a form here would let Save act on a cancelled booking.
+  if (row.status === 'cancelled') {
+    return (
+      <Sheet L={L} title={tr(L, 'd_s_cancelled')} sub={tr(L, 'f_is_cancelled')} onClose={onClose}>
+        <div className="dr-found-name">{row.name}</div>
+        <div className="dr-found-meta">{hhmm(row.starts_at)}</div>
+      </Sheet>
+    )
   }
 
   return (
@@ -1111,11 +1256,12 @@ function FixBooking({ L, row, partyMax, onClose }: {
         </div>
       )}
 
-      <button className="dr-scan" disabled={!!busy || !name.trim()} onClick={save}>
-        {busy === 'save' ? tr(L, 'b_saving') : tr(L, 'f_save')}
+      <button className="dr-scan" disabled={!!busy || leaving || !name.trim()}
+              onClick={() => { if (!settled.current) save() }}>
+        {busy === 'save' ? tr(L, 'b_saving') : leaving ? tr(L, 'f_returning') : tr(L, 'f_save')}
       </button>
 
-      <button className="dr-cancel" disabled={!!busy || !email.trim()} onClick={async () => {
+      <button className="dr-cancel" disabled={!!busy || leaving || !email.trim()} onClick={async () => {
         const j = await post({ action: 'resend', booking_id: row.booking_id }, 'resend')
         if (j) setSaid(j.ok ? { bad: false, text: tr(L, 'f_sent') }
                             : { bad: true, text: j.error || tr(L, 'b_failed') })
@@ -1123,14 +1269,19 @@ function FixBooking({ L, row, partyMax, onClose }: {
         {busy === 'resend' ? tr(L, 'b_working') : email.trim() ? tr(L, 'f_resend') : tr(L, 'f_no_email')}
       </button>
 
-      {!inAlready && (confirming ? (
+      {!inAlready && !leaving && (confirming ? (
         <div className="dr-warn">
           <strong>{tr(L, 'f_cancel_sure')}</strong>
           <div className="dr-row2">
             <button className="dr-cancel" onClick={() => setConfirming(false)}>{tr(L, 'f_cancel_no')}</button>
-            <button className="dr-danger" disabled={!!busy} onClick={async () => {
+            <button className="dr-danger" disabled={!!busy || leaving} onClick={async () => {
+              if (settled.current) return
               const j = await post({ action: 'fix', booking_id: row.booking_id, cancel: true }, 'cancel')
-              if (j?.ok) { setSaid({ bad: false, text: tr(L, 'f_cancelled', { name: row.name }) }); setConfirming(false) }
+              if (j?.ok) {
+                setSaid({ bad: false, text: tr(L, 'f_cancelled', { name: row.name }) })
+                setConfirming(false)
+                goBack(1200)
+              }
             }}>{busy === 'cancel' ? tr(L, 'b_working') : tr(L, 'f_cancel_yes')}</button>
           </div>
         </div>
@@ -1357,9 +1508,19 @@ function Styles() {
 
     .dr-sheet-bg { position: fixed; inset: 0; background: #000000b8; z-index: 50;
                    display: flex; align-items: flex-end; }
+    /* ⚠ THE SHEET SCROLLS, AND THAT IS WHY THE PAGE DOES. The backdrop is
+       position:fixed over the whole viewport. A sheet taller than the screen
+       overflowed it with nowhere to scroll, so the phone looked frozen — the
+       fault reported as "the page can no longer be scrolled" after a cancel.
+       Capped and scrollable, it can never exceed the screen.
+       ⚠ vh, NOT dvh: the floor of this estate is iOS 13.4, which cannot parse
+       dvh at all, and a rule it cannot parse is a rule it drops. */
     .dr-sheet { width: 100%; box-sizing: border-box; background: ${INK}; color: ${PAPER};
                 border-top: 3px solid ${GOLD}; border-radius: 14px 14px 0 0;
-                padding: 18px 16px calc(20px + env(safe-area-inset-bottom, 0px)); }
+                padding: 18px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+                max-height: 92vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+                overscroll-behavior: contain; }
+    @supports (height: 100dvh) { .dr-sheet { max-height: 92dvh; } }
     .dr-sheet-h { font-family: ${SERIF}; font-size: 26px; line-height: 1.1; }
     .dr-sheet-s { font-size: 13px; opacity: .7; margin: 6px 0 14px; line-height: 1.5; }
     .dr-nums { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
