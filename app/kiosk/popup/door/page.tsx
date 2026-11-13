@@ -1554,7 +1554,9 @@ function Styles() {
                 padding: 18px 16px calc(20px + env(safe-area-inset-bottom, 0px));
                 max-height: 92vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
                 overscroll-behavior: contain; }
-    @supports (height: 100dvh) { .dr-sheet { max-height: 92dvh; } }
+    /* svh here too: an overlay sized to the viewport that grows and shrinks
+       with the address bar is an overlay that jumps while being read. */
+    @supports (height: 100svh) { .dr-sheet { max-height: 92svh; } }
     .dr-sheet-h { font-family: ${SERIF}; font-size: 26px; line-height: 1.1; }
     .dr-sheet-s { font-size: 13px; opacity: .7; margin: 6px 0 14px; line-height: 1.5; }
     .dr-nums { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
