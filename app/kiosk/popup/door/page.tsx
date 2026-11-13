@@ -629,11 +629,20 @@ function ResultCard({ L, r, onClose, onUndo, onMove, busy }: {
   onMove?: () => void; busy?: boolean
 }) {
   const s = SAY[r.state] || SAY.unknown
+  const box = useRef<HTMLDivElement>(null)
   // The buzz fires once, when the answer appears.
-  useEffect(() => { buzz(s.yes) }, [s.yes])
+  //
+  // ⚠ AND THE ANSWER IS BROUGHT TO WHERE SHE IS LOOKING. The card renders in
+  // one fixed place near the top of the page; a name ticked off in a later
+  // group is halfway down a long list, and without this the screen appears to
+  // do nothing at all — the one failure this whole card exists to prevent.
+  useEffect(() => {
+    buzz(s.yes)
+    box.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [s.yes])
 
   return (
-    <div className={`dr-result ${s.yes ? 'is-yes' : 'is-no'}`} role="status" aria-live="assertive">
+    <div ref={box} className={`dr-result ${s.yes ? 'is-yes' : 'is-no'}`} role="status" aria-live="assertive">
       <button className="dr-x" onClick={onClose} aria-label={tr(L, 'd_close')}>×</button>
 
       {/* ⚠ THE ICON FILLS THE TOP OF THE SCREEN. It is the first thing read

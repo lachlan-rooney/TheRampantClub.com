@@ -51,7 +51,16 @@ export function LangProvider({ children }: { children: ReactNode }) {
   // per-session and must never outlive the member who made it, or the next
   // member finds the tablet in someone else's language. So on /kiosk the choice
   // lives in React state only — never read from, never written to, storage.
-  const ephemeral = pathname === '/kiosk' || (pathname?.startsWith('/kiosk/') ?? false)
+  //
+  // ⚠ THE POP-UP STAFF PHONE IS THE EXCEPTION, and it is not a tablet. It is
+  // one phone in one staff member's hand for one evening, behind her own PIN.
+  // If Vietnamese did not survive a reload she would re-tap VN every time the
+  // page came back — at a door, in the dark, with somebody in front of her.
+  // The guest-facing pop-up finder is NOT on this list: that one is a shared
+  // tablet on a table and goes back to English for the next guest.
+  const MINE = ['/kiosk/popup', '/kiosk/popup/door']
+  const ephemeral = (pathname === '/kiosk' || (pathname?.startsWith('/kiosk/') ?? false))
+    && !MINE.includes(pathname ?? '')
 
   useEffect(() => {
     if (ephemeral) return
