@@ -262,6 +262,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ...r, emailed: sent ? sent.ok : null, email_error: sent?.error ?? null })
   }
 
+  // ── ONE BOOKING, BY ID, CANCELLED OR NOT ────────────────────────────────
+  // ⚠ popup_doorlist DELIBERATELY LEAVES CANCELLED BOOKINGS OUT — a door list
+  //   with cancellations on it is a door list nobody can read. But a link to
+  //   a correction, or a four-digit code typed after the guest was cancelled,
+  //   has to find it, or the screen does nothing at all and looks broken.
+  if (action === 'find_id') {
+    const id = String(body.booking_id || '')
+    const { data, error } = await a.from('popup_bookings')
+      .select('id, ticket_code, door_code, name, email, party_size, status, admitted_at, admitted_by, admitted_party, taken_by, source, popup_sessions!inner(idx, starts_at, ends_at)')
+      .eq('event_id', ev.id).eq('id', id).maybeSingle()
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!data) return NextResponse.json({ found: false })
+    const s = (data as unknown as { popup_sessions: { idx: number; starts_at: string; ends_at: string } }).popup_sessions
+    return NextResponse.json({ found: true, row: {
+      booking_id: data.id, ticket_code: data.ticket_code, door_code: data.door_code,
+      name: data.name, email: data.email, party_size: data.party_size, status: data.status,
+      session_idx: s.idx, starts_at: s.starts_at, ends_at: s.ends_at,
+      admitted_at: data.admitted_at, admitted_by: data.admitted_by,
+      admitted_party: data.admitted_party, admitted_offline: false,
+      taken_by: data.taken_by, source: data.source,
+    } })
+  }
+
   // ── WHERE COULD THIS GUEST GO ───────────────────────────────────────────
   // For the one button on a "their time has passed" card. Same source as the
   // Fix sheet's alternatives, so both offer the same times.

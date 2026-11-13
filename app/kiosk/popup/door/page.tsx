@@ -186,12 +186,19 @@ export default function PopupDoor() {
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('fix')
     if (!id || !rows.length) return
+    window.history.replaceState({}, '', '/kiosk/popup/door')
     const r = rows.find(x => x.booking_id === id)
-    if (r) {
-      setFixing(r)
-      setCameFromSignup(true)
-      window.history.replaceState({}, '', '/kiosk/popup/door')
-    }
+    if (r) { setFixing(r); setCameFromSignup(true); return }
+    // ⚠ NOT ON THE DOOR LIST IS NOT "DOES NOT EXIST". A cancelled booking is
+    //   kept off that list on purpose; asked for by name it must still be
+    //   found, and shown as cancelled rather than silently doing nothing.
+    ;(async () => {
+      const j = await fetch('/api/kiosk/popup/door', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'find_id', booking_id: id }) })
+        .then(x => x.json()).catch(() => null)
+      if (j?.found) { setFixing(j.row as Row); setCameFromSignup(true) }
+    })()
   }, [rows])
   useEffect(() => { const t = setInterval(read, POLL_MS); return () => clearInterval(t) }, [read])
 
@@ -874,29 +881,37 @@ function useDoorCamera() {
   }, [])
 
   const live = () => !!streamRef.current?.getTracks().some(t => t.readyState === 'live')
+  // ⚠ ONE REQUEST IN FLIGHT. Two callers arriving before the first resolves
+  //   used to make two separate getUserMedia calls — which on a phone is two
+  //   permission decisions for one tap.
+  const pending = useRef<Promise<MediaStream | null> | null>(null)
 
   const open = useCallback(async (): Promise<MediaStream | null> => {
     if (live()) { setState('running'); return streamRef.current }
+    if (pending.current) return pending.current
     if (!navigator.mediaDevices?.getUserMedia) { setState('none'); return null }
     setState('starting')
-    try {
-      const s = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } },
-        audio: false,
-      })
-      streamRef.current = s
-      try { localStorage.setItem(CAM_OK_KEY, '1') } catch { /* private mode */ }
-      setKnown(true); setPerm('granted'); setState('running')
-      return s
-    } catch (e) {
-      // ⚠ THE FAILURES READ DIFFERENTLY TO STAFF. "You said no" and "this
-      // phone has no camera" need different actions from her.
-      const name = (e as { name?: string })?.name || ''
-      setState(name === 'NotAllowedError' || name === 'SecurityError' ? 'denied'
-        : name === 'NotFoundError' || name === 'OverconstrainedError' ? 'none' : 'failed')
-      if (name === 'NotAllowedError') setPerm('denied')
-      return null
-    }
+    pending.current = (async () => {
+      try {
+        const s = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } },
+          audio: false,
+        })
+        streamRef.current = s
+        try { localStorage.setItem(CAM_OK_KEY, '1') } catch { /* private mode */ }
+        setKnown(true); setPerm('granted'); setState('running')
+        return s
+      } catch (e) {
+        // ⚠ THE FAILURES READ DIFFERENTLY TO STAFF. "You said no" and "this
+        // phone has no camera" need different actions from her.
+        const name = (e as { name?: string })?.name || ''
+        setState(name === 'NotAllowedError' || name === 'SecurityError' ? 'denied'
+          : name === 'NotFoundError' || name === 'OverconstrainedError' ? 'none' : 'failed')
+        if (name === 'NotAllowedError') setPerm('denied')
+        return null
+      } finally { pending.current = null }
+    })()
+    return pending.current
   }, [])
 
   const release = useCallback(() => {
@@ -939,6 +954,13 @@ function Scanner({ L, cam, onCode, onClose }: {
   const [how, setHow] = useState<'native' | 'jsqr' | null>(null)
   const state = cam.state
   const { open } = cam
+  // ⚠ THE HANDLER LIVES IN A REF, AND THAT IS HALF THE BUG. onCode is written
+  // inline at the call site, so it is a new function on every render of the
+  // door — which put it in this effect's dependencies and tore the whole
+  // scanner down and back up each time anything on the page changed. Every
+  // one of those rebuilds was another request for the camera.
+  const onCodeRef = useRef(onCode)
+  useEffect(() => { onCodeRef.current = onCode }, [onCode])
 
   useEffect(() => {
     let stop = false
@@ -952,7 +974,7 @@ function Scanner({ L, cam, onCode, onClose }: {
     }
     const hit = (raw: string) => {
       const code = pull(raw)
-      if (code && !stop) { stop = true; onCode(code) }
+      if (code && !stop) { stop = true; onCodeRef.current(code) }
       return !!code
     }
 
@@ -1028,7 +1050,7 @@ function Scanner({ L, cam, onCode, onClose }: {
       // in a pocket — not when a result card appears.
       if (video.current) video.current.srcObject = null
     }
-  }, [onCode, L, open])
+  }, [L, open])
 
   const message =
     state === 'denied' ? { h: tr(L, 'd_cam_denied'), s: tr(L, 'd_cam_denied_ios') }
@@ -1204,7 +1226,7 @@ function FixBooking({ L, row, partyMax, onClose }: {
     // list the guest is on, so the list is the only place the change can be
     // seen — and the two now behave alike. Correcting a name changes nothing
     // she needs to go and look at.
-    if (moved) goBack(1500)
+    if (moved) goBack(1200)
   }
 
   // ⚠ NO FIELDS AND NO SAVE on something that is already gone. Reached from a
@@ -1280,7 +1302,7 @@ function FixBooking({ L, row, partyMax, onClose }: {
               if (j?.ok) {
                 setSaid({ bad: false, text: tr(L, 'f_cancelled', { name: row.name }) })
                 setConfirming(false)
-                goBack(1200)
+                goBack(900)
               }
             }}>{busy === 'cancel' ? tr(L, 'b_working') : tr(L, 'f_cancel_yes')}</button>
           </div>
