@@ -527,9 +527,23 @@ function Styles() {
   return <style dangerouslySetInnerHTML={{ __html: `
     /* Built for 360 and 390 wide, one thumb, somebody standing up. Nothing
        below 48px of touch target; no body text under 16px. */
-    .ph { min-height: var(--pk-vh, 100dvh); background: ${SAGE}; color: ${INK};
-          padding: 10px 16px calc(28px + var(--pk-kb, 0px)); box-sizing: border-box;
+    /* ⚠ svh, NOT dvh — AND THIS WAS THE JITTER ON THE HOME SCREEN.
+       100dvh is the DYNAMIC viewport: it grows as the address bar hides on
+       the way down and shrinks as it comes back on the way up. On a page
+       that is close to one screen tall that flips it between scrollable and
+       not scrollable on every stroke, so the content jumps under the thumb.
+       100svh is the SMALL viewport — the stable one, measured as if the bar
+       is always there — and it never changes while scrolling.
+       ⚠ THE PLAIN vh IS THE FLOOR, because iOS 13.4 is this estate's oldest
+       device and cannot parse svh at all; a rule it cannot parse is a rule
+       it drops, which would leave no min-height whatsoever.
+       (--pk-vh and --pk-kb were read in three places here and written in
+       none — dead since they were added. The keyboard is handled by
+       scrollIntoView on focus, which is what actually runs.) */
+    .ph { min-height: 100vh; background: ${SAGE}; color: ${INK};
+          padding: 10px 16px 28px; box-sizing: border-box;
           font-family: ${MONO}; }
+    @supports (height: 100svh) { .ph { min-height: 100svh; } }
     .ph-practice { margin: -10px -16px 10px; padding: 7px 16px; background: ${INK}; color: ${GOLD};
                    font-family: ${SERIF}; font-size: 13px; letter-spacing: .28em; text-align: center; }
     .ph-lang { display: flex; gap: 2px; justify-content: flex-end; margin-bottom: 6px; }
@@ -560,7 +574,8 @@ function Styles() {
 
     /* ── HOME ─────────────────────────────────────────────────────────── */
     .ph-home { display: flex; flex-direction: column; align-items: stretch;
-               min-height: calc(var(--pk-vh, 100dvh) - 120px); }
+               min-height: calc(100vh - 120px); }
+    @supports (height: 100svh) { .ph-home { min-height: calc(100svh - 120px); } }
     .ph-me { font-family: ${SERIF}; font-size: 19px; text-align: center; margin-bottom: 4px; }
     .ph-practice-note { font-size: 12px; text-align: center; opacity: .7; margin-bottom: 10px; line-height: 1.5; }
     .ph-event { display: flex; flex-direction: column; align-items: center; gap: 3px;

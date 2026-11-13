@@ -1392,9 +1392,14 @@ function Styles() {
     /* A DARK DOOR, deliberately: it is used outdoors after dark, and a cream
        page at full brightness is a torch pointed at the guest. Sized for one
        thumb at 390px; nothing below 44px. */
-    .dr { min-height: var(--pk-vh, 100dvh); background: ${INK}; color: ${PAPER};
-          padding: 12px 14px calc(28px + var(--pk-kb, 0px)); box-sizing: border-box;
+    /* ⚠ svh, NOT dvh. See the note on the sign-up screen: the dynamic
+       viewport changes height as the address bar hides and returns, which
+       makes a page jump under the thumb. The plain vh is the floor for
+       iOS 13.4, which cannot parse svh and would drop the rule. */
+    .dr { min-height: 100vh; background: ${INK}; color: ${PAPER};
+          padding: 12px 14px 28px; box-sizing: border-box;
           font-family: ${MONO}; }
+    @supports (height: 100svh) { .dr { min-height: 100svh; } }
     .dr-top { display: flex; align-items: flex-start; justify-content: space-between;
               gap: 10px; padding-bottom: 10px; border-bottom: 1px solid ${PAPER}26; }
     .dr-who { font-family: ${SERIF}; font-size: 15px; letter-spacing: .1em; text-transform: uppercase; }
