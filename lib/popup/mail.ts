@@ -168,8 +168,13 @@ export function followupHtml(L: Lang, o: {
 // It carries the QR and the printed code, exactly as the original ticket does,
 // because for the guest this IS their ticket — the first one they got said
 // they were waiting.
+// ⚠ AND ITS QR IS A SERVED PNG, NOT A data: URI. The ticket email was fixed
+// for this after a live Gmail test showed an email with no picture in it at
+// all; this one was left behind, so the guest with the best reason to need a
+// ticket — the one who was told they had no place — got the only email
+// without one. Same image URL the ticket uses, same four digits underneath.
 export function promotedHtml(L: Lang, o: {
-  time: string; venue: string; code: string; qrDataUri: string
+  time: string; venue: string; code: string; qrUrl: string; doorCode?: string | null
 }) {
   const subject = tr(L, 'mail_promoted_subject', { time: o.time })
   return {
@@ -184,13 +189,19 @@ export function promotedHtml(L: Lang, o: {
       </p>
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 14px;">
         <tr><td style="background:#ffffff;padding:12px;border-radius:8px;">
-          <img src="${o.qrDataUri}" width="220" height="220" alt="${esc(tr(L, 'mail_ticket_show'))}" style="display:block;" />
+          <img src="${o.qrUrl}" width="220" height="220"
+               alt="${esc(tr(L, 'mail_ticket_doorcode_lead'))}: ${esc(o.doorCode || o.code)}"
+               style="display:block;max-width:100%;height:auto;border:0;" />
         </td></tr>
       </table>
-      <p style="font-family:Arial,sans-serif;font-size:13px;line-height:1.75;color:${EMAIL.muted};margin:0 0 4px;">
+      ${o.doorCode ? `
+      <p style="font-family:Arial,sans-serif;font-size:13px;line-height:1.4;color:${EMAIL.muted};margin:0 0 4px;">
+        ${esc(tr(L, 'mail_ticket_doorcode_lead'))}
+      </p>
+      <p style="font-family:'Courier New',monospace;font-size:44px;letter-spacing:.22em;line-height:1.1;color:${EMAIL.gold};margin:0 0 6px;font-weight:bold;">${esc(o.doorCode)}</p>` : ''}
+      <p style="font-family:Arial,sans-serif;font-size:13px;line-height:1.75;color:${EMAIL.muted};margin:0 0 20px;">
         ${esc(tr(L, 'mail_ticket_code'))}
       </p>
-      <p style="font-family:'Courier New',monospace;font-size:22px;letter-spacing:.18em;color:${EMAIL.ink};margin:0 0 20px;">${esc(o.code)}</p>
       <p style="font-family:Arial,sans-serif;font-size:13px;line-height:1.75;color:${EMAIL.muted};margin:0;border-top:1px solid ${EMAIL.rule};padding-top:16px;">
         <strong style="color:${EMAIL.ink};">${esc(tr(L, 'mail_ticket_where'))}</strong><br>${esc(o.venue)}
       </p>

@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import QRCode from 'qrcode'
 import { isAdmin } from '@/lib/admin'
 import { tr, timeLabel, type Lang } from '@/lib/popup/strings'
-import { ticketUrl } from '@/lib/popup/ticket'
+import { qrImageUrl } from '@/lib/popup/ticket'
 import { sendEach, promotedHtml } from '@/lib/popup/mail'
 
 export const dynamic = 'force-dynamic'
@@ -141,11 +140,11 @@ async function tellPromoted(
 ): Promise<{ emailed: number; no_email: number; failed: { email: string; error?: string }[] }> {
   if (!bookingIds.length) return { emailed: 0, no_email: 0, failed: [] }
   const { data: rows } = await a.from('popup_bookings')
-    .select('id, name, email, lang, ticket_code, popup_sessions!inner(starts_at)')
+    .select('id, name, email, lang, ticket_code, door_code, popup_sessions!inner(starts_at)')
     .in('id', bookingIds)
   const people = (rows || []) as unknown as {
     id: string; name: string; email: string | null; lang: string
-    ticket_code: string; popup_sessions: { starts_at: string }
+    ticket_code: string; door_code: string | null; popup_sessions: { starts_at: string }
   }[]
   const withEmail = people.filter(p => p.email)
 
@@ -155,12 +154,10 @@ async function tellPromoted(
   const msgs = []
   for (const p of withEmail) {
     const L = (p.lang === 'vn' ? 'vn' : 'en') as Lang
-    const qr = await QRCode.toDataURL(ticketUrl(slug, p.ticket_code),
-      { errorCorrectionLevel: 'M', margin: 1, width: 440 })
     const m = promotedHtml(L, {
       time: timeLabel(p.popup_sessions.starts_at, ev?.timezone || 'Asia/Ho_Chi_Minh'),
       venue: (L === 'vn' ? ev?.venue_vn : ev?.venue_en) || ev?.venue_en || '',
-      code: p.ticket_code, qrDataUri: qr,
+      code: p.ticket_code, doorCode: p.door_code, qrUrl: qrImageUrl(slug, p.ticket_code),
     })
     msgs.push({ email: p.email, subject: m.subject, html: m.html })
   }

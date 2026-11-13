@@ -482,8 +482,14 @@ function PoweredBy() {
   return (
     <div className="ph-powered">
       <span>Powered by</span>
-      <img src="/images/studio/brand/lactone-labs-green.png" alt="Lactone Labs"
-           onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
+      {/* ⚠ A TAP TARGET, NOT A DECORATION — and it opens in its own tab, so a
+          curious thumb never navigates the phone away from a sign-up that is
+          half typed. */}
+      <a href="https://lactonelabs.co.uk" target="_blank" rel="noreferrer noopener"
+         aria-label="Lactone Labs">
+        <img src="/images/studio/brand/lactone-labs-green.png" alt="Lactone Labs"
+             onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
+      </a>
     </div>
   )
 }
@@ -541,10 +547,16 @@ function Styles() {
        sits on the bottom of whatever height the phone actually has rather than
        floating under the last button on a tall one. */
     .ph-powered { margin-top: auto; padding-top: 22px; display: flex; align-items: center;
-                  justify-content: center; gap: 7px; opacity: .55; }
-    .ph-powered span { font-family: ${MONO}; font-size: 9px; letter-spacing: .16em;
+                  justify-content: center; gap: 10px; opacity: .72; }
+    .ph-powered span { font-family: ${MONO}; font-size: 10px; letter-spacing: .14em;
                        text-transform: uppercase; }
-    .ph-powered img { height: 13px; width: auto; display: block; }
+    /* ⚠ 30px, NOT 13. The mark is a TWO-LINE lock-up — "LACTONE" over "LABS"
+       — so its height is split between two rows of letters and the gap
+       between them. Small enough and the supplier's name is a smudge, which
+       is worse than no credit at all. The <a> is padded to a real target. */
+    .ph-powered a { display: inline-flex; align-items: center; line-height: 0;
+                    padding: 6px 4px; }
+    .ph-powered img { height: 30px; width: auto; display: block; }
 
     /* ── HOME ─────────────────────────────────────────────────────────── */
     .ph-home { display: flex; flex-direction: column; align-items: stretch;
