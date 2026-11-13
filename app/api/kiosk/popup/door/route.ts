@@ -114,6 +114,8 @@ export async function GET() {
       admit_early_minutes: ev.admit_early_minutes,
       admit_late_minutes: ev.admit_late_minutes,
       practice: ev.is_practice,
+      // The window, so an offline phone applies the same rules.
+      gap_minutes: (ev.session_minutes ?? 15) + ((ev as unknown as { changeover_minutes?: number }).changeover_minutes ?? 5),
     },
     sessions: sheet ?? [],
     list: list ?? [],
@@ -258,6 +260,19 @@ export async function POST(req: NextRequest) {
     let sent: { ok: boolean; error?: string } | null = null
     if (r.resend && r.email) sent = await resend(a, ev, id)
     return NextResponse.json({ ...r, emailed: sent ? sent.ok : null, email_error: sent?.error ?? null })
+  }
+
+  // ── WHERE COULD THIS GUEST GO ───────────────────────────────────────────
+  // For the one button on a "their time has passed" card. Same source as the
+  // Fix sheet's alternatives, so both offer the same times.
+  if (action === 'rooms') {
+    const { data, error } = await a.rpc('popup_sessions_with_room', {
+      p_event_id: ev.id,
+      p_party: Math.max(1, Number(body.party) || 1),
+      p_except: body.booking_id ? String(body.booking_id) : null,
+    })
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ ok: true, sessions: data || [] })
   }
 
   // ── SENDING THE TICKET AGAIN, UNCHANGED ─────────────────────────────────

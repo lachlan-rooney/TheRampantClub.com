@@ -34,8 +34,15 @@ const CACHE_KEY = 'trc_popup_door_cache_v1'
 const QUEUE_KEY = 'trc_popup_door_queue_v1'
 
 type State =
-  | 'valid' | 'used' | 'early' | 'late' | 'waiting' | 'cancelled'
+  | 'valid'       // their session is running — let them in
+  | 'early_ok'    // the NEXT group, checked in while the current one is inside
+  | 'late_ok'     // within the late allowance
+  | 'too_early'   // a later group — not yet
+  | 'passed'      // beyond the late allowance
+  | 'used' | 'waiting' | 'cancelled'
   | 'unknown' | 'wrong_event' | 'malformed' | 'queued'
+  // kept so an older cached answer still renders rather than falling through
+  | 'early' | 'late'
   // ⚠ ADDED BECAUSE THINGS WERE FAILING SILENTLY. A refused or broken action
   // now lands on a screen like any other answer.
   | 'failed' | 'offline'
@@ -53,11 +60,16 @@ interface Sess {
   session_id: string; idx: number; starts_at: string; ends_at: string
   cap: number; booked: number; arrived: number; waiting: number
   no_show: number; over_by: number; closed: boolean; ticked: number
+  // ⚠ CHECKED IN, STANDING OUTSIDE. Not the same number as `arrived`, which
+  // means in the room.
+  waiting_outside?: number
 }
 interface Queued { code: string; party: number | null; at: string; name?: string }
 interface Result {
   state: State; booking_id?: string; name?: string; party_size?: number
   their_practice?: boolean; this_practice?: boolean
+  gap_minutes?: number; come_back_at?: string | null; inside?: boolean
+  ticket_code?: string; moved_to?: string | null
   admitted_at?: string | null; admitted_by?: string | null
   admitted_party?: number | null; starts_at?: string | null; code?: string
 }
@@ -97,7 +109,8 @@ export default function PopupDoor() {
   const [busy, setBusy] = useState(false)
   const [partyMax, setPartyMax] = useState(2)
   // Which evening this phone is on — so a refusal can name the list it searched.
-  const [evInfo, setEvInfo] = useState<{ title: string; practice: boolean } | null>(null)
+  const [evInfo, setEvInfo] = useState<{ title: string; practice: boolean
+    gap: number; late: number } | null>(null)
   // ⚠ THE CAMERA IS OPEN ON ARRIVAL. "Scan a ticket" means scan a ticket —
   // making her find and press a second button to start the camera was a step
   // that existed only because the screen used to be a list with a scanner
@@ -109,7 +122,11 @@ export default function PopupDoor() {
   useEffect(() => {
     try {
       const c = localStorage.getItem(CACHE_KEY)
-      if (c) { const j = JSON.parse(c); setRows(j.rows || []); setSessions(j.sessions || []); setLastRead(j.at || null) }
+      if (c) {
+        const j = JSON.parse(c)
+        setRows(j.rows || []); setSessions(j.sessions || []); setLastRead(j.at || null)
+        if (j.ev) setEvInfo(j.ev)
+      }
       const q = localStorage.getItem(QUEUE_KEY)
       if (q) setQueue(JSON.parse(q) || [])
     } catch { /* a cleared or blocked store is not a fault; the door reloads */ }
@@ -138,9 +155,17 @@ export default function PopupDoor() {
       setSchemaError(null); setNeedsPin(false); setOnline(true)
       setRows(j.list || []); setSessions(j.sessions || []); setStaff(j.staff)
       setPartyMax(j.event?.party_max ?? 2)
-      setEvInfo({ title: j.event?.title ?? '', practice: !!j.event?.practice })
+      // ⚠ THE WINDOW TRAVELS WITH THE CACHE. Offline, the phone has to apply
+      // the same rules the server would — which means it needs the gap between
+      // starts and the late allowance, not just the times.
+      setEvInfo({ title: j.event?.title ?? '', practice: !!j.event?.practice,
+                  gap: j.event?.gap_minutes ?? 20, late: j.event?.admit_late_minutes ?? 5 })
       const at = Date.now(); setLastRead(at)
-      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ rows: j.list, sessions: j.sessions, at })) } catch {}
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify({
+        rows: j.list, sessions: j.sessions, at,
+        ev: { title: j.event?.title, practice: !!j.event?.practice,
+              gap: j.event?.gap_minutes ?? 20, late: j.event?.admit_late_minutes ?? 5 },
+      })) } catch {}
     } catch {
       // Only a thrown fetch means the network is gone. An HTTP error does not.
       setOnline(false)
@@ -220,6 +245,24 @@ export default function PopupDoor() {
   // than every button on the screen greying out together.
   const [pressing, setPressing] = useState<string | null>(null)
 
+  // ⚠ THE SAME LADDER THE SERVER WALKS, so an offline answer and an online
+  // answer for the same ticket at the same minute are the same answer. If this
+  // and popup_scan ever disagree, the door tells two stories in one evening.
+  const offlineState = useCallback((row: Row): State => {
+    const gap = evInfo?.gap ?? 20
+    const late = evInfo?.late ?? 5
+    const t = Date.now()
+    const start = +new Date(row.starts_at), end = +new Date(row.ends_at)
+    if (row.status === 'cancelled') return 'cancelled'
+    if (row.status === 'waiting') return 'waiting'
+    if (row.admitted_at) return 'used'
+    if (t < start - gap * 60_000) return 'too_early'
+    if (t < start) return 'early_ok'
+    if (t <= start + late * 60_000) return t > start ? 'late_ok' : 'valid'
+    if (t <= end) return 'valid'
+    return 'passed'
+  }, [evInfo])
+
   const admit = useCallback(async (code: string, party: number | null, name?: string) => {
     setBusy(true); setPressing(code)
     const at = new Date().toISOString()
@@ -239,11 +282,24 @@ export default function PopupDoor() {
     } catch {
       // ⚠ NO SIGNAL — QUEUED, AND SAID SO. The guest walks in; the record
       // catches up carrying the time it is now, not the time it syncs.
+      // ⚠ OFFLINE, THE RULES STILL APPLY. Queuing a guest whose time has
+      // passed, or who belongs to a later group, would admit them the moment
+      // the signal came back — the one thing the window exists to stop.
+      const row = rows.find(r => r.ticket_code === code)
+      const st = row ? offlineState(row) : 'queued'
+      if (row && !['valid', 'early_ok', 'late_ok'].includes(st)) {
+        setResult({ state: st, name: row.name, party_size: row.party_size,
+                    starts_at: row.starts_at, admitted_at: row.admitted_at,
+                    admitted_by: row.admitted_by,
+                    come_back_at: new Date(+new Date(row.starts_at) - 5 * 60_000).toISOString() })
+        setOnline(false)
+        return
+      }
       setQueue(q => [...q, { code, party, at, name }])
-      setResult({ state: 'queued', name, code })
+      setResult({ state: 'queued', name: name ?? row?.name, code })
       setOnline(false)
     } finally { setBusy(false); setPressing(null); setAsking(null) }
-  }, [read])
+  }, [read, rows, offlineState])
 
   const act = useCallback(async (payload: Record<string, unknown>) => {
     setBusy(true); setPressing(String(payload.booking_id || payload.action || ''))
@@ -331,9 +387,15 @@ export default function PopupDoor() {
             {staff || '…'}
             {evInfo && <em className="dr-on">{evInfo.practice ? tr(L, 'm_practice') : evInfo.title}</em>}
           </div>
-          <div className="dr-when">
-            {current ? <>{tr(L, 'd_in_now')} <b>{hhmm(current.starts_at)}</b> · {current.arrived}/{current.booked}</>
-              : next ? <>{tr(L, 'd_next')} <b>{hhmm(next.starts_at)}</b></> : tr(L, 'd_no_session')}
+          {/* ⚠ THE TWO GROUPS THAT SCAN GREEN RIGHT NOW. Staff have to know
+              which two without working it out: the one inside, and the one
+              being checked in. */}
+          <div className="dr-when dr-groups">
+            <span><em>{tr(L, 'w_now')}</em><b>{current ? hhmm(current.starts_at) : tr(L, 'w_none_now')}</b>
+              {current && <i>{current.arrived}/{current.booked}</i>}</span>
+            <span><em>{tr(L, 'w_next')}</em><b>{next ? hhmm(next.starts_at) : tr(L, 'w_none_now')}</b>
+              {next && (next.waiting_outside ?? 0) > 0 &&
+                <i>{tr(L, 'w_waiting_out', { n: next.waiting_outside ?? 0 })}</i>}</span>
           </div>
         </div>
         <div className="dr-net">
@@ -427,8 +489,25 @@ export default function PopupDoor() {
         </div>
       )}
 
-      {result && <ResultCard L={L} r={result} onClose={() => setResult(null)}
-                             onUndo={async () => { if (result.booking_id) { await act({ action: 'unadmit', booking_id: result.booking_id }); setResult(null) } }} />}
+      {result && (
+        <ResultCard L={L} r={result} busy={busy}
+          onClose={() => setResult(null)}
+          onUndo={async () => { if (result.booking_id) { await act({ action: 'unadmit', booking_id: result.booking_id }); setResult(null) } }}
+          // ⚠ ONE BUTTON FOR A GUEST WHOSE TIME HAS GONE. It uses the same
+          // Fix-a-booking move as everything else, so the old place is freed,
+          // the waiting list is promoted and a new ticket goes out — rather
+          // than a second, quieter way of moving somebody.
+          onMove={async () => {
+            if (!result.booking_id) return
+            const room = await act({ action: 'rooms', party: result.party_size ?? 1,
+                                     booking_id: result.booking_id })
+            const next = room?.sessions?.[0]
+            if (!next) { setResult({ ...result, state: 'failed' }); return }
+            const j = await act({ action: 'fix', booking_id: result.booking_id,
+                                  session_id: next.session_id })
+            if (j?.ok) setResult({ ...result, moved_to: next.starts_at })
+          }} />
+      )}
 
       {/* ── SEARCH ──────────────────────────────────────────────────────── */}
       <div className="dr-orlabel">{tr(L, 'sc_byname')}</div>
@@ -494,44 +573,121 @@ export default function PopupDoor() {
 }
 
 // ── THE RESULT OF A SCAN, in the words a doorman says out loud ────────────
-const SAY: Record<State, { k: Parameters<typeof tr>[1]; tone: 'yes' | 'no' | 'wait' }> = {
-  valid:       { k: 'd_s_valid',     tone: 'yes' },
-  queued:      { k: 'd_s_queued',    tone: 'yes' },
-  used:        { k: 'd_s_used',      tone: 'wait' },
-  early:       { k: 'd_s_early',     tone: 'wait' },
-  late:        { k: 'd_s_late',      tone: 'wait' },
-  waiting:     { k: 'd_s_waiting',   tone: 'no' },
-  cancelled:   { k: 'd_s_cancelled', tone: 'no' },
-  unknown:     { k: 'd_s_unknown',   tone: 'no' },
-  wrong_event: { k: 'd_s_wrong',     tone: 'no' },
-  malformed:   { k: 'd_s_malformed', tone: 'no' },
-  failed:      { k: 'b_failed',       tone: 'no' },
-  offline:     { k: 'd_off_title',    tone: 'no' },
+// ⚠ GREEN TICK = MAY ENTER OR IS CHECKED IN. RED CROSS = EVERYTHING ELSE.
+// Two shapes, not two colours: a cross and a tick are different outlines, so
+// the answer survives bad light and a reader who cannot separate the hues.
+const SAY: Record<State, { k: Parameters<typeof tr>[1]; yes: boolean }> = {
+  valid:       { k: 'w_now_title',     yes: true },
+  early_ok:    { k: 'w_next_title',    yes: true },
+  late_ok:     { k: 'w_late_title',    yes: true },
+  queued:      { k: 'd_s_queued',      yes: true },
+  too_early:   { k: 'w_later_title',   yes: false },
+  passed:      { k: 'w_passed_title',  yes: false },
+  used:        { k: 'w_used_title',    yes: false },
+  waiting:     { k: 'd_s_waiting',     yes: false },
+  cancelled:   { k: 'd_s_cancelled',   yes: false },
+  unknown:     { k: 'd_s_unknown',     yes: false },
+  wrong_event: { k: 'd_s_wrong',       yes: false },
+  malformed:   { k: 'd_s_malformed',   yes: false },
+  failed:      { k: 'b_failed',        yes: false },
+  offline:     { k: 'd_off_title',     yes: false },
+  early:       { k: 'w_later_title',   yes: false },
+  late:        { k: 'd_s_late',        yes: false },
 }
 
-function ResultCard({ L, r, onClose, onUndo }: { L: Lang; r: Result; onClose: () => void; onUndo: () => void }) {
-  const s = SAY[r.state] || SAY.unknown
+// ⚠ TWO DIFFERENT SHAPES, drawn big enough to read across a doorway. A circle
+// with a tick, and a circle with a cross — not a green dot and a red dot.
+function Tick() {
   return (
-    <div className={`dr-result is-${s.tone}`} role="status">
+    <svg viewBox="0 0 120 120" className="dr-icon" role="img" aria-label="yes">
+      <circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" strokeWidth="7" />
+      <path d="M36 62 L53 79 L85 44" fill="none" stroke="currentColor"
+            strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+function Cross() {
+  return (
+    <svg viewBox="0 0 120 120" className="dr-icon" role="img" aria-label="no">
+      <circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" strokeWidth="7" />
+      <path d="M42 42 L78 78 M78 42 L42 78" fill="none" stroke="currentColor"
+            strokeWidth="11" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+// ⚠ A SHORT, DISTINCT BUZZ FOR EACH. The room is loud and the phone is in a
+// hand, not in view. One pulse for yes, three short for no. Silent where the
+// browser does not support it, which is every iPhone — so it is an addition to
+// the screen, never a substitute for it.
+function buzz(yes: boolean) {
+  try { navigator.vibrate?.(yes ? 60 : [40, 60, 40, 60, 40]) } catch { /* not supported */ }
+}
+
+function ResultCard({ L, r, onClose, onUndo, onMove, busy }: {
+  L: Lang; r: Result; onClose: () => void; onUndo: () => void
+  onMove?: () => void; busy?: boolean
+}) {
+  const s = SAY[r.state] || SAY.unknown
+  // The buzz fires once, when the answer appears.
+  useEffect(() => { buzz(s.yes) }, [s.yes])
+
+  return (
+    <div className={`dr-result ${s.yes ? 'is-yes' : 'is-no'}`} role="status" aria-live="assertive">
       <button className="dr-x" onClick={onClose} aria-label={tr(L, 'd_close')}>×</button>
+
+      {/* ⚠ THE ICON FILLS THE TOP OF THE SCREEN. It is the first thing read
+          across a doorway, before any word. */}
+      {s.yes ? <Tick /> : <Cross />}
+
       <div className="dr-r-h">{tr(L, s.k)}</div>
       {r.name && <div className="dr-r-name">{r.name}</div>}
-      {r.state === 'valid' && r.admitted_party != null && (
-        <div className="dr-r-sub">{tr(L, 'd_s_in_of', { n: r.admitted_party, total: r.party_size ?? r.admitted_party })}</div>
+
+      {/* ── THE CURRENT GROUP ─────────────────────────────────────────── */}
+      {(r.state === 'valid' || r.state === 'late_ok') && (
+        <div className="dr-r-sub">
+          {r.party_size != null && (r.party_size > 1
+            ? tr(L, 'd_party_of', { n: r.party_size }) : tr(L, 'd_one_person'))}
+          {r.admitted_party != null && ` · ${tr(L, 'd_s_in_of', { n: r.admitted_party, total: r.party_size ?? r.admitted_party })}`}
+        </div>
       )}
-      {/* The whole reason the loser of a race gets a sentence and not an error. */}
+
+      {/* ── THE NEXT GROUP: checked in, not inside ─────────────────────── */}
+      {r.state === 'early_ok' && (
+        <div className="dr-r-sub dr-r-big">{tr(L, 'w_next_sub', { time: hhmm(r.starts_at) })}</div>
+      )}
+
+      {/* ── A LATER GROUP: when, and when to come back ─────────────────── */}
+      {r.state === 'too_early' && (
+        <div className="dr-r-sub dr-r-big">
+          {tr(L, 'w_later_sub', { time: hhmm(r.starts_at), back: hhmm(r.come_back_at) })}
+        </div>
+      )}
+
+      {/* ── PASSED: one button, and it says where they went ────────────── */}
+      {r.state === 'passed' && (
+        r.moved_to
+          ? <div className="dr-r-sub dr-r-big">{tr(L, 'w_moved_to', { time: hhmm(r.moved_to) })}</div>
+          : <>
+              <div className="dr-r-sub">{hhmm(r.starts_at)}</div>
+              {onMove && (
+                <button className="dr-found-go" disabled={busy} onClick={onMove}>
+                  {busy ? tr(L, 'b_working') : tr(L, 'w_passed_move')}
+                </button>
+              )}
+            </>
+      )}
+
       {r.state === 'used' && (
         <div className="dr-r-sub">
-          {tr(L, 'd_s_used_by', { who: r.admitted_by || '—', time: hhmm(r.admitted_at) })}
+          {tr(L, 'w_used_sub', { time: hhmm(r.admitted_at), who: r.admitted_by || '—' })}
           {r.admitted_party != null && ` · ${r.admitted_party} ${tr(L, 'd_in_count')}`}
         </div>
       )}
-      {r.state === 'early' && <div className="dr-r-sub">{tr(L, 'd_s_early_sub', { time: hhmm(r.starts_at) })}</div>}
+
       {r.state === 'waiting' && <div className="dr-r-sub">{tr(L, 'd_s_waiting_sub')}</div>}
       {r.state === 'wrong_event' && (
         <div className="dr-r-sub">
-          {/* Which ticket, and which evening this phone is on. "A ticket for
-              another event" on its own left the owner none the wiser. */}
           {r.their_practice && !r.this_practice ? tr(L, 'm_wrong_event_practice')
             : !r.their_practice && r.this_practice ? tr(L, 'm_wrong_event_real')
             : tr(L, 'd_s_wrong_sub', { code: r.code || '' })}
@@ -539,7 +695,8 @@ function ResultCard({ L, r, onClose, onUndo }: { L: Lang; r: Result; onClose: ()
       )}
       {r.state === 'failed' && <div className="dr-r-sub">{tr(L, 'b_try_again')}</div>}
       {r.state === 'offline' && <div className="dr-r-sub">{tr(L, 'd_off_sub')}</div>}
-      {(r.state === 'valid' || r.state === 'used') && r.booking_id && (
+
+      {(s.yes || r.state === 'used') && r.booking_id && (
         <button className="dr-undo" onClick={onUndo}>{tr(L, 'd_s_wrong_row')}</button>
       )}
     </div>
@@ -1056,6 +1213,12 @@ function Styles() {
              letter-spacing: .1em; color: ${GOLD}; margin-top: 2px; text-transform: none; }
     .dr-when { font-size: 12px; opacity: .72; margin-top: 3px; letter-spacing: .04em; }
     .dr-when b { font-size: 16px; opacity: 1; }
+    .dr-groups { display: flex; gap: 18px; margin-top: 5px; }
+    .dr-groups span { display: flex; flex-direction: column; gap: 1px; }
+    .dr-groups em { font-style: normal; font-size: 9px; letter-spacing: .18em;
+                    text-transform: uppercase; opacity: .55; }
+    .dr-groups b { font-family: ${SERIF}; font-size: 24px; line-height: 1; }
+    .dr-groups i { font-style: normal; font-size: 10px; opacity: .7; }
     .dr-net { display: flex; align-items: center; gap: 6px; font-size: 11px; opacity: .8;
               flex-wrap: wrap; justify-content: flex-end; }
     .dr-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
@@ -1126,13 +1289,18 @@ function Styles() {
                border: 1px dashed ${PAPER}33; border-radius: 8px; color: ${PAPER};
                font-family: ${MONO}; font-size: 13px; }
 
-    .dr-result { position: relative; margin: 10px 0 14px; padding: 18px 16px; border-radius: 10px;
-                 border-left: 4px solid ${GOLD}; background: ${PAPER}12; }
-    .dr-result.is-yes { border-left-color: ${GREEN}; background: ${GREEN}2e; }
-    .dr-result.is-yes .dr-r-h { color: #A8D48F; }
-    .dr-result.is-no  { border-left-color: ${RED};   background: ${RED}2e; }
-    .dr-result.is-no .dr-r-h { color: #F0B3B3; }
-    .dr-result.is-wait .dr-r-h { color: ${GOLD}; }
+    /* ⚠ THE ANSWER FILLS THE TOP OF THE SCREEN. Icon first, words under it. */
+    .dr-result { position: relative; margin: 10px 0 14px; padding: 18px 16px 20px;
+                 border-radius: 12px; text-align: center; border: 2px solid transparent; }
+    .dr-icon { display: block; width: 112px; height: 112px; margin: 2px auto 10px; }
+    .dr-result.is-yes { background: ${GREEN}2e; border-color: ${GREEN}; color: #A8D48F; }
+    .dr-result.is-yes .dr-r-h { color: #BFE3A8; }
+    .dr-result.is-no  { background: ${RED}2e;   border-color: ${RED};   color: #F0B3B3; }
+    .dr-result.is-no .dr-r-h { color: #F4C4C4; }
+    .dr-r-big { font-size: 17px !important; opacity: 1 !important; margin-top: 10px !important;
+                line-height: 1.45; }
+    .dr-result .dr-found-go { margin-top: 14px; }
+    .dr-result .dr-undo { margin-top: 14px; }
     /* ⚠ THE ANSWER IS THE BIGGEST THING ON THE SCREEN. She reads it at a
        glance with somebody waiting in front of her, and the colour says it
        before the words do. */

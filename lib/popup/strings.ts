@@ -194,6 +194,30 @@ export const POPUP_STRINGS = {
   f_try_these:    { en: 'These have room:', vn: 'Các giờ còn chỗ:' },
   f_codes_same:   { en: 'The QR and the code stay the same.', vn: 'Mã QR và mã số không thay đổi.' },
 
+  // ═══ THE SEVEN THINGS A SCAN CAN SAY ═════════════════════════════════════
+  // ⚠ ICON AND WORDS TOGETHER, NEVER COLOUR ALONE. The tick and the cross are
+  // different SHAPES, so they read for somebody who cannot tell the two
+  // colours apart and in a room where the light is wrong.
+  w_now_title:    { en: 'Let them in', vn: 'Mời vào' },
+  w_next_title:   { en: 'Checked in', vn: 'Đã nhận' },
+  w_next_sub:     { en: 'Checked in for {time}. Wait here.', vn: 'Đã nhận cho lượt {time}. Vui lòng đợi ở đây.' },
+  w_later_title:  { en: 'Not this group', vn: 'Không phải lượt này' },
+  w_later_sub:    { en: 'Their time is {time}. Come back at {back}.',
+                    vn: 'Giờ của khách là {time}. Vui lòng quay lại lúc {back}.' },
+  w_late_title:   { en: 'Late — let them in now', vn: 'Trễ — mời vào ngay' },
+  w_passed_title: { en: 'Their time has passed', vn: 'Đã quá giờ của khách' },
+  w_passed_move:  { en: 'Move to the next time with space', vn: 'Chuyển sang giờ còn chỗ' },
+  w_moved_to:     { en: 'Moved to {time}.', vn: 'Đã chuyển sang {time}.' },
+  w_used_title:   { en: 'Already in', vn: 'Đã vào rồi' },
+  w_used_sub:     { en: 'Already in at {time}, by {who}.', vn: 'Đã vào lúc {time}, bởi {who}.' },
+
+  // ── The door home: which two groups scan green right now ────────────────
+  w_now:          { en: 'Now', vn: 'Hiện tại' },
+  w_next:         { en: 'Next', vn: 'Tiếp theo' },
+  w_group:        { en: 'group', vn: 'lượt' },
+  w_none_now:     { en: 'none', vn: 'chưa có' },
+  w_waiting_out:  { en: '{n} waiting outside', vn: '{n} đang đợi bên ngoài' },
+
   // ═══ THE DOOR (item 1) ═══════════════════════════════════════════════════
   // ⚠ THE DOOR IS A STAFF SURFACE AND IT IS STILL BILINGUAL. Every other
   // /kiosk screen carries the switch, and the people holding these phones on
