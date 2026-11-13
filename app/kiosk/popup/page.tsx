@@ -64,7 +64,8 @@ function eventLine(L: Lang, ev: EventInfo | null): { name: string; state: string
 interface Staff { id: string; display_name: string }
 type Mode = 'home' | 'signup'
 type Step = 'slots' | 'who' | 'done'
-interface Done { name: string; time: string; waiting: boolean; emailed: boolean; had_email: boolean; door_code: string | null }
+interface Done { name: string; time: string; waiting: boolean; emailed: boolean
+  had_email: boolean; door_code: string | null; booking_id: string | null }
 
 export default function PopupPhone() {
   const { lang, setLang } = useLang()
@@ -160,6 +161,7 @@ function SignUp({ L, ev, sessions, loadFailed, refresh, onHome }: {
   L: Lang; ev: EventInfo | null; sessions: Session[] | null
   loadFailed: boolean; refresh: () => void; onHome: () => void
 }) {
+  const router = useRouter()
   const [step, setStep] = useState<Step>('slots')
   const [picked, setPicked] = useState<Session | null>(null)
   const [name, setName] = useState('')
@@ -211,7 +213,7 @@ function SignUp({ L, ev, sessions, loadFailed, refresh, onHome }: {
           if (r.ok && j.ok) {
             setDone({ name: j.name, time: j.time, waiting: !!j.waiting,
                       emailed: !!j.emailed, had_email: !!j.had_email,
-                      door_code: j.door_code ?? null })
+                      door_code: j.door_code ?? null, booking_id: j.booking_id ?? null })
             setStep('done'); refresh(); return
           }
           if (r.status === 409 || r.status === 400) {
@@ -272,6 +274,14 @@ function SignUp({ L, ev, sessions, loadFailed, refresh, onHome }: {
           </>
         )}
         <button className="ph-big" onClick={onHome}>{tr(L, 'h_done')}</button>
+        {/* ⚠ THE MOMENT A MISTAKE IS NOTICED. She reads the screen back to the
+            guest — "Nguyễn Thu Hà, 19:20" — and that is exactly when a wrong
+            spelling or a wrong address is caught. One tap from here. */}
+        {done.booking_id && (
+          <button className="ph-fix" onClick={() => router.push('/kiosk/popup/door?fix=' + done.booking_id)}>
+            {tr(L, 'f_fix')}
+          </button>
+        )}
       </div>
     )
   }
@@ -598,6 +608,9 @@ function Styles() {
     .ph-done-warn { font-size: 16px; margin: 14px 0 0; padding: 12px 14px; border-radius: 8px;
                     background: ${INK}; color: ${PAPER}; }
     .ph-done .ph-big { margin-top: 26px; }
+    .ph-fix { display: block; width: 100%; min-height: 48px; margin-top: 10px; background: none;
+              border: 1px solid ${INK}33; border-radius: 8px; color: ${INK};
+              font-family: ${MONO}; font-size: 14px; opacity: .78; }
 
     /* ── SIGN IN ──────────────────────────────────────────────────────── */
     .ph-signin { padding-top: 10px; }

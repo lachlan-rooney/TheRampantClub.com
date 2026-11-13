@@ -41,7 +41,8 @@ type State =
   | 'failed' | 'offline'
 
 interface Row {
-  booking_id: string; ticket_code: string; name: string; email: string | null
+  booking_id: string; ticket_code: string; door_code?: string | null
+  name: string; email: string | null
   party_size: number; status: string; session_idx: number
   starts_at: string; ends_at: string
   admitted_at: string | null; admitted_by: string | null
@@ -85,6 +86,10 @@ export default function PopupDoor() {
     party_size: number; status: string; ticket_code: string; door_code: string
     starts_at: string; admitted_at: string | null; admitted_by: string | null }>(null)
   const [codeErr, setCodeErr] = useState<string | null>(null)
+  // ⚠ CORRECTING A BOOKING WHERE IT WENT WRONG. Reached from the name list,
+  // from a four-digit lookup, and from the confirmation screen of a booking
+  // just taken — the three places a mistake is noticed.
+  const [fixing, setFixing] = useState<Row | null>(null)
   // Only three fields are ever read from it, and a whole Row is not available
   // from a four-digit lookup. Say what is actually needed.
   const [asking, setAsking] = useState<{ name: string; party_size: number; ticket_code: string } | null>(null)
@@ -143,6 +148,19 @@ export default function PopupDoor() {
   }, [])
 
   useEffect(() => { read() }, [read])
+
+  // ⚠ ARRIVING STRAIGHT ON A BOOKING. The confirmation screen sends her here
+  // with ?fix=<id>, so correcting the booking she has just taken is one tap
+  // from the screen she is already showing the guest — not a search.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('fix')
+    if (!id || !rows.length) return
+    const r = rows.find(x => x.booking_id === id)
+    if (r) {
+      setFixing(r)
+      window.history.replaceState({}, '', '/kiosk/popup/door')
+    }
+  }, [rows])
   useEffect(() => { const t = setInterval(read, POLL_MS); return () => clearInterval(t) }, [read])
 
   // ── REPLAYING WHAT WAS TICKED OFFLINE ──────────────────────────────────
@@ -362,6 +380,11 @@ export default function PopupDoor() {
       {/* ── WHAT FOUR DIGITS BUY: A NAME TO CHECK ────────────────────────
           Not an admit button on its own. The guest is in front of her; the
           code is not proof that they are the person it belongs to. */}
+      {fixing && (
+        <FixBooking L={L} row={fixing} partyMax={partyMax}
+                    onClose={() => { setFixing(null); read() }} />
+      )}
+
       {lookedUp && (
         <div className="dr-found">
           <button className="dr-x" onClick={() => setLookedUp(null)} aria-label={tr(L, 'd_close')}>×</button>
@@ -373,6 +396,16 @@ export default function PopupDoor() {
             {lookedUp.status === 'waiting' && ` · ${tr(L, 'd_waiting_list')}`}
           </div>
           <div className="dr-found-sub">{tr(L, 'sc_ask_sub')}</div>
+          <button className="dr-fixlink" onClick={() => {
+            const r = lookedUp; setLookedUp(null)
+            setFixing({ booking_id: r.booking_id, name: r.name, party_size: r.party_size,
+                        status: r.status, ticket_code: r.ticket_code, door_code: r.door_code,
+                        email: null,
+                        session_idx: 0, starts_at: r.starts_at, ends_at: r.starts_at,
+                        admitted_at: r.admitted_at, admitted_by: r.admitted_by,
+                        admitted_party: null, admitted_offline: false,
+                        taken_by: null, source: 'kiosk' } as Row)
+          }}>{tr(L, 'f_fix')}</button>
           {lookedUp.admitted_at ? (
             <div className="dr-found-already">
               {tr(L, 'd_s_used')} — {tr(L, 'd_s_used_by', { who: lookedUp.admitted_by || '—', time: hhmm(lookedUp.admitted_at) })}
@@ -404,13 +437,13 @@ export default function PopupDoor() {
              autoComplete="off" spellCheck={false} />
 
       {found
-        ? <Group L={L} pressing={pressing} title={found.length === 1 ? tr(L, 'd_match_one') : tr(L, 'd_matches', { n: found.length })} rows={found}
+        ? <Group L={L} pressing={pressing} onFix={setFixing} title={found.length === 1 ? tr(L, 'd_match_one') : tr(L, 'd_matches', { n: found.length })} rows={found}
                  onAdmit={r => r.party_size > 1 ? setAsking(r) : admit(r.ticket_code, 1, r.name)}
                  onUndo={r => act({ action: 'unadmit', booking_id: r.booking_id })}
                  onParty={(r, n) => act({ action: 'set_party', booking_id: r.booking_id, party: n })}
                  busy={busy} showTime />
         : ordered.map(s => (
-            <Group L={L} key={s.session_id} pressing={pressing} rows={byIdx(s.idx)} busy={busy}
+            <Group L={L} key={s.session_id} pressing={pressing} onFix={setFixing} rows={byIdx(s.idx)} busy={busy}
                    title={`${hhmm(s.starts_at)}`}
                    done={+new Date(s.ends_at) < now}
                    note={`${s.arrived}/${s.booked} ${tr(L, 'd_in_count')} · ${s.waiting ? `${tr(L, 'd_waiting_n', { n: s.waiting })} · ` : ''}${tr(L, 'd_cap', { n: s.cap })}${s.over_by ? ` · ${tr(L, 'd_over_by', { n: s.over_by })}` : ''}`}
@@ -514,12 +547,12 @@ function ResultCard({ L, r, onClose, onUndo }: { L: Lang; r: Result; onClose: ()
 }
 
 // ── A SESSION'S NAMES ─────────────────────────────────────────────────────
-function Group({ L, title, note, rows, onAdmit, onUndo, onParty, onWalkup, busy, pressing, live, showTime, done }: {
+function Group({ L, title, note, rows, onAdmit, onUndo, onParty, onWalkup, onFix, busy, pressing, live, showTime, done }: {
   L: Lang; title: string; note?: string; rows: Row[]; busy: boolean; pressing?: string | null
   live?: boolean; showTime?: boolean
   done?: boolean
   onAdmit: (r: Row) => void; onUndo: (r: Row) => void
-  onParty: (r: Row, n: number) => void; onWalkup?: () => void
+  onParty: (r: Row, n: number) => void; onWalkup?: () => void; onFix?: (r: Row) => void
 }) {
   // A finished session folds shut, with the ones who never arrived still
   // counted on the header — that number is the reason to open it.
@@ -557,6 +590,11 @@ function Group({ L, title, note, rows, onAdmit, onUndo, onParty, onWalkup, busy,
                   ))}
                   <span>{tr(L, 'd_in_count')}</span>
                 </div>
+              )}
+              {onFix && (
+                <button className="dr-fixlink dr-fixrow" onClick={e => { e.stopPropagation(); onFix(r) }}>
+                  {tr(L, 'f_fix')}
+                </button>
               )}
             </div>
             {inNow
@@ -810,6 +848,133 @@ function WalkUp({ L, sessionId, partyMax, busy, onClose, onGo }: {
   )
 }
 
+// ── FIXING A BOOKING ──────────────────────────────────────────────────────
+// ⚠ ONE SHEET FOR ALL OF IT. A staff member who has spotted a mistake wants to
+// correct it, not choose which kind of correction screen to open. Name, email,
+// how many, when — and cancel, behind a confirm.
+//
+// ⚠ AND IT SAYS WHAT A CORRECTION COSTS. The codes never change, so a guest
+// who already screenshotted their ticket is not stranded; and a new address or
+// a new time sends a new ticket, which the screen says before it is pressed.
+function FixBooking({ L, row, partyMax, onClose }: {
+  L: Lang; row: Row; partyMax: number; onClose: () => void
+}) {
+  const inAlready = !!row.admitted_at
+  const [name, setName] = useState(row.name)
+  const [email, setEmail] = useState(row.email || '')
+  const [party, setParty] = useState(row.party_size)
+  const [session, setSession] = useState<string | null>(null)
+  const [rooms, setRooms] = useState<{ session_id: string; starts_at: string; places_left: number }[] | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [said, setSaid] = useState<{ bad: boolean; text: string; sub?: string } | null>(null)
+  const [confirming, setConfirming] = useState(false)
+
+  const post = async (payload: Record<string, unknown>, which: string) => {
+    setBusy(which); setSaid(null)
+    try {
+      const r = await fetch('/api/kiosk/popup/door', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload) })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok) { setSaid({ bad: true, text: j.error || tr(L, 'b_failed'), sub: tr(L, 'b_try_again') }); return null }
+      return j
+    } catch {
+      setSaid({ bad: true, text: tr(L, 'd_off_title'), sub: tr(L, 'd_off_sub') })
+      return null
+    } finally { setBusy(null) }
+  }
+
+  const save = async () => {
+    const j = await post({ action: 'fix', booking_id: row.booking_id,
+      name, email, party, session_id: session }, 'save')
+    if (!j) return
+    if (!j.ok) {
+      if (j.reason === 'already_in') { setSaid({ bad: true, text: tr(L, 'f_already_in') }); return }
+      if (j.reason === 'duplicate') {
+        setSaid({ bad: true, text: tr(L, 'f_dupe', { time: hhmm(j.clash_at) }) }); return
+      }
+      if (j.reason === 'full' || j.reason === 'closed') {
+        setRooms(j.alternatives || [])
+        setSaid({ bad: true, text: tr(L, 'f_full_here', { n: party }),
+                  sub: (j.alternatives || []).length ? tr(L, 'f_try_these') : undefined })
+        return
+      }
+      setSaid({ bad: true, text: tr(L, 'b_failed'), sub: tr(L, 'b_try_again') }); return
+    }
+    if (!j.changed?.length) { setSaid({ bad: false, text: tr(L, 'f_nothing') }); return }
+    setSaid({ bad: false,
+      text: j.resend && j.emailed ? tr(L, 'f_saved_sent') : tr(L, 'f_saved'),
+      sub: j.resend && j.emailed === false ? (j.email_error || '') : tr(L, 'f_codes_same') })
+    setRooms(null); setSession(null)
+  }
+
+  return (
+    <Sheet L={L} title={tr(L, 'f_title')} sub={inAlready ? tr(L, 'f_already_in') : `${row.door_code ?? ''}`} onClose={onClose}>
+      <label className="dr-flabel">{tr(L, 'f_name')}</label>
+      <input className="dr-wn" value={name} maxLength={80} onChange={e => setName(e.target.value)} autoComplete="off" />
+
+      <label className="dr-flabel">{tr(L, 'f_email')}</label>
+      <input className="dr-wn" value={email} maxLength={120} inputMode="email" disabled={inAlready}
+             onChange={e => setEmail(e.target.value)} autoComplete="off" spellCheck={false} />
+
+      {!inAlready && (
+        <>
+          <label className="dr-flabel">{tr(L, 'f_people')}</label>
+          <div className="dr-nums">
+            {Array.from({ length: partyMax }, (_, i) => i + 1).map(n => (
+              <button key={n} className={party === n ? 'is-on' : ''} onClick={() => setParty(n)}>{n}</button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {rooms && rooms.length > 0 && (
+        <div className="dr-rooms">
+          {rooms.map(x => (
+            <button key={x.session_id} className={session === x.session_id ? 'is-on' : ''}
+                    onClick={() => setSession(x.session_id)}>
+              {hhmm(x.starts_at)}<em>{tr(L, 's_places', { n: x.places_left })}</em>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {said && (
+        <div className={said.bad ? 'dr-warn' : 'dr-good'} role="status">
+          <strong>{said.text}</strong>{said.sub && <span>{said.sub}</span>}
+        </div>
+      )}
+
+      <button className="dr-scan" disabled={!!busy || !name.trim()} onClick={save}>
+        {busy === 'save' ? tr(L, 'b_saving') : tr(L, 'f_save')}
+      </button>
+
+      <button className="dr-cancel" disabled={!!busy || !email.trim()} onClick={async () => {
+        const j = await post({ action: 'resend', booking_id: row.booking_id }, 'resend')
+        if (j) setSaid(j.ok ? { bad: false, text: tr(L, 'f_sent') }
+                            : { bad: true, text: j.error || tr(L, 'b_failed') })
+      }}>
+        {busy === 'resend' ? tr(L, 'b_working') : email.trim() ? tr(L, 'f_resend') : tr(L, 'f_no_email')}
+      </button>
+
+      {!inAlready && (confirming ? (
+        <div className="dr-warn">
+          <strong>{tr(L, 'f_cancel_sure')}</strong>
+          <div className="dr-row2">
+            <button className="dr-cancel" onClick={() => setConfirming(false)}>{tr(L, 'f_cancel_no')}</button>
+            <button className="dr-danger" disabled={!!busy} onClick={async () => {
+              const j = await post({ action: 'fix', booking_id: row.booking_id, cancel: true }, 'cancel')
+              if (j?.ok) { setSaid({ bad: false, text: tr(L, 'f_cancelled', { name: row.name }) }); setConfirming(false) }
+            }}>{busy === 'cancel' ? tr(L, 'b_working') : tr(L, 'f_cancel_yes')}</button>
+          </div>
+        </div>
+      ) : (
+        <button className="dr-danger" onClick={() => setConfirming(true)}>{tr(L, 'f_cancel_b')}</button>
+      ))}
+    </Sheet>
+  )
+}
+
 function Sheet({ L, title, sub, children, onClose }: { L: Lang; title: string; sub?: string; children: React.ReactNode; onClose: () => void }) {
   return (
     <div className="dr-sheet-bg" onClick={onClose}>
@@ -953,6 +1118,10 @@ function Styles() {
                       border: 1px solid ${PAPER}33; color: ${PAPER}; font-family: ${MONO}; font-size: 15px; }
     .dr-mini button.is-on { background: ${PAPER}; color: ${INK}; border-color: ${PAPER}; }
     .dr-mini span { font-size: 11px; opacity: .5; }
+    .dr-fixlink { display: block; margin-top: 8px; padding: 8px 12px; min-height: 44px;
+                  background: none; border: 1px solid ${PAPER}33; border-radius: 7px;
+                  color: ${PAPER}; font-family: ${MONO}; font-size: 13px; }
+    .dr-fixrow { margin-top: 6px; min-height: 38px; padding: 4px 10px; font-size: 11px; opacity: .72; }
     .dr-walk { width: 100%; min-height: 48px; margin-top: 10px; background: none;
                border: 1px dashed ${PAPER}33; border-radius: 8px; color: ${PAPER};
                font-family: ${MONO}; font-size: 13px; }
@@ -1023,6 +1192,20 @@ function Styles() {
     .dr-wn { width: 100%; box-sizing: border-box; min-height: 56px; margin-bottom: 12px;
              background: ${PAPER}14; border: 1px solid ${PAPER}33; border-radius: 8px;
              color: ${PAPER}; font-family: ${MONO}; font-size: 18px; padding: 10px 14px; outline: none; }
+    .dr-flabel { display: block; font-family: ${SERIF}; font-size: 12px; letter-spacing: .14em;
+                 text-transform: uppercase; opacity: .6; margin: 12px 0 5px; }
+    .dr-rooms { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+    .dr-rooms button { flex: 1 1 94px; min-height: 58px; border-radius: 8px; background: ${PAPER}14;
+                       border: 1px solid ${PAPER}33; color: ${PAPER}; font-family: ${SERIF}; font-size: 20px;
+                       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+    .dr-rooms button em { font-style: normal; font-family: ${MONO}; font-size: 10px; opacity: .7; }
+    .dr-rooms button.is-on { background: ${GOLD}; color: ${INK}; border-color: ${GOLD}; }
+    .dr-rooms button.is-on em { opacity: .85; }
+    .dr-danger { width: 100%; min-height: 50px; margin-top: 10px; border-radius: 8px;
+                 background: none; border: 1px solid ${RED}; color: #F0B3B3;
+                 font-family: ${MONO}; font-size: 14px; }
+    .dr-row2 { display: flex; gap: 8px; margin-top: 10px; }
+    .dr-row2 > * { flex: 1; margin-top: 0; }
     .dr-cancel { width: 100%; min-height: 48px; margin-top: 8px; background: none;
                  border: 1px solid ${PAPER}26; border-radius: 8px; color: ${PAPER};
                  font-family: ${MONO}; font-size: 14px; }

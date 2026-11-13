@@ -162,6 +162,38 @@ export const POPUP_STRINGS = {
   b_walkup_over:  { en: 'That session has finished.', vn: 'Lượt đó đã kết thúc.' },
   b_walkup_toobig:{ en: 'Too many people for one booking.', vn: 'Quá nhiều người cho một lượt đặt.' },
 
+  // ═══ FIXING A BOOKING ════════════════════════════════════════════════════
+  // ⚠ UNTIL TODAY A STAFF MEMBER COULD CORRECT NOTHING from a phone. A wrong
+  // email typed at a crowded door was permanent, and a wrong time needed the
+  // laptop. These are the words for putting it right where it happened.
+  f_fix:          { en: 'Fix this booking', vn: 'Sửa đặt chỗ này' },
+  f_title:        { en: 'Fix a booking', vn: 'Sửa đặt chỗ' },
+  f_name:         { en: 'Name', vn: 'Tên' },
+  f_email:        { en: 'Email', vn: 'Email' },
+  f_people:       { en: 'How many people', vn: 'Số người' },
+  f_time:         { en: 'Time', vn: 'Giờ' },
+  f_save:         { en: 'Save changes', vn: 'Lưu thay đổi' },
+  f_resend:       { en: 'Send the ticket again', vn: 'Gửi lại vé' },
+  f_cancel_b:     { en: 'Cancel this booking', vn: 'Huỷ đặt chỗ này' },
+  f_cancel_sure:  { en: 'Cancel it? The place is given back.', vn: 'Huỷ chứ? Chỗ sẽ được trả lại.' },
+  f_cancel_yes:   { en: 'Yes, cancel', vn: 'Có, huỷ' },
+  f_cancel_no:    { en: 'No, keep it', vn: 'Không, giữ lại' },
+  f_saved:        { en: 'Saved.', vn: 'Đã lưu.' },
+  f_saved_sent:   { en: 'Saved. A new ticket is on its way.', vn: 'Đã lưu. Vé mới đang được gửi đi.' },
+  f_sent:         { en: 'The ticket has been sent again.', vn: 'Đã gửi lại vé.' },
+  f_cancelled:    { en: '{name} is cancelled. The place is free.', vn: 'Đã huỷ {name}. Chỗ đã trống.' },
+  f_nothing:      { en: 'Nothing was changed.', vn: 'Không có gì thay đổi.' },
+  f_no_email:     { en: 'No email on this booking — add one to send a ticket.',
+                    vn: 'Đặt chỗ này chưa có email — hãy thêm để gửi vé.' },
+  // ⚠ A GUEST ALREADY INSIDE can have their name corrected and nothing else.
+  f_already_in:   { en: 'They are already in. Only the name can be corrected.',
+                    vn: 'Khách đã vào rồi. Chỉ có thể sửa tên.' },
+  f_dupe:         { en: 'That email already has a place at {time}.',
+                    vn: 'Email đó đã có chỗ lúc {time}.' },
+  f_full_here:    { en: 'No room for {n} at that time.', vn: 'Không đủ chỗ cho {n} người vào giờ đó.' },
+  f_try_these:    { en: 'These have room:', vn: 'Các giờ còn chỗ:' },
+  f_codes_same:   { en: 'The QR and the code stay the same.', vn: 'Mã QR và mã số không thay đổi.' },
+
   // ═══ THE DOOR (item 1) ═══════════════════════════════════════════════════
   // ⚠ THE DOOR IS A STAFF SURFACE AND IT IS STILL BILINGUAL. Every other
   // /kiosk screen carries the switch, and the people holding these phones on

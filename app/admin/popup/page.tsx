@@ -58,6 +58,8 @@ export default function RunSheet() {
   const [now, setNow] = useState(() => Date.now())
   const [capDraft, setCapDraft] = useState('')
   const [practice, setPractice] = useState<{ exists: boolean; bookings: number }>({ exists: false, bookings: 0 })
+  const [edits, setEdits] = useState<{ booking_id: string; field: string; was: string | null
+    now_: string | null; by: string | null; at: string }[]>([])
 
   const load = useCallback(async () => {
     try {
@@ -67,6 +69,7 @@ export default function RunSheet() {
       setErr(null); setEv(j.event); setSessions(j.sessions || [])
       setBookings(j.bookings || []); setPhones(j.phones || [])
       setPractice(j.practice || { exists: false, bookings: 0 })
+      setEdits(j.edits || [])
       setCapDraft(String(j.event?.default_cap ?? ''))
     } catch { setErr('Could not reach the server.') }
   }, [])
@@ -368,6 +371,32 @@ export default function RunSheet() {
           </div>
         )
       })}
+
+      {/* ── WHAT STAFF HAVE CORRECTED ───────────────────────────────────
+          A change made on a phone at the door is invisible to whoever is
+          running the evening unless it is shown. */}
+      {edits.length > 0 && (
+        <>
+          <div style={sectionLabel}>Corrections ({edits.length})</div>
+          <div style={card}>
+            {edits.slice(0, 14).map((e, i) => {
+              const who = bookings.find(b => b.id === e.booking_id)
+              return (
+                <div key={i} style={{ ...guest, borderBottom: i === 13 ? 'none' : guest.borderBottom }}>
+                  <span style={{ fontFamily: MONO, fontSize: 10, color: '#7E7864', minWidth: 44 }}>{hhmm(e.at)}</span>
+                  <span style={{ flex: 1, fontFamily: MONO, fontSize: 11, color: '#B2AA98' }}>
+                    <b style={{ color: '#E5D4C2' }}>{who?.name || '—'}</b>
+                    {' · '}{e.field}
+                    {e.was != null && <> · <s style={{ opacity: .6 }}>{e.was || '(none)'}</s></>}
+                    {e.now_ != null && <> → <b style={{ color: '#E5D4C2' }}>{e.now_}</b></>}
+                  </span>
+                  <span style={{ fontFamily: MONO, fontSize: 10, color: '#C9A84C' }}>{e.by}</span>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 20 }}>
         <button disabled={busy} style={btn} onClick={async () => {

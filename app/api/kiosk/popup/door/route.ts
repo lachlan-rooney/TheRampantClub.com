@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { deviceOk, actingStaff, denyDevice, denyStaff, svc } from '@/lib/kiosk/server'
 import { deviceEvent } from '@/lib/popup/event'
+import { sendTicket } from '@/lib/popup/resend-ticket'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,6 +34,39 @@ export const dynamic = 'force-dynamic'
 
 // The evening this handset is on. Practice or real — the same code either way.
 const eventRow = () => deviceEvent()
+
+interface FixResult {
+  ok: boolean; reason: string | null; changed: string[]; resend: boolean
+  name: string | null; email: string | null; party_size: number | null
+  status: string | null; ticket_code: string | null; door_code: string | null
+  starts_at: string | null; places_left: number | null; clash_at: string | null
+}
+
+// The ticket, built from the booking as it stands now. Shared with the sign-up
+// route's wording through lib/popup/resend-ticket.
+async function resend(a: ReturnType<typeof svc>, ev: NonNullable<Awaited<ReturnType<typeof deviceEvent>>>, bookingId: string) {
+  const { data: b } = await a.from('popup_bookings')
+    .select('name, email, lang, party_size, ticket_code, door_code, popup_sessions!inner(starts_at)')
+    .eq('id', bookingId).maybeSingle()
+  const row = b as unknown as {
+    name: string; email: string | null; lang: string; party_size: number
+    ticket_code: string; door_code: string | null; popup_sessions: { starts_at: string }
+  } | null
+  if (!row?.email) return { ok: false, error: 'no address on this booking' }
+  const out = await sendTicket({
+    slug: ev.slug, timezone: ev.timezone,
+    title: (row.lang === 'vn' ? ev.title_vn : ev.title_en) || ev.title_en,
+    venue: (row.lang === 'vn' ? ev.venue_vn : ev.venue_en) || ev.venue_en,
+    name: row.name, email: row.email, lang: row.lang === 'vn' ? 'vn' : 'en',
+    party: row.party_size, startsAt: row.popup_sessions.starts_at,
+    ticketCode: row.ticket_code, doorCode: row.door_code,
+  })
+  if (out.ok) {
+    await a.from('popup_bookings')
+      .update({ confirmation_sent_at: new Date().toISOString() }).eq('id', bookingId)
+  }
+  return out
+}
 
 // ⚠ RATE-LIMITED, PER MEMBER OF STAFF. Four digits is ten thousand codes
 // against about a hundred guests: left open, a phone could walk the whole
@@ -184,6 +218,53 @@ export async function POST(req: NextRequest) {
     const row = one(data)
     if (!row) return NextResponse.json({ found: false, reason: 'unknown' })
     return NextResponse.json({ found: true, ...(row as object) })
+  }
+
+  // ── FIXING A BOOKING ────────────────────────────────────────────────────
+  // ⚠ ONE FUNCTION DOES ALL OF IT, including the admin's move and cancel, so
+  // there is one set of rules about caps, admitted guests and the one-booking-
+  // per-address rule — not one set on the phone and another on the laptop.
+  if (action === 'fix') {
+    const id = String(body.booking_id || '')
+    const { data, error } = await a.rpc('popup_fix_booking', {
+      p_event_id: ev.id, p_booking_id: id,
+      p_name: typeof body.name === 'string' ? body.name : null,
+      p_email: typeof body.email === 'string' ? body.email : null,
+      p_party: body.party == null ? null : Number(body.party),
+      p_session_id: body.session_id ? String(body.session_id) : null,
+      p_by: by,
+      p_cancel: body.cancel === true,
+    })
+    if (error) {
+      return NextResponse.json({
+        error: /popup_fix_booking/.test(error.message)
+          ? 'Fixing a booking needs db/popup_fix_booking.sql to be run first.' : error.message,
+      }, { status: 500 })
+    }
+    const r = one(data) as FixResult | null
+    if (!r) return NextResponse.json({ error: 'No answer from the database.' }, { status: 500 })
+
+    // A refusal that can offer somewhere else, does.
+    if (!r.ok && (r.reason === 'full' || r.reason === 'closed' || r.reason === 'no_session')) {
+      const want = body.party == null ? r.party_size : Number(body.party)
+      const { data: room } = await a.rpc('popup_sessions_with_room',
+        { p_event_id: ev.id, p_party: want, p_except: id })
+      return NextResponse.json({ ...r, alternatives: room || [] })
+    }
+    if (!r.ok) return NextResponse.json(r)
+
+    // ⚠ THE TICKET GOES AGAIN ONLY WHEN SOMETHING ON IT CHANGED — a new
+    // address, or a new time. Correcting a spelling does not spam a guest.
+    let sent: { ok: boolean; error?: string } | null = null
+    if (r.resend && r.email) sent = await resend(a, ev, id)
+    return NextResponse.json({ ...r, emailed: sent ? sent.ok : null, email_error: sent?.error ?? null })
+  }
+
+  // ── SENDING THE TICKET AGAIN, UNCHANGED ─────────────────────────────────
+  if (action === 'resend') {
+    const id = String(body.booking_id || '')
+    const sent = await resend(a, ev, id)
+    return NextResponse.json({ ok: sent.ok, error: sent.error })
   }
 
   // ── A WALK-UP ───────────────────────────────────────────────────────────

@@ -93,6 +93,12 @@ export async function GET() {
     }
   })
 
+  // ⚠ WHAT WAS CHANGED, AND BY WHOM. A correction made on a phone at a door
+  // is invisible to the person running the evening unless it is shown here.
+  const { data: edits } = await a.from('popup_booking_edits')
+    .select('booking_id, field, was, now_, by, at')
+    .eq('event_id', ev.id).order('at', { ascending: false }).limit(60)
+
   // The practice evening, if it exists — so the run sheet can say whether
   // there is anything to switch a phone to.
   const { data: prac } = await a.from('popup_events')
@@ -108,6 +114,7 @@ export async function GET() {
     bookings: bookings ?? [],
     phones,
     practice: prac ? { exists: true, bookings: pracBookings ?? 0 } : { exists: false, bookings: 0 },
+    edits: edits ?? [],
     now: new Date().toISOString(),
   })
 }
@@ -217,92 +224,34 @@ export async function POST(req: NextRequest) {
   }
 
   // ── MOVE A GUEST, or cancel them ──────────────────────────────────────
-  if (action === 'move') {
+  // ⚠ BOTH GO THROUGH popup_fix_booking NOW. This used to write the new
+  // session_id straight in with NO CAPACITY CHECK, so a guest could be moved
+  // into a full session and the run sheet would simply show it over. One
+  // function holds the rules for the phone and the laptop alike.
+  if (action === 'move' || action === 'cancel') {
     const id = String(body.booking_id || '')
-    const to = String(body.session_id || '')
-    const { data: b } = await a.from('popup_bookings').select('session_id').eq('id', id).maybeSingle()
-    const { error } = await a.from('popup_bookings')
-      .update({ session_id: to, moved_at: new Date().toISOString(), status: 'confirmed' })
-      .eq('id', id).eq('event_id', ev.id)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    // The session they LEFT may now have room for somebody waiting.
-    if (b?.session_id) await a.rpc('popup_promote', { p_session_id: b.session_id })
-    return NextResponse.json({ ok: true })
-  }
-
-  if (action === 'cancel') {
-    const id = String(body.booking_id || '')
-    const { data: b } = await a.from('popup_bookings').select('session_id').eq('id', id).maybeSingle()
-    const { error } = await a.from('popup_bookings').update({
-      status: 'cancelled', cancelled_at: new Date().toISOString(),
-      cancel_reason: String(body.reason || 'cancelled in the admin'),
-    }).eq('id', id).eq('event_id', ev.id)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    // A cancellation frees a place: promote at once.
-    let promoted: string[] = []
-    if (b?.session_id) {
-      const { data } = await a.rpc('popup_promote', { p_session_id: b.session_id })
-      const row = Array.isArray(data) ? data[0] : data
-      promoted = row?.promoted || []
-    }
-    const told = await tellPromoted(a, SLUG, promoted)
-    return NextResponse.json({ ok: true, promoted, ...told })
-  }
-
-  // ── SHIFT EVERYTHING STILL TO COME ────────────────────────────────────
-  // ⚠ THE EMAIL IS NOT SENT FROM HERE. popup_shift hands back exactly the
-  // guests whose time changed; this route returns them and the screen asks
-  // whether to tell them. A shift that silently emailed would be a shift
-  // nobody dares press to see what it would do.
-  if (action === 'shift') {
-    const minutes = Number(body.minutes)
-    if (!Number.isInteger(minutes) || minutes === 0 || Math.abs(minutes) > 240) {
-      return NextResponse.json({ error: 'Shift by a whole number of minutes, up to 240.' }, { status: 400 })
-    }
-    const { data, error } = await a.rpc('popup_shift', { p_event_id: ev.id, p_minutes: minutes })
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    const rows = (data || []) as ShiftRow[]
-    const head = rows[0]
-    if (!head?.ok) {
-      return NextResponse.json({
-        error: head?.reason === 'into_the_past'
-          ? 'That would start a session in the past. Nothing was moved.'
-          : 'That shift was refused. Nothing was moved.',
-        reason: head?.reason,
-      }, { status: 400 })
-    }
-    return NextResponse.json({
-      ok: true, minutes,
-      sessions_moved: head.sessions_moved,
-      affected: rows.filter(r => r.booking_id).map(r => ({
-        booking_id: r.booking_id, name: r.name, email: r.email, lang: r.lang,
-        was: r.old_starts_at, now: r.new_starts_at, ticket_code: r.ticket_code,
-      })),
+    const { data, error } = await a.rpc('popup_fix_booking', {
+      p_event_id: ev.id, p_booking_id: id,
+      p_name: null, p_email: null, p_party: null,
+      p_session_id: action === 'move' ? String(body.session_id || '') : null,
+      p_by: 'the run sheet',
+      p_cancel: action === 'cancel',
     })
-  }
-
-  // ── PROMOTE EVERY SESSION, WITHOUT CHANGING ANYTHING ──────────────────
-  // For after a cancellation or a shift, when the owner wants the waiting list
-  // walked without touching a cap.
-  if (action === 'promote_all') {
-    const { data: ss } = await a.from('popup_sessions').select('id').eq('event_id', ev.id)
-    const promoted: string[] = []; const skipped: string[] = []
-    for (const s of ss || []) {
-      const { data } = await a.rpc('popup_promote', { p_session_id: s.id })
-      const row = Array.isArray(data) ? data[0] : data
-      promoted.push(...(row?.promoted || [])); skipped.push(...(row?.skipped || []))
+    if (error) {
+      return NextResponse.json({
+        error: /popup_fix_booking/.test(error.message)
+          ? 'This needs db/popup_fix_booking.sql to be run first.' : error.message,
+      }, { status: 500 })
     }
-    const told = await tellPromoted(a, SLUG, promoted)
-    return NextResponse.json({ ok: true, promoted, skipped, ...told })
-  }
-
-  // ── A SESSION OUT OF SERVICE ──────────────────────────────────────────
-  if (action === 'close_session') {
-    const { error } = await a.from('popup_sessions')
-      .update({ closed: body.closed === true })
-      .eq('id', String(body.session_id || '')).eq('event_id', ev.id)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ ok: true })
+    const r = (Array.isArray(data) ? data[0] : data) as { ok: boolean; reason?: string; places_left?: number } | null
+    if (!r?.ok) {
+      const why = r?.reason === 'full' ? `That session has only ${r.places_left ?? 0} place(s) left.`
+        : r?.reason === 'already_in' ? 'They are already in — they cannot be moved or cancelled.'
+        : r?.reason === 'closed' ? 'That session is closed.'
+        : 'That could not be done.'
+      return NextResponse.json({ error: why, reason: r?.reason }, { status: 400 })
+    }
+    return NextResponse.json({ ...r, ok: true })
   }
 
   // ═══ THE PRACTICE EVENING ═════════════════════════════════════════════
