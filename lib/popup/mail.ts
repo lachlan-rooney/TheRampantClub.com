@@ -137,9 +137,14 @@ export function reminderHtml(L: Lang, o: { time: string; minutes: number; venue:
 // ⚠ THE BODY IS THE OWNER'S, VERBATIM. This wraps it and adds the one thing
 // the club is obliged to add — a working unsubscribe — and nothing else. No
 // invented sign-off, no invented offer.
+// ⚠ THE UNSUBSCRIBE IS ON THE VERSION THAT ASKS FOR SOMETHING. The full
+// letter goes to people who ticked a box to hear from us, so it carries the
+// way out of that. The plain one is a thank-you to somebody who ticked
+// nothing: there is no list to leave, and offering to remove them from one
+// implies they are on it.
 export function followupHtml(L: Lang, o: {
   name: string; subject: string; body: string; venue: string
-  unsubscribeUrl: string; isTest?: boolean
+  unsubscribeUrl?: string | null; isTest?: boolean
 }) {
   return {
     subject: o.isTest ? `[TEST] ${o.subject}` : o.subject,
@@ -150,9 +155,9 @@ export function followupHtml(L: Lang, o: {
       </p>
       ${paras(o.body)}
       <p style="font-family:Arial,sans-serif;font-size:12px;line-height:1.7;color:${EMAIL.muted};margin:0;border-top:1px solid ${EMAIL.rule};padding-top:16px;">
-        ${esc(o.venue)}<br>
+        ${esc(o.venue)}${o.unsubscribeUrl ? `<br>
         ${esc(tr(L, 'mail_fu_unsub'))}
-        <a href="${o.unsubscribeUrl}" style="color:${EMAIL.gold};">${esc(tr(L, 'mail_fu_unsub_link'))}</a>
+        <a href="${o.unsubscribeUrl}" style="color:${EMAIL.gold};">${esc(tr(L, 'mail_fu_unsub_link'))}</a>` : ''}
       </p>
     `, { title: o.subject, preheader: o.body.slice(0, 120) }),
   }

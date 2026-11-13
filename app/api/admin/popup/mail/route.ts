@@ -199,7 +199,8 @@ export async function POST(req: NextRequest) {
     }
     const m = followupHtml(L, {
       name: 'Nguyễn Thu Hà', subject: copy.subject, body: copy.body,
-      venue: venueFor(ev, L), unsubscribeUrl: unsubUrl(to), isTest: true,
+      // A test of the plain version must look like the plain version.
+      venue: venueFor(ev, L), unsubscribeUrl: wants ? unsubUrl(to) : null, isTest: true,
     })
     const sent = await sendEach([{ email: to, subject: m.subject, html: m.html }], { gapMs: 0 })
     return NextResponse.json({ ok: sent[0]?.ok, to, error: sent[0]?.error })
@@ -230,7 +231,8 @@ export async function POST(req: NextRequest) {
       if (!copy.subject || !copy.body) { skipped.push(p.email); continue }
       const m = followupHtml(L, {
         name: p.name, subject: copy.subject, body: copy.body,
-        venue: venueFor(ev, L), unsubscribeUrl: unsubUrl(p.email),
+        // The plain letter carries no unsubscribe: there is no list to leave.
+        venue: venueFor(ev, L), unsubscribeUrl: p.wants_more ? unsubUrl(p.email) : null,
       })
       const [r] = await sendEach([{ email: p.email, subject: m.subject, html: m.html }])
       if (r.ok) {

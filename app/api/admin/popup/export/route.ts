@@ -35,9 +35,22 @@ const svc = () => createClient(
 )
 
 /** RFC 4180: a field carrying a comma, a quote or a newline is quoted and its
- *  quotes doubled. Guest names carry commas more often than anyone expects. */
+ *  quotes doubled. Guest names carry commas more often than anyone expects.
+ *
+ *  ⚠ AND A FIELD THAT STARTS WITH = OR @ IS DEFUSED. Those are how a
+ *  spreadsheet is told "this is a formula", and every value in this file was
+ *  typed by somebody at a door. `+` and `-` are deliberately NOT on that list:
+ *  +84901234567 is a real phone number and mangling it to protect against a
+ *  risk nobody here is running would be the worse trade.
+ *
+ *  ⚠ A LEADING ZERO IS NOT PROTECTED, on purpose. 0901234567 is correct in the
+ *  file; Excel may show it as 901234567 on import, which is Excel's import
+ *  dialog to fix (choose Text for that column). The alternative — wrapping it
+ *  in ="..." — is itself a formula, and writing a formula into a file to stop
+ *  formulas is not a trade worth making. */
 const esc = (v: unknown) => {
-  const s = v == null ? '' : String(v)
+  const s0 = v == null ? '' : String(v)
+  const s = /^[=@]/.test(s0) ? `'${s0}` : s0
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
@@ -48,6 +61,8 @@ type Row = {
   name: string
   email: string | null
   email_key: string | null
+  phone: string | null
+  consent_phone: boolean | null
   party_size: number
   status: string
   lang: string
@@ -88,7 +103,7 @@ export async function GET(req: NextRequest) {
   const rows: Row[] = []
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await a.from('popup_bookings')
-      .select('name, email, email_key, party_size, status, lang, taken_by, source, consent_marketing, admitted_at, popup_sessions!inner(starts_at, ends_at)')
+      .select('name, email, email_key, phone, consent_phone, party_size, status, lang, taken_by, source, consent_marketing, admitted_at, popup_sessions!inner(starts_at, ends_at)')
       .eq('event_id', ev.id)
       .order('created_at', { ascending: true })
       .range(from, from + PAGE - 1)
@@ -127,11 +142,12 @@ export async function GET(req: NextRequest) {
     ? rows.filter(r => r.consent_marketing && r.email && !(r.email_key && gone.has(r.email_key)))
     : rows
 
-  const header = ['Name', 'Email', 'Party size', 'Session', 'Status', 'Language',
-                  'Taken by', 'Agreed to hear from the club']
+  const header = ['Name', 'Email', 'Phone', 'Party size', 'Session', 'Status', 'Language',
+                  'Taken by', 'Agreed to hear from the club', 'Agreed to phone or Zalo']
   const body = wanted.map(r => [
     r.name,
     r.email ?? '',
+    r.phone ?? '',
     r.party_size,
     r.popup_sessions ? `${VN(r.popup_sessions.starts_at, { day: '2-digit', month: 'short' })} ${VN(r.popup_sessions.starts_at, { hour: '2-digit', minute: '2-digit', hour12: false })}` : '',
     state(r),
@@ -140,6 +156,7 @@ export async function GET(req: NextRequest) {
     // an empty cell that reads like a missing record.
     r.taken_by || (r.source === 'public' ? 'public page' : ''),
     consent(r),
+    r.consent_phone ? 'yes' : 'no',
   ].map(esc).join(','))
 
   // ── THE REGISTER, BEFORE THE FILE ──────────────────────────────────────

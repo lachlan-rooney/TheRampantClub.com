@@ -167,8 +167,10 @@ function SignUp({ L, ev, sessions, loadFailed, refresh, onHome }: {
   const [picked, setPicked] = useState<Session | null>(null)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [party, setParty] = useState(1)
   const [consent, setConsent] = useState(false)
+  const [consentPhone, setConsentPhone] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<{ msg: string; extra?: string } | null>(null)
   const [done, setDone] = useState<Done | null>(null)
@@ -177,7 +179,13 @@ function SignUp({ L, ev, sessions, loadFailed, refresh, onHome }: {
   // iOS Safari ignores autocomplete="off"; a field name it has never seen is
   // the one thing it cannot offer the last guest's address for.
   const fieldId = useMemo(() => Math.random().toString(36).slice(2, 10), [])
-  const terms = tr(L, 'k_privacy')
+  // ⚠ THE CONSENT RECORD IS THE SENTENCES THAT WERE ON THE SCREEN. A record
+  // that cannot say what was agreed to is not evidence of anything — so if a
+  // second tick is given, the second sentence is stored with the first.
+  const termsFor = (emailYes: boolean, phoneYes: boolean) =>
+    [tr(L, 'k_privacy'),
+     emailYes ? tr(L, 'k_consent') : null,
+     phoneYes ? tr(L, 'k_consent_phone') : null].filter(Boolean).join(' ')
 
   // ── A HALF-TYPED GUEST DOES NOT SIT ON THE PHONE ───────────────────────
   useEffect(() => {
@@ -206,7 +214,9 @@ function SignUp({ L, ev, sessions, loadFailed, refresh, onHome }: {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               session_id: picked.session_id, name: name.trim(), email: email.trim(),
-              party_size: party, lang: L, consent, terms_text: terms,
+              phone: phone.trim(), consent_phone: phone.trim().length >= 6 && consentPhone,
+              party_size: party, lang: L, consent,
+              terms_text: termsFor(consent, phone.trim().length >= 6 && consentPhone),
               attempt_id: attempt, allow_waiting: allowWaiting,
             }),
           })
@@ -316,6 +326,18 @@ function SignUp({ L, ev, sessions, loadFailed, refresh, onHome }: {
           <em className="ph-hint">{tr(L, 'k_email_hint')}</em>
         </label>
 
+        {/* ⚠ OPTIONAL, AND IT SAYS SO IN THE LABEL rather than only in the
+            hint. A guest reading one line of a form in a crowd reads the
+            label. Numeric keypad, because every phone number is digits and a
+            QWERTY keyboard here is three taps of friction for nothing. */}
+        <label className="ph-field">
+          <span>{tr(L, 'k_phone')}</span>
+          <input name={`p-${fieldId}`} autoComplete="off" autoCorrect="off" spellCheck={false}
+                 inputMode="tel" value={phone} maxLength={32}
+                 onChange={e => setPhone(e.target.value)} onFocus={clearOfKeyboard} />
+          <em className="ph-hint">{tr(L, 'k_phone_hint')}</em>
+        </label>
+
         <div className="ph-field">
           <span className="ph-label">{tr(L, 's_how_many')}</span>
           <div className="ph-party">
@@ -330,6 +352,17 @@ function SignUp({ L, ev, sessions, loadFailed, refresh, onHome }: {
           <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />
           <span>{tr(L, 'k_consent')}</span>
         </label>
+        {/* ⚠ ITS OWN TICK. A guest who agreed to an email has not agreed to a
+            Zalo message, which arrives somewhere far more personal. It only
+            appears once there is a number to agree about — an empty tick for
+            a field nobody filled is a question with no meaning. */}
+        {phone.trim().length >= 6 && (
+          <label className="ph-consent">
+            <input type="checkbox" checked={consentPhone}
+                   onChange={e => setConsentPhone(e.target.checked)} />
+            <span>{tr(L, 'k_consent_phone')}</span>
+          </label>
+        )}
         <p className="ph-privacy">{tr(L, 'k_privacy')}</p>
 
         <button className="ph-big" disabled={!name.trim() || busy}

@@ -48,6 +48,12 @@ export async function POST(req: NextRequest) {
   const party = Number(body.party_size ?? 1)
   const lang: Lang = body.lang === 'vn' ? 'vn' : 'en'
   const consent = !!body.consent
+  // ⚠ OPTIONAL, AND NEVER A REASON TO REFUSE A PLACE. A number that does not
+  //   look like one is simply not kept: the guest still gets in, and a
+  //   rejected booking over a marketing field would be absurd.
+  const rawPhone = String(body.phone || '').trim()
+  const phone = rawPhone.length >= 6 && rawPhone.length <= 32 ? rawPhone : null
+  const consentPhone = !!body.consent_phone && !!phone
   const termsText = String(body.terms_text || '')
   const attempt = String(body.attempt_id || '')
   const source = body.source === 'staff' ? 'staff' : 'kiosk'
@@ -123,6 +129,19 @@ export async function POST(req: NextRequest) {
   }
 
   // ═══ FROM HERE THE PLACE EXISTS. Nothing below may discard it. ═════════
+  // ── THE PHONE, WRITTEN SECOND ───────────────────────────────────────────
+  // ⚠ DELIBERATELY NOT AN ARGUMENT TO popup_book. That function is taking
+  //   real bookings; changing a live signature to carry an optional marketing
+  //   field would trade a working door for a tidier call. Written here by id,
+  //   so the worst a failure costs is a phone number — never a place. If the
+  //   column is missing because db/popup_phone.sql has not been run, the
+  //   update errors and the booking is untouched.
+  if (phone) {
+    const { error: phoneErr } = await a.from('popup_bookings')
+      .update({ phone, consent_phone: consentPhone }).eq('id', out.booking_id)
+    if (phoneErr) console.error('[popup] phone not stored:', phoneErr.message)
+  }
+
   // The four digits a guest reads out at the door, assigned by the trigger in
   // db/popup_door_code.sql. Read back rather than generated here, so there is
   // one place that decides what a code is.

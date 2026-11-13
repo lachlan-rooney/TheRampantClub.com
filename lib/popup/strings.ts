@@ -404,6 +404,17 @@ export const POPUP_STRINGS = {
   k_privacy:    { en: 'The Rampant Club is collecting your name and email to hold this place and send your ticket.',
                   vn: 'The Rampant Club thu thập tên và email của bạn để giữ chỗ và gửi vé.' },
   k_privacy_link: { en: 'Privacy notice', vn: 'Chính sách riêng tư' },
+  // ── THE PHONE, OPTIONAL, WITH ITS OWN TICK ─────────────────────────────
+  // ⚠ A ZALO NUMBER IS NOT AN INBOX. A message to it lands somewhere far more
+  //   personal, so the yes for it is its own yes and the hint says what the
+  //   number is for before it is typed.
+  k_phone:        { en: 'Phone (optional)', vn: 'Số điện thoại (không bắt buộc)' },
+  k_phone_hint:   { en: 'For Zalo. Not needed to come in.',
+                    vn: 'Dùng cho Zalo. Không cần để vào cửa.' },
+  k_consent_phone:{ en: 'I\u2019d like to hear from The Rampant Club by phone or Zalo.',
+                    vn: 'Tôi muốn nhận thông tin từ The Rampant Club qua điện thoại hoặc Zalo.' },
+  k_err_phone:    { en: 'That number does not look right. Check it, or leave it blank.',
+                    vn: 'Số điện thoại có vẻ chưa đúng. Hãy kiểm tra lại, hoặc để trống.' },
   // The owner's wording, unticked by default. It decides ONE thing: which of
   // the two follow-up emails arrives. Never whether there is a place.
   k_consent:    { en: "I'd like to hear from The Rampant Club after tonight.",
