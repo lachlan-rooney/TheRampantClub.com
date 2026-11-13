@@ -108,6 +108,12 @@ export async function GET() {
         .eq('event_id', (await a.from('popup_events').select('id').eq('slug', 'palace-practice').single()).data!.id)
     : { count: 0 }
 
+  // ── WHO HAS TAKEN A COPY OF THE GUEST LIST ───────────────────────────
+  // ⚠ ABSENT UNTIL db/popup_exports.sql IS RUN, and the run sheet says so
+  //   under the buttons rather than showing an empty register that reads like
+  //   "nobody has ever downloaded this".
+  const log = await a.rpc('popup_export_log', { p_event_id: ev.id, p_limit: 12 })
+
   return NextResponse.json({
     event: ev,
     sessions: sheet ?? [],
@@ -115,6 +121,8 @@ export async function GET() {
     phones,
     practice: prac ? { exists: true, bookings: pracBookings ?? 0 } : { exists: false, bookings: 0 },
     edits: edits ?? [],
+    exports: log.error ? [] : (log.data ?? []),
+    exports_ready: !log.error,
     now: new Date().toISOString(),
   })
 }

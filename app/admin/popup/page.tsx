@@ -33,6 +33,7 @@ interface B {
   created_at: string; waiting_since: string | null; source: string
   consent_marketing: boolean; confirmation_sent_at: string | null; taken_by: string | null
 }
+interface Dl { kind: string; rows_out: number; by_email: string | null; at: string }
 interface Phone { id: string; label: string; paired: boolean; last_seen_at: string | null; seconds_ago: number | null; online: boolean; practice: boolean }
 interface Ev {
   id: string; title_en: string; venue_en: string; event_date: string
@@ -58,6 +59,8 @@ export default function RunSheet() {
   const [now, setNow] = useState(() => Date.now())
   const [capDraft, setCapDraft] = useState('')
   const [practice, setPractice] = useState<{ exists: boolean; bookings: number }>({ exists: false, bookings: 0 })
+  const [exports, setExports] = useState<Dl[]>([])
+  const [exportsReady, setExportsReady] = useState(true)
   const [edits, setEdits] = useState<{ booking_id: string; field: string; was: string | null
     now_: string | null; by: string | null; at: string }[]>([])
 
@@ -69,6 +72,8 @@ export default function RunSheet() {
       setErr(null); setEv(j.event); setSessions(j.sessions || [])
       setBookings(j.bookings || []); setPhones(j.phones || [])
       setPractice(j.practice || { exists: false, bookings: 0 })
+      setExports(j.exports || [])
+      setExportsReady(j.exports_ready !== false)
       setEdits(j.edits || [])
       setCapDraft(String(j.event?.default_cap ?? ''))
     } catch { setErr('Could not reach the server.') }
@@ -121,6 +126,35 @@ export default function RunSheet() {
           : `Cap is ${n}. Nobody was waiting.`
         : `Cap is ${n}. NOBODY HAS BEEN CANCELLED — any session now over capacity is marked below for you to decide.`)
     }
+  }
+
+  // ⚠ FETCHED, NOT A PLAIN LINK. An <a download> that comes back 500 lands
+  //   the browser on an error page or, worse, saves the JSON as a .csv. This
+  //   way a refusal — the register not being there — is said on this screen
+  //   and nothing is saved.
+  const download = async (kind: 'all' | 'consented') => {
+    setBusy(true); setMsg(null)
+    try {
+      const r = await fetch(`/api/admin/popup/export?kind=${kind}`, { cache: 'no-store' })
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}))
+        setMsg(j.error || 'The export failed. Nothing was downloaded.')
+        return
+      }
+      const blob = await r.blob()
+      const cd = r.headers.get('Content-Disposition') || ''
+      const file = (cd.match(/filename="([^"]+)"/) || [])[1] || `rampant-popup-${kind}.csv`
+      const url = URL.createObjectURL(blob)
+      const el = document.createElement('a')
+      el.href = url; el.download = file
+      document.body.appendChild(el); el.click(); el.remove()
+      URL.revokeObjectURL(url)
+      const n = r.headers.get('X-Rows') ?? '?'
+      setMsg(`${file} — ${n} guest${n === '1' ? '' : 's'}. The download is on the register below.`)
+      load()
+    } catch {
+      setMsg('The export could not be reached. Nothing was downloaded.')
+    } finally { setBusy(false) }
   }
 
   if (err) return <Frame><div style={bad}>{err}</div></Frame>
@@ -291,6 +325,49 @@ export default function RunSheet() {
         <Toggle on={ev.public_bookings} label="Public booking page"
                 note="Off by default. The phones are the way in."
                 onClick={() => post({ action: 'event', fields: { public_bookings: !ev.public_bookings } })} busy={busy} />
+      </div>
+
+      {/* ── THE GUEST LIST AS A FILE ──────────────────────────────────── */}
+      {/* ⚠ THE ONLY CONTROL ON THIS PAGE THAT PUTS GUEST EMAILS SOMEWHERE WE
+          CANNOT REACH THEM AGAIN. Every press is recorded with a name and a
+          time, and the register is shown here rather than hidden in a table,
+          because a log nobody sees is not a control. */}
+      <div style={sectionLabel}>Export</div>
+      <div style={card}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button disabled={busy} style={btn} onClick={() => download('all')}>All guests</button>
+          <button disabled={busy} style={btn} onClick={() => download('consented')}>
+            Guests who agreed to hear from the club
+          </button>
+        </div>
+        <p style={{ ...muted, marginTop: 12 }}>
+          Name, email, party size, session, status, language, who took the booking and the consent
+          tick. The second file leaves out anyone who did not tick, anyone with no address, and
+          anyone who has <b style={{ color: '#E5D4C2' }}>unsubscribed since</b> — a tick given in
+          November is not consent that outlives being asked to stop.
+        </p>
+
+        {!exportsReady ? (
+          <p style={{ ...muted, marginTop: 10, color: '#C9A84C' }}>
+            The download register is missing — run <code>db/popup_exports.sql</code> and reload.
+            Until then both buttons refuse: a copy of the guest list that nothing recorded is the
+            one thing the register exists to prevent.
+          </p>
+        ) : (
+          <div style={{ marginTop: 14 }}>
+            <div style={{ ...eyebrow, marginBottom: 6 }}>Downloads</div>
+            {exports.length === 0
+              ? <div style={muted}>Nobody has taken a copy.</div>
+              : exports.map((d, i) => (
+                  <div key={i} style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98', lineHeight: 1.9 }}>
+                    {new Date(d.at).toLocaleString('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })}
+                    {' · '}{d.kind === 'consented' ? 'agreed to hear from the club' : 'all guests'}
+                    {' · '}{d.rows_out} row{d.rows_out === 1 ? '' : 's'}
+                    {' · '}{d.by_email || 'unknown account'}
+                  </div>
+                ))}
+          </div>
+        )}
       </div>
 
       {/* ── THE NINE ──────────────────────────────────────────────────── */}
