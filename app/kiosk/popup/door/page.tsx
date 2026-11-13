@@ -1234,7 +1234,8 @@ function FixBooking({ L, row, partyMax, onClose }: {
   // out — a form here would let Save act on a cancelled booking.
   if (row.status === 'cancelled') {
     return (
-      <Sheet L={L} title={tr(L, 'd_s_cancelled')} sub={tr(L, 'f_is_cancelled')} onClose={onClose}>
+      <Sheet L={L} title={tr(L, 'd_s_cancelled')} sub={tr(L, 'f_is_cancelled')}
+             onClose={onClose} closeLabel={tr(L, 'k_back')}>
         <div className="dr-found-name">{row.name}</div>
         <div className="dr-found-meta">{hhmm(row.starts_at)}</div>
       </Sheet>
@@ -1314,14 +1315,20 @@ function FixBooking({ L, row, partyMax, onClose }: {
   )
 }
 
-function Sheet({ L, title, sub, children, onClose }: { L: Lang; title: string; sub?: string; children: React.ReactNode; onClose: () => void }) {
+function Sheet({ L, title, sub, children, onClose, closeLabel }: {
+  L: Lang; title: string; sub?: string; children: React.ReactNode
+  onClose: () => void; closeLabel?: string
+}) {
   return (
     <div className="dr-sheet-bg" onClick={onClose}>
       <div className="dr-sheet" onClick={e => e.stopPropagation()}>
         <div className="dr-sheet-h">{title}</div>
         {sub && <div className="dr-sheet-s">{sub}</div>}
         {children}
-        <button className="dr-cancel" onClick={onClose}>{tr(L, 'd_cancel')}</button>
+        {/* ⚠ "Cancel" IS THE WRONG WORD ON A CANCELLED BOOKING. The sheet's
+            own way out is normally "Cancel" — on the screen that says a
+            booking is already cancelled, that reads as cancelling it again. */}
+        <button className="dr-cancel" onClick={onClose}>{closeLabel ?? tr(L, 'd_cancel')}</button>
       </div>
     </div>
   )
