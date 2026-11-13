@@ -76,7 +76,8 @@ type Row = {
 export async function GET(req: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Staff only.' }, { status: 403 })
 
-  const kind = req.nextUrl.searchParams.get('kind') === 'consented' ? 'consented' : 'all'
+  const asked = req.nextUrl.searchParams.get('kind')
+  const kind = asked === 'consented' ? 'consented' : asked === 'phone' ? 'phone' : 'all'
   // ⚠ WHICH EVENING. The run sheet never passes this — its two buttons always
   //   mean Friday. It exists so the practice evening can be exported while
   //   rehearsing, and so this route can be proved end to end without putting
@@ -136,11 +137,20 @@ export async function GET(req: NextRequest) {
       : (r.email_key && gone.has(r.email_key)) ? 'yes (unsubscribed since)'
       : 'yes'
 
-  const wanted = kind === 'consented'
-    // A consented list exists to be written to. A row with no address cannot
-    // be, and a withdrawal is a withdrawal.
-    ? rows.filter(r => r.consent_marketing && r.email && !(r.email_key && gone.has(r.email_key)))
-    : rows
+  const wanted =
+    kind === 'consented'
+      // A consented list exists to be written to. A row with no address cannot
+      // be, and a withdrawal is a withdrawal.
+      ? rows.filter(r => r.consent_marketing && r.email && !(r.email_key && gone.has(r.email_key)))
+    : kind === 'phone'
+      // ⚠ THE PHONE LIST IS NOT FILTERED BY THE EMAIL UNSUBSCRIBE. The two are
+      //   separate permissions: somebody can leave the mailing list and still
+      //   be happy to hear from the club on Zalo, and treating one withdrawal
+      //   as both would quietly throw away a yes they never took back.
+      //   (There is no phone unsubscribe yet — an opt-out arrives by reply or
+      //   by telling a member of staff, and is cleared on the booking.)
+      ? rows.filter(r => r.consent_phone && r.phone)
+      : rows
 
   const header = ['Name', 'Email', 'Phone', 'Party size', 'Session', 'Status', 'Language',
                   'Taken by', 'Agreed to hear from the club', 'Agreed to phone or Zalo']
@@ -180,7 +190,8 @@ export async function GET(req: NextRequest) {
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date())
   // A practice file says so in its own name, so it cannot be handed on as the
   // real guest list by somebody who only ever sees the filename.
-  const name = `${ev.is_practice ? 'practice-' : ''}${kind === 'consented' ? 'consented' : 'all-guests'}`
+  const name = `${ev.is_practice ? 'practice-' : ''}${
+    kind === 'consented' ? 'consented' : kind === 'phone' ? 'phone-and-zalo' : 'all-guests'}`
 
   return new NextResponse(csv, {
     headers: {

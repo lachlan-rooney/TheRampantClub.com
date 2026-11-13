@@ -19,6 +19,25 @@ export const dynamic = 'force-dynamic'
 
 
 
+// ── CAN A FIELD BE SAVED AT ALL? ─────────────────────────────────────────
+// ⚠ A FIELD THAT CANNOT BE STORED IS NOT SHOWN. The phone field went live
+// before db/popup_phone.sql was run: it took a number from a guest, the write
+// failed on a missing column, and nobody was told — not the guest, not the
+// staff member, not the owner. Asking somebody for their number and dropping
+// it is worse than not asking.
+//
+// So the screen is told what the database can actually hold, and renders
+// accordingly. Cached, because this is polled every eight seconds by every
+// phone and the answer changes once in the life of the system.
+let phoneReady: { at: number; ok: boolean } | null = null
+async function phoneColumnExists(a: ReturnType<typeof svc>): Promise<boolean> {
+  if (phoneReady && Date.now() - phoneReady.at < 60_000) return phoneReady.ok
+  const { error } = await a.from('popup_bookings').select('phone').limit(1)
+  const ok = !error
+  phoneReady = { at: Date.now(), ok }
+  return ok
+}
+
 export async function GET() {
   if (!(await deviceOk())) return denyDevice()
   const staff = await actingStaff()
@@ -48,6 +67,8 @@ export async function GET() {
       practice: ev.is_practice,
       slug: ev.slug,
       default_cap: ev.default_cap,
+      // What the form may ask for. See phoneColumnExists above.
+      phone_ready: await phoneColumnExists(a),
     },
     // Empty while unpublished — the tablet shows "ask a member of staff"
     // rather than an empty list pretending the evening is full.

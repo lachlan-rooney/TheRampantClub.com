@@ -415,6 +415,8 @@ export const POPUP_STRINGS = {
                     vn: 'Tôi muốn nhận thông tin từ The Rampant Club qua điện thoại hoặc Zalo.' },
   k_err_phone:    { en: 'That number does not look right. Check it, or leave it blank.',
                     vn: 'Số điện thoại có vẻ chưa đúng. Hãy kiểm tra lại, hoặc để trống.' },
+  s_phone_failed: { en: 'The phone number could not be saved. The place is theirs — take the number on paper.',
+                    vn: 'Không lưu được số điện thoại. Chỗ vẫn được giữ — hãy ghi số ra giấy.' },
   // The owner's wording, unticked by default. It decides ONE thing: which of
   // the two follow-up emails arrives. Never whether there is a place.
   k_consent:    { en: "I'd like to hear from The Rampant Club after tonight.",

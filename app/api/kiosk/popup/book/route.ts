@@ -136,10 +136,19 @@ export async function POST(req: NextRequest) {
   //   so the worst a failure costs is a phone number — never a place. If the
   //   column is missing because db/popup_phone.sql has not been run, the
   //   update errors and the booking is untouched.
+  // null when none was given; false when one was and it did not store. The
+  // screen says so either way rather than letting it disappear.
+  let phoneKept: boolean | null = null
   if (phone) {
     const { error: phoneErr } = await a.from('popup_bookings')
       .update({ phone, consent_phone: consentPhone }).eq('id', out.booking_id)
-    if (phoneErr) console.error('[popup] phone not stored:', phoneErr.message)
+    phoneKept = !phoneErr
+    if (phoneErr) {
+      await alertAdmins(a, 'A pop-up phone number could not be stored', {
+        booking_id: out.booking_id, detail: phoneErr.message,
+        hint: 'Has db/popup_phone.sql been run?',
+      }, '/admin/popup')
+    }
   }
 
   // The four digits a guest reads out at the door, assigned by the trigger in
@@ -147,9 +156,18 @@ export async function POST(req: NextRequest) {
   // one place that decides what a code is.
   let doorCode: string | null = null
   {
-    const { data: row } = await a.from('popup_bookings')
+    const { data: row, error: codeErr } = await a.from('popup_bookings')
       .select('door_code').eq('id', out.booking_id).maybeSingle()
     doorCode = (row as { door_code?: string } | null)?.door_code ?? null
+    // ⚠ NO FOUR DIGITS IS A FAULT, NOT A STYLE. The trigger assigns one to
+    //   every booking; a null here means db/popup_door_code.sql has not run,
+    //   and every guest tonight would be handed a ticket with no code on it.
+    if (codeErr || !doorCode) {
+      await alertAdmins(a, 'A pop-up booking got no door code', {
+        booking_id: out.booking_id, detail: codeErr?.message ?? 'door_code was null',
+        hint: 'Has db/popup_door_code.sql been run?',
+      }, '/admin/popup')
+    }
   }
   const waiting = out.status === 'waiting'
   const when = timeLabel(out.starts_at, ev.timezone)
@@ -293,5 +311,7 @@ export async function POST(req: NextRequest) {
     had_email: !!emailRaw,
     // ⚠ SO SHE CAN SAY IT OUT LOUD AS SHE HANDS THE PHONE ROUND.
     door_code: doorCode,
+    // null = none given · true = kept · false = given and lost
+    phone_kept: phoneKept,
   })
 }

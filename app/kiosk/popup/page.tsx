@@ -45,6 +45,9 @@ interface EventInfo {
   venue_en: string; venue_vn: string | null
   session_minutes: number; party_max: number; default_cap: number
   published: boolean; paused: boolean; practice: boolean; slug: string
+  // ⚠ WHAT THE DATABASE CAN ACTUALLY HOLD. A field that cannot be saved is
+  // not shown — see the note in app/api/kiosk/popup/sessions/route.ts.
+  phone_ready?: boolean
 }
 
 // ⚠ WHAT THE PHONE IS ON, IN ONE PLACE. The owner held a practice ticket while
@@ -65,7 +68,9 @@ interface Staff { id: string; display_name: string }
 type Mode = 'home' | 'signup'
 type Step = 'slots' | 'who' | 'done'
 interface Done { name: string; time: string; waiting: boolean; emailed: boolean
-  had_email: boolean; door_code: string | null; booking_id: string | null }
+  had_email: boolean; door_code: string | null; booking_id: string | null
+  // null = no number was given. false = one was, and it did not store.
+  phone_kept: boolean | null }
 
 export default function PopupPhone() {
   const { lang, setLang } = useLang()
@@ -224,7 +229,8 @@ function SignUp({ L, ev, sessions, loadFailed, refresh, onHome }: {
           if (r.ok && j.ok) {
             setDone({ name: j.name, time: j.time, waiting: !!j.waiting,
                       emailed: !!j.emailed, had_email: !!j.had_email,
-                      door_code: j.door_code ?? null, booking_id: j.booking_id ?? null })
+                      door_code: j.door_code ?? null, booking_id: j.booking_id ?? null,
+                      phone_kept: j.phone_kept ?? null })
             setStep('done'); refresh(); return
           }
           if (r.status === 409 || r.status === 400) {
@@ -282,6 +288,12 @@ function SignUp({ L, ev, sessions, loadFailed, refresh, onHome }: {
               {!done.had_email ? tr(L, 's_not_emailed')
                 : done.emailed ? tr(L, 's_emailed') : tr(L, 's_email_failed')}
             </p>
+            {/* ⚠ IF THE NUMBER DID NOT STORE, SHE IS TOLD. A guest was asked
+                for it; swallowing the failure is how the field behaved before
+                the column existed, and that is the fault being fixed. */}
+            {done.phone_kept === false && (
+              <p className="ph-done-mail is-warn">{tr(L, 's_phone_failed')}</p>
+            )}
           </>
         )}
         <button className="ph-big" onClick={onHome}>{tr(L, 'h_done')}</button>
@@ -329,7 +341,10 @@ function SignUp({ L, ev, sessions, loadFailed, refresh, onHome }: {
         {/* ⚠ OPTIONAL, AND IT SAYS SO IN THE LABEL rather than only in the
             hint. A guest reading one line of a form in a crowd reads the
             label. Numeric keypad, because every phone number is digits and a
-            QWERTY keyboard here is three taps of friction for nothing. */}
+            QWERTY keyboard here is three taps of friction for nothing.
+            ⚠ AND IT IS NOT ON THE SCREEN AT ALL unless the database can keep
+            it. It once asked for a number it then dropped in silence. */}
+        {ev?.phone_ready !== false && (
         <label className="ph-field">
           <span>{tr(L, 'k_phone')}</span>
           <input name={`p-${fieldId}`} autoComplete="off" autoCorrect="off" spellCheck={false}
@@ -337,6 +352,7 @@ function SignUp({ L, ev, sessions, loadFailed, refresh, onHome }: {
                  onChange={e => setPhone(e.target.value)} onFocus={clearOfKeyboard} />
           <em className="ph-hint">{tr(L, 'k_phone_hint')}</em>
         </label>
+        )}
 
         <div className="ph-field">
           <span className="ph-label">{tr(L, 's_how_many')}</span>
@@ -356,7 +372,7 @@ function SignUp({ L, ev, sessions, loadFailed, refresh, onHome }: {
             Zalo message, which arrives somewhere far more personal. It only
             appears once there is a number to agree about — an empty tick for
             a field nobody filled is a question with no meaning. */}
-        {phone.trim().length >= 6 && (
+        {ev?.phone_ready !== false && phone.trim().length >= 6 && (
           <label className="ph-consent">
             <input type="checkbox" checked={consentPhone}
                    onChange={e => setConsentPhone(e.target.checked)} />

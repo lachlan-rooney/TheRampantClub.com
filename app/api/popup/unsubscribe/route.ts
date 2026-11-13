@@ -23,11 +23,21 @@ const page = (line: string) => new NextResponse(
 export async function GET(req: NextRequest) {
   const key = readUnsub(req.nextUrl.searchParams.get('t') || '')
   const done = 'You will not hear from us about this again.'
-  if (!key) return page(done)
+  // ⚠ A LINK THAT DID NOT WORK IS NOT "DONE". This used to answer every bad
+  //   token with the same reassurance, so a mangled or truncated link — the
+  //   normal result of a mail client wrapping a long URL — told the reader
+  //   they were off a list they were still on.
+  const broken = 'That link did not work, so nothing has changed. '
+    + 'Write to membership@therampantclub.com and we will take you off by hand.'
+  if (!key) return page(broken)
 
   const a = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { persistSession: false } })
   // Upsert, not insert: clicking twice is normal and must not look like a fault.
-  await a.from('popup_unsubscribes').upsert({ email_key: key }, { onConflict: 'email_key' })
+  const { error } = await a.from('popup_unsubscribes')
+    .upsert({ email_key: key }, { onConflict: 'email_key' })
+  // ⚠ AND NEITHER IS A FAILED WRITE. Telling somebody they have been removed
+  //   when they have not is the one thing this page must never do.
+  if (error) return page(broken)
   return page(done)
 }

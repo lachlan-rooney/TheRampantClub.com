@@ -42,7 +42,10 @@ interface ShiftRow {
 const EVENT_FIELDS = new Set([
   'default_cap', 'party_max', 'published', 'public_bookings', 'bookings_paused',
   'admit_early_minutes', 'admit_late_minutes', 'allow_late_move',
-  'reminder_lead_minutes', 'membership_contact',
+  // ⚠ membership_contact WAS HERE AND READ BY NOTHING. Dropped in
+  //   db/popup_phone_export.sql: the address lives in the follow-up copy the
+  //   owner typed, and a second place for the same fact only drifts.
+  'reminder_lead_minutes',
 ])
 
 export async function GET() {

@@ -4,6 +4,7 @@ import { isAdmin } from '@/lib/admin'
 import { tr, timeLabel, type Lang } from '@/lib/popup/strings'
 import { unsubUrl } from '@/lib/popup/ticket'
 import { sendEach, shiftHtml, messageHtml, reminderHtml, followupHtml } from '@/lib/popup/mail'
+import { alertAdmins } from '@/lib/studio/alert'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -93,7 +94,10 @@ export async function POST(req: NextRequest) {
       return { email: p.email, subject: m.subject, html: m.html }
     })
     const sent = await sendEach(rows)
-    await a.from('popup_messages').insert({
+    // ⚠ THE RECORD OF A SEND IS NOT OPTIONAL. If this fails, messages went
+    //   out and nothing here knows it — so the screen is told, rather than
+    //   showing a clean result over a missing record.
+    const { error: logErr1 } = await a.from('popup_messages').insert({
       event_id: ev.id, scope: 'evening',
       body_en: `Time change: ${people.length} guests moved.`,
       sent_count: sent.filter(s => s.ok).length,
@@ -101,6 +105,7 @@ export async function POST(req: NextRequest) {
     })
     return NextResponse.json({
       ok: true, told: sent.filter(s => s.ok).length,
+      unrecorded: logErr1 ? logErr1.message : null,
       no_email: people.length - rows.length,
       failed: sent.filter(s => !s.ok),
     })
@@ -139,12 +144,13 @@ export async function POST(req: NextRequest) {
         unsubscribed: (people || []).length - rows.length })
     }
     const sent = await sendEach(rows)
-    await a.from('popup_messages').insert({
+    const { error: logErr2 } = await a.from('popup_messages').insert({
       event_id: ev.id, session_id: sessionId, scope: sessionId ? 'session' : 'evening',
       body_en: text, sent_count: sent.filter(s => s.ok).length,
       failed_count: sent.filter(s => !s.ok).length,
     })
-    return NextResponse.json({ ok: true, sent: sent.filter(s => s.ok).length, failed: sent.filter(s => !s.ok) })
+    return NextResponse.json({ ok: true, sent: sent.filter(s => s.ok).length,
+      failed: sent.filter(s => !s.ok), unrecorded: logErr2 ? logErr2.message : null })
   }
 
   // ═══ ITEM 6 · TEN MINUTES TO GO ════════════════════════════════════════
@@ -160,7 +166,7 @@ export async function POST(req: NextRequest) {
   if (action === 'followup_save') {
     const f = (body.fields || {}) as Record<string, string>
     const allow = ['followup_subject_en', 'followup_subject_vn', 'followup_full_en', 'followup_full_vn',
-                   'followup_plain_en', 'followup_plain_vn', 'followup_send_at', 'membership_contact']
+                   'followup_plain_en', 'followup_plain_vn', 'followup_send_at']
     const patch: Record<string, string | null> = {}
     for (const k of allow) if (k in f) patch[k] = f[k] === '' ? null : f[k]
     if (!Object.keys(patch).length) return NextResponse.json({ error: 'Nothing to save.' }, { status: 400 })
@@ -225,6 +231,7 @@ export async function POST(req: NextRequest) {
     }
 
     let ok = 0; const failed: { email: string; error?: string }[] = []; const skipped: string[] = []
+    const unstamped: string[] = []
     for (const p of people) {
       const L = (p.lang === 'vn' ? 'vn' : 'en') as Lang
       const copy = followupCopy(ev, L, p.wants_more)
@@ -239,13 +246,23 @@ export async function POST(req: NextRequest) {
         // ⚠ STAMPED ONE AT A TIME, as each one lands. Stamping the whole set
         // afterwards means a run that dies half-way has either told the
         // database about messages it never sent, or nothing at all.
-        await a.from('popup_bookings').update({ followup_sent_at: new Date().toISOString() })
-          .eq('id', p.booking_id)
+        // ⚠ THE STAMP IS WHAT STOPS A SECOND SEND. "Nobody is emailed twice"
+        //   rests entirely on this write; if it fails and nobody is told, the
+        //   next run emails the same guest the same letter again.
+        const { error: stampErr } = await a.from('popup_bookings')
+          .update({ followup_sent_at: new Date().toISOString() }).eq('id', p.booking_id)
+        if (stampErr) unstamped.push(p.email)
         ok++
       } else failed.push({ email: r.email, error: r.error })
     }
     await a.from('popup_events').update({ followup_sent_at: new Date().toISOString() }).eq('id', ev.id)
-    return NextResponse.json({ ok: true, sent: ok, failed, skipped })
+    if (unstamped.length) {
+      await alertAdmins(a, 'A follow-up was sent but not recorded', {
+        count: unstamped.length, who: unstamped.join(', '),
+        detail: 'These people WERE emailed. Running the send again would email them a second time.',
+      }, '/admin/popup')
+    }
+    return NextResponse.json({ ok: true, sent: ok, failed, skipped, unstamped })
   }
 
   return NextResponse.json({ error: 'Nothing addressed.' }, { status: 400 })
@@ -292,6 +309,7 @@ export async function runReminders(a: ReturnType<typeof svc>, ev: Ev, dryRun = f
     })
     const [r] = await sendEach([{ email: p.email, subject: m.subject, html: m.html }])
     if (r.ok) {
+      // Same rule as the follow-up: the stamp is what stops a second send.
       await a.from('popup_bookings').update({ reminder_sent_at: new Date().toISOString() })
         .eq('id', p.booking_id)
       ok++

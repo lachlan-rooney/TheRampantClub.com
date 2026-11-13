@@ -132,7 +132,7 @@ export default function RunSheet() {
   //   the browser on an error page or, worse, saves the JSON as a .csv. This
   //   way a refusal — the register not being there — is said on this screen
   //   and nothing is saved.
-  const download = async (kind: 'all' | 'consented') => {
+  const download = async (kind: 'all' | 'consented' | 'phone') => {
     setBusy(true); setMsg(null)
     try {
       const r = await fetch(`/api/admin/popup/export?kind=${kind}`, { cache: 'no-store' })
@@ -339,12 +339,22 @@ export default function RunSheet() {
           <button disabled={busy} style={btn} onClick={() => download('consented')}>
             Guests who agreed to hear from the club
           </button>
+          <button disabled={busy} style={btn} onClick={() => download('phone')}>
+            Guests who agreed to phone or Zalo
+          </button>
         </div>
         <p style={{ ...muted, marginTop: 12 }}>
-          Name, email, party size, session, status, language, who took the booking and the consent
-          tick. The second file leaves out anyone who did not tick, anyone with no address, and
-          anyone who has <b style={{ color: '#E5D4C2' }}>unsubscribed since</b> — a tick given in
+          Name, email, phone, party size, session, status, language, who took the booking and both
+          consent ticks. The second file leaves out anyone who did not tick, anyone with no address,
+          and anyone who has <b style={{ color: '#E5D4C2' }}>unsubscribed since</b> — a tick given in
           November is not consent that outlives being asked to stop.
+        </p>
+        <p style={{ ...muted, marginTop: 8 }}>
+          The third file is the <b style={{ color: '#E5D4C2' }}>other</b> permission, not a subset of
+          the second: a guest can leave the mailing list and still be glad to hear from the club on
+          Zalo, so an email unsubscribe does not remove them from it. There is no phone unsubscribe
+          link — an opt-out arrives by reply or by telling a member of staff, and is cleared on the
+          booking.
         </p>
 
         {!exportsReady ? (
@@ -361,7 +371,8 @@ export default function RunSheet() {
               : exports.map((d, i) => (
                   <div key={i} style={{ fontFamily: MONO, fontSize: 11, color: '#B2AA98', lineHeight: 1.9 }}>
                     {new Date(d.at).toLocaleString('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })}
-                    {' · '}{d.kind === 'consented' ? 'agreed to hear from the club' : 'all guests'}
+                    {' · '}{d.kind === 'consented' ? 'agreed to hear from the club'
+                            : d.kind === 'phone' ? 'agreed to phone or Zalo' : 'all guests'}
                     {' · '}{d.rows_out} row{d.rows_out === 1 ? '' : 's'}
                     {' · '}{d.by_email || 'unknown account'}
                   </div>
